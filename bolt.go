@@ -1,14 +1,9 @@
 package bolt
 
 import (
-	"bufio"
-	"io"
 	"log"
-	"net"
 	"net/http"
 	"sync"
-
-	"golang.org/x/net/websocket"
 )
 
 type (
@@ -18,37 +13,15 @@ type (
 		maxParam                byte
 		notFoundHandler         HandlerFunc
 		methodNotAllowedHandler HandlerFunc
-		tcpListener             *net.TCPListener
-		// udpConn                 *net.UDPConn
-		pool sync.Pool
+		pool                    sync.Pool
 	}
-
-	command   byte
-	format    byte
-	transport byte
-
 	HandlerFunc func(*Context)
+	Format      byte
 )
 
 const (
-	CmdINIT command = 1 + iota
-	CmdAUTH
-	CmdHTTP
-	CmdPUB
-	CmdSUB
-	CmdUSUB
-)
-
-const (
-	TrnspHTTP transport = 1 + iota
-	TrnspWS
-	TrnspTCP
-)
-
-const (
-	FmtJSON format = 1 + iota
+	FmtJSON Format = 1 + iota
 	FmtMsgPack
-	FmtBinary = 20
 )
 
 const (
@@ -87,7 +60,6 @@ func New(opts ...func(*Bolt)) (b *Bolt) {
 	b.pool.New = func() interface{} {
 		return &Context{
 			Writer: NewResponse(nil),
-			Socket: new(Socket),
 			params: make(Params, b.maxParam),
 			store:  make(store),
 			i:      -1,
@@ -176,7 +148,6 @@ func (b *Bolt) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	// Find and execute handler
 	h, c, s := b.Router.Find(r.Method, r.URL.Path)
 	if h != nil {
-		c.Transport = TrnspHTTP
 		c.Writer.ResponseWriter = rw
 		c.Request = r
 		h(c)
@@ -190,70 +161,6 @@ func (b *Bolt) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	b.pool.Put(c)
 }
 
-func (b *Bolt) handleSocket(conn io.ReadWriteCloser, tp transport) {
-	// TODO: From pool?
-	defer conn.Close()
-	s := &Socket{
-		Transport: tp,
-		config:    Config{},
-		conn:      conn,
-		Reader:    bufio.NewReader(conn),
-		Writer:    bufio.NewWriter(conn),
-		bolt:      b,
-	}
-Loop:
-	for {
-		c, err := s.Reader.ReadByte() // Command
-		if err != nil {
-			log.Println(err, 222, c)
-		}
-		cmd := command(c)
-		println(cmd)
-		switch cmd {
-		case CmdINIT:
-			s.Init()
-		case CmdHTTP:
-			s.HTTP()
-		default:
-			break Loop
-		}
-	}
-}
-
-func (b *Bolt) RunHTTP(addr string) {
+func (b *Bolt) Run(addr string) {
 	log.Fatal(http.ListenAndServe(addr, b))
-}
-
-func (b *Bolt) RunWS(addr string) {
-	http.Handle("/", websocket.Handler(func(ws *websocket.Conn) {
-		b.handleSocket(ws, TrnspWS)
-	}))
-	log.Fatal(http.ListenAndServe(addr, nil))
-}
-
-func (b *Bolt) RunTCP(addr string) {
-	a, _ := net.ResolveTCPAddr("tcp", addr)
-	l, err := net.ListenTCP("tcp", a)
-	if err != nil {
-		log.Fatalf("bolt: %v", err)
-	}
-	b.tcpListener = l
-	go b.serve("tcp")
-}
-
-func (b *Bolt) serve(net string) {
-	switch net {
-	case "ws":
-	case "tcp":
-		for {
-			conn, err := b.tcpListener.Accept()
-			if err != nil {
-				log.Print(err)
-				return
-			}
-			go b.handleSocket(conn, TrnspTCP)
-		}
-	default:
-		// TODO: handle it!
-	}
 }
