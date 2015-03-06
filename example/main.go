@@ -7,8 +7,8 @@ import (
 )
 
 type user struct {
-	Id   string
-	Name string
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 var users map[string]*user
@@ -16,25 +16,31 @@ var users map[string]*user
 func init() {
 	users = map[string]*user{
 		"1": &user{
-			Id:   "1",
+			ID:   "1",
 			Name: "Wreck-It Ralph",
 		},
 	}
 }
 
 func createUser(c *bolt.Context) {
+	u := new(user)
+	if c.Bind(u) {
+		users[u.ID] = u
+		c.JSON(http.StatusOK, u)
+	}
 }
 
 func getUsers(c *bolt.Context) {
-	c.RenderJSON(http.StatusOK, users)
+	c.JSON(http.StatusOK, users)
 }
 
 func getUser(c *bolt.Context) {
-	c.RenderJSON(http.StatusOK, users[c.P(0)])
+	c.JSON(http.StatusOK, users[c.P(0)])
 }
 
 func main() {
 	b := bolt.New()
+	b.Post("/users", createUser)
 	b.Get("/users", getUsers)
 	b.Get("/users/:id", getUser)
 	b.Run(":8080")

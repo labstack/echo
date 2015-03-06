@@ -21,7 +21,6 @@ type (
 
 const (
 	MIME_JSON = "application/json"
-	MIME_MP   = "application/x-msgpack"
 
 	HeaderAccept             = "Accept"
 	HeaderContentDisposition = "Content-Disposition"
@@ -46,12 +45,15 @@ func New(opts ...func(*Bolt)) (b *Bolt) {
 		maxParam: 5,
 		notFoundHandler: func(c *Context) {
 			http.Error(c.Response, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			c.Halt()
 		},
 		methodNotAllowedHandler: func(c *Context) {
 			http.Error(c.Response, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+			c.Halt()
 		},
 		internalServerErrorHandler: func(c *Context) {
 			http.Error(c.Response, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			c.Halt()
 		},
 	}
 	b.Router = NewRouter(b)
@@ -61,6 +63,7 @@ func New(opts ...func(*Bolt)) (b *Bolt) {
 			params:   make(Params, b.maxParam),
 			store:    make(store),
 			i:        -1,
+			bolt:     b,
 		}
 	}
 
@@ -143,7 +146,6 @@ func (b *Bolt) Handle(method, path string, h []HandlerFunc) {
 	b.Router.Add(method, path, func(c *Context) {
 		c.handlers = h
 		c.l = l
-		c.i = -1
 		c.Next()
 	})
 }
@@ -152,8 +154,7 @@ func (b *Bolt) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	// Find and execute handler
 	h, c, s := b.Router.Find(r.Method, r.URL.Path)
 	if h != nil {
-		c.Response.ResponseWriter = rw
-		c.Request = r
+		c.reset(rw, r)
 		h(c)
 	} else {
 		if s == NotFound {

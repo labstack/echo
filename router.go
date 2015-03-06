@@ -3,7 +3,6 @@ package bolt
 import (
 	"fmt"
 	"net/http"
-	"sort"
 	"sync"
 )
 
@@ -64,22 +63,6 @@ func (n *node) findEdge(l byte) *node {
 		}
 	}
 	return nil
-}
-
-func (e edges) Len() int {
-	return len(e)
-}
-
-func (e edges) Swap(i, j int) {
-	e[i], e[j] = e[j], e[i]
-}
-
-func (e edges) Less(i, j int) bool {
-	return e[i].label < e[j].label
-}
-
-func (e edges) Sort() {
-	sort.Sort(e)
 }
 
 func (r *router) Add(method, path string, h HandlerFunc) {

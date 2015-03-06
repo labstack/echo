@@ -3,6 +3,7 @@ package bolt
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 )
 
 type (
@@ -30,18 +31,28 @@ func (c *Context) Param(n string) string {
 //**********
 //   Bind
 //**********
-func (c *Context) BindJSON(i interface{}) {
-	dec := json.NewDecoder(c.Request.Body)
-	if err := dec.Decode(i); err != nil {
-		c.bolt.internalServerErrorHandler(c)
+func (c *Context) Bind(i interface{}) bool {
+	var err error
+	ct := c.Request.Header.Get(HeaderContentType)
+	if strings.HasPrefix(ct, MIME_JSON) {
+		dec := json.NewDecoder(c.Request.Body)
+		err = dec.Decode(i)
+	} else {
+		// TODO:
 	}
+	if err != nil {
+		c.bolt.internalServerErrorHandler(c)
+		return false
+	}
+	return true
 }
 
 //************
 //   Render
 //************
-func (c *Context) RenderJSON(n int, i interface{}) {
+func (c *Context) JSON(n int, i interface{}) {
 	enc := json.NewEncoder(c.Response)
+	c.Response.Header().Set(HeaderContentType, MIME_JSON+"; charset=utf-8")
 	c.Response.WriteHeader(n)
 	if err := enc.Encode(i); err != nil {
 		c.bolt.internalServerErrorHandler(c)
@@ -66,4 +77,14 @@ func (c *Context) Set(key string, val interface{}) {
 
 func (c *Context) Redirect(n int, url string) {
 	http.Redirect(c.Response, c.Request, url, n)
+}
+
+func (c *Context) reset(rw http.ResponseWriter, r *http.Request) {
+	c.Response.reset(rw)
+	c.Request = r
+	c.i = -1
+}
+
+func (c *Context) Halt() {
+	c.i = c.l
 }

@@ -3,6 +3,7 @@ package bolt
 import (
 	"bufio"
 	"errors"
+	"log"
 	"net"
 	"net/http"
 )
@@ -10,14 +11,21 @@ import (
 type (
 	response struct {
 		http.ResponseWriter
-		status int
-		size   int
+		status    int
+		size      int
+		committed bool
 	}
 )
 
 func (r *response) WriteHeader(c int) {
+	if r.committed {
+		// TODO: Warning
+		log.Println("bolt: response already committed")
+		return
+	}
 	r.status = c
 	r.ResponseWriter.WriteHeader(c)
+	r.committed = true
 }
 
 func (r *response) Write(b []byte) (n int, err error) {
@@ -54,4 +62,9 @@ func (r *response) Status() int {
 
 func (r *response) Size() int {
 	return r.size
+}
+
+func (r *response) reset(rw http.ResponseWriter) {
+	r.ResponseWriter = rw
+	r.committed = false
 }
