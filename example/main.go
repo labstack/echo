@@ -26,18 +26,16 @@ func createUser(c *bolt.Context) {
 }
 
 func getUsers(c *bolt.Context) {
-	c.Render(http.StatusOK, bolt.FMT_JSON, users)
+	c.RenderJSON(http.StatusOK, users)
 }
 
 func getUser(c *bolt.Context) {
-	c.Render(http.StatusOK, bolt.FMT_JSON, users[c.P(0)])
+	c.RenderJSON(http.StatusOK, users[c.P(0)])
 }
 
 func main() {
 	b := bolt.New()
 	b.Get("/users", getUsers)
 	b.Get("/users/:id", getUser)
-	// go b.RunHttp(":8080")
-	// go b.RunWebSocket(":8081")
-	b.RunTcp(":8082")
+	b.Run(":8080")
 }

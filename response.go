@@ -8,22 +8,12 @@ import (
 )
 
 type (
-	// ResponseWriter interface {
-	// }
-
 	response struct {
 		http.ResponseWriter
 		status int
 		size   int
 	}
 )
-
-func NewResponse(rw http.ResponseWriter) *response {
-	return &response{
-		ResponseWriter: rw,
-		status:         http.StatusOK,
-	}
-}
 
 func (r *response) WriteHeader(c int) {
 	r.status = c

@@ -255,7 +255,7 @@ func lcp(a, b string) (i int) {
 
 func (r *router) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	h, c, rep := r.Find(req.Method, req.URL.Path)
-	c.Writer.ResponseWriter = rw
+	c.Response.ResponseWriter = rw
 	if h != nil {
 		h(c)
 	} else {

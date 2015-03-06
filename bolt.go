@@ -8,30 +8,25 @@ import (
 
 type (
 	Bolt struct {
-		Router                  *router
-		handlers                []HandlerFunc
-		maxParam                byte
-		notFoundHandler         HandlerFunc
-		methodNotAllowedHandler HandlerFunc
-		pool                    sync.Pool
+		Router                     *router
+		handlers                   []HandlerFunc
+		maxParam                   byte
+		notFoundHandler            HandlerFunc
+		methodNotAllowedHandler    HandlerFunc
+		internalServerErrorHandler HandlerFunc
+		pool                       sync.Pool
 	}
 	HandlerFunc func(*Context)
-	Format      byte
-)
-
-const (
-	FmtJSON Format = 1 + iota
-	FmtMsgPack
 )
 
 const (
 	MIME_JSON = "application/json"
 	MIME_MP   = "application/x-msgpack"
 
-	HdrAccept             = "Accept"
-	HdrContentDisposition = "Content-Disposition"
-	HdrContentLength      = "Content-Length"
-	HdrContentType        = "Content-Type"
+	HeaderAccept             = "Accept"
+	HeaderContentDisposition = "Content-Disposition"
+	HeaderContentLength      = "Content-Length"
+	HeaderContentType        = "Content-Type"
 )
 
 var MethodMap = map[string]uint8{
@@ -50,19 +45,22 @@ func New(opts ...func(*Bolt)) (b *Bolt) {
 	b = &Bolt{
 		maxParam: 5,
 		notFoundHandler: func(c *Context) {
-			http.Error(c.Writer, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			http.Error(c.Response, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		},
 		methodNotAllowedHandler: func(c *Context) {
-			http.Error(c.Writer, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+			http.Error(c.Response, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		},
+		internalServerErrorHandler: func(c *Context) {
+			http.Error(c.Response, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		},
 	}
 	b.Router = NewRouter(b)
 	b.pool.New = func() interface{} {
 		return &Context{
-			Writer: NewResponse(nil),
-			params: make(Params, b.maxParam),
-			store:  make(store),
-			i:      -1,
+			Response: &response{},
+			params:   make(Params, b.maxParam),
+			store:    make(store),
+			i:        -1,
 		}
 	}
 
@@ -89,6 +87,12 @@ func NotFoundHandler(h HandlerFunc) func(*Bolt) {
 func MethodNotAllowedHandler(h HandlerFunc) func(*Bolt) {
 	return func(b *Bolt) {
 		b.methodNotAllowedHandler = h
+	}
+}
+
+func InternalServerErrorHandler(h HandlerFunc) func(*Bolt) {
+	return func(b *Bolt) {
+		b.internalServerErrorHandler = h
 	}
 }
 
@@ -148,7 +152,7 @@ func (b *Bolt) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	// Find and execute handler
 	h, c, s := b.Router.Find(r.Method, r.URL.Path)
 	if h != nil {
-		c.Writer.ResponseWriter = rw
+		c.Response.ResponseWriter = rw
 		c.Request = r
 		h(c)
 	} else {
@@ -163,4 +167,8 @@ func (b *Bolt) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 
 func (b *Bolt) Run(addr string) {
 	log.Fatal(http.ListenAndServe(addr, b))
+}
+
+func (b *Bolt) Stop(addr string) {
+	panic("implement it")
 }
