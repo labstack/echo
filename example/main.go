@@ -43,5 +43,6 @@ func main() {
 	b.Post("/users", createUser)
 	b.Get("/users", getUsers)
 	b.Get("/users/:id", getUser)
+	b.Static("/static/*", "/tmp/")
 	b.Run(":8080")
 }

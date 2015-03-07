@@ -3,6 +3,7 @@ package bolt
 import (
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 )
 
@@ -140,6 +141,14 @@ func (b *Bolt) Trace(path string, h ...HandlerFunc) {
 	b.Handle("TRACE", path, h)
 }
 
+// Static serves static files
+func (b *Bolt) Static(path, root string) {
+	fs := http.StripPrefix(strings.TrimSuffix(path, "*"), http.FileServer(http.Dir(root)))
+	b.Get(path, func(c *Context) {
+		fs.ServeHTTP(c.Response, c.Request)
+	})
+}
+
 func (b *Bolt) Handle(method, path string, h []HandlerFunc) {
 	h = append(b.handlers, h...)
 	l := len(h)
@@ -153,8 +162,8 @@ func (b *Bolt) Handle(method, path string, h []HandlerFunc) {
 func (b *Bolt) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	// Find and execute handler
 	h, c, s := b.Router.Find(r.Method, r.URL.Path)
+	c.reset(rw, r)
 	if h != nil {
-		c.reset(rw, r)
 		h(c)
 	} else {
 		if s == NotFound {

@@ -32,7 +32,7 @@ type (
 const (
 	snode ntype = iota // Static node
 	pnode              // Param node
-	wnode              // Wildcard node
+	anode              // Catch-all node
 )
 
 const (
@@ -79,6 +79,8 @@ func (r *router) Add(method, path string, h HandlerFunc) {
 			} else {
 				r.insert(method, path[:i], nil, snode)
 			}
+		} else if path[i] == '*' {
+			r.insert(method, path[:i], h, anode)
 		}
 	}
 	r.insert(method, path, h, snode)
@@ -206,6 +208,10 @@ func (r *router) Find(method, path string) (handler HandlerFunc, c *Context, s S
 					// All param read
 					continue
 				}
+			case anode:
+				// End search
+				search = ""
+				continue
 			}
 			e := cn.findEdge(search[0])
 			if e == nil {

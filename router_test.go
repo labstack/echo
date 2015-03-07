@@ -24,6 +24,15 @@ func TestParam(t *testing.T) {
 	}
 }
 
+func TestCatchAll(t *testing.T) {
+	r := New().Router
+	r.Add("GET", "/static/*", func(c *Context) {})
+	h, _, _ := r.Find("GET", "/static/*")
+	if h == nil {
+		t.Fatal("handle not found")
+	}
+}
+
 func TestMicroParam(t *testing.T) {
 	r := New().Router
 	r.Add("GET", "/:a/:b/:c", func(c *Context) {})
