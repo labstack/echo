@@ -34,7 +34,7 @@ func (c *Context) Param(n string) string {
 func (c *Context) Bind(i interface{}) bool {
 	var err error
 	ct := c.Request.Header.Get(HeaderContentType)
-	if strings.HasPrefix(ct, MIME_JSON) {
+	if strings.HasPrefix(ct, MIMEJSON) {
 		dec := json.NewDecoder(c.Request.Body)
 		err = dec.Decode(i)
 	} else {
@@ -52,11 +52,15 @@ func (c *Context) Bind(i interface{}) bool {
 //************
 func (c *Context) JSON(n int, i interface{}) {
 	enc := json.NewEncoder(c.Response)
-	c.Response.Header().Set(HeaderContentType, MIME_JSON+"; charset=utf-8")
+	c.Response.Header().Set(HeaderContentType, MIMEJSON+"; charset=utf-8")
 	c.Response.WriteHeader(n)
 	if err := enc.Encode(i); err != nil {
 		c.bolt.internalServerErrorHandler(c)
 	}
+}
+
+func (c *Context) File(n int, file, name string) {
+
 }
 
 // Next executes the next handler in the chain.

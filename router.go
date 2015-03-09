@@ -76,9 +76,8 @@ func (r *router) Add(method, path string, h HandlerFunc) {
 			if i == l {
 				r.insert(method, path[:i], h, snode)
 				return
-			} else {
-				r.insert(method, path[:i], nil, snode)
 			}
+			r.insert(method, path[:i], nil, snode)
 		} else if path[i] == '*' {
 			r.insert(method, path[:i], h, anode)
 		}
@@ -205,12 +204,14 @@ func (r *router) Find(method, path string) (handler HandlerFunc, c *Context, s S
 				search = search[i:]
 
 				if i == l {
-					// All param read
+					// All params read
 					continue
 				}
 			case anode:
-				// End search
-				search = ""
+				p := c.params[:n+1]
+				p[n].Name = "_name"
+				p[n].Value = search
+				search = "" // End search
 				continue
 			}
 			e := cn.findEdge(search[0])
@@ -218,10 +219,9 @@ func (r *router) Find(method, path string) (handler HandlerFunc, c *Context, s S
 				// Not found
 				s = NotFound
 				return
-			} else {
-				cn = e
-				continue
 			}
+			cn = e
+			continue
 		} else {
 			// Not found
 			s = NotFound
@@ -288,7 +288,6 @@ func (n *node) printTree(pfx string, tail bool) {
 func prefix(tail bool, p, on, off string) string {
 	if tail {
 		return fmt.Sprintf("%s%s", p, on)
-	} else {
-		return fmt.Sprintf("%s%s", p, off)
 	}
+	return fmt.Sprintf("%s%s", p, off)
 }

@@ -2,7 +2,7 @@ package bolt
 
 import "testing"
 
-func TestStatic(t *testing.T) {
+func TestStaticRoute(t *testing.T) {
 	r := New().Router
 	r.Add("GET", "/users/joe/books", func(c *Context) {})
 	h, _, _ := r.Find("GET", "/users/joe/books")
@@ -11,7 +11,7 @@ func TestStatic(t *testing.T) {
 	}
 }
 
-func TestParam(t *testing.T) {
+func TestParamRoute(t *testing.T) {
 	r := New().Router
 	r.Add("GET", "/users/:name", func(c *Context) {})
 	h, c, _ := r.Find("GET", "/users/joe")
@@ -24,7 +24,7 @@ func TestParam(t *testing.T) {
 	}
 }
 
-func TestCatchAll(t *testing.T) {
+func TestCatchAllRoute(t *testing.T) {
 	r := New().Router
 	r.Add("GET", "/static/*", func(c *Context) {})
 	h, _, _ := r.Find("GET", "/static/*")
@@ -33,7 +33,7 @@ func TestCatchAll(t *testing.T) {
 	}
 }
 
-func TestMicroParam(t *testing.T) {
+func TestMicroParamRoute(t *testing.T) {
 	r := New().Router
 	r.Add("GET", "/:a/:b/:c", func(c *Context) {})
 	h, c, _ := r.Find("GET", "/a/b/c")

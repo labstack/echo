@@ -3,7 +3,6 @@ package bolt
 import (
 	"log"
 	"net/http"
-	"strings"
 	"sync"
 )
 
@@ -21,7 +20,7 @@ type (
 )
 
 const (
-	MIME_JSON = "application/json"
+	MIMEJSON = "application/json"
 
 	HeaderAccept             = "Accept"
 	HeaderContentDisposition = "Content-Disposition"
@@ -141,14 +140,6 @@ func (b *Bolt) Trace(path string, h ...HandlerFunc) {
 	b.Handle("TRACE", path, h)
 }
 
-// Static serves static files
-func (b *Bolt) Static(path, root string) {
-	fs := http.StripPrefix(strings.TrimSuffix(path, "*"), http.FileServer(http.Dir(root)))
-	b.Get(path, func(c *Context) {
-		fs.ServeHTTP(c.Response, c.Request)
-	})
-}
-
 func (b *Bolt) Handle(method, path string, h []HandlerFunc) {
 	h = append(b.handlers, h...)
 	l := len(h)
@@ -157,6 +148,26 @@ func (b *Bolt) Handle(method, path string, h []HandlerFunc) {
 		c.l = l
 		c.Next()
 	})
+}
+
+// Static serves static files.
+func (b *Bolt) Static(path, root string) {
+	fs := http.StripPrefix(path, http.FileServer(http.Dir(root)))
+	b.Get(path+"/*", func(c *Context) {
+		fs.ServeHTTP(c.Response, c.Request)
+	})
+}
+
+// ServeFile serves a file.
+func (b *Bolt) ServeFile(path, file string) {
+	b.Get(path, func(c *Context) {
+		http.ServeFile(c.Response, c.Request, file)
+	})
+}
+
+// Index serves index file.
+func (b *Bolt) Index(file string) {
+	b.ServeFile("/", file)
 }
 
 func (b *Bolt) ServeHTTP(rw http.ResponseWriter, r *http.Request) {

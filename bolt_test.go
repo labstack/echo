@@ -4,19 +4,43 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
 type (
 	user struct {
-		Id   string
+		ID   string
 		Name string
 	}
 )
 
 var u = user{
-	Id:   "1",
+	ID:   "1",
 	Name: "Joe",
+}
+
+func TestIndex(t *testing.T) {
+	b := New()
+	b.Index("example/index.html")
+	r, _ := http.NewRequest("GET", "/", nil)
+	w := httptest.NewRecorder()
+	b.ServeHTTP(w, r)
+	if w.Code != 200 {
+		t.Errorf("status code should be 200, found %d", w.Code)
+	}
+}
+
+func TestStatic(t *testing.T) {
+	b := New()
+	b.Static("/static", "example/public")
+	r, _ := http.NewRequest("GET", "/static/main.js", nil)
+	w := httptest.NewRecorder()
+	b.ServeHTTP(w, r)
+	if w.Code != 200 {
+		t.Errorf("status code should be 200, found %d", w.Code)
+	}
 }
 
 func verifyUser(rd io.Reader, t *testing.T) {
@@ -32,10 +56,10 @@ func verifyUser(rd io.Reader, t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if u2.Id != u.Id {
-		t.Error("user id should be %s, found %s", u.Id, u2.Id)
+	if u2.ID != u.ID {
+		t.Errorf("user id should be %s, found %s", u.ID, u2.ID)
 	}
 	if u2.Name != u.Name {
-		t.Error("user name should be %s, found %s", u.Name, u2.Name)
+		t.Errorf("user name should be %s, found %s", u.Name, u2.Name)
 	}
 }
