@@ -23,7 +23,7 @@ var u = user{
 
 func TestIndex(t *testing.T) {
 	b := New()
-	b.Index("example/index.html")
+	b.Index("example/public/index.html")
 	r, _ := http.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
 	b.ServeHTTP(w, r)
@@ -34,8 +34,8 @@ func TestIndex(t *testing.T) {
 
 func TestStatic(t *testing.T) {
 	b := New()
-	b.Static("/static", "example/public")
-	r, _ := http.NewRequest("GET", "/static/main.js", nil)
+	b.Static("/js", "example/public/js")
+	r, _ := http.NewRequest("GET", "/js/main.js", nil)
 	w := httptest.NewRecorder()
 	b.ServeHTTP(w, r)
 	if w.Code != 200 {
