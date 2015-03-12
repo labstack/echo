@@ -56,6 +56,12 @@ func New(opts ...func(*Bolt)) (b *Bolt) {
 			c.Halt()
 		},
 	}
+
+	// Set options
+	for _, o := range opts {
+		o(b)
+	}
+
 	b.Router = NewRouter(b)
 	b.pool.New = func() interface{} {
 		return &Context{
@@ -65,11 +71,6 @@ func New(opts ...func(*Bolt)) (b *Bolt) {
 			i:        -1,
 			bolt:     b,
 		}
-	}
-
-	// Set options
-	for _, o := range opts {
-		o(b)
 	}
 
 	return

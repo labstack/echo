@@ -21,6 +21,13 @@ var u = user{
 	Name: "Joe",
 }
 
+func TestMaxParam(t *testing.T) {
+	b := New(MaxParam(8))
+	if b.maxParam != 8 {
+		t.Errorf("max param should be 8, found %d", b.maxParam)
+	}
+}
+
 func TestIndex(t *testing.T) {
 	b := New()
 	b.Index("example/public/index.html")

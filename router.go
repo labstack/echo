@@ -3,14 +3,12 @@ package bolt
 import (
 	"fmt"
 	"net/http"
-	"sync"
 )
 
 type (
 	router struct {
-		bolt *Bolt
-		pool sync.Pool
 		root *node
+		bolt *Bolt
 	}
 	node struct {
 		label    byte
@@ -43,15 +41,12 @@ const (
 
 func NewRouter(b *Bolt) (r *router) {
 	r = &router{
-		bolt: b,
 		root: &node{
 			prefix:   "",
 			handlers: make([]HandlerFunc, len(MethodMap)),
 			edges:    edges{},
 		},
-	}
-	r.pool.New = func() interface{} {
-		return make(Params, 0, b.maxParam)
+		bolt: b,
 	}
 	return
 }
