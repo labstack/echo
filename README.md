@@ -1,5 +1,5 @@
 # Bolt [![Build Status](https://travis-ci.org/labstack/bolt.svg?branch=master)](https://travis-ci.org/labstack/bolt)
-Bolt is a fast HTTP router (zero memory allocation) and micro web framework in Go.
+Bolt is a fast HTTP router (zero memory allocation) + micro web framework in Go.
 
 ### Features
 - Zippy router
