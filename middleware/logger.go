@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/labstack/bolt"
-	"labstack.com/common/utils"
+	"github.com/labstack/gommon/color"
 )
 
 func Logger() bolt.HandlerFunc {
@@ -13,20 +13,20 @@ func Logger() bolt.HandlerFunc {
 		start := time.Now()
 		c.Next()
 		end := time.Now()
-		color := utils.Green
+		co := color.Green
 		m := c.Request.Method
 		p := c.Request.URL.Path
 		s := c.Response.Status()
 
 		switch {
 		case s >= 500:
-			color = utils.Red
+			co = color.Red
 		case s >= 400:
-			color = utils.Yellow
+			co = color.Yellow
 		case s >= 300:
-			color = utils.Cyan
+			co = color.Cyan
 		}
 
-		log.Printf("%s %s %s %s", m, p, color(s), end.Sub(start))
+		log.Printf("%s %s %s %s", m, p, co(s), end.Sub(start))
 	}
 }
