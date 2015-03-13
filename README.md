@@ -8,7 +8,7 @@ Bolt is a fast HTTP router (zero memory allocation) + micro web framework in Go.
 
 ### Benchmark
 Based on [julienschmidt/go-http-routing-benchmark] (https://github.com/vishr/go-http-routing-benchmark)
-#### [GitHub](http://developer.github.com/v3)
+##### [GitHub API](http://developer.github.com/v3)
 ```
 BenchmarkAce_GithubAll          20000	     70743 ns/op	   13792 B/op	     167 allocs/op
 BenchmarkBear_GithubAll         10000	    251638 ns/op	   79952 B/op	     943 allocs/op

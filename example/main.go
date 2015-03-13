@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/bolt"
+	mw "github.com/labstack/bolt/middleware"
 )
 
 type user struct {
@@ -40,6 +41,7 @@ func getUser(c *bolt.Context) {
 
 func main() {
 	b := bolt.New()
+	b.Use(mw.Logger())
 	b.Index("public/index.html")
 	b.Static("/js", "public/js")
 	b.Post("/users", createUser)

@@ -60,7 +60,6 @@ func (c *Context) JSON(n int, i interface{}) {
 }
 
 func (c *Context) File(n int, file, name string) {
-
 }
 
 // Next executes the next handler in the chain.

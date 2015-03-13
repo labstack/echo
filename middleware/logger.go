@@ -13,20 +13,20 @@ func Logger() bolt.HandlerFunc {
 		start := time.Now()
 		c.Next()
 		end := time.Now()
-		co := color.Green
+		col := color.Green
 		m := c.Request.Method
 		p := c.Request.URL.Path
 		s := c.Response.Status()
 
 		switch {
 		case s >= 500:
-			co = color.Red
+			col = color.Red
 		case s >= 400:
-			co = color.Yellow
+			col = color.Yellow
 		case s >= 300:
-			co = color.Cyan
+			col = color.Cyan
 		}
 
-		log.Printf("%s %s %s %s", m, p, co(s), end.Sub(start))
+		log.Printf("%s %s %s %s", m, p, col(s), end.Sub(start))
 	}
 }
