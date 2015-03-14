@@ -7,6 +7,9 @@ import (
 )
 
 type (
+	// Context represents context for the current request. It holds request and
+	// response references, path parameters, data, registered handlers for
+	// the route. Context also drives the execution of middleware.
 	Context struct {
 		Request  *http.Request
 		Response *response
@@ -20,17 +23,17 @@ type (
 	store map[string]interface{}
 )
 
+// P returns path parameter by index.
 func (c *Context) P(i uint8) string {
 	return c.params[i].Value
 }
 
+// Param returns path parameter by name.
 func (c *Context) Param(n string) string {
 	return c.params.Get(n)
 }
 
-//**********
-//   Bind
-//**********
+// Bind decodes the payload into provided type based on Content-Type header.
 func (c *Context) Bind(i interface{}) bool {
 	var err error
 	ct := c.Request.Header.Get(HeaderContentType)
@@ -47,9 +50,7 @@ func (c *Context) Bind(i interface{}) bool {
 	return true
 }
 
-//************
-//   Render
-//************
+// JSON writes status and JSON to the response.
 func (c *Context) JSON(n int, i interface{}) {
 	enc := json.NewEncoder(c.Response)
 	c.Response.Header().Set(HeaderContentType, MIMEJSON+"; charset=utf-8")
@@ -59,8 +60,8 @@ func (c *Context) JSON(n int, i interface{}) {
 	}
 }
 
-func (c *Context) File(n int, file, name string) {
-}
+// func (c *Context) File(n int, file, name string) {
+// }
 
 // Next executes the next handler in the chain.
 func (c *Context) Next() {
@@ -70,14 +71,17 @@ func (c *Context) Next() {
 	}
 }
 
+// Get retrieves data from the context.
 func (c *Context) Get(key string) interface{} {
 	return c.store[key]
 }
 
+// Set saves data in the context.
 func (c *Context) Set(key string, val interface{}) {
 	c.store[key] = val
 }
 
+// Redirect redirects the request using http.Redirect.
 func (c *Context) Redirect(n int, url string) {
 	http.Redirect(c.Response, c.Request, url, n)
 }
@@ -88,6 +92,7 @@ func (c *Context) reset(rw http.ResponseWriter, r *http.Request) {
 	c.i = -1
 }
 
+// Halt halts the current request.
 func (c *Context) Halt() {
 	c.i = c.l
 }

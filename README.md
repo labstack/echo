@@ -6,6 +6,9 @@ Bolt is a fast HTTP router (zero memory allocation) + micro web framework in Go.
 - Serve static files including index
 - Middleware
 
+### Example
+https://github.com/labstack/bolt/tree/master/example
+
 ### Benchmark
 Based on [julienschmidt/go-http-routing-benchmark] (https://github.com/vishr/go-http-routing-benchmark)
 ##### [GitHub API](http://developer.github.com/v3)
