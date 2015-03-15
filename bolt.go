@@ -76,71 +76,86 @@ func New(opts ...func(*Bolt)) (b *Bolt) {
 	return
 }
 
+// MaxParam sets the max path param supported. Default is 5, good
+// enough for many user.
 func MaxParam(n uint8) func(*Bolt) {
 	return func(b *Bolt) {
 		b.maxParam = n
 	}
 }
 
+// NotFoundHandler sets a custom NotFound hanlder.
 func NotFoundHandler(h HandlerFunc) func(*Bolt) {
 	return func(b *Bolt) {
 		b.notFoundHandler = h
 	}
 }
 
+// MethodNotAllowedHandler sets a custom MethodNotAllowed handler.
 func MethodNotAllowedHandler(h HandlerFunc) func(*Bolt) {
 	return func(b *Bolt) {
 		b.methodNotAllowedHandler = h
 	}
 }
 
+// InternalServerErrorHandler sets a custom InternalServerError handler.
 func InternalServerErrorHandler(h HandlerFunc) func(*Bolt) {
 	return func(b *Bolt) {
 		b.internalServerErrorHandler = h
 	}
 }
 
-// Use adds middleware(s) in the chain.
+// Use adds middleware(s) to the chain.
 func (b *Bolt) Use(h ...HandlerFunc) {
 	b.handlers = append(b.handlers, h...)
 }
 
+// Connect adds CONNECT route.
 func (b *Bolt) Connect(path string, h ...HandlerFunc) {
 	b.Handle("CONNECT", path, h)
 }
 
+// Delete adds DELETE route.
 func (b *Bolt) Delete(path string, h ...HandlerFunc) {
 	b.Handle("DELETE", path, h)
 }
 
+// Get adds GET route.
 func (b *Bolt) Get(path string, h ...HandlerFunc) {
 	b.Handle("GET", path, h)
 }
 
+// Head adds HEAD route.
 func (b *Bolt) Head(path string, h ...HandlerFunc) {
 	b.Handle("HEAD", path, h)
 }
 
+// Options adds OPTIONS route.
 func (b *Bolt) Options(path string, h ...HandlerFunc) {
 	b.Handle("OPTIONS", path, h)
 }
 
+// Patch adds PATCH route.
 func (b *Bolt) Patch(path string, h ...HandlerFunc) {
 	b.Handle("PATCH", path, h)
 }
 
+// Post adds POST route.
 func (b *Bolt) Post(path string, h ...HandlerFunc) {
 	b.Handle("POST", path, h)
 }
 
+// Put adds PUT route.
 func (b *Bolt) Put(path string, h ...HandlerFunc) {
 	b.Handle("PUT", path, h)
 }
 
+// Trace adds TRACE route.
 func (b *Bolt) Trace(path string, h ...HandlerFunc) {
 	b.Handle("TRACE", path, h)
 }
 
+// Handle adds method, path and handler to the router.
 func (b *Bolt) Handle(method, path string, h []HandlerFunc) {
 	h = append(b.handlers, h...)
 	l := len(h)
