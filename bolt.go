@@ -16,6 +16,9 @@ type (
 		internalServerErrorHandler HandlerFunc
 		pool                       sync.Pool
 	}
+	// Option is used to configure bolt. They are passed while creating a new
+	// instance of bolt.
+	Option      func(*Bolt)
 	HandlerFunc func(*Context)
 )
 
@@ -40,7 +43,8 @@ var MethodMap = map[string]uint8{
 	"TRACE":   9,
 }
 
-func New(opts ...func(*Bolt)) (b *Bolt) {
+// New creates a bolt instance with options.
+func New(opts ...Option) (b *Bolt) {
 	b = &Bolt{
 		maxParam: 5,
 		notFoundHandler: func(c *Context) {
@@ -76,30 +80,32 @@ func New(opts ...func(*Bolt)) (b *Bolt) {
 	return
 }
 
-// MaxParam sets the max path param supported. Default is 5, good
-// enough for many user.
-func MaxParam(n uint8) func(*Bolt) {
+// MaxParam returns an option to set the max path param allowed. Default is 5,
+// good enough for many users.
+func MaxParam(n uint8) Option {
 	return func(b *Bolt) {
 		b.maxParam = n
 	}
 }
 
-// NotFoundHandler sets a custom NotFound hanlder.
-func NotFoundHandler(h HandlerFunc) func(*Bolt) {
+// NotFoundHandler returns an option to set a custom NotFound hanlder.
+func NotFoundHandler(h HandlerFunc) Option {
 	return func(b *Bolt) {
 		b.notFoundHandler = h
 	}
 }
 
-// MethodNotAllowedHandler sets a custom MethodNotAllowed handler.
-func MethodNotAllowedHandler(h HandlerFunc) func(*Bolt) {
+// MethodNotAllowedHandler returns an option to set a custom MethodNotAllowed
+// handler.
+func MethodNotAllowedHandler(h HandlerFunc) Option {
 	return func(b *Bolt) {
 		b.methodNotAllowedHandler = h
 	}
 }
 
-// InternalServerErrorHandler sets a custom InternalServerError handler.
-func InternalServerErrorHandler(h HandlerFunc) func(*Bolt) {
+// InternalServerErrorHandler returns an option to set a custom
+// InternalServerError handler.
+func InternalServerErrorHandler(h HandlerFunc) Option {
 	return func(b *Bolt) {
 		b.internalServerErrorHandler = h
 	}
