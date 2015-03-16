@@ -1,4 +1,4 @@
-# Bolt [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/labstack/bolt) [![Build Status](http://img.shields.io/travis/fatih/structs.svg?style=flat-square)](https://travis-ci.org/labstack/bolt) [![Coverage Status](http://img.shields.io/coveralls/labstack/bolt.svg?style=flat-square)](https://coveralls.io/r/labstack/bolt)
+# Bolt [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/labstack/bolt) [![Build Status](http://img.shields.io/travis/fatih/structs.svg?style=flat-square)](https://travis-ci.org/labstack/bolt)
 Bolt is a fast HTTP router (zero memory allocation) + micro web framework in Go.
 
 ### Features
