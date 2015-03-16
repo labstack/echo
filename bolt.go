@@ -31,16 +31,17 @@ const (
 	HeaderContentType        = "Content-Type"
 )
 
+// MethodMap is an index lookup for HTTP methods.
 var MethodMap = map[string]uint8{
-	"CONNECT": 1,
-	"DELETE":  2,
-	"GET":     3,
-	"HEAD":    4,
-	"OPTIONS": 5,
-	"PATCH":   6,
-	"POST":    7,
-	"PUT":     8,
-	"TRACE":   9,
+	"CONNECT": 0,
+	"DELETE":  1,
+	"GET":     2,
+	"HEAD":    3,
+	"OPTIONS": 4,
+	"PATCH":   5,
+	"POST":    6,
+	"PUT":     7,
+	"TRACE":   8,
 }
 
 // New creates a bolt instance with options.
@@ -111,57 +112,57 @@ func InternalServerErrorHandler(h HandlerFunc) Option {
 	}
 }
 
-// Use adds middleware(s) to the chain.
+// Use adds middleware to the chain.
 func (b *Bolt) Use(h ...HandlerFunc) {
 	b.handlers = append(b.handlers, h...)
 }
 
-// Connect adds CONNECT route.
+// Connect adds a CONNECT route.
 func (b *Bolt) Connect(path string, h ...HandlerFunc) {
 	b.Handle("CONNECT", path, h)
 }
 
-// Delete adds DELETE route.
+// Delete adds a DELETE route.
 func (b *Bolt) Delete(path string, h ...HandlerFunc) {
 	b.Handle("DELETE", path, h)
 }
 
-// Get adds GET route.
+// Get adds a GET route.
 func (b *Bolt) Get(path string, h ...HandlerFunc) {
 	b.Handle("GET", path, h)
 }
 
-// Head adds HEAD route.
+// Head adds a HEAD route.
 func (b *Bolt) Head(path string, h ...HandlerFunc) {
 	b.Handle("HEAD", path, h)
 }
 
-// Options adds OPTIONS route.
+// Options adds an OPTIONS route.
 func (b *Bolt) Options(path string, h ...HandlerFunc) {
 	b.Handle("OPTIONS", path, h)
 }
 
-// Patch adds PATCH route.
+// Patch adds a PATCH route.
 func (b *Bolt) Patch(path string, h ...HandlerFunc) {
 	b.Handle("PATCH", path, h)
 }
 
-// Post adds POST route.
+// Post adds a POST route.
 func (b *Bolt) Post(path string, h ...HandlerFunc) {
 	b.Handle("POST", path, h)
 }
 
-// Put adds PUT route.
+// Put adds a PUT route.
 func (b *Bolt) Put(path string, h ...HandlerFunc) {
 	b.Handle("PUT", path, h)
 }
 
-// Trace adds TRACE route.
+// Trace adds a TRACE route.
 func (b *Bolt) Trace(path string, h ...HandlerFunc) {
 	b.Handle("TRACE", path, h)
 }
 
-// Handle adds method, path and handler to the router.
+// Handle adds method, path  handler to the router.
 func (b *Bolt) Handle(method, path string, h []HandlerFunc) {
 	h = append(b.handlers, h...)
 	l := len(h)
