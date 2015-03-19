@@ -21,14 +21,15 @@ var u = user{
 	Name: "Joe",
 }
 
-func TestMaxParam(t *testing.T) {
-	b := New(MaxParam(8))
+func TestBoltMaxParam(t *testing.T) {
+	b := New()
+	b.SetMaxParam(8)
 	if b.maxParam != 8 {
 		t.Errorf("max param should be 8, found %d", b.maxParam)
 	}
 }
 
-func TestIndex(t *testing.T) {
+func TestBoltIndex(t *testing.T) {
 	b := New()
 	b.Index("example/public/index.html")
 	r, _ := http.NewRequest("GET", "/", nil)
@@ -39,7 +40,7 @@ func TestIndex(t *testing.T) {
 	}
 }
 
-func TestStatic(t *testing.T) {
+func TestBoltStatic(t *testing.T) {
 	b := New()
 	b.Static("/js", "example/public/js")
 	r, _ := http.NewRequest("GET", "/js/main.js", nil)

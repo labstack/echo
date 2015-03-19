@@ -16,9 +16,6 @@ type (
 		internalServerErrorHandler HandlerFunc
 		pool                       sync.Pool
 	}
-	// Option is used to configure bolt. They are passed while creating a new
-	// instance of bolt.
-	Option      func(*Bolt)
 	HandlerFunc func(*Context)
 )
 
@@ -45,7 +42,7 @@ var MethodMap = map[string]uint8{
 }
 
 // New creates a bolt instance with options.
-func New(opts ...Option) (b *Bolt) {
+func New() (b *Bolt) {
 	b = &Bolt{
 		maxParam: 5,
 		notFoundHandler: func(c *Context) {
@@ -61,12 +58,6 @@ func New(opts ...Option) (b *Bolt) {
 			c.Halt()
 		},
 	}
-
-	// Set options
-	for _, o := range opts {
-		o(b)
-	}
-
 	b.Router = NewRouter(b)
 	b.pool.New = func() interface{} {
 		return &Context{
@@ -77,39 +68,27 @@ func New(opts ...Option) (b *Bolt) {
 			bolt:     b,
 		}
 	}
-
 	return
 }
 
-// MaxParam returns an option to set the max path param allowed. Default is 5,
-// good enough for many users.
-func MaxParam(n uint8) Option {
-	return func(b *Bolt) {
-		b.maxParam = n
-	}
+// SetMaxParam sets the max path param. Default is 5, good enough for many users.
+func (b *Bolt) SetMaxParam(n uint8) {
+	b.maxParam = n
 }
 
-// NotFoundHandler returns an option to set a custom NotFound hanlder.
-func NotFoundHandler(h HandlerFunc) Option {
-	return func(b *Bolt) {
-		b.notFoundHandler = h
-	}
+// SetNotFoundHandler sets a custom NotFound handler.
+func (b *Bolt) SetNotFoundHandler(h HandlerFunc) {
+	b.notFoundHandler = h
 }
 
-// MethodNotAllowedHandler returns an option to set a custom MethodNotAllowed
-// handler.
-func MethodNotAllowedHandler(h HandlerFunc) Option {
-	return func(b *Bolt) {
-		b.methodNotAllowedHandler = h
-	}
+// SetMethodNotAllowedHandler sets a custom MethodNotAllowed handler.
+func (b *Bolt) SetMethodNotAllowedHandler(h HandlerFunc) {
+	b.methodNotAllowedHandler = h
 }
 
-// InternalServerErrorHandler returns an option to set a custom
-// InternalServerError handler.
-func InternalServerErrorHandler(h HandlerFunc) Option {
-	return func(b *Bolt) {
-		b.internalServerErrorHandler = h
-	}
+// SetInternalServerErrorHandler sets a custom InternalServerError handler.
+func (b *Bolt) SetInternalServerErrorHandler(h HandlerFunc) {
+	b.internalServerErrorHandler = h
 }
 
 // Use adds middleware to the chain.
