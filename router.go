@@ -43,7 +43,7 @@ func NewRouter(b *Bolt) (r *router) {
 	r = &router{
 		root: &node{
 			prefix:   "",
-			handlers: make([]HandlerFunc, len(MethodMap)),
+			handlers: make([]HandlerFunc, len(Methods)),
 			edges:    edges{},
 		},
 		bolt: b,
@@ -95,7 +95,7 @@ func (r *router) insert(method, path string, h HandlerFunc, has ntype) {
 			cn.prefix = search
 			cn.has = has
 			if h != nil {
-				cn.handlers[MethodMap[method]] = h
+				cn.handlers[Methods[method]] = h
 			}
 			return
 		} else if l < pl {
@@ -107,15 +107,15 @@ func (r *router) insert(method, path string, h HandlerFunc, has ntype) {
 			cn.label = cn.prefix[0]
 			cn.prefix = cn.prefix[:l]
 			cn.has = snode
-			cn.handlers = make([]HandlerFunc, len(MethodMap))
+			cn.handlers = make([]HandlerFunc, len(Methods))
 
 			if l == sl {
 				// At parent node
-				cn.handlers[MethodMap[method]] = h
+				cn.handlers[Methods[method]] = h
 			} else {
 				// Need to fork a node
 				n = newNode(search[l:], has, nil, nil)
-				n.handlers[MethodMap[method]] = h
+				n.handlers[Methods[method]] = h
 				cn.edges = append(cn.edges, n)
 			}
 			break
@@ -125,7 +125,7 @@ func (r *router) insert(method, path string, h HandlerFunc, has ntype) {
 			if e == nil {
 				n := newNode(search, has, nil, nil)
 				if h != nil {
-					n.handlers[MethodMap[method]] = h
+					n.handlers[Methods[method]] = h
 				}
 				cn.edges = append(cn.edges, n)
 				break
@@ -135,7 +135,7 @@ func (r *router) insert(method, path string, h HandlerFunc, has ntype) {
 		} else {
 			// Node already exists
 			if h != nil {
-				cn.handlers[MethodMap[method]] = h
+				cn.handlers[Methods[method]] = h
 			}
 			break
 		}
@@ -151,7 +151,7 @@ func newNode(pfx string, has ntype, h []HandlerFunc, e edges) (n *node) {
 		edges:    e,
 	}
 	if h == nil {
-		n.handlers = make([]HandlerFunc, len(MethodMap))
+		n.handlers = make([]HandlerFunc, len(Methods))
 	}
 	if e == nil {
 		n.edges = edges{}
@@ -168,7 +168,7 @@ func (r *router) Find(method, path string) (handler HandlerFunc, c *Context, s S
 	for {
 		if search == "" || search == cn.prefix {
 			// Node found
-			h := cn.handlers[MethodMap[method]]
+			h := cn.handlers[Methods[method]]
 			if h != nil {
 				// Handler found
 				handler = h

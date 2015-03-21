@@ -28,8 +28,8 @@ const (
 	HeaderContentType        = "Content-Type"
 )
 
-// MethodMap is an index lookup for HTTP methods.
-var MethodMap = map[string]uint8{
+// Methods is a map for looking up HTTP method index.
+var Methods = map[string]uint8{
 	"CONNECT": 0,
 	"DELETE":  1,
 	"GET":     2,
@@ -41,7 +41,7 @@ var MethodMap = map[string]uint8{
 	"TRACE":   8,
 }
 
-// New creates a bolt instance with options.
+// New creates a bolt instance.
 func New() (b *Bolt) {
 	b = &Bolt{
 		maxParam: 5,
@@ -71,29 +71,39 @@ func New() (b *Bolt) {
 	return
 }
 
-// SetMaxParam sets the max path param. Default is 5, good enough for many users.
-func (b *Bolt) SetMaxParam(n uint8) {
+// MaxParam sets the max path params allowed. Default is 5, good enough for
+// many users.
+func (b *Bolt) MaxParam(n uint8) {
 	b.maxParam = n
 }
 
-// SetNotFoundHandler sets a custom NotFound handler.
-func (b *Bolt) SetNotFoundHandler(h HandlerFunc) {
+// NotFoundHandler sets a custom NotFound handler.
+func (b *Bolt) NotFoundHandler(h HandlerFunc) {
 	b.notFoundHandler = h
 }
 
-// SetMethodNotAllowedHandler sets a custom MethodNotAllowed handler.
-func (b *Bolt) SetMethodNotAllowedHandler(h HandlerFunc) {
+// MethodNotAllowedHandler sets a custom MethodNotAllowed handler.
+func (b *Bolt) MethodNotAllowedHandler(h HandlerFunc) {
 	b.methodNotAllowedHandler = h
 }
 
-// SetInternalServerErrorHandler sets a custom InternalServerError handler.
-func (b *Bolt) SetInternalServerErrorHandler(h HandlerFunc) {
+// InternalServerErrorHandler sets a custom InternalServerError handler.
+func (b *Bolt) InternalServerErrorHandler(h HandlerFunc) {
 	b.internalServerErrorHandler = h
 }
 
-// Use adds middleware to the chain.
-func (b *Bolt) Use(h ...HandlerFunc) {
+// Chain adds middleware to the chain.
+func (b *Bolt) Chain(h ...HandlerFunc) {
 	b.handlers = append(b.handlers, h...)
+}
+
+// Wrap wraps any http.Handler into bolt.HandlerFunc. It facilitates to use
+// third party handler / middleware with bolt.
+func (b *Bolt) Wrap(h http.Handler) HandlerFunc {
+	return func(c *Context) {
+		h.ServeHTTP(c.Response, c.Request)
+		c.Next()
+	}
 }
 
 // Connect adds a CONNECT route.

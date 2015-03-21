@@ -41,7 +41,7 @@ func getUser(c *bolt.Context) {
 
 func main() {
 	b := bolt.New()
-	b.Use(mw.Logger())
+	b.Chain(mw.Logger())
 	b.Index("public/index.html")
 	b.Static("/js", "public/js")
 	b.Post("/users", createUser)

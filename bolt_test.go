@@ -23,7 +23,7 @@ var u = user{
 
 func TestBoltMaxParam(t *testing.T) {
 	b := New()
-	b.SetMaxParam(8)
+	b.MaxParam(8)
 	if b.maxParam != 8 {
 		t.Errorf("max param should be 8, found %d", b.maxParam)
 	}
