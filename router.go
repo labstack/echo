@@ -39,11 +39,24 @@ const (
 	NotAllowed
 )
 
+//  methods is a map for looking up HTTP method index.
+var methods = map[string]uint8{
+	"CONNECT": 0,
+	"DELETE":  1,
+	"GET":     2,
+	"HEAD":    3,
+	"OPTIONS": 4,
+	"PATCH":   5,
+	"POST":    6,
+	"PUT":     7,
+	"TRACE":   8,
+}
+
 func NewRouter(b *Bolt) (r *router) {
 	r = &router{
 		root: &node{
 			prefix:   "",
-			handlers: make([]HandlerFunc, len(Methods)),
+			handlers: make([]HandlerFunc, len(methods)),
 			edges:    edges{},
 		},
 		bolt: b,
@@ -95,7 +108,7 @@ func (r *router) insert(method, path string, h HandlerFunc, has ntype) {
 			cn.prefix = search
 			cn.has = has
 			if h != nil {
-				cn.handlers[Methods[method]] = h
+				cn.handlers[methods[method]] = h
 			}
 			return
 		} else if l < pl {
@@ -107,15 +120,15 @@ func (r *router) insert(method, path string, h HandlerFunc, has ntype) {
 			cn.label = cn.prefix[0]
 			cn.prefix = cn.prefix[:l]
 			cn.has = snode
-			cn.handlers = make([]HandlerFunc, len(Methods))
+			cn.handlers = make([]HandlerFunc, len(methods))
 
 			if l == sl {
 				// At parent node
-				cn.handlers[Methods[method]] = h
+				cn.handlers[methods[method]] = h
 			} else {
 				// Need to fork a node
 				n = newNode(search[l:], has, nil, nil)
-				n.handlers[Methods[method]] = h
+				n.handlers[methods[method]] = h
 				cn.edges = append(cn.edges, n)
 			}
 			break
@@ -125,7 +138,7 @@ func (r *router) insert(method, path string, h HandlerFunc, has ntype) {
 			if e == nil {
 				n := newNode(search, has, nil, nil)
 				if h != nil {
-					n.handlers[Methods[method]] = h
+					n.handlers[methods[method]] = h
 				}
 				cn.edges = append(cn.edges, n)
 				break
@@ -135,7 +148,7 @@ func (r *router) insert(method, path string, h HandlerFunc, has ntype) {
 		} else {
 			// Node already exists
 			if h != nil {
-				cn.handlers[Methods[method]] = h
+				cn.handlers[methods[method]] = h
 			}
 			break
 		}
@@ -151,7 +164,7 @@ func newNode(pfx string, has ntype, h []HandlerFunc, e edges) (n *node) {
 		edges:    e,
 	}
 	if h == nil {
-		n.handlers = make([]HandlerFunc, len(Methods))
+		n.handlers = make([]HandlerFunc, len(methods))
 	}
 	if e == nil {
 		n.edges = edges{}
@@ -168,7 +181,7 @@ func (r *router) Find(method, path string) (handler HandlerFunc, c *Context, s S
 	for {
 		if search == "" || search == cn.prefix {
 			// Node found
-			h := cn.handlers[Methods[method]]
+			h := cn.handlers[methods[method]]
 			if h != nil {
 				// Handler found
 				handler = h
@@ -252,6 +265,7 @@ func (r *router) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	r.bolt.pool.Put(c)
 }
 
+// Get returns path parameter by name.
 func (ps Params) Get(n string) (v string) {
 	for _, p := range ps {
 		if p.Name == n {

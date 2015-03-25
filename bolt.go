@@ -9,14 +9,17 @@ import (
 type (
 	Bolt struct {
 		Router                     *router
-		handlers                   []HandlerFunc
+		middleware                 []MiddlewareFunc
 		maxParam                   byte
 		notFoundHandler            HandlerFunc
 		methodNotAllowedHandler    HandlerFunc
 		internalServerErrorHandler HandlerFunc
 		pool                       sync.Pool
 	}
-	HandlerFunc func(*Context)
+	Handler        interface{}
+	HandlerFunc    func(*Context)
+	Middleware     interface{}
+	MiddlewareFunc func(HandlerFunc) HandlerFunc
 )
 
 const (
@@ -28,34 +31,21 @@ const (
 	HeaderContentType        = "Content-Type"
 )
 
-// Methods is a map for looking up HTTP method index.
-var Methods = map[string]uint8{
-	"CONNECT": 0,
-	"DELETE":  1,
-	"GET":     2,
-	"HEAD":    3,
-	"OPTIONS": 4,
-	"PATCH":   5,
-	"POST":    6,
-	"PUT":     7,
-	"TRACE":   8,
-}
-
 // New creates a bolt instance.
 func New() (b *Bolt) {
 	b = &Bolt{
 		maxParam: 5,
 		notFoundHandler: func(c *Context) {
 			http.Error(c.Response, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-			c.Halt()
+			// c.Halt()
 		},
 		methodNotAllowedHandler: func(c *Context) {
 			http.Error(c.Response, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-			c.Halt()
+			// c.Halt()
 		},
 		internalServerErrorHandler: func(c *Context) {
 			http.Error(c.Response, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			c.Halt()
+			// c.Halt()
 		},
 	}
 	b.Router = NewRouter(b)
@@ -64,11 +54,22 @@ func New() (b *Bolt) {
 			Response: &response{},
 			params:   make(Params, b.maxParam),
 			store:    make(store),
-			i:        -1,
-			bolt:     b,
+			// i:        -1,
+			bolt: b,
 		}
 	}
 	return
+}
+
+// NOP
+func (h HandlerFunc) ServeHTTP(r http.ResponseWriter, w *http.Request) {
+}
+
+func (b *Bolt) Sub(prefix string, m ...MiddlewareFunc) *Bolt {
+	return &Bolt{
+		// prefix:   b.prefix + prefix,
+		// middleware: append(b.handlers, handlers...),
+	}
 }
 
 // MaxParam sets the max path params allowed. Default is 5, good enough for
@@ -92,74 +93,68 @@ func (b *Bolt) InternalServerErrorHandler(h HandlerFunc) {
 	b.internalServerErrorHandler = h
 }
 
-// Chain adds middleware to the chain.
-func (b *Bolt) Chain(h ...HandlerFunc) {
-	b.handlers = append(b.handlers, h...)
-}
-
-// Wrap wraps any http.Handler into bolt.HandlerFunc. It facilitates to use
-// third party handler / middleware with bolt.
-func (b *Bolt) Wrap(h http.Handler) HandlerFunc {
-	return func(c *Context) {
-		h.ServeHTTP(c.Response, c.Request)
-		c.Next()
+// Use adds handler to the middleware chain.
+func (b *Bolt) Use(m ...Middleware) {
+	for _, h := range m {
+		b.middleware = append(b.middleware, wrapM(h))
 	}
 }
 
 // Connect adds a CONNECT route.
-func (b *Bolt) Connect(path string, h ...HandlerFunc) {
+func (b *Bolt) Connect(path string, h Handler) {
 	b.Handle("CONNECT", path, h)
 }
 
 // Delete adds a DELETE route.
-func (b *Bolt) Delete(path string, h ...HandlerFunc) {
+func (b *Bolt) Delete(path string, h Handler) {
 	b.Handle("DELETE", path, h)
 }
 
 // Get adds a GET route.
-func (b *Bolt) Get(path string, h ...HandlerFunc) {
+func (b *Bolt) Get(path string, h Handler) {
 	b.Handle("GET", path, h)
 }
 
 // Head adds a HEAD route.
-func (b *Bolt) Head(path string, h ...HandlerFunc) {
+func (b *Bolt) Head(path string, h Handler) {
 	b.Handle("HEAD", path, h)
 }
 
 // Options adds an OPTIONS route.
-func (b *Bolt) Options(path string, h ...HandlerFunc) {
+func (b *Bolt) Options(path string, h Handler) {
 	b.Handle("OPTIONS", path, h)
 }
 
 // Patch adds a PATCH route.
-func (b *Bolt) Patch(path string, h ...HandlerFunc) {
+func (b *Bolt) Patch(path string, h Handler) {
 	b.Handle("PATCH", path, h)
 }
 
 // Post adds a POST route.
-func (b *Bolt) Post(path string, h ...HandlerFunc) {
+func (b *Bolt) Post(path string, h Handler) {
 	b.Handle("POST", path, h)
 }
 
 // Put adds a PUT route.
-func (b *Bolt) Put(path string, h ...HandlerFunc) {
+func (b *Bolt) Put(path string, h Handler) {
 	b.Handle("PUT", path, h)
 }
 
 // Trace adds a TRACE route.
-func (b *Bolt) Trace(path string, h ...HandlerFunc) {
+func (b *Bolt) Trace(path string, h Handler) {
 	b.Handle("TRACE", path, h)
 }
 
 // Handle adds method, path  handler to the router.
-func (b *Bolt) Handle(method, path string, h []HandlerFunc) {
-	h = append(b.handlers, h...)
-	l := len(h)
-	b.Router.Add(method, path, func(c *Context) {
-		c.handlers = h
-		c.l = l
-		c.Next()
-	})
+func (b *Bolt) Handle(method, path string, h Handler) {
+	b.Router.Add(method, path, b.wrapH(h))
+	// hs := append(b.middleware, wrap(h, false))
+	// l := len(hs)
+	// b.Router.Add(method, path, func(c *Context) {
+	// 	c.handlers = hs
+	// 	c.l = l
+	// c.Next()
+	// })
 }
 
 // Static serves static files.
@@ -183,10 +178,14 @@ func (b *Bolt) Index(file string) {
 }
 
 func (b *Bolt) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
-	// Find and execute handler
 	h, c, s := b.Router.Find(r.Method, r.URL.Path)
 	c.reset(rw, r)
 	if h != nil {
+		// Middleware
+		for i := len(b.middleware) - 1; i >= 0; i-- {
+			h = b.middleware[i](h)
+		}
+		// Handler
 		h(c)
 	} else {
 		if s == NotFound {
@@ -202,6 +201,40 @@ func (b *Bolt) Run(addr string) {
 	log.Fatal(http.ListenAndServe(addr, b))
 }
 
-func (b *Bolt) Stop(addr string) {
-	panic("implement it")
+// wraps Handler
+func (b *Bolt) wrapH(h Handler) HandlerFunc {
+	switch h := h.(type) {
+	case func(*Context):
+		return HandlerFunc(h)
+	case http.HandlerFunc:
+		return func(c *Context) {
+			h.ServeHTTP(c.Response, c.Request)
+		}
+	default:
+		panic("bolt: unknown handler")
+	}
+}
+
+// wraps Middleware
+func wrapM(m Middleware) MiddlewareFunc {
+	switch m := m.(type) {
+	case func(HandlerFunc) HandlerFunc:
+		return MiddlewareFunc(m)
+	case func(http.ResponseWriter, *http.Request):
+		return func(h HandlerFunc) HandlerFunc {
+			return func(c *Context) {
+				m(c.Response, c.Request)
+				h(c)
+			}
+		}
+	case func(http.Handler) http.Handler:
+		return func(h HandlerFunc) HandlerFunc {
+			return func(c *Context) {
+				m(h).ServeHTTP(c.Response, c.Request)
+				h(c)
+			}
+		}
+	default:
+		panic("bolt: unknown middleware")
+	}
 }

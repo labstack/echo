@@ -8,10 +8,10 @@ import (
 	"github.com/labstack/gommon/color"
 )
 
-func Logger() bolt.HandlerFunc {
-	return func(c *bolt.Context) {
+func Logger(h bolt.HandlerFunc) bolt.HandlerFunc {
+	return bolt.HandlerFunc(func(c *bolt.Context) {
 		start := time.Now()
-		c.Next()
+		h(c)
 		end := time.Now()
 		col := color.Green
 		m := c.Request.Method
@@ -28,5 +28,5 @@ func Logger() bolt.HandlerFunc {
 		}
 
 		log.Printf("%s %s %s %s", m, p, col(s), end.Sub(start))
-	}
+	})
 }

@@ -17,14 +17,16 @@ type (
 	}
 )
 
-func (r *response) WriteHeader(c int) {
+
+func (r *response) WriteHeader(n int) {
+	// TODO: fix when halted.
 	if r.committed {
 		// TODO: Warning
 		log.Println("bolt: response already committed")
 		return
 	}
-	r.status = c
-	r.ResponseWriter.WriteHeader(c)
+	r.status = n
+	r.ResponseWriter.WriteHeader(n)
 	r.committed = true
 }
 

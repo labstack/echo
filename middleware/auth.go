@@ -10,10 +10,10 @@ import (
 )
 
 type (
-	BasicAuthFunc       func(usr, pwd string) bool
+	BasicAuthFunc       func(string, string) bool
 	AuthorizedHandler   bolt.HandlerFunc
-	UnauthorizedHandler func(c *bolt.Context, err error)
-	JwtKeyFunc          func(kid string) ([]byte, error)
+	UnauthorizedHandler func(*bolt.Context, error)
+	JwtKeyFunc          func(string) ([]byte, error)
 	Claims              map[string]interface{}
 )
 
@@ -57,7 +57,7 @@ func JwtAuth(ah AuthorizedHandler, uah UnauthorizedHandler, fn JwtKeyFunc) bolt.
 			if t.Valid {
 				c.Set("claims", Claims(t.Claims))
 				ah(c)
-				c.Next()
+				// c.Next()
 			} else {
 				// TODO: capture errors
 				uah(c, err)
