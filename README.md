@@ -4,7 +4,7 @@ Bolt is a fast HTTP router (zero memory allocation) + micro web framework in Go.
 ### Features
 - Zippy router.
 - Extensible middleware.
-- Bring you own handler / middleware.
+- Hook any middleware / handler.
 - Serve static files, including index.
 
 ### Example
