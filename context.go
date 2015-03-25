@@ -8,8 +8,8 @@ import (
 
 type (
 	// Context represents context for the current request. It holds request and
-	// response references, path parameters, data and registered handlers for
-	// the route. Context also drives the execution of middleware.
+	// response references, path parameters, data and registered handler for
+	// the route.
 	Context struct {
 		Request  *http.Request
 		Response *response

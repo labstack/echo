@@ -5,8 +5,6 @@ import (
 
 	"github.com/labstack/bolt"
 	mw "github.com/labstack/bolt/middleware"
-	"github.com/rs/cors"
-	"github.com/thoas/stats"
 )
 
 type user struct {
