@@ -67,8 +67,8 @@ func (h HandlerFunc) ServeHTTP(r http.ResponseWriter, w *http.Request) {
 
 func (b *Bolt) Sub(prefix string, m ...MiddlewareFunc) *Bolt {
 	return &Bolt{
-		// prefix:   b.prefix + prefix,
-		// middleware: append(b.handlers, handlers...),
+	// prefix:   b.prefix + prefix,
+	// middleware: append(b.handlers, handlers...),
 	}
 }
 
