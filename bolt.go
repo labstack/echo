@@ -201,29 +201,15 @@ func (b *Bolt) Run(addr string) {
 	log.Fatal(http.ListenAndServe(addr, b))
 }
 
-// wraps Handler
-func (b *Bolt) wrapH(h Handler) HandlerFunc {
-	switch h := h.(type) {
-	case func(*Context):
-		return HandlerFunc(h)
-	case http.HandlerFunc:
-		return func(c *Context) {
-			h.ServeHTTP(c.Response, c.Request)
-		}
-	default:
-		panic("bolt: unknown handler")
-	}
-}
-
 // wraps Middleware
 func wrapM(m Middleware) MiddlewareFunc {
 	switch m := m.(type) {
 	case func(HandlerFunc) HandlerFunc:
 		return MiddlewareFunc(m)
-	case func(http.ResponseWriter, *http.Request):
+	case http.HandlerFunc, func(http.ResponseWriter, *http.Request), http.Handler:
 		return func(h HandlerFunc) HandlerFunc {
 			return func(c *Context) {
-				m(c.Response, c.Request)
+				m.(http.Handler).ServeHTTP(c.Response, c.Request)
 				h(c)
 			}
 		}
@@ -236,5 +222,19 @@ func wrapM(m Middleware) MiddlewareFunc {
 		}
 	default:
 		panic("bolt: unknown middleware")
+	}
+}
+
+// wraps Handler
+func (b *Bolt) wrapH(h Handler) HandlerFunc {
+	switch h := h.(type) {
+	case func(*Context):
+		return HandlerFunc(h)
+	case http.HandlerFunc, func(http.ResponseWriter, *http.Request), http.Handler:
+		return func(c *Context) {
+			h.(http.Handler).ServeHTTP(c.Response, c.Request)
+		}
+	default:
+		panic("bolt: unknown handler")
 	}
 }

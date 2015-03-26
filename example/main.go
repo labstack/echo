@@ -14,11 +14,11 @@ type user struct {
 	Name string `json:"name"`
 }
 
-var users map[string]*user
+var users map[string]user
 
 func init() {
-	users = map[string]*user{
-		"1": &user{
+	users = map[string]user{
+		"1": user{
 			ID:   "1",
 			Name: "Wreck-It Ralph",
 		},
@@ -28,7 +28,7 @@ func init() {
 func createUser(c *bolt.Context) {
 	u := new(user)
 	if c.Bind(u) {
-		users[u.ID] = u
+		users[u.ID] = *u
 		c.JSON(http.StatusOK, u)
 	}
 }
