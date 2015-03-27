@@ -1,4 +1,4 @@
-package bolt
+package echo
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 type (
 	router struct {
 		root *node
-		bolt *Bolt
+		echo *Echo
 	}
 	node struct {
 		label    byte
@@ -52,14 +52,14 @@ var methods = map[string]uint8{
 	"TRACE":   8,
 }
 
-func NewRouter(b *Bolt) (r *router) {
+func NewRouter(b *Echo) (r *router) {
 	r = &router{
 		root: &node{
 			prefix:   "",
 			handlers: make([]HandlerFunc, len(methods)),
 			edges:    edges{},
 		},
-		bolt: b,
+		echo: b,
 	}
 	return
 }
@@ -173,7 +173,7 @@ func newNode(pfx string, has ntype, h []HandlerFunc, e edges) (n *node) {
 }
 
 func (r *router) Find(method, path string) (handler HandlerFunc, c *Context, s Status) {
-	c = r.bolt.pool.Get().(*Context)
+	c = r.echo.pool.Get().(*Context)
 	cn := r.root // Current node
 	search := path
 	n := 0 // Param count
@@ -257,12 +257,12 @@ func (r *router) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		h(c)
 	} else {
 		if rep == NotFound {
-			r.bolt.notFoundHandler(c)
+			r.echo.notFoundHandler(c)
 		} else if rep == NotAllowed {
-			r.bolt.methodNotAllowedHandler(c)
+			r.echo.methodNotAllowedHandler(c)
 		}
 	}
-	r.bolt.pool.Put(c)
+	r.echo.pool.Put(c)
 }
 
 // Get returns path parameter by name.

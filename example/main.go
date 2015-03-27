@@ -3,8 +3,8 @@ package main
 import (
 	"net/http"
 
-	"github.com/labstack/bolt"
-	mw "github.com/labstack/bolt/middleware"
+	"github.com/labstack/echo"
+	mw "github.com/labstack/echo/middleware"
 	"github.com/rs/cors"
 	"github.com/thoas/stats"
 )
@@ -25,7 +25,7 @@ func init() {
 	}
 }
 
-func createUser(c *bolt.Context) {
+func createUser(c *echo.Context) {
 	u := new(user)
 	if c.Bind(u) {
 		users[u.ID] = *u
@@ -33,16 +33,16 @@ func createUser(c *bolt.Context) {
 	}
 }
 
-func getUsers(c *bolt.Context) {
+func getUsers(c *echo.Context) {
 	c.JSON(http.StatusOK, users)
 }
 
-func getUser(c *bolt.Context) {
+func getUser(c *echo.Context) {
 	c.JSON(http.StatusOK, users[c.P(0)])
 }
 
 func main() {
-	b := bolt.New()
+	b := echo.New()
 
 	//*************************//
 	//   Built-in middleware   //
@@ -59,7 +59,7 @@ func main() {
 	s := stats.New()
 	b.Use(s.Handler)
 	// Route
-	b.Get("/stats", func(c *bolt.Context) {
+	b.Get("/stats", func(c *echo.Context) {
 		c.JSON(200, s.Data())
 	})
 

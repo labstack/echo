@@ -1,4 +1,4 @@
-package bolt
+package echo
 
 import (
 	"bufio"
@@ -22,7 +22,7 @@ func (r *response) WriteHeader(n int) {
 	// TODO: fix when halted.
 	if r.committed {
 		// TODO: Warning
-		log.Println("bolt: response already committed")
+		log.Println("echo: response already committed")
 		return
 	}
 	r.status = n

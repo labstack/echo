@@ -1,22 +1,22 @@
-# Bolt [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/labstack/bolt) [![Build Status](http://img.shields.io/travis/fatih/structs.svg?style=flat-square)](https://travis-ci.org/labstack/bolt) [![Coverage Status](http://img.shields.io/coveralls/labstack/bolt.svg?style=flat-square)](https://coveralls.io/r/labstack/bolt)
-Bolt is a fast HTTP router (zero memory allocation) + micro web framework in Go.
+# Echo [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/labstack/echo) [![Build Status](http://img.shields.io/travis/fatih/structs.svg?style=flat-square)](https://travis-ci.org/labstack/echo) [![Coverage Status](http://img.shields.io/coveralls/labstack/echo.svg?style=flat-square)](https://coveralls.io/r/labstack/echo)
+Echo is a fast HTTP router (zero memory allocation) + micro web framework in Go.
 
 ### Features
 - Zippy router.
 - Extensible middleware / handler, supports:
 	- Middleware
-		- `func(bolt.HandlerFunc) bolt.HandlerFunc`
+		- `func(echo.HandlerFunc) echo.HandlerFunc`
 		- `http.HandlerFunc`
 		- `http.Handler`
 		- `func(http.Handler) http.Handler`
 	- Handler
-		- `func(*bolt.Context)`
+		- `func(*echo.Context)`
 		- `http.HandlerFunc`
 		- `http.Handler`
 - Serve static files, including index.
 
 ### Example
-https://github.com/labstack/bolt/tree/master/example
+https://github.com/labstack/echo/tree/master/example
 
 ```go
 package main
@@ -24,8 +24,8 @@ package main
 import (
 	"net/http"
 
-	"github.com/labstack/bolt"
-	mw "github.com/labstack/bolt/middleware"
+	"github.com/labstack/echo"
+	mw "github.com/labstack/echo/middleware"
 	"github.com/rs/cors"
 	"github.com/thoas/stats"
 )
@@ -46,7 +46,7 @@ func init() {
 	}
 }
 
-func createUser(c *bolt.Context) {
+func createUser(c *echo.Context) {
 	u := new(user)
 	if c.Bind(u) {
 		users[u.ID] = *u
@@ -54,16 +54,16 @@ func createUser(c *bolt.Context) {
 	}
 }
 
-func getUsers(c *bolt.Context) {
+func getUsers(c *echo.Context) {
 	c.JSON(http.StatusOK, users)
 }
 
-func getUser(c *bolt.Context) {
+func getUser(c *echo.Context) {
 	c.JSON(http.StatusOK, users[c.P(0)])
 }
 
 func main() {
-	b := bolt.New()
+	b := echo.New()
 
 	//*************************//
 	//   Built-in middleware   //
@@ -80,7 +80,7 @@ func main() {
 	s := stats.New()
 	b.Use(s.Handler)
 	// Route
-	b.Get("/stats", func(c *bolt.Context) {
+	b.Get("/stats", func(c *echo.Context) {
 		c.JSON(200, s.Data())
 	})
 
@@ -109,7 +109,7 @@ Based on [julienschmidt/go-http-routing-benchmark] (https://github.com/vishr/go-
 BenchmarkAce_GithubAll          20000	     70743 ns/op	   13792 B/op	     167 allocs/op
 BenchmarkBear_GithubAll         10000	    251638 ns/op	   79952 B/op	     943 allocs/op
 BenchmarkBeego_GithubAll         3000	    485840 ns/op	  146272 B/op	    2092 allocs/op
-BenchmarkBolt_GithubAll         30000	     49183 ns/op	       0 B/op	       0 allocs/op
+BenchmarkEcho_GithubAll         30000	     49183 ns/op	       0 B/op	       0 allocs/op
 BenchmarkBone_GithubAll          1000	   2167949 ns/op	  648016 B/op	    8119 allocs/op
 BenchmarkDenco_GithubAll        20000	     82404 ns/op	   20224 B/op	     167 allocs/op
 BenchmarkGin_GithubAll          20000	     72831 ns/op	   13792 B/op	     167 allocs/op

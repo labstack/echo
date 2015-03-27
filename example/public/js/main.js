@@ -1,1 +1,1 @@
-console.log("Hello, Bolt!")
+console.log("Hello, Echo!")

@@ -1,4 +1,4 @@
-package bolt
+package echo
 
 import (
 	"encoding/json"
@@ -15,7 +15,7 @@ type (
 		Response *response
 		params   Params
 		store    map[string]interface{}
-		bolt     *Bolt
+		echo     *Echo
 	}
 	store map[string]interface{}
 )
@@ -41,7 +41,7 @@ func (c *Context) Bind(i interface{}) bool {
 		// TODO:
 	}
 	if err != nil {
-		c.bolt.internalServerErrorHandler(c)
+		c.echo.internalServerErrorHandler(c)
 		return false
 	}
 	return true
@@ -53,7 +53,7 @@ func (c *Context) JSON(n int, i interface{}) {
 	c.Response.Header().Set(HeaderContentType, MIMEJSON+"; charset=utf-8")
 	c.Response.WriteHeader(n)
 	if err := enc.Encode(i); err != nil {
-		c.bolt.internalServerErrorHandler(c)
+		c.echo.internalServerErrorHandler(c)
 	}
 }
 

@@ -6,24 +6,24 @@ import (
 	"strings"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/labstack/bolt"
+	"github.com/labstack/echo"
 )
 
 type (
 	BasicAuthFunc       func(string, string) bool
-	AuthorizedHandler   bolt.HandlerFunc
-	UnauthorizedHandler func(*bolt.Context, error)
+	AuthorizedHandler   echo.HandlerFunc
+	UnauthorizedHandler func(*echo.Context, error)
 	JwtKeyFunc          func(string) ([]byte, error)
 	Claims              map[string]interface{}
 )
 
 var (
-	ErrBasicAuth = errors.New("bolt: basic auth error")
-	ErrJwtAuth   = errors.New("bolt: jwt auth error")
+	ErrBasicAuth = errors.New("echo: basic auth error")
+	ErrJwtAuth   = errors.New("echo: jwt auth error")
 )
 
-func BasicAuth(ah AuthorizedHandler, uah UnauthorizedHandler, fn BasicAuthFunc) bolt.HandlerFunc {
-	return func(c *bolt.Context) {
+func BasicAuth(ah AuthorizedHandler, uah UnauthorizedHandler, fn BasicAuthFunc) echo.HandlerFunc {
+	return func(c *echo.Context) {
 		auth := strings.Fields(c.Request.Header.Get("Authorization"))
 		if len(auth) == 2 {
 			scheme := auth[0]
@@ -44,8 +44,8 @@ func BasicAuth(ah AuthorizedHandler, uah UnauthorizedHandler, fn BasicAuthFunc) 
 	}
 }
 
-func JwtAuth(ah AuthorizedHandler, uah UnauthorizedHandler, fn JwtKeyFunc) bolt.HandlerFunc {
-	return func(c *bolt.Context) {
+func JwtAuth(ah AuthorizedHandler, uah UnauthorizedHandler, fn JwtKeyFunc) echo.HandlerFunc {
+	return func(c *echo.Context) {
 		auth := strings.Fields(c.Request.Header.Get("Authorization"))
 		if len(auth) == 2 {
 			t, err := jwt.Parse(auth[1], func(token *jwt.Token) (interface{}, error) {

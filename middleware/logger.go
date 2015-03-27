@@ -4,12 +4,12 @@ import (
 	"log"
 	"time"
 
-	"github.com/labstack/bolt"
+	"github.com/labstack/echo"
 	"github.com/labstack/gommon/color"
 )
 
-func Logger(h bolt.HandlerFunc) bolt.HandlerFunc {
-	return bolt.HandlerFunc(func(c *bolt.Context) {
+func Logger(h echo.HandlerFunc) echo.HandlerFunc {
+	return echo.HandlerFunc(func(c *echo.Context) {
 		start := time.Now()
 		h(c)
 		end := time.Now()
