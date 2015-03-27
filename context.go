@@ -14,11 +14,8 @@ type (
 		Request  *http.Request
 		Response *response
 		params   Params
-		handlers []HandlerFunc
 		store    map[string]interface{}
-		// l        int // Handlers' length
-		// i        int // Current handler index
-		bolt *Bolt
+		bolt     *Bolt
 	}
 	store map[string]interface{}
 )
@@ -63,14 +60,6 @@ func (c *Context) JSON(n int, i interface{}) {
 // func (c *Context) File(n int, file, name string) {
 // }
 
-// Next executes the next handler in the chain.
-// func (c *Context) Next() {
-// 	c.i++
-// 	if c.i < c.l {
-// 		c.handlers[c.i](c)
-// 	}
-// }
-
 // Get retrieves data from the context.
 func (c *Context) Get(key string) interface{} {
 	return c.store[key]
@@ -89,10 +78,4 @@ func (c *Context) Redirect(n int, url string) {
 func (c *Context) reset(rw http.ResponseWriter, r *http.Request) {
 	c.Response.reset(rw)
 	c.Request = r
-	// c.i = -1
 }
-
-// Halt halts the current request.
-// func (c *Context) Halt() {
-// 	c.i = c.l
-// }

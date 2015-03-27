@@ -65,12 +65,12 @@ func New() (b *Bolt) {
 func (h HandlerFunc) ServeHTTP(r http.ResponseWriter, w *http.Request) {
 }
 
-func (b *Bolt) Sub(prefix string, m ...MiddlewareFunc) *Bolt {
-	return &Bolt{
-	// prefix:   b.prefix + prefix,
-	// middleware: append(b.handlers, handlers...),
-	}
-}
+// func (b *Bolt) Sub(prefix string, m ...MiddlewareFunc) *Bolt {
+// 	return &Bolt{
+// prefix:   b.prefix + prefix,
+// middleware: append(b.handlers, handlers...),
+// 	}
+// }
 
 // MaxParam sets the max path params allowed. Default is 5, good enough for
 // many users.
@@ -79,18 +79,18 @@ func (b *Bolt) MaxParam(n uint8) {
 }
 
 // NotFoundHandler sets a custom NotFound handler.
-func (b *Bolt) NotFoundHandler(h HandlerFunc) {
-	b.notFoundHandler = h
+func (b *Bolt) NotFoundHandler(h Handler) {
+	b.notFoundHandler = wrapH(h)
 }
 
 // MethodNotAllowedHandler sets a custom MethodNotAllowed handler.
-func (b *Bolt) MethodNotAllowedHandler(h HandlerFunc) {
-	b.methodNotAllowedHandler = h
+func (b *Bolt) MethodNotAllowedHandler(h Handler) {
+	b.methodNotAllowedHandler = wrapH(h)
 }
 
 // InternalServerErrorHandler sets a custom InternalServerError handler.
-func (b *Bolt) InternalServerErrorHandler(h HandlerFunc) {
-	b.internalServerErrorHandler = h
+func (b *Bolt) InternalServerErrorHandler(h Handler) {
+	b.internalServerErrorHandler = wrapH(h)
 }
 
 // Use adds handler to the middleware chain.
@@ -100,61 +100,49 @@ func (b *Bolt) Use(m ...Middleware) {
 	}
 }
 
-// Connect adds a CONNECT route.
+// Connect adds a CONNECT route > handler to the router.
 func (b *Bolt) Connect(path string, h Handler) {
-	b.Handle("CONNECT", path, h)
+	b.Router.Add("CONNECT", path, wrapH(h))
 }
 
-// Delete adds a DELETE route.
+// Delete adds a DELETE route > handler to the router.
 func (b *Bolt) Delete(path string, h Handler) {
-	b.Handle("DELETE", path, h)
+	b.Router.Add("DELETE", path, wrapH(h))
 }
 
-// Get adds a GET route.
+// Get adds a GET route > handler to the router.
 func (b *Bolt) Get(path string, h Handler) {
-	b.Handle("GET", path, h)
+	b.Router.Add("GET", path, wrapH(h))
 }
 
-// Head adds a HEAD route.
+// Head adds a HEAD route > handler to the router.
 func (b *Bolt) Head(path string, h Handler) {
-	b.Handle("HEAD", path, h)
+	b.Router.Add("HEAD", path, wrapH(h))
 }
 
-// Options adds an OPTIONS route.
+// Options adds an OPTIONS route > handler to the router.
 func (b *Bolt) Options(path string, h Handler) {
-	b.Handle("OPTIONS", path, h)
+	b.Router.Add("OPTIONS", path, wrapH(h))
 }
 
-// Patch adds a PATCH route.
+// Patch adds a PATCH route > handler to the router.
 func (b *Bolt) Patch(path string, h Handler) {
-	b.Handle("PATCH", path, h)
+	b.Router.Add("PATCH", path, wrapH(h))
 }
 
-// Post adds a POST route.
+// Post adds a POST route > handler to the router.
 func (b *Bolt) Post(path string, h Handler) {
-	b.Handle("POST", path, h)
+	b.Router.Add("POST", path, wrapH(h))
 }
 
-// Put adds a PUT route.
+// Put adds a PUT route > handler to the router.
 func (b *Bolt) Put(path string, h Handler) {
-	b.Handle("PUT", path, h)
+	b.Router.Add("PUT", path, wrapH(h))
 }
 
-// Trace adds a TRACE route.
+// Trace adds a TRACE route > handler to the router.
 func (b *Bolt) Trace(path string, h Handler) {
-	b.Handle("TRACE", path, h)
-}
-
-// Handle adds method, path  handler to the router.
-func (b *Bolt) Handle(method, path string, h Handler) {
-	b.Router.Add(method, path, b.wrapH(h))
-	// hs := append(b.middleware, wrap(h, false))
-	// l := len(hs)
-	// b.Router.Add(method, path, func(c *Context) {
-	// 	c.handlers = hs
-	// 	c.l = l
-	// c.Next()
-	// })
+	b.Router.Add("TRACE", path, wrapH(h))
 }
 
 // Static serves static files.
@@ -226,7 +214,7 @@ func wrapM(m Middleware) MiddlewareFunc {
 }
 
 // wraps Handler
-func (b *Bolt) wrapH(h Handler) HandlerFunc {
+func wrapH(h Handler) HandlerFunc {
 	switch h := h.(type) {
 	case func(*Context):
 		return HandlerFunc(h)
