@@ -63,42 +63,42 @@ func getUser(c *echo.Context) {
 }
 
 func main() {
-	b := echo.New()
+	e := echo.New()
 
 	//*************************//
 	//   Built-in middleware   //
 	//*************************//
-	b.Use(mw.Logger)
+	e.Use(mw.Logger)
 
 	//****************************//
 	//   Third-party middleware   //
 	//****************************//
 	// https://github.com/rs/cors
-	b.Use(cors.Default().Handler)
+	e.Use(cors.Default().Handler)
 
 	// https://github.com/thoas/stats
 	s := stats.New()
-	b.Use(s.Handler)
+	e.Use(s.Handler)
 	// Route
-	b.Get("/stats", func(c *echo.Context) {
+	e.Get("/stats", func(c *echo.Context) {
 		c.JSON(200, s.Data())
 	})
 
 	// Serve index file
-	b.Index("public/index.html")
+	e.Index("public/index.html")
 
 	// Serve static files
-	b.Static("/js", "public/js")
+	e.Static("/js", "public/js")
 
 	//************//
 	//   Routes   //
 	//************//
-	b.Post("/users", createUser)
-	b.Get("/users", getUsers)
-	b.Get("/users/:id", getUser)
+	e.Post("/users", createUser)
+	e.Get("/users", getUsers)
+	e.Get("/users/:id", getUser)
 
 	// Start server
-	b.Run(":8080")
+	e.Run(":8080")
 }
 ```
 
