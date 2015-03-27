@@ -19,9 +19,9 @@
         <h2>Fast HTTP router + micro web framework</h2>
 
         <section id="downloads">
-          <a href="https://github.com/labstack/bolt/zipball/master" class="btn">Download as .zip</a>
-          <a href="https://github.com/labstack/bolt/tarball/master" class="btn">Download as .tar.gz</a>
-          <a href="https://github.com/labstack/bolt" class="btn btn-github"><span class="icon"></span>View on GitHub</a>
+          <a href="https://github.com/labstack/echo/zipball/master" class="btn">Download as .zip</a>
+          <a href="https://github.com/labstack/echo/tarball/master" class="btn">Download as .tar.gz</a>
+          <a href="https://github.com/labstack/echo" class="btn btn-github"><span class="icon"></span>View on GitHub</a>
         </section>
       </div>
     </header>
@@ -29,10 +29,10 @@
     <div class="container">
       <section id="main_content">
         <h1>
-<a id="bolt---" class="anchor" href="#bolt---" aria-hidden="true"><span class="octicon octicon-link"></span></a>Bolt <a href="http://godoc.org/github.com/labstack/bolt"><img src="http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square" alt="GoDoc"></a> <a href="https://travis-ci.org/labstack/bolt"><img src="http://img.shields.io/travis/fatih/structs.svg?style=flat-square" alt="Build Status"></a> <a href="https://coveralls.io/r/labstack/bolt"><img src="http://img.shields.io/coveralls/labstack/bolt.svg?style=flat-square" alt="Coverage Status"></a>
+<a id="echo---" class="anchor" href="#echo---" aria-hidden="true"><span class="octicon octicon-link"></span></a>Echo <a href="http://godoc.org/github.com/labstack/echo"><img src="http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square" alt="GoDoc"></a> <a href="https://travis-ci.org/labstack/echo"><img src="http://img.shields.io/travis/fatih/structs.svg?style=flat-square" alt="Build Status"></a> <a href="https://coveralls.io/r/labstack/echo"><img src="http://img.shields.io/coveralls/labstack/echo.svg?style=flat-square" alt="Coverage Status"></a>
 </h1>
 
-<p>Bolt is a fast HTTP router (zero memory allocation) + micro web framework in Go.</p>
+<p>Echo is a fast HTTP router (zero memory allocation) + micro web framework in Go.</p>
 
 <h3>
 <a id="features" class="anchor" href="#features" aria-hidden="true"><span class="octicon octicon-link"></span></a>Features</h3>
@@ -45,7 +45,7 @@
 <li>Middleware
 
 <ul>
-<li><code>func(bolt.HandlerFunc) bolt.HandlerFunc</code></li>
+<li><code>func(echo.HandlerFunc) echo.HandlerFunc</code></li>
 <li><code>http.HandlerFunc</code></li>
 <li><code>http.Handler</code></li>
 <li><code>func(http.Handler) http.Handler</code></li>
@@ -54,7 +54,7 @@
 <li>Handler
 
 <ul>
-<li><code>func(*bolt.Context)</code></li>
+<li><code>func(*echo.Context)</code></li>
 <li><code>http.HandlerFunc</code></li>
 <li><code>http.Handler</code></li>
 </ul>
@@ -67,15 +67,15 @@
 <h3>
 <a id="example" class="anchor" href="#example" aria-hidden="true"><span class="octicon octicon-link"></span></a>Example</h3>
 
-<p><a href="https://github.com/labstack/bolt/tree/master/example">https://github.com/labstack/bolt/tree/master/example</a></p>
+<p><a href="https://github.com/labstack/echo/tree/master/example">https://github.com/labstack/echo/tree/master/example</a></p>
 
 <div class="highlight highlight-go"><pre><span class="pl-k">package</span> main
 
 <span class="pl-k">import</span> (
     <span class="pl-s"><span class="pl-pds">"</span>net/http<span class="pl-pds">"</span></span>
 
-    <span class="pl-s"><span class="pl-pds">"</span>github.com/labstack/bolt<span class="pl-pds">"</span></span>
-    mw <span class="pl-s"><span class="pl-pds">"</span>github.com/labstack/bolt/middleware<span class="pl-pds">"</span></span>
+    <span class="pl-s"><span class="pl-pds">"</span>github.com/labstack/echo<span class="pl-pds">"</span></span>
+    mw <span class="pl-s"><span class="pl-pds">"</span>github.com/labstack/echo/middleware<span class="pl-pds">"</span></span>
     <span class="pl-s"><span class="pl-pds">"</span>github.com/rs/cors<span class="pl-pds">"</span></span>
     <span class="pl-s"><span class="pl-pds">"</span>github.com/thoas/stats<span class="pl-pds">"</span></span>
 )
@@ -96,7 +96,7 @@
     }
 }
 
-<span class="pl-k">func</span> <span class="pl-en">createUser</span>(<span class="pl-v">c</span> *<span class="pl-v">bolt</span>.<span class="pl-v">Context</span>) {
+<span class="pl-k">func</span> <span class="pl-en">createUser</span>(<span class="pl-v">c</span> *<span class="pl-v">echo</span>.<span class="pl-v">Context</span>) {
     <span class="pl-smi">u</span> <span class="pl-k">:=</span> <span class="pl-c1">new</span>(user)
     <span class="pl-k">if</span> c.<span class="pl-c1">Bind</span>(u) {
         users[u.<span class="pl-smi">ID</span>] = *u
@@ -104,16 +104,16 @@
     }
 }
 
-<span class="pl-k">func</span> <span class="pl-en">getUsers</span>(<span class="pl-v">c</span> *<span class="pl-v">bolt</span>.<span class="pl-v">Context</span>) {
+<span class="pl-k">func</span> <span class="pl-en">getUsers</span>(<span class="pl-v">c</span> *<span class="pl-v">echo</span>.<span class="pl-v">Context</span>) {
     c.<span class="pl-c1">JSON</span>(http.<span class="pl-smi">StatusOK</span>, users)
 }
 
-<span class="pl-k">func</span> <span class="pl-en">getUser</span>(<span class="pl-v">c</span> *<span class="pl-v">bolt</span>.<span class="pl-v">Context</span>) {
+<span class="pl-k">func</span> <span class="pl-en">getUser</span>(<span class="pl-v">c</span> *<span class="pl-v">echo</span>.<span class="pl-v">Context</span>) {
     c.<span class="pl-c1">JSON</span>(http.<span class="pl-smi">StatusOK</span>, users[c.<span class="pl-c1">P</span>(<span class="pl-c1">0</span>)])
 }
 
 <span class="pl-k">func</span> <span class="pl-en">main</span>() {
-    <span class="pl-smi">b</span> <span class="pl-k">:=</span> bolt.<span class="pl-c1">New</span>()
+    <span class="pl-smi">b</span> <span class="pl-k">:=</span> echo.<span class="pl-c1">New</span>()
 
     <span class="pl-c">//*************************//</span>
     <span class="pl-c">//   Built-in middleware   //</span>
@@ -130,7 +130,7 @@
     <span class="pl-smi">s</span> <span class="pl-k">:=</span> stats.<span class="pl-c1">New</span>()
     b.<span class="pl-c1">Use</span>(s.<span class="pl-smi">Handler</span>)
     <span class="pl-c">// Route</span>
-    b.<span class="pl-c1">Get</span>(<span class="pl-s"><span class="pl-pds">"</span>/stats<span class="pl-pds">"</span></span>, <span class="pl-c1">func</span>(c *bolt.<span class="pl-smi">Context</span>) {
+    b.<span class="pl-c1">Get</span>(<span class="pl-s"><span class="pl-pds">"</span>/stats<span class="pl-pds">"</span></span>, <span class="pl-c1">func</span>(c *echo.<span class="pl-smi">Context</span>) {
         c.<span class="pl-c1">JSON</span>(<span class="pl-c1">200</span>, s.<span class="pl-c1">Data</span>())
     })
 
@@ -163,7 +163,7 @@
 <pre><code>BenchmarkAce_GithubAll          20000        70743 ns/op       13792 B/op        167 allocs/op
 BenchmarkBear_GithubAll         10000       251638 ns/op       79952 B/op        943 allocs/op
 BenchmarkBeego_GithubAll         3000       485840 ns/op      146272 B/op       2092 allocs/op
-BenchmarkBolt_GithubAll         30000        49183 ns/op           0 B/op          0 allocs/op
+BenchmarkEcho_GithubAll         30000        49183 ns/op           0 B/op          0 allocs/op
 BenchmarkBone_GithubAll          1000      2167949 ns/op      648016 B/op       8119 allocs/op
 BenchmarkDenco_GithubAll        20000        82404 ns/op       20224 B/op        167 allocs/op
 BenchmarkGin_GithubAll          20000        72831 ns/op       13792 B/op        167 allocs/op
