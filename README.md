@@ -15,8 +15,8 @@ Echo is a fast HTTP router (zero memory allocation) + micro web framework in Go.
 		- `http.Handler`
 - Serve static files, including index.
 
-### Example
-[labstack/echo/example] (https://github.com/labstack/echo/tree/master/example)
+### Usage
+[labstack/echo/example](https://github.com/labstack/echo/tree/master/example)
 
 ```go
 package main
