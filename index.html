@@ -8,14 +8,14 @@
     <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen">
     <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print">
 
-    <title>Bolt by labstack</title>
+    <title>Echo by labstack</title>
   </head>
 
   <body>
 
     <header>
       <div class="container">
-        <h1>Bolt</h1>
+        <h1>Echo</h1>
         <h2>Fast HTTP router + micro web framework</h2>
 
         <section id="downloads">
@@ -113,42 +113,42 @@
 }
 
 <span class="pl-k">func</span> <span class="pl-en">main</span>() {
-    <span class="pl-smi">b</span> <span class="pl-k">:=</span> echo.<span class="pl-c1">New</span>()
+    <span class="pl-smi">e</span> <span class="pl-k">:=</span> echo.<span class="pl-c1">New</span>()
 
     <span class="pl-c">//*************************//</span>
     <span class="pl-c">//   Built-in middleware   //</span>
     <span class="pl-c">//*************************//</span>
-    b.<span class="pl-c1">Use</span>(mw.<span class="pl-smi">Logger</span>)
+    e.<span class="pl-c1">Use</span>(mw.<span class="pl-smi">Logger</span>)
 
     <span class="pl-c">//****************************//</span>
     <span class="pl-c">//   Third-party middleware   //</span>
     <span class="pl-c">//****************************//</span>
     <span class="pl-c">// https://github.com/rs/cors</span>
-    b.<span class="pl-c1">Use</span>(cors.<span class="pl-c1">Default</span>().<span class="pl-smi">Handler</span>)
+    e.<span class="pl-c1">Use</span>(cors.<span class="pl-c1">Default</span>().<span class="pl-smi">Handler</span>)
 
     <span class="pl-c">// https://github.com/thoas/stats</span>
     <span class="pl-smi">s</span> <span class="pl-k">:=</span> stats.<span class="pl-c1">New</span>()
-    b.<span class="pl-c1">Use</span>(s.<span class="pl-smi">Handler</span>)
+    e.<span class="pl-c1">Use</span>(s.<span class="pl-smi">Handler</span>)
     <span class="pl-c">// Route</span>
-    b.<span class="pl-c1">Get</span>(<span class="pl-s"><span class="pl-pds">"</span>/stats<span class="pl-pds">"</span></span>, <span class="pl-c1">func</span>(c *echo.<span class="pl-smi">Context</span>) {
+    e.<span class="pl-c1">Get</span>(<span class="pl-s"><span class="pl-pds">"</span>/stats<span class="pl-pds">"</span></span>, <span class="pl-c1">func</span>(c *echo.<span class="pl-smi">Context</span>) {
         c.<span class="pl-c1">JSON</span>(<span class="pl-c1">200</span>, s.<span class="pl-c1">Data</span>())
     })
 
     <span class="pl-c">// Serve index file</span>
-    b.<span class="pl-c1">Index</span>(<span class="pl-s"><span class="pl-pds">"</span>public/index.html<span class="pl-pds">"</span></span>)
+    e.<span class="pl-c1">Index</span>(<span class="pl-s"><span class="pl-pds">"</span>public/index.html<span class="pl-pds">"</span></span>)
 
     <span class="pl-c">// Serve static files</span>
-    b.<span class="pl-c1">Static</span>(<span class="pl-s"><span class="pl-pds">"</span>/js<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>public/js<span class="pl-pds">"</span></span>)
+    e.<span class="pl-c1">Static</span>(<span class="pl-s"><span class="pl-pds">"</span>/js<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>public/js<span class="pl-pds">"</span></span>)
 
     <span class="pl-c">//************//</span>
     <span class="pl-c">//   Routes   //</span>
     <span class="pl-c">//************//</span>
-    b.<span class="pl-c1">Post</span>(<span class="pl-s"><span class="pl-pds">"</span>/users<span class="pl-pds">"</span></span>, createUser)
-    b.<span class="pl-c1">Get</span>(<span class="pl-s"><span class="pl-pds">"</span>/users<span class="pl-pds">"</span></span>, getUsers)
-    b.<span class="pl-c1">Get</span>(<span class="pl-s"><span class="pl-pds">"</span>/users/:id<span class="pl-pds">"</span></span>, getUser)
+    e.<span class="pl-c1">Post</span>(<span class="pl-s"><span class="pl-pds">"</span>/users<span class="pl-pds">"</span></span>, createUser)
+    e.<span class="pl-c1">Get</span>(<span class="pl-s"><span class="pl-pds">"</span>/users<span class="pl-pds">"</span></span>, getUsers)
+    e.<span class="pl-c1">Get</span>(<span class="pl-s"><span class="pl-pds">"</span>/users/:id<span class="pl-pds">"</span></span>, getUser)
 
     <span class="pl-c">// Start server</span>
-    b.<span class="pl-c1">Run</span>(<span class="pl-s"><span class="pl-pds">"</span>:8080<span class="pl-pds">"</span></span>)
+    e.<span class="pl-c1">Run</span>(<span class="pl-s"><span class="pl-pds">"</span>:8080<span class="pl-pds">"</span></span>)
 }</pre></div>
 
 <h3>
@@ -160,31 +160,31 @@
 <a id="github-api" class="anchor" href="#github-api" aria-hidden="true"><span class="octicon octicon-link"></span></a><a href="http://developer.github.com/v3">GitHub API</a>
 </h5>
 
-<pre><code>BenchmarkAce_GithubAll          20000        70743 ns/op       13792 B/op        167 allocs/op
-BenchmarkBear_GithubAll         10000       251638 ns/op       79952 B/op        943 allocs/op
-BenchmarkBeego_GithubAll         3000       485840 ns/op      146272 B/op       2092 allocs/op
-BenchmarkEcho_GithubAll         30000        49183 ns/op           0 B/op          0 allocs/op
-BenchmarkBone_GithubAll          1000      2167949 ns/op      648016 B/op       8119 allocs/op
-BenchmarkDenco_GithubAll        20000        82404 ns/op       20224 B/op        167 allocs/op
-BenchmarkGin_GithubAll          20000        72831 ns/op       13792 B/op        167 allocs/op
-BenchmarkGocraftWeb_GithubAll    5000       385807 ns/op      133280 B/op       1889 allocs/op
-BenchmarkGoji_GithubAll          3000       580354 ns/op       56113 B/op        334 allocs/op
-BenchmarkGoJsonRest_GithubAll    5000       468481 ns/op      135995 B/op       2940 allocs/op
-BenchmarkGoRestful_GithubAll      200      9555198 ns/op      649139 B/op       7355 allocs/op
-BenchmarkGorillaMux_GithubAll     200      6906975 ns/op      153136 B/op       1791 allocs/op
-BenchmarkHttpRouter_GithubAll   30000        55239 ns/op       13792 B/op        167 allocs/op
-BenchmarkHttpTreeMux_GithubAll  10000       139673 ns/op       56112 B/op        334 allocs/op
-BenchmarkKocha_GithubAll        10000       148809 ns/op       23304 B/op        843 allocs/op
-BenchmarkMacaron_GithubAll       2000       713989 ns/op      224960 B/op       2315 allocs/op
-BenchmarkMartini_GithubAll        100     10716312 ns/op      237953 B/op       2686 allocs/op
-BenchmarkPat_GithubAll            300      4099176 ns/op     1504101 B/op      32222 allocs/op
-BenchmarkRevel_GithubAll         2000      1142947 ns/op      345553 B/op       5918 allocs/op
-BenchmarkRivet_GithubAll        10000       256426 ns/op       84272 B/op       1079 allocs/op
-BenchmarkTango_GithubAll          500      3543693 ns/op     1338664 B/op      27736 allocs/op
-BenchmarkTigerTonic_GithubAll    2000       980339 ns/op      241088 B/op       6052 allocs/op
-BenchmarkTraffic_GithubAll        200      7430271 ns/op     2664761 B/op      22390 allocs/op
-BenchmarkVulcan_GithubAll        5000       294640 ns/op       19894 B/op        609 allocs/op
-BenchmarkZeus_GithubAll          2000       778697 ns/op      300688 B/op       2648 allocs/op
+<pre><code>BenchmarkAce_GithubAll          20000        70318 ns/op       13792 B/op        167 allocs/op
+BenchmarkBear_GithubAll         10000       262758 ns/op       79952 B/op        943 allocs/op
+BenchmarkBeego_GithubAll         3000       504264 ns/op      146272 B/op       2092 allocs/op
+BenchmarkEcho_GithubAll         30000        45349 ns/op           0 B/op          0 allocs/op
+BenchmarkBone_GithubAll          1000      2058931 ns/op      648016 B/op       8119 allocs/op
+BenchmarkDenco_GithubAll        20000        79656 ns/op       20224 B/op        167 allocs/op
+BenchmarkGin_GithubAll          20000        71009 ns/op       13792 B/op        167 allocs/op
+BenchmarkGocraftWeb_GithubAll    5000       384342 ns/op      133280 B/op       1889 allocs/op
+BenchmarkGoji_GithubAll          3000       565323 ns/op       56113 B/op        334 allocs/op
+BenchmarkGoJsonRest_GithubAll    5000       461591 ns/op      135995 B/op       2940 allocs/op
+BenchmarkGoRestful_GithubAll      200      8828847 ns/op      649139 B/op       7355 allocs/op
+BenchmarkGorillaMux_GithubAll     200      6794821 ns/op      153137 B/op       1791 allocs/op
+BenchmarkHttpRouter_GithubAll   30000        51688 ns/op       13792 B/op        167 allocs/op
+BenchmarkHttpTreeMux_GithubAll  10000       136677 ns/op       56112 B/op        334 allocs/op
+BenchmarkKocha_GithubAll        10000       145115 ns/op       23304 B/op        843 allocs/op
+BenchmarkMacaron_GithubAll       2000       684714 ns/op      224960 B/op       2315 allocs/op
+BenchmarkMartini_GithubAll        100     10501805 ns/op      237953 B/op       2686 allocs/op
+BenchmarkPat_GithubAll            500      3987941 ns/op     1504101 B/op      32222 allocs/op
+BenchmarkRevel_GithubAll         2000      1127175 ns/op      345553 B/op       5918 allocs/op
+BenchmarkRivet_GithubAll        10000       239793 ns/op       84272 B/op       1079 allocs/op
+BenchmarkTango_GithubAll          500      3452359 ns/op     1338664 B/op      27736 allocs/op
+BenchmarkTigerTonic_GithubAll    2000       951609 ns/op      241088 B/op       6052 allocs/op
+BenchmarkTraffic_GithubAll        200      7496057 ns/op     2664761 B/op      22390 allocs/op
+BenchmarkVulcan_GithubAll        5000       300807 ns/op       19894 B/op        609 allocs/op
+BenchmarkZeus_GithubAll          2000       801269 ns/op      300688 B/op       2648 allocs/op
 </code></pre>
       </section>
     </div>
