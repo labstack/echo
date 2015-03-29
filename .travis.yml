@@ -2,8 +2,11 @@ language: go
 go:
     - tip
 before_install:
-    - go get github.com/axw/gocov/gocov
+    - go get github.com/modocache/gover
     - go get github.com/mattn/goveralls
     - go get golang.org/x/tools/cmd/cover
 script:
-    - $HOME/gopath/bin/goveralls -service=travis-ci
+    - go test -coverprofile=echo.coverprofile
+    - go test -coverprofile=mw.coverprofile ./middleware
+    - $HOME/gopath/bin/gover
+    - $HOME/gopath/bin/goveralls -coverprofile=gover.coverprofile -service=travis-ci
