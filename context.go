@@ -47,14 +47,14 @@ func (c *Context) Bind(i interface{}) bool {
 	return true
 }
 
-// String writes status and string to the response.
+// String sends a text/plain response with status code.
 func (c *Context) String(n int, s string) {
 	c.Response.Header().Set(HeaderContentType, MIMEText+"; charset=utf-8")
 	c.Response.WriteHeader(n)
 	c.Response.Write([]byte(s))
 }
 
-// JSON writes status and JSON to the response.
+// JSON sends an application/json response with status code.
 func (c *Context) JSON(n int, i interface{}) {
 	enc := json.NewEncoder(c.Response)
 	c.Response.Header().Set(HeaderContentType, MIMEJSON+"; charset=utf-8")
@@ -77,7 +77,7 @@ func (c *Context) Set(key string, val interface{}) {
 	c.store[key] = val
 }
 
-// Redirect redirects the request using http.Redirect.
+// Redirect redirects the request using http.Redirect with status code.
 func (c *Context) Redirect(n int, url string) {
 	http.Redirect(c.Response, c.Request, url, n)
 }
