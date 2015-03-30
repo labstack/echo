@@ -47,6 +47,13 @@ func (c *Context) Bind(i interface{}) bool {
 	return true
 }
 
+// String writes status and string to the response.
+func (c *Context) String(n int, s string) {
+	c.Response.Header().Set(HeaderContentType, MIMEText+"; charset=utf-8")
+	c.Response.WriteHeader(n)
+	c.Response.Write([]byte(s))
+}
+
 // JSON writes status and JSON to the response.
 func (c *Context) JSON(n int, i interface{}) {
 	enc := json.NewEncoder(c.Response)

@@ -24,6 +24,7 @@ type (
 
 const (
 	MIMEJSON = "application/json"
+	MIMEText = "text/plain"
 
 	HeaderAccept             = "Accept"
 	HeaderContentDisposition = "Content-Disposition"
@@ -32,8 +33,8 @@ const (
 )
 
 // New creates a echo instance.
-func New() (b *Echo) {
-	b = &Echo{
+func New() (e *Echo) {
+	e = &Echo{
 		maxParam: 5,
 		notFoundHandler: func(c *Context) {
 			http.Error(c.Response, http.StatusText(http.StatusNotFound), http.StatusNotFound)
@@ -45,13 +46,13 @@ func New() (b *Echo) {
 			http.Error(c.Response, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		},
 	}
-	b.Router = NewRouter(b)
-	b.pool.New = func() interface{} {
+	e.Router = NewRouter(e)
+	e.pool.New = func() interface{} {
 		return &Context{
 			Response: &response{},
-			params:   make(Params, b.maxParam),
+			params:   make(Params, e.maxParam),
 			store:    make(store),
-			echo:     b,
+			echo:     e,
 		}
 	}
 	return
@@ -70,137 +71,151 @@ func (h HandlerFunc) ServeHTTP(r http.ResponseWriter, w *http.Request) {
 
 // MaxParam sets the maximum allowed path parameters. Default is 5, good enough
 // for many users.
-func (b *Echo) MaxParam(n uint8) {
-	b.maxParam = n
+func (e *Echo) MaxParam(n uint8) {
+	e.maxParam = n
 }
 
 // NotFoundHandler sets a custom NotFound handler.
-func (b *Echo) NotFoundHandler(h Handler) {
-	b.notFoundHandler = wrapH(h)
+func (e *Echo) NotFoundHandler(h Handler) {
+	e.notFoundHandler = wrapH(h)
 }
 
 // MethodNotAllowedHandler sets a custom MethodNotAllowed handler.
-func (b *Echo) MethodNotAllowedHandler(h Handler) {
-	b.methodNotAllowedHandler = wrapH(h)
+func (e *Echo) MethodNotAllowedHandler(h Handler) {
+	e.methodNotAllowedHandler = wrapH(h)
 }
 
 // InternalServerErrorHandler sets a custom InternalServerError handler.
-func (b *Echo) InternalServerErrorHandler(h Handler) {
-	b.internalServerErrorHandler = wrapH(h)
+func (e *Echo) InternalServerErrorHandler(h Handler) {
+	e.internalServerErrorHandler = wrapH(h)
 }
 
 // Use adds handler to the middleware chain.
-func (b *Echo) Use(m ...Middleware) {
+func (e *Echo) Use(m ...Middleware) {
 	for _, h := range m {
-		b.middleware = append(b.middleware, wrapM(h))
+		e.middleware = append(e.middleware, wrapM(h))
 	}
 }
 
 // Connect adds a CONNECT route > handler to the router.
-func (b *Echo) Connect(path string, h Handler) {
-	b.Router.Add("CONNECT", path, wrapH(h))
+func (e *Echo) Connect(path string, h Handler) {
+	e.Router.Add("CONNECT", path, wrapH(h))
 }
 
 // Delete adds a DELETE route > handler to the router.
-func (b *Echo) Delete(path string, h Handler) {
-	b.Router.Add("DELETE", path, wrapH(h))
+func (e *Echo) Delete(path string, h Handler) {
+	e.Router.Add("DELETE", path, wrapH(h))
 }
 
 // Get adds a GET route > handler to the router.
-func (b *Echo) Get(path string, h Handler) {
-	b.Router.Add("GET", path, wrapH(h))
+func (e *Echo) Get(path string, h Handler) {
+	e.Router.Add("GET", path, wrapH(h))
 }
 
 // Head adds a HEAD route > handler to the router.
-func (b *Echo) Head(path string, h Handler) {
-	b.Router.Add("HEAD", path, wrapH(h))
+func (e *Echo) Head(path string, h Handler) {
+	e.Router.Add("HEAD", path, wrapH(h))
 }
 
 // Options adds an OPTIONS route > handler to the router.
-func (b *Echo) Options(path string, h Handler) {
-	b.Router.Add("OPTIONS", path, wrapH(h))
+func (e *Echo) Options(path string, h Handler) {
+	e.Router.Add("OPTIONS", path, wrapH(h))
 }
 
 // Patch adds a PATCH route > handler to the router.
-func (b *Echo) Patch(path string, h Handler) {
-	b.Router.Add("PATCH", path, wrapH(h))
+func (e *Echo) Patch(path string, h Handler) {
+	e.Router.Add("PATCH", path, wrapH(h))
 }
 
 // Post adds a POST route > handler to the router.
-func (b *Echo) Post(path string, h Handler) {
-	b.Router.Add("POST", path, wrapH(h))
+func (e *Echo) Post(path string, h Handler) {
+	e.Router.Add("POST", path, wrapH(h))
 }
 
 // Put adds a PUT route > handler to the router.
-func (b *Echo) Put(path string, h Handler) {
-	b.Router.Add("PUT", path, wrapH(h))
+func (e *Echo) Put(path string, h Handler) {
+	e.Router.Add("PUT", path, wrapH(h))
 }
 
 // Trace adds a TRACE route > handler to the router.
-func (b *Echo) Trace(path string, h Handler) {
-	b.Router.Add("TRACE", path, wrapH(h))
+func (e *Echo) Trace(path string, h Handler) {
+	e.Router.Add("TRACE", path, wrapH(h))
 }
 
 // Static serves static files.
-func (b *Echo) Static(path, root string) {
+func (e *Echo) Static(path, root string) {
 	fs := http.StripPrefix(path, http.FileServer(http.Dir(root)))
-	b.Get(path+"/*", func(c *Context) {
+	e.Get(path+"/*", func(c *Context) {
 		fs.ServeHTTP(c.Response, c.Request)
 	})
 }
 
 // ServeFile serves a file.
-func (b *Echo) ServeFile(path, file string) {
-	b.Get(path, func(c *Context) {
+func (e *Echo) ServeFile(path, file string) {
+	e.Get(path, func(c *Context) {
 		http.ServeFile(c.Response, c.Request, file)
 	})
 }
 
 // Index serves index file.
-func (b *Echo) Index(file string) {
-	b.ServeFile("/", file)
+func (e *Echo) Index(file string) {
+	e.ServeFile("/", file)
 }
 
-func (b *Echo) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
-	h, c, s := b.Router.Find(r.Method, r.URL.Path)
+func (e *Echo) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+	h, c, s := e.Router.Find(r.Method, r.URL.Path)
 	c.reset(rw, r)
 	if h != nil {
 		// Middleware
-		for i := len(b.middleware) - 1; i >= 0; i-- {
-			h = b.middleware[i](h)
+		for i := len(e.middleware) - 1; i >= 0; i-- {
+			h = e.middleware[i](h)
 		}
 		// Handler
 		h(c)
 	} else {
 		if s == NotFound {
-			b.notFoundHandler(c)
+			e.notFoundHandler(c)
 		} else if s == NotAllowed {
-			b.methodNotAllowedHandler(c)
+			e.methodNotAllowedHandler(c)
 		}
 	}
-	b.pool.Put(c)
+	e.pool.Put(c)
 }
 
-func (b *Echo) Run(addr string) {
-	log.Fatal(http.ListenAndServe(addr, b))
+func (e *Echo) Run(addr string) {
+	log.Fatal(http.ListenAndServe(addr, e))
 }
 
 // wraps Middleware
 func wrapM(m Middleware) MiddlewareFunc {
 	switch m := m.(type) {
+	case func(*Context):
+		return func(h HandlerFunc) HandlerFunc {
+			return func(c *Context) {
+				m(c)
+				h(c)
+			}
+		}
 	case func(HandlerFunc) HandlerFunc:
 		return MiddlewareFunc(m)
-	case http.HandlerFunc, http.Handler:
+	case func(http.Handler) http.Handler:
+		return func(h HandlerFunc) HandlerFunc {
+			return func(c *Context) {
+				m(h).ServeHTTP(c.Response, c.Request)
+				h(c)
+			}
+		}
+	case http.Handler, http.HandlerFunc:
 		return func(h HandlerFunc) HandlerFunc {
 			return func(c *Context) {
 				m.(http.Handler).ServeHTTP(c.Response, c.Request)
 				h(c)
 			}
 		}
-	case func(http.Handler) http.Handler:
+	case func(http.ResponseWriter, *http.Request):
 		return func(h HandlerFunc) HandlerFunc {
 			return func(c *Context) {
-				m(h).ServeHTTP(c.Response, c.Request)
+				m(c.Response, c.Request)
 				h(c)
 			}
 		}
@@ -214,9 +229,13 @@ func wrapH(h Handler) HandlerFunc {
 	switch h := h.(type) {
 	case func(*Context):
 		return HandlerFunc(h)
-	case http.HandlerFunc, func(http.ResponseWriter, *http.Request), http.Handler:
+	case http.Handler, http.HandlerFunc:
 		return func(c *Context) {
 			h.(http.Handler).ServeHTTP(c.Response, c.Request)
+		}
+	case func(http.ResponseWriter, *http.Request):
+		return func(c *Context) {
+			h(c.Response, c.Request)
 		}
 	default:
 		panic("echo: unknown handler")
