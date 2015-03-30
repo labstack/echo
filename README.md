@@ -3,7 +3,7 @@ Echo is a fast HTTP router (zero memory allocation) + micro web framework in Go.
 
 ### Features
 - Zippy router.
-- Extensible middleware / handler, supports:
+- Extensible middleware/handler, supports:
 	- Middleware
 		- `func(*echo.Context)`
 		- `func(echo.HandlerFunc) echo.HandlerFunc`
@@ -16,6 +16,7 @@ Echo is a fast HTTP router (zero memory allocation) + micro web framework in Go.
 		- `http.Handler`
 		- `http.HandlerFunc`
 		- `func(http.ResponseWriter, *http.Request)`
+- Handy encoding/decoding functions.
 - Serve static files, including index.
 
 ### Installatioin
@@ -109,7 +110,7 @@ func main() {
 ```
 
 ### Benchmark
-Based on [julienschmidt/go-http-routing-benchmark] (https://github.com/vishr/go-http-routing-benchmark)
+Based on [julienschmidt/go-http-routing-benchmark] (https://github.com/vishr/go-http-routing-benchmark), March 25, 2015
 ##### [GitHub API](http://developer.github.com/v3)
 ```
 BenchmarkAce_GithubAll	    	20000	     70318 ns/op	   13792 B/op	     167 allocs/op
