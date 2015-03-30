@@ -17,7 +17,6 @@ type (
 	}
 )
 
-
 func (r *response) WriteHeader(n int) {
 	// TODO: fix when halted.
 	if r.committed {
@@ -53,7 +52,7 @@ func (r *response) Flusher() {
 func (r *response) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	h, ok := r.ResponseWriter.(http.Hijacker)
 	if !ok {
-		return nil, nil, errors.New("hijacker interface not supported")
+		return nil, nil, errors.New("bolt: hijacker interface not supported")
 	}
 	return h.Hijack()
 }

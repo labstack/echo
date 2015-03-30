@@ -37,15 +37,12 @@ func New() (b *Echo) {
 		maxParam: 5,
 		notFoundHandler: func(c *Context) {
 			http.Error(c.Response, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-			// c.Halt()
 		},
 		methodNotAllowedHandler: func(c *Context) {
 			http.Error(c.Response, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-			// c.Halt()
 		},
 		internalServerErrorHandler: func(c *Context) {
 			http.Error(c.Response, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			// c.Halt()
 		},
 	}
 	b.Router = NewRouter(b)
@@ -54,8 +51,7 @@ func New() (b *Echo) {
 			Response: &response{},
 			params:   make(Params, b.maxParam),
 			store:    make(store),
-			// i:        -1,
-			echo: b,
+			echo:     b,
 		}
 	}
 	return
@@ -194,7 +190,7 @@ func wrapM(m Middleware) MiddlewareFunc {
 	switch m := m.(type) {
 	case func(HandlerFunc) HandlerFunc:
 		return MiddlewareFunc(m)
-	case http.HandlerFunc, func(http.ResponseWriter, *http.Request), http.Handler:
+	case http.HandlerFunc, http.Handler:
 		return func(h HandlerFunc) HandlerFunc {
 			return func(c *Context) {
 				m.(http.Handler).ServeHTTP(c.Response, c.Request)

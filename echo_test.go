@@ -32,8 +32,8 @@ func TestEchoMaxParam(t *testing.T) {
 func TestEchoIndex(t *testing.T) {
 	b := New()
 	b.Index("example/public/index.html")
-	r, _ := http.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
+	r, _ := http.NewRequest("GET", "/", nil)
 	b.ServeHTTP(w, r)
 	if w.Code != 200 {
 		t.Errorf("status code should be 200, found %d", w.Code)
@@ -43,12 +43,65 @@ func TestEchoIndex(t *testing.T) {
 func TestEchoStatic(t *testing.T) {
 	b := New()
 	b.Static("/js", "example/public/js")
-	r, _ := http.NewRequest("GET", "/js/main.js", nil)
 	w := httptest.NewRecorder()
+	r, _ := http.NewRequest("GET", "/js/main.js", nil)
 	b.ServeHTTP(w, r)
 	if w.Code != 200 {
 		t.Errorf("status code should be 200, found %d", w.Code)
 	}
+}
+
+func TestEchoMiddleware(t *testing.T) {
+	b := New()
+
+	// func(HandlerFunc) HandlerFunc
+	b.Use(func(h HandlerFunc) HandlerFunc {
+		return HandlerFunc(func(c *Context) {
+			c.Request.Header.Set("a", "1")
+			h(c)
+		})
+	})
+
+	// http.HandlerFunc
+	b.Use(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.Header.Set("b", "2")
+	}))
+
+	// http.Handler
+	b.Use(http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.Header.Set("c", "3")
+	})))
+
+	// func(http.Handler) http.Handler
+	b.Use(func(http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			r.Header.Set("d", "4")
+		})
+	})
+
+	// Route
+	b.Get("/users", func(c *Context) {
+		h := c.Request.Header.Get("a")
+		if h != "1" {
+			t.Errorf("header a should be 1, found %s", h)
+		}
+		h = c.Request.Header.Get("b")
+		if h != "2" {
+			t.Errorf("header b should be 2, found %s", h)
+		}
+		h = c.Request.Header.Get("c")
+		if h != "3" {
+			t.Errorf("header c should be 3, found %s", h)
+		}
+		h = c.Request.Header.Get("d")
+		if h != "4" {
+			t.Errorf("header d should be 4, found %s", h)
+		}
+	})
+
+	w := httptest.NewRecorder()
+	r, _ := http.NewRequest("GET", "/users", nil)
+	b.ServeHTTP(w, r)
 }
 
 func verifyUser(rd io.Reader, t *testing.T) {
