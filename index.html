@@ -1,34 +1,25 @@
 <!DOCTYPE html>
-<html>
+<html lang="en-us">
   <head>
-    <meta charset='utf-8'>
-    <meta http-equiv="X-UA-Compatible" content="chrome=1">
-
-    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
-    <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen">
-    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print">
-
+    <meta charset="UTF-8">
     <title>Echo by labstack</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
   </head>
-
   <body>
+    <section class="page-header">
+      <h1 class="project-name">Echo</h1>
+      <h2 class="project-tagline">Fast HTTP router + micro web framework</h2>
+      <a href="https://github.com/labstack/echo" class="btn">View on GitHub</a>
+      <a href="https://github.com/labstack/echo/zipball/master" class="btn">Download .zip</a>
+      <a href="https://github.com/labstack/echo/tarball/master" class="btn">Download .tar.gz</a>
+    </section>
 
-    <header>
-      <div class="container">
-        <h1>Echo</h1>
-        <h2>Fast HTTP router + micro web framework</h2>
-
-        <section id="downloads">
-          <a href="https://github.com/labstack/echo/zipball/master" class="btn">Download as .zip</a>
-          <a href="https://github.com/labstack/echo/tarball/master" class="btn">Download as .tar.gz</a>
-          <a href="https://github.com/labstack/echo" class="btn btn-github"><span class="icon"></span>View on GitHub</a>
-        </section>
-      </div>
-    </header>
-
-    <div class="container">
-      <section id="main_content">
-        <h1>
+    <section class="main-content">
+      <h1>
 <a id="echo---" class="anchor" href="#echo---" aria-hidden="true"><span class="octicon octicon-link"></span></a>Echo <a href="http://godoc.org/github.com/labstack/echo"><img src="http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square" alt="GoDoc"></a> <a href="https://travis-ci.org/labstack/echo"><img src="http://img.shields.io/travis/fatih/structs.svg?style=flat-square" alt="Build Status"></a> <a href="https://coveralls.io/r/labstack/echo"><img src="http://img.shields.io/coveralls/labstack/echo.svg?style=flat-square" alt="Coverage Status"></a>
 </h1>
 
@@ -39,33 +30,37 @@
 
 <ul>
 <li>Zippy router.</li>
-<li>Extensible middleware / handler, supports:
+<li>Extensible middleware/handler, supports:
 
 <ul>
 <li>Middleware
 
 <ul>
+<li><code>func(*echo.Context)</code></li>
 <li><code>func(echo.HandlerFunc) echo.HandlerFunc</code></li>
-<li><code>http.HandlerFunc</code></li>
-<li><code>http.Handler</code></li>
 <li><code>func(http.Handler) http.Handler</code></li>
+<li><code>http.Handler</code></li>
+<li><code>http.HandlerFunc</code></li>
+<li><code>func(http.ResponseWriter, *http.Request)</code></li>
 </ul>
 </li>
 <li>Handler
 
 <ul>
 <li><code>func(*echo.Context)</code></li>
-<li><code>http.HandlerFunc</code></li>
 <li><code>http.Handler</code></li>
+<li><code>http.HandlerFunc</code></li>
+<li><code>func(http.ResponseWriter, *http.Request)</code></li>
 </ul>
 </li>
 </ul>
 </li>
+<li>Handy encoding/decoding functions.</li>
 <li>Serve static files, including index.</li>
 </ul>
 
 <h3>
-<a id="installatioin" class="anchor" href="#installatioin" aria-hidden="true"><span class="octicon octicon-link"></span></a>Installatioin</h3>
+<a id="installation" class="anchor" href="#installation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Installation</h3>
 
 <p><code>go get github.com/labstack/echo</code></p>
 
@@ -105,7 +100,7 @@
     <span class="pl-smi">u</span> <span class="pl-k">:=</span> <span class="pl-c1">new</span>(user)
     <span class="pl-k">if</span> c.<span class="pl-c1">Bind</span>(u) {
         users[u.<span class="pl-smi">ID</span>] = *u
-        c.<span class="pl-c1">JSON</span>(http.<span class="pl-smi">StatusOK</span>, u)
+        c.<span class="pl-c1">JSON</span>(http.<span class="pl-smi">StatusCreated</span>, u)
     }
 }
 
@@ -154,12 +149,13 @@
 
     <span class="pl-c">// Start server</span>
     e.<span class="pl-c1">Run</span>(<span class="pl-s"><span class="pl-pds">"</span>:8080<span class="pl-pds">"</span></span>)
-}</pre></div>
+}
+</pre></div>
 
 <h3>
 <a id="benchmark" class="anchor" href="#benchmark" aria-hidden="true"><span class="octicon octicon-link"></span></a>Benchmark</h3>
 
-<p>Based on <a href="https://github.com/vishr/go-http-routing-benchmark">julienschmidt/go-http-routing-benchmark</a></p>
+<p>Based on <a href="https://github.com/vishr/go-http-routing-benchmark">julienschmidt/go-http-routing-benchmark</a>, March 25, 2015</p>
 
 <h5>
 <a id="github-api" class="anchor" href="#github-api" aria-hidden="true"><span class="octicon octicon-link"></span></a><a href="http://developer.github.com/v3">GitHub API</a>
@@ -191,10 +187,16 @@ BenchmarkTraffic_GithubAll        200      7496057 ns/op     2664761 B/op      2
 BenchmarkVulcan_GithubAll        5000       300807 ns/op       19894 B/op        609 allocs/op
 BenchmarkZeus_GithubAll          2000       801269 ns/op      300688 B/op       2648 allocs/op
 </code></pre>
-      </section>
-    </div>
 
-              <script type="text/javascript">
+      <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/labstack/echo">Echo</a> is maintained by <a href="https://github.com/labstack">labstack</a>.</span>
+
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
+      </footer>
+
+    </section>
+
+            <script type="text/javascript">
             var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
             document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
           </script>
@@ -207,3 +209,4 @@ BenchmarkZeus_GithubAll          2000       801269 ns/op      300688 B/op       
 
   </body>
 </html>
+
