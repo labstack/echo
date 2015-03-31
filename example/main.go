@@ -29,7 +29,7 @@ func createUser(c *echo.Context) {
 	u := new(user)
 	if c.Bind(u) {
 		users[u.ID] = *u
-		c.JSON(http.StatusOK, u)
+		c.JSON(http.StatusCreated, u)
 	}
 }
 

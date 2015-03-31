@@ -2,7 +2,6 @@ package echo
 
 import (
 	"bytes"
-	"encoding/binary"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -12,8 +11,8 @@ import (
 
 type (
 	user struct {
-		ID   string
-		Name string
+		ID   string `json:"id"`
+		Name string `json:"name"`
 	}
 )
 
@@ -146,16 +145,51 @@ func TestEchoHandler(t *testing.T) {
 	}
 }
 
-func verifyUser(rd io.Reader, t *testing.T) {
-	var l int64
-	err := binary.Read(rd, binary.BigEndian, &l) // Body length
-	if err != nil {
-		t.Error(err)
+func TestEchoMethod(t *testing.T) {
+	// e := New()
+	// // GET
+	// e.Get("/users", func(c *Context) {})
+	// h, _, _ := e.Router.Find("GET", "/users")
+	// if h == nil {
+	// 	t.Error("should find route for GET")
+	// }
+
+}
+
+func TestEchoServeHTTP(t *testing.T) {
+	e := New()
+
+	// OK
+	e.Get("/users", func(c *Context) {
+	})
+	w := httptest.NewRecorder()
+	r, _ := http.NewRequest("GET", "/users", nil)
+	e.ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		t.Errorf("status code should be 200, found %d", w.Code)
 	}
-	bd := io.LimitReader(rd, l) // Body
+
+	// NotFound
+	r, _ = http.NewRequest("GET", "/user", nil)
+	w = httptest.NewRecorder()
+	e.ServeHTTP(w, r)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("status code should be 404, found %d", w.Code)
+	}
+
+	// NotAllowed
+	r, _ = http.NewRequest("POST", "/users", nil)
+	w = httptest.NewRecorder()
+	e.ServeHTTP(w, r)
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("status code should be 405, found %d", w.Code)
+	}
+}
+
+func verifyUser(rd io.Reader, t *testing.T) {
 	u2 := new(user)
-	dec := json.NewDecoder(bd)
-	err = dec.Decode(u2)
+	dec := json.NewDecoder(rd)
+	err := dec.Decode(u2)
 	if err != nil {
 		t.Error(err)
 	}
