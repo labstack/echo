@@ -4,8 +4,8 @@ import "testing"
 
 func TestRouterStatic(t *testing.T) {
 	r := New().Router
-	r.Add("GET", "/users/joe/books", func(c *Context) {})
-	h, _, _ := r.Find("GET", "/users/joe/books")
+	r.Add("GET", "/folders/files/bolt.gif", func(c *Context) {})
+	h, _, _ := r.Find("GET", "/folders/files/bolt.gif")
 	if h == nil {
 		t.Fatal("handle not found")
 	}
@@ -13,14 +13,14 @@ func TestRouterStatic(t *testing.T) {
 
 func TestRouterParam(t *testing.T) {
 	r := New().Router
-	r.Add("GET", "/users/:name", func(c *Context) {})
-	h, c, _ := r.Find("GET", "/users/joe")
+	r.Add("GET", "/users/:id", func(c *Context) {})
+	h, c, _ := r.Find("GET", "/users/1")
 	if h == nil {
 		t.Fatal("handle not found")
 	}
-	p := c.Param("name")
-	if p != "joe" {
-		t.Errorf("name should be equal to joe, found %s", p)
+	p := c.Param("id")
+	if p != "1" {
+		t.Errorf("id should be equal to 1, found %s", p)
 	}
 }
 
@@ -52,4 +52,14 @@ func TestRouterMicroParam(t *testing.T) {
 	if p3 != "c" {
 		t.Errorf("p3 should be equal to c, found %s", p3)
 	}
+}
+
+func TestPrintTree(t *testing.T) {
+	r := New().Router
+	r.Add("GET", "/users", nil)
+	r.Add("GET", "/users/:id", nil)
+	r.Add("GET", "/users/:id/books", nil)
+	r.Add("GET", "/users/:id/files", nil)
+	r.Add("POST", "/files", nil)
+	r.printTree()
 }
