@@ -19,7 +19,7 @@ Echo is a fast HTTP router (zero memory allocation) + micro web framework in Go.
 - Handy encoding/decoding functions.
 - Serve static files, including index.
 
-### Installatioin
+### Installation
 ```go get github.com/labstack/echo```
 
 ### Usage
