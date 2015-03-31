@@ -6,9 +6,11 @@ import (
 
 	"github.com/labstack/echo"
 	"github.com/labstack/gommon/color"
+	"github.com/mattn/go-colorable"
 )
 
 func Logger(h echo.HandlerFunc) echo.HandlerFunc {
+	log.SetOutput(colorable.NewColorableStdout())
 	return echo.HandlerFunc(func(c *echo.Context) {
 		start := time.Now()
 		h(c)
