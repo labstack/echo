@@ -25,6 +25,7 @@ type (
 const (
 	MIMEJSON = "application/json"
 	MIMEText = "text/plain"
+	MIMEHTML = "text/html"
 
 	HeaderAccept             = "Accept"
 	HeaderContentDisposition = "Content-Disposition"
