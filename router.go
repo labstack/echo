@@ -1,21 +1,18 @@
 package echo
 
-import (
-	"fmt"
-	"net/http"
-)
+import "net/http"
 
 type (
 	router struct {
-		root *node
-		echo *Echo
+		trees map[string]*node
+		echo  *Echo
 	}
 	node struct {
-		label    byte
-		prefix   string
-		has      ntype // Type of node(s)
-		handlers []HandlerFunc
-		edges    edges
+		label   byte
+		prefix  string
+		has     ntype // Type of node
+		handler HandlerFunc
+		edges   edges
 	}
 	edges []*node
 	ntype byte
@@ -24,7 +21,6 @@ type (
 		Value string
 	}
 	Params []param
-	Status uint16
 )
 
 const (
@@ -33,44 +29,18 @@ const (
 	anode              // Catch-all node
 )
 
-const (
-	OK Status = iota
-	NotFound
-	NotAllowed
-)
-
-//  methods is a map for looking up HTTP method index.
-var methods = map[string]uint8{
-	"CONNECT": 0,
-	"DELETE":  1,
-	"GET":     2,
-	"HEAD":    3,
-	"OPTIONS": 4,
-	"PATCH":   5,
-	"POST":    6,
-	"PUT":     7,
-	"TRACE":   8,
-}
-
-func NewRouter(b *Echo) (r *router) {
+func NewRouter(e *Echo) (r *router) {
 	r = &router{
-		root: &node{
-			prefix:   "",
-			handlers: make([]HandlerFunc, len(methods)),
-			edges:    edges{},
-		},
-		echo: b,
+		trees: make(map[string]*node),
+		echo:  e,
 	}
-	return
-}
-
-func (n *node) findEdge(l byte) *node {
-	for _, e := range n.edges {
-		if e.label == l {
-			return e
+	for _, m := range methods {
+		r.trees[m] = &node{
+			prefix: "",
+			edges:  edges{},
 		}
 	}
-	return nil
+	return
 }
 
 func (r *router) Add(method, path string, h HandlerFunc) {
@@ -94,7 +64,7 @@ func (r *router) Add(method, path string, h HandlerFunc) {
 }
 
 func (r *router) insert(method, path string, h HandlerFunc, has ntype) {
-	cn := r.root // Current node
+	cn := r.trees[method] // Current node as root
 	search := path
 
 	for {
@@ -108,27 +78,27 @@ func (r *router) insert(method, path string, h HandlerFunc, has ntype) {
 			cn.prefix = search
 			cn.has = has
 			if h != nil {
-				cn.handlers[methods[method]] = h
+				cn.handler = h
 			}
 			return
 		} else if l < pl {
 			// Split the node
-			n := newNode(cn.prefix[l:], cn.has, cn.handlers, cn.edges)
+			n := newNode(cn.prefix[l:], cn.has, cn.handler, cn.edges)
 			cn.edges = edges{n} // Add to parent
 
 			// Reset parent node
 			cn.label = cn.prefix[0]
 			cn.prefix = cn.prefix[:l]
 			cn.has = snode
-			cn.handlers = make([]HandlerFunc, len(methods))
+			cn.handler = nil
 
 			if l == sl {
 				// At parent node
-				cn.handlers[methods[method]] = h
+				cn.handler = h
 			} else {
 				// Need to fork a node
 				n = newNode(search[l:], has, nil, nil)
-				n.handlers[methods[method]] = h
+				n.handler = h
 				cn.edges = append(cn.edges, n)
 			}
 			break
@@ -138,7 +108,7 @@ func (r *router) insert(method, path string, h HandlerFunc, has ntype) {
 			if e == nil {
 				n := newNode(search, has, nil, nil)
 				if h != nil {
-					n.handlers[methods[method]] = h
+					n.handler = h
 				}
 				cn.edges = append(cn.edges, n)
 				break
@@ -148,23 +118,20 @@ func (r *router) insert(method, path string, h HandlerFunc, has ntype) {
 		} else {
 			// Node already exists
 			if h != nil {
-				cn.handlers[methods[method]] = h
+				cn.handler = h
 			}
 			break
 		}
 	}
 }
 
-func newNode(pfx string, has ntype, h []HandlerFunc, e edges) (n *node) {
+func newNode(pfx string, has ntype, h HandlerFunc, e edges) (n *node) {
 	n = &node{
-		label:    pfx[0],
-		prefix:   pfx,
-		has:      has,
-		handlers: h,
-		edges:    e,
-	}
-	if h == nil {
-		n.handlers = make([]HandlerFunc, len(methods))
+		label:   pfx[0],
+		prefix:  pfx,
+		has:     has,
+		handler: h,
+		edges:   e,
 	}
 	if e == nil {
 		n.edges = edges{}
@@ -172,22 +139,36 @@ func newNode(pfx string, has ntype, h []HandlerFunc, e edges) (n *node) {
 	return
 }
 
-func (r *router) Find(method, path string) (handler HandlerFunc, c *Context, s Status) {
+func (n *node) findEdge(l byte) *node {
+	for _, e := range n.edges {
+		if e.label == l {
+			return e
+		}
+	}
+	return nil
+}
+
+// Length of longest common prefix
+func lcp(a, b string) (i int) {
+	max := len(a)
+	l := len(b)
+	if l < max {
+		max = l
+	}
+	for ; i < max && a[i] == b[i]; i++ {
+	}
+	return
+}
+
+func (r *router) Find(method, path string) (h HandlerFunc, c *Context) {
 	c = r.echo.pool.Get().(*Context)
-	cn := r.root // Current node
+	cn := r.trees[method] // Current node as root
 	search := path
 	n := 0 // Param count
 
 	for {
 		if search == "" || search == cn.prefix {
-			// Node found
-			h := cn.handlers[methods[method]]
-			if h != nil {
-				// Handler found
-				handler = h
-			} else {
-				s = NotAllowed
-			}
+			h = cn.handler
 			return
 		}
 
@@ -225,44 +206,15 @@ func (r *router) Find(method, path string) (handler HandlerFunc, c *Context, s S
 			e := cn.findEdge(search[0])
 			if e == nil {
 				// Not found
-				s = NotFound
 				return
 			}
 			cn = e
 			continue
 		} else {
 			// Not found
-			s = NotFound
 			return
 		}
 	}
-}
-
-// Length of longest common prefix
-func lcp(a, b string) (i int) {
-	max := len(a)
-	l := len(b)
-	if l < max {
-		max = l
-	}
-	for ; i < max && a[i] == b[i]; i++ {
-	}
-	return
-}
-
-func (r *router) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	h, c, rep := r.Find(req.Method, req.URL.Path)
-	c.Response.ResponseWriter = rw
-	if h != nil {
-		h(c)
-	} else {
-		if rep == NotFound {
-			r.echo.notFoundHandler(c)
-		} else if rep == NotAllowed {
-			r.echo.methodNotAllowedHandler(c)
-		}
-	}
-	r.echo.pool.Put(c)
 }
 
 // Get returns path parameter by name.
@@ -275,28 +227,13 @@ func (ps Params) Get(n string) (v string) {
 	return
 }
 
-func (r *router) printTree() {
-	r.root.printTree("", true)
-}
-
-func (n *node) printTree(pfx string, tail bool) {
-	p := prefix(tail, pfx, "└── ", "├── ")
-	fmt.Printf("%s%s has=%d, len=%d\n", p, n.prefix, n.has, len(n.handlers))
-
-	nodes := n.edges
-	l := len(nodes)
-	p = prefix(tail, pfx, "    ", "│   ")
-	for i := 0; i < l-1; i++ {
-		nodes[i].printTree(p, false)
+func (r *router) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	h, c := r.Find(req.Method, req.URL.Path)
+	c.Response.ResponseWriter = rw
+	if h != nil {
+		h(c)
+	} else {
+		r.echo.notFoundHandler(c)
 	}
-	if l > 0 {
-		nodes[l-1].printTree(p, true)
-	}
-}
-
-func prefix(tail bool, p, on, off string) string {
-	if tail {
-		return fmt.Sprintf("%s%s", p, on)
-	}
-	return fmt.Sprintf("%s%s", p, off)
+	r.echo.pool.Put(c)
 }

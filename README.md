@@ -111,32 +111,32 @@ func main() {
 ```
 
 ### Benchmark
-Based on [julienschmidt/go-http-routing-benchmark] (https://github.com/vishr/go-http-routing-benchmark), March 25, 2015
+Based on [julienschmidt/go-http-routing-benchmark] (https://github.com/vishr/go-http-routing-benchmark), April 1, 2015
 ##### [GitHub API](http://developer.github.com/v3)
 ```
-BenchmarkAce_GithubAll	    	20000	     70318 ns/op	   13792 B/op	     167 allocs/op
-BenchmarkBear_GithubAll	    	10000	    262758 ns/op	   79952 B/op	     943 allocs/op
-BenchmarkBeego_GithubAll	 	 3000	    504264 ns/op	  146272 B/op	    2092 allocs/op
-BenchmarkEcho_GithubAll	    	30000	     45349 ns/op	       0 B/op	       0 allocs/op
-BenchmarkBone_GithubAll	     	 1000	   2058931 ns/op	  648016 B/op	    8119 allocs/op
-BenchmarkDenco_GithubAll		20000	     79656 ns/op	   20224 B/op	     167 allocs/op
-BenchmarkGin_GithubAll	    	20000	     71009 ns/op	   13792 B/op	     167 allocs/op
-BenchmarkGocraftWeb_GithubAll	 5000	    384342 ns/op	  133280 B/op	    1889 allocs/op
-BenchmarkGoji_GithubAll	    	 3000	    565323 ns/op	   56113 B/op	     334 allocs/op
-BenchmarkGoJsonRest_GithubAll	 5000	    461591 ns/op	  135995 B/op	    2940 allocs/op
-BenchmarkGoRestful_GithubAll	  200	   8828847 ns/op	  649139 B/op	    7355 allocs/op
-BenchmarkGorillaMux_GithubAll	  200	   6794821 ns/op	  153137 B/op	    1791 allocs/op
-BenchmarkHttpRouter_GithubAll	30000	     51688 ns/op	   13792 B/op	     167 allocs/op
-BenchmarkHttpTreeMux_GithubAll	10000	    136677 ns/op	   56112 B/op	     334 allocs/op
-BenchmarkKocha_GithubAll	   	10000	    145115 ns/op	   23304 B/op	     843 allocs/op
-BenchmarkMacaron_GithubAll	     2000	    684714 ns/op	  224960 B/op	    2315 allocs/op
-BenchmarkMartini_GithubAll	      100	  10501805 ns/op	  237953 B/op	    2686 allocs/op
-BenchmarkPat_GithubAll	     	  500	   3987941 ns/op	 1504101 B/op	   32222 allocs/op
-BenchmarkRevel_GithubAll	     2000	   1127175 ns/op	  345553 B/op	    5918 allocs/op
-BenchmarkRivet_GithubAll	   	10000	    239793 ns/op	   84272 B/op	    1079 allocs/op
-BenchmarkTango_GithubAll	      500	   3452359 ns/op	 1338664 B/op	   27736 allocs/op
-BenchmarkTigerTonic_GithubAll	 2000	    951609 ns/op	  241088 B/op	    6052 allocs/op
-BenchmarkTraffic_GithubAll	      200	   7496057 ns/op	 2664761 B/op	   22390 allocs/op
-BenchmarkVulcan_GithubAll	     5000	    300807 ns/op	   19894 B/op	     609 allocs/op
-BenchmarkZeus_GithubAll	         2000	    801269 ns/op	  300688 B/op	    2648 allocs/op
+BenchmarkAce_GithubAll	   		20000	     69126 ns/op	   13792 B/op	     167 allocs/op
+BenchmarkBear_GithubAll	   		10000	    252699 ns/op	   79952 B/op	     943 allocs/op
+BenchmarkBeego_GithubAll		 3000	    485692 ns/op	  146272 B/op	    2092 allocs/op
+BenchmarkEcho_GithubAll	   		30000	     43700 ns/op	       0 B/op	       0 allocs/op
+BenchmarkBone_GithubAll	    	 1000	   2158467 ns/op	  648016 B/op	    8119 allocs/op
+BenchmarkDenco_GithubAll   		20000	     83022 ns/op	   20224 B/op	     167 allocs/op
+BenchmarkGin_GithubAll	   		20000	     72317 ns/op	   13792 B/op	     167 allocs/op
+BenchmarkGocraftWeb_GithubAll	 5000	    381554 ns/op	  133280 B/op	    1889 allocs/op
+BenchmarkGoji_GithubAll	    	 3000	    605232 ns/op	   56113 B/op	     334 allocs/op
+BenchmarkGoJsonRest_GithubAll	 5000	    467810 ns/op	  135995 B/op	    2940 allocs/op
+BenchmarkGoRestful_GithubAll	  200	   9345441 ns/op	  707604 B/op	    7558 allocs/op
+BenchmarkGorillaMux_GithubAll	  200	   7043040 ns/op	  153136 B/op	    1791 allocs/op
+BenchmarkHttpRouter_GithubAll	30000	     52251 ns/op	   13792 B/op	     167 allocs/op
+BenchmarkHttpTreeMux_GithubAll	10000	    145114 ns/op	   56112 B/op	     334 allocs/op
+BenchmarkKocha_GithubAll	    10000	    145061 ns/op	   23304 B/op	     843 allocs/op
+BenchmarkMacaron_GithubAll	     2000	    697957 ns/op	  224960 B/op	    2315 allocs/op
+BenchmarkMartini_GithubAll	      100	  11651997 ns/op	  237953 B/op	    2686 allocs/op
+BenchmarkPat_GithubAll	          300	   3951799 ns/op	 1504101 B/op	   32222 allocs/op
+BenchmarkRevel_GithubAll	     2000	   1129370 ns/op	  345553 B/op	    5918 allocs/op
+BenchmarkRivet_GithubAll	    10000	    246564 ns/op	   84272 B/op	    1079 allocs/op
+BenchmarkTango_GithubAll	      500	   3544850 ns/op	 1338664 B/op	   27736 allocs/op
+BenchmarkTigerTonic_GithubAll	 2000	    979370 ns/op	  241088 B/op	    6052 allocs/op
+BenchmarkTraffic_GithubAll	      200	   7508743 ns/op	 2664762 B/op	   22390 allocs/op
+BenchmarkVulcan_GithubAll	     5000	    286727 ns/op	   19894 B/op	     609 allocs/op
+BenchmarkZeus_GithubAll	         2000	    798335 ns/op	  300688 B/op	    2648 allocs/op
 ```

@@ -1,11 +1,14 @@
 package echo
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 func TestRouterStatic(t *testing.T) {
 	r := New().Router
-	r.Add("GET", "/folders/files/bolt.gif", func(c *Context) {})
-	h, _, _ := r.Find("GET", "/folders/files/bolt.gif")
+	r.Add(MethodGET, "/folders/files/bolt.gif", func(c *Context) {})
+	h, _ := r.Find(MethodGET, "/folders/files/bolt.gif")
 	if h == nil {
 		t.Fatal("handle not found")
 	}
@@ -13,8 +16,8 @@ func TestRouterStatic(t *testing.T) {
 
 func TestRouterParam(t *testing.T) {
 	r := New().Router
-	r.Add("GET", "/users/:id", func(c *Context) {})
-	h, c, _ := r.Find("GET", "/users/1")
+	r.Add(MethodGET, "/users/:id", func(c *Context) {})
+	h, c := r.Find(MethodGET, "/users/1")
 	if h == nil {
 		t.Fatal("handle not found")
 	}
@@ -26,8 +29,8 @@ func TestRouterParam(t *testing.T) {
 
 func TestRouterCatchAll(t *testing.T) {
 	r := New().Router
-	r.Add("GET", "/static/*", func(c *Context) {})
-	h, _, _ := r.Find("GET", "/static/*")
+	r.Add(MethodGET, "/static/*", func(c *Context) {})
+	h, _ := r.Find(MethodGET, "/static/*")
 	if h == nil {
 		t.Fatal("handle not found")
 	}
@@ -35,8 +38,8 @@ func TestRouterCatchAll(t *testing.T) {
 
 func TestRouterMicroParam(t *testing.T) {
 	r := New().Router
-	r.Add("GET", "/:a/:b/:c", func(c *Context) {})
-	h, c, _ := r.Find("GET", "/a/b/c")
+	r.Add(MethodGET, "/:a/:b/:c", func(c *Context) {})
+	h, c := r.Find(MethodGET, "/a/b/c")
 	if h == nil {
 		t.Fatal("handle not found")
 	}
@@ -54,12 +57,24 @@ func TestRouterMicroParam(t *testing.T) {
 	}
 }
 
-func TestPrintTree(t *testing.T) {
-	r := New().Router
-	r.Add("GET", "/users", nil)
-	r.Add("GET", "/users/:id", nil)
-	r.Add("GET", "/users/:id/books", nil)
-	r.Add("GET", "/users/:id/files", nil)
-	r.Add("POST", "/files", nil)
-	r.printTree()
+func (n *node) printTree(pfx string, tail bool) {
+	p := prefix(tail, pfx, "└── ", "├── ")
+	fmt.Printf("%s%s has=%d\n", p, n.prefix, n.has)
+
+	nodes := n.edges
+	l := len(nodes)
+	p = prefix(tail, pfx, "    ", "│   ")
+	for i := 0; i < l-1; i++ {
+		nodes[i].printTree(p, false)
+	}
+	if l > 0 {
+		nodes[l-1].printTree(p, true)
+	}
+}
+
+func prefix(tail bool, p, on, off string) string {
+	if tail {
+		return fmt.Sprintf("%s%s", p, on)
+	}
+	return fmt.Sprintf("%s%s", p, off)
 }

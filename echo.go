@@ -23,6 +23,16 @@ type (
 )
 
 const (
+	MethodCONNECT = "CONNECT"
+	MethodDELETE  = "DELETE"
+	MethodGET     = "GET"
+	MethodHEAD    = "HEAD"
+	MethodOPTIONS = "OPTIONS"
+	MethodPATCH   = "PATCH"
+	MethodPOST    = "POST"
+	MethodPUT     = "PUT"
+	MethodTRACE   = "TRACE"
+
 	MIMEJSON = "application/json"
 	MIMEText = "text/plain"
 
@@ -30,6 +40,20 @@ const (
 	HeaderContentDisposition = "Content-Disposition"
 	HeaderContentLength      = "Content-Length"
 	HeaderContentType        = "Content-Type"
+)
+
+var (
+	methods = []string{
+		MethodCONNECT,
+		MethodDELETE,
+		MethodGET,
+		MethodHEAD,
+		MethodOPTIONS,
+		MethodPATCH,
+		MethodPOST,
+		MethodPUT,
+		MethodTRACE,
+	}
 )
 
 // New creates a echo instance.
@@ -99,47 +123,47 @@ func (e *Echo) Use(m ...Middleware) {
 
 // Connect adds a CONNECT route > handler to the router.
 func (e *Echo) Connect(path string, h Handler) {
-	e.Router.Add("CONNECT", path, wrapH(h))
+	e.Router.Add(MethodCONNECT, path, wrapH(h))
 }
 
 // Delete adds a DELETE route > handler to the router.
 func (e *Echo) Delete(path string, h Handler) {
-	e.Router.Add("DELETE", path, wrapH(h))
+	e.Router.Add(MethodDELETE, path, wrapH(h))
 }
 
 // Get adds a GET route > handler to the router.
 func (e *Echo) Get(path string, h Handler) {
-	e.Router.Add("GET", path, wrapH(h))
+	e.Router.Add(MethodGET, path, wrapH(h))
 }
 
 // Head adds a HEAD route > handler to the router.
 func (e *Echo) Head(path string, h Handler) {
-	e.Router.Add("HEAD", path, wrapH(h))
+	e.Router.Add(MethodHEAD, path, wrapH(h))
 }
 
 // Options adds an OPTIONS route > handler to the router.
 func (e *Echo) Options(path string, h Handler) {
-	e.Router.Add("OPTIONS", path, wrapH(h))
+	e.Router.Add(MethodOPTIONS, path, wrapH(h))
 }
 
 // Patch adds a PATCH route > handler to the router.
 func (e *Echo) Patch(path string, h Handler) {
-	e.Router.Add("PATCH", path, wrapH(h))
+	e.Router.Add(MethodPATCH, path, wrapH(h))
 }
 
 // Post adds a POST route > handler to the router.
 func (e *Echo) Post(path string, h Handler) {
-	e.Router.Add("POST", path, wrapH(h))
+	e.Router.Add(MethodPOST, path, wrapH(h))
 }
 
 // Put adds a PUT route > handler to the router.
 func (e *Echo) Put(path string, h Handler) {
-	e.Router.Add("PUT", path, wrapH(h))
+	e.Router.Add(MethodPUT, path, wrapH(h))
 }
 
 // Trace adds a TRACE route > handler to the router.
 func (e *Echo) Trace(path string, h Handler) {
-	e.Router.Add("TRACE", path, wrapH(h))
+	e.Router.Add(MethodTRACE, path, wrapH(h))
 }
 
 // Static serves static files.
@@ -163,7 +187,7 @@ func (e *Echo) Index(file string) {
 }
 
 func (e *Echo) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
-	h, c, s := e.Router.Find(r.Method, r.URL.Path)
+	h, c := e.Router.Find(r.Method, r.URL.Path)
 	c.reset(rw, r)
 	if h != nil {
 		// Middleware
@@ -173,11 +197,7 @@ func (e *Echo) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		// Handler
 		h(c)
 	} else {
-		if s == NotFound {
-			e.notFoundHandler(c)
-		} else if s == NotAllowed {
-			e.methodNotAllowedHandler(c)
-		}
+		e.notFoundHandler(c)
 	}
 	e.pool.Put(c)
 }

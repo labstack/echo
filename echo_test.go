@@ -153,7 +153,6 @@ func TestEchoMethod(t *testing.T) {
 	// if h == nil {
 	// 	t.Error("should find route for GET")
 	// }
-
 }
 
 func TestEchoServeHTTP(t *testing.T) {
@@ -178,12 +177,12 @@ func TestEchoServeHTTP(t *testing.T) {
 	}
 
 	// NotAllowed
-	r, _ = http.NewRequest("POST", "/users", nil)
-	w = httptest.NewRecorder()
-	e.ServeHTTP(w, r)
-	if w.Code != http.StatusMethodNotAllowed {
-		t.Errorf("status code should be 405, found %d", w.Code)
-	}
+	// r, _ = http.NewRequest("POST", "/users", nil)
+	// w = httptest.NewRecorder()
+	// e.ServeHTTP(w, r)
+	// if w.Code != http.StatusMethodNotAllowed {
+	// 	t.Errorf("status code should be 405, found %d", w.Code)
+	// }
 }
 
 func verifyUser(rd io.Reader, t *testing.T) {
