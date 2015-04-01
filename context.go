@@ -54,7 +54,7 @@ func (c *Context) String(n int, s string) {
 	c.Response.Write([]byte(s))
 }
 
-// HTML sends a text/plain response with status code.
+// HTML sends a text/html response with status code.
 func (c *Context) HTML(n int, s string) {
 	c.Response.Header().Set(HeaderContentType, MIMEHTML+"; charset=utf-8")
 	c.Response.WriteHeader(n)
