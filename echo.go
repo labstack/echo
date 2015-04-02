@@ -98,10 +98,10 @@ func (e *Echo) Sub(pfx string) *Echo {
 // Group is simmilar to Sub but excludes inheriting middleware from the parent
 // router.
 func (e *Echo) Group(pfx string) *Echo {
-	s := *e
-	s.prefix = pfx
-	s.middleware = nil
-	return &s
+	g := *e
+	g.prefix = pfx
+	g.middleware = nil
+	return &g
 }
 
 // MaxParam sets the maximum allowed path parameters. Default is 5, good enough
@@ -202,7 +202,10 @@ func (e *Echo) Index(file string) {
 }
 
 func (e *Echo) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
-	h, c, e := e.Router.Find(r.Method, r.URL.Path)
+	h, c, echo := e.Router.Find(r.Method, r.URL.Path)
+	if echo != nil {
+		e = echo
+	}
 	if h == nil {
 		h = e.notFoundHandler
 	}
