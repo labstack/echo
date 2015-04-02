@@ -16,6 +16,7 @@ Echo is a fast HTTP router (zero memory allocation) + micro web framework in Go.
 		- `http.Handler`
 		- `http.HandlerFunc`
 		- `func(http.ResponseWriter, *http.Request)`
+- Sub router
 - Handy encoding/decoding functions.
 - Serve static files, including index.
 
@@ -104,10 +105,18 @@ func main() {
 	e.Get("/users", getUsers)
 	e.Get("/users/:id", getUser)
 
+	// Sub router
+	a := e.Sub("/admin")
+	a.Use(func(c *echo.Context) {
+		// Security check
+	})
+	a.Get("", func(c *echo.Context) {
+		c.String(200, "Welcome to the secured area!")
+	})
+
 	// Start server
 	e.Run(":8080")
 }
-
 ```
 
 ### Benchmark

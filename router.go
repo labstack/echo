@@ -10,8 +10,9 @@ type (
 	node struct {
 		label   byte
 		prefix  string
-		has     ntype // Type of node
+		has     ntype // Type of node it contains
 		handler HandlerFunc
+		eid     uint8 // Echo id
 		edges   edges
 	}
 	edges []*node
@@ -43,27 +44,27 @@ func NewRouter(e *Echo) (r *router) {
 	return
 }
 
-func (r *router) Add(method, path string, h HandlerFunc) {
+func (r *router) Add(method, path string, h HandlerFunc, eid uint8) {
 	i := 0
 	l := len(path)
 	for ; i < l; i++ {
 		if path[i] == ':' {
-			r.insert(method, path[:i], nil, pnode)
+			r.insert(method, path[:i], nil, eid, pnode)
 			for ; i < l && path[i] != '/'; i++ {
 			}
 			if i == l {
-				r.insert(method, path[:i], h, snode)
+				r.insert(method, path[:i], h, eid, snode)
 				return
 			}
-			r.insert(method, path[:i], nil, snode)
+			r.insert(method, path[:i], nil, eid, snode)
 		} else if path[i] == '*' {
-			r.insert(method, path[:i], h, anode)
+			r.insert(method, path[:i], h, eid, anode)
 		}
 	}
-	r.insert(method, path, h, snode)
+	r.insert(method, path, h, eid, snode)
 }
 
-func (r *router) insert(method, path string, h HandlerFunc, has ntype) {
+func (r *router) insert(method, path string, h HandlerFunc, eid uint8, has ntype) {
 	cn := r.trees[method] // Current node as root
 	search := path
 
@@ -79,11 +80,12 @@ func (r *router) insert(method, path string, h HandlerFunc, has ntype) {
 			cn.has = has
 			if h != nil {
 				cn.handler = h
+				cn.eid = eid
 			}
 			return
 		} else if l < pl {
 			// Split the node
-			n := newNode(cn.prefix[l:], cn.has, cn.handler, cn.edges)
+			n := newNode(cn.prefix[l:], cn.has, cn.handler, cn.eid, cn.edges)
 			cn.edges = edges{n} // Add to parent
 
 			// Reset parent node
@@ -91,14 +93,15 @@ func (r *router) insert(method, path string, h HandlerFunc, has ntype) {
 			cn.prefix = cn.prefix[:l]
 			cn.has = snode
 			cn.handler = nil
+			cn.eid = 0
 
 			if l == sl {
 				// At parent node
 				cn.handler = h
+				cn.eid = eid
 			} else {
 				// Need to fork a node
-				n = newNode(search[l:], has, nil, nil)
-				n.handler = h
+				n = newNode(search[l:], has, h, eid, edges{})
 				cn.edges = append(cn.edges, n)
 			}
 			break
@@ -106,10 +109,7 @@ func (r *router) insert(method, path string, h HandlerFunc, has ntype) {
 			search = search[l:]
 			e := cn.findEdge(search[0])
 			if e == nil {
-				n := newNode(search, has, nil, nil)
-				if h != nil {
-					n.handler = h
-				}
+				n := newNode(search, has, h, eid, edges{})
 				cn.edges = append(cn.edges, n)
 				break
 			} else {
@@ -119,22 +119,21 @@ func (r *router) insert(method, path string, h HandlerFunc, has ntype) {
 			// Node already exists
 			if h != nil {
 				cn.handler = h
+				cn.eid = eid
 			}
 			break
 		}
 	}
 }
 
-func newNode(pfx string, has ntype, h HandlerFunc, e edges) (n *node) {
+func newNode(pfx string, has ntype, h HandlerFunc, eid uint8, e edges) (n *node) {
 	n = &node{
 		label:   pfx[0],
 		prefix:  pfx,
 		has:     has,
 		handler: h,
+		eid:     eid,
 		edges:   e,
-	}
-	if e == nil {
-		n.edges = edges{}
 	}
 	return
 }
@@ -160,7 +159,7 @@ func lcp(a, b string) (i int) {
 	return
 }
 
-func (r *router) Find(method, path string) (h HandlerFunc, c *Context) {
+func (r *router) Find(method, path string) (h HandlerFunc, c *Context, eid uint8) {
 	c = r.echo.pool.Get().(*Context)
 	cn := r.trees[method] // Current node as root
 	search := path
@@ -169,6 +168,7 @@ func (r *router) Find(method, path string) (h HandlerFunc, c *Context) {
 	for {
 		if search == "" || search == cn.prefix {
 			h = cn.handler
+			eid = cn.eid
 			return
 		}
 
@@ -228,7 +228,7 @@ func (ps Params) Get(n string) (v string) {
 }
 
 func (r *router) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	h, c := r.Find(req.Method, req.URL.Path)
+	h, c, _ := r.Find(req.Method, req.URL.Path)
 	c.Response.ResponseWriter = rw
 	if h != nil {
 		h(c)

@@ -7,8 +7,8 @@ import (
 
 func TestRouterStatic(t *testing.T) {
 	r := New().Router
-	r.Add(MethodGET, "/folders/files/bolt.gif", func(c *Context) {})
-	h, _ := r.Find(MethodGET, "/folders/files/bolt.gif")
+	r.Add(MethodGET, "/folders/files/echo.gif", func(c *Context) {}, 0)
+	h, _, _ := r.Find(MethodGET, "/folders/files/echo.gif")
 	if h == nil {
 		t.Fatal("handle not found")
 	}
@@ -16,8 +16,8 @@ func TestRouterStatic(t *testing.T) {
 
 func TestRouterParam(t *testing.T) {
 	r := New().Router
-	r.Add(MethodGET, "/users/:id", func(c *Context) {})
-	h, c := r.Find(MethodGET, "/users/1")
+	r.Add(MethodGET, "/users/:id", func(c *Context) {}, 0)
+	h, c, _ := r.Find(MethodGET, "/users/1")
 	if h == nil {
 		t.Fatal("handle not found")
 	}
@@ -29,8 +29,8 @@ func TestRouterParam(t *testing.T) {
 
 func TestRouterCatchAll(t *testing.T) {
 	r := New().Router
-	r.Add(MethodGET, "/static/*", func(c *Context) {})
-	h, _ := r.Find(MethodGET, "/static/*")
+	r.Add(MethodGET, "/static/*", func(c *Context) {}, 0)
+	h, _, _ := r.Find(MethodGET, "/static/*")
 	if h == nil {
 		t.Fatal("handle not found")
 	}
@@ -38,8 +38,8 @@ func TestRouterCatchAll(t *testing.T) {
 
 func TestRouterMicroParam(t *testing.T) {
 	r := New().Router
-	r.Add(MethodGET, "/:a/:b/:c", func(c *Context) {})
-	h, c := r.Find(MethodGET, "/a/b/c")
+	r.Add(MethodGET, "/:a/:b/:c", func(c *Context) {}, 0)
+	h, c, _ := r.Find(MethodGET, "/a/b/c")
 	if h == nil {
 		t.Fatal("handle not found")
 	}
@@ -59,7 +59,7 @@ func TestRouterMicroParam(t *testing.T) {
 
 func (n *node) printTree(pfx string, tail bool) {
 	p := prefix(tail, pfx, "└── ", "├── ")
-	fmt.Printf("%s%s has=%d\n", p, n.prefix, n.has)
+	fmt.Printf("%s%s has=%d, h=%v, eid=%d\n", p, n.prefix, n.has, n.handler, n.eid)
 
 	nodes := n.edges
 	l := len(nodes)

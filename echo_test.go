@@ -34,7 +34,7 @@ func TestEchoIndex(t *testing.T) {
 	e := New()
 	e.Index("example/public/index.html")
 	w := httptest.NewRecorder()
-	r, _ := http.NewRequest("GET", "/", nil)
+	r, _ := http.NewRequest(MethodGET, "/", nil)
 	e.ServeHTTP(w, r)
 	if w.Code != 200 {
 		t.Errorf("status code should be 200, found %d", w.Code)
@@ -45,7 +45,7 @@ func TestEchoStatic(t *testing.T) {
 	e := New()
 	e.Static("/js", "example/public/js")
 	w := httptest.NewRecorder()
-	r, _ := http.NewRequest("GET", "/js/main.js", nil)
+	r, _ := http.NewRequest(MethodGET, "/js/main.js", nil)
 	e.ServeHTTP(w, r)
 	if w.Code != 200 {
 		t.Errorf("status code should be 200, found %d", w.Code)
@@ -98,7 +98,7 @@ func TestEchoMiddleware(t *testing.T) {
 	})
 
 	w := httptest.NewRecorder()
-	r, _ := http.NewRequest("GET", "/hello", nil)
+	r, _ := http.NewRequest(MethodGET, "/hello", nil)
 	e.ServeHTTP(w, r)
 	if b.String() != "abcdef" {
 		t.Errorf("buffer should be abcdef, found %s", b.String())
@@ -116,7 +116,7 @@ func TestEchoHandler(t *testing.T) {
 		c.String(http.StatusOK, "1")
 	})
 	w := httptest.NewRecorder()
-	r, _ := http.NewRequest("GET", "/1", nil)
+	r, _ := http.NewRequest(MethodGET, "/1", nil)
 	e.ServeHTTP(w, r)
 	if w.Body.String() != "1" {
 		t.Error("body should be 1")
@@ -127,7 +127,7 @@ func TestEchoHandler(t *testing.T) {
 		w.Write([]byte("2"))
 	}))
 	w = httptest.NewRecorder()
-	r, _ = http.NewRequest("GET", "/2", nil)
+	r, _ = http.NewRequest(MethodGET, "/2", nil)
 	e.ServeHTTP(w, r)
 	if w.Body.String() != "2" {
 		t.Error("body should be 2")
@@ -138,10 +138,41 @@ func TestEchoHandler(t *testing.T) {
 		w.Write([]byte("3"))
 	})
 	w = httptest.NewRecorder()
-	r, _ = http.NewRequest("GET", "/3", nil)
+	r, _ = http.NewRequest(MethodGET, "/3", nil)
 	e.ServeHTTP(w, r)
 	if w.Body.String() != "3" {
 		t.Error("body should be 3")
+	}
+}
+
+func TestEchoSub(t *testing.T) {
+	b := new(bytes.Buffer)
+
+	e := New()
+	e.Use(func(*Context) {
+		b.WriteString("1")
+	})
+	e.Get("/users", func(*Context) {})
+
+	s := e.Sub("/sub")
+	s.Use(func(*Context) {
+		b.WriteString("2")
+	})
+	s.Get("", func(*Context) {})
+
+	w := httptest.NewRecorder()
+	r, _ := http.NewRequest(MethodGET, "/users", nil)
+	e.ServeHTTP(w, r)
+	if b.String() != "1" {
+		t.Errorf("should only execute middleware 1, executed %s", b.String())
+	}
+
+	b.Reset()
+	w = httptest.NewRecorder()
+	r, _ = http.NewRequest(MethodGET, "/sub", nil)
+	e.ServeHTTP(w, r)
+	if b.String() != "12" {
+		t.Errorf("should execute middleware 1 & 2, executed %s", b.String())
 	}
 }
 
@@ -159,17 +190,17 @@ func TestEchoServeHTTP(t *testing.T) {
 	e := New()
 
 	// OK
-	e.Get("/users", func(c *Context) {
+	e.Get("/users", func(*Context) {
 	})
 	w := httptest.NewRecorder()
-	r, _ := http.NewRequest("GET", "/users", nil)
+	r, _ := http.NewRequest(MethodGET, "/users", nil)
 	e.ServeHTTP(w, r)
 	if w.Code != http.StatusOK {
 		t.Errorf("status code should be 200, found %d", w.Code)
 	}
 
 	// NotFound
-	r, _ = http.NewRequest("GET", "/user", nil)
+	r, _ = http.NewRequest(MethodGET, "/user", nil)
 	w = httptest.NewRecorder()
 	e.ServeHTTP(w, r)
 	if w.Code != http.StatusNotFound {

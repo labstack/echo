@@ -39,7 +39,7 @@ func TestContext(t *testing.T) {
 
 	b, _ := json.Marshal(u)
 	w := httptest.NewRecorder()
-	r, _ := http.NewRequest("PUT", "/users/1", bytes.NewReader(b))
+	r, _ := http.NewRequest(MethodPUT, "/users/1", bytes.NewReader(b))
 	r.Header.Add(HeaderContentType, MIMEJSON)
 	e.ServeHTTP(w, r)
 	if w.Code != http.StatusCreated {

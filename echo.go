@@ -8,7 +8,9 @@ import (
 
 type (
 	Echo struct {
+		id                         uint8
 		Router                     *router
+		prefix                     string
 		middleware                 []MiddlewareFunc
 		maxParam                   byte
 		notFoundHandler            HandlerFunc
@@ -16,10 +18,10 @@ type (
 		internalServerErrorHandler HandlerFunc
 		pool                       sync.Pool
 	}
-	Handler        interface{}
-	HandlerFunc    func(*Context)
 	Middleware     interface{}
 	MiddlewareFunc func(HandlerFunc) HandlerFunc
+	Handler        interface{}
+	HandlerFunc    func(*Context)
 )
 
 const (
@@ -43,7 +45,9 @@ const (
 )
 
 var (
-	methods = []string{
+	subs = [128]*Echo{} // Sub routers
+
+	methods = [...]string{
 		MethodCONNECT,
 		MethodDELETE,
 		MethodGET,
@@ -76,22 +80,25 @@ func New() (e *Echo) {
 			Response: &response{},
 			params:   make(Params, e.maxParam),
 			store:    make(store),
-			echo:     e,
+			echo:     e, // TODO: Do we need it?
 		}
 	}
 	return
 }
 
 // NOP
-func (h HandlerFunc) ServeHTTP(r http.ResponseWriter, w *http.Request) {
+func (h HandlerFunc) ServeHTTP(http.ResponseWriter, *http.Request) {
 }
 
-// func (b *Echo) Sub(prefix string, m ...MiddlewareFunc) *Echo {
-// 	return &Echo{
-// prefix:   b.prefix + prefix,
-// middleware: append(b.handlers, handlers...),
-// 	}
-// }
+// Sub creates a new sub router, inherits all properties from the parent router
+// including middleware.
+func (e *Echo) Sub(pfx string) *Echo {
+	s := *e
+	s.id++
+	s.prefix = pfx
+	subs[s.id] = &s
+	return &s
+}
 
 // MaxParam sets the maximum allowed path parameters. Default is 5, good enough
 // for many users.
@@ -123,47 +130,51 @@ func (e *Echo) Use(m ...Middleware) {
 
 // Connect adds a CONNECT route > handler to the router.
 func (e *Echo) Connect(path string, h Handler) {
-	e.Router.Add(MethodCONNECT, path, wrapH(h))
+	e.add(MethodCONNECT, path, h)
 }
 
 // Delete adds a DELETE route > handler to the router.
 func (e *Echo) Delete(path string, h Handler) {
-	e.Router.Add(MethodDELETE, path, wrapH(h))
+	e.add(MethodDELETE, path, h)
 }
 
 // Get adds a GET route > handler to the router.
 func (e *Echo) Get(path string, h Handler) {
-	e.Router.Add(MethodGET, path, wrapH(h))
+	e.add(MethodGET, path, h)
 }
 
 // Head adds a HEAD route > handler to the router.
 func (e *Echo) Head(path string, h Handler) {
-	e.Router.Add(MethodHEAD, path, wrapH(h))
+	e.add(MethodHEAD, path, h)
 }
 
 // Options adds an OPTIONS route > handler to the router.
 func (e *Echo) Options(path string, h Handler) {
-	e.Router.Add(MethodOPTIONS, path, wrapH(h))
+	e.add(MethodOPTIONS, path, h)
 }
 
 // Patch adds a PATCH route > handler to the router.
 func (e *Echo) Patch(path string, h Handler) {
-	e.Router.Add(MethodPATCH, path, wrapH(h))
+	e.add(MethodPATCH, path, h)
 }
 
 // Post adds a POST route > handler to the router.
 func (e *Echo) Post(path string, h Handler) {
-	e.Router.Add(MethodPOST, path, wrapH(h))
+	e.add(MethodPOST, path, h)
 }
 
 // Put adds a PUT route > handler to the router.
 func (e *Echo) Put(path string, h Handler) {
-	e.Router.Add(MethodPUT, path, wrapH(h))
+	e.add(MethodPUT, path, h)
 }
 
 // Trace adds a TRACE route > handler to the router.
 func (e *Echo) Trace(path string, h Handler) {
-	e.Router.Add(MethodTRACE, path, wrapH(h))
+	e.add(MethodTRACE, path, h)
+}
+
+func (e *Echo) add(method, path string, h Handler) {
+	e.Router.Add(method, e.prefix+path, wrapH(h), e.id)
 }
 
 // Static serves static files.
@@ -187,18 +198,21 @@ func (e *Echo) Index(file string) {
 }
 
 func (e *Echo) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
-	h, c := e.Router.Find(r.Method, r.URL.Path)
-	c.reset(rw, r)
-	if h != nil {
-		// Middleware
-		for i := len(e.middleware) - 1; i >= 0; i-- {
-			h = e.middleware[i](h)
-		}
-		// Handler
-		h(c)
-	} else {
-		e.notFoundHandler(c)
+	h, c, eid := e.Router.Find(r.Method, r.URL.Path)
+	if h == nil {
+		h = e.notFoundHandler
 	}
+	if eid != 0 {
+		// It's a sub router
+		e = subs[eid]
+	}
+	c.reset(rw, r, e)
+	// Middleware
+	for i := len(e.middleware) - 1; i >= 0; i-- {
+		h = e.middleware[i](h)
+	}
+	// Handler
+	h(c)
 	e.pool.Put(c)
 }
 

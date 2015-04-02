@@ -82,7 +82,8 @@ func (c *Context) Redirect(n int, url string) {
 	http.Redirect(c.Response, c.Request, url, n)
 }
 
-func (c *Context) reset(rw http.ResponseWriter, r *http.Request) {
+func (c *Context) reset(rw http.ResponseWriter, r *http.Request, e *Echo) {
 	c.Response.reset(rw)
 	c.Request = r
+	c.echo = e
 }
