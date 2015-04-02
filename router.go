@@ -12,7 +12,7 @@ type (
 		prefix  string
 		has     ntype // Type of node it contains
 		handler HandlerFunc
-		eid     uint8 // Echo id
+		echo    *Echo
 		edges   edges
 	}
 	edges []*node
@@ -44,27 +44,27 @@ func NewRouter(e *Echo) (r *router) {
 	return
 }
 
-func (r *router) Add(method, path string, h HandlerFunc, eid uint8) {
+func (r *router) Add(method, path string, h HandlerFunc, echo *Echo) {
 	i := 0
 	l := len(path)
 	for ; i < l; i++ {
 		if path[i] == ':' {
-			r.insert(method, path[:i], nil, eid, pnode)
+			r.insert(method, path[:i], nil, echo, pnode)
 			for ; i < l && path[i] != '/'; i++ {
 			}
 			if i == l {
-				r.insert(method, path[:i], h, eid, snode)
+				r.insert(method, path[:i], h, echo, snode)
 				return
 			}
-			r.insert(method, path[:i], nil, eid, snode)
+			r.insert(method, path[:i], nil, echo, snode)
 		} else if path[i] == '*' {
-			r.insert(method, path[:i], h, eid, anode)
+			r.insert(method, path[:i], h, echo, anode)
 		}
 	}
-	r.insert(method, path, h, eid, snode)
+	r.insert(method, path, h, echo, snode)
 }
 
-func (r *router) insert(method, path string, h HandlerFunc, eid uint8, has ntype) {
+func (r *router) insert(method, path string, h HandlerFunc, echo *Echo, has ntype) {
 	cn := r.trees[method] // Current node as root
 	search := path
 
@@ -80,12 +80,12 @@ func (r *router) insert(method, path string, h HandlerFunc, eid uint8, has ntype
 			cn.has = has
 			if h != nil {
 				cn.handler = h
-				cn.eid = eid
+				cn.echo = echo
 			}
 			return
 		} else if l < pl {
 			// Split the node
-			n := newNode(cn.prefix[l:], cn.has, cn.handler, cn.eid, cn.edges)
+			n := newNode(cn.prefix[l:], cn.has, cn.handler, cn.echo, cn.edges)
 			cn.edges = edges{n} // Add to parent
 
 			// Reset parent node
@@ -93,15 +93,15 @@ func (r *router) insert(method, path string, h HandlerFunc, eid uint8, has ntype
 			cn.prefix = cn.prefix[:l]
 			cn.has = snode
 			cn.handler = nil
-			cn.eid = 0
+			cn.echo = nil
 
 			if l == sl {
 				// At parent node
 				cn.handler = h
-				cn.eid = eid
+				cn.echo = echo
 			} else {
 				// Need to fork a node
-				n = newNode(search[l:], has, h, eid, edges{})
+				n = newNode(search[l:], has, h, echo, edges{})
 				cn.edges = append(cn.edges, n)
 			}
 			break
@@ -109,7 +109,7 @@ func (r *router) insert(method, path string, h HandlerFunc, eid uint8, has ntype
 			search = search[l:]
 			e := cn.findEdge(search[0])
 			if e == nil {
-				n := newNode(search, has, h, eid, edges{})
+				n := newNode(search, has, h, echo, edges{})
 				cn.edges = append(cn.edges, n)
 				break
 			} else {
@@ -119,20 +119,20 @@ func (r *router) insert(method, path string, h HandlerFunc, eid uint8, has ntype
 			// Node already exists
 			if h != nil {
 				cn.handler = h
-				cn.eid = eid
+				cn.echo = echo
 			}
 			break
 		}
 	}
 }
 
-func newNode(pfx string, has ntype, h HandlerFunc, eid uint8, e edges) (n *node) {
+func newNode(pfx string, has ntype, h HandlerFunc, echo *Echo, e edges) (n *node) {
 	n = &node{
 		label:   pfx[0],
 		prefix:  pfx,
 		has:     has,
 		handler: h,
-		eid:     eid,
+		echo:    echo,
 		edges:   e,
 	}
 	return
@@ -159,7 +159,7 @@ func lcp(a, b string) (i int) {
 	return
 }
 
-func (r *router) Find(method, path string) (h HandlerFunc, c *Context, eid uint8) {
+func (r *router) Find(method, path string) (h HandlerFunc, c *Context, echo *Echo) {
 	c = r.echo.pool.Get().(*Context)
 	cn := r.trees[method] // Current node as root
 	search := path
@@ -168,7 +168,7 @@ func (r *router) Find(method, path string) (h HandlerFunc, c *Context, eid uint8
 	for {
 		if search == "" || search == cn.prefix {
 			h = cn.handler
-			eid = cn.eid
+			echo = cn.echo
 			return
 		}
 

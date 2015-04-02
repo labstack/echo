@@ -8,7 +8,6 @@ import (
 
 type (
 	Echo struct {
-		id                         uint8
 		Router                     *router
 		prefix                     string
 		middleware                 []MiddlewareFunc
@@ -45,8 +44,6 @@ const (
 )
 
 var (
-	subs = [128]*Echo{} // Sub routers
-
 	methods = [...]string{
 		MethodCONNECT,
 		MethodDELETE,
@@ -80,7 +77,7 @@ func New() (e *Echo) {
 			Response: &response{},
 			params:   make(Params, e.maxParam),
 			store:    make(store),
-			echo:     e, // TODO: Do we need it?
+			echo:     e, // TODO: Do we need this?
 		}
 	}
 	return
@@ -90,13 +87,20 @@ func New() (e *Echo) {
 func (h HandlerFunc) ServeHTTP(http.ResponseWriter, *http.Request) {
 }
 
-// Sub creates a new sub router, inherits all properties from the parent router
-// including middleware.
+// Sub creates a new sub router. It inherits all properties from the parent
+// router, including middleware.
 func (e *Echo) Sub(pfx string) *Echo {
 	s := *e
-	s.id++
 	s.prefix = pfx
-	subs[s.id] = &s
+	return &s
+}
+
+// Group is simmilar to Sub but excludes inheriting middleware from the parent
+// router.
+func (e *Echo) Group(pfx string) *Echo {
+	s := *e
+	s.prefix = pfx
+	s.middleware = nil
 	return &s
 }
 
@@ -174,7 +178,7 @@ func (e *Echo) Trace(path string, h Handler) {
 }
 
 func (e *Echo) add(method, path string, h Handler) {
-	e.Router.Add(method, e.prefix+path, wrapH(h), e.id)
+	e.Router.Add(method, e.prefix+path, wrapH(h), e)
 }
 
 // Static serves static files.
@@ -198,13 +202,9 @@ func (e *Echo) Index(file string) {
 }
 
 func (e *Echo) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
-	h, c, eid := e.Router.Find(r.Method, r.URL.Path)
+	h, c, e := e.Router.Find(r.Method, r.URL.Path)
 	if h == nil {
 		h = e.notFoundHandler
-	}
-	if eid != 0 {
-		// It's a sub router
-		e = subs[eid]
 	}
 	c.reset(rw, r, e)
 	// Middleware

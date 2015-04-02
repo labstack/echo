@@ -105,13 +105,23 @@ func main() {
 	e.Get("/users", getUsers)
 	e.Get("/users/:id", getUser)
 
-	// Sub router
-	a := e.Sub("/admin")
-	a.Use(func(c *echo.Context) {
-		// Security check
+	//****************//
+	//   Sub router   //
+	//****************//
+	// Sub - inherits parent middleware
+	sub := e.Sub("/sub")
+	sub.Use(func(c *echo.Context) { // Middleware
 	})
-	a.Get("", func(c *echo.Context) {
-		c.String(200, "Welcome to the secured area!")
+	sub.Get("/home", func(c *echo.Context) {
+		c.String(200, "Sub route /sub/welcome")
+	})
+
+	// Group - doesn't inherit parent middleware
+	grp := e.Group("/group")
+	grp.Use(func(c *echo.Context) { // Middleware
+	})
+	grp.Get("/home", func(c *echo.Context) {
+		c.String(200, "Group route /group/welcome")
 	})
 
 	// Start server
@@ -125,29 +135,29 @@ Based on [julienschmidt/go-http-routing-benchmark] (https://github.com/vishr/go-
 > Echo: 43700 ns/op, 0 B/op, 0 allocs/op
 
 ```
-BenchmarkAce_GithubAll	   		20000	     69126 ns/op	   13792 B/op	     167 allocs/op
-BenchmarkBear_GithubAll	   		10000	    252699 ns/op	   79952 B/op	     943 allocs/op
-BenchmarkBeego_GithubAll		 3000	    485692 ns/op	  146272 B/op	    2092 allocs/op
-BenchmarkEcho_GithubAll	   		30000	     43700 ns/op	       0 B/op	       0 allocs/op
-BenchmarkBone_GithubAll	    	 1000	   2158467 ns/op	  648016 B/op	    8119 allocs/op
-BenchmarkDenco_GithubAll   		20000	     83022 ns/op	   20224 B/op	     167 allocs/op
-BenchmarkGin_GithubAll	   		20000	     72317 ns/op	   13792 B/op	     167 allocs/op
-BenchmarkGocraftWeb_GithubAll	 5000	    381554 ns/op	  133280 B/op	    1889 allocs/op
-BenchmarkGoji_GithubAll	    	 3000	    605232 ns/op	   56113 B/op	     334 allocs/op
-BenchmarkGoJsonRest_GithubAll	 5000	    467810 ns/op	  135995 B/op	    2940 allocs/op
-BenchmarkGoRestful_GithubAll	  200	   9345441 ns/op	  707604 B/op	    7558 allocs/op
-BenchmarkGorillaMux_GithubAll	  200	   7043040 ns/op	  153136 B/op	    1791 allocs/op
-BenchmarkHttpRouter_GithubAll	30000	     52251 ns/op	   13792 B/op	     167 allocs/op
-BenchmarkHttpTreeMux_GithubAll	10000	    145114 ns/op	   56112 B/op	     334 allocs/op
-BenchmarkKocha_GithubAll	    10000	    145061 ns/op	   23304 B/op	     843 allocs/op
-BenchmarkMacaron_GithubAll	     2000	    697957 ns/op	  224960 B/op	    2315 allocs/op
-BenchmarkMartini_GithubAll	      100	  11651997 ns/op	  237953 B/op	    2686 allocs/op
-BenchmarkPat_GithubAll	          300	   3951799 ns/op	 1504101 B/op	   32222 allocs/op
-BenchmarkRevel_GithubAll	     2000	   1129370 ns/op	  345553 B/op	    5918 allocs/op
-BenchmarkRivet_GithubAll	    10000	    246564 ns/op	   84272 B/op	    1079 allocs/op
-BenchmarkTango_GithubAll	      500	   3544850 ns/op	 1338664 B/op	   27736 allocs/op
-BenchmarkTigerTonic_GithubAll	 2000	    979370 ns/op	  241088 B/op	    6052 allocs/op
-BenchmarkTraffic_GithubAll	      200	   7508743 ns/op	 2664762 B/op	   22390 allocs/op
-BenchmarkVulcan_GithubAll	     5000	    286727 ns/op	   19894 B/op	     609 allocs/op
-BenchmarkZeus_GithubAll	         2000	    798335 ns/op	  300688 B/op	    2648 allocs/op
+BenchmarkAce_GithubAll	   	   20000	     65328 ns/op	   13792 B/op	     167 allocs/op
+BenchmarkBear_GithubAll	   	   10000	    241852 ns/op	   79952 B/op	     943 allocs/op
+BenchmarkBeego_GithubAll	    3000	    458234 ns/op	  146272 B/op	    2092 allocs/op
+BenchmarkBone_GithubAll	    	1000	   1923508 ns/op	  648016 B/op	    8119 allocs/op
+BenchmarkDenco_GithubAll	   20000	     81294 ns/op	   20224 B/op	     167 allocs/op
+BenchmarkEcho_GithubAll	   	   30000	     42728 ns/op	       0 B/op	       0 allocs/op
+BenchmarkGin_GithubAll	   	   20000	     69373 ns/op	   13792 B/op	     167 allocs/op
+BenchmarkGocraftWeb_GithubAll  10000	    370978 ns/op	  133280 B/op	    1889 allocs/op
+BenchmarkGoji_GithubAll	    	3000	    542766 ns/op	   56113 B/op	     334 allocs/op
+BenchmarkGoJsonRest_GithubAll	5000	    452551 ns/op	  135995 B/op	    2940 allocs/op
+BenchmarkGoRestful_GithubAll	 200	   9500204 ns/op	  707604 B/op	    7558 allocs/op
+BenchmarkGorillaMux_GithubAll	 200	   6770545 ns/op	  153137 B/op	    1791 allocs/op
+BenchmarkHttpRouter_GithubAll  30000	     56097 ns/op	   13792 B/op	     167 allocs/op
+BenchmarkHttpTreeMux_GithubAll 10000	    143175 ns/op	   56112 B/op	     334 allocs/op
+BenchmarkKocha_GithubAll	   10000	    147959 ns/op	   23304 B/op	     843 allocs/op
+BenchmarkMacaron_GithubAll	    2000	    724650 ns/op	  224960 B/op	    2315 allocs/op
+BenchmarkMartini_GithubAll	     100	  10926021 ns/op	  237953 B/op	    2686 allocs/op
+BenchmarkPat_GithubAll	     	 300	   4525114 ns/op	 1504101 B/op	   32222 allocs/op
+BenchmarkRevel_GithubAll	    2000	   1172963 ns/op	  345553 B/op	    5918 allocs/op
+BenchmarkRivet_GithubAll	   10000	    249104 ns/op	   84272 B/op	    1079 allocs/op
+BenchmarkTango_GithubAll	     300	   4012826 ns/op	 1368581 B/op	   29157 allocs/op
+BenchmarkTigerTonic_GithubAll	2000	    975450 ns/op	  241088 B/op	    6052 allocs/op
+BenchmarkTraffic_GithubAll	     200	   7540377 ns/op	 2664762 B/op	   22390 allocs/op
+BenchmarkVulcan_GithubAll	    5000	    307241 ns/op	   19894 B/op	     609 allocs/op
+BenchmarkZeus_GithubAll	        2000	    752907 ns/op	  300688 B/op	    2648 allocs/op
 ```

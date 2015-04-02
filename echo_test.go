@@ -145,7 +145,7 @@ func TestEchoHandler(t *testing.T) {
 	}
 }
 
-func TestEchoSub(t *testing.T) {
+func TestEchoSubGroup(t *testing.T) {
 	b := new(bytes.Buffer)
 
 	e := New()
@@ -158,7 +158,13 @@ func TestEchoSub(t *testing.T) {
 	s.Use(func(*Context) {
 		b.WriteString("2")
 	})
-	s.Get("", func(*Context) {})
+	s.Get("/home", func(*Context) {})
+
+	g := e.Group("/group")
+	g.Use(func(*Context) {
+		b.WriteString("3")
+	})
+	g.Get("/home", func(*Context) {})
 
 	w := httptest.NewRecorder()
 	r, _ := http.NewRequest(MethodGET, "/users", nil)
@@ -169,10 +175,18 @@ func TestEchoSub(t *testing.T) {
 
 	b.Reset()
 	w = httptest.NewRecorder()
-	r, _ = http.NewRequest(MethodGET, "/sub", nil)
+	r, _ = http.NewRequest(MethodGET, "/sub/home", nil)
 	e.ServeHTTP(w, r)
 	if b.String() != "12" {
 		t.Errorf("should execute middleware 1 & 2, executed %s", b.String())
+	}
+
+	b.Reset()
+	w = httptest.NewRecorder()
+	r, _ = http.NewRequest(MethodGET, "/group/home", nil)
+	e.ServeHTTP(w, r)
+	if b.String() != "3" {
+		t.Errorf("should execute middleware 3, executed %s", b.String())
 	}
 }
 
