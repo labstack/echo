@@ -132,7 +132,7 @@ func main() {
 ### Benchmark
 Based on [julienschmidt/go-http-routing-benchmark] (https://github.com/vishr/go-http-routing-benchmark), April 1, 2015
 ##### [GitHub API](http://developer.github.com/v3)
-> Echo: 43700 ns/op, 0 B/op, 0 allocs/op
+> Echo: 42728 ns/op, 0 B/op, 0 allocs/op
 
 ```
 BenchmarkAce_GithubAll	   	   20000	     65328 ns/op	   13792 B/op	     167 allocs/op
