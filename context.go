@@ -2,6 +2,7 @@ package echo
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 )
@@ -38,7 +39,8 @@ func (c *Context) Bind(i interface{}) bool {
 		dec := json.NewDecoder(c.Request.Body)
 		err = dec.Decode(i)
 	} else {
-		// TODO:
+		// TODO: add more payload types
+		err = errors.New("Unsupported payload type")
 	}
 	if err != nil {
 		c.echo.internalServerErrorHandler(c)
