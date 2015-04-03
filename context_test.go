@@ -29,7 +29,7 @@ func TestContext(t *testing.T) {
 		}
 
 		// Bind & JSON
-		if c.Bind(u) {
+		if err := c.Bind(u); err == nil {
 			c.JSON(http.StatusCreated, u)
 		}
 
