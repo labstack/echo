@@ -1,6 +1,7 @@
 package echo
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"sync"
@@ -55,6 +56,11 @@ var (
 		MethodPUT,
 		MethodTRACE,
 	}
+
+	// Errors
+	ErrUnsupportedContentType = errors.New("echo: unsupported content type")
+	ErrBindJSON               = errors.New("echo: bind json error")
+	ErrRenderJSON             = errors.New("echo: render json error")
 )
 
 // New creates a echo instance.

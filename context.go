@@ -31,20 +31,17 @@ func (c *Context) Param(n string) string {
 }
 
 // Bind decodes the payload into provided type based on Content-Type header.
-func (c *Context) Bind(i interface{}) bool {
-	var err error
+func (c *Context) Bind(i interface{}) (err error) {
 	ct := c.Request.Header.Get(HeaderContentType)
 	if strings.HasPrefix(ct, MIMEJSON) {
 		dec := json.NewDecoder(c.Request.Body)
-		err = dec.Decode(i)
+		if err = dec.Decode(i); err != nil {
+			err = ErrBindJSON
+		}
 	} else {
-		// TODO:
+		err = ErrUnsupportedContentType
 	}
-	if err != nil {
-		c.echo.internalServerErrorHandler(c)
-		return false
-	}
-	return true
+	return
 }
 
 // String sends a text/plain response with status code.
@@ -55,13 +52,14 @@ func (c *Context) String(n int, s string) {
 }
 
 // JSON sends an application/json response with status code.
-func (c *Context) JSON(n int, i interface{}) {
+func (c *Context) JSON(n int, i interface{}) (err error) {
 	enc := json.NewEncoder(c.Response)
 	c.Response.Header().Set(HeaderContentType, MIMEJSON+"; charset=utf-8")
 	c.Response.WriteHeader(n)
 	if err := enc.Encode(i); err != nil {
-		c.echo.internalServerErrorHandler(c)
+		err = ErrRenderJSON
 	}
+	return
 }
 
 // func (c *Context) File(n int, file, name string) {
