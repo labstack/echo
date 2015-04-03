@@ -225,8 +225,26 @@ func (e *Echo) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	e.pool.Put(c)
 }
 
+// Run a server
 func (e *Echo) Run(addr string) {
 	log.Fatal(http.ListenAndServe(addr, e))
+}
+
+// RunTLS a server
+func (e *Echo) RunTLS(addr, certFile, keyFile string) {
+	log.Fatal(http.ListenAndServeTLS(addr, certFile, keyFile, e))
+}
+
+// RunServer runs a custom server
+func (e *Echo) RunServer(server *http.Server) {
+	server.Handler = e
+	log.Fatal(server.ListenAndServe())
+}
+
+// RunTLSServer runs a custom server with TLS configuration
+func (e *Echo) RunTLSServer(server *http.Server, certFile, keyFile string) {
+	server.Handler = e
+	log.Fatal(server.ListenAndServeTLS(certFile, keyFile))
 }
 
 // wraps Middleware
