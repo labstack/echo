@@ -38,6 +38,7 @@ func (c *Context) Bind(i interface{}) (err error) {
 		if err = dec.Decode(i); err != nil {
 			err = ErrBindJSON
 		}
+	} else if strings.HasPrefix(ct, MIMEForm) {
 	} else {
 		err = ErrUnsupportedContentType
 	}

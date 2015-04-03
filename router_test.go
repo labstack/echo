@@ -57,9 +57,17 @@ func TestRouterMicroParam(t *testing.T) {
 	}
 }
 
+func TestRouterConflict(t *testing.T) {
+	r := New().Router
+	r.Add("GET", "/users/new", func(*Context) {}, nil)
+	r.Add("GET", "/users/wen", func(*Context) {}, nil)
+	r.Add("GET", "/users/:id", func(*Context) {}, nil)
+	r.trees["GET"].printTree("", true)
+}
+
 func (n *node) printTree(pfx string, tail bool) {
 	p := prefix(tail, pfx, "└── ", "├── ")
-	fmt.Printf("%s%s has=%d, h=%v, eid=%d\n", p, n.prefix, n.has, n.handler, n.echo)
+	fmt.Printf("%s%s has=%d, h=%v, echo=%d\n", p, n.prefix, n.has, n.handler, n.echo)
 
 	nodes := n.edges
 	l := len(nodes)

@@ -35,8 +35,10 @@ const (
 	MethodPUT     = "PUT"
 	MethodTRACE   = "TRACE"
 
-	MIMEJSON = "application/json"
-	MIMEText = "text/plain"
+	MIMEJSON          = "application/json"
+	MIMEText          = "text/plain"
+	MIMEForm          = "application/x-www-form-urlencoded"
+	MIMEMultipartForm = "multipart/form-data"
 
 	HeaderAccept             = "Accept"
 	HeaderContentDisposition = "Content-Disposition"

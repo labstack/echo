@@ -167,6 +167,7 @@ func (r *router) Find(method, path string) (h HandlerFunc, c *Context, echo *Ech
 
 	for {
 		if search == "" || search == cn.prefix {
+			// Found
 			h = cn.handler
 			echo = cn.echo
 			return
@@ -210,10 +211,8 @@ func (r *router) Find(method, path string) (h HandlerFunc, c *Context, echo *Ech
 			}
 			cn = e
 			continue
-		} else {
-			// Not found
-			return
 		}
+		return
 	}
 }
 
