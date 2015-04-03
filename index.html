@@ -55,7 +55,7 @@
 </li>
 </ul>
 </li>
-<li>Sub/Group router</li>
+<li>Sub/Group routing</li>
 <li>Handy encoding/decoding functions.</li>
 <li>Serve static files, including index.</li>
 </ul>
@@ -99,10 +99,14 @@
 
 <span class="pl-k">func</span> <span class="pl-en">createUser</span>(<span class="pl-v">c</span> *<span class="pl-v">echo</span>.<span class="pl-v">Context</span>) {
     <span class="pl-smi">u</span> <span class="pl-k">:=</span> <span class="pl-c1">new</span>(user)
-    <span class="pl-k">if</span> c.<span class="pl-c1">Bind</span>(u) {
+    <span class="pl-k">if</span> <span class="pl-smi">err</span> <span class="pl-k">:=</span> c.<span class="pl-c1">Bind</span>(u); err == <span class="pl-c1">nil</span> {
         users[u.<span class="pl-smi">ID</span>] = *u
-        c.<span class="pl-c1">JSON</span>(http.<span class="pl-smi">StatusCreated</span>, u)
+        <span class="pl-k">if</span> <span class="pl-smi">err</span> <span class="pl-k">:=</span> c.<span class="pl-c1">JSON</span>(http.<span class="pl-smi">StatusCreated</span>, u); err == <span class="pl-c1">nil</span> {
+            <span class="pl-c">// Do something!</span>
+        }
+        <span class="pl-k">return</span>
     }
+    http.<span class="pl-c1">Error</span>(c.<span class="pl-smi">Response</span>, http.<span class="pl-c1">StatusText</span>(http.<span class="pl-smi">StatusBadRequest</span>), http.<span class="pl-smi">StatusBadRequest</span>)
 }
 
 <span class="pl-k">func</span> <span class="pl-en">getUsers</span>(<span class="pl-v">c</span> *<span class="pl-v">echo</span>.<span class="pl-v">Context</span>) {
