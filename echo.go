@@ -101,7 +101,7 @@ func (e *Echo) Sub(pfx string) *Echo {
 	return &s
 }
 
-// Group is simmilar to Sub but excludes inheriting middleware from the parent
+// Group is similar to Sub but excludes inheriting middleware from the parent
 // router.
 func (e *Echo) Group(pfx string) *Echo {
 	g := *e
