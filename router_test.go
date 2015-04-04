@@ -21,9 +21,23 @@ func TestRouterParam(t *testing.T) {
 	if h == nil {
 		t.Fatal("handle not found")
 	}
-	p := c.Param("id")
-	if p != "1" {
-		t.Errorf("id should be equal to 1, found %s", p)
+	if c.P(0) != "1" {
+		t.Error("param id should be 1")
+	}
+}
+
+func TestRouterTwoParam(t *testing.T) {
+	r := New().Router
+	r.Add(MethodGET, "/users/:uid/files/:fid", func(c *Context) {}, nil)
+	h, c, _ := r.Find(MethodGET, "/users/1/files/1")
+	if h == nil {
+		t.Fatal("handle not found")
+	}
+	if c.P(0) != "1" {
+		t.Error("param uid should be 1")
+	}
+	if c.P(1) != "1" {
+		t.Error("param fid should be 1")
 	}
 }
 
@@ -39,21 +53,18 @@ func TestRouterCatchAll(t *testing.T) {
 func TestRouterMicroParam(t *testing.T) {
 	r := New().Router
 	r.Add(MethodGET, "/:a/:b/:c", func(c *Context) {}, nil)
-	h, c, _ := r.Find(MethodGET, "/a/b/c")
+	h, c, _ := r.Find(MethodGET, "/1/2/3")
 	if h == nil {
 		t.Fatal("handle not found")
 	}
-	p1 := c.P(0)
-	if p1 != "a" {
-		t.Errorf("p1 should be equal to a, found %s", p1)
+	if c.P(0) != "1" {
+		t.Error("param a should be 1")
 	}
-	p2 := c.P(1)
-	if p2 != "b" {
-		t.Errorf("p2 should be equal to b, found %s", p2)
+	if c.P(1) != "2" {
+		t.Error("param b should be 2")
 	}
-	p3 := c.P(2)
-	if p3 != "c" {
-		t.Errorf("p3 should be equal to c, found %s", p3)
+	if c.P(2) != "3" {
+		t.Error("param c should be 3")
 	}
 }
 
@@ -62,6 +73,7 @@ func TestRouterConflict(t *testing.T) {
 	r.Add("GET", "/users/new", func(*Context) {}, nil)
 	r.Add("GET", "/users/wen", func(*Context) {}, nil)
 	r.Add("GET", "/users/:id", func(*Context) {}, nil)
+	r.Add("GET", "/users/*", func(*Context) {}, nil)
 	r.trees["GET"].printTree("", true)
 }
 

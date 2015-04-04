@@ -12,8 +12,8 @@ type (
 		prefix  string
 		has     ntype // Type of node it contains
 		handler HandlerFunc
-		echo    *Echo
 		edges   edges
+		echo    *Echo
 	}
 	edges []*node
 	ntype byte
@@ -49,22 +49,22 @@ func (r *router) Add(method, path string, h HandlerFunc, echo *Echo) {
 	l := len(path)
 	for ; i < l; i++ {
 		if path[i] == ':' {
-			r.insert(method, path[:i], nil, echo, pnode)
+			r.insert(method, path[:i], nil, pnode, echo)
 			for ; i < l && path[i] != '/'; i++ {
 			}
 			if i == l {
-				r.insert(method, path[:i], h, echo, snode)
+				r.insert(method, path[:i], h, snode, echo)
 				return
 			}
-			r.insert(method, path[:i], nil, echo, snode)
+			r.insert(method, path[:i], nil, snode, echo)
 		} else if path[i] == '*' {
-			r.insert(method, path[:i], h, echo, anode)
+			r.insert(method, path[:i], h, anode, echo)
 		}
 	}
-	r.insert(method, path, h, echo, snode)
+	r.insert(method, path, h, snode, echo)
 }
 
-func (r *router) insert(method, path string, h HandlerFunc, echo *Echo, has ntype) {
+func (r *router) insert(method, path string, h HandlerFunc, has ntype, echo *Echo) {
 	cn := r.trees[method] // Current node as root
 	search := path
 
@@ -85,7 +85,7 @@ func (r *router) insert(method, path string, h HandlerFunc, echo *Echo, has ntyp
 			return
 		} else if l < pl {
 			// Split the node
-			n := newNode(cn.prefix[l:], cn.has, cn.handler, cn.echo, cn.edges)
+			n := newNode(cn.prefix[l:], cn.has, cn.handler, cn.edges, cn.echo)
 			cn.edges = edges{n} // Add to parent
 
 			// Reset parent node
@@ -100,8 +100,8 @@ func (r *router) insert(method, path string, h HandlerFunc, echo *Echo, has ntyp
 				cn.handler = h
 				cn.echo = echo
 			} else {
-				// Need to fork a node
-				n = newNode(search[l:], has, h, echo, edges{})
+				// Need to create a node
+				n = newNode(search[l:], has, h, edges{}, echo)
 				cn.edges = append(cn.edges, n)
 			}
 			break
@@ -109,7 +109,7 @@ func (r *router) insert(method, path string, h HandlerFunc, echo *Echo, has ntyp
 			search = search[l:]
 			e := cn.findEdge(search[0])
 			if e == nil {
-				n := newNode(search, has, h, echo, edges{})
+				n := newNode(search, has, h, edges{}, echo)
 				cn.edges = append(cn.edges, n)
 				break
 			} else {
@@ -126,14 +126,14 @@ func (r *router) insert(method, path string, h HandlerFunc, echo *Echo, has ntyp
 	}
 }
 
-func newNode(pfx string, has ntype, h HandlerFunc, echo *Echo, e edges) (n *node) {
+func newNode(pfx string, has ntype, h HandlerFunc, e edges, echo *Echo) (n *node) {
 	n = &node{
 		label:   pfx[0],
 		prefix:  pfx,
 		has:     has,
 		handler: h,
-		echo:    echo,
 		edges:   e,
+		echo:    echo,
 	}
 	return
 }
@@ -178,32 +178,30 @@ func (r *router) Find(method, path string) (h HandlerFunc, c *Context, echo *Ech
 
 		if l == pl {
 			search = search[l:]
-			switch cn.has {
-			case pnode:
+			if cn.has == pnode {
 				cn = cn.edges[0]
 				i := 0
 				l = len(search)
-
 				for ; i < l && search[i] != '/'; i++ {
 				}
 				p := c.params[:n+1]
 				p[n].Name = cn.prefix[1:]
 				p[n].Value = search[:i]
 				n++
-
 				search = search[i:]
-
-				if i == l {
-					// All params read
-					continue
-				}
-			case anode:
+			} else if cn.has == anode {
 				p := c.params[:n+1]
 				p[n].Name = "_name"
 				p[n].Value = search
 				search = "" // End search
+			}
+
+			// Search complete
+			if len(search) == 0 {
 				continue
 			}
+
+			// Dig more
 			e := cn.findEdge(search[0])
 			if e == nil {
 				// Not found
