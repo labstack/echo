@@ -226,11 +226,11 @@ func (ps Params) Get(n string) (v string) {
 
 func (r *router) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	h, c, _ := r.Find(req.Method, req.URL.Path)
+	defer r.echo.pool.Put(c)
 	c.Response.ResponseWriter = rw
 	if h != nil {
 		h(c)
 	} else {
 		r.echo.notFoundHandler(c)
 	}
-	r.echo.pool.Put(c)
 }
