@@ -42,17 +42,16 @@ func (c *Context) Bind(i interface{}) error {
 }
 
 // Render encodes the provided type and sends a response with status code
-// based on Accept header.
+// based on Accept header. If Accept header not set, it defaults to html/plain.
 func (c *Context) Render(code int, i interface{}) error {
 	a := c.Request.Header.Get(HeaderAccept)
 	if strings.HasPrefix(a, MIMEJSON) {
 		return c.JSON(code, i)
 	} else if strings.HasPrefix(a, MIMEText) {
-		return c.String(code, i.(string))
+		return c.Text(code, i.(string))
 	} else if strings.HasPrefix(a, MIMEHTML) {
-		return c.HTML(code, i.(string))
 	}
-	return ErrUnsupportedMediaType
+	return c.HTML(code, i.(string))
 }
 
 // JSON sends an application/json response with status code.
@@ -62,8 +61,8 @@ func (c *Context) JSON(code int, i interface{}) error {
 	return json.NewEncoder(c.Response).Encode(i)
 }
 
-// String sends a text/plain response with status code.
-func (c *Context) String(code int, s string) (err error) {
+// Text sends a text/plain response with status code.
+func (c *Context) Text(code int, s string) (err error) {
 	c.Response.Header().Set(HeaderContentType, MIMEText+"; charset=utf-8")
 	c.Response.WriteHeader(code)
 	_, err = c.Response.Write([]byte(s))

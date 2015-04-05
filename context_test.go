@@ -22,12 +22,29 @@ func TestContext(t *testing.T) {
 	//**********//
 	//   Bind   //
 	//**********//
-	r.Header.Add(HeaderContentType, MIMEJSON)
+	// JSON
+	r.Header.Set(HeaderContentType, MIMEJSON)
 	u2 := new(user)
 	if err := c.Bind(u2); err != nil {
 		t.Error(err)
 	}
 	verifyUser(u2, t)
+
+	// FORM
+	r.Header.Set(HeaderContentType, MIMEForm)
+	u2 = new(user)
+	if err := c.Bind(u2); err != nil {
+		t.Error(err)
+	}
+	// TODO: add verification
+
+	// Unsupported
+	r.Header.Set(HeaderContentType, "")
+	u2 = new(user)
+	if err := c.Bind(u2); err == nil {
+		t.Error(err)
+	}
+	// TODO: add verification
 
 	//***********//
 	//   Param   //

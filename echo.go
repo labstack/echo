@@ -9,14 +9,12 @@ import (
 
 type (
 	Echo struct {
-		Router                     *router
-		prefix                     string
-		middleware                 []MiddlewareFunc
-		maxParam                   byte
-		notFoundHandler            HandlerFunc
-		methodNotAllowedHandler    HandlerFunc
-		internalServerErrorHandler HandlerFunc
-		pool                       sync.Pool
+		Router          *router
+		prefix          string
+		middleware      []MiddlewareFunc
+		maxParam        byte
+		notFoundHandler HandlerFunc
+		pool            sync.Pool
 	}
 	Middleware     interface{}
 	MiddlewareFunc func(HandlerFunc) HandlerFunc
@@ -71,12 +69,6 @@ func New() (e *Echo) {
 		notFoundHandler: func(c *Context) {
 			http.Error(c.Response, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		},
-		methodNotAllowedHandler: func(c *Context) {
-			http.Error(c.Response, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-		},
-		internalServerErrorHandler: func(c *Context) {
-			http.Error(c.Response, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		},
 	}
 	e.Router = NewRouter(e)
 	e.pool.New = func() interface{} {
@@ -120,16 +112,6 @@ func (e *Echo) MaxParam(n uint8) {
 // NotFoundHandler sets a custom NotFound handler.
 func (e *Echo) NotFoundHandler(h Handler) {
 	e.notFoundHandler = wrapH(h)
-}
-
-// MethodNotAllowedHandler sets a custom MethodNotAllowed handler.
-func (e *Echo) MethodNotAllowedHandler(h Handler) {
-	e.methodNotAllowedHandler = wrapH(h)
-}
-
-// InternalServerErrorHandler sets a custom InternalServerError handler.
-func (e *Echo) InternalServerErrorHandler(h Handler) {
-	e.internalServerErrorHandler = wrapH(h)
 }
 
 // Use adds handler to the middleware chain.

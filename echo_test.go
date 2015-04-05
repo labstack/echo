@@ -92,7 +92,7 @@ func TestEchoMiddleware(t *testing.T) {
 
 	// Route
 	e.Get("/hello", func(c *Context) {
-		c.String(200, "world")
+		c.Text(200, "world")
 	})
 
 	w := httptest.NewRecorder()
@@ -111,7 +111,7 @@ func TestEchoHandler(t *testing.T) {
 
 	// func(*echo.Context)
 	e.Get("/1", func(c *Context) {
-		c.String(http.StatusOK, "1")
+		c.Text(http.StatusOK, "1")
 	})
 	w := httptest.NewRecorder()
 	r, _ := http.NewRequest(MethodGET, "/1", nil)
@@ -189,13 +189,16 @@ func TestEchoSubGroup(t *testing.T) {
 }
 
 func TestEchoMethod(t *testing.T) {
-	// e := New()
-	// // GET
-	// e.Get("/users", func(c *Context) {})
-	// h, _, _ := e.Router.Find("GET", "/users")
-	// if h == nil {
-	// 	t.Error("should find route for GET")
-	// }
+	e := New()
+	e.Connect("/", func(*Context) {})
+	e.Delete("/", func(*Context) {})
+	e.Get("/", func(*Context) {})
+	e.Head("/", func(*Context) {})
+	e.Options("/", func(*Context) {})
+	e.Patch("/", func(*Context) {})
+	e.Post("/", func(*Context) {})
+	e.Put("/", func(*Context) {})
+	e.Trace("/", func(*Context) {})
 }
 
 func TestEchoServeHTTP(t *testing.T) {
@@ -218,14 +221,6 @@ func TestEchoServeHTTP(t *testing.T) {
 	if w.Code != http.StatusNotFound {
 		t.Errorf("status code should be 404, found %d", w.Code)
 	}
-
-	// NotAllowed
-	// r, _ = http.NewRequest("POST", "/users", nil)
-	// w = httptest.NewRecorder()
-	// e.ServeHTTP(w, r)
-	// if w.Code != http.StatusMethodNotAllowed {
-	// 	t.Errorf("status code should be 405, found %d", w.Code)
-	// }
 }
 
 func verifyUser(u2 *user, t *testing.T) {

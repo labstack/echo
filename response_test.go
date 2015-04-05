@@ -9,7 +9,7 @@ import (
 func TestResponse(t *testing.T) {
 	e := New()
 	e.Get("/hello", func(c *Context) {
-		c.String(http.StatusOK, "world")
+		c.Text(http.StatusOK, "world")
 
 		// Status
 		if c.Response.Status() != http.StatusOK {
