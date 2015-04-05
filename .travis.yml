@@ -1,7 +1,7 @@
 language: go
 go:
     - tip
-beforeinstall:
+before_install:
     - go get github.com/modocache/gover
     - go get github.com/mattn/goveralls
     - go get golang.org/x/tools/cmd/cover
