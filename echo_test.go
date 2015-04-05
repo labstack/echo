@@ -2,8 +2,6 @@ package echo
 
 import (
 	"bytes"
-	"encoding/json"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -16,7 +14,7 @@ type (
 	}
 )
 
-var u = user{
+var u1 = user{
 	ID:   "1",
 	Name: "Joe",
 }
@@ -230,17 +228,11 @@ func TestEchoServeHTTP(t *testing.T) {
 	// }
 }
 
-func verifyUser(rd io.Reader, t *testing.T) {
-	u2 := new(user)
-	dec := json.NewDecoder(rd)
-	err := dec.Decode(u2)
-	if err != nil {
-		t.Error(err)
+func verifyUser(u2 *user, t *testing.T) {
+	if u2.ID != u1.ID {
+		t.Errorf("user id should be %s, found %s", u1.ID, u2.ID)
 	}
-	if u2.ID != u.ID {
-		t.Errorf("user id should be %s, found %s", u.ID, u2.ID)
-	}
-	if u2.Name != u.Name {
-		t.Errorf("user name should be %s, found %s", u.Name, u2.Name)
+	if u2.Name != u1.Name {
+		t.Errorf("user name should be %s, found %s", u1.Name, u2.Name)
 	}
 }

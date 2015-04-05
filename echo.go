@@ -37,6 +37,7 @@ const (
 
 	MIMEJSON          = "application/json"
 	MIMEText          = "text/plain"
+	MIMEHTML          = "html/plain"
 	MIMEForm          = "application/x-www-form-urlencoded"
 	MIMEMultipartForm = "multipart/form-data"
 
@@ -60,9 +61,7 @@ var (
 	}
 
 	// Errors
-	ErrUnsupportedContentType = errors.New("echo: unsupported content type")
-	ErrBindJSON               = errors.New("echo: bind json error")
-	ErrRenderJSON             = errors.New("echo: render json error")
+	ErrUnsupportedMediaType = errors.New("echo: unsupported media type")
 )
 
 // New creates a echo instance.

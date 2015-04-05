@@ -45,9 +45,7 @@ func NewRouter(e *Echo) (r *router) {
 }
 
 func (r *router) Add(method, path string, h HandlerFunc, echo *Echo) {
-	i := 0
-	l := len(path)
-	for ; i < l; i++ {
+	for i, l := 0, len(path); i < l; i++ {
 		if path[i] == ':' {
 			r.insert(method, path[:i], nil, pnode, echo)
 			for ; i < l && path[i] != '/'; i++ {
@@ -179,6 +177,7 @@ func (r *router) Find(method, path string) (h HandlerFunc, c *Context, echo *Ech
 		if l == pl {
 			search = search[l:]
 			if cn.has == pnode {
+				// Param node
 				cn = cn.edges[0]
 				i := 0
 				l = len(search)
@@ -190,6 +189,7 @@ func (r *router) Find(method, path string) (h HandlerFunc, c *Context, echo *Ech
 				n++
 				search = search[i:]
 			} else if cn.has == anode {
+				// Catch-all node
 				p := c.params[:n+1]
 				p[n].Name = "_name"
 				p[n].Value = search
