@@ -2,8 +2,19 @@ package echo
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 )
+
+type route struct {
+	method string
+	path   string
+}
+
+var api = []route{
+	{"GET", "/authorizations"},
+}
 
 func TestRouterStatic(t *testing.T) {
 	r := New().Router
@@ -66,6 +77,25 @@ func TestRouterMicroParam(t *testing.T) {
 	if c.P(2) != "3" {
 		t.Error("param c should be 3")
 	}
+}
+
+func TestRouterAPI(t *testing.T) {
+	// r := New().Router
+}
+
+func TestRouterServeHTTP(t *testing.T) {
+	r := New().Router
+	r.Add(MethodGET, "/users", func(c *Context) {}, nil)
+
+	// OK
+	req, _ := http.NewRequest(MethodGET, "/users", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	// NotFound handler
+	req, _ = http.NewRequest(MethodGET, "/files", nil)
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, req)
 }
 
 func (n *node) printTree(pfx string, tail bool) {

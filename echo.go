@@ -62,7 +62,7 @@ var (
 	ErrUnsupportedMediaType = errors.New("echo: unsupported media type")
 )
 
-// New creates a echo instance.
+// New creates an Echo instance.
 func New() (e *Echo) {
 	e = &Echo{
 		maxParam: 5,

@@ -214,16 +214,6 @@ func (r *router) Find(method, path string) (h HandlerFunc, c *Context, echo *Ech
 	}
 }
 
-// Get returns path parameter by name.
-func (ps Params) Get(n string) (v string) {
-	for _, p := range ps {
-		if p.Name == n {
-			v = p.Value
-		}
-	}
-	return
-}
-
 func (r *router) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	h, c, _ := r.Find(req.Method, req.URL.Path)
 	defer r.echo.pool.Put(c)

@@ -26,8 +26,13 @@ func (c *Context) P(i uint8) string {
 }
 
 // Param returns path parameter by name.
-func (c *Context) Param(n string) string {
-	return c.params.Get(n)
+func (c *Context) Param(name string) (value string) {
+	for _, p := range c.params {
+		if p.Name == name {
+			value = p.Value
+		}
+	}
+	return
 }
 
 // Bind decodes the body into provided type based on Content-Type header.

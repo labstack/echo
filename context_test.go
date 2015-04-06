@@ -50,13 +50,14 @@ func TestContext(t *testing.T) {
 	//   Param   //
 	//***********//
 	// By id
-	if c.P(0) != "" {
-		t.Error("param id should be nil")
+	c.params = Params{{"id", "1"}}
+	if c.P(0) != "1" {
+		t.Error("param id should be 1")
 	}
 
 	// By name
-	if c.Param("id") != "" {
-		t.Error("param id should be nil")
+	if c.Param("id") != "1" {
+		t.Error("param id should be 1")
 	}
 
 	// Store

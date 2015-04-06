@@ -19,7 +19,7 @@ var u1 = user{
 	Name: "Joe",
 }
 
-// TODO: Fix me
+// TODO: Improve me!
 func TestEchoMaxParam(t *testing.T) {
 	e := New()
 	e.MaxParam(8)
@@ -201,25 +201,25 @@ func TestEchoMethod(t *testing.T) {
 	e.Trace("/", func(*Context) {})
 }
 
-func TestEchoServeHTTP(t *testing.T) {
+func TestEchoNotFound(t *testing.T) {
 	e := New()
 
-	// OK
-	e.Get("/users", func(*Context) {
-	})
+	// Default NotFound handler
+	r, _ := http.NewRequest(MethodGET, "/files", nil)
 	w := httptest.NewRecorder()
-	r, _ := http.NewRequest(MethodGET, "/users", nil)
-	e.ServeHTTP(w, r)
-	if w.Code != http.StatusOK {
-		t.Errorf("status code should be 200, found %d", w.Code)
-	}
-
-	// NotFound
-	r, _ = http.NewRequest(MethodGET, "/user", nil)
-	w = httptest.NewRecorder()
 	e.ServeHTTP(w, r)
 	if w.Code != http.StatusNotFound {
 		t.Errorf("status code should be 404, found %d", w.Code)
+	}
+
+	// Customized NotFound handler
+	e.NotFoundHandler(func(c *Context) {
+		c.Text(404, "not found")
+	})
+	w = httptest.NewRecorder()
+	e.ServeHTTP(w, r)
+	if w.Body.String() != "not found" {
+		t.Errorf("body should be `not found`")
 	}
 }
 
