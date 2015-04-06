@@ -83,17 +83,17 @@ func TestContext(t *testing.T) {
 		t.Errorf("render string %v", err)
 	}
 
-	// HTML
+	// HTML string
 	r.Header.Set(HeaderAccept, MIMEHTML)
 	c.Response.committed = false
 	if err := c.Render(http.StatusOK, "Hello, <strong>World!</strong>"); err != nil {
 		t.Errorf("render html %v", err)
 	}
 
-	// HTML template
+	// HTML
 	c.Response.committed = false
 	tmpl, _ := template.New("foo").Parse(`{{define "T"}}Hello, {{.}}!{{end}}`)
-	if err := c.HTMLTemplate(http.StatusOK, tmpl, "T", "Joe"); err != nil {
+	if err := c.HTML(http.StatusOK, tmpl, "T", "Joe"); err != nil {
 		t.Errorf("render html template %v", err)
 	}
 
