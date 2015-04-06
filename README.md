@@ -117,7 +117,7 @@ func main() {
 	sub.Use(func(c *echo.Context) { // Middleware
 	})
 	sub.Get("/home", func(c *echo.Context) {
-		c.Text(http.StatusOK, "Sub route /sub/welcome")
+		c.String(http.StatusOK, "Sub route /sub/welcome")
 	})
 
 	// Group - doesn't inherit parent middleware
@@ -125,7 +125,7 @@ func main() {
 	grp.Use(func(c *echo.Context) { // Middleware
 	})
 	grp.Get("/home", func(c *echo.Context) {
-		c.Text(http.StatusOK, "Group route /group/welcome")
+		c.String(http.StatusOK, "Group route /group/welcome")
 	})
 
 	// Start server

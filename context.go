@@ -53,7 +53,7 @@ func (c *Context) Render(code int, i interface{}) error {
 	if strings.HasPrefix(a, MIMEJSON) {
 		return c.JSON(code, i)
 	} else if strings.HasPrefix(a, MIMEText) {
-		return c.Text(code, i.(string))
+		return c.String(code, i.(string))
 	} else if strings.HasPrefix(a, MIMEHTML) {
 	}
 	return c.HTML(code, i.(string))
@@ -66,15 +66,15 @@ func (c *Context) JSON(code int, i interface{}) error {
 	return json.NewEncoder(c.Response).Encode(i)
 }
 
-// Text sends a text/plain response with status code.
-func (c *Context) Text(code int, s string) (err error) {
+// String sends a text/plain response with status code.
+func (c *Context) String(code int, s string) (err error) {
 	c.Response.Header().Set(HeaderContentType, MIMEText+"; charset=utf-8")
 	c.Response.WriteHeader(code)
 	_, err = c.Response.Write([]byte(s))
 	return
 }
 
-// HTML sends an html/plain response with status code.
+// HTML sends a text/html response with status code.
 func (c *Context) HTML(code int, html string) (err error) {
 	c.Response.Header().Set(HeaderContentType, MIMEHTML+"; charset=utf-8")
 	c.Response.WriteHeader(code)
@@ -83,7 +83,7 @@ func (c *Context) HTML(code int, html string) (err error) {
 }
 
 // HTMLTemplate applies the template associated with t that has the given name to
-// the specified data object and sends an html/plain response with status code.
+// the specified data object and sends a text/html response with status code.
 func (c *Context) HTMLTemplate(code int, t *template.Template, name string, data interface{}) (err error) {
 	return t.ExecuteTemplate(c.Response, name, data)
 }

@@ -35,7 +35,7 @@ const (
 
 	MIMEJSON          = "application/json"
 	MIMEText          = "text/plain"
-	MIMEHTML          = "html/plain"
+	MIMEHTML          = "text/html"
 	MIMEForm          = "application/x-www-form-urlencoded"
 	MIMEMultipartForm = "multipart/form-data"
 

@@ -92,7 +92,7 @@ func TestEchoMiddleware(t *testing.T) {
 
 	// Route
 	e.Get("/hello", func(c *Context) {
-		c.Text(200, "world")
+		c.String(200, "world")
 	})
 
 	w := httptest.NewRecorder()
@@ -111,7 +111,7 @@ func TestEchoHandler(t *testing.T) {
 
 	// func(*echo.Context)
 	e.Get("/1", func(c *Context) {
-		c.Text(http.StatusOK, "1")
+		c.String(http.StatusOK, "1")
 	})
 	w := httptest.NewRecorder()
 	r, _ := http.NewRequest(GET, "/1", nil)
@@ -214,7 +214,7 @@ func TestEchoNotFound(t *testing.T) {
 
 	// Customized NotFound handler
 	e.NotFoundHandler(func(c *Context) {
-		c.Text(404, "not found")
+		c.String(404, "not found")
 	})
 	w = httptest.NewRecorder()
 	e.ServeHTTP(w, r)
