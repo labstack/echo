@@ -277,8 +277,8 @@ var api = []route{
 
 func TestRouterStatic(t *testing.T) {
 	r := New().Router
-	r.Add(MethodGET, "/folders/files/echo.gif", func(c *Context) {}, nil)
-	h, _, _ := r.Find(MethodGET, "/folders/files/echo.gif")
+	r.Add(GET, "/folders/files/echo.gif", func(c *Context) {}, nil)
+	h, _, _ := r.Find(GET, "/folders/files/echo.gif")
 	if h == nil {
 		t.Fatal("handle not found")
 	}
@@ -286,8 +286,8 @@ func TestRouterStatic(t *testing.T) {
 
 func TestRouterParam(t *testing.T) {
 	r := New().Router
-	r.Add(MethodGET, "/users/:id", func(c *Context) {}, nil)
-	h, c, _ := r.Find(MethodGET, "/users/1")
+	r.Add(GET, "/users/:id", func(c *Context) {}, nil)
+	h, c, _ := r.Find(GET, "/users/1")
 	if h == nil {
 		t.Fatal("handle not found")
 	}
@@ -298,8 +298,8 @@ func TestRouterParam(t *testing.T) {
 
 func TestRouterTwoParam(t *testing.T) {
 	r := New().Router
-	r.Add(MethodGET, "/users/:uid/files/:fid", func(c *Context) {}, nil)
-	h, c, _ := r.Find(MethodGET, "/users/1/files/1")
+	r.Add(GET, "/users/:uid/files/:fid", func(c *Context) {}, nil)
+	h, c, _ := r.Find(GET, "/users/1/files/1")
 	if h == nil {
 		t.Fatal("handle not found")
 	}
@@ -313,8 +313,8 @@ func TestRouterTwoParam(t *testing.T) {
 
 func TestRouterCatchAll(t *testing.T) {
 	r := New().Router
-	r.Add(MethodGET, "/static/*", func(c *Context) {}, nil)
-	h, _, _ := r.Find(MethodGET, "/static/*")
+	r.Add(GET, "/static/*", func(c *Context) {}, nil)
+	h, _, _ := r.Find(GET, "/static/*")
 	if h == nil {
 		t.Fatal("handle not found")
 	}
@@ -322,8 +322,8 @@ func TestRouterCatchAll(t *testing.T) {
 
 func TestRouterMicroParam(t *testing.T) {
 	r := New().Router
-	r.Add(MethodGET, "/:a/:b/:c", func(c *Context) {}, nil)
-	h, c, _ := r.Find(MethodGET, "/1/2/3")
+	r.Add(GET, "/:a/:b/:c", func(c *Context) {}, nil)
+	h, c, _ := r.Find(GET, "/1/2/3")
 	if h == nil {
 		t.Fatal("handle not found")
 	}
@@ -358,15 +358,15 @@ func TestRouterAPI(t *testing.T) {
 
 func TestRouterServeHTTP(t *testing.T) {
 	r := New().Router
-	r.Add(MethodGET, "/users", func(c *Context) {}, nil)
+	r.Add(GET, "/users", func(c *Context) {}, nil)
 
 	// OK
-	req, _ := http.NewRequest(MethodGET, "/users", nil)
+	req, _ := http.NewRequest(GET, "/users", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
 	// NotFound handler
-	req, _ = http.NewRequest(MethodGET, "/files", nil)
+	req, _ = http.NewRequest(GET, "/files", nil)
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 }

@@ -23,15 +23,15 @@ type (
 )
 
 const (
-	MethodCONNECT = "CONNECT"
-	MethodDELETE  = "DELETE"
-	MethodGET     = "GET"
-	MethodHEAD    = "HEAD"
-	MethodOPTIONS = "OPTIONS"
-	MethodPATCH   = "PATCH"
-	MethodPOST    = "POST"
-	MethodPUT     = "PUT"
-	MethodTRACE   = "TRACE"
+	CONNECT = "CONNECT"
+	DELETE  = "DELETE"
+	GET     = "GET"
+	HEAD    = "HEAD"
+	OPTIONS = "OPTIONS"
+	PATCH   = "PATCH"
+	POST    = "POST"
+	PUT     = "PUT"
+	TRACE   = "TRACE"
 
 	MIMEJSON          = "application/json"
 	MIMEText          = "text/plain"
@@ -47,15 +47,15 @@ const (
 
 var (
 	methods = [...]string{
-		MethodCONNECT,
-		MethodDELETE,
-		MethodGET,
-		MethodHEAD,
-		MethodOPTIONS,
-		MethodPATCH,
-		MethodPOST,
-		MethodPUT,
-		MethodTRACE,
+		CONNECT,
+		DELETE,
+		GET,
+		HEAD,
+		OPTIONS,
+		PATCH,
+		POST,
+		PUT,
+		TRACE,
 	}
 
 	// Errors
@@ -123,47 +123,47 @@ func (e *Echo) Use(m ...Middleware) {
 
 // Connect adds a CONNECT route > handler to the router.
 func (e *Echo) Connect(path string, h Handler) {
-	e.add(MethodCONNECT, path, h)
+	e.add(CONNECT, path, h)
 }
 
 // Delete adds a DELETE route > handler to the router.
 func (e *Echo) Delete(path string, h Handler) {
-	e.add(MethodDELETE, path, h)
+	e.add(DELETE, path, h)
 }
 
 // Get adds a GET route > handler to the router.
 func (e *Echo) Get(path string, h Handler) {
-	e.add(MethodGET, path, h)
+	e.add(GET, path, h)
 }
 
 // Head adds a HEAD route > handler to the router.
 func (e *Echo) Head(path string, h Handler) {
-	e.add(MethodHEAD, path, h)
+	e.add(HEAD, path, h)
 }
 
 // Options adds an OPTIONS route > handler to the router.
 func (e *Echo) Options(path string, h Handler) {
-	e.add(MethodOPTIONS, path, h)
+	e.add(OPTIONS, path, h)
 }
 
 // Patch adds a PATCH route > handler to the router.
 func (e *Echo) Patch(path string, h Handler) {
-	e.add(MethodPATCH, path, h)
+	e.add(PATCH, path, h)
 }
 
 // Post adds a POST route > handler to the router.
 func (e *Echo) Post(path string, h Handler) {
-	e.add(MethodPOST, path, h)
+	e.add(POST, path, h)
 }
 
 // Put adds a PUT route > handler to the router.
 func (e *Echo) Put(path string, h Handler) {
-	e.add(MethodPUT, path, h)
+	e.add(PUT, path, h)
 }
 
 // Trace adds a TRACE route > handler to the router.
 func (e *Echo) Trace(path string, h Handler) {
-	e.add(MethodTRACE, path, h)
+	e.add(TRACE, path, h)
 }
 
 func (e *Echo) add(method, path string, h Handler) {

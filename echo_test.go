@@ -32,7 +32,7 @@ func TestEchoIndex(t *testing.T) {
 	e := New()
 	e.Index("example/public/index.html")
 	w := httptest.NewRecorder()
-	r, _ := http.NewRequest(MethodGET, "/", nil)
+	r, _ := http.NewRequest(GET, "/", nil)
 	e.ServeHTTP(w, r)
 	if w.Code != 200 {
 		t.Errorf("status code should be 200, found %d", w.Code)
@@ -43,7 +43,7 @@ func TestEchoStatic(t *testing.T) {
 	e := New()
 	e.Static("/js", "example/public/js")
 	w := httptest.NewRecorder()
-	r, _ := http.NewRequest(MethodGET, "/js/main.js", nil)
+	r, _ := http.NewRequest(GET, "/js/main.js", nil)
 	e.ServeHTTP(w, r)
 	if w.Code != 200 {
 		t.Errorf("status code should be 200, found %d", w.Code)
@@ -96,7 +96,7 @@ func TestEchoMiddleware(t *testing.T) {
 	})
 
 	w := httptest.NewRecorder()
-	r, _ := http.NewRequest(MethodGET, "/hello", nil)
+	r, _ := http.NewRequest(GET, "/hello", nil)
 	e.ServeHTTP(w, r)
 	if b.String() != "abcdef" {
 		t.Errorf("buffer should be abcdef, found %s", b.String())
@@ -114,7 +114,7 @@ func TestEchoHandler(t *testing.T) {
 		c.Text(http.StatusOK, "1")
 	})
 	w := httptest.NewRecorder()
-	r, _ := http.NewRequest(MethodGET, "/1", nil)
+	r, _ := http.NewRequest(GET, "/1", nil)
 	e.ServeHTTP(w, r)
 	if w.Body.String() != "1" {
 		t.Error("body should be 1")
@@ -125,7 +125,7 @@ func TestEchoHandler(t *testing.T) {
 		w.Write([]byte("2"))
 	}))
 	w = httptest.NewRecorder()
-	r, _ = http.NewRequest(MethodGET, "/2", nil)
+	r, _ = http.NewRequest(GET, "/2", nil)
 	e.ServeHTTP(w, r)
 	if w.Body.String() != "2" {
 		t.Error("body should be 2")
@@ -136,7 +136,7 @@ func TestEchoHandler(t *testing.T) {
 		w.Write([]byte("3"))
 	})
 	w = httptest.NewRecorder()
-	r, _ = http.NewRequest(MethodGET, "/3", nil)
+	r, _ = http.NewRequest(GET, "/3", nil)
 	e.ServeHTTP(w, r)
 	if w.Body.String() != "3" {
 		t.Error("body should be 3")
@@ -165,7 +165,7 @@ func TestEchoSubGroup(t *testing.T) {
 	g.Get("/home", func(*Context) {})
 
 	w := httptest.NewRecorder()
-	r, _ := http.NewRequest(MethodGET, "/users", nil)
+	r, _ := http.NewRequest(GET, "/users", nil)
 	e.ServeHTTP(w, r)
 	if b.String() != "1" {
 		t.Errorf("should only execute middleware 1, executed %s", b.String())
@@ -173,7 +173,7 @@ func TestEchoSubGroup(t *testing.T) {
 
 	b.Reset()
 	w = httptest.NewRecorder()
-	r, _ = http.NewRequest(MethodGET, "/sub/home", nil)
+	r, _ = http.NewRequest(GET, "/sub/home", nil)
 	e.ServeHTTP(w, r)
 	if b.String() != "12" {
 		t.Errorf("should execute middleware 1 & 2, executed %s", b.String())
@@ -181,7 +181,7 @@ func TestEchoSubGroup(t *testing.T) {
 
 	b.Reset()
 	w = httptest.NewRecorder()
-	r, _ = http.NewRequest(MethodGET, "/group/home", nil)
+	r, _ = http.NewRequest(GET, "/group/home", nil)
 	e.ServeHTTP(w, r)
 	if b.String() != "3" {
 		t.Errorf("should execute middleware 3, executed %s", b.String())
@@ -205,7 +205,7 @@ func TestEchoNotFound(t *testing.T) {
 	e := New()
 
 	// Default NotFound handler
-	r, _ := http.NewRequest(MethodGET, "/files", nil)
+	r, _ := http.NewRequest(GET, "/files", nil)
 	w := httptest.NewRecorder()
 	e.ServeHTTP(w, r)
 	if w.Code != http.StatusNotFound {
