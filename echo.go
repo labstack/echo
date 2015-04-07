@@ -92,8 +92,8 @@ func New() (e *Echo) {
 func (h HandlerFunc) ServeHTTP(http.ResponseWriter, *http.Request) {
 }
 
-// Group creates a sub router. It inherits all properties from the parent.
-// Passing middleware overrides parent middleware.
+// Group creates a new sub router with prefix and inherits all properties from
+// the parent. Passing middleware overrides parent middleware.
 func (e *Echo) Group(pfx string, m ...Middleware) *Echo {
 	g := *e
 	g.prefix = pfx

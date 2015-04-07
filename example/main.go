@@ -80,23 +80,24 @@ func main() {
 	e.Get("/users", getUsers)
 	e.Get("/users/:id", getUser)
 
-	//****************//
-	//   Sub router   //
-	//****************//
-	// Sub - inherits parent middleware
-	sub := e.Sub("/sub")
-	sub.Use(func(c *echo.Context) { // Middleware
+	//***********//
+	//   Group   //
+	//***********//
+	// Group with parent middleware
+	a := e.Group("/admin")
+	a.Use(func(c *echo.Context) {
+		// Security middleware
 	})
-	sub.Get("/home", func(c *echo.Context) {
-		c.String(http.StatusOK, "Sub route /sub/welcome")
+	a.Get("", func(c *echo.Context) {
+		c.String(http.StatusOK, "Welcome admin!")
 	})
 
-	// Group - doesn't inherit parent middleware
-	grp := e.Group("/group")
-	grp.Use(func(c *echo.Context) { // Middleware
+	// Group with no parent middleware
+	g := e.Group("/files", func(c *echo.Context) {
+		// Security middleware
 	})
-	grp.Get("/home", func(c *echo.Context) {
-		c.String(http.StatusOK, "Group route /group/welcome")
+	g.Get("", func(c *echo.Context) {
+		c.String(http.StatusOK, "Your files!")
 	})
 
 	// Start server
