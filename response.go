@@ -65,7 +65,7 @@ func (r *response) Size() int {
 	return r.size
 }
 
-func (r *response) reset(rw http.ResponseWriter) {
-	r.ResponseWriter = rw
+func (r *response) reset(w http.ResponseWriter) {
+	r.ResponseWriter = w
 	r.committed = false
 }

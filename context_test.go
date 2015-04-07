@@ -3,7 +3,6 @@ package echo
 import (
 	"bytes"
 	"encoding/json"
-	"html/template"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -67,36 +66,27 @@ func TestContext(t *testing.T) {
 		t.Error("user name should be Joe")
 	}
 
-	//************//
-	//   Render   //
-	//************//
 	// JSON
 	r.Header.Set(HeaderAccept, MIMEJSON)
-	if err := c.Render(http.StatusOK, u1); err != nil {
+	if err := c.JSON(http.StatusOK, u1); err != nil {
 		t.Errorf("render json %v", err)
 	}
 
 	// String
 	r.Header.Set(HeaderAccept, MIMEText)
 	c.Response.committed = false
-	if err := c.Render(http.StatusOK, "Hello, World!"); err != nil {
+	if err := c.String(http.StatusOK, "Hello, World!"); err != nil {
 		t.Errorf("render string %v", err)
 	}
 
-	// HTML string
+	// HTML
 	r.Header.Set(HeaderAccept, MIMEHTML)
 	c.Response.committed = false
-	if err := c.Render(http.StatusOK, "Hello, <strong>World!</strong>"); err != nil {
+	if err := c.HTML(http.StatusOK, "Hello, <strong>World!</strong>"); err != nil {
 		t.Errorf("render html %v", err)
 	}
 
-	// HTML
-	c.Response.committed = false
-	tmpl, _ := template.New("foo").Parse(`{{define "T"}}Hello, {{.}}!{{end}}`)
-	if err := c.HTML(http.StatusOK, tmpl, "T", "Joe"); err != nil {
-		t.Errorf("render html template %v", err)
-	}
-
 	// Redirect
+	c.Response.committed = false
 	c.Redirect(http.StatusMovedPermanently, "http://labstack.github.io/echo")
 }

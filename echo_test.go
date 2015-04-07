@@ -143,27 +143,13 @@ func TestEchoHandler(t *testing.T) {
 	}
 }
 
-func TestEchoSubGroup(t *testing.T) {
+func TestEchoGroup(t *testing.T) {
 	b := new(bytes.Buffer)
-
 	e := New()
 	e.Use(func(*Context) {
 		b.WriteString("1")
 	})
 	e.Get("/users", func(*Context) {})
-
-	s := e.Sub("/sub")
-	s.Use(func(*Context) {
-		b.WriteString("2")
-	})
-	s.Get("/home", func(*Context) {})
-
-	g := e.Group("/group")
-	g.Use(func(*Context) {
-		b.WriteString("3")
-	})
-	g.Get("/home", func(*Context) {})
-
 	w := httptest.NewRecorder()
 	r, _ := http.NewRequest(GET, "/users", nil)
 	e.ServeHTTP(w, r)
@@ -171,17 +157,28 @@ func TestEchoSubGroup(t *testing.T) {
 		t.Errorf("should only execute middleware 1, executed %s", b.String())
 	}
 
+	// Group
+	g1 := e.Group("/group1")
+	g1.Use(func(*Context) {
+		b.WriteString("2")
+	})
+	g1.Get("/home", func(*Context) {})
 	b.Reset()
 	w = httptest.NewRecorder()
-	r, _ = http.NewRequest(GET, "/sub/home", nil)
+	r, _ = http.NewRequest(GET, "/group1/home", nil)
 	e.ServeHTTP(w, r)
 	if b.String() != "12" {
 		t.Errorf("should execute middleware 1 & 2, executed %s", b.String())
 	}
 
+	// Group with no parent middleware
+	g2 := e.Group("/group2", func(*Context) {
+		b.WriteString("3")
+	})
+	g2.Get("/home", func(*Context) {})
 	b.Reset()
 	w = httptest.NewRecorder()
-	r, _ = http.NewRequest(GET, "/group/home", nil)
+	r, _ = http.NewRequest(GET, "/group2/home", nil)
 	e.ServeHTTP(w, r)
 	if b.String() != "3" {
 		t.Errorf("should execute middleware 3, executed %s", b.String())

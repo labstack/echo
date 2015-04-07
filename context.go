@@ -2,7 +2,6 @@ package echo
 
 import (
 	"encoding/json"
-	"html/template"
 	"net/http"
 	"strings"
 )
@@ -36,34 +35,27 @@ func (c *Context) Param(name string) (value string) {
 }
 
 // Bind decodes the body into provided type based on Content-Type header.
-func (c *Context) Bind(i interface{}) error {
+func (c *Context) Bind(v interface{}) error {
 	ct := c.Request.Header.Get(HeaderContentType)
 	if strings.HasPrefix(ct, MIMEJSON) {
-		return json.NewDecoder(c.Request.Body).Decode(i)
+		return json.NewDecoder(c.Request.Body).Decode(v)
 	} else if strings.HasPrefix(ct, MIMEForm) {
 		return nil
 	}
 	return ErrUnsupportedMediaType
 }
 
-// Render encodes the provided type and sends a response with status code
-// based on Accept header. If Accept header not set, it defaults to html/plain.
-func (c *Context) Render(code int, i interface{}) error {
-	a := c.Request.Header.Get(HeaderAccept)
-	if strings.HasPrefix(a, MIMEJSON) {
-		return c.JSON(code, i)
-	} else if strings.HasPrefix(a, MIMEText) {
-		return c.String(code, i.(string))
-	} else if strings.HasPrefix(a, MIMEHTML) {
-	}
-	return c.HTMLString(code, i.(string))
+func (c *Context) Render(code int, name string, data interface{}) error {
+	c.Response.Header().Set(HeaderContentType, MIMEHTML+"; charset=utf-8")
+	c.Response.WriteHeader(code)
+	return c.echo.renderFunc(c.Response.ResponseWriter, name, data)
 }
 
 // JSON sends an application/json response with status code.
-func (c *Context) JSON(code int, i interface{}) error {
+func (c *Context) JSON(code int, v interface{}) error {
 	c.Response.Header().Set(HeaderContentType, MIMEJSON+"; charset=utf-8")
 	c.Response.WriteHeader(code)
-	return json.NewEncoder(c.Response).Encode(i)
+	return json.NewEncoder(c.Response).Encode(v)
 }
 
 // String sends a text/plain response with status code.
@@ -74,18 +66,12 @@ func (c *Context) String(code int, s string) (err error) {
 	return
 }
 
-// HTMLString sends a text/html response with status code.
-func (c *Context) HTMLString(code int, html string) (err error) {
+// HTML sends a text/html response with status code.
+func (c *Context) HTML(code int, html string) (err error) {
 	c.Response.Header().Set(HeaderContentType, MIMEHTML+"; charset=utf-8")
 	c.Response.WriteHeader(code)
 	_, err = c.Response.Write([]byte(html))
 	return
-}
-
-// HTML applies the template associated with t that has the given name to
-// the specified data object and sends a text/html response with status code.
-func (c *Context) HTML(code int, t *template.Template, name string, data interface{}) (err error) {
-	return t.ExecuteTemplate(c.Response, name, data)
 }
 
 // func (c *Context) File(code int, file, name string) {
@@ -106,8 +92,8 @@ func (c *Context) Redirect(code int, url string) {
 	http.Redirect(c.Response, c.Request, url, code)
 }
 
-func (c *Context) reset(rw http.ResponseWriter, r *http.Request, e *Echo) {
-	c.Response.reset(rw)
+func (c *Context) reset(w http.ResponseWriter, r *http.Request, e *Echo) {
+	c.Response.reset(w)
 	c.Request = r
 	c.echo = e
 }

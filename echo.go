@@ -2,6 +2,7 @@ package echo
 
 import (
 	"errors"
+	"io"
 	"log"
 	"net/http"
 	"sync"
@@ -14,12 +15,14 @@ type (
 		middleware      []MiddlewareFunc
 		maxParam        byte
 		notFoundHandler HandlerFunc
+		renderFunc      RenderFunc
 		pool            sync.Pool
 	}
 	Middleware     interface{}
 	MiddlewareFunc func(HandlerFunc) HandlerFunc
 	Handler        interface{}
 	HandlerFunc    func(*Context)
+	RenderFunc     func(io.Writer, string, interface{}) error
 )
 
 const (
@@ -69,6 +72,9 @@ func New() (e *Echo) {
 		notFoundHandler: func(c *Context) {
 			http.Error(c.Response, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		},
+		renderFunc: func(w io.Writer, name string, data interface{}) (err error) {
+			return
+		},
 	}
 	e.Router = NewRouter(e)
 	e.pool.New = func() interface{} {
@@ -86,20 +92,15 @@ func New() (e *Echo) {
 func (h HandlerFunc) ServeHTTP(http.ResponseWriter, *http.Request) {
 }
 
-// Sub creates a new sub router. It inherits all properties from the parent
-// router, including middleware.
-func (e *Echo) Sub(pfx string) *Echo {
-	s := *e
-	s.prefix = pfx
-	return &s
-}
-
-// Group is similar to Sub but excludes inheriting middleware from the parent
-// router.
-func (e *Echo) Group(pfx string) *Echo {
+// Group creates a sub router. It inherits all properties from the parent.
+// Passing middleware overrides parent middleware.
+func (e *Echo) Group(pfx string, m ...Middleware) *Echo {
 	g := *e
 	g.prefix = pfx
-	g.middleware = nil
+	if len(m) > 0 {
+		g.middleware = nil
+		g.Use(m...)
+	}
 	return &g
 }
 
@@ -190,7 +191,7 @@ func (e *Echo) Index(file string) {
 	e.ServeFile("/", file)
 }
 
-func (e *Echo) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h, c, echo := e.Router.Find(r.Method, r.URL.Path)
 	defer e.pool.Put(c)
 	if echo != nil {
@@ -199,7 +200,7 @@ func (e *Echo) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	if h == nil {
 		h = e.notFoundHandler
 	}
-	c.reset(rw, r, e)
+	c.reset(w, r, e)
 	// Middleware
 	for i := len(e.middleware) - 1; i >= 0; i-- {
 		h = e.middleware[i](h)
