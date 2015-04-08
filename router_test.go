@@ -277,7 +277,7 @@ var api = []route{
 
 func TestRouterStatic(t *testing.T) {
 	r := New().Router
-	r.Add(GET, "/folders/files/echo.gif", func(c *Context) {}, nil)
+	r.Add(GET, "/folders/files/echo.gif", func(*Context) {}, nil)
 	h, _, _ := r.Find(GET, "/folders/files/echo.gif")
 	if h == nil {
 		t.Fatal("handle not found")
@@ -286,7 +286,7 @@ func TestRouterStatic(t *testing.T) {
 
 func TestRouterParam(t *testing.T) {
 	r := New().Router
-	r.Add(GET, "/users/:id", func(c *Context) {}, nil)
+	r.Add(GET, "/users/:id", func(*Context) {}, nil)
 	h, c, _ := r.Find(GET, "/users/1")
 	if h == nil {
 		t.Fatal("handle not found")
@@ -298,7 +298,7 @@ func TestRouterParam(t *testing.T) {
 
 func TestRouterTwoParam(t *testing.T) {
 	r := New().Router
-	r.Add(GET, "/users/:uid/files/:fid", func(c *Context) {}, nil)
+	r.Add(GET, "/users/:uid/files/:fid", func(*Context) {}, nil)
 	h, c, _ := r.Find(GET, "/users/1/files/1")
 	if h == nil {
 		t.Fatal("handle not found")
@@ -313,7 +313,7 @@ func TestRouterTwoParam(t *testing.T) {
 
 func TestRouterCatchAll(t *testing.T) {
 	r := New().Router
-	r.Add(GET, "/static/*", func(c *Context) {}, nil)
+	r.Add(GET, "/static/*", func(*Context) {}, nil)
 	h, _, _ := r.Find(GET, "/static/*")
 	if h == nil {
 		t.Fatal("handle not found")
@@ -322,7 +322,7 @@ func TestRouterCatchAll(t *testing.T) {
 
 func TestRouterMicroParam(t *testing.T) {
 	r := New().Router
-	r.Add(GET, "/:a/:b/:c", func(c *Context) {}, nil)
+	r.Add(GET, "/:a/:b/:c", func(*Context) {}, nil)
 	h, c, _ := r.Find(GET, "/1/2/3")
 	if h == nil {
 		t.Fatal("handle not found")
@@ -358,7 +358,7 @@ func TestRouterAPI(t *testing.T) {
 
 func TestRouterServeHTTP(t *testing.T) {
 	r := New().Router
-	r.Add(GET, "/users", func(c *Context) {}, nil)
+	r.Add(GET, "/users", func(*Context) {}, nil)
 
 	// OK
 	req, _ := http.NewRequest(GET, "/users", nil)

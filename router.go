@@ -25,9 +25,9 @@ type (
 )
 
 const (
-	snode ntype = iota // Static node
-	pnode              // Param node
-	anode              // Catch-all node
+	snode ntype = 1 + iota // Static node
+	pnode                  // Param node
+	cnode                  // Catch-all node
 )
 
 func NewRouter(e *Echo) (r *router) {
@@ -51,12 +51,13 @@ func (r *router) Add(method, path string, h HandlerFunc, echo *Echo) {
 			for ; i < l && path[i] != '/'; i++ {
 			}
 			if i == l {
-				r.insert(method, path[:i], h, snode, echo)
+				r.insert(method, path[:i], h, 0, echo)
 				return
 			}
-			r.insert(method, path[:i], nil, snode, echo)
+			r.insert(method, path[:i], nil, 0, echo)
 		} else if path[i] == '*' {
-			r.insert(method, path[:i], h, anode, echo)
+			r.insert(method, path[:i], nil, cnode, echo)
+			r.insert(method, path[:l], h, 0, echo)
 		}
 	}
 	r.insert(method, path, h, snode, echo)
@@ -80,16 +81,15 @@ func (r *router) insert(method, path string, h HandlerFunc, has ntype, echo *Ech
 				cn.handler = h
 				cn.echo = echo
 			}
-			return
 		} else if l < pl {
-			// Split the node
+			// Split node
 			n := newNode(cn.prefix[l:], cn.has, cn.handler, cn.edges, cn.echo)
 			cn.edges = edges{n} // Add to parent
 
 			// Reset parent node
 			cn.label = cn.prefix[0]
 			cn.prefix = cn.prefix[:l]
-			cn.has = snode
+			cn.has = 0
 			cn.handler = nil
 			cn.echo = nil
 
@@ -98,29 +98,29 @@ func (r *router) insert(method, path string, h HandlerFunc, has ntype, echo *Ech
 				cn.handler = h
 				cn.echo = echo
 			} else {
-				// Need to create a node
+				// Create child node
 				n = newNode(search[l:], has, h, edges{}, echo)
 				cn.edges = append(cn.edges, n)
 			}
-			break
 		} else if l < sl {
 			search = search[l:]
 			e := cn.findEdge(search[0])
-			if e == nil {
-				n := newNode(search, has, h, edges{}, echo)
-				cn.edges = append(cn.edges, n)
-				break
-			} else {
+			if e != nil {
+				// Go deeper
 				cn = e
+				continue
 			}
+			// Create child node
+			n := newNode(search, has, h, edges{}, echo)
+			cn.edges = append(cn.edges, n)
 		} else {
 			// Node already exists
 			if h != nil {
 				cn.handler = h
 				cn.echo = echo
 			}
-			break
 		}
+		return
 	}
 }
 
@@ -179,8 +179,7 @@ func (r *router) Find(method, path string) (h HandlerFunc, c *Context, echo *Ech
 			if cn.has == pnode {
 				// Param node
 				cn = cn.edges[0]
-				i := 0
-				l = len(search)
+				i, l := 0, len(search)
 				for ; i < l && search[i] != '/'; i++ {
 				}
 				p := c.params[:n+1]
@@ -188,8 +187,9 @@ func (r *router) Find(method, path string) (h HandlerFunc, c *Context, echo *Ech
 				p[n].Value = search[:i]
 				n++
 				search = search[i:]
-			} else if cn.has == anode {
+			} else if cn.has == cnode {
 				// Catch-all node
+				cn = cn.edges[0]
 				p := c.params[:n+1]
 				p[n].Name = "_name"
 				p[n].Value = search
@@ -201,7 +201,7 @@ func (r *router) Find(method, path string) (h HandlerFunc, c *Context, echo *Ech
 				continue
 			}
 
-			// Dig more
+			// Go deeper
 			e := cn.findEdge(search[0])
 			if e == nil {
 				// Not found
