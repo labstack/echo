@@ -115,6 +115,11 @@ func (e *Echo) NotFoundHandler(h Handler) {
 	e.notFoundHandler = wrapH(h)
 }
 
+// RenderFunc sets a custom RenderFunc.
+func (e *Echo) RenderFunc(r RenderFunc) {
+	e.renderFunc = r
+}
+
 // Use adds handler to the middleware chain.
 func (e *Echo) Use(m ...Middleware) {
 	for _, h := range m {
