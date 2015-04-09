@@ -216,7 +216,7 @@ func (r *router) Find(method, path string) (h HandlerFunc, c *Context, echo *Ech
 
 func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	h, c, _ := r.Find(req.Method, req.URL.Path)
-	c.Response.ResponseWriter = w
+	c.Response.writer = w
 	if h != nil {
 		h(c)
 	} else {

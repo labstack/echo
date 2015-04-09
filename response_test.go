@@ -20,14 +20,6 @@ func TestResponse(t *testing.T) {
 		if c.Response.Status() != http.StatusOK {
 			t.Error("size should be 5")
 		}
-
-		// TODO: fix us later
-		c.Response.CloseNotify()
-		c.Response.Flusher()
-		c.Response.Hijack()
-
-		// Reset
-		c.Response.reset(c.Response.ResponseWriter)
 	})
 	w := httptest.NewRecorder()
 	r, _ := http.NewRequest("GET", "/hello", nil)
