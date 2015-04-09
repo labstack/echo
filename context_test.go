@@ -12,7 +12,7 @@ func TestContext(t *testing.T) {
 	b, _ := json.Marshal(u1)
 	r, _ := http.NewRequest(POST, "/users/1", bytes.NewReader(b))
 	c := &Context{
-		Response: &response{writer: httptest.NewRecorder()},
+		Response: &response{Writer: httptest.NewRecorder()},
 		Request:  r,
 		params:   make(Params, 5),
 		store:    make(store),

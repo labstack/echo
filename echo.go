@@ -15,14 +15,16 @@ type (
 		middleware      []MiddlewareFunc
 		maxParam        byte
 		notFoundHandler HandlerFunc
-		renderFunc      RenderFunc
+		renderer        Renderer
 		pool            sync.Pool
 	}
 	Middleware     interface{}
 	MiddlewareFunc func(HandlerFunc) HandlerFunc
 	Handler        interface{}
 	HandlerFunc    func(*Context)
-	RenderFunc     func(io.Writer, string, interface{}) error
+	Renderer       interface {
+		Render(io.Writer, string, interface{}) error
+	}
 )
 
 const (
@@ -72,9 +74,6 @@ func New() (e *Echo) {
 		notFoundHandler: func(c *Context) {
 			http.Error(c.Response, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		},
-		renderFunc: func(w io.Writer, name string, data interface{}) (err error) {
-			return
-		},
 	}
 	e.Router = NewRouter(e)
 	e.pool.New = func() interface{} {
@@ -115,9 +114,9 @@ func (e *Echo) NotFoundHandler(h Handler) {
 	e.notFoundHandler = wrapH(h)
 }
 
-// RenderFunc sets a custom RenderFunc.
-func (e *Echo) RenderFunc(r RenderFunc) {
-	e.renderFunc = r
+// Renderer sets an HTML Renderer.
+func (e *Echo) Renderer(r Renderer) {
+	e.renderer = r
 }
 
 // Use adds handler to the middleware chain.
@@ -197,7 +196,8 @@ func (e *Echo) Index(file string) {
 }
 
 func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h, c, echo := e.Router.Find(r.Method, r.URL.Path)
+	c := e.pool.Get().(*Context)
+	h, echo := e.Router.Find(r.Method, r.URL.Path, c.params)
 	if echo != nil {
 		e = echo
 	}

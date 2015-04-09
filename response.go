@@ -7,7 +7,7 @@ import (
 
 type (
 	response struct {
-		writer    http.ResponseWriter
+		Writer    http.ResponseWriter
 		status    int
 		size      int
 		committed bool
@@ -15,7 +15,7 @@ type (
 )
 
 func (r *response) Header() http.Header {
-	return r.writer.Header()
+	return r.Writer.Header()
 }
 
 func (r *response) WriteHeader(n int) {
@@ -25,12 +25,12 @@ func (r *response) WriteHeader(n int) {
 		return
 	}
 	r.status = n
-	r.writer.WriteHeader(n)
+	r.Writer.WriteHeader(n)
 	r.committed = true
 }
 
 func (r *response) Write(b []byte) (n int, err error) {
-	n, err = r.writer.Write(b)
+	n, err = r.Writer.Write(b)
 	r.size += n
 	return n, err
 }
@@ -44,6 +44,6 @@ func (r *response) Size() int {
 }
 
 func (r *response) reset(w http.ResponseWriter) {
-	r.writer = w
+	r.Writer = w
 	r.committed = false
 }

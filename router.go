@@ -157,8 +157,7 @@ func lcp(a, b string) (i int) {
 	return
 }
 
-func (r *router) Find(method, path string) (h HandlerFunc, c *Context, echo *Echo) {
-	c = r.echo.pool.Get().(*Context)
+func (r *router) Find(method, path string, params Params) (h HandlerFunc, echo *Echo) {
 	cn := r.trees[method] // Current node as root
 	search := path
 	n := 0 // Param count
@@ -182,7 +181,7 @@ func (r *router) Find(method, path string) (h HandlerFunc, c *Context, echo *Ech
 				i, l := 0, len(search)
 				for ; i < l && search[i] != '/'; i++ {
 				}
-				p := c.params[:n+1]
+				p := params[:n+1]
 				p[n].Name = cn.prefix[1:]
 				p[n].Value = search[:i]
 				n++
@@ -190,7 +189,7 @@ func (r *router) Find(method, path string) (h HandlerFunc, c *Context, echo *Ech
 			} else if cn.has == cnode {
 				// Catch-all node
 				cn = cn.edges[0]
-				p := c.params[:n+1]
+				p := params[:n+1]
 				p[n].Name = "_name"
 				p[n].Value = search
 				search = "" // End search
@@ -215,8 +214,9 @@ func (r *router) Find(method, path string) (h HandlerFunc, c *Context, echo *Ech
 }
 
 func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	h, c, _ := r.Find(req.Method, req.URL.Path)
-	c.Response.writer = w
+	c := r.echo.pool.Get().(*Context)
+	h, _ := r.Find(req.Method, req.URL.Path, c.params)
+	c.Response.Writer = w
 	if h != nil {
 		h(c)
 	} else {

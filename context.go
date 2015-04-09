@@ -48,7 +48,7 @@ func (c *Context) Bind(v interface{}) error {
 func (c *Context) Render(code int, name string, data interface{}) error {
 	c.Response.Header().Set(HeaderContentType, MIMEHTML+"; charset=utf-8")
 	c.Response.WriteHeader(code)
-	return c.echo.renderFunc(c.Response, name, data)
+	return c.echo.renderer.Render(c.Response, name, data)
 }
 
 // JSON sends an application/json response with status code.
