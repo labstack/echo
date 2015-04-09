@@ -198,7 +198,6 @@ func (e *Echo) Index(file string) {
 
 func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h, c, echo := e.Router.Find(r.Method, r.URL.Path)
-	defer e.pool.Put(c)
 	if echo != nil {
 		e = echo
 	}
@@ -212,6 +211,7 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	// Handler
 	h(c)
+	e.pool.Put(c)
 }
 
 // Run a server
