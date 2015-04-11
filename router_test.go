@@ -344,6 +344,18 @@ func TestRouterMicroParam(t *testing.T) {
 	}
 }
 
+func TestRouterConflict(t *testing.T) {
+	r := New().Router
+	r.Add(GET, "/users", func(*Context) {}, nil)
+	r.Add(GET, "/users/new", func(*Context) {}, nil)
+	r.Add(GET, "/users/old", func(*Context) {}, nil)
+	r.Add(GET, "/users/:id", func(*Context) {}, nil)
+	h, _ := r.Find(GET, "/users/nnn", params)
+	println(h)
+	n := r.trees[GET]
+	n.printTree("", true)
+}
+
 func TestRouterAPI(t *testing.T) {
 	r := New().Router
 	for _, route := range api {

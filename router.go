@@ -209,10 +209,7 @@ func (r *router) Find(method, path string, params Params) (h HandlerFunc, echo *
 			search = "" // End search
 			continue
 		}
-		if tn != nil {
 
-		}
-		println(tn.handler, tn.prefix)
 		return
 	}
 }
