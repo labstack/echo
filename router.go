@@ -171,13 +171,17 @@ func (r *router) Find(method, path string, params Params) (h HandlerFunc, echo *
 			return
 		}
 
+		pl := len(cn.prefix)
 		l := lcp(search, cn.prefix)
+		if l < pl {
+			// Not found
+			return
+		}
 		search = search[l:]
 
 		// Static node
 		e := cn.findEdge(search[0])
 		if e != nil {
-			// Go deeper
 			cn = e
 			continue
 		}
