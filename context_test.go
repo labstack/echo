@@ -3,10 +3,22 @@ package echo
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"text/template"
 )
+
+type (
+	Template struct {
+		templates *template.Template
+	}
+)
+
+func (t *Template) Render(w io.Writer, name string, data interface{}) error {
+	return t.templates.ExecuteTemplate(w, name, data)
+}
 
 func TestContext(t *testing.T) {
 	b, _ := json.Marshal(u1)
@@ -16,6 +28,7 @@ func TestContext(t *testing.T) {
 		Request:  r,
 		params:   make(Params, 5),
 		store:    make(store),
+		echo:     &Echo{},
 	}
 
 	//**********//
@@ -66,24 +79,38 @@ func TestContext(t *testing.T) {
 		t.Error("user name should be Joe")
 	}
 
+	// Render
+	tpl := &Template{
+		templates: template.Must(template.New("hello").Parse("{{.}}")),
+	}
+	c.echo.renderer = tpl
+	if err := c.Render("hello", "Joe"); err != nil {
+		t.Errorf("render %v", err)
+	}
+	c.echo.renderer = nil
+	if err := c.Render("hello", "Joe"); err == nil {
+		t.Error("render should error out")
+	}
+
 	// JSON
 	r.Header.Set(HeaderAccept, MIMEJSON)
+	c.Response.committed = false
 	if err := c.JSON(http.StatusOK, u1); err != nil {
-		t.Errorf("render json %v", err)
+		t.Errorf("json %v", err)
 	}
 
 	// String
 	r.Header.Set(HeaderAccept, MIMEText)
 	c.Response.committed = false
 	if err := c.String(http.StatusOK, "Hello, World!"); err != nil {
-		t.Errorf("render string %v", err)
+		t.Errorf("string %v", err)
 	}
 
 	// HTML
 	r.Header.Set(HeaderAccept, MIMEHTML)
 	c.Response.committed = false
 	if err := c.HTML(http.StatusOK, "Hello, <strong>World!</strong>"); err != nil {
-		t.Errorf("render html %v", err)
+		t.Errorf("html %v", err)
 	}
 
 	// Redirect

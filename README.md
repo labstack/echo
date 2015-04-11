@@ -30,7 +30,10 @@ Echo is a fast HTTP router (zero memory allocation) + micro web framework in Go.
 package main
 
 import (
+	"io"
 	"net/http"
+
+	"html/template"
 
 	"github.com/labstack/echo"
 	mw "github.com/labstack/echo/middleware"
@@ -38,20 +41,29 @@ import (
 	"github.com/thoas/stats"
 )
 
-type user struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+type (
+	// Template provides HTML template rendering
+	Template struct {
+		templates *template.Template
+	}
+
+	user struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	}
+)
+
+var (
+	users map[string]user
+)
+
+// Render HTML
+func (t *Template) Render(w io.Writer, name string, data interface{}) error {
+	return t.templates.ExecuteTemplate(w, name, data)
 }
 
-var users map[string]user
-
-func init() {
-	users = map[string]user{
-		"1": user{
-			ID:   "1",
-			Name: "Wreck-It Ralph",
-		},
-	}
+func welcome(c *echo.Context) {
+	c.Render("welcome", "Joe")
 }
 
 func createUser(c *echo.Context) {
@@ -109,6 +121,16 @@ func main() {
 	e.Get("/users", getUsers)
 	e.Get("/users/:id", getUser)
 
+	//***************//
+	//   Templates   //
+	//***************//
+	t := &Template{
+		// Cached templates
+		templates: template.Must(template.ParseFiles("public/tpl/welcome.tpl")),
+	}
+	e.Renderer(t)
+	e.Get("/welcome", welcome)
+
 	//***********//
 	//   Group   //
 	//***********//
@@ -131,6 +153,15 @@ func main() {
 
 	// Start server
 	e.Run(":8080")
+}
+
+func init() {
+	users = map[string]user{
+		"1": user{
+			ID:   "1",
+			Name: "Wreck-It Ralph",
+		},
+	}
 }
 ```
 

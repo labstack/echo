@@ -45,9 +45,14 @@ func (c *Context) Bind(v interface{}) error {
 	return ErrUnsupportedMediaType
 }
 
-func (c *Context) Render(code int, name string, data interface{}) error {
+// Render calls the registered HTML template renderer and sends a text/html
+// response.
+func (c *Context) Render(name string, data interface{}) error {
+	if c.echo.renderer == nil {
+		return ErrNoRenderer
+	}
 	c.Response.Header().Set(HeaderContentType, MIMEHTML+"; charset=utf-8")
-	c.Response.WriteHeader(code)
+	c.Response.WriteHeader(http.StatusOK)
 	return c.echo.renderer.Render(c.Response, name, data)
 }
 

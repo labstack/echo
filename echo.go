@@ -65,6 +65,7 @@ var (
 
 	// Errors
 	ErrUnsupportedMediaType = errors.New("echo: unsupported media type")
+	ErrNoRenderer           = errors.New("echo: renderer not registered")
 )
 
 // New creates an Echo instance.
@@ -109,12 +110,13 @@ func (e *Echo) MaxParam(n uint8) {
 	e.maxParam = n
 }
 
-// NotFoundHandler sets a custom NotFound handler.
+// NotFoundHandler registers a custom NotFound handler.
 func (e *Echo) NotFoundHandler(h Handler) {
 	e.notFoundHandler = wrapH(h)
 }
 
-// Renderer sets an HTML Renderer.
+// Renderer registers an HTML template renderer, it is used by
+// echo.Context.Render API.
 func (e *Echo) Renderer(r Renderer) {
 	e.renderer = r
 }
