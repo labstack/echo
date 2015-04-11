@@ -83,7 +83,7 @@ func main() {
 	e.Index("public/index.html")
 
 	// Serve static files
-	e.Static("/js", "public/js")
+	e.Static("/scripts", "public/scripts")
 
 	//************//
 	//   Routes   //
@@ -97,7 +97,7 @@ func main() {
 	//***************//
 	t := &Template{
 		// Cached templates
-		templates: template.Must(template.ParseFiles("public/tpl/welcome.tpl")),
+		templates: template.Must(template.ParseFiles("public/views/welcome.html")),
 	}
 	e.Renderer(t)
 	e.Get("/welcome", welcome)

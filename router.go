@@ -162,6 +162,7 @@ func (r *router) Find(method, path string, params Params) (h HandlerFunc, echo *
 	search := path
 	n := 0 // Param count
 
+	// Search order static > param > catch-all
 	for {
 		if search == "" || search == cn.prefix {
 			// Found
@@ -170,45 +171,43 @@ func (r *router) Find(method, path string, params Params) (h HandlerFunc, echo *
 			return
 		}
 
-		pl := len(cn.prefix)
 		l := lcp(search, cn.prefix)
+		search = search[l:]
 
-		if l == pl {
-			search = search[l:]
-			if cn.has == pnode {
-				// Param node
-				cn = cn.edges[0]
-				i, l := 0, len(search)
-				for ; i < l && search[i] != '/'; i++ {
-				}
-				p := params[:n+1]
-				p[n].Name = cn.prefix[1:]
-				p[n].Value = search[:i]
-				n++
-				search = search[i:]
-			} else if cn.has == cnode {
-				// Catch-all node
-				cn = cn.edges[0]
-				p := params[:n+1]
-				p[n].Name = "_name"
-				p[n].Value = search
-				search = "" // End search
-			}
-
-			// Search complete
-			if len(search) == 0 {
-				continue
-			}
-
+		// Static node
+		e := cn.findEdge(search[0])
+		if e != nil {
 			// Go deeper
-			e := cn.findEdge(search[0])
-			if e == nil {
-				// Not found
-				return
-			}
 			cn = e
 			continue
 		}
+
+		// Param node
+		e = cn.findEdge(':')
+		if e != nil {
+			cn = e
+			i, l := 0, len(search)
+			for ; i < l && search[i] != '/'; i++ {
+			}
+			p := params[:n+1]
+			p[n].Name = cn.prefix[1:]
+			p[n].Value = search[:i]
+			n++
+			search = search[i:]
+			continue
+		}
+
+		// Catch-all node
+		e = cn.findEdge('*')
+		if e != nil {
+			cn = e
+			p := params[:n+1]
+			p[n].Name = "_name"
+			p[n].Value = search
+			search = "" // End search
+			continue
+		}
+
 		return
 	}
 }

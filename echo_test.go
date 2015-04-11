@@ -41,9 +41,9 @@ func TestEchoIndex(t *testing.T) {
 
 func TestEchoStatic(t *testing.T) {
 	e := New()
-	e.Static("/js", "example/public/js")
+	e.Static("/scripts", "example/public/scripts")
 	w := httptest.NewRecorder()
-	r, _ := http.NewRequest(GET, "/js/main.js", nil)
+	r, _ := http.NewRequest(GET, "/scripts/main.js", nil)
 	e.ServeHTTP(w, r)
 	if w.Code != 200 {
 		t.Errorf("status code should be 200, found %d", w.Code)
