@@ -29,7 +29,7 @@
 <a id="features" class="anchor" href="#features" aria-hidden="true"><span class="octicon octicon-link"></span></a>Features</h3>
 
 <ul>
-<li>Zippy router.</li>
+<li>Fast <img class="emoji" title=":rocket:" alt=":rocket:" src="https://assets-cdn.github.com/images/icons/emoji/unicode/1f680.png" height="20" width="20" align="absmiddle"> router which smartly resolves conflicting routes</li>
 <li>Extensible middleware/handler, supports:
 
 <ul>
@@ -55,7 +55,7 @@
 </li>
 </ul>
 </li>
-<li>Sub/Group routing</li>
+<li>Group routing</li>
 <li>Handy encoding/decoding functions.</li>
 <li>Serve static files, including index.</li>
 </ul>
@@ -73,7 +73,10 @@
 <div class="highlight highlight-go"><pre><span class="pl-k">package</span> main
 
 <span class="pl-k">import</span> (
+    <span class="pl-s"><span class="pl-pds">"</span>io<span class="pl-pds">"</span></span>
     <span class="pl-s"><span class="pl-pds">"</span>net/http<span class="pl-pds">"</span></span>
+
+    <span class="pl-s"><span class="pl-pds">"</span>html/template<span class="pl-pds">"</span></span>
 
     <span class="pl-s"><span class="pl-pds">"</span>github.com/labstack/echo<span class="pl-pds">"</span></span>
     mw <span class="pl-s"><span class="pl-pds">"</span>github.com/labstack/echo/middleware<span class="pl-pds">"</span></span>
@@ -81,20 +84,29 @@
     <span class="pl-s"><span class="pl-pds">"</span>github.com/thoas/stats<span class="pl-pds">"</span></span>
 )
 
-<span class="pl-k">type</span> user <span class="pl-k">struct</span> {
-    <span class="pl-v">ID</span>   <span class="pl-k">string</span> <span class="pl-s"><span class="pl-pds">`</span>json:"id"<span class="pl-pds">`</span></span>
-    <span class="pl-v">Name</span> <span class="pl-k">string</span> <span class="pl-s"><span class="pl-pds">`</span>json:"name"<span class="pl-pds">`</span></span>
+<span class="pl-k">type</span> (
+    <span class="pl-c">// Template provides HTML template rendering</span>
+    <span class="pl-v">Template</span> <span class="pl-k">struct</span> {
+        templates *template.<span class="pl-smi">Template</span>
+    }
+
+    user <span class="pl-k">struct</span> {
+        <span class="pl-v">ID</span>   <span class="pl-k">string</span> <span class="pl-s"><span class="pl-pds">`</span>json:"id"<span class="pl-pds">`</span></span>
+        <span class="pl-v">Name</span> <span class="pl-k">string</span> <span class="pl-s"><span class="pl-pds">`</span>json:"name"<span class="pl-pds">`</span></span>
+    }
+)
+
+<span class="pl-k">var</span> (
+    users <span class="pl-k">map</span>[<span class="pl-k">string</span>]user
+)
+
+<span class="pl-c">// Render HTML</span>
+<span class="pl-k">func</span> <span class="pl-en">(<span class="pl-v">t</span> *<span class="pl-v">Template</span>) <span class="pl-en">Render</span></span>(<span class="pl-v">w</span> <span class="pl-v">io</span>.<span class="pl-v">Writer</span>, <span class="pl-v">name</span> <span class="pl-v">string</span>, <span class="pl-v">data</span> <span class="pl-v">interface</span>{}) <span class="pl-v">error</span> {
+    <span class="pl-k">return</span> t.<span class="pl-smi">templates</span>.<span class="pl-c1">ExecuteTemplate</span>(w, name, data)
 }
 
-<span class="pl-k">var</span> <span class="pl-smi">users</span> <span class="pl-k">map</span>[<span class="pl-k">string</span>]user
-
-<span class="pl-k">func</span> <span class="pl-en">init</span>() {
-    users = <span class="pl-k">map</span>[<span class="pl-k">string</span>]user{
-        <span class="pl-s"><span class="pl-pds">"</span>1<span class="pl-pds">"</span></span>: user{
-            ID:   <span class="pl-s"><span class="pl-pds">"</span>1<span class="pl-pds">"</span></span>,
-            Name: <span class="pl-s"><span class="pl-pds">"</span>Wreck-It Ralph<span class="pl-pds">"</span></span>,
-        },
-    }
+<span class="pl-k">func</span> <span class="pl-en">welcome</span>(<span class="pl-v">c</span> *<span class="pl-v">echo</span>.<span class="pl-v">Context</span>) {
+    c.<span class="pl-c1">Render</span>(<span class="pl-s"><span class="pl-pds">"</span>welcome<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Joe<span class="pl-pds">"</span></span>)
 }
 
 <span class="pl-k">func</span> <span class="pl-en">createUser</span>(<span class="pl-v">c</span> *<span class="pl-v">echo</span>.<span class="pl-v">Context</span>) {
@@ -152,27 +164,47 @@
     e.<span class="pl-c1">Get</span>(<span class="pl-s"><span class="pl-pds">"</span>/users<span class="pl-pds">"</span></span>, getUsers)
     e.<span class="pl-c1">Get</span>(<span class="pl-s"><span class="pl-pds">"</span>/users/:id<span class="pl-pds">"</span></span>, getUser)
 
-    <span class="pl-c">//****************//</span>
-    <span class="pl-c">//   Sub router   //</span>
-    <span class="pl-c">//****************//</span>
-    <span class="pl-c">// Sub - inherits parent middleware</span>
-    <span class="pl-smi">sub</span> <span class="pl-k">:=</span> e.<span class="pl-c1">Sub</span>(<span class="pl-s"><span class="pl-pds">"</span>/sub<span class="pl-pds">"</span></span>)
-    sub.<span class="pl-c1">Use</span>(<span class="pl-k">func</span>(c *echo.<span class="pl-smi">Context</span>) { <span class="pl-c">// Middleware</span>
+    <span class="pl-c">//***************//</span>
+    <span class="pl-c">//   Templates   //</span>
+    <span class="pl-c">//***************//</span>
+    <span class="pl-smi">t</span> <span class="pl-k">:=</span> &amp;Template{
+        <span class="pl-c">// Cached templates</span>
+        templates: template.<span class="pl-c1">Must</span>(template.<span class="pl-c1">ParseFiles</span>(<span class="pl-s"><span class="pl-pds">"</span>public/tpl/welcome.tpl<span class="pl-pds">"</span></span>)),
+    }
+    e.<span class="pl-c1">Renderer</span>(t)
+    e.<span class="pl-c1">Get</span>(<span class="pl-s"><span class="pl-pds">"</span>/welcome<span class="pl-pds">"</span></span>, welcome)
+
+    <span class="pl-c">//***********//</span>
+    <span class="pl-c">//   Group   //</span>
+    <span class="pl-c">//***********//</span>
+    <span class="pl-c">// Group with parent middleware</span>
+    <span class="pl-smi">a</span> <span class="pl-k">:=</span> e.<span class="pl-c1">Group</span>(<span class="pl-s"><span class="pl-pds">"</span>/admin<span class="pl-pds">"</span></span>)
+    a.<span class="pl-c1">Use</span>(<span class="pl-k">func</span>(c *echo.<span class="pl-smi">Context</span>) {
+        <span class="pl-c">// Security middleware</span>
     })
-    sub.<span class="pl-c1">Get</span>(<span class="pl-s"><span class="pl-pds">"</span>/home<span class="pl-pds">"</span></span>, <span class="pl-c1">func</span>(c *echo.<span class="pl-smi">Context</span>) {
-        c.<span class="pl-c1">String</span>(<span class="pl-c1">200</span>, <span class="pl-s"><span class="pl-pds">"</span>Sub route /sub/welcome<span class="pl-pds">"</span></span>)
+    a.<span class="pl-c1">Get</span>(<span class="pl-s"><span class="pl-pds">"</span><span class="pl-pds">"</span></span>, <span class="pl-c1">func</span>(c *echo.<span class="pl-smi">Context</span>) {
+        c.<span class="pl-c1">String</span>(http.<span class="pl-smi">StatusOK</span>, <span class="pl-s"><span class="pl-pds">"</span>Welcome admin!<span class="pl-pds">"</span></span>)
     })
 
-    <span class="pl-c">// Group - doesn't inherit parent middleware</span>
-    <span class="pl-smi">grp</span> <span class="pl-k">:=</span> e.<span class="pl-c1">Group</span>(<span class="pl-s"><span class="pl-pds">"</span>/group<span class="pl-pds">"</span></span>)
-    grp.<span class="pl-c1">Use</span>(<span class="pl-k">func</span>(c *echo.<span class="pl-smi">Context</span>) { <span class="pl-c">// Middleware</span>
+    <span class="pl-c">// Group with no parent middleware</span>
+    <span class="pl-smi">g</span> <span class="pl-k">:=</span> e.<span class="pl-c1">Group</span>(<span class="pl-s"><span class="pl-pds">"</span>/files<span class="pl-pds">"</span></span>, <span class="pl-c1">func</span>(c *echo.<span class="pl-smi">Context</span>) {
+        <span class="pl-c">// Security middleware</span>
     })
-    grp.<span class="pl-c1">Get</span>(<span class="pl-s"><span class="pl-pds">"</span>/home<span class="pl-pds">"</span></span>, <span class="pl-c1">func</span>(c *echo.<span class="pl-smi">Context</span>) {
-        c.<span class="pl-c1">String</span>(<span class="pl-c1">200</span>, <span class="pl-s"><span class="pl-pds">"</span>Group route /group/welcome<span class="pl-pds">"</span></span>)
+    g.<span class="pl-c1">Get</span>(<span class="pl-s"><span class="pl-pds">"</span><span class="pl-pds">"</span></span>, <span class="pl-c1">func</span>(c *echo.<span class="pl-smi">Context</span>) {
+        c.<span class="pl-c1">String</span>(http.<span class="pl-smi">StatusOK</span>, <span class="pl-s"><span class="pl-pds">"</span>Your files!<span class="pl-pds">"</span></span>)
     })
 
     <span class="pl-c">// Start server</span>
     e.<span class="pl-c1">Run</span>(<span class="pl-s"><span class="pl-pds">"</span>:8080<span class="pl-pds">"</span></span>)
+}
+
+<span class="pl-k">func</span> <span class="pl-en">init</span>() {
+    users = <span class="pl-k">map</span>[<span class="pl-k">string</span>]user{
+        <span class="pl-s"><span class="pl-pds">"</span>1<span class="pl-pds">"</span></span>: user{
+            ID:   <span class="pl-s"><span class="pl-pds">"</span>1<span class="pl-pds">"</span></span>,
+            Name: <span class="pl-s"><span class="pl-pds">"</span>Wreck-It Ralph<span class="pl-pds">"</span></span>,
+        },
+    }
 }</pre></div>
 
 <h3>
