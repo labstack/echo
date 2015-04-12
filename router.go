@@ -10,8 +10,9 @@ type (
 	node struct {
 		label   byte
 		prefix  string
-		handler HandlerFunc
+		parent  *node
 		edges   edges
+		handler HandlerFunc
 		echo    *Echo
 	}
 	edges []*node
@@ -74,7 +75,7 @@ func (r *router) insert(method, path string, h HandlerFunc, echo *Echo) {
 			}
 		} else if l < pl {
 			// Split node
-			n := newNode(cn.prefix[l:], cn.handler, cn.edges, cn.echo)
+			n := newNode(cn.prefix[l:], cn, cn.edges, cn.handler, cn.echo)
 			cn.edges = edges{n} // Add to parent
 
 			// Reset parent node
@@ -89,7 +90,7 @@ func (r *router) insert(method, path string, h HandlerFunc, echo *Echo) {
 				cn.echo = echo
 			} else {
 				// Create child node
-				n = newNode(search[l:], h, edges{}, echo)
+				n = newNode(search[l:], cn, edges{}, h, echo)
 				cn.edges = append(cn.edges, n)
 			}
 		} else if l < sl {
@@ -101,7 +102,7 @@ func (r *router) insert(method, path string, h HandlerFunc, echo *Echo) {
 				continue
 			}
 			// Create child node
-			n := newNode(search, h, edges{}, echo)
+			n := newNode(search, cn, edges{}, h, echo)
 			cn.edges = append(cn.edges, n)
 		} else {
 			// Node already exists
@@ -114,12 +115,13 @@ func (r *router) insert(method, path string, h HandlerFunc, echo *Echo) {
 	}
 }
 
-func newNode(pfx string, h HandlerFunc, e edges, echo *Echo) (n *node) {
+func newNode(pfx string, p *node, e edges, h HandlerFunc, echo *Echo) (n *node) {
 	n = &node{
 		label:   pfx[0],
 		prefix:  pfx,
-		handler: h,
+		parent:  p,
 		edges:   e,
+		handler: h,
 		echo:    echo,
 	}
 	return
@@ -152,6 +154,7 @@ func (r *router) Find(method, path string, params Params) (h HandlerFunc, echo *
 	n := 0 // Param count
 
 	// Search order static > param > catch-all
+	// TODO: do we need continue???
 	for {
 		if search == "" || search == cn.prefix { // Fix me
 			// Found
@@ -174,15 +177,15 @@ func (r *router) Find(method, path string, params Params) (h HandlerFunc, echo *
 		}
 
 		// Param node
+	param:
 		e = cn.findEdge(':')
 		if e != nil {
 			cn = e
 			i, l := 0, len(search)
 			for ; i < l && search[i] != '/'; i++ {
 			}
-			p := params[:n+1]
-			p[n].Name = cn.prefix[1:]
-			p[n].Value = search[:i]
+			params[n].Name = cn.prefix[1:]
+			params[n].Value = search[:i]
 			n++
 			search = search[i:]
 			continue
@@ -199,8 +202,13 @@ func (r *router) Find(method, path string, params Params) (h HandlerFunc, echo *
 			continue
 		}
 
-		// Not found
-		return
+		cn = cn.parent
+		if cn == nil {
+			// Not found
+			return
+		}
+		// Search backwards
+		goto param
 	}
 }
 
