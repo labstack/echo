@@ -10,24 +10,16 @@ type (
 	node struct {
 		label   byte
 		prefix  string
-		has     ntype // Type of node it contains
 		handler HandlerFunc
 		edges   edges
 		echo    *Echo
 	}
 	edges []*node
-	ntype byte
 	param struct {
 		Name  string
 		Value string
 	}
 	Params []param
-)
-
-const (
-	snode ntype = 1 + iota // Static node
-	pnode                  // Param node
-	cnode                  // Catch-all node
 )
 
 func NewRouter(e *Echo) (r *router) {
@@ -47,23 +39,23 @@ func NewRouter(e *Echo) (r *router) {
 func (r *router) Add(method, path string, h HandlerFunc, echo *Echo) {
 	for i, l := 0, len(path); i < l; i++ {
 		if path[i] == ':' {
-			r.insert(method, path[:i], nil, pnode, echo)
+			r.insert(method, path[:i], nil, echo)
 			for ; i < l && path[i] != '/'; i++ {
 			}
 			if i == l {
-				r.insert(method, path[:i], h, 0, echo)
+				r.insert(method, path[:i], h, echo)
 				return
 			}
-			r.insert(method, path[:i], nil, 0, echo)
+			r.insert(method, path[:i], nil, echo)
 		} else if path[i] == '*' {
-			r.insert(method, path[:i], nil, cnode, echo)
-			r.insert(method, path[:l], h, 0, echo)
+			r.insert(method, path[:i], nil, echo)
+			r.insert(method, path[:l], h, echo)
 		}
 	}
-	r.insert(method, path, h, snode, echo)
+	r.insert(method, path, h, echo)
 }
 
-func (r *router) insert(method, path string, h HandlerFunc, has ntype, echo *Echo) {
+func (r *router) insert(method, path string, h HandlerFunc, echo *Echo) {
 	cn := r.trees[method] // Current node as root
 	search := path
 
@@ -76,20 +68,18 @@ func (r *router) insert(method, path string, h HandlerFunc, has ntype, echo *Ech
 			// At root node
 			cn.label = search[0]
 			cn.prefix = search
-			cn.has = has
 			if h != nil {
 				cn.handler = h
 				cn.echo = echo
 			}
 		} else if l < pl {
 			// Split node
-			n := newNode(cn.prefix[l:], cn.has, cn.handler, cn.edges, cn.echo)
+			n := newNode(cn.prefix[l:], cn.handler, cn.edges, cn.echo)
 			cn.edges = edges{n} // Add to parent
 
 			// Reset parent node
 			cn.label = cn.prefix[0]
 			cn.prefix = cn.prefix[:l]
-			cn.has = 0
 			cn.handler = nil
 			cn.echo = nil
 
@@ -99,7 +89,7 @@ func (r *router) insert(method, path string, h HandlerFunc, has ntype, echo *Ech
 				cn.echo = echo
 			} else {
 				// Create child node
-				n = newNode(search[l:], has, h, edges{}, echo)
+				n = newNode(search[l:], h, edges{}, echo)
 				cn.edges = append(cn.edges, n)
 			}
 		} else if l < sl {
@@ -111,7 +101,7 @@ func (r *router) insert(method, path string, h HandlerFunc, has ntype, echo *Ech
 				continue
 			}
 			// Create child node
-			n := newNode(search, has, h, edges{}, echo)
+			n := newNode(search, h, edges{}, echo)
 			cn.edges = append(cn.edges, n)
 		} else {
 			// Node already exists
@@ -124,11 +114,10 @@ func (r *router) insert(method, path string, h HandlerFunc, has ntype, echo *Ech
 	}
 }
 
-func newNode(pfx string, has ntype, h HandlerFunc, e edges, echo *Echo) (n *node) {
+func newNode(pfx string, h HandlerFunc, e edges, echo *Echo) (n *node) {
 	n = &node{
 		label:   pfx[0],
 		prefix:  pfx,
-		has:     has,
 		handler: h,
 		edges:   e,
 		echo:    echo,
@@ -210,6 +199,7 @@ func (r *router) Find(method, path string, params Params) (h HandlerFunc, echo *
 			continue
 		}
 
+		// Not found
 		return
 	}
 }

@@ -346,12 +346,23 @@ func TestRouterMicroParam(t *testing.T) {
 
 func TestRouterConflict(t *testing.T) {
 	r := New().Router
-	r.Add(GET, "/users", func(*Context) {}, nil)
-	r.Add(GET, "/users/new", func(*Context) {}, nil)
-	r.Add(GET, "/users/old", func(*Context) {}, nil)
-	r.Add(GET, "/users/:id", func(*Context) {}, nil)
-	h, _ := r.Find(GET, "/users/nnn", params)
-	println(h)
+	r.Add(GET, "/new", func(*Context) {
+		println("/new")
+	}, nil)
+	r.Add(GET, "/new/:id", func(*Context) {
+		println("/new/:id")
+	}, nil)
+	r.Add(GET, "/new/name", func(*Context) {
+		println("/new/name")
+	}, nil)
+	r.Add(GET, "/new/name/joe", func(*Context) {
+		println("/new/name/joe")
+	}, nil)
+	r.Add(GET, "/new/name/:id", func(*Context) {
+		println("/new/name/:id")
+	}, nil)
+	// h, _ := r.Find(GET, "/users/new", params)
+	// h(&Context{})
 	n := r.trees[GET]
 	n.printTree("", true)
 }
@@ -392,7 +403,7 @@ func TestRouterServeHTTP(t *testing.T) {
 
 func (n *node) printTree(pfx string, tail bool) {
 	p := prefix(tail, pfx, "└── ", "├── ")
-	fmt.Printf("%s%s has=%d, h=%v, echo=%v\n", p, n.prefix, n.has, n.handler, n.echo)
+	fmt.Printf("%s%s has=%d, echo=%v\n", p, n.prefix, n.handler, n.echo)
 
 	nodes := n.edges
 	l := len(nodes)
