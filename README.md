@@ -2,7 +2,7 @@
 Echo is a fast HTTP router (zero memory allocation) + micro web framework in Go.
 
 ### Features
-- Zippy router.
+- Fast :rocket: router which smartly resolves conflicting routes
 - Extensible middleware/handler, supports:
 	- Middleware
 		- `func(*echo.Context)`
