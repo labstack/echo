@@ -299,7 +299,6 @@ func TestRouterStatic(t *testing.T) {
 func TestRouterParam(t *testing.T) {
 	r := New().Router
 	r.Add(GET, "/users/:id", func(c *Context) {}, nil)
-
 	h, _ := r.Find(GET, "/users/1", params)
 	if h == nil {
 		t.Fatal("handler not found")
@@ -354,68 +353,142 @@ func TestRouterMicroParam(t *testing.T) {
 	}
 }
 
+func TestRouterMultiRoute(t *testing.T) {
+	r := New().Router
+	b := new(bytes.Buffer)
+
+	// Routes
+	r.Add(GET, "/users", func(*Context) {
+		b.WriteString("/users")
+	}, nil)
+	r.Add(GET, "/users/:id", func(c *Context) {}, nil)
+
+	// Route > /users
+	h, _ := r.Find(GET, "/users", params)
+	if h == nil {
+		t.Fatal("handler not found")
+	}
+	h(nil)
+	if b.String() != "/users" {
+		t.Errorf("buffer should be /users")
+	}
+
+	// Route > /users/:id > /users/1
+	h, _ = r.Find(GET, "/users/1", params)
+	if h == nil {
+		t.Fatal("handler not found")
+	}
+	if params[0].Value != "1" {
+		t.Error("param id should be 1")
+	}
+
+	// Route > /user
+	h, _ = r.Find(GET, "/user", params)
+	if h != nil {
+		t.Fatal("handler should be nil")
+	}
+}
+
 func TestRouterConflictingRoute(t *testing.T) {
 	r := New().Router
 	b := new(bytes.Buffer)
-	path := "/new"
 
-	r.Add(GET, path, func(*Context) {
-		b.WriteString(path)
+	// Routes
+	r.Add(GET, "/users", func(*Context) {
+		b.WriteString("/users")
 	}, nil)
-	h, _ := r.Find(GET, path, params)
-	if h == nil {
-		t.Fatal("handler not found")
-	}
-	h(nil)
-	if b.String() != path {
-		t.Errorf("buffer should be %s", path)
-	}
-
-	name := "joe"
-	r.Add(GET, "/new/:id", func(c *Context) {}, nil)
-	h, _ = r.Find(GET, "/new/"+name, params)
-	if h == nil {
-		t.Fatal("handler not found")
-	}
-	if params[0].Value != name {
-		t.Errorf("param id should be %s", name)
-	}
-
-	path = "/new/name"
-	r.Add(GET, path, func(*Context) {
+	r.Add(GET, "/users/new", func(*Context) {
 		b.Reset()
-		b.WriteString(path)
+		b.WriteString("/users/new")
 	}, nil)
-	h, _ = r.Find(GET, path, params)
-	if h == nil {
-		t.Fatal("handler not found")
-	}
-	h(nil)
-	if b.String() != path {
-		t.Errorf("buffer should be %s", path)
-	}
-
-	r.Add(GET, "/new/name/:id", func(c *Context) {}, nil)
-	h, _ = r.Find(GET, "/new/name/"+name, params)
-	if h == nil {
-		t.Fatal("handler not found")
-	}
-	if params[0].Value != name {
-		t.Errorf("param id should be %s", name)
-	}
-
-	path = "/new/name/joe"
-	r.Add(GET, path, func(c *Context) {
+	r.Add(GET, "/users/:id", func(c *Context) {}, nil)
+	r.Add(GET, "/users/new/moon", func(*Context) {
 		b.Reset()
-		b.WriteString(path)
+		b.WriteString("/users/new/moon")
 	}, nil)
-	h, _ = r.Find(GET, "/new/name/joe", params)
+	r.Add(GET, "/users/new/:id", func(*Context) {}, nil)
+
+	// Route > /users
+	h, _ := r.Find(GET, "/users", params)
+	if h == nil {
+		t.Fatal("handler not found")
+	}
+
+	// Route > /users/new
+	h, _ = r.Find(GET, "/users/new", params)
 	if h == nil {
 		t.Fatal("handler not found")
 	}
 	h(nil)
-	if b.String() != path {
-		t.Errorf("buffer should be %s", path)
+	if b.String() != "/users/new" {
+		t.Error("buffer should be /users/new")
+	}
+
+	// Route > /users/:id > /users/1
+	h, _ = r.Find(GET, "/users/1", params)
+	if h == nil {
+		t.Fatal("handler not found")
+	}
+	if params[0].Value != "1" {
+		t.Error("param id should be 1")
+	}
+
+	// Route > /users/:id > /users/nil
+	h, _ = r.Find(GET, "/users/nil", params)
+	if h == nil {
+		t.Fatal("handler not found")
+	}
+	if params[0].Value != "nil" {
+		t.Error("param id should be nil")
+	}
+
+	// Route > /users/:id > /users/news
+	h, _ = r.Find(GET, "/users/news", params)
+	if h == nil {
+		t.Fatal("handler not found")
+	}
+	if params[0].Value != "news" {
+		t.Error("param id should be news")
+	}
+
+	//***************//
+	//   Two level   //
+	//***************//
+	// Route > /users/new/moon > /users/new/moon
+	h, _ = r.Find(GET, "/users/new/moon", params)
+	if h == nil {
+		t.Fatal("handler not found")
+	}
+	h(nil)
+	if b.String() != "/users/new/moon" {
+		t.Error("buffer should be /users/new/moon")
+	}
+
+	// Route > /users/new/:id > /users/new/1
+	h, _ = r.Find(GET, "/users/new/1", params)
+	if h == nil {
+		t.Fatal("handler not found")
+	}
+	if params[0].Value != "1" {
+		t.Error("param id should be 1")
+	}
+
+	// Route > /users/new/:id > /users/new/me
+	h, _ = r.Find(GET, "/users/new/me", params)
+	if h == nil {
+		t.Fatal("handler not found")
+	}
+	if params[0].Value != "me" {
+		t.Error("param id should be me")
+	}
+
+	// Route > /users/new/:id > /users/new/moons
+	h, _ = r.Find(GET, "/users/new/moons", params)
+	if h == nil {
+		t.Fatal("handler not found")
+	}
+	if params[0].Value != "moons" {
+		t.Error("param id should be moons")
 	}
 }
 

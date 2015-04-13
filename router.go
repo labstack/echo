@@ -154,30 +154,35 @@ func (r *router) Find(method, path string, params Params) (h HandlerFunc, echo *
 	n := 0 // Param count
 
 	// Search order static > param > catch-all
-	// TODO: do we need continue???
 	for {
-		if search == "" || search == cn.prefix { // Fix me
+		if search == "" || search == cn.prefix {
 			// Found
 			h = cn.handler
 			echo = cn.echo
 			return
 		}
 
+		var e *node
 		pl := len(cn.prefix)
 		l := lcp(search, cn.prefix)
+
 		if l == pl {
 			search = search[l:]
+		} else if l < pl {
+			if cn.label != ':' {
+				goto Up
+			}
 		}
 
 		// Static node
-		e := cn.findEdge(search[0])
+		e = cn.findEdge(search[0])
 		if e != nil {
 			cn = e
 			continue
 		}
 
 		// Param node
-	param:
+	Param:
 		e = cn.findEdge(':')
 		if e != nil {
 			cn = e
@@ -202,13 +207,19 @@ func (r *router) Find(method, path string, params Params) (h HandlerFunc, echo *
 			continue
 		}
 
+	Up:
+		tn := cn // Save current node
 		cn = cn.parent
 		if cn == nil {
 			// Not found
 			return
 		}
-		// Search backwards
-		goto param
+		// Search upwards
+		if l == pl {
+			// Reset search
+			search = tn.prefix + search
+		}
+		goto Param
 	}
 }
 
