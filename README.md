@@ -1,7 +1,7 @@
 # Echo [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/labstack/echo) [![Build Status](http://img.shields.io/travis/labstack/echo.svg?style=flat-square)](https://travis-ci.org/labstack/echo) [![Coverage Status](http://img.shields.io/coveralls/labstack/echo.svg?style=flat-square)](https://coveralls.io/r/labstack/echo)
 Echo is a fast HTTP router (zero memory allocation) + micro web framework in Go.
 
-### Features
+## Features
 - Fast :rocket: router which smartly resolves conflicting routes
 - Extensible middleware/handler, supports:
 	- Middleware
@@ -20,10 +20,10 @@ Echo is a fast HTTP router (zero memory allocation) + micro web framework in Go.
 - Handy encoding/decoding functions.
 - Serve static files, including index.
 
-### Installation
+## Installation
 ```go get github.com/labstack/echo```
 
-### Usage
+## Usage
 [labstack/echo/example](https://github.com/labstack/echo/tree/master/example)
 
 ```go
@@ -165,7 +165,7 @@ func init() {
 }
 ```
 
-### Benchmark
+## Benchmark
 Based on [julienschmidt/go-http-routing-benchmark] (https://github.com/vishr/go-http-routing-benchmark), April 1, 2015
 ##### [GitHub API](http://developer.github.com/v3)
 > Echo: 42728 ns/op, 0 B/op, 0 allocs/op
@@ -198,5 +198,5 @@ BenchmarkVulcan_GithubAll	    5000	    307241 ns/op	   19894 B/op	     609 alloc
 BenchmarkZeus_GithubAll	        2000	    752907 ns/op	  300688 B/op	    2648 allocs/op
 ```
 
-### License
+## License
 [MIT](https://github.com/labstack/echo/blob/master/LICENSE)
