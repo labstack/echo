@@ -197,3 +197,6 @@ BenchmarkTraffic_GithubAll	     200	   7540377 ns/op	 2664762 B/op	   22390 allo
 BenchmarkVulcan_GithubAll	    5000	    307241 ns/op	   19894 B/op	     609 allocs/op
 BenchmarkZeus_GithubAll	        2000	    752907 ns/op	  300688 B/op	    2648 allocs/op
 ```
+
+### License
+[MIT](https://github.com/labstack/echo/blob/master/LICENSE)
