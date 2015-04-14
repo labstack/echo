@@ -531,14 +531,14 @@ func (n *node) printTree(pfx string, tail bool) {
 	p := prefix(tail, pfx, "└── ", "├── ")
 	fmt.Printf("%s%s, %p: parent=%p, handler=%v, echo=%v\n", p, n.prefix, n, n.parent, n.handler, n.echo)
 
-	nodes := n.edges
-	l := len(nodes)
+	children := n.children
+	l := len(children)
 	p = prefix(tail, pfx, "    ", "│   ")
 	for i := 0; i < l-1; i++ {
-		nodes[i].printTree(p, false)
+		children[i].printTree(p, false)
 	}
 	if l > 0 {
-		nodes[l-1].printTree(p, true)
+		children[l-1].printTree(p, true)
 	}
 }
 

@@ -8,15 +8,15 @@ type (
 		echo  *Echo
 	}
 	node struct {
-		label   byte
-		prefix  string
-		parent  *node
-		edges   edges
-		handler HandlerFunc
-		echo    *Echo
+		label    byte
+		prefix   string
+		parent   *node
+		children children
+		handler  HandlerFunc
+		echo     *Echo
 	}
-	edges []*node
-	param struct {
+	children []*node
+	param    struct {
 		Name  string
 		Value string
 	}
@@ -30,8 +30,8 @@ func NewRouter(e *Echo) (r *router) {
 	}
 	for _, m := range methods {
 		r.trees[m] = &node{
-			prefix: "",
-			edges:  edges{},
+			prefix:   "",
+			children: children{},
 		}
 	}
 	return
@@ -75,8 +75,8 @@ func (r *router) insert(method, path string, h HandlerFunc, echo *Echo) {
 			}
 		} else if l < pl {
 			// Split node
-			n := newNode(cn.prefix[l:], cn, cn.edges, cn.handler, cn.echo)
-			cn.edges = edges{n} // Add to parent
+			n := newNode(cn.prefix[l:], cn, cn.children, cn.handler, cn.echo)
+			cn.children = children{n} // Add to parent
 
 			// Reset parent node
 			cn.label = cn.prefix[0]
@@ -90,20 +90,20 @@ func (r *router) insert(method, path string, h HandlerFunc, echo *Echo) {
 				cn.echo = echo
 			} else {
 				// Create child node
-				n = newNode(search[l:], cn, edges{}, h, echo)
-				cn.edges = append(cn.edges, n)
+				n = newNode(search[l:], cn, children{}, h, echo)
+				cn.children = append(cn.children, n)
 			}
 		} else if l < sl {
 			search = search[l:]
-			e := cn.findEdge(search[0])
-			if e != nil {
+			c := cn.findChild(search[0])
+			if c != nil {
 				// Go deeper
-				cn = e
+				cn = c
 				continue
 			}
 			// Create child node
-			n := newNode(search, cn, edges{}, h, echo)
-			cn.edges = append(cn.edges, n)
+			n := newNode(search, cn, children{}, h, echo)
+			cn.children = append(cn.children, n)
 		} else {
 			// Node already exists
 			if h != nil {
@@ -115,22 +115,22 @@ func (r *router) insert(method, path string, h HandlerFunc, echo *Echo) {
 	}
 }
 
-func newNode(pfx string, p *node, e edges, h HandlerFunc, echo *Echo) (n *node) {
+func newNode(pfx string, p *node, c children, h HandlerFunc, echo *Echo) (n *node) {
 	n = &node{
-		label:   pfx[0],
-		prefix:  pfx,
-		parent:  p,
-		edges:   e,
-		handler: h,
-		echo:    echo,
+		label:    pfx[0],
+		prefix:   pfx,
+		parent:   p,
+		children: c,
+		handler:  h,
+		echo:     echo,
 	}
 	return
 }
 
-func (n *node) findEdge(l byte) *node {
-	for _, e := range n.edges {
-		if e.label == l {
-			return e
+func (n *node) findChild(l byte) *node {
+	for _, c := range n.children {
+		if c.label == l {
+			return c
 		}
 	}
 	return nil
@@ -151,7 +151,8 @@ func lcp(a, b string) (i int) {
 func (r *router) Find(method, path string, params Params) (h HandlerFunc, echo *Echo) {
 	cn := r.trees[method] // Current node as root
 	search := path
-	n := 0 // Param count
+	n := 0         // Param count
+	c := new(node) // Child node
 
 	// Search order static > param > catch-all
 	for {
@@ -162,30 +163,27 @@ func (r *router) Find(method, path string, params Params) (h HandlerFunc, echo *
 			return
 		}
 
-		var e *node
 		pl := len(cn.prefix)
 		l := lcp(search, cn.prefix)
 
 		if l == pl {
 			search = search[l:]
-		} else if l < pl {
-			if cn.label != ':' {
-				goto Up
-			}
+		} else if l < pl && cn.label != ':' {
+			goto Up
 		}
 
 		// Static node
-		e = cn.findEdge(search[0])
-		if e != nil {
-			cn = e
+		c = cn.findChild(search[0])
+		if c != nil {
+			cn = c
 			continue
 		}
 
 		// Param node
 	Param:
-		e = cn.findEdge(':')
-		if e != nil {
-			cn = e
+		c = cn.findChild(':')
+		if c != nil {
+			cn = c
 			i, l := 0, len(search)
 			for ; i < l && search[i] != '/'; i++ {
 			}
@@ -197,9 +195,9 @@ func (r *router) Find(method, path string, params Params) (h HandlerFunc, echo *
 		}
 
 		// Catch-all node
-		e = cn.findEdge('*')
-		if e != nil {
-			cn = e
+		c = cn.findChild('*')
+		if c != nil {
+			cn = c
 			p := params[:n+1]
 			p[n].Name = "_name"
 			p[n].Value = search
