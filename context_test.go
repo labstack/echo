@@ -28,7 +28,7 @@ func TestContext(t *testing.T) {
 		Request:  r,
 		params:   make(Params, 5),
 		store:    make(store),
-		echo:     &Echo{},
+		echo:     New(),
 	}
 
 	//**********//

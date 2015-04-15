@@ -3,7 +3,6 @@ package echo
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
 )
 
 type (
@@ -34,18 +33,13 @@ func (c *Context) Param(name string) (value string) {
 	return
 }
 
-// Bind decodes the body into provided type based on Content-Type header.
+// Bind binds the request body into specified type v. Default binder does it
+// based on Content-Type header.
 func (c *Context) Bind(v interface{}) error {
-	ct := c.Request.Header.Get(HeaderContentType)
-	if strings.HasPrefix(ct, MIMEJSON) {
-		return json.NewDecoder(c.Request.Body).Decode(v)
-	} else if strings.HasPrefix(ct, MIMEForm) {
-		return nil
-	}
-	return ErrUnsupportedMediaType
+	return c.echo.binder(c.Request, v)
 }
 
-// Render calls the registered HTML template renderer and sends a text/html
+// Render invokes the registered HTML template renderer and sends a text/html
 // response.
 func (c *Context) Render(name string, data interface{}) error {
 	if c.echo.renderer == nil {

@@ -1,10 +1,12 @@
 package echo
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 )
 
@@ -15,6 +17,7 @@ type (
 		middleware      []MiddlewareFunc
 		maxParam        byte
 		notFoundHandler HandlerFunc
+		binder          BindFunc
 		renderer        Renderer
 		pool            sync.Pool
 	}
@@ -22,8 +25,14 @@ type (
 	MiddlewareFunc func(HandlerFunc) HandlerFunc
 	Handler        interface{}
 	HandlerFunc    func(*Context)
-	Renderer       interface {
-		Render(io.Writer, string, interface{}) error
+	BindFunc       func(r *http.Request, v interface{}) error
+
+	// Renderer is the interface that wraps the Render method.
+	//
+	// Render renders the HTML template with given name and specified data.
+	// It writes the output to w.
+	Renderer interface {
+		Render(w io.Writer, name string, data interface{}) error
 	}
 )
 
@@ -75,6 +84,15 @@ func New() (e *Echo) {
 		notFoundHandler: func(c *Context) {
 			http.Error(c.Response, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		},
+		binder: func(r *http.Request, v interface{}) error {
+			ct := r.Header.Get(HeaderContentType)
+			if strings.HasPrefix(ct, MIMEJSON) {
+				return json.NewDecoder(r.Body).Decode(v)
+			} else if strings.HasPrefix(ct, MIMEForm) {
+				return nil
+			}
+			return ErrUnsupportedMediaType
+		},
 	}
 	e.Router = NewRouter(e)
 	e.pool.New = func() interface{} {
@@ -115,8 +133,13 @@ func (e *Echo) NotFoundHandler(h Handler) {
 	e.notFoundHandler = wrapH(h)
 }
 
-// Renderer registers an HTML template renderer, it is used by
-// echo.Context.Render API.
+// Binder registers a custom binder. It's invoked by Context.Bind API.
+func (e *Echo) Binder(b BindFunc) {
+	e.binder = b
+}
+
+// Renderer registers an HTML template renderer. It's invoked by Context.Render
+// API.
 func (e *Echo) Renderer(r Renderer) {
 	e.renderer = r
 }
