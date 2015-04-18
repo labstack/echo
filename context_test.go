@@ -31,9 +31,10 @@ func TestContext(t *testing.T) {
 		echo:     New(),
 	}
 
-	//**********//
-	//   Bind   //
-	//**********//
+	//------
+	// Bind
+	//------
+
 	// JSON
 	r.Header.Set(HeaderContentType, MIMEJSON)
 	u2 := new(user)
@@ -58,9 +59,10 @@ func TestContext(t *testing.T) {
 	}
 	// TODO: add verification
 
-	//***********//
-	//   Param   //
-	//***********//
+	//-------
+	// Param
+	//-------
+
 	// By id
 	c.params = Params{{"id", "1"}}
 	if c.P(0) != "1" {
@@ -84,11 +86,11 @@ func TestContext(t *testing.T) {
 		templates: template.Must(template.New("hello").Parse("{{.}}")),
 	}
 	c.echo.renderer = tpl
-	if err := c.Render("hello", "Joe"); err != nil {
+	if err := c.Render(http.StatusOK, "hello", "Joe"); err != nil {
 		t.Errorf("render %v", err)
 	}
 	c.echo.renderer = nil
-	if err := c.Render("hello", "Joe"); err == nil {
+	if err := c.Render(http.StatusOK, "hello", "Joe"); err == nil {
 		t.Error("render should error out")
 	}
 

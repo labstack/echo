@@ -2,6 +2,7 @@
 Echo is a fast HTTP router (zero memory allocation) and micro web framework in Go.
 
 ## Features
+
 - Fast :rocket: router which smartly resolves conflicting routes
 - Extensible middleware/handler, supports:
 	- Middleware
@@ -21,8 +22,11 @@ Echo is a fast HTTP router (zero memory allocation) and micro web framework in G
 - Serve static files, including index.
 
 ## Benchmark
+
 Based on [julienschmidt/go-http-routing-benchmark] (https://github.com/vishr/go-http-routing-benchmark), April 1, 2015
+
 ##### [GitHub API](http://developer.github.com/v3)
+
 > Echo: 42728 ns/op, 0 B/op, 0 allocs/op
 
 ```
@@ -54,9 +58,11 @@ BenchmarkZeus_GithubAll	        2000	    752907 ns/op	  300688 B/op	    2648 all
 ```
 
 ## Installation
+
 ```go get github.com/labstack/echo```
 
 ## Example
+
 [labstack/echo/example](https://github.com/labstack/echo/tree/master/example)
 
 ```go
@@ -198,4 +204,5 @@ func init() {
 }
 ```
 ## License
+
 [MIT](https://github.com/labstack/echo/blob/master/LICENSE)

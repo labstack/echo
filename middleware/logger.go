@@ -9,9 +9,9 @@ import (
 	"github.com/mattn/go-colorable"
 )
 
-func Logger(h echo.HandlerFunc) echo.HandlerFunc {
+func Logger(h echo.HandlerFunc) (echo.HandlerFunc, error) {
 	log.SetOutput(colorable.NewColorableStdout())
-	return echo.HandlerFunc(func(c *echo.Context) {
+	return func(c *echo.Context) error {
 		start := time.Now()
 		h(c)
 		end := time.Now()
@@ -30,5 +30,6 @@ func Logger(h echo.HandlerFunc) echo.HandlerFunc {
 		}
 
 		log.Printf("%s %s %s %s", m, p, col(s), end.Sub(start))
-	})
+		return nil
+	}, nil
 }

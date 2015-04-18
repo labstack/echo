@@ -30,7 +30,7 @@ func TestEchoMaxParam(t *testing.T) {
 
 func TestEchoIndex(t *testing.T) {
 	e := New()
-	e.Index("example/public/index.html")
+	e.Index("examples/public/index.html")
 	w := httptest.NewRecorder()
 	r, _ := http.NewRequest(GET, "/", nil)
 	e.ServeHTTP(w, r)
@@ -41,7 +41,7 @@ func TestEchoIndex(t *testing.T) {
 
 func TestEchoStatic(t *testing.T) {
 	e := New()
-	e.Static("/scripts", "example/public/scripts")
+	e.Static("/scripts", "examples/public/scripts")
 	w := httptest.NewRecorder()
 	r, _ := http.NewRequest(GET, "/scripts/main.js", nil)
 	e.ServeHTTP(w, r)
@@ -59,35 +59,46 @@ func TestEchoMiddleware(t *testing.T) {
 		b.WriteString("a")
 	})
 
-	// func(echo.HandlerFunc) echo.HandlerFunc
-	e.Use(func(h HandlerFunc) HandlerFunc {
-		return HandlerFunc(func(c *Context) {
-			b.WriteString("b")
-			h(c)
-		})
+	// func(*echo.Context) error
+	e.Use(func(c *Context) error {
+		b.WriteString("b")
+		return nil
+	})
+
+	// func(echo.HandlerFunc) (echo.HandlerFunc, error)
+	e.Use(func(h HandlerFunc) (HandlerFunc, error) {
+		return func(c *Context) error {
+			b.WriteString("c")
+			return h(c)
+		}, nil
 	})
 
 	// http.HandlerFunc
 	e.Use(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		b.WriteString("c")
+		b.WriteString("d")
 	}))
 
 	// http.Handler
 	e.Use(http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		b.WriteString("d")
+		b.WriteString("e")
 	})))
 
 	// func(http.Handler) http.Handler
 	e.Use(func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			b.WriteString("e")
+			b.WriteString("f")
 			h.ServeHTTP(w, r)
 		})
 	})
 
 	// func(http.ResponseWriter, *http.Request)
 	e.Use(func(w http.ResponseWriter, r *http.Request) {
-		b.WriteString("f")
+		b.WriteString("g")
+	})
+
+	// func(http.ResponseWriter, *http.Request) error
+	e.Use(func(w http.ResponseWriter, r *http.Request) {
+		b.WriteString("h")
 	})
 
 	// Route
@@ -98,8 +109,8 @@ func TestEchoMiddleware(t *testing.T) {
 	w := httptest.NewRecorder()
 	r, _ := http.NewRequest(GET, "/hello", nil)
 	e.ServeHTTP(w, r)
-	if b.String() != "abcdef" {
-		t.Errorf("buffer should be abcdef, found %s", b.String())
+	if b.String() != "abcdefgh" {
+		t.Errorf("buffer should be abcdefgh, found %s", b.String())
 	}
 	if w.Body.String() != "world" {
 		t.Error("body should be world")
@@ -120,10 +131,10 @@ func TestEchoHandler(t *testing.T) {
 		t.Error("body should be 1")
 	}
 
-	// http.Handler/http.HandlerFunc
-	e.Get("/2", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("2"))
-	}))
+	// func(*echo.Context) error
+	e.Get("/2", func(c *Context) {
+		c.String(http.StatusOK, "2")
+	})
 	w = httptest.NewRecorder()
 	r, _ = http.NewRequest(GET, "/2", nil)
 	e.ServeHTTP(w, r)
@@ -131,15 +142,38 @@ func TestEchoHandler(t *testing.T) {
 		t.Error("body should be 2")
 	}
 
-	// func(http.ResponseWriter, *http.Request)
-	e.Get("/3", func(w http.ResponseWriter, r *http.Request) {
+	// http.Handler/http.HandlerFunc
+	e.Get("/3", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("3"))
-	})
+	}))
 	w = httptest.NewRecorder()
 	r, _ = http.NewRequest(GET, "/3", nil)
 	e.ServeHTTP(w, r)
 	if w.Body.String() != "3" {
 		t.Error("body should be 3")
+	}
+
+	// func(http.ResponseWriter, *http.Request)
+	e.Get("/4", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("4"))
+	})
+	w = httptest.NewRecorder()
+	r, _ = http.NewRequest(GET, "/4", nil)
+	e.ServeHTTP(w, r)
+	if w.Body.String() != "4" {
+		t.Error("body should be 4")
+	}
+
+	// func(http.ResponseWriter, *http.Request) error
+	e.Get("/5", func(w http.ResponseWriter, r *http.Request) error {
+		w.Write([]byte("5"))
+		return nil
+	})
+	w = httptest.NewRecorder()
+	r, _ = http.NewRequest(GET, "/5", nil)
+	e.ServeHTTP(w, r)
+	if w.Body.String() != "5" {
+		t.Error("body should be 5")
 	}
 }
 
@@ -187,15 +221,16 @@ func TestEchoGroup(t *testing.T) {
 
 func TestEchoMethod(t *testing.T) {
 	e := New()
-	e.Connect("/", func(*Context) {})
-	e.Delete("/", func(*Context) {})
-	e.Get("/", func(*Context) {})
-	e.Head("/", func(*Context) {})
-	e.Options("/", func(*Context) {})
-	e.Patch("/", func(*Context) {})
-	e.Post("/", func(*Context) {})
-	e.Put("/", func(*Context) {})
-	e.Trace("/", func(*Context) {})
+	h := func(*Context) {}
+	e.Connect("/", h)
+	e.Delete("/", h)
+	e.Get("/", h)
+	e.Head("/", h)
+	e.Options("/", h)
+	e.Patch("/", h)
+	e.Post("/", h)
+	e.Put("/", h)
+	e.Trace("/", h)
 }
 
 func TestEchoNotFound(t *testing.T) {

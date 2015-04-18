@@ -40,13 +40,13 @@ func (c *Context) Bind(v interface{}) error {
 }
 
 // Render invokes the registered HTML template renderer and sends a text/html
-// response.
-func (c *Context) Render(name string, data interface{}) error {
+// response with status code.
+func (c *Context) Render(code int, name string, data interface{}) error {
 	if c.echo.renderer == nil {
 		return ErrNoRenderer
 	}
 	c.Response.Header().Set(HeaderContentType, MIMEHTML+"; charset=utf-8")
-	c.Response.WriteHeader(http.StatusOK)
+	c.Response.WriteHeader(code)
 	return c.echo.renderer.Render(c.Response, name, data)
 }
 
@@ -71,6 +71,12 @@ func (c *Context) HTML(code int, html string) (err error) {
 	c.Response.WriteHeader(code)
 	_, err = c.Response.Write([]byte(html))
 	return
+}
+
+// NoContent sends a response with no body and a status code.
+func (c *Context) NoContent(code int) error {
+	c.Response.WriteHeader(code)
+	return nil
 }
 
 // func (c *Context) File(code int, file, name string) {

@@ -283,8 +283,9 @@ func TestRouterStatic(t *testing.T) {
 	r := New().Router
 	b := new(bytes.Buffer)
 	path := "/folders/a/files/echo.gif"
-	r.Add(GET, path, func(*Context) {
+	r.Add(GET, path, func(*Context) error {
 		b.WriteString(path)
+		return nil
 	}, nil)
 	h, _ := r.Find(GET, path, params)
 	if h == nil {
@@ -298,7 +299,9 @@ func TestRouterStatic(t *testing.T) {
 
 func TestRouterParam(t *testing.T) {
 	r := New().Router
-	r.Add(GET, "/users/:id", func(c *Context) {}, nil)
+	r.Add(GET, "/users/:id", func(c *Context) error {
+		return nil
+	}, nil)
 	h, _ := r.Find(GET, "/users/1", params)
 	if h == nil {
 		t.Fatal("handler not found")
@@ -310,7 +313,9 @@ func TestRouterParam(t *testing.T) {
 
 func TestRouterTwoParam(t *testing.T) {
 	r := New().Router
-	r.Add(GET, "/users/:uid/files/:fid", func(*Context) {}, nil)
+	r.Add(GET, "/users/:uid/files/:fid", func(*Context) error {
+		return nil
+	}, nil)
 	h, _ := r.Find(GET, "/users/1/files/1", params)
 	if h == nil {
 		t.Fatal("handler not found")
@@ -325,7 +330,9 @@ func TestRouterTwoParam(t *testing.T) {
 
 func TestRouterCatchAll(t *testing.T) {
 	r := New().Router
-	r.Add(GET, "/static/*", func(*Context) {}, nil)
+	r.Add(GET, "/static/*", func(*Context) error {
+		return nil
+	}, nil)
 	h, _ := r.Find(GET, "/static/echo.gif", params)
 	if h == nil {
 		t.Fatal("handler not found")
@@ -337,7 +344,9 @@ func TestRouterCatchAll(t *testing.T) {
 
 func TestRouterMicroParam(t *testing.T) {
 	r := New().Router
-	r.Add(GET, "/:a/:b/:c", func(c *Context) {}, nil)
+	r.Add(GET, "/:a/:b/:c", func(c *Context) error {
+		return nil
+	}, nil)
 	h, _ := r.Find(GET, "/1/2/3", params)
 	if h == nil {
 		t.Fatal("handler not found")
@@ -358,10 +367,13 @@ func TestRouterMultiRoute(t *testing.T) {
 	b := new(bytes.Buffer)
 
 	// Routes
-	r.Add(GET, "/users", func(*Context) {
+	r.Add(GET, "/users", func(*Context) error {
 		b.WriteString("/users")
+		return nil
 	}, nil)
-	r.Add(GET, "/users/:id", func(c *Context) {}, nil)
+	r.Add(GET, "/users/:id", func(c *Context) error {
+		return nil
+	}, nil)
 
 	// Route > /users
 	h, _ := r.Find(GET, "/users", params)
@@ -394,19 +406,26 @@ func TestRouterConflictingRoute(t *testing.T) {
 	b := new(bytes.Buffer)
 
 	// Routes
-	r.Add(GET, "/users", func(*Context) {
+	r.Add(GET, "/users", func(*Context) error {
 		b.WriteString("/users")
+		return nil
 	}, nil)
-	r.Add(GET, "/users/new", func(*Context) {
+	r.Add(GET, "/users/new", func(*Context) error {
 		b.Reset()
 		b.WriteString("/users/new")
+		return nil
 	}, nil)
-	r.Add(GET, "/users/:id", func(c *Context) {}, nil)
-	r.Add(GET, "/users/new/moon", func(*Context) {
+	r.Add(GET, "/users/:id", func(c *Context) error {
+		return nil
+	}, nil)
+	r.Add(GET, "/users/new/moon", func(*Context) error {
 		b.Reset()
 		b.WriteString("/users/new/moon")
+		return nil
 	}, nil)
-	r.Add(GET, "/users/new/:id", func(*Context) {}, nil)
+	r.Add(GET, "/users/new/:id", func(*Context) error {
+		return nil
+	}, nil)
 
 	// Route > /users
 	h, _ := r.Find(GET, "/users", params)
@@ -495,7 +514,7 @@ func TestRouterConflictingRoute(t *testing.T) {
 func TestRouterAPI(t *testing.T) {
 	r := New().Router
 	for _, route := range api {
-		r.Add(route.method, route.path, func(c *Context) {
+		r.Add(route.method, route.path, func(c *Context) error {
 			for _, p := range c.params {
 				if p.Name != "" {
 					if ":"+p.Name != p.Value {
@@ -503,6 +522,7 @@ func TestRouterAPI(t *testing.T) {
 					}
 				}
 			}
+			return nil
 		}, nil)
 
 		h, _ := r.Find(route.method, route.path, params)
@@ -514,7 +534,9 @@ func TestRouterAPI(t *testing.T) {
 
 func TestRouterServeHTTP(t *testing.T) {
 	r := New().Router
-	r.Add(GET, "/users", func(*Context) {}, nil)
+	r.Add(GET, "/users", func(*Context) error {
+		return nil
+	}, nil)
 
 	// OK
 	req, _ := http.NewRequest(GET, "/users", nil)

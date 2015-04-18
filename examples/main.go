@@ -60,14 +60,14 @@ func getUser(c *echo.Context) {
 func main() {
 	e := echo.New()
 
-	//*************************//
-	//   Built-in middleware   //
-	//*************************//
+	//---------------------
+	// Built-in middleware
+	//---------------------
 	e.Use(mw.Logger)
 
-	//****************************//
-	//   Third-party middleware   //
-	//****************************//
+	//------------------------
+	// Third-party middleware
+	//------------------------
 	// https://github.com/rs/cors
 	e.Use(cors.Default().Handler)
 
@@ -85,9 +85,9 @@ func main() {
 	// Serve static files
 	e.Static("/scripts", "public/scripts")
 
-	//************//
-	//   Routes   //
-	//************//
+	//--------
+	// Routes
+	//--------
 	e.Post("/users", createUser)
 	e.Get("/users", getUsers)
 	e.Get("/users/:id", getUser)
