@@ -130,7 +130,6 @@
 <li><code>func(*echo.Context)</code></li>
 <li><code>func(*echo.Context) error</code></li>
 <li><code>func(echo.HandlerFunc) echo.HandlerFunc</code></li>
-<li><code>func(http.Handler) http.Handler</code></li>
 <li><code>http.Handler</code></li>
 <li><code>http.HandlerFunc</code></li>
 <li><code>func(http.ResponseWriter, *http.Request)</code></li>
@@ -208,7 +207,6 @@ import (
     &quot;strconv&quot;
 
     &quot;github.com/labstack/echo&quot;
-    mw &quot;github.com/labstack/echo/middleware&quot;
 )
 
 type (
@@ -264,7 +262,7 @@ func main() {
     e := echo.New()
 
     // Middleware
-    e.Use(mw.Logger)
+    e.Use(echo.Logger)
 
     // Routes
     e.Post(&quot;/users&quot;, createUser)
