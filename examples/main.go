@@ -34,7 +34,7 @@ func (t *Template) Render(w io.Writer, name string, data interface{}) error {
 }
 
 func welcome(c *echo.Context) {
-	c.Render("welcome", "Joe")
+	c.Render(http.StatusOK, "welcome", "Joe")
 }
 
 func createUser(c *echo.Context) {
