@@ -88,7 +88,7 @@ func main() {
 	e := echo.New()
 
 	// Middleware
-	e.Use(mw.Logger)
+	e.Use(echo.Logger)
 
 	// Routes
 	e.Get("/", hello)
