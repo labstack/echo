@@ -84,21 +84,21 @@ func TestEchoMiddleware(t *testing.T) {
 	})))
 
 	// func(http.Handler) http.Handler
-	e.Use(func(h http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			b.WriteString("f")
-			h.ServeHTTP(w, r)
-		})
-	})
+	// e.Use(func(h http.Handler) http.Handler {
+	// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// 		b.WriteString("f")
+	// 		h.ServeHTTP(w, r)
+	// 	})
+	// })
 
 	// func(http.ResponseWriter, *http.Request)
 	e.Use(func(w http.ResponseWriter, r *http.Request) {
-		b.WriteString("g")
+		b.WriteString("f")
 	})
 
 	// func(http.ResponseWriter, *http.Request) error
 	e.Use(func(w http.ResponseWriter, r *http.Request) error {
-		b.WriteString("h")
+		b.WriteString("g")
 		return nil
 	})
 
@@ -110,8 +110,8 @@ func TestEchoMiddleware(t *testing.T) {
 	w := httptest.NewRecorder()
 	r, _ := http.NewRequest(GET, "/hello", nil)
 	e.ServeHTTP(w, r)
-	if b.String() != "abcdefgh" {
-		t.Errorf("buffer should be abcdefgh, found %s", b.String())
+	if b.String() != "abcdefg" {
+		t.Errorf("buffer should be abcdefg, found %s", b.String())
 	}
 	if w.Body.String() != "world" {
 		t.Error("body should be world")

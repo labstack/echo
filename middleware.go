@@ -1,24 +1,23 @@
-package middleware
+package echo
 
 import (
 	"log"
 	"time"
 
-	"github.com/labstack/echo"
-	"github.com/labstack/gommon/color"
+	"labstack.com/gommon/color"
 )
 
-func Logger(h echo.HandlerFunc) echo.HandlerFunc {
-	return func(c *echo.Context) error {
+func Logger(h HandlerFunc) HandlerFunc {
+	return func(c *Context) error {
 		start := time.Now()
 		if err := h(c); err != nil {
-			return err
+			c.Error(err)
 		}
 		end := time.Now()
-		col := color.Green
 		m := c.Request.Method
 		p := c.Request.URL.Path
 		n := c.Response.Status()
+		col := color.Green
 
 		switch {
 		case n >= 500:

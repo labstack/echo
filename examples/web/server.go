@@ -7,9 +7,6 @@ import (
 	"html/template"
 
 	"github.com/labstack/echo"
-	mw "github.com/labstack/echo/middleware"
-	"github.com/rs/cors"
-	"github.com/thoas/stats"
 )
 
 type (
@@ -37,47 +34,28 @@ func welcome(c *echo.Context) {
 	c.Render(http.StatusOK, "welcome", "Joe")
 }
 
-func createUser(c *echo.Context) {
+func createUser(c *echo.Context) error {
 	u := new(user)
-	if err := c.Bind(u); err == nil {
-		users[u.ID] = *u
-		if err := c.JSON(http.StatusCreated, u); err == nil {
-			// Do something!
-		}
-		return
+	if err := c.Bind(u); err != nil {
+		return err
 	}
-	http.Error(c.Response, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+	users[u.ID] = *u
+	return c.JSON(http.StatusCreated, u)
 }
 
-func getUsers(c *echo.Context) {
-	c.JSON(http.StatusOK, users)
+func getUsers(c *echo.Context) error {
+	return c.JSON(http.StatusOK, users)
 }
 
-func getUser(c *echo.Context) {
-	c.JSON(http.StatusOK, users[c.P(0)])
+func getUser(c *echo.Context) error {
+	return c.JSON(http.StatusOK, users[c.P(0)])
 }
 
 func main() {
 	e := echo.New()
 
-	//---------------------
-	// Built-in middleware
-	//---------------------
-	e.Use(mw.Logger)
-
-	//------------------------
-	// Third-party middleware
-	//------------------------
-	// https://github.com/rs/cors
-	e.Use(cors.Default().Handler)
-
-	// https://github.com/thoas/stats
-	s := stats.New()
-	e.Use(s.Handler)
-	// Route
-	e.Get("/stats", func(c *echo.Context) {
-		c.JSON(200, s.Data())
-	})
+	// Middleware
+	e.Use(echo.Logger)
 
 	// Serve index file
 	e.Index("public/index.html")
@@ -92,9 +70,9 @@ func main() {
 	e.Get("/users", getUsers)
 	e.Get("/users/:id", getUser)
 
-	//***************//
-	//   Templates   //
-	//***************//
+	//-----------
+	// Templates
+	//-----------
 	t := &Template{
 		// Cached templates
 		templates: template.Must(template.ParseFiles("public/views/welcome.html")),
@@ -102,9 +80,10 @@ func main() {
 	e.Renderer(t)
 	e.Get("/welcome", welcome)
 
-	//***********//
-	//   Group   //
-	//***********//
+	//-------
+	// Group
+	//-------
+
 	// Group with parent middleware
 	a := e.Group("/admin")
 	a.Use(func(c *echo.Context) {
@@ -123,7 +102,7 @@ func main() {
 	})
 
 	// Start server
-	e.Run(":8080")
+	e.Run(":4444")
 }
 
 func init() {

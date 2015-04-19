@@ -79,8 +79,10 @@ func (c *Context) NoContent(code int) error {
 	return nil
 }
 
-// func (c *Context) File(code int, file, name string) {
-// }
+// Error invokes the registered HTTP error handler.
+func (c *Context) Error(err error) {
+	c.echo.httpErrorHandler(err, c)
+}
 
 // Get retrieves data from the context.
 func (c *Context) Get(key string) interface{} {

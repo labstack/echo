@@ -9,7 +9,6 @@ Echo is a fast HTTP router (zero memory allocation) and micro web framework in G
 		- `func(*echo.Context)`
 		- `func(*echo.Context) error`
 		- `func(echo.HandlerFunc) echo.HandlerFunc`
-		- `func(http.Handler) http.Handler`
 		- `http.Handler`
 		- `http.HandlerFunc`
 		- `func(http.ResponseWriter, *http.Request)`
@@ -71,7 +70,7 @@ func main() {
 ```curl -X POST -H "Content-Type: application/json" -d '{"name":"Joe"}' http://localhost:4444/users```
 - Get user
 ```curl http://localhost:4444/users/1```
-- Update user: Change the user name to Sid
+- Update user: Change user's name to Sid
 ```curl -X PATCH -H "Content-Type: application/json" -d '{"name":"Sid"}' http://localhost:4444/users/1```
 - Delete user
 ```curl -X DELETE http://localhost:4444/users/1```
@@ -85,7 +84,6 @@ import (
 	"strconv"
 
 	"github.com/labstack/echo"
-	mw "github.com/labstack/echo/middleware"
 )
 
 type (
@@ -141,7 +139,7 @@ func main() {
 	e := echo.New()
 
 	// Middleware
-	e.Use(mw.Logger)
+	e.Use(echo.Logger)
 
 	// Routes
 	e.Post("/users", createUser)

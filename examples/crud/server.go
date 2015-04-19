@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"github.com/labstack/echo"
-	mw "github.com/labstack/echo/middleware"
 )
 
 type (
@@ -61,7 +60,7 @@ func main() {
 	e := echo.New()
 
 	// Middleware
-	e.Use(mw.Logger)
+	e.Use(echo.Logger)
 
 	// Routes
 	e.Post("/users", createUser)

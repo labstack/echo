@@ -9,7 +9,6 @@ Echo is a fast HTTP router (zero memory allocation) and micro web framework in G
 		- `func(*echo.Context)`
 		- `func(*echo.Context) error`
 		- `func(echo.HandlerFunc) echo.HandlerFunc`
-		- `func(http.Handler) http.Handler`
 		- `http.Handler`
 		- `http.HandlerFunc`
 		- `func(http.ResponseWriter, *http.Request)`
@@ -68,6 +67,7 @@ BenchmarkZeus_GithubAll	        2000	    752907 ns/op	  300688 B/op	    2648 all
 ## Examples
 
 [labstack/echo/example](https://github.com/labstack/echo/tree/master/examples)
+
 > Hello, World!
 
 ```go
@@ -95,7 +95,7 @@ func main() {
 	e.Get("/", hello)
 
 	// Start server
-	e.Run(":8080")
+	e.Run(":4444")
 }
 ```
 ## License

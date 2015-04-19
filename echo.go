@@ -108,7 +108,7 @@ func New() (e *Echo) {
 	e.HTTPErrorHandler(func(err error, c *Context) {
 		if err != nil {
 			// TODO: Warning
-			log.Println(color.Yellow("echo: HTTP error handler not registered"))
+			log.Printf("echo: %s", color.Yellow("HTTP error handler not registered"))
 			http.Error(c.Response, err.Error(), http.StatusInternalServerError)
 		}
 	})
@@ -123,10 +123,6 @@ func New() (e *Echo) {
 	})
 
 	return
-}
-
-// NOP
-func (h HandlerFunc) ServeHTTP(http.ResponseWriter, *http.Request) {
 }
 
 // Group creates a new sub router with prefix and inherits all properties from
@@ -257,12 +253,12 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	c.reset(w, r, e)
 
-	// Middleware
+	// Chain middleware with handler in the end
 	for i := len(e.middleware) - 1; i >= 0; i-- {
 		h = e.middleware[i](h)
 	}
 
-	// Handler
+	// Execute chain
 	if err := h(c); err != nil {
 		e.httpErrorHandler(err, c)
 	}
@@ -270,23 +266,23 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	e.pool.Put(c)
 }
 
-// Run a server
+// Run runs a server.
 func (e *Echo) Run(addr string) {
 	log.Fatal(http.ListenAndServe(addr, e))
 }
 
-// RunTLS a server
+// RunTLS runs a server with TLS configuration.
 func (e *Echo) RunTLS(addr, certFile, keyFile string) {
 	log.Fatal(http.ListenAndServeTLS(addr, certFile, keyFile, e))
 }
 
-// RunServer runs a custom server
+// RunServer runs a custom server.
 func (e *Echo) RunServer(server *http.Server) {
 	server.Handler = e
 	log.Fatal(server.ListenAndServe())
 }
 
-// RunTLSServer runs a custom server with TLS configuration
+// RunTLSServer runs a custom server with TLS configuration.
 func (e *Echo) RunTLSServer(server *http.Server, certFile, keyFile string) {
 	server.Handler = e
 	log.Fatal(server.ListenAndServeTLS(certFile, keyFile))
@@ -313,13 +309,6 @@ func wrapM(m Middleware) MiddlewareFunc {
 		}
 	case func(HandlerFunc) HandlerFunc:
 		return m
-	case func(http.Handler) http.Handler:
-		return func(h HandlerFunc) HandlerFunc {
-			return func(c *Context) error {
-				m(h).ServeHTTP(c.Response, c.Request)
-				return h(c)
-			}
-		}
 	case http.Handler, http.HandlerFunc:
 		return func(h HandlerFunc) HandlerFunc {
 			return func(c *Context) error {
