@@ -31,7 +31,7 @@ Echo is a fast HTTP router (zero memory allocation) and micro web framework in G
 
 ## Examples
 
-#### Hello, World!
+> Hello, World!
 
 Create ```server.go``` with the following content:
 ```go
@@ -65,7 +65,8 @@ func main() {
 
 ```go run server.go``` & browse to ```http://localhost:8080```
 
-#### CRUD - Create, read, update and delete.
+> CRUD - Create, read, update and delete.
+
 - Create user
 ```curl -X POST -H "Content-Type: application/json" -d '{"name":"Joe"}' http://localhost:4444/users```
 - Get user

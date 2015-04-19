@@ -4,7 +4,7 @@ import (
 	"log"
 	"net/http"
 
-	"labstack.com/gommon/color"
+	"github.com/labstack/gommon/color"
 )
 
 type (

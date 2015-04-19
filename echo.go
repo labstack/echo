@@ -9,9 +9,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/labstack/gommon/color"
 	"github.com/mattn/go-colorable"
-
-	"labstack.com/gommon/color"
 )
 
 type (
