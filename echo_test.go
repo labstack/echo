@@ -30,7 +30,7 @@ func TestEchoMaxParam(t *testing.T) {
 
 func TestEchoIndex(t *testing.T) {
 	e := New()
-	e.Index("examples/public/index.html")
+	e.Index("examples/web/public/index.html")
 	w := httptest.NewRecorder()
 	r, _ := http.NewRequest(GET, "/", nil)
 	e.ServeHTTP(w, r)
@@ -41,7 +41,7 @@ func TestEchoIndex(t *testing.T) {
 
 func TestEchoStatic(t *testing.T) {
 	e := New()
-	e.Static("/scripts", "examples/public/scripts")
+	e.Static("/scripts", "examples/web/public/scripts")
 	w := httptest.NewRecorder()
 	r, _ := http.NewRequest(GET, "/scripts/main.js", nil)
 	e.ServeHTTP(w, r)
@@ -66,11 +66,11 @@ func TestEchoMiddleware(t *testing.T) {
 	})
 
 	// func(echo.HandlerFunc) (echo.HandlerFunc, error)
-	e.Use(func(h HandlerFunc) (HandlerFunc, error) {
+	e.Use(func(h HandlerFunc) HandlerFunc {
 		return func(c *Context) error {
 			b.WriteString("c")
 			return h(c)
-		}, nil
+		}
 	})
 
 	// http.HandlerFunc
@@ -97,8 +97,9 @@ func TestEchoMiddleware(t *testing.T) {
 	})
 
 	// func(http.ResponseWriter, *http.Request) error
-	e.Use(func(w http.ResponseWriter, r *http.Request) {
+	e.Use(func(w http.ResponseWriter, r *http.Request) error {
 		b.WriteString("h")
+		return nil
 	})
 
 	// Route

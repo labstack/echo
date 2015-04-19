@@ -3,6 +3,8 @@ package echo
 import (
 	"log"
 	"net/http"
+
+	"labstack.com/gommon/color"
 )
 
 type (
@@ -21,7 +23,7 @@ func (r *response) Header() http.Header {
 func (r *response) WriteHeader(n int) {
 	if r.committed {
 		// TODO: Warning
-		log.Println("echo: response already committed")
+		log.Println(color.Yellow("echo: response already committed"))
 		return
 	}
 	r.status = n

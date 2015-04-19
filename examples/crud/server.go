@@ -12,12 +12,11 @@ type (
 	user struct {
 		ID   int
 		Name string
-		Age  int
 	}
 )
 
 var (
-	users = map[int]user{}
+	users = map[int]*user{}
 	seq   = 1
 )
 
@@ -32,7 +31,7 @@ func createUser(c *echo.Context) error {
 	if err := c.Bind(u); err != nil {
 		return err
 	}
-	users[u.ID] = *u
+	users[u.ID] = u
 	seq++
 	return c.JSON(http.StatusCreated, u)
 }
@@ -43,9 +42,13 @@ func getUser(c *echo.Context) error {
 }
 
 func updateUser(c *echo.Context) error {
-	// id, _ := strconv.Atoi(c.Param("id"))
-	// users[id]
-	return c.NoContent(http.StatusNoContent)
+	u := new(user)
+	if err := c.Bind(u); err != nil {
+		return err
+	}
+	id, _ := strconv.Atoi(c.Param("id"))
+	users[id].Name = u.Name
+	return c.JSON(http.StatusOK, users[id])
 }
 
 func deleteUser(c *echo.Context) error {
@@ -63,9 +66,9 @@ func main() {
 	// Routes
 	e.Post("/users", createUser)
 	e.Get("/users/:id", getUser)
-	e.Put("/users/:id", updateUser)
+	e.Patch("/users/:id", updateUser)
 	e.Delete("/users/:id", deleteUser)
 
 	// Start server
-	e.Run(":8080")
+	e.Run(":4444")
 }

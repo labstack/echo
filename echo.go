@@ -8,6 +8,10 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+
+	"github.com/mattn/go-colorable"
+
+	"labstack.com/gommon/color"
 )
 
 type (
@@ -23,7 +27,7 @@ type (
 		pool             sync.Pool
 	}
 	Middleware     interface{}
-	MiddlewareFunc func(HandlerFunc) (HandlerFunc, error)
+	MiddlewareFunc func(HandlerFunc) HandlerFunc
 	Handler        interface{}
 	HandlerFunc    func(*Context) error
 
@@ -84,25 +88,7 @@ var (
 
 // New creates an Echo instance.
 func New() (e *Echo) {
-	e = &Echo{
-		maxParam: 5,
-		notFoundHandler: func(c *Context) error {
-			http.Error(c.Response, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-			return nil
-		},
-		httpErrorHandler: func(err error, c *Context) {
-			http.Error(c.Response, err.Error(), http.StatusInternalServerError)
-		},
-		binder: func(r *http.Request, v interface{}) error {
-			ct := r.Header.Get(HeaderContentType)
-			if strings.HasPrefix(ct, MIMEJSON) {
-				return json.NewDecoder(r.Body).Decode(v)
-			} else if strings.HasPrefix(ct, MIMEForm) {
-				return nil
-			}
-			return ErrUnsupportedMediaType
-		},
-	}
+	e = &Echo{}
 	e.Router = NewRouter(e)
 	e.pool.New = func() interface{} {
 		return &Context{
@@ -112,6 +98,31 @@ func New() (e *Echo) {
 			echo:     e, // TODO: Do we need this?
 		}
 	}
+
+	//----------
+	// Defaults
+	//----------
+	e.MaxParam(5)
+	e.NotFoundHandler(func(c *Context) {
+		http.Error(c.Response, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+	})
+	e.HTTPErrorHandler(func(err error, c *Context) {
+		if err != nil {
+			// TODO: Warning
+			log.Println(color.Yellow("echo: HTTP error handler not registered"))
+			http.Error(c.Response, err.Error(), http.StatusInternalServerError)
+		}
+	})
+	e.Binder(func(r *http.Request, v interface{}) error {
+		ct := r.Header.Get(HeaderContentType)
+		if strings.HasPrefix(ct, MIMEJSON) {
+			return json.NewDecoder(r.Body).Decode(v)
+		} else if strings.HasPrefix(ct, MIMEForm) {
+			return nil
+		}
+		return ErrUnsupportedMediaType
+	})
+
 	return
 }
 
@@ -248,12 +259,8 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c.reset(w, r, e)
 
 	// Middleware
-	var err error
 	for i := len(e.middleware) - 1; i >= 0; i-- {
-		if h, err = e.middleware[i](h); err != nil {
-			e.httpErrorHandler(err, c)
-			return
-		}
+		h = e.middleware[i](h)
 	}
 
 	// Handler
@@ -290,50 +297,52 @@ func (e *Echo) RunTLSServer(server *http.Server, certFile, keyFile string) {
 func wrapM(m Middleware) MiddlewareFunc {
 	switch m := m.(type) {
 	case func(*Context):
-		return func(h HandlerFunc) (HandlerFunc, error) {
+		return func(h HandlerFunc) HandlerFunc {
 			return func(c *Context) error {
 				m(c)
 				return h(c)
-			}, nil
+			}
 		}
 	case func(*Context) error:
-		return func(h HandlerFunc) (HandlerFunc, error) {
-			var err error
+		return func(h HandlerFunc) HandlerFunc {
 			return func(c *Context) error {
-				err = m(c)
+				if err := m(c); err != nil {
+					return err
+				}
 				return h(c)
-			}, err
+			}
 		}
-	case func(HandlerFunc) (HandlerFunc, error):
-		return MiddlewareFunc(m)
+	case func(HandlerFunc) HandlerFunc:
+		return m
 	case func(http.Handler) http.Handler:
-		return func(h HandlerFunc) (HandlerFunc, error) {
+		return func(h HandlerFunc) HandlerFunc {
 			return func(c *Context) error {
 				m(h).ServeHTTP(c.Response, c.Request)
 				return h(c)
-			}, nil
+			}
 		}
 	case http.Handler, http.HandlerFunc:
-		return func(h HandlerFunc) (HandlerFunc, error) {
+		return func(h HandlerFunc) HandlerFunc {
 			return func(c *Context) error {
 				m.(http.Handler).ServeHTTP(c.Response, c.Request)
 				return h(c)
-			}, nil
+			}
 		}
 	case func(http.ResponseWriter, *http.Request):
-		return func(h HandlerFunc) (HandlerFunc, error) {
+		return func(h HandlerFunc) HandlerFunc {
 			return func(c *Context) error {
 				m(c.Response, c.Request)
 				return h(c)
-			}, nil
+			}
 		}
 	case func(http.ResponseWriter, *http.Request) error:
-		return func(h HandlerFunc) (HandlerFunc, error) {
-			var err error
+		return func(h HandlerFunc) HandlerFunc {
 			return func(c *Context) error {
-				err = m(c.Response, c.Request)
+				if err := m(c.Response, c.Request); err != nil {
+					return err
+				}
 				return h(c)
-			}, err
+			}
 		}
 	default:
 		panic("echo: unknown middleware")
@@ -349,7 +358,7 @@ func wrapH(h Handler) HandlerFunc {
 			return nil
 		}
 	case func(*Context) error:
-		return HandlerFunc(h)
+		return h
 	case http.Handler, http.HandlerFunc:
 		return func(c *Context) error {
 			h.(http.Handler).ServeHTTP(c.Response, c.Request)
@@ -367,4 +376,8 @@ func wrapH(h Handler) HandlerFunc {
 	default:
 		panic("echo: unknown handler")
 	}
+}
+
+func init() {
+	log.SetOutput(colorable.NewColorableStdout())
 }
