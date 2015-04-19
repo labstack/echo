@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo"
-	mw "github.com/labstack/echo/middleware"
 )
 
 // Handler

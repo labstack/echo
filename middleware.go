@@ -4,7 +4,7 @@ import (
 	"log"
 	"time"
 
-	"labstack.com/gommon/color"
+	"github.com/labstack/gommon/color"
 )
 
 func Logger(h HandlerFunc) HandlerFunc {
