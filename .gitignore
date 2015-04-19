@@ -25,3 +25,7 @@ _testmain.go
 
 # Website
 site/
+.publish/
+
+# Node.js
+node_modules/

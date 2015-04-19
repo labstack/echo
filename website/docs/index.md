@@ -153,3 +153,7 @@ func main() {
 	e.Run(":4444")
 }
 ```
+
+## License
+
+[MIT](https://github.com/labstack/echo/blob/master/LICENSE)

@@ -1,0 +1,6 @@
+{
+  "devDependencies": {
+    "gulp": "^3.8.11",
+    "gulp-gh-pages": "^0.5.1"
+  }
+}
