@@ -1,6 +1,6 @@
 # Echo
 
-Simple and performant web development!
+Simple and performant HTTP systems!
 
 ---
 
@@ -10,7 +10,7 @@ Echo is a fast HTTP router (zero memory allocation) and micro web framework in G
 
 ## Features
 
-- Fast router which smartly resolves conflicting routes.
+- Fast HTTP router which smartly resolves conflicting routes.
 - Extensible middleware/handler, supports:
 	- Middleware
 		- `func(*echo.Context)`
@@ -39,9 +39,7 @@ Echo is a fast HTTP router (zero memory allocation) and micro web framework in G
 - [Go](https://golang.org/doc/install) > 1.4.x
 - ```go get github.com/labstack/echo```
 
-## Examples
-
-[labstack/echo/example](https://github.com/labstack/echo/tree/master/examples)
+##[Examples](https://github.com/labstack/echo/tree/master/examples)
 
 > Hello, World!
 
