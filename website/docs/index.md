@@ -36,9 +36,12 @@ Echo is a fast HTTP router (zero memory allocation) and micro web framework in G
 
 ## Installation
 
-```go get github.com/labstack/echo```
+- [Go](https://github.com/labstack/echo/tree/master/examples) > 1.4.x
+- ```go get github.com/labstack/echo```
 
 ## Examples
+
+[labstack/echo/example](https://github.com/labstack/echo/tree/master/examples)
 
 > Hello, World!
 
