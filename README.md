@@ -4,6 +4,7 @@ Echo is a fast HTTP router (zero memory allocation) and micro web framework in G
 ## Features
 
 - Fast :rocket: HTTP router which smartly resolves conflicting routes.
+- Fast router which smartly resolves conflicting routes.
 - Extensible middleware/handler, supports:
 	- Middleware
 		- `func(*echo.Context)`
@@ -24,8 +25,8 @@ Echo is a fast HTTP router (zero memory allocation) and micro web framework in G
 - Handy encoding/decoding functions.
 - Serve static files, including index.
 - Centralized HTTP error handling.
-- Customized binder to decode request body to a Go type.
-- Customized view render so you can use any templating engine.
+- Use a customized function to bind request body to a Go type.
+- Register a view render so you can use any HTML templating engine.
 
 ## Benchmark
 
