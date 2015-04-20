@@ -66,7 +66,7 @@ BenchmarkZeus_GithubAll	        2000	    752907 ns/op	  300688 B/op	    2648 all
 
 ## Installation
 
-- [Go](https://github.com/labstack/echo/tree/master/examples) > 1.4.x
+- [Go](https://golang.org/doc/install) > 1.4.x
 - ```go get github.com/labstack/echo```
 
 ## Examples
