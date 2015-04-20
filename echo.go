@@ -81,8 +81,8 @@ var (
 	}
 
 	// Errors
-	ErrUnsupportedMediaType = errors.New("echo: unsupported media type")
-	ErrNoRenderer           = errors.New("echo: renderer not registered")
+	UnsupportedMediaType  = errors.New("echo: unsupported media type")
+	RendererNotRegistered = errors.New("echo: renderer not registered")
 )
 
 // New creates an Echo instance.
@@ -119,7 +119,7 @@ func New() (e *Echo) {
 		} else if strings.HasPrefix(ct, MIMEForm) {
 			return nil
 		}
-		return ErrUnsupportedMediaType
+		return UnsupportedMediaType
 	})
 
 	return

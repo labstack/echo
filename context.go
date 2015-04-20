@@ -43,7 +43,7 @@ func (c *Context) Bind(v interface{}) error {
 // response with status code.
 func (c *Context) Render(code int, name string, data interface{}) error {
 	if c.echo.renderer == nil {
-		return ErrNoRenderer
+		return RendererNotRegistered
 	}
 	c.Response.Header().Set(HeaderContentType, MIMEHTML+"; charset=utf-8")
 	c.Response.WriteHeader(code)

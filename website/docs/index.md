@@ -1,4 +1,11 @@
-# Echo [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/labstack/echo) [![Build Status](http://img.shields.io/travis/labstack/echo.svg?style=flat-square)](https://travis-ci.org/labstack/echo) [![Coverage Status](http://img.shields.io/coveralls/labstack/echo.svg?style=flat-square)](https://coveralls.io/r/labstack/echo)
+# Echo
+
+Simple and performant web development!
+
+---
+
+## Overview
+
 Echo is a fast HTTP router (zero memory allocation) and micro web framework in Go.
 
 ## Features
@@ -150,6 +157,12 @@ func main() {
 	e.Run(":4444")
 }
 ```
+
+## Contribute
+- Find bugs
+- Suggest new features
+- Improve documentation
+- Participate in discussion
 
 ## License
 
