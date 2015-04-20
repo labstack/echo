@@ -108,7 +108,7 @@ func New() (e *Echo) {
 	e.HTTPErrorHandler(func(err error, c *Context) {
 		if err != nil {
 			// TODO: Warning
-			log.Printf("echo: %s", color.Yellow("HTTP error handler not registered"))
+			log.Printf("echo: %s", color.Yellow("http error handler not registered"))
 			http.Error(c.Response, err.Error(), http.StatusInternalServerError)
 		}
 	})
