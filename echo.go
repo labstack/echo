@@ -309,24 +309,35 @@ func wrapM(m Middleware) MiddlewareFunc {
 		}
 	case func(HandlerFunc) HandlerFunc:
 		return m
+	case func(http.Handler) http.Handler:
+		return func(h HandlerFunc) HandlerFunc {
+			return func(c *Context) (err error) {
+				m(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					c.Response.Writer = w
+					c.Request = r
+					err = h(c)
+				})).ServeHTTP(c.Response.Writer, c.Request)
+				return
+			}
+		}
 	case http.Handler, http.HandlerFunc:
 		return func(h HandlerFunc) HandlerFunc {
 			return func(c *Context) error {
-				m.(http.Handler).ServeHTTP(c.Response, c.Request)
+				m.(http.Handler).ServeHTTP(c.Response.Writer, c.Request)
 				return h(c)
 			}
 		}
 	case func(http.ResponseWriter, *http.Request):
 		return func(h HandlerFunc) HandlerFunc {
 			return func(c *Context) error {
-				m(c.Response, c.Request)
+				m(c.Response.Writer, c.Request)
 				return h(c)
 			}
 		}
 	case func(http.ResponseWriter, *http.Request) error:
 		return func(h HandlerFunc) HandlerFunc {
 			return func(c *Context) error {
-				if err := m(c.Response, c.Request); err != nil {
+				if err := m(c.Response.Writer, c.Request); err != nil {
 					return err
 				}
 				return h(c)

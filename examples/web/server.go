@@ -7,6 +7,8 @@ import (
 	"html/template"
 
 	"github.com/labstack/echo"
+	"github.com/rs/cors"
+	"github.com/thoas/stats"
 )
 
 type (
@@ -57,6 +59,21 @@ func main() {
 	// Middleware
 	e.Use(echo.Logger)
 
+	//------------------------
+	// Third-party middleware
+	//------------------------
+
+	// https://github.com/rs/cors
+	e.Use(cors.Default().Handler)
+
+	// https://github.com/thoas/stats
+	s := stats.New()
+	e.Use(s.Handler)
+	// Route
+	e.Get("/stats", func(c *echo.Context) {
+		c.JSON(http.StatusOK, s.Data())
+	})
+
 	// Serve index file
 	e.Index("public/index.html")
 
@@ -66,6 +83,7 @@ func main() {
 	//--------
 	// Routes
 	//--------
+
 	e.Post("/users", createUser)
 	e.Get("/users", getUsers)
 	e.Get("/users/:id", getUser)
@@ -73,6 +91,7 @@ func main() {
 	//-----------
 	// Templates
 	//-----------
+
 	t := &Template{
 		// Cached templates
 		templates: template.Must(template.ParseFiles("public/views/welcome.html")),
