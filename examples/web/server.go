@@ -7,6 +7,7 @@ import (
 	"html/template"
 
 	"github.com/labstack/echo"
+	mw "github.com/labstack/echo/middleware"
 	"github.com/rs/cors"
 	"github.com/thoas/stats"
 )
@@ -57,7 +58,7 @@ func main() {
 	e := echo.New()
 
 	// Middleware
-	e.Use(echo.Logger)
+	e.Use(mw.Logger)
 
 	//------------------------
 	// Third-party middleware

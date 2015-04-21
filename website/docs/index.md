@@ -52,6 +52,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo"
+	mw "github.com/labstack/echo/middleware"
 )
 
 // Handler
@@ -63,7 +64,7 @@ func main() {
 	e := echo.New()
 
 	// Middleware
-	e.Use(echo.Logger)
+	e.Use(mw.Logger)
 
 	// Routes
 	e.Get("/", hello)
@@ -86,7 +87,6 @@ func main() {
 - Delete user
 ```curl -X DELETE http://localhost:4444/users/1```
 
-
 ```go
 package main
 
@@ -95,6 +95,7 @@ import (
 	"strconv"
 
 	"github.com/labstack/echo"
+	mw "github.com/labstack/echo/middleware"
 )
 
 type (
@@ -150,7 +151,7 @@ func main() {
 	e := echo.New()
 
 	// Middleware
-	e.Use(echo.Logger)
+	e.Use(mw.Logger)
 
 	// Routes
 	e.Post("/users", createUser)

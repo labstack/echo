@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo"
+	mw "github.com/labstack/echo/middleware"
 )
 
 // Handler
@@ -15,7 +16,7 @@ func main() {
 	e := echo.New()
 
 	// Middleware
-	e.Use(echo.Logger)
+	e.Use(mw.Logger)
 
 	// Routes
 	e.Get("/", hello)
