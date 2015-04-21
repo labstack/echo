@@ -1,6 +1,6 @@
 # Echo
 
-Build simple and performant HTTP systems!
+Build simple and performant systems!
 
 ---
 
