@@ -234,6 +234,35 @@ func TestEchoMethod(t *testing.T) {
 	e.Trace("/", h)
 }
 
+func TestEchoURL(t *testing.T) {
+	e := New()
+	static := func(*Context) {}
+	getUser := func(*Context) {}
+	getFile := func(*Context) {}
+	e.Get("/static/file", static)
+	e.Get("/users/:id", getUser)
+	e.Get("/users/:uid/files/:fid", getFile)
+
+	if e.URL(static) != "/static/file" {
+		t.Error("uri should be /static/file")
+	}
+	if e.URI(static) != "/static/file" {
+		t.Error("uri should be /static/file")
+	}
+	if e.URI(getUser) != "/users/:id" {
+		t.Error("uri should be /users/:id")
+	}
+	if e.URI(getUser, "1") != "/users/1" {
+		t.Error("uri should be /users/1")
+	}
+	if e.URI(getFile, "1") != "/users/1/files/:fid" {
+		t.Error("uri should be /users/1/files/:fid")
+	}
+	if e.URI(getFile, "1", "1") != "/users/1/files/1" {
+		t.Error("uri should be /users/1/files/1")
+	}
+}
+
 func TestEchoNotFound(t *testing.T) {
 	e := New()
 

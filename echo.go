@@ -1,8 +1,10 @@
 package echo
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -23,6 +25,7 @@ type (
 		httpErrorHandler HTTPErrorHandler
 		binder           BindFunc
 		renderer         Renderer
+		uris             map[Handler]string
 		pool             sync.Pool
 	}
 	Middleware     interface{}
@@ -89,6 +92,7 @@ var (
 func New() (e *Echo) {
 	e = &Echo{}
 	e.Router = NewRouter(e)
+	e.uris = make(map[Handler]string)
 	e.pool.New = func() interface{} {
 		return &Context{
 			Response: &response{},
@@ -216,7 +220,34 @@ func (e *Echo) Trace(path string, h Handler) {
 	e.add(TRACE, path, h)
 }
 
+// URI generates a URI from handler.
+func (e *Echo) URI(h Handler, params ...string) string {
+	uri := new(bytes.Buffer)
+	lp := len(params)
+	n := 0
+	if path, ok := e.uris[fmt.Sprintf("%v", h)]; ok {
+		for i, l := 0, len(path); i < l; i++ {
+			if path[i] == ':' && n < lp {
+				for ; i < l && path[i] != '/'; i++ {
+				}
+				uri.WriteString(params[n])
+				n++
+			}
+			if i < l {
+				uri.WriteByte(path[i])
+			}
+		}
+	}
+	return uri.String()
+}
+
+// URL is an alias for URI
+func (e *Echo) URL(h Handler, params ...string) string {
+	return e.URI(h, params...)
+}
+
 func (e *Echo) add(method, path string, h Handler) {
+	e.uris[fmt.Sprintf("%v", h)] = path
 	e.Router.Add(method, e.prefix+path, wrapH(h), e)
 }
 
