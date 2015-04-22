@@ -48,15 +48,24 @@ type (
 )
 
 const (
+	// CONNECT HTTP method
 	CONNECT = "CONNECT"
-	DELETE  = "DELETE"
-	GET     = "GET"
-	HEAD    = "HEAD"
+	// DELETE HTTP method
+	DELETE = "DELETE"
+	// GET HTTP method
+	GET = "GET"
+	// HEAD HTTP method
+	HEAD = "HEAD"
+	// OPTIONS HTTP method
 	OPTIONS = "OPTIONS"
-	PATCH   = "PATCH"
-	POST    = "POST"
-	PUT     = "PUT"
-	TRACE   = "TRACE"
+	// PATCH HTTP method
+	PATCH = "PATCH"
+	// POST HTTP method
+	POST = "POST"
+	// PUT HTTP method
+	PUT = "PUT"
+	// TRACE HTTP method
+	TRACE = "TRACE"
 
 	MIMEJSON          = "application/json"
 	MIMEText          = "text/plain"
@@ -83,7 +92,10 @@ var (
 		TRACE,
 	}
 
+	//--------
 	// Errors
+	//--------
+
 	UnsupportedMediaType  = errors.New("echo: unsupported media type")
 	RendererNotRegistered = errors.New("echo: renderer not registered")
 )
@@ -105,18 +117,19 @@ func New() (e *Echo) {
 	//----------
 	// Defaults
 	//----------
-	e.MaxParam(5)
-	e.NotFoundHandler(func(c *Context) {
+	e.maxParam = 5
+	e.notFoundHandler = HandlerFunc(func(c *Context) error {
 		http.Error(c.Response, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return nil
 	})
-	e.HTTPErrorHandler(func(err error, c *Context) {
+	e.httpErrorHandler = func(err error, c *Context) {
 		if err != nil {
 			// TODO: Warning
 			log.Printf("echo: %s", color.Yellow("http error handler not registered"))
 			http.Error(c.Response, err.Error(), http.StatusInternalServerError)
 		}
-	})
-	e.Binder(func(r *http.Request, v interface{}) error {
+	}
+	e.binder = func(r *http.Request, v interface{}) error {
 		ct := r.Header.Get(HeaderContentType)
 		if strings.HasPrefix(ct, MIMEJSON) {
 			return json.NewDecoder(r.Body).Decode(v)
@@ -124,8 +137,7 @@ func New() (e *Echo) {
 			return nil
 		}
 		return UnsupportedMediaType
-	})
-
+	}
 	return
 }
 
