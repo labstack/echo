@@ -102,9 +102,10 @@ var (
 
 // New creates an Echo instance.
 func New() (e *Echo) {
-	e = &Echo{}
+	e = &Echo{
+		uris: make(map[Handler]string),
+	}
 	e.Router = NewRouter(e)
-	e.uris = make(map[Handler]string)
 	e.pool.New = func() interface{} {
 		return &Context{
 			Response: &response{},
@@ -117,19 +118,18 @@ func New() (e *Echo) {
 	//----------
 	// Defaults
 	//----------
-	e.maxParam = 5
-	e.notFoundHandler = HandlerFunc(func(c *Context) error {
+	e.MaxParam(5)
+	e.NotFoundHandler(func(c *Context) {
 		http.Error(c.Response, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-		return nil
 	})
-	e.httpErrorHandler = func(err error, c *Context) {
+	e.HTTPErrorHandler(func(err error, c *Context) {
 		if err != nil {
 			// TODO: Warning
 			log.Printf("echo: %s", color.Yellow("http error handler not registered"))
 			http.Error(c.Response, err.Error(), http.StatusInternalServerError)
 		}
-	}
-	e.binder = func(r *http.Request, v interface{}) error {
+	})
+	e.Binder(func(r *http.Request, v interface{}) error {
 		ct := r.Header.Get(HeaderContentType)
 		if strings.HasPrefix(ct, MIMEJSON) {
 			return json.NewDecoder(r.Body).Decode(v)
@@ -137,7 +137,7 @@ func New() (e *Echo) {
 			return nil
 		}
 		return UnsupportedMediaType
-	}
+	})
 	return
 }
 
