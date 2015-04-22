@@ -178,6 +178,7 @@ import (
     &quot;net/http&quot;
 
     &quot;github.com/labstack/echo&quot;
+    mw &quot;github.com/labstack/echo/middleware&quot;
 )
 
 // Handler
@@ -189,7 +190,7 @@ func main() {
     e := echo.New()
 
     // Middleware
-    e.Use(echo.Logger)
+    e.Use(mw.Logger)
 
     // Routes
     e.Get(&quot;/&quot;, hello)
@@ -220,6 +221,7 @@ import (
     &quot;strconv&quot;
 
     &quot;github.com/labstack/echo&quot;
+    mw &quot;github.com/labstack/echo/middleware&quot;
 )
 
 type (
@@ -275,7 +277,7 @@ func main() {
     e := echo.New()
 
     // Middleware
-    e.Use(echo.Logger)
+    e.Use(mw.Logger)
 
     // Routes
     e.Post(&quot;/users&quot;, createUser)
