@@ -592,14 +592,14 @@ func TestRouterAPI(t *testing.T) {
 			}
 			return nil
 		}, nil)
+		// Reset params
+		params = make(Params, 5)
 		c := &Context{params: params}
 		h, _ := r.Find(route.method, route.path, params)
 		if h == nil {
 			t.Fatalf("handler not found, method=%s, path=%s", route.method, route.path)
 		}
 		h(c)
-		// Reset params
-		params = make(Params, 5)
 	}
 }
 
