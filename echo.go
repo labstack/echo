@@ -35,7 +35,7 @@ type (
 	HandlerFunc    func(*Context) error
 
 	// HTTPErrorHandler is a centralized HTTP error handler.
-	HTTPErrorHandler func(error, *Context)
+	HTTPErrorHandler func(error, int, *Context)
 
 	BindFunc func(*http.Request, interface{}) error
 
@@ -122,11 +122,11 @@ func New() (e *Echo) {
 	e.NotFoundHandler(func(c *Context) {
 		http.Error(c.Response, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 	})
-	e.HTTPErrorHandler(func(err error, c *Context) {
+	e.HTTPErrorHandler(func(err error, code int, c *Context) {
 		if err != nil {
 			// TODO: Warning
 			log.Printf("echo: %s", color.Yellow("http error handler not registered"))
-			http.Error(c.Response, err.Error(), http.StatusInternalServerError)
+			http.Error(c.Response, err.Error(), code)
 		}
 	})
 	e.Binder(func(r *http.Request, v interface{}) error {
@@ -305,7 +305,7 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Execute chain
 	if err := h(c); err != nil {
-		e.httpErrorHandler(err, c)
+		e.httpErrorHandler(err, http.StatusInternalServerError, c)
 	}
 
 	e.pool.Put(c)
