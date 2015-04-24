@@ -4,4 +4,4 @@ theme: flatly
 
 repo_url: https://github.com/labstack/echo
 
-google_analytics: ['UA-51208124-3', 'labstack.github.io/echo']
+google_analytics: ['UA-51208124-3', 'auto']

@@ -38,13 +38,13 @@ Echo is a fast HTTP router (zero memory allocation) and micro web framework in G
 ## Installation
 
 - [Go](https://golang.org/doc/install) > 1.4.x
-- ```go get github.com/labstack/echo```
+- `go get github.com/labstack/echo`
 
 ##[Examples](https://github.com/labstack/echo/tree/master/examples)
 
 > Hello, World!
 
-Create ```server.go``` with the following content:
+Create `server.go` with the following content:
 ```go
 package main
 
@@ -74,18 +74,18 @@ func main() {
 }
 ```
 
-```go run server.go``` & browse to ```http://localhost:8080```
+`go run server.go` & browse to `http://localhost:8080`
 
 > CRUD - Create, read, update and delete.
 
 - Create user
-```curl -X POST -H "Content-Type: application/json" -d '{"name":"Joe"}' http://localhost:4444/users```
+`curl -X POST -H "Content-Type: application/json" -d '{"name":"Joe"}' http://localhost:4444/users`
 - Get user
-```curl http://localhost:4444/users/1```
+`curl http://localhost:4444/users/1`
 - Update user: Change user's name to Sid
-```curl -X PATCH -H "Content-Type: application/json" -d '{"name":"Sid"}' http://localhost:4444/users/1```
+`curl -X PATCH -H "Content-Type: application/json" -d '{"name":"Sid"}' http://localhost:4444/users/1`
 - Delete user
-```curl -X DELETE http://localhost:4444/users/1```
+`curl -X DELETE http://localhost:4444/users/1`
 
 ```go
 package main
