@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"reflect"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -111,7 +112,6 @@ func New() (e *Echo) {
 			Response: &response{},
 			params:   make(Params, e.maxParam),
 			store:    make(store),
-			echo:     e, // TODO: Do we need this?
 		}
 	}
 
@@ -237,7 +237,8 @@ func (e *Echo) URI(h Handler, params ...string) string {
 	uri := new(bytes.Buffer)
 	lp := len(params)
 	n := 0
-	if path, ok := e.uris[fmt.Sprintf("%v", h)]; ok {
+	key := runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name()
+	if path, ok := e.uris[key]; ok {
 		for i, l := 0, len(path); i < l; i++ {
 			if path[i] == ':' && n < lp {
 				for ; i < l && path[i] != '/'; i++ {
@@ -259,7 +260,8 @@ func (e *Echo) URL(h Handler, params ...string) string {
 }
 
 func (e *Echo) add(method, path string, h Handler) {
-	e.uris[fmt.Sprintf("%v", h)] = path
+	key := runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name()
+	e.uris[key] = path
 	e.Router.Add(method, e.prefix+path, wrapH(h), e)
 }
 

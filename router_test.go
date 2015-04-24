@@ -14,6 +14,15 @@ type route struct {
 }
 
 var (
+	api2 = []route{
+		// Issues
+		{"DELETE", "/repos/:owner/:repo/labels/:name"},
+		{"GET", "/repos/:owner/:repo/issues/:number/labels"},
+		{"POST", "/repos/:owner/:repo/issues/:number/labels"},
+	}
+)
+
+var (
 	params = make(Params, 5)
 	api    = []route{
 		// OAuth Authorizations
@@ -316,6 +325,7 @@ func TestRouterTwoParam(t *testing.T) {
 	r.Add(GET, "/users/:uid/files/:fid", func(*Context) error {
 		return nil
 	}, nil)
+
 	h, _ := r.Find(GET, "/users/1/files/1", params)
 	if h == nil {
 		t.Fatal("handler not found")
@@ -470,9 +480,10 @@ func TestRouterConflictingRoute(t *testing.T) {
 		t.Error("param id should be news")
 	}
 
-	//***************//
-	//   Two level   //
-	//***************//
+	//-----------
+	// Two level
+	//-----------
+
 	// Route > /users/new/moon > /users/new/moon
 	h, _ = r.Find(GET, "/users/new/moon", params)
 	if h == nil {
@@ -511,6 +522,63 @@ func TestRouterConflictingRoute(t *testing.T) {
 	}
 }
 
+func TestRouterParamNames(t *testing.T) {
+	r := New().Router
+	b := new(bytes.Buffer)
+
+	// Routes
+	r.Add(GET, "/users", func(*Context) error {
+		b.WriteString("/users")
+		return nil
+	}, nil)
+	r.Add(GET, "/users/:id", func(c *Context) error {
+		return nil
+	}, nil)
+	r.Add(GET, "/users/:uid/files/:fid", func(c *Context) error {
+		return nil
+	}, nil)
+
+	// Route > /users
+	h, _ := r.Find(GET, "/users", params)
+	if h == nil {
+		t.Fatal("handler not found")
+	}
+	h(nil)
+	if b.String() != "/users" {
+		t.Errorf("buffer should be /users")
+	}
+
+	// Route > /users/:id > /users/1
+	h, _ = r.Find(GET, "/users/1", params)
+	if h == nil {
+		t.Fatal("handler not found")
+	}
+	if params[0].Name != "id" {
+		t.Error("param name should be id")
+	}
+	if params[0].Value != "1" {
+		t.Error("param id should be 1")
+	}
+
+	// Route > /users/:uid/files/:fid > /users/1/files/1
+	h, _ = r.Find(GET, "/users/1/files/1", params)
+	if h == nil {
+		t.Fatal("handler not found")
+	}
+	if params[0].Name != "uid" {
+		t.Error("param name should be id")
+	}
+	if params[0].Value != "1" {
+		t.Error("param id should be 1")
+	}
+	if params[1].Name != "fid" {
+		t.Error("param name should be id")
+	}
+	if params[1].Value != "1" {
+		t.Error("param id should be 1")
+	}
+}
+
 func TestRouterAPI(t *testing.T) {
 	r := New().Router
 	for _, route := range api {
@@ -524,11 +592,14 @@ func TestRouterAPI(t *testing.T) {
 			}
 			return nil
 		}, nil)
-
+		c := &Context{params: params}
 		h, _ := r.Find(route.method, route.path, params)
 		if h == nil {
-			t.Errorf("handler not found, method=%s, path=%s", route.method, route.path)
+			t.Fatalf("handler not found, method=%s, path=%s", route.method, route.path)
 		}
+		h(c)
+		// Reset params
+		params = make(Params, 5)
 	}
 }
 
