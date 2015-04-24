@@ -80,8 +80,8 @@ func (c *Context) NoContent(code int) error {
 }
 
 // Error invokes the registered HTTP error handler.
-func (c *Context) Error(err error) {
-	c.echo.httpErrorHandler(err, c)
+func (c *Context) Error(err error, code int) {
+	c.echo.httpErrorHandler(err, code, c)
 }
 
 // Get retrieves data from the context.
