@@ -35,12 +35,14 @@ Echo is a fast HTTP router (zero memory allocation) and micro web framework in G
 - Use a customized function to bind request body to a Go type.
 - Register a view render so you can use any HTML templating engine.
 
-## Installation
+## Getting Started
 
-- [Go](https://golang.org/doc/install) > 1.4.x
+### Installation
+
+- Go `~1.4.2`
 - `go get github.com/labstack/echo`
 
-##[Examples](https://github.com/labstack/echo/tree/master/examples)
+###[Examples](https://github.com/labstack/echo/tree/master/examples)
 
 > Hello, World!
 
