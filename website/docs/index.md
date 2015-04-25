@@ -33,7 +33,7 @@ Echo is a fast HTTP router (zero memory allocation) and micro web framework in G
 - Serve static files, including index.
 - Centralized HTTP error handling.
 - Use a customized function to bind request body to a Go type.
-- Register a view render so you can use any HTML templating engine.
+- Register a view render so you can use any HTML template engine.
 
 ## Getting Started
 
@@ -89,7 +89,7 @@ producing output
 ```
 
 `e.Get("/", hello)` Registers a GET route for path `/` with hello handler, so
-whenever server receives a request at `/` hello handler is called.
+whenever server receives a request at `/`, hello handler is called.
 
 In hello handler `c.String(http.StatusOK, "Hello, World!\n")` sends a text/plain
 response to the client with 200 status code.
@@ -105,6 +105,10 @@ $ go run server.go
 Browse to [http://localhost:4444](http://localhost:4444) and you should see
 Hello, World! on the page.
 
+### Next?
+- Browse [examples](https://github.com/labstack/echo/tree/master/examples)
+- Head over to [Guide](guide.md)
+
 ## Contribute
 
 **Use issues for everything**
@@ -113,6 +117,11 @@ Hello, World! on the page.
 - Discuss before sending pull request
 - Suggest new features
 - Improve/fix documentation
+
+## Credits
+- [Vishal Rana](https://github.com/vishr) - Author
+- [Nitin Rana](https://github.com/nr17) - Consultant
+- [Contributors](https://github.com/labstack/echo/graphs/contributors)
 
 ## License
 

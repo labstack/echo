@@ -27,7 +27,7 @@ Echo is a fast HTTP router (zero memory allocation) and micro web framework in G
 - Serve static files, including index.
 - Centralized HTTP error handling.
 - Use a customized function to bind request body to a Go type.
-- Register a view render so you can use any HTML templating engine.
+- Register a view render so you can use any HTML template engine.
 
 ## Benchmark
 
@@ -67,10 +67,11 @@ BenchmarkZeus_GithubAll	        2000	    752907 ns/op	  300688 B/op	    2648 all
 
 ## Installation
 
-- [Go](https://golang.org/doc/install) > 1.4.x
-- `go get github.com/labstack/echo`
+```sh
+$ go get github.com/labstack/echo
+```
 
-##[Examples](https://github.com/labstack/echo/tree/master/examples)
+##[Hello, World!](https://github.com/labstack/echo/tree/master/examples/hello)
 
 > Hello, World!
 
@@ -90,6 +91,7 @@ func hello(c *echo.Context) {
 }
 
 func main() {
+	// Echo instance
 	e := echo.New()
 
 	// Middleware
@@ -102,6 +104,25 @@ func main() {
 	e.Run(":4444")
 }
 ```
+
+##[Examples](https://github.com/labstack/echo/tree/master/examples)
+
+##[Guide](http://labstack.github.io/echo)
+
+## Contribute
+
+**Use issues for everything**
+ 
+- Report problems
+- Discuss before sending pull request
+- Suggest new features
+- Improve/fix documentation
+
+## Credits
+- [Vishal Rana](https://github.com/vishr) - Author
+- [Nitin Rana](https://github.com/nr17) - Consultant
+- [Contributors](https://github.com/labstack/echo/graphs/contributors)
+
 ## License
 
 [MIT](https://github.com/labstack/echo/blob/master/LICENSE)
