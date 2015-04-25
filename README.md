@@ -105,7 +105,7 @@ func main() {
 
 ##[Examples](https://github.com/labstack/echo/tree/master/examples)
 
-##[Guide](http://labstack.github.io/echo/guide.html)
+##[Guide](http://labstack.github.io/echo/guide)
 
 ## Contribute
 
