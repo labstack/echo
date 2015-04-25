@@ -115,6 +115,8 @@
         
             <li><a href="#contribute">Contribute</a></li>
         
+            <li><a href="#credits">Credits</a></li>
+        
             <li><a href="#license">License</a></li>
         
     
@@ -158,7 +160,7 @@
 <li>Serve static files, including index.</li>
 <li>Centralized HTTP error handling.</li>
 <li>Use a customized function to bind request body to a Go type.</li>
-<li>Register a view render so you can use any HTML templating engine.</li>
+<li>Register a view render so you can use any HTML template engine.</li>
 </ul>
 <h2 id="getting-started">Getting Started</h2>
 <h3 id="installation">Installation</h3>
@@ -205,7 +207,7 @@ producing output</p>
 </code></pre>
 
 <p><code>e.Get("/", hello)</code> Registers a GET route for path <code>/</code> with hello handler, so
-whenever server receives a request at <code>/</code> hello handler is called.</p>
+whenever server receives a request at <code>/</code>, hello handler is called.</p>
 <p>In hello handler <code>c.String(http.StatusOK, "Hello, World!\n")</code> sends a text/plain
 response to the client with 200 status code.</p>
 <p><code>e.Run(":4444")</code> Starts HTTP server at network address <code>:4444</code>.</p>
@@ -227,6 +229,12 @@ Hello, World! on the page.</p>
 <li>Discuss before sending pull request</li>
 <li>Suggest new features</li>
 <li>Improve/fix documentation</li>
+</ul>
+<h2 id="credits">Credits</h2>
+<ul>
+<li><a href="https://github.com/vishr">Vishal Rana</a> - Author</li>
+<li><a href="https://github.com/nr17">Nitin Rana</a> - Consultant</li>
+<li><a href="https://github.com/labstack/echo/graphs/contributors">Contributors</a></li>
 </ul>
 <h2 id="license">License</h2>
 <p><a href="https://github.com/labstack/echo/blob/master/LICENSE">MIT</a></p></div>
