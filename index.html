@@ -162,15 +162,11 @@
 </ul>
 <h2 id="getting-started">Getting Started</h2>
 <h3 id="installation">Installation</h3>
-<ul>
-<li><a href="https://golang.org/doc/install">Go</a> &gt; 1.4.x</li>
-<li><code>go get github.com/labstack/echo</code></li>
-</ul>
-<h3 id="examples"><a href="https://github.com/labstack/echo/tree/master/examples">Examples</a></h3>
-<blockquote>
-<p>Hello, World!</p>
-</blockquote>
-<p>Create <code>server.go</code> with the following content:</p>
+<pre><code class="sh">$ go get github.com/labstack/echo
+</code></pre>
+
+<h3 id="hello-world"><a href="https://github.com/labstack/echo/tree/master/examples/hello">Hello, World!</a></h3>
+<p>Create <code>server.go</code> with the following content</p>
 <pre><code class="go">package main
 
 import (
@@ -186,6 +182,7 @@ func hello(c *echo.Context) {
 }
 
 func main() {
+    // Echo instance
     e := echo.New()
 
     // Middleware
@@ -199,102 +196,37 @@ func main() {
 }
 </code></pre>
 
-<p><code>go run server.go</code> &amp; browse to <code>http://localhost:8080</code></p>
-<blockquote>
-<p>CRUD - Create, read, update and delete.</p>
-</blockquote>
-<ul>
-<li>Create user
-<code>curl -X POST -H "Content-Type: application/json" -d '{"name":"Joe"}' http://localhost:4444/users</code></li>
-<li>Get user
-<code>curl http://localhost:4444/users/1</code></li>
-<li>Update user: Change user's name to Sid
-<code>curl -X PATCH -H "Content-Type: application/json" -d '{"name":"Sid"}' http://localhost:4444/users/1</code></li>
-<li>Delete user
-<code>curl -X DELETE http://localhost:4444/users/1</code></li>
-</ul>
-<pre><code class="go">package main
-
-import (
-    &quot;net/http&quot;
-    &quot;strconv&quot;
-
-    &quot;github.com/labstack/echo&quot;
-    mw &quot;github.com/labstack/echo/middleware&quot;
-)
-
-type (
-    user struct {
-        ID   int
-        Name string
-    }
-)
-
-var (
-    users = map[int]*user{}
-    seq   = 1
-)
-
-//----------
-// Handlers
-//----------
-
-func createUser(c *echo.Context) error {
-    u := &amp;user{
-        ID: seq,
-    }
-    if err := c.Bind(u); err != nil {
-        return err
-    }
-    users[u.ID] = u
-    seq++
-    return c.JSON(http.StatusCreated, u)
-}
-
-func getUser(c *echo.Context) error {
-    id, _ := strconv.Atoi(c.Param(&quot;id&quot;))
-    return c.JSON(http.StatusOK, users[id])
-}
-
-func updateUser(c *echo.Context) error {
-    u := new(user)
-    if err := c.Bind(u); err != nil {
-        return err
-    }
-    id, _ := strconv.Atoi(c.Param(&quot;id&quot;))
-    users[id].Name = u.Name
-    return c.JSON(http.StatusOK, users[id])
-}
-
-func deleteUser(c *echo.Context) error {
-    id, _ := strconv.Atoi(c.Param(&quot;id&quot;))
-    delete(users, id)
-    return c.NoContent(http.StatusNoContent)
-}
-
-func main() {
-    e := echo.New()
-
-    // Middleware
-    e.Use(mw.Logger)
-
-    // Routes
-    e.Post(&quot;/users&quot;, createUser)
-    e.Get(&quot;/users/:id&quot;, getUser)
-    e.Patch(&quot;/users/:id&quot;, updateUser)
-    e.Delete(&quot;/users/:id&quot;, deleteUser)
-
-    // Start server
-    e.Run(&quot;:4444&quot;)
-}
+<p><code>echo.New()</code> returns a new instance of Echo.</p>
+<p><code>e.Use(mw.Logger)</code> adds logging middleware to the chain. It logs every request made to the server,
+producing output</p>
+<pre><code class="sh">2015/04/25 12:15:20 GET / 200 7.544µs
+2015/04/25 12:15:26 GET / 200 3.681µs
+2015/04/25 12:15:29 GET / 200 5.434µs
 </code></pre>
 
-<h2 id="contribute">Contribute</h2>
+<p><code>e.Get("/", hello)</code> Registers a GET route for path <code>/</code> with hello handler, so
+whenever server receives a request at <code>/</code> hello handler is called.</p>
+<p>In hello handler <code>c.String(http.StatusOK, "Hello, World!\n")</code> sends a text/plain
+response to the client with 200 status code.</p>
+<p><code>e.Run(":4444")</code> Starts HTTP server at network address <code>:4444</code>.</p>
+<p>Now start the server using command</p>
+<pre><code class="sh">$ go run server.go
+</code></pre>
+
+<p>Browse to <a href="http://localhost:4444">http://localhost:4444</a> and you should see
+Hello, World! on the page.</p>
+<h3 id="next">Next?</h3>
 <ul>
-<li>Report issues</li>
+<li>Browse <a href="https://github.com/labstack/echo/tree/master/examples">examples</a></li>
+<li>Head over to <a href="guide/">Guide</a></li>
+</ul>
+<h2 id="contribute">Contribute</h2>
+<p><strong>Use issues for everything</strong></p>
+<ul>
+<li>Report problems</li>
+<li>Discuss before sending pull request</li>
 <li>Suggest new features</li>
-<li>Participate in discussion</li>
-<li>Improve documentation</li>
+<li>Improve/fix documentation</li>
 </ul>
 <h2 id="license">License</h2>
 <p><a href="https://github.com/labstack/echo/blob/master/LICENSE">MIT</a></p></div>
