@@ -1,19 +1,42 @@
 # Guide
 
+<!--- 
+	Some info about guide
+-->
+
 ---
 
 ## Installation
 
-Go `~1.4.2`
+Echo has been developed and tested using Go `1.4.x`
 
-Install the latest version of Echo `go get github.com/labstack/echo`
+Install latest version of Echo via `go get`
 
-Upgrade Echo `go get -u github.com/labstack/echo`
+```sh
+$ go get github.com/labstack/echo
+```
 
-### Using package manager
+To upgrade
+
+```sh
+$ go get -u github.com/labstack/echo
+```
+
+Echo follows [Semantic Versioning](http://semver.org) managed through GitHub releases.
+Specific version of Echo can be installed using any [package manager](https://github.com/avelino/awesome-go#package-management).
+
+### Configuration
+
+#### MaxParam
 
 ## Routing
 
 ## Request
 
+## Middleware
+
 ## Response
+
+## Static Content
+
+## Error Handling

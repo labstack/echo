@@ -39,14 +39,14 @@ Echo is a fast HTTP router (zero memory allocation) and micro web framework in G
 
 ### Installation
 
-- Go `~1.4.2`
-- `go get github.com/labstack/echo`
+```sh
+$ go get github.com/labstack/echo
+```
 
-###[Examples](https://github.com/labstack/echo/tree/master/examples)
+###[Hello, World!](https://github.com/labstack/echo/tree/master/examples/hello)
 
-> Hello, World!
+Create `server.go` with the following content
 
-Create `server.go` with the following content:
 ```go
 package main
 
@@ -63,6 +63,7 @@ func hello(c *echo.Context) {
 }
 
 func main() {
+	// Echo instance
 	e := echo.New()
 
 	// Middleware
@@ -76,101 +77,42 @@ func main() {
 }
 ```
 
-`go run server.go` & browse to `http://localhost:8080`
+`echo.New()` returns a new instance of Echo.
 
-> CRUD - Create, read, update and delete.
+`e.Use(mw.Logger)` adds logging middleware to the chain. It logs every request made to the server,
+producing output
 
-- Create user
-`curl -X POST -H "Content-Type: application/json" -d '{"name":"Joe"}' http://localhost:4444/users`
-- Get user
-`curl http://localhost:4444/users/1`
-- Update user: Change user's name to Sid
-`curl -X PATCH -H "Content-Type: application/json" -d '{"name":"Sid"}' http://localhost:4444/users/1`
-- Delete user
-`curl -X DELETE http://localhost:4444/users/1`
-
-```go
-package main
-
-import (
-	"net/http"
-	"strconv"
-
-	"github.com/labstack/echo"
-	mw "github.com/labstack/echo/middleware"
-)
-
-type (
-	user struct {
-		ID   int
-		Name string
-	}
-)
-
-var (
-	users = map[int]*user{}
-	seq   = 1
-)
-
-//----------
-// Handlers
-//----------
-
-func createUser(c *echo.Context) error {
-	u := &user{
-		ID: seq,
-	}
-	if err := c.Bind(u); err != nil {
-		return err
-	}
-	users[u.ID] = u
-	seq++
-	return c.JSON(http.StatusCreated, u)
-}
-
-func getUser(c *echo.Context) error {
-	id, _ := strconv.Atoi(c.Param("id"))
-	return c.JSON(http.StatusOK, users[id])
-}
-
-func updateUser(c *echo.Context) error {
-	u := new(user)
-	if err := c.Bind(u); err != nil {
-		return err
-	}
-	id, _ := strconv.Atoi(c.Param("id"))
-	users[id].Name = u.Name
-	return c.JSON(http.StatusOK, users[id])
-}
-
-func deleteUser(c *echo.Context) error {
-	id, _ := strconv.Atoi(c.Param("id"))
-	delete(users, id)
-	return c.NoContent(http.StatusNoContent)
-}
-
-func main() {
-	e := echo.New()
-
-	// Middleware
-	e.Use(mw.Logger)
-
-	// Routes
-	e.Post("/users", createUser)
-	e.Get("/users/:id", getUser)
-	e.Patch("/users/:id", updateUser)
-	e.Delete("/users/:id", deleteUser)
-
-	// Start server
-	e.Run(":4444")
-}
+```sh
+2015/04/25 12:15:20 GET / 200 7.544µs
+2015/04/25 12:15:26 GET / 200 3.681µs
+2015/04/25 12:15:29 GET / 200 5.434µs
 ```
 
+`e.Get("/", hello)` Registers a GET route for path `/` with hello handler, so
+whenever server receives a request at `/` hello handler is called.
+
+In hello handler `c.String(http.StatusOK, "Hello, World!\n")` sends a text/plain
+response to the client with 200 status code.
+
+`e.Run(":4444")` Starts HTTP server at network address `:4444`.
+
+Now start the server using command
+
+```sh
+$ go run server.go
+```
+
+Browse to [http://localhost:4444](http://localhost:4444) and you should see
+Hello, World! on the page.
+
 ## Contribute
-- Report issues
+
+**Use issues for everything**
+ 
+- Report problems
+- Discuss before sending pull request
 - Suggest new features
-- Participate in discussion
-- Improve documentation
+- Improve/fix documentation
 
 ## License
 

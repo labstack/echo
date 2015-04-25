@@ -13,6 +13,7 @@ func hello(c *echo.Context) {
 }
 
 func main() {
+	// Echo instance
 	e := echo.New()
 
 	// Middleware
