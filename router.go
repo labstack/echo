@@ -64,8 +64,10 @@ func (r *router) Add(method, path string, h HandlerFunc, echo *Echo) {
 			}
 			r.insert(method, path[:i], nil, ptype, pnames, echo)
 		} else if path[i] == '*' {
-			r.insert(method, path[:i], nil, ctype, nil, echo)
-			r.insert(method, path[:l], h, ctype, nil, echo)
+			r.insert(method, path[:i], nil, stype, nil, echo)
+			pnames = append(pnames, "_name")
+			r.insert(method, path[:l], h, ctype, pnames, echo)
+			return
 		}
 	}
 	r.insert(method, path, h, stype, nil, echo)
@@ -203,7 +205,7 @@ func (r *router) Find(method, path string, c *Context) (h HandlerFunc, echo *Ech
 	cn := r.trees[method] // Current node as root
 	search := path
 	chn := new(node) // Child node
-	c.pn = 0         // Param count
+	n := 0           // Param counter
 
 	// Search order static > param > catch-all
 	for {
@@ -239,8 +241,8 @@ func (r *router) Find(method, path string, c *Context) (h HandlerFunc, echo *Ech
 			i, l := 0, len(search)
 			for ; i < l && search[i] != '/'; i++ {
 			}
-			c.pvalues[c.pn] = search[:i]
-			c.pn++
+			c.pvalues[n] = search[:i]
+			n++
 			search = search[i:]
 			continue
 		}
@@ -249,8 +251,7 @@ func (r *router) Find(method, path string, c *Context) (h HandlerFunc, echo *Ech
 		chn = cn.findCchild()
 		if chn != nil {
 			cn = chn
-			c.pnames[c.pn] = "_name"
-			c.pvalues[c.pn] = search
+			c.pvalues[n] = search
 			search = "" // End search
 			continue
 		}

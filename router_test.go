@@ -340,15 +340,16 @@ func TestRouterTwoParam(t *testing.T) {
 
 func TestRouterCatchAll(t *testing.T) {
 	r := New().Router
-	r.Add(GET, "/static/*", func(*Context) error {
+	r.Add(GET, "/users/*", func(*Context) error {
 		return nil
 	}, nil)
-	h, _ := r.Find(GET, "/static/echo.gif", context)
+
+	h, _ := r.Find(GET, "/users/joe", context)
 	if h == nil {
 		t.Fatal("handler not found")
 	}
-	if context.pvalues[0] != "echo.gif" {
-		t.Error("value should be echo.gif")
+	if context.pvalues[0] != "joe" {
+		t.Error("value should be joe")
 	}
 }
 

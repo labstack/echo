@@ -13,7 +13,6 @@ type (
 		Response *response
 		pnames   []string
 		pvalues  []string
-		pn       int // Param count
 		store    store
 		echo     *Echo
 	}
@@ -22,7 +21,7 @@ type (
 
 // P returns path parameter by index.
 func (c *Context) P(i int) (value string) {
-	if i <= c.pn {
+	if i <= len(c.pnames) {
 		value = c.pvalues[i]
 	}
 	return
@@ -30,8 +29,9 @@ func (c *Context) P(i int) (value string) {
 
 // Param returns path parameter by name.
 func (c *Context) Param(name string) (value string) {
+	l := len(c.pnames)
 	for i, n := range c.pnames {
-		if n == name && i <= c.pn {
+		if n == name && i <= l {
 			value = c.pvalues[i]
 			break
 		}
