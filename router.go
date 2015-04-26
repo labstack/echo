@@ -247,7 +247,7 @@ func (r *router) Find(method, path string, ctx *Context) (h HandlerFunc, echo *E
 			goto Up
 		}
 
-		// Check for catch-all with empty string
+		// Catch-all with empty value
 		if len(search) == 0 {
 			goto CatchAll
 		}
