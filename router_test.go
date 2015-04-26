@@ -344,7 +344,15 @@ func TestRouterCatchAll(t *testing.T) {
 		return nil
 	}, nil)
 
-	h, _ := r.Find(GET, "/users/joe", context)
+	h, _ := r.Find(GET, "/users/", context)
+	if h == nil {
+		t.Fatal("handler not found")
+	}
+	if context.pvalues[0] != "" {
+		t.Error("value should be joe")
+	}
+
+	h, _ = r.Find(GET, "/users/joe", context)
 	if h == nil {
 		t.Fatal("handler not found")
 	}
