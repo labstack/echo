@@ -73,8 +73,6 @@ $ go get github.com/labstack/echo
 
 ##[Hello, World!](https://github.com/labstack/echo/tree/master/examples/hello)
 
-> Hello, World!
-
 ```go
 package main
 
@@ -107,7 +105,7 @@ func main() {
 
 ##[Examples](https://github.com/labstack/echo/tree/master/examples)
 
-##[Guide](http://labstack.github.io/echo)
+##[Guide](http://labstack.github.io/echo/guide)
 
 ## Contribute
 
