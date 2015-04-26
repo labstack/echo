@@ -147,7 +147,7 @@ func New() (e *Echo) {
 // the parent. Passing middleware overrides parent middleware.
 func (e *Echo) Group(pfx string, m ...Middleware) *Echo {
 	g := *e
-	g.prefix = pfx
+	g.prefix = g.prefix + pfx
 	if len(m) > 0 {
 		g.middleware = nil
 		g.Use(m...)
