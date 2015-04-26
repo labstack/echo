@@ -11,7 +11,9 @@ type (
 	Context struct {
 		Request  *http.Request
 		Response *response
-		params   Params
+		pnames   []string
+		pvalues  []string
+		pn       int // Param count
 		store    store
 		echo     *Echo
 	}
@@ -19,15 +21,19 @@ type (
 )
 
 // P returns path parameter by index.
-func (c *Context) P(i uint8) string {
-	return c.params[i].Value
+func (c *Context) P(i int) (value string) {
+	if i <= c.pn {
+		value = c.pvalues[i]
+	}
+	return
 }
 
 // Param returns path parameter by name.
 func (c *Context) Param(name string) (value string) {
-	for _, p := range c.params {
-		if p.Name == name {
-			value = p.Value
+	for i, n := range c.pnames {
+		if n == name && i <= c.pn {
+			value = c.pvalues[i]
+			break
 		}
 	}
 	return

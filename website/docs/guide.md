@@ -10,7 +10,7 @@
 
 Echo has been developed and tested using Go `1.4.x`
 
-Install latest version of Echo via `go get`
+Install the latest version of Echo via `go get`
 
 ```sh
 $ go get github.com/labstack/echo

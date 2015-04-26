@@ -26,7 +26,7 @@ func TestContext(t *testing.T) {
 	c := &Context{
 		Response: &response{Writer: httptest.NewRecorder()},
 		Request:  r,
-		params:   make(Params, 5),
+		pvalues:  make([]string, 5),
 		store:    make(store),
 		echo:     New(),
 	}
@@ -64,7 +64,8 @@ func TestContext(t *testing.T) {
 	//-------
 
 	// By id
-	c.params = Params{{"id", "1"}}
+	c.pnames = []string{"id"}
+	c.pvalues = []string{"1"}
 	if c.P(0) != "1" {
 		t.Error("param id should be 1")
 	}

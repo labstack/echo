@@ -110,7 +110,8 @@ func New() (e *Echo) {
 	e.pool.New = func() interface{} {
 		return &Context{
 			Response: &response{},
-			params:   make(Params, e.maxParam),
+			pnames:   make([]string, e.maxParam),
+			pvalues:  make([]string, e.maxParam),
 			store:    make(store),
 		}
 	}
@@ -118,6 +119,7 @@ func New() (e *Echo) {
 	//----------
 	// Defaults
 	//----------
+
 	e.MaxParam(5)
 	e.NotFoundHandler(func(c *Context) {
 		http.Error(c.Response, http.StatusText(http.StatusNotFound), http.StatusNotFound)
@@ -289,7 +291,7 @@ func (e *Echo) Index(file string) {
 
 func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c := e.pool.Get().(*Context)
-	h, echo := e.Router.Find(r.Method, r.URL.Path, c.params)
+	h, echo := e.Router.Find(r.Method, r.URL.Path, c)
 	if echo != nil {
 		e = echo
 	}

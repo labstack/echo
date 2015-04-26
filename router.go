@@ -21,11 +21,6 @@ type (
 	}
 	ntype    uint8
 	children []*node
-	param    struct {
-		Name  string
-		Value string
-	}
-	Params []param
 )
 
 const (
@@ -204,20 +199,18 @@ func lcp(a, b string) (i int) {
 	return
 }
 
-func (r *router) Find(method, path string, params Params) (h HandlerFunc, echo *Echo) {
+func (r *router) Find(method, path string, c *Context) (h HandlerFunc, echo *Echo) {
 	cn := r.trees[method] // Current node as root
 	search := path
-	n := 0         // Param count
-	c := new(node) // Child node
+	chn := new(node) // Child node
+	c.pn = 0         // Param count
 
 	// Search order static > param > catch-all
 	for {
 		if search == "" || search == cn.prefix {
 			// Found
 			h = cn.handler
-			for i := 0; i < len(cn.pnames); i++ {
-				params[i].Name = cn.pnames[i]
-			}
+			c.pnames = cn.pnames
 			echo = cn.echo
 			return
 		}
@@ -232,33 +225,32 @@ func (r *router) Find(method, path string, params Params) (h HandlerFunc, echo *
 		}
 
 		// Static node
-		c = cn.findSchild(search[0])
-		if c != nil {
-			cn = c
+		chn = cn.findSchild(search[0])
+		if chn != nil {
+			cn = chn
 			continue
 		}
 
 		// Param node
 	Param:
-		c = cn.findPchild()
-		if c != nil {
-			cn = c
+		chn = cn.findPchild()
+		if chn != nil {
+			cn = chn
 			i, l := 0, len(search)
 			for ; i < l && search[i] != '/'; i++ {
 			}
-			params[n].Value = search[:i]
-			n++
+			c.pvalues[c.pn] = search[:i]
+			c.pn++
 			search = search[i:]
 			continue
 		}
 
 		// Catch-all node
-		c = cn.findCchild()
-		if c != nil {
-			cn = c
-			p := params[:n+1]
-			p[n].Name = "_name"
-			p[n].Value = search
+		chn = cn.findCchild()
+		if chn != nil {
+			cn = chn
+			c.pnames[c.pn] = "_name"
+			c.pvalues[c.pn] = search
 			search = "" // End search
 			continue
 		}
@@ -281,8 +273,8 @@ func (r *router) Find(method, path string, params Params) (h HandlerFunc, echo *
 
 func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	c := r.echo.pool.Get().(*Context)
-	h, _ := r.Find(req.Method, req.URL.Path, c.params)
-	c.Response.Writer = w
+	h, _ := r.Find(req.Method, req.URL.Path, c)
+	c.reset(w, req, nil)
 	if h != nil {
 		h(c)
 	} else {
