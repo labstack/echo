@@ -149,8 +149,9 @@ performance.</p>
 <h2 id="routing">Routing</h2>
 <p>Echo's router is <a href="https://github.com/labstack/echo#benchmark">fast, optimized</a> and
 flexible. It's based on <a href="http://en.wikipedia.org/wiki/Radix_tree">redix tree</a>
-data structure which makes routing lookup really fast. It leverages <a href="https://golang.org/pkg/sync/#Pool">sync pool</a> to achieve zero dynamic memory allocation with
-no garbage collection.</p>
+data structure which makes routing lookup really fast. It leverages
+<a href="https://golang.org/pkg/sync/#Pool">sync pool</a> to reuse memory and achieve
+zero dynamic memory allocation with no garbage collection.</p>
 <p>Routes can be registered for any HTTP method, path and handler. For example code
 below registers a route for method <code>GET</code>, path <code>/hello</code> and a handler which sends
 <code>Hello!</code> response.</p>
