@@ -398,13 +398,15 @@ func wrapM(m Middleware) MiddlewareFunc {
 // wraps Handler
 func wrapH(h Handler) HandlerFunc {
 	switch h := h.(type) {
+	case HandlerFunc:
+		return h
+	case func(*Context) error:
+		return h
 	case func(*Context):
 		return func(c *Context) error {
 			h(c)
 			return nil
 		}
-	case func(*Context) error:
-		return h
 	case http.Handler, http.HandlerFunc:
 		return func(c *Context) error {
 			h.(http.Handler).ServeHTTP(c.Response, c.Request)
