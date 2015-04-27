@@ -218,6 +218,19 @@ func TestEchoGroup(t *testing.T) {
 	if b.String() != "3" {
 		t.Errorf("should execute middleware 3, executed %s", b.String())
 	}
+
+	// Nested Group
+	g3 := e.Group("/group3")
+	g4 := g3.Group("/group4")
+	g4.Get("/test", func(c *Context) {
+		c.String(http.StatusOK, "okay")
+	})
+	w = httptest.NewRecorder()
+	r, _ = http.NewRequest(GET, "/group3/group4/test", nil)
+	e.ServeHTTP(w, r)
+	if w.Body.String() != "okay" {
+		t.Error("body should be okay")
+	}
 }
 
 func TestEchoMethod(t *testing.T) {
