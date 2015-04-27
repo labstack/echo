@@ -219,17 +219,17 @@ func TestEchoGroup(t *testing.T) {
 		t.Errorf("should execute middleware 3, executed %s", b.String())
 	}
 
-	// Nested Group
+	// Nested group
 	g3 := e.Group("/group3")
 	g4 := g3.Group("/group4")
-	g4.Get("/test", func(c *Context) {
-		c.String(http.StatusOK, "okay")
+	g4.Get("/home", func(c *Context) {
+		c.NoContent(http.StatusOK)
 	})
 	w = httptest.NewRecorder()
-	r, _ = http.NewRequest(GET, "/group3/group4/test", nil)
+	r, _ = http.NewRequest(GET, "/group3/group4/home", nil)
 	e.ServeHTTP(w, r)
-	if w.Body.String() != "okay" {
-		t.Error("body should be okay")
+	if w.Code != 200 {
+		t.Errorf("status code should be 200, found %d", w.Code)
 	}
 }
 
