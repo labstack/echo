@@ -113,16 +113,6 @@
         
             <li><a href="#routing">Routing</a></li>
         
-            <li><a href="#request">Request</a></li>
-        
-            <li><a href="#middleware">Middleware</a></li>
-        
-            <li><a href="#response">Response</a></li>
-        
-            <li><a href="#static-content">Static Content</a></li>
-        
-            <li><a href="#error-handling">Error Handling</a></li>
-        
     
     </ul>
 </div></div>
@@ -147,39 +137,51 @@
 <p>Echo follows <a href="http://semver.org">Semantic Versioning</a> managed through GitHub releases.
 Specific version of Echo can be installed using any <a href="https://github.com/avelino/awesome-go#package-management">package manager</a>.</p>
 <h2 id="configuration">Configuration</h2>
-<h4 id="echomaxparam"><code>echo.MaxParam</code></h4>
+<h3 id="echomaxparam"><code>echo.MaxParam</code></h3>
 <p>Sets the maximum number of path parameters allowed for the application.
 Default value is <strong>5</strong>, <a href="https://github.com/interagent/http-api-design#minimize-path-nesting">good enough</a>
 for many use cases. By restricting path parameters we can reuse memory which boosts
 performance.</p>
-<h4 id="echonotfoundhandler"><code>echo.NotFoundHandler</code></h4>
-<p>Registers a custom NotFound handler used by router incase it doesn't find a handler.
-Default value</p>
-<pre><code class="go">func(c *Context) {
-    http.Error(c.Response, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-}
-</code></pre>
-
-<h4 id="echohttperrorhandler"><code>echo.HTTPErrorHandler</code></h4>
-<p>HTTPErrorHandler registers an HTTP error handler.</p>
+<h3 id="echonotfoundhandler"><code>echo.NotFoundHandler</code></h3>
+<p>Registers a custom NotFound handler used by router incase it doesn't find a handler.</p>
+<h3 id="echohttperrorhandler"><code>echo.HTTPErrorHandler</code></h3>
+<p>Registers a centralized HTTP error handler.</p>
 <h2 id="routing">Routing</h2>
 <p>Echo's router is <a href="https://github.com/labstack/echo#benchmark">fast, optimized</a> and
 flexible. It's based on <a href="http://en.wikipedia.org/wiki/Radix_tree">redix tree</a>
-data structure which makes routing lookup really fast. It also leverages <a href="https://golang.org/pkg/sync/#Pool">sync pool</a> to achieve zero dynamic memory allocation with
+data structure which makes routing lookup really fast. It leverages <a href="https://golang.org/pkg/sync/#Pool">sync pool</a> to achieve zero dynamic memory allocation with
 no garbage collection.</p>
 <p>Routes can be registered for any HTTP method, path and handler. For example code
 below registers a route for method <code>GET</code>, path <code>/hello</code> and a handler which sends
-a <code>Hello!</code> response.</p>
+<code>Hello!</code> response.</p>
 <pre><code class="go">echo.Get(&quot;/hello&quot;, func(*echo.Context) {
     c.String(http.StatusOK, &quot;Hello!&quot;)
 })
 </code></pre>
 
-<h2 id="request">Request</h2>
-<h2 id="middleware">Middleware</h2>
-<h2 id="response">Response</h2>
-<h2 id="static-content">Static Content</h2>
-<h2 id="error-handling">Error Handling</h2></div>
+<!-- ### Groups -->
+
+<h3 id="path-parameters">Path parameters</h3>
+<p>Path parameters can be extracted by name <code>echo.Context.Param</code> or by index <code>echo.Context.P</code>.
+Getting parameter by index gives slightly better performance.</p>
+<pre><code class="go">echo.Get(&quot;/users/:id&quot;, func(c *echo.Context) {
+    c.String(http.StatusOK, c.Param(&quot;id&quot;))
+})
+</code></pre>
+
+<!-- ### Catch all route -->
+
+<!-- ### Path matching order -->
+
+<!-- ## Request -->
+
+<!-- ## Middleware -->
+
+<!-- ## Response -->
+
+<!-- ## Static Content -->
+
+<!-- ## Error Handling --></div>
         </div>
 
         
