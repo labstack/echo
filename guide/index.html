@@ -143,7 +143,8 @@ Default value is <strong>5</strong>, <a href="https://github.com/interagent/http
 for many use cases. By restricting path parameters we can reuse memory which boosts
 performance.</p>
 <h3 id="echonotfoundhandler"><code>echo.NotFoundHandler</code></h3>
-<p>Registers a custom NotFound handler used by router incase it doesn't find a handler.</p>
+<p>Registers a custom NotFound handler used by router in case it doesn't find any
+registered handler for HTTP method and path.</p>
 <h3 id="echohttperrorhandler"><code>echo.HTTPErrorHandler</code></h3>
 <p>Registers a centralized HTTP error handler.</p>
 <h2 id="routing">Routing</h2>
@@ -162,17 +163,50 @@ below registers a route for method <code>GET</code>, path <code>/hello</code> an
 
 <!-- ### Groups -->
 
-<h3 id="path-parameters">Path parameters</h3>
-<p>Path parameters can be extracted by name <code>echo.Context.Param</code> or by index <code>echo.Context.P</code>.
-Getting parameter by index gives slightly better performance.</p>
+<h3 id="path-parameters">Path parameters (<code>:</code>)</h3>
+<p>URL path parameters can be extracted either by name <code>echo.Context.Param</code> or by
+index <code>echo.Context.P</code>. Getting parameter by index gives a slightly better performance.</p>
 <pre><code class="go">echo.Get(&quot;/users/:id&quot;, func(c *echo.Context) {
-    c.String(http.StatusOK, c.Param(&quot;id&quot;))
+    // By name
+    id := c.Param(&quot;id&quot;)
+
+    // By index
+    // id := c.P(0)
+
+    c.String(http.StatusOK, id)
 })
 </code></pre>
 
-<!-- ### Catch all route -->
+<h3 id="match-any">Match any (<code>*</code>)</h3>
+<p>Matches zero or more characters in the path. For example <code>/users/*</code>
+will match</p>
+<ul>
+<li><code>/users/</code></li>
+<li><code>/users/1</code></li>
+<li><code>/users/1/files/1</code></li>
+<li><code>/users/anything...</code></li>
+</ul>
+<!-- Test it -->
 
-<!-- ### Path matching order -->
+<h3 id="path-matching-order">Path matching order</h3>
+<ul>
+<li>Static</li>
+<li>Param</li>
+<li>Match any</li>
+</ul>
+<!-- Different use cases -->
+
+<h3 id="uri-building">URI building</h3>
+<p><code>echo.URI</code> can be used generate URI for any handler with specified path parameters.
+It's helpful to centralize all your URI patterns which ease in refactoring your
+application.</p>
+<p><code>echo.URI(h, 1)</code> will generate <code>/users/1</code> for the route registered below</p>
+<pre><code class="go">h := func(*echo.Context) {
+    c.String(http.StatusOK, &quot;OK&quot;)
+}
+
+e.Get(&quot;/users/:id&quot;, h)
+</code></pre>
 
 <!-- ## Request -->
 
