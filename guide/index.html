@@ -129,14 +129,14 @@
             <div class="col-md-9" role="main">
 
 <h1 id="guide">Guide</h1>
-<!--- 
+<!---
     Some info about guide
 -->
 
 <hr />
 <h2 id="installation">Installation</h2>
 <p>Echo has been developed and tested using Go <code>1.4.x</code></p>
-<p>Install latest version of Echo via <code>go get</code></p>
+<p>Install the latest version of Echo via <code>go get</code></p>
 <pre><code class="sh">$ go get github.com/labstack/echo
 </code></pre>
 
@@ -147,10 +147,34 @@
 <p>Echo follows <a href="http://semver.org">Semantic Versioning</a> managed through GitHub releases.
 Specific version of Echo can be installed using any <a href="https://github.com/avelino/awesome-go#package-management">package manager</a>.</p>
 <h2 id="configuration">Configuration</h2>
-<p>echo.MaxParam</p>
-<p>echo.NotFoundHandler</p>
-<p>echo.HTTPErrorHandler</p>
+<h4 id="echomaxparam"><code>echo.MaxParam</code></h4>
+<p>Sets the maximum number of path parameters allowed for the application.
+Default value is <strong>5</strong>, <a href="https://github.com/interagent/http-api-design#minimize-path-nesting">good enough</a>
+for many use cases. By restricting path parameters we can reuse memory which boosts
+performance.</p>
+<h4 id="echonotfoundhandler"><code>echo.NotFoundHandler</code></h4>
+<p>Registers a custom NotFound handler used by router incase it doesn't find a handler.
+Default value</p>
+<pre><code class="go">func(c *Context) {
+    http.Error(c.Response, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+}
+</code></pre>
+
+<h4 id="echohttperrorhandler"><code>echo.HTTPErrorHandler</code></h4>
+<p>HTTPErrorHandler registers an HTTP error handler.</p>
 <h2 id="routing">Routing</h2>
+<p>Echo's router is <a href="https://github.com/labstack/echo#benchmark">fast, optimized</a> and
+flexible. It's based on <a href="http://en.wikipedia.org/wiki/Radix_tree">redix tree</a>
+data structure which makes routing lookup really fast. It also leverages <a href="https://golang.org/pkg/sync/#Pool">sync pool</a> to achieve zero dynamic memory allocation with
+no garbage collection.</p>
+<p>Routes can be registered for any HTTP method, path and handler. For example code
+below registers a route for method <code>GET</code>, path <code>/hello</code> and a handler which sends
+a <code>Hello!</code> response.</p>
+<pre><code class="go">echo.Get(&quot;/hello&quot;, func(*echo.Context) {
+    c.String(http.StatusOK, &quot;Hello!&quot;)
+})
+</code></pre>
+
 <h2 id="request">Request</h2>
 <h2 id="middleware">Middleware</h2>
 <h2 id="response">Response</h2>
