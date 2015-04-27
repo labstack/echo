@@ -398,6 +398,8 @@ func wrapM(m Middleware) MiddlewareFunc {
 // wraps Handler
 func wrapH(h Handler) HandlerFunc {
 	switch h := h.(type) {
+	case HandlerFunc:
+		return h
 	case func(*Context):
 		return func(c *Context) error {
 			h(c)
