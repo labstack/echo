@@ -113,6 +113,8 @@
         
             <li><a href="#routing">Routing</a></li>
         
+            <li><a href="#static-content">Static Content</a></li>
+        
     
     </ul>
 </div></div>
@@ -137,14 +139,14 @@
 <p>Echo follows <a href="http://semver.org">Semantic Versioning</a> managed through GitHub releases.
 Specific version of Echo can be installed using any <a href="https://github.com/avelino/awesome-go#package-management">package manager</a>.</p>
 <h2 id="configuration">Configuration</h2>
-<h3 id="echomaxparam"><code>echo.MaxParam</code></h3>
+<h3 id="echomaxparamn-uint8"><code>echo.MaxParam(n uint8)</code></h3>
 <p>Sets the maximum number of path parameters allowed for the application.
 Default value is <strong>5</strong>, <a href="https://github.com/interagent/http-api-design#minimize-path-nesting">good enough</a>
 for many use cases. Restricting path parameters allows us to use memory efficiently.</p>
-<h3 id="echonotfoundhandler"><code>echo.NotFoundHandler</code></h3>
+<h3 id="echonotfoundhandlerh-handler"><code>echo.NotFoundHandler(h Handler)</code></h3>
 <p>Registers a custom NotFound handler used by router in case it doesn't find any
 registered handler for HTTP method and path.</p>
-<h3 id="echohttperrorhandler"><code>echo.HTTPErrorHandler</code></h3>
+<h3 id="echohttperrorhandlerh-httperrorhandler"><code>echo.HTTPErrorHandler(h HTTPErrorHandler)</code></h3>
 <p>Registers a centralized HTTP error handler.</p>
 <h2 id="routing">Routing</h2>
 <p>Echo's router is <a href="https://github.com/labstack/echo#benchmark">fast, optimized</a> and
@@ -163,8 +165,9 @@ below registers a route for method <code>GET</code>, path <code>/hello</code> an
 <!-- ### Groups -->
 
 <h3 id="path-parameters">Path parameters (<code>:</code>)</h3>
-<p>URL path parameters can be extracted either by name <code>echo.Context.Param</code> or by
-index <code>echo.Context.P</code>. Getting parameter by index gives a slightly better performance.</p>
+<p>URL path parameters can be extracted either by name <code>echo.Context.Param(name string) string</code> or by
+index <code>echo.Context.P(i int) string</code>. Getting parameter by index gives a slightly
+better performance.</p>
 <pre><code class="go">echo.Get(&quot;/users/:id&quot;, func(c *echo.Context) {
     // By name
     id := c.Param(&quot;id&quot;)
@@ -215,7 +218,25 @@ e.Get(&quot;/users/:id&quot;, h)
 
 <!-- ## Response -->
 
-<!-- ## Static Content -->
+<h2 id="static-content">Static Content</h2>
+<h3 id="static-files">Static files</h3>
+<p><code>echo.Static(path, root string)</code> can be used to serve static files. For example
+code below serves all files from <code>public/scripts</code> directory for any path starting
+with <code>/scripts/</code>.</p>
+<pre><code class="go">e.Static(&quot;/scripts&quot;, &quot;public/scripts&quot;)
+</code></pre>
+
+<h3 id="serving-a-file">Serving a file</h3>
+<p><code>echo.ServeFile(path, file string)</code> can be used to serve a file. For example code
+below serves welcome.html for path <code>/welcome</code>.</p>
+<pre><code class="go">e.ServeFile(&quot;/welcome&quot;, &quot;welcome.html&quot;)
+</code></pre>
+
+<h3 id="serving-an-index-file">Serving an index file</h3>
+<p><code>echo.Index(file string)</code> can be used to serve index file. For example code below
+serves index.html for path <code>/</code>.</p>
+<pre><code class="go">e.Index(&quot;index.html&quot;)
+</code></pre>
 
 <!-- ## Error Handling --></div>
         </div>
