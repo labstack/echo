@@ -109,7 +109,7 @@
         
             <li><a href="#installation">Installation</a></li>
         
-            <li><a href="#configuration">Configuration</a></li>
+            <li><a href="#customization">Customization</a></li>
         
             <li><a href="#routing">Routing</a></li>
         
@@ -138,23 +138,28 @@
 
 <p>Echo follows <a href="http://semver.org">Semantic Versioning</a> managed through GitHub releases.
 Specific version of Echo can be installed using any <a href="https://github.com/avelino/awesome-go#package-management">package manager</a>.</p>
-<h2 id="configuration">Configuration</h2>
-<h3 id="echomaxparamn-uint8"><code>echo.MaxParam(n uint8)</code></h3>
+<h2 id="customization">Customization</h2>
+<h3 id="max-path-parameters">Max path parameters</h3>
+<p><code>echo.MaxParam(n uint8)</code></p>
 <p>Sets the maximum number of path parameters allowed for the application.
 Default value is <strong>5</strong>, <a href="https://github.com/interagent/http-api-design#minimize-path-nesting">good enough</a>
 for many use cases. Restricting path parameters allows us to use memory efficiently.</p>
-<h3 id="echonotfoundhandlerh-handler"><code>echo.NotFoundHandler(h Handler)</code></h3>
-<p>Registers a custom NotFound handler used by router in case it doesn't find any
-registered handler for HTTP method and path.</p>
-<h3 id="echohttperrorhandlerh-httperrorhandler"><code>echo.HTTPErrorHandler(h HTTPErrorHandler)</code></h3>
+<h3 id="not-found-handler">Not found handler</h3>
+<p><code>echo.NotFoundHandler(h Handler)</code></p>
+<p>Registers a custom NotFound handler used by
+router in case it doesn't find any registered handler for HTTP method and path.</p>
+<p>Default handler sends 404 "Not Found" response.</p>
+<h3 id="http-error-handler">HTTP error handler</h3>
+<p><code>echo.HTTPErrorHandler(h HTTPErrorHandler)</code></p>
 <p>Registers a centralized HTTP error handler.</p>
+<p>Default http error handler sends 500 "Internal Server Error" response.</p>
 <h2 id="routing">Routing</h2>
 <p>Echo's router is <a href="https://github.com/labstack/echo#benchmark">fast, optimized</a> and
 flexible. It's based on <a href="http://en.wikipedia.org/wiki/Radix_tree">redix tree</a>
 data structure which makes routing lookup really fast. It leverages
 <a href="https://golang.org/pkg/sync/#Pool">sync pool</a> to reuse memory and achieve
 zero dynamic memory allocation with no garbage collection.</p>
-<p>Routes can be registered for any HTTP method, path and handler. For example code
+<p>Routes can be registered for any HTTP method, path and handler. For example, code
 below registers a route for method <code>GET</code>, path <code>/hello</code> and a handler which sends
 <code>Hello!</code> response.</p>
 <pre><code class="go">echo.Get(&quot;/hello&quot;, func(*echo.Context) {
@@ -180,7 +185,7 @@ better performance.</p>
 </code></pre>
 
 <h3 id="match-any">Match any (<code>*</code>)</h3>
-<p>Matches zero or more characters in the path. For example <code>/users/*</code>
+<p>Matches zero or more characters in the path. For example, <code>/users/*</code>
 will match</p>
 <ul>
 <li><code>/users/</code></li>
@@ -220,20 +225,20 @@ e.Get(&quot;/users/:id&quot;, h)
 
 <h2 id="static-content">Static Content</h2>
 <h3 id="static-files">Static files</h3>
-<p><code>echo.Static(path, root string)</code> can be used to serve static files. For example
+<p><code>echo.Static(path, root string)</code> can be used to serve static files. For example,
 code below serves all files from <code>public/scripts</code> directory for any path starting
 with <code>/scripts/</code>.</p>
 <pre><code class="go">e.Static(&quot;/scripts&quot;, &quot;public/scripts&quot;)
 </code></pre>
 
 <h3 id="serving-a-file">Serving a file</h3>
-<p><code>echo.ServeFile(path, file string)</code> can be used to serve a file. For example code
+<p><code>echo.ServeFile(path, file string)</code> can be used to serve a file. For example, code
 below serves welcome.html for path <code>/welcome</code>.</p>
 <pre><code class="go">e.ServeFile(&quot;/welcome&quot;, &quot;welcome.html&quot;)
 </code></pre>
 
 <h3 id="serving-an-index-file">Serving an index file</h3>
-<p><code>echo.Index(file string)</code> can be used to serve index file. For example code below
+<p><code>echo.Index(file string)</code> can be used to serve index file. For example, code below
 serves index.html for path <code>/</code>.</p>
 <pre><code class="go">e.Index(&quot;index.html&quot;)
 </code></pre>
