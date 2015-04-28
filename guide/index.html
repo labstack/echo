@@ -140,8 +140,7 @@ Specific version of Echo can be installed using any <a href="https://github.com/
 <h3 id="echomaxparam"><code>echo.MaxParam</code></h3>
 <p>Sets the maximum number of path parameters allowed for the application.
 Default value is <strong>5</strong>, <a href="https://github.com/interagent/http-api-design#minimize-path-nesting">good enough</a>
-for many use cases. By restricting path parameters we can reuse memory which boosts
-performance.</p>
+for many use cases. Restricting path parameters allows us to use memory efficiently.</p>
 <h3 id="echonotfoundhandler"><code>echo.NotFoundHandler</code></h3>
 <p>Registers a custom NotFound handler used by router in case it doesn't find any
 registered handler for HTTP method and path.</p>
@@ -201,10 +200,12 @@ will match</p>
 It's helpful to centralize all your URI patterns which ease in refactoring your
 application.</p>
 <p><code>echo.URI(h, 1)</code> will generate <code>/users/1</code> for the route registered below</p>
-<pre><code class="go">h := func(*echo.Context) {
+<pre><code class="go">// Handler
+h := func(*echo.Context) {
     c.String(http.StatusOK, &quot;OK&quot;)
 }
 
+// Route
 e.Get(&quot;/users/:id&quot;, h)
 </code></pre>
 
