@@ -169,7 +169,8 @@ below registers a route for method <code>GET</code>, path <code>/hello</code> an
 
 <!-- ### Groups -->
 
-<h3 id="path-parameters">Path parameters (<code>:</code>)</h3>
+<h3 id="path-parameters">Path parameters</h3>
+<p><code>:</code></p>
 <p>URL path parameters can be extracted either by name <code>echo.Context.Param(name string) string</code> or by
 index <code>echo.Context.P(i int) string</code>. Getting parameter by index gives a slightly
 better performance.</p>
@@ -184,7 +185,8 @@ better performance.</p>
 })
 </code></pre>
 
-<h3 id="match-any">Match any (<code>*</code>)</h3>
+<h3 id="match-any">Match any</h3>
+<p><code>*</code></p>
 <p>Matches zero or more characters in the path. For example, <code>/users/*</code>
 will match</p>
 <ul>
