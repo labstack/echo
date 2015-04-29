@@ -114,7 +114,7 @@ Hello, World! on the page.
 
 **Use issues for everything**
 
-- Report problems
+- Report issues
 - Discuss before sending pull request
 - Suggest new features
 - Improve/fix documentation
