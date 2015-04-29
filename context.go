@@ -20,8 +20,9 @@ type (
 )
 
 // P returns path parameter by index.
-func (c *Context) P(i int) (value string) {
-	if i <= len(c.pnames) {
+func (c *Context) P(i uint8) (value string) {
+	l := uint8(len(c.pnames))
+	if i <= l {
 		value = c.pvalues[i]
 	}
 	return
