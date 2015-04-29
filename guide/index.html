@@ -158,7 +158,7 @@ find matching route for the request.</p>
 flexible. It's based on <a href="http://en.wikipedia.org/wiki/Radix_tree">redix tree</a>
 data structure which makes routing lookup really fast. It leverages
 <a href="https://golang.org/pkg/sync/#Pool">sync pool</a> to reuse memory and achieve
-zero dynamic memory allocation with no garbage collection.</p>
+zero dynamic memory allocation with no GC overhead.</p>
 <p>Routes can be registered for any HTTP method, path and handler. For example, code
 below registers a route for method <code>GET</code>, path <code>/hello</code> and a handler which sends
 <code>Hello!</code> response.</p>
@@ -248,7 +248,7 @@ e.Get(&quot;/users/:id&quot;, h)
 <p><code>context.JSON(code int, v interface{}) error</code> can be used to send a JSON response
 with status code.</p>
 <h3 id="string">String</h3>
-<p><code>context.String(code int, s string) error</code> can be used to send plain text response
+<p><code>context.String(code int, s string) error</code> can be used to send a text/plain response
 with status code.</p>
 <h3 id="html">HTML</h3>
 <p><code>func (c *Context) HTML(code int, html string) error</code> can be used to send an HTML
