@@ -227,13 +227,14 @@ func (r *router) Find(method, path string, ctx *Context) (h HandlerFunc, echo *E
 
 	// Search order static > param > match-any
 	for {
+		// TODO flip condition???
 		if search == "" || search == cn.prefix || cn.typ == mtype {
 			// Found
 			h = cn.handler
 			echo = cn.echo
 			ctx.pnames = cn.pnames
 
-			// Match-any
+			// Match-any node
 			if cn.typ == mtype {
 				ctx.pvalues[0] = search[len(cn.prefix):]
 			}

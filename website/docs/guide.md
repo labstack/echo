@@ -58,7 +58,7 @@ Echo's router is [fast, optimized](https://github.com/labstack/echo#benchmark) a
 flexible. It's based on [redix tree](http://en.wikipedia.org/wiki/Radix_tree)
 data structure which makes routing lookup really fast. It leverages
 [sync pool](https://golang.org/pkg/sync/#Pool) to reuse memory and achieve
-zero dynamic memory allocation with no garbage collection.
+zero dynamic memory allocation with no GC overhead.
 
 Routes can be registered for any HTTP method, path and handler. For example, code
 below registers a route for method `GET`, path `/hello` and a handler which sends
@@ -167,7 +167,7 @@ with status code.
 
 ### String
 
-`context.String(code int, s string) error` can be used to send plain text response
+`context.String(code int, s string) error` can be used to send a text/plain response
 with status code.
 
 ### HTML

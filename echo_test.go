@@ -121,10 +121,10 @@ func TestEchoMiddleware(t *testing.T) {
 func TestEchoHandler(t *testing.T) {
 	e := New()
 
-	// func(*echo.Context) error
-	e.Get("/1", func(c *Context) {
-		c.String(http.StatusOK, "1")
-	})
+	// HandlerFunc
+	e.Get("/1", HandlerFunc(func(c *Context) error {
+		return c.String(http.StatusOK, "1")
+	}))
 	w := httptest.NewRecorder()
 	r, _ := http.NewRequest(GET, "/1", nil)
 	e.ServeHTTP(w, r)
@@ -132,9 +132,9 @@ func TestEchoHandler(t *testing.T) {
 		t.Error("body should be 1")
 	}
 
-	// HandlerFunc
-	e.Get("/2", func(c *Context) {
-		c.String(http.StatusOK, "2")
+	// func(*echo.Context) error
+	e.Get("/2", func(c *Context) error {
+		return c.String(http.StatusOK, "2")
 	})
 	w = httptest.NewRecorder()
 	r, _ = http.NewRequest(GET, "/2", nil)
