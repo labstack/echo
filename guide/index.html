@@ -113,7 +113,7 @@
         
             <li><a href="#routing">Routing</a></li>
         
-            <li><a href="#static-content">Static Content</a></li>
+            <li><a href="#response">Response</a></li>
         
     
     </ul>
@@ -146,8 +146,8 @@ Default value is <strong>5</strong>, <a href="https://github.com/interagent/http
 for many use cases. Restricting path parameters allows us to use memory efficiently.</p>
 <h3 id="not-found-handler">Not found handler</h3>
 <p><code>echo.NotFoundHandler(h Handler)</code></p>
-<p>Registers a custom NotFound handler used by
-router in case it doesn't find any registered handler for HTTP method and path.</p>
+<p>Registers a custom NotFound handler. This handler is called in case router doesn't
+find matching route for the request.</p>
 <p>Default handler sends 404 "Not Found" response.</p>
 <h3 id="http-error-handler">HTTP error handler</h3>
 <p><code>echo.HTTPErrorHandler(h HTTPErrorHandler)</code></p>
@@ -167,6 +167,11 @@ below registers a route for method <code>GET</code>, path <code>/hello</code> an
 })
 </code></pre>
 
+<p>Echo's default handler is <code>func(*echo.Context) error</code> where <code>echo.Context</code> primarily
+holds request and response objects. Echo also has a support for other types of
+handlers.</p>
+<!-- TODO mention about not able to take advantage -->
+
 <!-- ### Groups -->
 
 <h3 id="path-parameters">Path parameters</h3>
@@ -184,7 +189,7 @@ better performance.</p>
 })
 </code></pre>
 
-<h3 id="match-any">Match any</h3>
+<h3 id="match-any">Match-any</h3>
 <p>Matches zero or more characters in the path. For example, pattern <code>/users/*</code> will
 match</p>
 <ul>
@@ -193,14 +198,33 @@ match</p>
 <li><code>/users/1/files/1</code></li>
 <li><code>/users/anything...</code></li>
 </ul>
-<!-- Test it -->
-
 <h3 id="path-matching-order">Path matching order</h3>
 <ul>
 <li>Static</li>
 <li>Param</li>
 <li>Match any</li>
 </ul>
+<h4 id="example">Example</h4>
+<pre><code class="go">e.Get(&quot;/users/:id&quot;, func(c *echo.Context) {
+    c.String(http.StatusOK, &quot;/users/:id&quot;)
+})
+
+e.Get(&quot;/users/new&quot;, func(c *echo.Context) {
+    c.String(http.StatusOK, &quot;/users/new&quot;)
+})
+
+e.Get(&quot;/users/1/files/*&quot;, func(c *echo.Context) {
+    c.String(http.StatusOK, &quot;/users/1/files/*&quot;)
+})
+</code></pre>
+
+<p>Above routes would resolve in order</p>
+<ul>
+<li><code>/users/new</code></li>
+<li><code>/users/:id</code></li>
+<li><code>/users/1/files/*</code></li>
+</ul>
+<p>Routes can be written in any order.</p>
 <!-- Different use cases -->
 
 <h3 id="uri-building">URI building</h3>
@@ -217,13 +241,18 @@ h := func(*echo.Context) {
 e.Get(&quot;/users/:id&quot;, h)
 </code></pre>
 
-<!-- ## Request -->
-
 <!-- ## Middleware -->
 
-<!-- ## Response -->
-
-<h2 id="static-content">Static Content</h2>
+<h2 id="response">Response</h2>
+<h3 id="json">JSON</h3>
+<p><code>context.JSON(code int, v interface{}) error</code> can be used to send a JSON response
+with status code.</p>
+<h3 id="string">String</h3>
+<p><code>context.String(code int, s string) error</code> can be used to send plain text response
+with status code.</p>
+<h3 id="html">HTML</h3>
+<p><code>func (c *Context) HTML(code int, html string) error</code> can be used to send an HTML
+response with status code.</p>
 <h3 id="static-files">Static files</h3>
 <p><code>echo.Static(path, root string)</code> can be used to serve static files. For example,
 code below serves all files from <code>public/scripts</code> directory for any path starting
@@ -243,7 +272,9 @@ serves index.html for path <code>/</code>.</p>
 <pre><code class="go">e.Index(&quot;index.html&quot;)
 </code></pre>
 
-<!-- ## Error Handling --></div>
+<!-- ## Error Handling -->
+
+<!-- Deployment --></div>
         </div>
 
         
