@@ -326,19 +326,24 @@ func TestRouterTwoParam(t *testing.T) {
 		return nil
 	}, nil)
 
-	h, _ := r.Find(GET, "/users/1/files/1", context)
-	if h == nil {
-		t.Fatal("handler not found")
-	}
-	if context.pvalues[0] != "1" {
-		t.Error("param uid should be 1")
-	}
-	if context.pvalues[1] != "1" {
-		t.Error("param fid should be 1")
+	// h, _ := r.Find(GET, "/users/1/files/1", context)
+	// if h == nil {
+	// 	t.Fatal("handler not found")
+	// }
+	// if context.pvalues[0] != "1" {
+	// 	t.Error("param uid should be 1")
+	// }
+	// if context.pvalues[1] != "1" {
+	// 	t.Error("param fid should be 1")
+	// }
+
+	h, _ := r.Find(GET, "/users/1", context)
+	if h != nil {
+		t.Error("should not found handler")
 	}
 }
 
-func TestRouterCatchAll(t *testing.T) {
+func TestRouterMatchAny(t *testing.T) {
 	r := New().Router
 	r.Add(GET, "/users/*", func(*Context) error {
 		return nil
@@ -349,6 +354,7 @@ func TestRouterCatchAll(t *testing.T) {
 		t.Fatal("handler not found")
 	}
 	if context.pvalues[0] != "" {
+		println(context.pvalues[0])
 		t.Error("value should be joe")
 	}
 

@@ -39,8 +39,8 @@ for many use cases. Restricting path parameters allows us to use memory efficien
 
 `echo.NotFoundHandler(h Handler)`
 
-Registers a custom NotFound handler used by
-router in case it doesn't find any registered handler for HTTP method and path.
+Registers a custom NotFound handler. This handler is called in case router doesn't
+find matching route for the request.
 
 Default handler sends 404 "Not Found" response.
 
@@ -70,6 +70,12 @@ echo.Get("/hello", func(*echo.Context) {
 })
 ```
 
+Echo's default handler is `func(*echo.Context) error` where `echo.Context` primarily
+holds request and response objects. Echo also has a support for other types of
+handlers.
+
+<!-- TODO mention about not able to take advantage -->
+
 <!-- ### Groups -->
 
 ### Path parameters
@@ -90,7 +96,7 @@ echo.Get("/users/:id", func(c *echo.Context) {
 })
 ```
 
-### Match any
+### Match-any
 
 Matches zero or more characters in the path. For example, pattern `/users/*` will
 match
@@ -100,13 +106,35 @@ match
 - `/users/1/files/1`
 - `/users/anything...`
 
-<!-- Test it -->
-
 ### Path matching order
 
 - Static
 - Param
 - Match any
+
+#### Example
+
+```go
+e.Get("/users/:id", func(c *echo.Context) {
+	c.String(http.StatusOK, "/users/:id")
+})
+
+e.Get("/users/new", func(c *echo.Context) {
+	c.String(http.StatusOK, "/users/new")
+})
+
+e.Get("/users/1/files/*", func(c *echo.Context) {
+	c.String(http.StatusOK, "/users/1/files/*")
+})
+```
+
+Above routes would resolve in order
+
+- `/users/new`
+- `/users/:id`
+- `/users/1/files/*`
+
+Routes can be written in any order.
 
 <!-- Different use cases -->
 
@@ -128,13 +156,24 @@ h := func(*echo.Context) {
 e.Get("/users/:id", h)
 ```
 
-<!-- ## Request -->
-
 <!-- ## Middleware -->
 
-<!-- ## Response -->
+## Response
 
-## Static Content
+### JSON
+
+`context.JSON(code int, v interface{}) error` can be used to send a JSON response
+with status code.
+
+### String
+
+`context.String(code int, s string) error` can be used to send plain text response
+with status code.
+
+### HTML
+
+`func (c *Context) HTML(code int, html string) error` can be used to send an HTML
+response with status code.
 
 ### Static files
 
@@ -165,3 +204,5 @@ e.Index("index.html")
 ```
 
 <!-- ## Error Handling -->
+
+<!-- Deployment -->

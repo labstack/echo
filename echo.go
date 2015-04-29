@@ -144,7 +144,7 @@ func New() (e *Echo) {
 	return
 }
 
-// Group creates a new sub router with prefix and inherits all properties from
+// Group creates a new sub router with prefix. It inherits all properties from
 // the parent. Passing middleware overrides parent middleware.
 func (e *Echo) Group(pfx string, m ...Middleware) *Echo {
 	g := *e
