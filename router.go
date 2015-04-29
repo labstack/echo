@@ -235,7 +235,6 @@ func (r *router) Find(method, path string, ctx *Context) (h HandlerFunc, echo *E
 
 			// Match-any
 			if cn.typ == mtype {
-				println(search, cn.prefix)
 				ctx.pvalues[0] = search[len(cn.prefix):]
 			}
 
