@@ -121,7 +121,7 @@ func TestEchoMiddleware(t *testing.T) {
 func TestEchoHandler(t *testing.T) {
 	e := New()
 
-	// func(*echo.Context)
+	// func(*echo.Context) error
 	e.Get("/1", func(c *Context) {
 		c.String(http.StatusOK, "1")
 	})
@@ -132,7 +132,7 @@ func TestEchoHandler(t *testing.T) {
 		t.Error("body should be 1")
 	}
 
-	// func(*echo.Context) error
+	// HandlerFunc
 	e.Get("/2", func(c *Context) {
 		c.String(http.StatusOK, "2")
 	})
@@ -143,10 +143,10 @@ func TestEchoHandler(t *testing.T) {
 		t.Error("body should be 2")
 	}
 
-	// http.Handler/http.HandlerFunc
-	e.Get("/3", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("3"))
-	}))
+	// func(*echo.Context)
+	e.Get("/3", func(c *Context) {
+		c.String(http.StatusOK, "3")
+	})
 	w = httptest.NewRecorder()
 	r, _ = http.NewRequest(GET, "/3", nil)
 	e.ServeHTTP(w, r)
@@ -154,10 +154,10 @@ func TestEchoHandler(t *testing.T) {
 		t.Error("body should be 3")
 	}
 
-	// func(http.ResponseWriter, *http.Request)
-	e.Get("/4", func(w http.ResponseWriter, r *http.Request) {
+	// http.Handler/http.HandlerFunc
+	e.Get("/4", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("4"))
-	})
+	}))
 	w = httptest.NewRecorder()
 	r, _ = http.NewRequest(GET, "/4", nil)
 	e.ServeHTTP(w, r)
@@ -165,16 +165,27 @@ func TestEchoHandler(t *testing.T) {
 		t.Error("body should be 4")
 	}
 
-	// func(http.ResponseWriter, *http.Request) error
-	e.Get("/5", func(w http.ResponseWriter, r *http.Request) error {
+	// func(http.ResponseWriter, *http.Request)
+	e.Get("/5", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("5"))
-		return nil
 	})
 	w = httptest.NewRecorder()
 	r, _ = http.NewRequest(GET, "/5", nil)
 	e.ServeHTTP(w, r)
 	if w.Body.String() != "5" {
 		t.Error("body should be 5")
+	}
+
+	// func(http.ResponseWriter, *http.Request) error
+	e.Get("/6", func(w http.ResponseWriter, r *http.Request) error {
+		w.Write([]byte("6"))
+		return nil
+	})
+	w = httptest.NewRecorder()
+	r, _ = http.NewRequest(GET, "/6", nil)
+	e.ServeHTTP(w, r)
+	if w.Body.String() != "6" {
+		t.Error("body should be 6")
 	}
 }
 

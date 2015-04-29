@@ -13,11 +13,11 @@ type (
 		prefix   string
 		parent   *node
 		children children
-		pchild   *node // Param child
-		cchild   *node // Catch-all child
-		handler  HandlerFunc
-		pnames   []string
-		echo     *Echo
+		// pchild   *node // Param child
+		// mchild   *node // Match-any child
+		handler HandlerFunc
+		pnames  []string
+		echo    *Echo
 	}
 	ntype    uint8
 	children []*node
@@ -26,7 +26,7 @@ type (
 const (
 	stype ntype = iota
 	ptype
-	ctype
+	mtype
 )
 
 func NewRouter(e *Echo) (r *router) {
@@ -64,9 +64,8 @@ func (r *router) Add(method, path string, h HandlerFunc, echo *Echo) {
 			}
 			r.insert(method, path[:i], nil, ptype, pnames, echo)
 		} else if path[i] == '*' {
-			r.insert(method, path[:i], nil, stype, nil, echo)
 			pnames = append(pnames, "_name")
-			r.insert(method, path[:l], h, ctype, pnames, echo)
+			r.insert(method, path[:i], h, mtype, pnames, echo)
 			return
 		}
 	}
@@ -201,7 +200,7 @@ func (n *node) findPchild() *node {
 
 func (n *node) findCchild() *node {
 	for _, c := range n.children {
-		if c.typ == ctype {
+		if c.typ == mtype {
 			return c
 		}
 	}
@@ -226,16 +225,21 @@ func (r *router) Find(method, path string, ctx *Context) (h HandlerFunc, echo *E
 	c := new(node) // Child node
 	n := 0         // Param counter
 
-	// Search order static > param > catch-all
+	// Search order static > param > match-any
 	for {
-		if search == "" || search == cn.prefix {
-			if cn.handler != nil {
-				// Found
-				h = cn.handler
-				ctx.pnames = cn.pnames
-				echo = cn.echo
-				return
+		if search == "" || search == cn.prefix || cn.typ == mtype {
+			// Found
+			h = cn.handler
+			echo = cn.echo
+			ctx.pnames = cn.pnames
+
+			// Match-any
+			if cn.typ == mtype {
+				println(search, cn.prefix)
+				ctx.pvalues[0] = search[len(cn.prefix):]
 			}
+
+			return
 		}
 
 		pl := len(cn.prefix)
@@ -245,11 +249,6 @@ func (r *router) Find(method, path string, ctx *Context) (h HandlerFunc, echo *E
 			search = search[l:]
 		} else if l < pl && cn.label != ':' {
 			goto Up
-		}
-
-		// Catch-all with empty value
-		if len(search) == 0 {
-			goto CatchAll
 		}
 
 		// Static node
@@ -271,17 +270,6 @@ func (r *router) Find(method, path string, ctx *Context) (h HandlerFunc, echo *E
 			ctx.pvalues[n] = search[:i]
 			n++
 			search = search[i:]
-			continue
-		}
-
-		// Catch-all node
-	CatchAll:
-		// c = cn.cchild
-		c = cn.findCchild()
-		if c != nil {
-			cn = c
-			ctx.pvalues[n] = search
-			search = "" // End search
 			continue
 		}
 

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -143,7 +144,7 @@ func New() (e *Echo) {
 	return
 }
 
-// Group creates a new sub router with prefix and inherits all properties from
+// Group creates a new sub router with prefix. It inherits all properties from
 // the parent. Passing middleware overrides parent middleware.
 func (e *Echo) Group(pfx string, m ...Middleware) *Echo {
 	g := *e
@@ -155,13 +156,14 @@ func (e *Echo) Group(pfx string, m ...Middleware) *Echo {
 	return &g
 }
 
-// MaxParam sets the maximum allowed path parameters. Default is 5, good enough
-// for many users.
+// MaxParam sets the maximum number of path parameters allowd for the application.
+// Default value is 5, good enough for many use cases.
 func (e *Echo) MaxParam(n uint8) {
 	e.maxParam = n
 }
 
-// NotFoundHandler registers a custom NotFound handler.
+// NotFoundHandler registers a custom NotFound handler used by router in case it
+// doesn't find any registered handler for HTTP method and path.
 func (e *Echo) NotFoundHandler(h Handler) {
 	e.notFoundHandler = wrapH(h)
 }
@@ -235,7 +237,7 @@ func (e *Echo) Trace(path string, h Handler) {
 }
 
 // URI generates a URI from handler.
-func (e *Echo) URI(h Handler, params ...string) string {
+func (e *Echo) URI(h Handler, params ...interface{}) string {
 	uri := new(bytes.Buffer)
 	lp := len(params)
 	n := 0
@@ -245,7 +247,7 @@ func (e *Echo) URI(h Handler, params ...string) string {
 			if path[i] == ':' && n < lp {
 				for ; i < l && path[i] != '/'; i++ {
 				}
-				uri.WriteString(params[n])
+				uri.WriteString(fmt.Sprintf("%v", params[n]))
 				n++
 			}
 			if i < l {
@@ -257,7 +259,7 @@ func (e *Echo) URI(h Handler, params ...string) string {
 }
 
 // URL is an alias for URI
-func (e *Echo) URL(h Handler, params ...string) string {
+func (e *Echo) URL(h Handler, params ...interface{}) string {
 	return e.URI(h, params...)
 }
 
@@ -398,13 +400,15 @@ func wrapM(m Middleware) MiddlewareFunc {
 // wraps Handler
 func wrapH(h Handler) HandlerFunc {
 	switch h := h.(type) {
+	case HandlerFunc:
+		return h
+	case func(*Context) error:
+		return h
 	case func(*Context):
 		return func(c *Context) error {
 			h(c)
 			return nil
 		}
-	case func(*Context) error:
-		return h
 	case http.Handler, http.HandlerFunc:
 		return func(c *Context) error {
 			h.(http.Handler).ServeHTTP(c.Response, c.Request)

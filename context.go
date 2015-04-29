@@ -20,8 +20,9 @@ type (
 )
 
 // P returns path parameter by index.
-func (c *Context) P(i int) (value string) {
-	if i <= len(c.pnames) {
+func (c *Context) P(i uint8) (value string) {
+	l := uint8(len(c.pnames))
+	if i <= l {
 		value = c.pvalues[i]
 	}
 	return
@@ -64,19 +65,19 @@ func (c *Context) JSON(code int, v interface{}) error {
 }
 
 // String sends a text/plain response with status code.
-func (c *Context) String(code int, s string) (err error) {
+func (c *Context) String(code int, s string) error {
 	c.Response.Header().Set(HeaderContentType, MIMEText+"; charset=utf-8")
 	c.Response.WriteHeader(code)
-	_, err = c.Response.Write([]byte(s))
-	return
+	_, err := c.Response.Write([]byte(s))
+	return err
 }
 
 // HTML sends a text/html response with status code.
-func (c *Context) HTML(code int, html string) (err error) {
+func (c *Context) HTML(code int, html string) error {
 	c.Response.Header().Set(HeaderContentType, MIMEHTML+"; charset=utf-8")
 	c.Response.WriteHeader(code)
-	_, err = c.Response.Write([]byte(html))
-	return
+	_, err := c.Response.Write([]byte(html))
+	return err
 }
 
 // NoContent sends a response with no body and a status code.
