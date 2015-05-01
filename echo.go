@@ -392,6 +392,8 @@ func wrapM(m Middleware) MiddlewareFunc {
 				return h(c)
 			}
 		}
+	case MiddlewareFunc:
+		return m
 	default:
 		panic("echo: unknown middleware")
 	}

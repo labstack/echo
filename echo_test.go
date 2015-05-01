@@ -102,6 +102,16 @@ func TestEchoMiddleware(t *testing.T) {
 		return nil
 	})
 
+	// echo.MiddlewareFunc
+	e.Use((func(i string) MiddlewareFunc {
+		return func(h HandlerFunc) HandlerFunc {
+			return func(c *Context) error {
+				b.WriteString(i)
+				return h(c)
+			}
+		}
+	})("i"))
+
 	// Route
 	e.Get("/hello", func(c *Context) {
 		c.String(http.StatusOK, "world")
@@ -110,8 +120,8 @@ func TestEchoMiddleware(t *testing.T) {
 	w := httptest.NewRecorder()
 	r, _ := http.NewRequest(GET, "/hello", nil)
 	e.ServeHTTP(w, r)
-	if b.String() != "abcdefgh" {
-		t.Errorf("buffer should be abcdefgh, found %s", b.String())
+	if b.String() != "abcdefghi" {
+		t.Errorf("buffer should be abcdefghi, found %s", b.String())
 	}
 	if w.Body.String() != "world" {
 		t.Error("body should be world")
