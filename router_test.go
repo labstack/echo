@@ -14,15 +14,6 @@ type route struct {
 }
 
 var (
-	api2 = []route{
-		// Issues
-		{"DELETE", "/repos/:owner/:repo/labels/:name"},
-		{"GET", "/repos/:owner/:repo/issues/:number/labels"},
-		{"POST", "/repos/:owner/:repo/issues/:number/labels"},
-	}
-)
-
-var (
 	context = &Context{pvalues: make([]string, 5)}
 	api     = []route{
 		// OAuth Authorizations
@@ -326,18 +317,18 @@ func TestRouterTwoParam(t *testing.T) {
 		return nil
 	}, nil)
 
-	// h, _ := r.Find(GET, "/users/1/files/1", context)
-	// if h == nil {
-	// 	t.Fatal("handler not found")
-	// }
-	// if context.pvalues[0] != "1" {
-	// 	t.Error("param uid should be 1")
-	// }
-	// if context.pvalues[1] != "1" {
-	// 	t.Error("param fid should be 1")
-	// }
+	 h, _ := r.Find(GET, "/users/1/files/1", context)
+	 if h == nil {
+	 	t.Fatal("handler not found")
+	 }
+	 if context.pvalues[0] != "1" {
+	 	t.Error("param uid should be 1")
+	 }
+	 if context.pvalues[1] != "1" {
+	 	t.Error("param fid should be 1")
+	 }
 
-	h, _ := r.Find(GET, "/users/1", context)
+	h, _ = r.Find(GET, "/users/1", context)
 	if h != nil {
 		t.Error("should not found handler")
 	}
@@ -354,8 +345,7 @@ func TestRouterMatchAny(t *testing.T) {
 		t.Fatal("handler not found")
 	}
 	if context.pvalues[0] != "" {
-		println(context.pvalues[0])
-		t.Error("value should be joe")
+		t.Error("value should be empty")
 	}
 
 	h, _ = r.Find(GET, "/users/joe", context)
@@ -634,7 +624,7 @@ func TestRouterServeHTTP(t *testing.T) {
 
 func (n *node) printTree(pfx string, tail bool) {
 	p := prefix(tail, pfx, "└── ", "├── ")
-	fmt.Printf("%s%s, %p: parent=%p, handler=%v, echo=%v\n", p, n.prefix, n, n.parent, n.handler, n.echo)
+	fmt.Printf("%s%s, %p: type=%d, parent=%p, handler=%v\n", p, n.prefix, n, n.typ, n.parent, n.handler)
 
 	children := n.children
 	l := len(children)

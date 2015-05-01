@@ -93,7 +93,7 @@ func (r *router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 			}
 		} else if l < pl {
 			// Split node
-			n := newNode(t, cn.prefix[l:], cn, cn.children, cn.handler, cn.pnames, cn.echo)
+			n := newNode(cn.typ, cn.prefix[l:], cn, cn.children, cn.handler, cn.pnames, cn.echo)
 			cn.children = children{n} // Add to parent
 			// if n.typ == ptype {
 			// cn.pchild = n
@@ -198,7 +198,7 @@ func (n *node) findPchild() *node {
 	return nil
 }
 
-func (n *node) findCchild() *node {
+func (n *node) findMchild() *node {
 	for _, c := range n.children {
 		if c.typ == mtype {
 			return c
@@ -270,6 +270,13 @@ func (r *router) Find(method, path string, ctx *Context) (h HandlerFunc, echo *E
 			ctx.pvalues[n] = search[:i]
 			n++
 			search = search[i:]
+			continue
+		}
+
+		// Match-any
+		c = cn.findMchild()
+		if c != nil {
+			cn = c
 			continue
 		}
 
