@@ -13,11 +13,9 @@ type (
 		prefix   string
 		parent   *node
 		children children
-		// pchild   *node // Param child
-		// mchild   *node // Match-any child
-		handler HandlerFunc
-		pnames  []string
-		echo    *Echo
+		handler  HandlerFunc
+		pnames   []string
+		echo     *Echo
 	}
 	ntype    uint8
 	children []*node
@@ -64,8 +62,9 @@ func (r *router) Add(method, path string, h HandlerFunc, echo *Echo) {
 			}
 			r.insert(method, path[:i], nil, ptype, pnames, echo)
 		} else if path[i] == '*' {
+			r.insert(method, path[:i], nil, stype, nil, echo)
 			pnames = append(pnames, "_name")
-			r.insert(method, path[:i], h, mtype, pnames, echo)
+			r.insert(method, path[:i+1], h, mtype, pnames, echo)
 			return
 		}
 	}
@@ -95,18 +94,11 @@ func (r *router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 			// Split node
 			n := newNode(cn.typ, cn.prefix[l:], cn, cn.children, cn.handler, cn.pnames, cn.echo)
 			cn.children = children{n} // Add to parent
-			// if n.typ == ptype {
-			// cn.pchild = n
-			// } else if n.typ == ctype {
-			// cn.cchild = n
-			// }
 
 			// Reset parent node
 			cn.typ = stype
 			cn.label = cn.prefix[0]
 			cn.prefix = cn.prefix[:l]
-			// cn.pchild = nil
-			// cn.cchild = nil
 			cn.handler = nil
 			cn.pnames = nil
 			cn.echo = nil
@@ -119,13 +111,8 @@ func (r *router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 				cn.echo = echo
 			} else {
 				// Create child node
-				n = newNode(t, search[l:], cn, children{}, h, pnames, echo)
+				n = newNode(t, search[l:], cn, nil, h, pnames, echo)
 				cn.children = append(cn.children, n)
-				// if n.typ == ptype {
-				// cn.pchild = n
-				// } else if n.typ == ctype {
-				// cn.cchild = n
-				// }
 			}
 		} else if l < sl {
 			search = search[l:]
@@ -136,13 +123,8 @@ func (r *router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 				continue
 			}
 			// Create child node
-			n := newNode(t, search, cn, children{}, h, pnames, echo)
+			n := newNode(t, search, cn, nil, h, pnames, echo)
 			cn.children = append(cn.children, n)
-			// if n.typ == ptype {
-			// cn.pchild = n
-			// } else if n.typ == ctype {
-			// cn.cchild = n
-			// }
 		} else {
 			// Node already exists
 			if h != nil {
@@ -225,20 +207,15 @@ func (r *router) Find(method, path string, ctx *Context) (h HandlerFunc, echo *E
 	c := new(node) // Child node
 	n := 0         // Param counter
 
+	// TODO: Check empty path???
+
 	// Search order static > param > match-any
 	for {
-		// TODO flip condition???
-		if search == "" || search == cn.prefix || cn.typ == mtype {
+		if search == "" {
 			// Found
+			ctx.pnames = cn.pnames
 			h = cn.handler
 			echo = cn.echo
-			ctx.pnames = cn.pnames
-
-			// Match-any node
-			if cn.typ == mtype {
-				ctx.pvalues[0] = search[len(cn.prefix):]
-			}
-
 			return
 		}
 
@@ -246,9 +223,19 @@ func (r *router) Find(method, path string, ctx *Context) (h HandlerFunc, echo *E
 		l := lcp(search, cn.prefix)
 
 		if l == pl {
+			// Continue search
 			search = search[l:]
 		} else if l < pl && cn.label != ':' {
 			goto Up
+		}
+
+		if search == "" {
+			// TODO: Needs improvement
+			if cn.findMchild() == nil {
+				continue
+			}
+			// Empty value
+			goto MatchAny
 		}
 
 		// Static node
@@ -261,7 +248,6 @@ func (r *router) Find(method, path string, ctx *Context) (h HandlerFunc, echo *E
 		// Param node
 	Param:
 		c = cn.findPchild()
-		// c = cn.pchild
 		if c != nil {
 			cn = c
 			i, l := 0, len(search)
@@ -273,10 +259,13 @@ func (r *router) Find(method, path string, ctx *Context) (h HandlerFunc, echo *E
 			continue
 		}
 
-		// Match-any
+		// Match-any node
+		MatchAny:
 		c = cn.findMchild()
 		if c != nil {
 			cn = c
+			ctx.pvalues[n] = search
+			search = "" // End search
 			continue
 		}
 

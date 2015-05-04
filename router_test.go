@@ -317,16 +317,16 @@ func TestRouterTwoParam(t *testing.T) {
 		return nil
 	}, nil)
 
-	 h, _ := r.Find(GET, "/users/1/files/1", context)
-	 if h == nil {
-	 	t.Fatal("handler not found")
-	 }
-	 if context.pvalues[0] != "1" {
-	 	t.Error("param uid should be 1")
-	 }
-	 if context.pvalues[1] != "1" {
-	 	t.Error("param fid should be 1")
-	 }
+	h, _ := r.Find(GET, "/users/1/files/1", context)
+	if h == nil {
+		t.Fatal("handler not found")
+	}
+	if context.pvalues[0] != "1" {
+		t.Error("param uid should be 1")
+	}
+	if context.pvalues[1] != "1" {
+		t.Error("param fid should be 1")
+	}
 
 	h, _ = r.Find(GET, "/users/1", context)
 	if h != nil {
@@ -620,6 +620,44 @@ func TestRouterServeHTTP(t *testing.T) {
 	req, _ = http.NewRequest(GET, "/files", nil)
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, req)
+}
+
+func TestRouterExperiment(t *testing.T) {
+	r := New().Router
+	r.Add(GET, "/use", func(*Context) error {
+		return nil
+	}, nil)
+	r.Add(GET, "/users/*", func(*Context) error {
+		return nil
+	}, nil)
+	r.Add(GET, "/users/", func(*Context) error {
+		return nil
+	}, nil)
+	r.Add(GET, "/users/new/*", func(*Context) error {
+		return nil
+	}, nil)
+	r.Add(GET, "/users/new", func(*Context) error {
+		return nil
+	}, nil)
+	r.Add(GET, "/users/:uid", func(*Context) error {
+		return nil
+	}, nil)
+	r.Add(GET, "/users/new/:id", func(*Context) error {
+		return nil
+	}, nil)
+	r.Add(GET, "/users/wen", func(*Context) error {
+		return nil
+	}, nil)
+	r.Add(GET, "/users/:uid/files/:fid", func(*Context) error {
+		return nil
+	}, nil)
+
+	r.trees[GET].printTree("", true)
+
+	h, _ := r.Find(GET, "/users/", context)
+	if h == nil {
+		t.Fatal("handler not found")
+	}
 }
 
 func (n *node) printTree(pfx string, tail bool) {
