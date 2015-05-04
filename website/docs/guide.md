@@ -162,24 +162,33 @@ e.Get("/users/:id", h)
 
 ### JSON
 
-`context.JSON(code int, v interface{}) error` can be used to send a JSON response
-with status code.
+```go
+context.JSON(code int, v interface{}) error
+```
+
+Sends a JSON response with status code.
 
 ### String
 
-`context.String(code int, s string) error` can be used to send a text/plain response
-with status code.
+```go
+context.String(code int, s string) error
+```
+
+Sends a text/plain response with status code.
 
 ### HTML
 
-`func (c *Context) HTML(code int, html string) error` can be used to send an HTML
-response with status code.
+```go
+func (c *Context) HTML(code int, html string) error
+```
+
+Sends an HTML response with status code.
 
 ### Static files
 
-`echo.Static(path, root string)` can be used to serve static files. For example,
-code below serves all files from `public/scripts` directory for any path starting
-with `/scripts/`.
+`echo.Static(path, root string)` serves static files. For example, code below
+serves all files from `public/scripts` directory for any path starting
+with `/scripts/`
 
 ```go
 e.Static("/scripts", "public/scripts")
@@ -187,8 +196,8 @@ e.Static("/scripts", "public/scripts")
 
 ### Serving a file
 
-`echo.ServeFile(path, file string)` can be used to serve a file. For example, code
-below serves welcome.html for path `/welcome`.
+`echo.ServeFile(path, file string)` serves a file. For example, code below serves
+welcome.html for path `/welcome`
 
 ```go
 e.ServeFile("/welcome", "welcome.html")
@@ -196,8 +205,8 @@ e.ServeFile("/welcome", "welcome.html")
 
 ### Serving an index file
 
-`echo.Index(file string)` can be used to serve index file. For example, code below
-serves index.html for path `/`.
+`echo.Index(file string)` serves an index file. For example, code below serves
+index.html for path `/`
 
 ```go
 e.Index("index.html")
