@@ -245,30 +245,36 @@ e.Get(&quot;/users/:id&quot;, h)
 
 <h2 id="response">Response</h2>
 <h3 id="json">JSON</h3>
-<p><code>context.JSON(code int, v interface{}) error</code> can be used to send a JSON response
-with status code.</p>
+<pre><code class="go">context.JSON(code int, v interface{}) error
+</code></pre>
+
+<p>Sends a JSON response with status code.</p>
 <h3 id="string">String</h3>
-<p><code>context.String(code int, s string) error</code> can be used to send a text/plain response
-with status code.</p>
+<pre><code class="go">context.String(code int, s string) error
+</code></pre>
+
+<p>Sends a text/plain response with status code.</p>
 <h3 id="html">HTML</h3>
-<p><code>func (c *Context) HTML(code int, html string) error</code> can be used to send an HTML
-response with status code.</p>
+<pre><code class="go">func (c *Context) HTML(code int, html string) error
+</code></pre>
+
+<p>Sends an HTML response with status code.</p>
 <h3 id="static-files">Static files</h3>
-<p><code>echo.Static(path, root string)</code> can be used to serve static files. For example,
-code below serves all files from <code>public/scripts</code> directory for any path starting
-with <code>/scripts/</code>.</p>
+<p><code>echo.Static(path, root string)</code> serves static files. For example, code below
+serves all files from <code>public/scripts</code> directory for any path starting
+with <code>/scripts/</code></p>
 <pre><code class="go">e.Static(&quot;/scripts&quot;, &quot;public/scripts&quot;)
 </code></pre>
 
 <h3 id="serving-a-file">Serving a file</h3>
-<p><code>echo.ServeFile(path, file string)</code> can be used to serve a file. For example, code
-below serves welcome.html for path <code>/welcome</code>.</p>
+<p><code>echo.ServeFile(path, file string)</code> serves a file. For example, code below serves
+welcome.html for path <code>/welcome</code></p>
 <pre><code class="go">e.ServeFile(&quot;/welcome&quot;, &quot;welcome.html&quot;)
 </code></pre>
 
 <h3 id="serving-an-index-file">Serving an index file</h3>
-<p><code>echo.Index(file string)</code> can be used to serve index file. For example, code below
-serves index.html for path <code>/</code>.</p>
+<p><code>echo.Index(file string)</code> serves an index file. For example, code below serves
+index.html for path <code>/</code></p>
 <pre><code class="go">e.Index(&quot;index.html&quot;)
 </code></pre>
 
