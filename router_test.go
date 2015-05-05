@@ -652,8 +652,6 @@ func TestRouterExperiment(t *testing.T) {
 		return nil
 	}, nil)
 
-	r.trees[GET].printTree("", true)
-
 	h, _ := r.Find(GET, "/users/", context)
 	if h == nil {
 		t.Fatal("handler not found")

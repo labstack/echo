@@ -68,7 +68,7 @@ func (r *router) Add(method, path string, h HandlerFunc, echo *Echo) {
 			return
 		}
 	}
-	r.insert(method, path, h, stype, nil, echo)
+	r.insert(method, path, h, stype, pnames, echo)
 }
 
 func (r *router) insert(method, path string, h HandlerFunc, t ntype, pnames []string, echo *Echo) {
@@ -260,7 +260,7 @@ func (r *router) Find(method, path string, ctx *Context) (h HandlerFunc, echo *E
 		}
 
 		// Match-any node
-		MatchAny:
+	MatchAny:
 		c = cn.findMchild()
 		if c != nil {
 			cn = c
