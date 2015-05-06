@@ -161,8 +161,8 @@ zero dynamic memory allocation with no GC overhead.</p>
 <p>Routes can be registered for any HTTP method, path and handler. For example, code
 below registers a route for method <code>GET</code>, path <code>/hello</code> and a handler which sends
 <code>Hello!</code> response.</p>
-<pre><code class="go">echo.Get(&quot;/hello&quot;, func(*echo.Context) {
-    c.String(http.StatusOK, &quot;Hello!&quot;)
+<pre><code class="go">echo.Get(&quot;/hello&quot;, func(*echo.Context) *HTTPError {
+    return c.String(http.StatusOK, &quot;Hello!&quot;)
 })
 </code></pre>
 
@@ -177,14 +177,14 @@ types of handlers.</p>
 <p>URL path parameters can be extracted either by name <code>echo.Context.Param(name string) string</code> or by
 index <code>echo.Context.P(i uint8) string</code>. Getting parameter by index gives a slightly
 better performance.</p>
-<pre><code class="go">echo.Get(&quot;/users/:id&quot;, func(c *echo.Context) {
+<pre><code class="go">echo.Get(&quot;/users/:id&quot;, func(c *echo.Context) *HTTPError {
     // By name
     id := c.Param(&quot;id&quot;)
 
     // By index
     id := c.P(0)
 
-    c.String(http.StatusOK, id)
+    return c.String(http.StatusOK, id)
 })
 </code></pre>
 
@@ -204,16 +204,16 @@ match</p>
 <li>Match any</li>
 </ul>
 <h4 id="example">Example</h4>
-<pre><code class="go">e.Get(&quot;/users/:id&quot;, func(c *echo.Context) {
-    c.String(http.StatusOK, &quot;/users/:id&quot;)
+<pre><code class="go">e.Get(&quot;/users/:id&quot;, func(c *echo.Context) *HTTPError {
+    return c.String(http.StatusOK, &quot;/users/:id&quot;)
 })
 
-e.Get(&quot;/users/new&quot;, func(c *echo.Context) {
-    c.String(http.StatusOK, &quot;/users/new&quot;)
+e.Get(&quot;/users/new&quot;, func(c *echo.Context) *HTTPError {
+    return c.String(http.StatusOK, &quot;/users/new&quot;)
 })
 
-e.Get(&quot;/users/1/files/*&quot;, func(c *echo.Context) {
-    c.String(http.StatusOK, &quot;/users/1/files/*&quot;)
+e.Get(&quot;/users/1/files/*&quot;, func(c *echo.Context) *HTTPError {
+    return c.String(http.StatusOK, &quot;/users/1/files/*&quot;)
 })
 </code></pre>
 
@@ -232,8 +232,8 @@ It's helpful to centralize all your URI patterns which ease in refactoring your
 application.</p>
 <p><code>echo.URI(h, 1)</code> will generate <code>/users/1</code> for the route registered below</p>
 <pre><code class="go">// Handler
-h := func(*echo.Context) {
-    c.String(http.StatusOK, &quot;OK&quot;)
+h := func(*echo.Context) *HTTPError {
+    return c.String(http.StatusOK, &quot;OK&quot;)
 }
 
 // Route
@@ -244,17 +244,17 @@ e.Get(&quot;/users/:id&quot;, h)
 
 <h2 id="response">Response</h2>
 <h3 id="json">JSON</h3>
-<pre><code class="go">context.JSON(code int, v interface{}) error
+<pre><code class="go">context.JSON(code int, v interface{}) *HTTPError
 </code></pre>
 
 <p>Sends a JSON response with status code.</p>
 <h3 id="string">String</h3>
-<pre><code class="go">context.String(code int, s string) error
+<pre><code class="go">context.String(code int, s string) *HTTPError
 </code></pre>
 
 <p>Sends a text/plain response with status code.</p>
 <h3 id="html">HTML</h3>
-<pre><code class="go">func (c *Context) HTML(code int, html string) error
+<pre><code class="go">func (c *Context) HTML(code int, html string) *HTTPError
 </code></pre>
 
 <p>Sends an HTML response with status code.</p>
