@@ -59,15 +59,15 @@ func TestEchoMiddleware(t *testing.T) {
 		b.WriteString("a")
 	})
 
-	// func(*echo.Context) error
-	e.Use(func(c *Context) error {
+	// func(*echo.Context) *HTTPError
+	e.Use(func(c *Context) *HTTPError {
 		b.WriteString("b")
 		return nil
 	})
 
 	// func(echo.HandlerFunc) (echo.HandlerFunc, error)
 	e.Use(func(h HandlerFunc) HandlerFunc {
-		return func(c *Context) error {
+		return func(c *Context) *HTTPError {
 			b.WriteString("c")
 			return h(c)
 		}
@@ -96,8 +96,8 @@ func TestEchoMiddleware(t *testing.T) {
 		b.WriteString("g")
 	})
 
-	// func(http.ResponseWriter, *http.Request) error
-	e.Use(func(w http.ResponseWriter, r *http.Request) error {
+	// func(http.ResponseWriter, *http.Request) *HTTPError
+	e.Use(func(w http.ResponseWriter, r *http.Request) *HTTPError {
 		b.WriteString("h")
 		return nil
 	})
@@ -122,7 +122,7 @@ func TestEchoHandler(t *testing.T) {
 	e := New()
 
 	// HandlerFunc
-	e.Get("/1", HandlerFunc(func(c *Context) error {
+	e.Get("/1", HandlerFunc(func(c *Context) *HTTPError {
 		return c.String(http.StatusOK, "1")
 	}))
 	w := httptest.NewRecorder()
@@ -132,8 +132,8 @@ func TestEchoHandler(t *testing.T) {
 		t.Error("body should be 1")
 	}
 
-	// func(*echo.Context) error
-	e.Get("/2", func(c *Context) error {
+	// func(*echo.Context) *HTTPError
+	e.Get("/2", func(c *Context) *HTTPError {
 		return c.String(http.StatusOK, "2")
 	})
 	w = httptest.NewRecorder()
@@ -176,8 +176,8 @@ func TestEchoHandler(t *testing.T) {
 		t.Error("body should be 5")
 	}
 
-	// func(http.ResponseWriter, *http.Request) error
-	e.Get("/6", func(w http.ResponseWriter, r *http.Request) error {
+	// func(http.ResponseWriter, *http.Request) *HTTPError
+	e.Get("/6", func(w http.ResponseWriter, r *http.Request) *HTTPError {
 		w.Write([]byte("6"))
 		return nil
 	})

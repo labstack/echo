@@ -29,15 +29,18 @@ var (
 )
 
 // Render HTML
-func (t *Template) Render(w io.Writer, name string, data interface{}) error {
-	return t.templates.ExecuteTemplate(w, name, data)
+func (t *Template) Render(w io.Writer, name string, data interface{}) *echo.HTTPError {
+	if err := t.templates.ExecuteTemplate(w, name, data); err != nil {
+		return &echo.HTTPError{Error: err}
+	}
+	return nil
 }
 
 func welcome(c *echo.Context) {
 	c.Render(http.StatusOK, "welcome", "Joe")
 }
 
-func createUser(c *echo.Context) error {
+func createUser(c *echo.Context) *echo.HTTPError {
 	u := new(user)
 	if err := c.Bind(u); err != nil {
 		return err
@@ -46,11 +49,11 @@ func createUser(c *echo.Context) error {
 	return c.JSON(http.StatusCreated, u)
 }
 
-func getUsers(c *echo.Context) error {
+func getUsers(c *echo.Context) *echo.HTTPError {
 	return c.JSON(http.StatusOK, users)
 }
 
-func getUser(c *echo.Context) error {
+func getUser(c *echo.Context) *echo.HTTPError {
 	return c.JSON(http.StatusOK, users[c.P(0)])
 }
 

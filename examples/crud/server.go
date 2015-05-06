@@ -24,34 +24,34 @@ var (
 // Handlers
 //----------
 
-func createUser(c *echo.Context) error {
+func createUser(c *echo.Context) *echo.HTTPError {
 	u := &user{
 		ID: seq,
 	}
-	if err := c.Bind(u); err != nil {
-		return err
+	if he := c.Bind(u); he != nil {
+		return he
 	}
 	users[u.ID] = u
 	seq++
 	return c.JSON(http.StatusCreated, u)
 }
 
-func getUser(c *echo.Context) error {
+func getUser(c *echo.Context) *echo.HTTPError {
 	id, _ := strconv.Atoi(c.Param("id"))
 	return c.JSON(http.StatusOK, users[id])
 }
 
-func updateUser(c *echo.Context) error {
+func updateUser(c *echo.Context) *echo.HTTPError {
 	u := new(user)
-	if err := c.Bind(u); err != nil {
-		return err
+	if he := c.Bind(u); he != nil {
+		return he
 	}
 	id, _ := strconv.Atoi(c.Param("id"))
 	users[id].Name = u.Name
 	return c.JSON(http.StatusOK, users[id])
 }
 
-func deleteUser(c *echo.Context) error {
+func deleteUser(c *echo.Context) *echo.HTTPError {
 	id, _ := strconv.Atoi(c.Param("id"))
 	delete(users, id)
 	return c.NoContent(http.StatusNoContent)

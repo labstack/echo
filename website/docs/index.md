@@ -14,21 +14,21 @@ Echo is a fast HTTP router (zero memory allocation) and micro web framework in G
 - Extensible middleware/handler, supports:
 	- Middleware
 		- `func(*echo.Context)`
-		- `func(*echo.Context) error`
+		- `func(*echo.Context) *echo.HTTPError`
 		- `func(echo.HandlerFunc) echo.HandlerFunc`
 		- `func(http.Handler) http.Handler`
 		- `http.Handler`
 		- `http.HandlerFunc`
 		- `func(http.ResponseWriter, *http.Request)`
-		- `func(http.ResponseWriter, *http.Request) error`
+		- `func(http.ResponseWriter, *http.Request) *echo.HTTPError`
 	- Handler
 		- `echo.HandlerFunc`
-		- `func(*echo.Context) error`
+		- `func(*echo.Context) *echo.HTTPError`
 		- `func(*echo.Context)`
 		- `http.Handler`
 		- `http.HandlerFunc`
 		- `func(http.ResponseWriter, *http.Request)`
-		- `func(http.ResponseWriter, *http.Request) error`
+		- `func(http.ResponseWriter, *http.Request) *echo.HTTPError`
 - Sub routing with groups.
 - Handy encoding/decoding functions.
 - Serve static files, including index.
@@ -59,8 +59,8 @@ import (
 )
 
 // Handler
-func hello(c *echo.Context) {
-	c.String(http.StatusOK, "Hello, World!\n")
+func hello(c *echo.Context) *echo.HTTPError {
+	return c.String(http.StatusOK, "Hello, World!\n")
 }
 
 func main() {
@@ -80,8 +80,8 @@ func main() {
 
 `echo.New()` returns a new instance of Echo.
 
-`e.Use(mw.Logger)` adds logging middleware to the chain. It logs every request made to the server,
-producing output
+`e.Use(mw.Logger)` adds logging middleware to the chain. It logs every request
+made to the server, producing output
 
 ```sh
 2015/04/25 12:15:20 GET / 200 7.544µs

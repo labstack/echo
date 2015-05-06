@@ -8,8 +8,8 @@ import (
 )
 
 // Handler
-func hello(c *echo.Context) {
-	c.String(http.StatusOK, "Hello, World!\n")
+func hello(c *echo.Context) *echo.HTTPError {
+	return c.String(http.StatusOK, "Hello, World!\n")
 }
 
 func main() {

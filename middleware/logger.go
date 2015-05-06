@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"log"
-	"net/http"
 	"time"
 
 	"github.com/labstack/echo"
@@ -10,10 +9,10 @@ import (
 )
 
 func Logger(h echo.HandlerFunc) echo.HandlerFunc {
-	return func(c *echo.Context) error {
+	return func(c *echo.Context) *echo.HTTPError {
 		start := time.Now()
-		if err := h(c); err != nil {
-			c.Error(http.StatusInternalServerError, err)
+		if he := h(c); he != nil {
+			c.Error(he)
 		}
 		end := time.Now()
 		m := c.Request.Method

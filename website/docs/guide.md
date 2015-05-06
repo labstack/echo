@@ -48,9 +48,7 @@ Default handler sends 404 "Not Found" response.
 
 `echo.HTTPErrorHandler(h HTTPErrorHandler)`
 
-Registers a centralized HTTP error handler.
-
-Default http error handler sends 500 "Internal Server Error" response.
+Registers a custom centralized HTTP error handler.
 
 ## Routing
 
@@ -70,9 +68,9 @@ echo.Get("/hello", func(*echo.Context) {
 })
 ```
 
-Echo's default handler is `func(*echo.Context) error` where `echo.Context` primarily
-holds request and response objects. Echo also has a support for other types of
-handlers.
+Echo's default handler is `func(*echo.Context) *echo.HTTPError` where `echo.Context`
+primarily holds request and response objects. Echo also has a support for other
+types of handlers.
 
 <!-- TODO mention about not able to take advantage -->
 

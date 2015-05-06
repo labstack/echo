@@ -13,7 +13,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/labstack/gommon/color"
 	"github.com/mattn/go-colorable"
 )
 
@@ -30,22 +29,27 @@ type (
 		uris             map[Handler]string
 		pool             sync.Pool
 	}
+	HTTPError struct {
+		Code    int
+		Message string
+		Error   error
+	}
 	Middleware     interface{}
 	MiddlewareFunc func(HandlerFunc) HandlerFunc
 	Handler        interface{}
-	HandlerFunc    func(*Context) error
+	HandlerFunc    func(*Context) *HTTPError
 
 	// HTTPErrorHandler is a centralized HTTP error handler.
-	HTTPErrorHandler func(int, error, *Context)
+	HTTPErrorHandler func(*HTTPError, *Context)
 
-	BindFunc func(*http.Request, interface{}) error
+	BindFunc func(*http.Request, interface{}) *HTTPError
 
 	// Renderer is the interface that wraps the Render method.
 	//
 	// Render renders the HTML template with given name and specified data.
 	// It writes the output to w.
 	Renderer interface {
-		Render(w io.Writer, name string, data interface{}) error
+		Render(w io.Writer, name string, data interface{}) *HTTPError
 	}
 )
 
@@ -125,21 +129,27 @@ func New() (e *Echo) {
 	e.NotFoundHandler(func(c *Context) {
 		http.Error(c.Response, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 	})
-	e.HTTPErrorHandler(func(code int, err error, c *Context) {
-		if err != nil {
-			// TODO: Warning
-			log.Printf("echo: %s", color.Yellow("http error handler not registered"))
-			http.Error(c.Response, err.Error(), code)
+	e.HTTPErrorHandler(func(he *HTTPError, c *Context) {
+		if he.Code == 0 {
+			he.Code = http.StatusInternalServerError
 		}
+		if he.Message == "" && he.Error != nil {
+			he.Message = he.Error.Error()
+		}
+		http.Error(c.Response, he.Message, he.Code)
 	})
-	e.Binder(func(r *http.Request, v interface{}) error {
+	e.Binder(func(r *http.Request, v interface{}) *HTTPError {
 		ct := r.Header.Get(HeaderContentType)
+		err := UnsupportedMediaType
 		if strings.HasPrefix(ct, MIMEJSON) {
-			return json.NewDecoder(r.Body).Decode(v)
+			err = json.NewDecoder(r.Body).Decode(v)
 		} else if strings.HasPrefix(ct, MIMEForm) {
-			return nil
+			err = nil
 		}
-		return UnsupportedMediaType
+		if err != nil {
+			return &HTTPError{Error: err}
+		}
+		return nil
 	})
 	return
 }
@@ -272,7 +282,7 @@ func (e *Echo) add(method, path string, h Handler) {
 // Static serves static files.
 func (e *Echo) Static(path, root string) {
 	fs := http.StripPrefix(path, http.FileServer(http.Dir(root)))
-	e.Get(path+"/*", func(c *Context) error {
+	e.Get(path+"/*", func(c *Context) *HTTPError {
 		fs.ServeHTTP(c.Response, c.Request)
 		return nil
 	})
@@ -280,7 +290,7 @@ func (e *Echo) Static(path, root string) {
 
 // ServeFile serves a file.
 func (e *Echo) ServeFile(path, file string) {
-	e.Get(path, func(c *Context) error {
+	e.Get(path, func(c *Context) *HTTPError {
 		http.ServeFile(c.Response, c.Request, file)
 		return nil
 	})
@@ -308,8 +318,8 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Execute chain
-	if err := h(c); err != nil {
-		e.httpErrorHandler(http.StatusInternalServerError, err, c)
+	if he := h(c); he != nil {
+		e.httpErrorHandler(he, c)
 	}
 
 	e.pool.Put(c)
@@ -342,16 +352,19 @@ func wrapM(m Middleware) MiddlewareFunc {
 	switch m := m.(type) {
 	case func(*Context):
 		return func(h HandlerFunc) HandlerFunc {
-			return func(c *Context) error {
+			return func(c *Context) *HTTPError {
 				m(c)
-				return h(c)
+				if !c.Response.committed {
+					h(c)
+				}
+				return nil
 			}
 		}
-	case func(*Context) error:
+	case func(*Context) *HTTPError:
 		return func(h HandlerFunc) HandlerFunc {
-			return func(c *Context) error {
-				if err := m(c); err != nil {
-					return err
+			return func(c *Context) *HTTPError {
+				if he := m(c); he != nil {
+					return he
 				}
 				return h(c)
 			}
@@ -360,36 +373,42 @@ func wrapM(m Middleware) MiddlewareFunc {
 		return m
 	case func(http.Handler) http.Handler:
 		return func(h HandlerFunc) HandlerFunc {
-			return func(c *Context) (err error) {
+			return func(c *Context) (he *HTTPError) {
 				m(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					c.Response.Writer = w
 					c.Request = r
-					err = h(c)
+					he = h(c)
 				})).ServeHTTP(c.Response.Writer, c.Request)
 				return
 			}
 		}
 	case http.Handler, http.HandlerFunc:
 		return func(h HandlerFunc) HandlerFunc {
-			return func(c *Context) error {
+			return func(c *Context) *HTTPError {
 				m.(http.Handler).ServeHTTP(c.Response.Writer, c.Request)
 				return h(c)
 			}
 		}
 	case func(http.ResponseWriter, *http.Request):
 		return func(h HandlerFunc) HandlerFunc {
-			return func(c *Context) error {
-				m(c.Response.Writer, c.Request)
-				return h(c)
+			return func(c *Context) *HTTPError {
+				m(c.Response, c.Request)
+				if !c.Response.committed {
+					h(c)
+				}
+				return nil
 			}
 		}
-	case func(http.ResponseWriter, *http.Request) error:
+	case func(http.ResponseWriter, *http.Request) *HTTPError:
 		return func(h HandlerFunc) HandlerFunc {
-			return func(c *Context) error {
-				if err := m(c.Response.Writer, c.Request); err != nil {
-					return err
+			return func(c *Context) *HTTPError {
+				if he := m(c.Response, c.Request); he != nil {
+					return he
 				}
-				return h(c)
+				if !c.Response.committed {
+					h(c)
+				}
+				return nil
 			}
 		}
 	default:
@@ -402,25 +421,25 @@ func wrapH(h Handler) HandlerFunc {
 	switch h := h.(type) {
 	case HandlerFunc:
 		return h
-	case func(*Context) error:
+	case func(*Context) *HTTPError:
 		return h
 	case func(*Context):
-		return func(c *Context) error {
+		return func(c *Context) *HTTPError {
 			h(c)
 			return nil
 		}
 	case http.Handler, http.HandlerFunc:
-		return func(c *Context) error {
+		return func(c *Context) *HTTPError {
 			h.(http.Handler).ServeHTTP(c.Response, c.Request)
 			return nil
 		}
 	case func(http.ResponseWriter, *http.Request):
-		return func(c *Context) error {
+		return func(c *Context) *HTTPError {
 			h(c.Response, c.Request)
 			return nil
 		}
-	case func(http.ResponseWriter, *http.Request) error:
-		return func(c *Context) error {
+	case func(http.ResponseWriter, *http.Request) *HTTPError:
+		return func(c *Context) *HTTPError {
 			return h(c.Response, c.Request)
 		}
 	default:

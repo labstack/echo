@@ -16,8 +16,11 @@ type (
 	}
 )
 
-func (t *Template) Render(w io.Writer, name string, data interface{}) error {
-	return t.templates.ExecuteTemplate(w, name, data)
+func (t *Template) Render(w io.Writer, name string, data interface{}) *HTTPError {
+	if err := t.templates.ExecuteTemplate(w, name, data); err != nil {
+		return &HTTPError{Error: err}
+	}
+	return nil
 }
 
 func TestContext(t *testing.T) {
@@ -38,24 +41,24 @@ func TestContext(t *testing.T) {
 	// JSON
 	r.Header.Set(HeaderContentType, MIMEJSON)
 	u2 := new(user)
-	if err := c.Bind(u2); err != nil {
-		t.Error(err)
+	if he := c.Bind(u2); he != nil {
+		t.Errorf("bind %#v", he)
 	}
 	verifyUser(u2, t)
 
 	// FORM
 	r.Header.Set(HeaderContentType, MIMEForm)
 	u2 = new(user)
-	if err := c.Bind(u2); err != nil {
-		t.Error(err)
+	if he := c.Bind(u2); he != nil {
+		t.Errorf("bind %#v", he)
 	}
 	// TODO: add verification
 
 	// Unsupported
 	r.Header.Set(HeaderContentType, "")
 	u2 = new(user)
-	if err := c.Bind(u2); err == nil {
-		t.Error(err)
+	if he := c.Bind(u2); he == nil {
+		t.Errorf("bind %#v", he)
 	}
 	// TODO: add verification
 
@@ -87,33 +90,33 @@ func TestContext(t *testing.T) {
 		templates: template.Must(template.New("hello").Parse("{{.}}")),
 	}
 	c.echo.renderer = tpl
-	if err := c.Render(http.StatusOK, "hello", "Joe"); err != nil {
-		t.Errorf("render %v", err)
+	if he := c.Render(http.StatusOK, "hello", "Joe"); he != nil {
+		t.Errorf("render %#v", he.Error)
 	}
 	c.echo.renderer = nil
-	if err := c.Render(http.StatusOK, "hello", "Joe"); err == nil {
+	if he := c.Render(http.StatusOK, "hello", "Joe"); he.Error == nil {
 		t.Error("render should error out")
 	}
 
 	// JSON
 	r.Header.Set(HeaderAccept, MIMEJSON)
 	c.Response.committed = false
-	if err := c.JSON(http.StatusOK, u1); err != nil {
-		t.Errorf("json %v", err)
+	if he := c.JSON(http.StatusOK, u1); he != nil {
+		t.Errorf("json %#v", he)
 	}
 
 	// String
 	r.Header.Set(HeaderAccept, MIMEText)
 	c.Response.committed = false
-	if err := c.String(http.StatusOK, "Hello, World!"); err != nil {
-		t.Errorf("string %v", err)
+	if he := c.String(http.StatusOK, "Hello, World!"); he != nil {
+		t.Errorf("string %#v", he.Error)
 	}
 
 	// HTML
 	r.Header.Set(HeaderAccept, MIMEHTML)
 	c.Response.committed = false
-	if err := c.HTML(http.StatusOK, "Hello, <strong>World!</strong>"); err != nil {
-		t.Errorf("html %v", err)
+	if he := c.HTML(http.StatusOK, "Hello, <strong>World!</strong>"); he != nil {
+		t.Errorf("html %v", he.Error)
 	}
 
 	// Redirect
