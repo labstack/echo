@@ -133,8 +133,12 @@ func New() (e *Echo) {
 		if he.Code == 0 {
 			he.Code = http.StatusInternalServerError
 		}
-		if he.Message == "" && he.Error != nil {
-			he.Message = he.Error.Error()
+		if he.Message == "" {
+			if he.Error != nil {
+				he.Message = he.Error.Error()
+			} else {
+				he.Message = http.StatusText(he.Code)
+			}
 		}
 		http.Error(c.Response, he.Message, he.Code)
 	})

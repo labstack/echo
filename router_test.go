@@ -633,9 +633,34 @@ func TestRouterExperiment(t *testing.T) {
 	r.Add(GET, "/users/", func(*Context) *HTTPError {
 		return nil
 	}, nil)
-	r.Add(GET, "/users/new/*", func(*Context) *HTTPError {
-		return nil
-	}, nil)
+	// r.Add(GET, "/use", func(*Context) error {
+	// 	return nil
+	// }, nil)
+	// r.Add(GET, "/users/*", func(*Context) error {
+	// 	return nil
+	// }, nil)
+	// r.Add(GET, "/users/", func(*Context) error {
+	// 	return nil
+	// }, nil)
+	// r.Add(GET, "/users/new/*", func(*Context) error {
+	// 	return nil
+	// }, nil)
+	// r.Add(GET, "/users/new", func(*Context) error {
+	// 	return nil
+	// }, nil)
+	// r.Add(GET, "/users/:uid", func(*Context) error {
+	// 	return nil
+	// }, nil)
+	// r.Add(GET, "/users/new/:id", func(*Context) error {
+	// 	return nil
+	// }, nil)
+	// r.Add(GET, "/users/wen", func(*Context) error {
+	// 	return nil
+	// }, nil)
+	// r.Add(GET, "/users/:uid/files/:fid", func(*Context) error {
+	// 	return nil
+	// }, nil)
+
 	r.Add(GET, "/users/new", func(*Context) *HTTPError {
 		return nil
 	}, nil)
@@ -652,7 +677,9 @@ func TestRouterExperiment(t *testing.T) {
 		return nil
 	}, nil)
 
-	h, _ := r.Find(GET, "/users/", context)
+	r.trees[GET].printTree("", true)
+
+	h, _ := r.Find(GET, "/users/new", context)
 	if h == nil {
 		t.Fatal("handler not found")
 	}
