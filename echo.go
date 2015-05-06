@@ -166,7 +166,7 @@ func (e *Echo) Group(pfx string, m ...Middleware) *Echo {
 	return &g
 }
 
-// MaxParam sets the maximum number of path parameters allowd for the application.
+// MaxParam sets the maximum number of path parameters allowed for the application.
 // Default value is 5, good enough for many use cases.
 func (e *Echo) MaxParam(n uint8) {
 	e.maxParam = n
