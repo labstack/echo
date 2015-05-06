@@ -258,8 +258,7 @@ func welcome(c *echo.Context) *echo.HTTPError {
 }
 ```
 
-`echo.HTTPError` has status code, message and error fields. Internally it uses
-`http.Error` to send HTTP response with status code and message.
+See how [HTTPErrorHandler](#customization) handles it.
 
 ## Deployment
 
