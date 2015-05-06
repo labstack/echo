@@ -151,8 +151,7 @@ find matching route for the request.</p>
 <p>Default handler sends 404 "Not Found" response.</p>
 <h3 id="http-error-handler">HTTP error handler</h3>
 <p><code>echo.HTTPErrorHandler(h HTTPErrorHandler)</code></p>
-<p>Registers a centralized HTTP error handler.</p>
-<p>Default http error handler sends 500 "Internal Server Error" response.</p>
+<p>Registers a custom centralized HTTP error handler.</p>
 <h2 id="routing">Routing</h2>
 <p>Echo's router is <a href="https://github.com/labstack/echo#benchmark">fast, optimized</a> and
 flexible. It's based on <a href="http://en.wikipedia.org/wiki/Radix_tree">redix tree</a>
@@ -167,9 +166,9 @@ below registers a route for method <code>GET</code>, path <code>/hello</code> an
 })
 </code></pre>
 
-<p>Echo's default handler is <code>func(*echo.Context) error</code> where <code>echo.Context</code> primarily
-holds request and response objects. Echo also has a support for other types of
-handlers.</p>
+<p>Echo's default handler is <code>func(*echo.Context) *echo.HTTPError</code> where <code>echo.Context</code>
+primarily holds request and response objects. Echo also has a support for other
+types of handlers.</p>
 <!-- TODO mention about not able to take advantage -->
 
 <!-- ### Groups -->

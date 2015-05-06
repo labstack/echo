@@ -135,23 +135,23 @@
 <li>Extensible middleware/handler, supports:<ul>
 <li>Middleware<ul>
 <li><code>func(*echo.Context)</code></li>
-<li><code>func(*echo.Context) error</code></li>
+<li><code>func(*echo.Context) *echo.HTTPError</code></li>
 <li><code>func(echo.HandlerFunc) echo.HandlerFunc</code></li>
 <li><code>func(http.Handler) http.Handler</code></li>
 <li><code>http.Handler</code></li>
 <li><code>http.HandlerFunc</code></li>
 <li><code>func(http.ResponseWriter, *http.Request)</code></li>
-<li><code>func(http.ResponseWriter, *http.Request) error</code></li>
+<li><code>func(http.ResponseWriter, *http.Request) *echo.HTTPError</code></li>
 </ul>
 </li>
 <li>Handler<ul>
 <li><code>echo.HandlerFunc</code></li>
-<li><code>func(*echo.Context) error</code></li>
+<li><code>func(*echo.Context) *echo.HTTPError</code></li>
 <li><code>func(*echo.Context)</code></li>
 <li><code>http.Handler</code></li>
 <li><code>http.HandlerFunc</code></li>
 <li><code>func(http.ResponseWriter, *http.Request)</code></li>
-<li><code>func(http.ResponseWriter, *http.Request) error</code></li>
+<li><code>func(http.ResponseWriter, *http.Request) *echo.HTTPError</code></li>
 </ul>
 </li>
 </ul>
@@ -180,8 +180,8 @@ import (
 )
 
 // Handler
-func hello(c *echo.Context) {
-    c.String(http.StatusOK, &quot;Hello, World!\n&quot;)
+func hello(c *echo.Context) *echo.HTTPError {
+    return c.String(http.StatusOK, &quot;Hello, World!\n&quot;)
 }
 
 func main() {
@@ -200,8 +200,8 @@ func main() {
 </code></pre>
 
 <p><code>echo.New()</code> returns a new instance of Echo.</p>
-<p><code>e.Use(mw.Logger)</code> adds logging middleware to the chain. It logs every request made to the server,
-producing output</p>
+<p><code>e.Use(mw.Logger)</code> adds logging middleware to the chain. It logs every request
+made to the server, producing output</p>
 <pre><code class="sh">2015/04/25 12:15:20 GET / 200 7.544µs
 2015/04/25 12:15:26 GET / 200 3.681µs
 2015/04/25 12:15:29 GET / 200 5.434µs
