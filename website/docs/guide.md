@@ -63,8 +63,8 @@ below registers a route for method `GET`, path `/hello` and a handler which send
 `Hello!` response.
 
 ```go
-echo.Get("/hello", func(*echo.Context) {
-	c.String(http.StatusOK, "Hello!")
+echo.Get("/hello", func(*echo.Context) *HTTPError {
+	return c.String(http.StatusOK, "Hello!")
 })
 ```
 
@@ -83,14 +83,14 @@ index `echo.Context.P(i uint8) string`. Getting parameter by index gives a sligh
 better performance.
 
 ```go
-echo.Get("/users/:id", func(c *echo.Context) {
+echo.Get("/users/:id", func(c *echo.Context) *HTTPError {
 	// By name
 	id := c.Param("id")
 
 	// By index
 	id := c.P(0)
 
-	c.String(http.StatusOK, id)
+	return c.String(http.StatusOK, id)
 })
 ```
 
@@ -113,16 +113,16 @@ match
 #### Example
 
 ```go
-e.Get("/users/:id", func(c *echo.Context) {
-	c.String(http.StatusOK, "/users/:id")
+e.Get("/users/:id", func(c *echo.Context) *HTTPError {
+	return c.String(http.StatusOK, "/users/:id")
 })
 
-e.Get("/users/new", func(c *echo.Context) {
-	c.String(http.StatusOK, "/users/new")
+e.Get("/users/new", func(c *echo.Context) *HTTPError {
+	return c.String(http.StatusOK, "/users/new")
 })
 
-e.Get("/users/1/files/*", func(c *echo.Context) {
-	c.String(http.StatusOK, "/users/1/files/*")
+e.Get("/users/1/files/*", func(c *echo.Context) *HTTPError {
+	return c.String(http.StatusOK, "/users/1/files/*")
 })
 ```
 
@@ -146,8 +146,8 @@ application.
 
 ```go
 // Handler
-h := func(*echo.Context) {
-	c.String(http.StatusOK, "OK")
+h := func(*echo.Context) *HTTPError {
+	return c.String(http.StatusOK, "OK")
 }
 
 // Route
@@ -161,7 +161,7 @@ e.Get("/users/:id", h)
 ### JSON
 
 ```go
-context.JSON(code int, v interface{}) error
+context.JSON(code int, v interface{}) *HTTPError
 ```
 
 Sends a JSON response with status code.
@@ -169,7 +169,7 @@ Sends a JSON response with status code.
 ### String
 
 ```go
-context.String(code int, s string) error
+context.String(code int, s string) *HTTPError
 ```
 
 Sends a text/plain response with status code.
@@ -177,7 +177,7 @@ Sends a text/plain response with status code.
 ### HTML
 
 ```go
-func (c *Context) HTML(code int, html string) error
+func (c *Context) HTML(code int, html string) *HTTPError
 ```
 
 Sends an HTML response with status code.
