@@ -33,7 +33,7 @@ Echo is a fast HTTP router (zero memory allocation) and micro web framework in G
 - Handy encoding/decoding functions.
 - Serve static files, including index.
 - Centralized HTTP error handling.
-- Use a customized function to bind request body to a Go type.
+- Use a customized function to bind HTTP request body to a Go type.
 - Register a view render so you can use any HTML template engine.
 
 ## Getting Started
@@ -80,7 +80,7 @@ func main() {
 
 `echo.New()` returns a new instance of Echo.
 
-`e.Use(mw.Logger)` adds logging middleware to the chain. It logs every request
+`e.Use(mw.Logger)` adds logging middleware to the chain. It logs every HTTP request
 made to the server, producing output
 
 ```sh
@@ -90,10 +90,10 @@ made to the server, producing output
 ```
 
 `e.Get("/", hello)` Registers a GET route for path `/` with hello handler, so
-whenever server receives a request at `/`, hello handler is called.
+whenever server receives an HTTP request at `/`, hello handler is called.
 
 In hello handler `c.String(http.StatusOK, "Hello, World!\n")` sends a text/plain
-response to the client with 200 status code.
+HTTP response to the client with 200 status code.
 
 `e.Run(":4444")` Starts HTTP server at network address `:4444`.
 

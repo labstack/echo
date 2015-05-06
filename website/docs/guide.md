@@ -40,7 +40,7 @@ for many use cases. Restricting path parameters allows us to use memory efficien
 `echo.NotFoundHandler(h Handler)`
 
 Registers a custom NotFound handler. This handler is called in case router doesn't
-find matching route for the request.
+find a matching route for the HTTP request.
 
 Default handler sends 404 "Not Found" response.
 
@@ -48,7 +48,14 @@ Default handler sends 404 "Not Found" response.
 
 `echo.HTTPErrorHandler(h HTTPErrorHandler)`
 
-Registers a custom centralized HTTP error handler.
+Registers a custom centralized HTTP error handler `func(*HTTPError, *Context)`.
+
+Default handler sends `HTTPError.Message` HTTP response with `HTTPError.Code` status
+code.
+
+- If HTTPError.Code is not specified it uses 500 "Internal Server Error".
+- If HTTPError.Message is not specified it uses HTTPError.Error.Error() or the status
+code text.
 
 ## Routing
 
@@ -60,7 +67,7 @@ zero dynamic memory allocation with no GC overhead.
 
 Routes can be registered for any HTTP method, path and handler. For example, code
 below registers a route for method `GET`, path `/hello` and a handler which sends
-`Hello!` response.
+`Hello!` HTTP response.
 
 ```go
 echo.Get("/hello", func(*echo.Context) *HTTPError {
@@ -69,14 +76,16 @@ echo.Get("/hello", func(*echo.Context) *HTTPError {
 ```
 
 Echo's default handler is `func(*echo.Context) *echo.HTTPError` where `echo.Context`
-primarily holds request and response objects. Echo also has a support for other
+primarily holds HTTP request and response objects. Echo also has a support for other
 types of handlers.
 
 <!-- TODO mention about not able to take advantage -->
 
-<!-- ### Groups -->
+### Group
 
-### Path parameters
+**WIP**
+
+### Path parameter
 
 URL path parameters can be extracted either by name `echo.Context.Param(name string) string` or by
 index `echo.Context.P(i uint8) string`. Getting parameter by index gives a slightly
@@ -164,7 +173,7 @@ e.Get("/users/:id", h)
 context.JSON(code int, v interface{}) *HTTPError
 ```
 
-Sends a JSON response with status code.
+Sends a JSON HTTP response with status code.
 
 ### String
 
@@ -172,7 +181,7 @@ Sends a JSON response with status code.
 context.String(code int, s string) *HTTPError
 ```
 
-Sends a text/plain response with status code.
+Sends a text/plain HTTP response with status code.
 
 ### HTML
 
@@ -180,7 +189,7 @@ Sends a text/plain response with status code.
 func (c *Context) HTML(code int, html string) *HTTPError
 ```
 
-Sends an HTML response with status code.
+Sends an HTML HTTP response with status code.
 
 ### Static files
 
@@ -210,8 +219,48 @@ index.html for path `/`
 e.Index("index.html")
 ```
 
-<!-- ## Error Handling -->
+## Error Handling
 
-<!-- message not set err.Error() or status text -->
+Echo advocates centralized HTTP error handling by returning `*echo.HTTPError` from
+middleware and handlers.
 
-<!-- Deployment -->
+- In debug mode, write stack trace to the HTTP response.
+- Customize HTTP responses, may be using a pretty HTML template.
+- Recover from panics inside middleware or handlers.
+
+For example, when a basic auth middleware finds invalid credentials it returns 401
+"Unauthorized" error, aborting the current HTTP request.
+
+```go
+package main
+
+import (
+	"net/http"
+
+	"github.com/labstack/echo"
+)
+
+func main() {
+	e := echo.New()
+	e.Use(func(c *echo.Context) *echo.HTTPError {
+		// Extract the credentials from HTTP request header and perform a security
+		// check
+
+		// For invalid credentials
+		return &echo.HTTPError{Code: http.StatusUnauthorized}
+	})
+	e.Get("/welcome", welcome)
+	e.Run(":4444")
+}
+
+func welcome(c *echo.Context) *echo.HTTPError {
+	return c.String(http.StatusOK, "Welcome!")
+}
+```
+
+`echo.HTTPError` has status code, message and error fields. Internally it uses
+`http.Error` to send HTTP response with status code and message.
+
+## Deployment
+
+**WIP**
