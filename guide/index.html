@@ -115,6 +115,10 @@
         
             <li><a href="#response">Response</a></li>
         
+            <li><a href="#error-handling">Error Handling</a></li>
+        
+            <li><a href="#deployment">Deployment</a></li>
+        
     
     </ul>
 </div></div>
@@ -147,11 +151,18 @@ for many use cases. Restricting path parameters allows us to use memory efficien
 <h3 id="not-found-handler">Not found handler</h3>
 <p><code>echo.NotFoundHandler(h Handler)</code></p>
 <p>Registers a custom NotFound handler. This handler is called in case router doesn't
-find matching route for the request.</p>
+find a matching route for the HTTP request.</p>
 <p>Default handler sends 404 "Not Found" response.</p>
 <h3 id="http-error-handler">HTTP error handler</h3>
 <p><code>echo.HTTPErrorHandler(h HTTPErrorHandler)</code></p>
-<p>Registers a custom centralized HTTP error handler.</p>
+<p>Registers a custom centralized HTTP error handler <code>func(*HTTPError, *Context)</code>.</p>
+<p>Default handler sends <code>HTTPError.Message</code> HTTP response with <code>HTTPError.Code</code> status
+code.</p>
+<ul>
+<li>If HTTPError.Code is not specified it uses 500 "Internal Server Error".</li>
+<li>If HTTPError.Message is not specified it uses HTTPError.Error.Error() or the status
+code text.</li>
+</ul>
 <h2 id="routing">Routing</h2>
 <p>Echo's router is <a href="https://github.com/labstack/echo#benchmark">fast, optimized</a> and
 flexible. It's based on <a href="http://en.wikipedia.org/wiki/Radix_tree">redix tree</a>
@@ -160,20 +171,20 @@ data structure which makes routing lookup really fast. It leverages
 zero dynamic memory allocation with no GC overhead.</p>
 <p>Routes can be registered for any HTTP method, path and handler. For example, code
 below registers a route for method <code>GET</code>, path <code>/hello</code> and a handler which sends
-<code>Hello!</code> response.</p>
+<code>Hello!</code> HTTP response.</p>
 <pre><code class="go">echo.Get(&quot;/hello&quot;, func(*echo.Context) *HTTPError {
     return c.String(http.StatusOK, &quot;Hello!&quot;)
 })
 </code></pre>
 
 <p>Echo's default handler is <code>func(*echo.Context) *echo.HTTPError</code> where <code>echo.Context</code>
-primarily holds request and response objects. Echo also has a support for other
+primarily holds HTTP request and response objects. Echo also has a support for other
 types of handlers.</p>
 <!-- TODO mention about not able to take advantage -->
 
-<!-- ### Groups -->
-
-<h3 id="path-parameters">Path parameters</h3>
+<h3 id="group">Group</h3>
+<p><strong>WIP</strong></p>
+<h3 id="path-parameter">Path parameter</h3>
 <p>URL path parameters can be extracted either by name <code>echo.Context.Param(name string) string</code> or by
 index <code>echo.Context.P(i uint8) string</code>. Getting parameter by index gives a slightly
 better performance.</p>
@@ -247,17 +258,17 @@ e.Get(&quot;/users/:id&quot;, h)
 <pre><code class="go">context.JSON(code int, v interface{}) *HTTPError
 </code></pre>
 
-<p>Sends a JSON response with status code.</p>
+<p>Sends a JSON HTTP response with status code.</p>
 <h3 id="string">String</h3>
 <pre><code class="go">context.String(code int, s string) *HTTPError
 </code></pre>
 
-<p>Sends a text/plain response with status code.</p>
+<p>Sends a text/plain HTTP response with status code.</p>
 <h3 id="html">HTML</h3>
 <pre><code class="go">func (c *Context) HTML(code int, html string) *HTTPError
 </code></pre>
 
-<p>Sends an HTML response with status code.</p>
+<p>Sends an HTML HTTP response with status code.</p>
 <h3 id="static-files">Static files</h3>
 <p><code>echo.Static(path, root string)</code> serves static files. For example, code below
 serves all files from <code>public/scripts</code> directory for any path starting
@@ -277,9 +288,46 @@ index.html for path <code>/</code></p>
 <pre><code class="go">e.Index(&quot;index.html&quot;)
 </code></pre>
 
-<!-- ## Error Handling -->
+<h2 id="error-handling">Error Handling</h2>
+<p>Echo advocates centralized HTTP error handling by returning <code>*echo.HTTPError</code> from
+middleware and handlers.</p>
+<ul>
+<li>In debug mode, write stack trace to the HTTP response.</li>
+<li>Customize HTTP responses, may be using a pretty HTML template.</li>
+<li>Recover from panics inside middleware or handlers.</li>
+</ul>
+<p>For example, when a basic auth middleware finds invalid credentials it returns 401
+"Unauthorized" error, aborting the current HTTP request.</p>
+<pre><code class="go">package main
 
-<!-- Deployment --></div>
+import (
+    &quot;net/http&quot;
+
+    &quot;github.com/labstack/echo&quot;
+)
+
+func main() {
+    e := echo.New()
+    e.Use(func(c *echo.Context) *echo.HTTPError {
+        // Extract the credentials from HTTP request header and perform a security
+        // check
+
+        // For invalid credentials
+        return &amp;echo.HTTPError{Code: http.StatusUnauthorized}
+    })
+    e.Get(&quot;/welcome&quot;, welcome)
+    e.Run(&quot;:4444&quot;)
+}
+
+func welcome(c *echo.Context) *echo.HTTPError {
+    return c.String(http.StatusOK, &quot;Welcome!&quot;)
+}
+</code></pre>
+
+<p><code>echo.HTTPError</code> has status code, message and error fields. Internally it uses
+<code>http.Error</code> to send HTTP response with status code and message.</p>
+<h2 id="deployment">Deployment</h2>
+<p><strong>WIP</strong></p></div>
         </div>
 
         
