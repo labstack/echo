@@ -291,9 +291,10 @@ index.html for path <code>/</code></p>
 <h2 id="error-handling">Error Handling</h2>
 <p>Echo advocates centralized HTTP error handling by returning <code>*echo.HTTPError</code> from
 middleware and handlers.</p>
+<p>Why?</p>
 <ul>
-<li>In debug mode, write stack trace to the HTTP response.</li>
-<li>Customize HTTP responses, may be using a pretty HTML template.</li>
+<li>Debug by writing stack trace to the HTTP response.</li>
+<li>Customize HTTP responses.</li>
 <li>Recover from panics inside middleware or handlers.</li>
 </ul>
 <p>For example, when a basic auth middleware finds invalid credentials it returns 401
