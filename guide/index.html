@@ -183,7 +183,7 @@ types of handlers.</p>
 <!-- TODO mention about not able to take advantage -->
 
 <h3 id="group">Group</h3>
-<p><strong>WIP</strong></p>
+<p><em>WIP</em></p>
 <h3 id="path-parameter">Path parameter</h3>
 <p>URL path parameters can be extracted either by name <code>echo.Context.Param(name string) string</code> or by
 index <code>echo.Context.P(i uint8) string</code>. Getting parameter by index gives a slightly
@@ -291,7 +291,7 @@ index.html for path <code>/</code></p>
 <h2 id="error-handling">Error Handling</h2>
 <p>Echo advocates centralized HTTP error handling by returning <code>*echo.HTTPError</code> from
 middleware and handlers.</p>
-<p>Why?</p>
+<p>It allows you to</p>
 <ul>
 <li>Debug by writing stack trace to the HTTP response.</li>
 <li>Customize HTTP responses.</li>
@@ -327,7 +327,7 @@ func welcome(c *echo.Context) *echo.HTTPError {
 
 <p>See how <a href="#customization">HTTPErrorHandler</a> handles it.</p>
 <h2 id="deployment">Deployment</h2>
-<p><strong>WIP</strong></p></div>
+<p><em>WIP</em></p></div>
         </div>
 
         
