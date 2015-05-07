@@ -22,7 +22,7 @@ To upgrade
 $ go get -u github.com/labstack/echo
 ```
 
-Echo follows [Semantic Versioning](http://semver.org) managed through GitHub releases.
+Echo follows [semantic versioning](http://semver.org) managed through GitHub releases.
 Specific version of Echo can be installed using any [package manager](https://github.com/avelino/awesome-go#package-management).
 
 ## Customization
