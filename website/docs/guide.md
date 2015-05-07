@@ -224,8 +224,10 @@ e.Index("index.html")
 Echo advocates centralized HTTP error handling by returning `*echo.HTTPError` from
 middleware and handlers.
 
-- In debug mode, write stack trace to the HTTP response.
-- Customize HTTP responses, may be using a pretty HTML template.
+Why?
+
+- Debug by writing stack trace to the HTTP response.
+- Customize HTTP responses.
 - Recover from panics inside middleware or handlers.
 
 For example, when a basic auth middleware finds invalid credentials it returns 401
