@@ -83,7 +83,7 @@ types of handlers.
 
 ### Group
 
-**WIP**
+*WIP*
 
 ### Path parameter
 
@@ -224,7 +224,7 @@ e.Index("index.html")
 Echo advocates centralized HTTP error handling by returning `*echo.HTTPError` from
 middleware and handlers.
 
-Why?
+It allows you to
 
 - Debug by writing stack trace to the HTTP response.
 - Customize HTTP responses.
@@ -264,4 +264,4 @@ See how [HTTPErrorHandler](#customization) handles it.
 
 ## Deployment
 
-**WIP**
+*WIP*
