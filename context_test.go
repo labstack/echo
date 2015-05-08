@@ -26,13 +26,7 @@ func (t *Template) Render(w io.Writer, name string, data interface{}) *HTTPError
 func TestContext(t *testing.T) {
 	b, _ := json.Marshal(u1)
 	r, _ := http.NewRequest(POST, "/users/1", bytes.NewReader(b))
-	c := &Context{
-		Response: &Response{Writer: httptest.NewRecorder()},
-		Request:  r,
-		pvalues:  make([]string, 5),
-		store:    make(store),
-		echo:     New(),
-	}
+	c := NewContext(r, &Response{Writer: httptest.NewRecorder()}, New())
 
 	//------
 	// Bind

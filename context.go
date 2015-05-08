@@ -19,6 +19,17 @@ type (
 	store map[string]interface{}
 )
 
+func NewContext(req *http.Request, res *Response, e *Echo) *Context {
+	return &Context{
+		Request:  req,
+		Response: res,
+		echo:     e,
+		pnames:   make([]string, e.maxParam),
+		pvalues:  make([]string, e.maxParam),
+		store:    make(store),
+	}
+}
+
 // P returns path parameter by index.
 func (c *Context) P(i uint8) (value string) {
 	l := uint8(len(c.pnames))
@@ -114,7 +125,7 @@ func (c *Context) Redirect(code int, url string) {
 }
 
 func (c *Context) reset(w http.ResponseWriter, r *http.Request, e *Echo) {
-	c.Response.reset(w)
 	c.Request = r
+	c.Response.reset(w)
 	c.echo = e
 }
