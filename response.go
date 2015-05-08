@@ -8,7 +8,7 @@ import (
 )
 
 type (
-	response struct {
+	Response struct {
 		Writer    http.ResponseWriter
 		status    int
 		size      int
@@ -16,11 +16,11 @@ type (
 	}
 )
 
-func (r *response) Header() http.Header {
+func (r *Response) Header() http.Header {
 	return r.Writer.Header()
 }
 
-func (r *response) WriteHeader(n int) {
+func (r *Response) WriteHeader(n int) {
 	if r.committed {
 		// TODO: Warning
 		log.Printf("echo: %s", color.Yellow("response already committed"))
@@ -31,21 +31,21 @@ func (r *response) WriteHeader(n int) {
 	r.committed = true
 }
 
-func (r *response) Write(b []byte) (n int, err error) {
+func (r *Response) Write(b []byte) (n int, err error) {
 	n, err = r.Writer.Write(b)
 	r.size += n
 	return n, err
 }
 
-func (r *response) Status() int {
+func (r *Response) Status() int {
 	return r.status
 }
 
-func (r *response) Size() int {
+func (r *Response) Size() int {
 	return r.size
 }
 
-func (r *response) reset(w http.ResponseWriter) {
+func (r *Response) reset(w http.ResponseWriter) {
 	r.Writer = w
 	r.committed = false
 }

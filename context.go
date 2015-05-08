@@ -10,7 +10,7 @@ type (
 	// response references, path parameters, data and registered handler.
 	Context struct {
 		Request  *http.Request
-		Response *response
+		Response *Response
 		pnames   []string
 		pvalues  []string
 		store    store

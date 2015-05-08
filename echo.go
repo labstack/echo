@@ -114,7 +114,7 @@ func New() (e *Echo) {
 	e.Router = NewRouter(e)
 	e.pool.New = func() interface{} {
 		return &Context{
-			Response: &response{},
+			Response: &Response{},
 			pnames:   make([]string, e.maxParam),
 			pvalues:  make([]string, e.maxParam),
 			store:    make(store),
