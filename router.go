@@ -204,8 +204,14 @@ func lcp(a, b string) (i int) {
 func (r *router) Find(method, path string, ctx *Context) (h HandlerFunc, echo *Echo) {
 	cn := r.trees[method] // Current node as root
 	search := path
-	c := new(node) // Child node
-	n := 0         // Param counter
+
+	var (
+		c  *node  // Child node
+		n  int    // Param counter
+		nt ntype  // Next type
+		nn *node  // Next node
+		ns string // Next search
+	)
 
 	// TODO: Check empty path???
 
@@ -219,14 +225,28 @@ func (r *router) Find(method, path string, ctx *Context) (h HandlerFunc, echo *E
 			return
 		}
 
-		pl := len(cn.prefix)
-		l := lcp(search, cn.prefix)
+		pl := 0 // Prefix length
+		l := 0  // LCP length
+
+		if cn.label != ':' {
+			pl = len(cn.prefix)
+			l = lcp(search, cn.prefix)
+		}
 
 		if l == pl {
 			// Continue search
 			search = search[l:]
-		} else if l < pl && cn.label != ':' {
-			goto Up
+		} else {
+			cn = nn
+			search = ns
+			if nt == ptype {
+				goto Param
+			} else if nt == mtype {
+				goto MatchAny
+			} else {
+				// Not found
+				return
+			}
 		}
 
 		if search == "" {
@@ -241,6 +261,12 @@ func (r *router) Find(method, path string, ctx *Context) (h HandlerFunc, echo *E
 		// Static node
 		c = cn.findSchild(search[0])
 		if c != nil {
+			// Save next
+			if cn.label == '/' {
+				nt = ptype
+				nn = cn
+				ns = search
+			}
 			cn = c
 			continue
 		}
@@ -249,6 +275,12 @@ func (r *router) Find(method, path string, ctx *Context) (h HandlerFunc, echo *E
 	Param:
 		c = cn.findPchild()
 		if c != nil {
+			// Save next
+			if cn.label == '/' {
+				nt = mtype
+				nn = cn
+				ns = search
+			}
 			cn = c
 			i, l := 0, len(search)
 			for ; i < l && search[i] != '/'; i++ {
@@ -266,22 +298,10 @@ func (r *router) Find(method, path string, ctx *Context) (h HandlerFunc, echo *E
 			cn = c
 			ctx.pvalues[n] = search
 			search = "" // End search
-			continue
-		}
-
-	Up:
-		tn := cn // Save current node
-		cn = cn.parent
-		if cn == nil {
+		} else {
 			// Not found
 			return
 		}
-		// Search upwards
-		if l == pl {
-			// Reset search
-			search = tn.prefix + search
-		}
-		goto Param
 	}
 }
 

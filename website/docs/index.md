@@ -10,7 +10,7 @@ Echo is a fast HTTP router (zero memory allocation) and micro web framework in G
 
 ## Features
 
-- Fast HTTP router which smartly resolves conflicting routes.
+- Fast HTTP router which smartly prioritize routes.
 - Extensible middleware/handler, supports:
 	- Middleware
 		- `func(*echo.Context)`
