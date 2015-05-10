@@ -23,5 +23,5 @@ func main() {
 	e.Get("/", hello)
 
 	// Start server
-	e.Run(":4444")
+	e.Run(":1323")
 }

@@ -298,10 +298,10 @@ func (r *router) Find(method, path string, ctx *Context) (h HandlerFunc, echo *E
 			cn = c
 			ctx.pvalues[n] = search
 			search = "" // End search
-		} else {
-			// Not found
-			return
+			continue
 		}
+		// Not found
+		return
 	}
 }
 

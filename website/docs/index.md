@@ -74,7 +74,7 @@ func main() {
 	e.Get("/", hello)
 
 	// Start server
-	e.Run(":4444")
+	e.Run(":1323")
 }
 ```
 
@@ -95,7 +95,7 @@ whenever server receives an HTTP request at `/`, hello handler is called.
 In hello handler `c.String(http.StatusOK, "Hello, World!\n")` sends a text/plain
 HTTP response to the client with 200 status code.
 
-`e.Run(":4444")` Starts HTTP server at network address `:4444`.
+`e.Run(":1323")` Starts HTTP server at network address `:1323`.
 
 Now start the server using command
 
@@ -103,7 +103,7 @@ Now start the server using command
 $ go run server.go
 ```
 
-Browse to [http://localhost:4444](http://localhost:4444) and you should see
+Browse to [http://localhost:1323](http://localhost:1323) and you should see
 Hello, World! on the page.
 
 ### Next?
