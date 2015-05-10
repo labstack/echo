@@ -264,7 +264,7 @@ func (e *Echo) URI(h Handler, params ...interface{}) string {
 			}
 		}
 	}
-	return uri.String()
+	return e.prefix + uri.String()
 }
 
 // URL is an alias for URI

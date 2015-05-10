@@ -263,9 +263,15 @@ func TestEchoURL(t *testing.T) {
 	static := func(*Context) {}
 	getUser := func(*Context) {}
 	getFile := func(*Context) {}
+	getGroups := func(*Context) {}
+	getGroup := func(*Context) {}
+
 	e.Get("/static/file", static)
 	e.Get("/users/:id", getUser)
 	e.Get("/users/:uid/files/:fid", getFile)
+
+	eg := e.Group("/groups")
+	eg.Get("/:id", getGroup)
 
 	if e.URL(static) != "/static/file" {
 		t.Error("uri should be /static/file")
@@ -284,6 +290,18 @@ func TestEchoURL(t *testing.T) {
 	}
 	if e.URI(getFile, "1", "1") != "/users/1/files/1" {
 		t.Error("uri should be /users/1/files/1")
+	}
+	if e.URI(getGroups) != "/groups" {
+		t.Error("uri should be /groups")
+	}
+	if e.URI(getGroup, "1") != "/groups/1" {
+		t.Error("uri should be /groups/1")
+	}
+	if eg.URI(getGroups) != "/groups" {
+		t.Error("uri should be /groups")
+	}
+	if eg.URI(getGroup, "1") != "/groups/1" {
+		t.Error("uri should be /groups/1")
 	}
 }
 
