@@ -195,7 +195,7 @@ func main() {
     e.Get(&quot;/&quot;, hello)
 
     // Start server
-    e.Run(&quot;:4444&quot;)
+    e.Run(&quot;:1323&quot;)
 }
 </code></pre>
 
@@ -211,12 +211,12 @@ made to the server, producing output</p>
 whenever server receives an HTTP request at <code>/</code>, hello handler is called.</p>
 <p>In hello handler <code>c.String(http.StatusOK, "Hello, World!\n")</code> sends a text/plain
 HTTP response to the client with 200 status code.</p>
-<p><code>e.Run(":4444")</code> Starts HTTP server at network address <code>:4444</code>.</p>
+<p><code>e.Run(":1323")</code> Starts HTTP server at network address <code>:1323</code>.</p>
 <p>Now start the server using command</p>
 <pre><code class="sh">$ go run server.go
 </code></pre>
 
-<p>Browse to <a href="http://localhost:4444">http://localhost:4444</a> and you should see
+<p>Browse to <a href="http://localhost:1323">http://localhost:1323</a> and you should see
 Hello, World! on the page.</p>
 <h3 id="next">Next?</h3>
 <ul>
