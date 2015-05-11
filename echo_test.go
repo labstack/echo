@@ -54,51 +54,59 @@ func TestEchoMiddleware(t *testing.T) {
 	e := New()
 	b := new(bytes.Buffer)
 
-	// func(*echo.Context)
-	e.Use(func(c *Context) {
-		b.WriteString("a")
-	})
-
-	// func(*echo.Context) *HTTPError
-	e.Use(func(c *Context) *HTTPError {
-		b.WriteString("b")
-		return nil
-	})
+	// MiddlewareFunc
+	e.Use(MiddlewareFunc(func(h HandlerFunc) HandlerFunc {
+		return func(c *Context) *HTTPError {
+			b.WriteString("a")
+			return h(c)
+		}
+	}))
 
 	// func(echo.HandlerFunc) (echo.HandlerFunc, error)
 	e.Use(func(h HandlerFunc) HandlerFunc {
 		return func(c *Context) *HTTPError {
-			b.WriteString("c")
+			b.WriteString("b")
 			return h(c)
 		}
 	})
 
-	// http.HandlerFunc
-	e.Use(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		b.WriteString("d")
-	}))
+	// func(*echo.Context) *HTTPError
+	e.Use(func(c *Context) *HTTPError {
+		b.WriteString("c")
+		return nil
+	})
 
-	// http.Handler
-	e.Use(http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		b.WriteString("e")
-	})))
+	// func(*echo.Context)
+	e.Use(func(c *Context) {
+		b.WriteString("d")
+	})
 
 	// func(http.Handler) http.Handler
 	e.Use(func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			b.WriteString("f")
+			b.WriteString("e")
 			h.ServeHTTP(w, r)
 		})
 	})
 
+	// http.Handler
+	e.Use(http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b.WriteString("f")
+	})))
+
+	// http.HandlerFunc
+	e.Use(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b.WriteString("g")
+	}))
+
 	// func(http.ResponseWriter, *http.Request)
 	e.Use(func(w http.ResponseWriter, r *http.Request) {
-		b.WriteString("g")
+		b.WriteString("h")
 	})
 
 	// func(http.ResponseWriter, *http.Request) *HTTPError
 	e.Use(func(w http.ResponseWriter, r *http.Request) *HTTPError {
-		b.WriteString("h")
+		b.WriteString("i")
 		return nil
 	})
 
@@ -110,8 +118,8 @@ func TestEchoMiddleware(t *testing.T) {
 	w := httptest.NewRecorder()
 	r, _ := http.NewRequest(GET, "/hello", nil)
 	e.ServeHTTP(w, r)
-	if b.String() != "abcdefgh" {
-		t.Errorf("buffer should be abcdefgh, found %s", b.String())
+	if b.String() != "abcdefghi" {
+		t.Errorf("buffer should be abcdefghi, found %s", b.String())
 	}
 	if w.Body.String() != "world" {
 		t.Error("body should be world")

@@ -535,7 +535,6 @@ func TestRouterPriority(t *testing.T) {
 	}
 }
 
-
 func TestRouterParamNames(t *testing.T) {
 	r := New().Router
 	b := new(bytes.Buffer)

@@ -349,6 +349,19 @@ func (e *Echo) RunTLSServer(server *http.Server, certFile, keyFile string) {
 // wraps Middleware
 func wrapM(m Middleware) MiddlewareFunc {
 	switch m := m.(type) {
+	case MiddlewareFunc:
+		return m
+	case func(HandlerFunc) HandlerFunc:
+		return m
+	case func(*Context) *HTTPError:
+		return func(h HandlerFunc) HandlerFunc {
+			return func(c *Context) *HTTPError {
+				if he := m(c); he != nil {
+					return he
+				}
+				return h(c)
+			}
+		}
 	case func(*Context):
 		return func(h HandlerFunc) HandlerFunc {
 			return func(c *Context) *HTTPError {
@@ -359,17 +372,6 @@ func wrapM(m Middleware) MiddlewareFunc {
 				return nil
 			}
 		}
-	case func(*Context) *HTTPError:
-		return func(h HandlerFunc) HandlerFunc {
-			return func(c *Context) *HTTPError {
-				if he := m(c); he != nil {
-					return he
-				}
-				return h(c)
-			}
-		}
-	case func(HandlerFunc) HandlerFunc:
-		return m
 	case func(http.Handler) http.Handler:
 		return func(h HandlerFunc) HandlerFunc {
 			return func(c *Context) (he *HTTPError) {
@@ -432,14 +434,14 @@ func wrapH(h Handler) HandlerFunc {
 			h.(http.Handler).ServeHTTP(c.Response, c.Request)
 			return nil
 		}
+	case func(http.ResponseWriter, *http.Request) *HTTPError:
+		return func(c *Context) *HTTPError {
+			return h(c.Response, c.Request)
+		}
 	case func(http.ResponseWriter, *http.Request):
 		return func(c *Context) *HTTPError {
 			h(c.Response, c.Request)
 			return nil
-		}
-	case func(http.ResponseWriter, *http.Request) *HTTPError:
-		return func(c *Context) *HTTPError {
-			return h(c.Response, c.Request)
 		}
 	default:
 		panic("echo: unknown handler")
