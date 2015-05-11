@@ -134,9 +134,10 @@
 <li>Fast HTTP router which smartly prioritize routes.</li>
 <li>Extensible middleware/handler, supports:<ul>
 <li>Middleware<ul>
-<li><code>func(*echo.Context)</code></li>
-<li><code>func(*echo.Context) *echo.HTTPError</code></li>
+<li><code>echo.MiddlewareFunc</code></li>
 <li><code>func(echo.HandlerFunc) echo.HandlerFunc</code></li>
+<li><code>func(*echo.Context) *echo.HTTPError</code></li>
+<li><code>func(*echo.Context)</code></li>
 <li><code>func(http.Handler) http.Handler</code></li>
 <li><code>http.Handler</code></li>
 <li><code>http.HandlerFunc</code></li>
@@ -207,8 +208,8 @@ made to the server, producing output</p>
 2015/04/25 12:15:29 GET / 200 5.434µs
 </code></pre>
 
-<p><code>e.Get("/", hello)</code> Registers a GET route for path <code>/</code> with hello handler, so
-whenever server receives an HTTP request at <code>/</code>, hello handler is called.</p>
+<p><code>e.Get("/", hello)</code> Registers hello handler for HTTP method <code>GET</code> and path <code>/</code>, so
+whenever server receives an HTTP request at <code>/</code>, hello function is called.</p>
 <p>In hello handler <code>c.String(http.StatusOK, "Hello, World!\n")</code> sends a text/plain
 HTTP response to the client with 200 status code.</p>
 <p><code>e.Run(":1323")</code> Starts HTTP server at network address <code>:1323</code>.</p>

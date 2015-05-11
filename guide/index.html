@@ -169,8 +169,8 @@ flexible. It's based on <a href="http://en.wikipedia.org/wiki/Radix_tree">redix 
 data structure which makes routing lookup really fast. It leverages
 <a href="https://golang.org/pkg/sync/#Pool">sync pool</a> to reuse memory and achieve
 zero dynamic memory allocation with no GC overhead.</p>
-<p>Routes can be registered for any HTTP method, path and handler. For example, code
-below registers a route for method <code>GET</code>, path <code>/hello</code> and a handler which sends
+<p>Routes can be registered by specifying HTTP method, path and a handler. For example,
+code below registers a route for method <code>GET</code>, path <code>/hello</code> and a handler which sends
 <code>Hello!</code> HTTP response.</p>
 <pre><code class="go">echo.Get(&quot;/hello&quot;, func(*echo.Context) *HTTPError {
     return c.String(http.StatusOK, &quot;Hello!&quot;)
@@ -185,9 +185,9 @@ types of handlers.</p>
 <h3 id="group">Group</h3>
 <p><em>WIP</em></p>
 <h3 id="path-parameter">Path parameter</h3>
-<p>URL path parameters can be extracted either by name <code>echo.Context.Param(name string) string</code> or by
-index <code>echo.Context.P(i uint8) string</code>. Getting parameter by index gives a slightly
-better performance.</p>
+<p>URL path parameters can be extracted either by name <code>echo.Context.Param(name string) string</code>
+or by index <code>echo.Context.P(i uint8) string</code>. Getting parameter by index gives a
+slightly better performance.</p>
 <pre><code class="go">echo.Get(&quot;/users/:id&quot;, func(c *echo.Context) *HTTPError {
     // By name
     id := c.Param(&quot;id&quot;)
