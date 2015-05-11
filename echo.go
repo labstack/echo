@@ -73,16 +73,25 @@ const (
 	// TRACE HTTP method
 	TRACE = "TRACE"
 
-	MIMEJSON          = "application/json"
-	MIMEText          = "text/plain"
-	MIMEHTML          = "text/html"
-	MIMEForm          = "application/x-www-form-urlencoded"
-	MIMEMultipartForm = "multipart/form-data"
+	//-------------
+	// Media types
+	//-------------
 
-	HeaderAccept             = "Accept"
-	HeaderContentDisposition = "Content-Disposition"
-	HeaderContentLength      = "Content-Length"
-	HeaderContentType        = "Content-Type"
+	ApplicationJSON     = "application/json"
+	ApplicationProtobuf = "application/protobuf"
+	TextPlain           = "text/plain"
+	TextHTML            = "text/html"
+	ApplicationForm     = "application/x-www-form-urlencoded"
+	MultipartForm       = "multipart/form-data"
+
+	//---------
+	// Headers
+	//---------
+
+	Accept             = "Accept"
+	ContentDisposition = "Content-Disposition"
+	ContentLength      = "Content-Length"
+	ContentType        = "Content-Type"
 )
 
 var (
@@ -138,11 +147,11 @@ func New() (e *Echo) {
 		http.Error(c.Response, he.Message, he.Code)
 	})
 	e.Binder(func(r *http.Request, v interface{}) *HTTPError {
-		ct := r.Header.Get(HeaderContentType)
+		ct := r.Header.Get(ContentType)
 		err := UnsupportedMediaType
-		if strings.HasPrefix(ct, MIMEJSON) {
+		if strings.HasPrefix(ct, ApplicationJSON) {
 			err = json.NewDecoder(r.Body).Decode(v)
-		} else if strings.HasPrefix(ct, MIMEForm) {
+		} else if strings.HasPrefix(ct, ApplicationForm) {
 			err = nil
 		}
 		if err != nil {

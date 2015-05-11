@@ -63,14 +63,14 @@ func (c *Context) Render(code int, name string, data interface{}) *HTTPError {
 	if c.echo.renderer == nil {
 		return &HTTPError{Error: RendererNotRegistered}
 	}
-	c.Response.Header().Set(HeaderContentType, MIMEHTML+"; charset=utf-8")
+	c.Response.Header().Set(ContentType, TextHTML+"; charset=utf-8")
 	c.Response.WriteHeader(code)
 	return c.echo.renderer.Render(c.Response, name, data)
 }
 
 // JSON sends an application/json response with status code.
 func (c *Context) JSON(code int, v interface{}) *HTTPError {
-	c.Response.Header().Set(HeaderContentType, MIMEJSON+"; charset=utf-8")
+	c.Response.Header().Set(ContentType, ApplicationJSON+"; charset=utf-8")
 	c.Response.WriteHeader(code)
 	if err := json.NewEncoder(c.Response).Encode(v); err != nil {
 		return &HTTPError{Error: err}
@@ -80,7 +80,7 @@ func (c *Context) JSON(code int, v interface{}) *HTTPError {
 
 // String sends a text/plain response with status code.
 func (c *Context) String(code int, s string) *HTTPError {
-	c.Response.Header().Set(HeaderContentType, MIMEText+"; charset=utf-8")
+	c.Response.Header().Set(ContentType, TextPlain+"; charset=utf-8")
 	c.Response.WriteHeader(code)
 	if _, err := c.Response.Write([]byte(s)); err != nil {
 		return &HTTPError{Error: err}
@@ -90,7 +90,7 @@ func (c *Context) String(code int, s string) *HTTPError {
 
 // HTML sends a text/html response with status code.
 func (c *Context) HTML(code int, html string) *HTTPError {
-	c.Response.Header().Set(HeaderContentType, MIMEHTML+"; charset=utf-8")
+	c.Response.Header().Set(ContentType, TextHTML+"; charset=utf-8")
 	c.Response.WriteHeader(code)
 	if _, err := c.Response.Write([]byte(html)); err != nil {
 		return &HTTPError{Error: err}

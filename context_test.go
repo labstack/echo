@@ -33,7 +33,7 @@ func TestContext(t *testing.T) {
 	//------
 
 	// JSON
-	r.Header.Set(HeaderContentType, MIMEJSON)
+	r.Header.Set(ContentType, ApplicationJSON)
 	u2 := new(user)
 	if he := c.Bind(u2); he != nil {
 		t.Errorf("bind %#v", he)
@@ -41,7 +41,7 @@ func TestContext(t *testing.T) {
 	verifyUser(u2, t)
 
 	// FORM
-	r.Header.Set(HeaderContentType, MIMEForm)
+	r.Header.Set(ContentType, ApplicationForm)
 	u2 = new(user)
 	if he := c.Bind(u2); he != nil {
 		t.Errorf("bind %#v", he)
@@ -49,7 +49,7 @@ func TestContext(t *testing.T) {
 	// TODO: add verification
 
 	// Unsupported
-	r.Header.Set(HeaderContentType, "")
+	r.Header.Set(ContentType, "")
 	u2 = new(user)
 	if he := c.Bind(u2); he == nil {
 		t.Errorf("bind %#v", he)
@@ -93,21 +93,21 @@ func TestContext(t *testing.T) {
 	}
 
 	// JSON
-	r.Header.Set(HeaderAccept, MIMEJSON)
+	r.Header.Set(Accept, ApplicationJSON)
 	c.Response.committed = false
 	if he := c.JSON(http.StatusOK, u1); he != nil {
 		t.Errorf("json %#v", he)
 	}
 
 	// String
-	r.Header.Set(HeaderAccept, MIMEText)
+	r.Header.Set(Accept, TextPlain)
 	c.Response.committed = false
 	if he := c.String(http.StatusOK, "Hello, World!"); he != nil {
 		t.Errorf("string %#v", he.Error)
 	}
 
 	// HTML
-	r.Header.Set(HeaderAccept, MIMEHTML)
+	r.Header.Set(Accept, TextHTML)
 	c.Response.committed = false
 	if he := c.HTML(http.StatusOK, "Hello, <strong>World!</strong>"); he != nil {
 		t.Errorf("html %v", he.Error)
