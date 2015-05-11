@@ -110,6 +110,16 @@ func TestEchoMiddleware(t *testing.T) {
 		return nil
 	})
 
+	// echo.MiddlewareFunc
+	e.Use((func(i string) MiddlewareFunc {
+		return func(h HandlerFunc) HandlerFunc {
+			return func(c *Context) error {
+				b.WriteString(i)
+				return h(c)
+			}
+		}
+	})("i"))
+
 	// Route
 	e.Get("/hello", func(c *Context) {
 		c.String(http.StatusOK, "world")
