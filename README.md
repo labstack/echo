@@ -6,7 +6,7 @@ Echo is a fast HTTP router (zero memory allocation) and micro web framework in G
 - Fast :rocket: HTTP router which smartly prioritize routes.
 - Extensible middleware/handler, supports:
 	- Middleware
-		- `MiddlewareFunc`
+		- `echo.MiddlewareFunc`
 		- `func(echo.HandlerFunc) echo.HandlerFunc`
 		- `func(*echo.Context) *echo.HTTPError`
 		- `func(*echo.Context)`
