@@ -89,8 +89,8 @@ made to the server, producing output
 2015/04/25 12:15:29 GET / 200 5.434µs
 ```
 
-`e.Get("/", hello)` Registers a GET route for path `/` with hello handler, so
-whenever server receives an HTTP request at `/`, hello handler is called.
+`e.Get("/", hello)` Registers hello handler for HTTP method `GET` and path `/`, so
+whenever server receives an HTTP request at `/`, hello function is called.
 
 In hello handler `c.String(http.StatusOK, "Hello, World!\n")` sends a text/plain
 HTTP response to the client with 200 status code.

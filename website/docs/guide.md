@@ -65,8 +65,8 @@ data structure which makes routing lookup really fast. It leverages
 [sync pool](https://golang.org/pkg/sync/#Pool) to reuse memory and achieve
 zero dynamic memory allocation with no GC overhead.
 
-Routes can be registered for any HTTP method, path and handler. For example, code
-below registers a route for method `GET`, path `/hello` and a handler which sends
+Routes can be registered by specifying HTTP method, path and a handler. For example,
+code below registers a route for method `GET`, path `/hello` and a handler which sends
 `Hello!` HTTP response.
 
 ```go
@@ -87,9 +87,9 @@ types of handlers.
 
 ### Path parameter
 
-URL path parameters can be extracted either by name `echo.Context.Param(name string) string` or by
-index `echo.Context.P(i uint8) string`. Getting parameter by index gives a slightly
-better performance.
+URL path parameters can be extracted either by name `echo.Context.Param(name string) string`
+or by index `echo.Context.P(i uint8) string`. Getting parameter by index gives a
+slightly better performance.
 
 ```go
 echo.Get("/users/:id", func(c *echo.Context) *HTTPError {
