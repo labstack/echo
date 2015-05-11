@@ -79,6 +79,7 @@ const (
 
 	ApplicationJSON     = "application/json"
 	ApplicationProtobuf = "application/protobuf"
+	ApplicationMsgpack  = "application/msgpack"
 	TextPlain           = "text/plain"
 	TextHTML            = "text/html"
 	ApplicationForm     = "application/x-www-form-urlencoded"
@@ -92,6 +93,7 @@ const (
 	ContentDisposition = "Content-Disposition"
 	ContentLength      = "Content-Length"
 	ContentType        = "Content-Type"
+	Authorization      = "Authorization"
 )
 
 var (
