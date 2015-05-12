@@ -25,7 +25,6 @@ func main() {
 
 	// Basic auth
 	e.Use(mw.BasicAuth(func(u, p string) bool {
-		println(u, p)
 		if u == "joe" && p == "secret" {
 			return true
 		}
