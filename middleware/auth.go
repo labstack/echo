@@ -19,7 +19,6 @@ func BasicAuth(fn AuthFunc) echo.HandlerFunc {
 	return func(c *echo.Context) (he *echo.HTTPError) {
 		auth := c.Request.Header.Get(echo.Authorization)
 		i := 0
-		l := len(Basic)
 		he = &echo.HTTPError{Code: http.StatusUnauthorized}
 
 		for ; i < len(auth); i++ {
@@ -30,7 +29,7 @@ func BasicAuth(fn AuthFunc) echo.HandlerFunc {
 			}
 
 			// Check scheme
-			if i < l {
+			if i < len(Basic) {
 				// Ignore case
 				if i == 0 {
 					if c != Basic[i] && c != 'b' {

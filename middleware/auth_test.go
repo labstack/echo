@@ -49,10 +49,16 @@ func TestBasicAuth(t *testing.T) {
 	}
 
 	// Invalid scheme
-	auth = "foo " + base64.StdEncoding.EncodeToString([]byte(" joe: secret"))
+	auth = "Base " + base64.StdEncoding.EncodeToString([]byte(" :secret"))
 	req.Header.Set(echo.Authorization, auth)
 	b = BasicAuth(fn)
 	if b(c) == nil {
 		t.Error("basic auth should fail for invalid scheme")
+	}
+
+	// Empty auth header
+	b = BasicAuth(fn)
+	if b(c) == nil {
+		t.Error("basic auth should fail for empty auth header")
 	}
 }
