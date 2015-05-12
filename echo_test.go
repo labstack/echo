@@ -62,7 +62,7 @@ func TestEchoMiddleware(t *testing.T) {
 		}
 	}))
 
-	// func(echo.HandlerFunc) (echo.HandlerFunc, error)
+	// func(echo.HandlerFunc) echo.HandlerFunc
 	e.Use(func(h HandlerFunc) HandlerFunc {
 		return func(c *Context) *HTTPError {
 			b.WriteString("b")
@@ -76,49 +76,38 @@ func TestEchoMiddleware(t *testing.T) {
 		return nil
 	})
 
-	// func(*echo.Context)
-	e.Use(func(c *Context) {
-		b.WriteString("d")
-	})
-
 	// func(http.Handler) http.Handler
 	e.Use(func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			b.WriteString("e")
+			b.WriteString("d")
 			h.ServeHTTP(w, r)
 		})
 	})
 
 	// http.Handler
 	e.Use(http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		b.WriteString("f")
+		b.WriteString("e")
 	})))
 
 	// http.HandlerFunc
 	e.Use(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		b.WriteString("g")
+		b.WriteString("f")
 	}))
 
 	// func(http.ResponseWriter, *http.Request)
 	e.Use(func(w http.ResponseWriter, r *http.Request) {
-		b.WriteString("h")
-	})
-
-	// func(http.ResponseWriter, *http.Request) *HTTPError
-	e.Use(func(w http.ResponseWriter, r *http.Request) *HTTPError {
-		b.WriteString("i")
-		return nil
+		b.WriteString("g")
 	})
 
 	// Route
-	e.Get("/hello", func(c *Context) {
-		c.String(http.StatusOK, "world")
+	e.Get("/hello", func(c *Context) *HTTPError {
+		return c.String(http.StatusOK, "world")
 	})
 
 	w := httptest.NewRecorder()
 	r, _ := http.NewRequest(GET, "/hello", nil)
 	e.ServeHTTP(w, r)
-	if b.String() != "abcdefghi" {
+	if b.String() != "abcdefg" {
 		t.Errorf("buffer should be abcdefghi, found %s", b.String())
 	}
 	if w.Body.String() != "world" {
@@ -151,10 +140,10 @@ func TestEchoHandler(t *testing.T) {
 		t.Error("body should be 2")
 	}
 
-	// func(*echo.Context)
-	e.Get("/3", func(c *Context) {
-		c.String(http.StatusOK, "3")
-	})
+	// http.Handler/http.HandlerFunc
+	e.Get("/3", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("3"))
+	}))
 	w = httptest.NewRecorder()
 	r, _ = http.NewRequest(GET, "/3", nil)
 	e.ServeHTTP(w, r)
@@ -162,48 +151,26 @@ func TestEchoHandler(t *testing.T) {
 		t.Error("body should be 3")
 	}
 
-	// http.Handler/http.HandlerFunc
-	e.Get("/4", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// func(http.ResponseWriter, *http.Request)
+	e.Get("/4", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("4"))
-	}))
+	})
 	w = httptest.NewRecorder()
 	r, _ = http.NewRequest(GET, "/4", nil)
 	e.ServeHTTP(w, r)
 	if w.Body.String() != "4" {
 		t.Error("body should be 4")
 	}
-
-	// func(http.ResponseWriter, *http.Request)
-	e.Get("/5", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("5"))
-	})
-	w = httptest.NewRecorder()
-	r, _ = http.NewRequest(GET, "/5", nil)
-	e.ServeHTTP(w, r)
-	if w.Body.String() != "5" {
-		t.Error("body should be 5")
-	}
-
-	// func(http.ResponseWriter, *http.Request) *HTTPError
-	e.Get("/6", func(w http.ResponseWriter, r *http.Request) *HTTPError {
-		w.Write([]byte("6"))
-		return nil
-	})
-	w = httptest.NewRecorder()
-	r, _ = http.NewRequest(GET, "/6", nil)
-	e.ServeHTTP(w, r)
-	if w.Body.String() != "6" {
-		t.Error("body should be 6")
-	}
 }
 
 func TestEchoGroup(t *testing.T) {
 	b := new(bytes.Buffer)
 	e := New()
-	e.Use(func(*Context) {
+	e.Use(func(*Context) *HTTPError {
 		b.WriteString("1")
+		return nil
 	})
-	e.Get("/users", func(*Context) {})
+	e.Get("/users", func(*Context) *HTTPError { return nil })
 	w := httptest.NewRecorder()
 	r, _ := http.NewRequest(GET, "/users", nil)
 	e.ServeHTTP(w, r)
@@ -213,10 +180,11 @@ func TestEchoGroup(t *testing.T) {
 
 	// Group
 	g1 := e.Group("/group1")
-	g1.Use(func(*Context) {
+	g1.Use(func(*Context) *HTTPError {
 		b.WriteString("2")
+		return nil
 	})
-	g1.Get("/home", func(*Context) {})
+	g1.Get("/home", func(*Context) *HTTPError { return nil })
 	b.Reset()
 	w = httptest.NewRecorder()
 	r, _ = http.NewRequest(GET, "/group1/home", nil)
@@ -226,10 +194,11 @@ func TestEchoGroup(t *testing.T) {
 	}
 
 	// Group with no parent middleware
-	g2 := e.Group("/group2", func(*Context) {
+	g2 := e.Group("/group2", func(*Context) *HTTPError {
 		b.WriteString("3")
+		return nil
 	})
-	g2.Get("/home", func(*Context) {})
+	g2.Get("/home", func(*Context) *HTTPError { return nil })
 	b.Reset()
 	w = httptest.NewRecorder()
 	r, _ = http.NewRequest(GET, "/group2/home", nil)
@@ -241,8 +210,8 @@ func TestEchoGroup(t *testing.T) {
 	// Nested group
 	g3 := e.Group("/group3")
 	g4 := g3.Group("/group4")
-	g4.Get("/home", func(c *Context) {
-		c.NoContent(http.StatusOK)
+	g4.Get("/home", func(c *Context) *HTTPError {
+		return c.NoContent(http.StatusOK)
 	})
 	w = httptest.NewRecorder()
 	r, _ = http.NewRequest(GET, "/group3/group4/home", nil)
@@ -254,7 +223,7 @@ func TestEchoGroup(t *testing.T) {
 
 func TestEchoMethod(t *testing.T) {
 	e := New()
-	h := func(*Context) {}
+	h := func(*Context) *HTTPError { return nil }
 	e.Connect("/", h)
 	e.Delete("/", h)
 	e.Get("/", h)
@@ -268,9 +237,9 @@ func TestEchoMethod(t *testing.T) {
 
 func TestEchoURL(t *testing.T) {
 	e := New()
-	static := func(*Context) {}
-	getUser := func(*Context) {}
-	getFile := func(*Context) {}
+	static := func(*Context) *HTTPError { return nil }
+	getUser := func(*Context) *HTTPError { return nil }
+	getFile := func(*Context) *HTTPError { return nil }
 	e.Get("/static/file", static)
 	e.Get("/users/:id", getUser)
 	e.Get("/users/:uid/files/:fid", getFile)
@@ -307,8 +276,8 @@ func TestEchoNotFound(t *testing.T) {
 	}
 
 	// Customized NotFound handler
-	e.NotFoundHandler(func(c *Context) {
-		c.String(http.StatusNotFound, "not found")
+	e.NotFoundHandler(func(c *Context) *HTTPError {
+		return c.String(http.StatusNotFound, "not found")
 	})
 	w = httptest.NewRecorder()
 	e.ServeHTTP(w, r)
