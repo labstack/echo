@@ -59,6 +59,6 @@ func BasicAuth(fn AuthFunc) echo.HandlerFunc {
 				}
 			}
 		}
-		return nil
+		return
 	}
 }
