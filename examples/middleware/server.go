@@ -1,0 +1,40 @@
+package main
+
+import (
+	"net/http"
+
+	"github.com/labstack/echo"
+	mw "github.com/labstack/echo/middleware"
+)
+
+// Handler
+func hello(c *echo.Context) *echo.HTTPError {
+	return c.String(http.StatusOK, "Hello, World!\n")
+}
+
+func main() {
+	// Echo instance
+	e := echo.New()
+
+	//------------
+	// Middleware
+	//------------
+
+	// Logger
+	e.Use(mw.Logger)
+
+	// Basic auth
+	e.Use(mw.BasicAuth(func(u, p string) bool {
+		println(u, p)
+		if u == "joe" && p == "secret" {
+			return true
+		}
+		return false
+	}))
+
+	// Routes
+	e.Get("/", hello)
+
+	// Start server
+	e.Run(":1323")
+}
