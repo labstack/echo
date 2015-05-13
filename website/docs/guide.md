@@ -193,18 +193,17 @@ Sends an HTML HTTP response with status code.
 
 ### Static files
 
-`echo.Static(path, root string)` serves static files. For example, code below
-serves all files from `public/scripts` directory for any path starting
-with `/scripts/`
+`echo.Static(path, root string)` serves static files. For example, code below serves
+files from directory `public/scripts` for any URL path starting with `/scripts/`.
 
 ```go
-e.Static("/scripts", "public/scripts")
+e.Static("/scripts/", "public/scripts")
 ```
 
 ### Serving a file
 
 `echo.ServeFile(path, file string)` serves a file. For example, code below serves
-welcome.html for path `/welcome`
+file `welcome.html` for URL path `/welcome`.
 
 ```go
 e.ServeFile("/welcome", "welcome.html")
@@ -212,11 +211,20 @@ e.ServeFile("/welcome", "welcome.html")
 
 ### Serving an index file
 
-`echo.Index(file string)` serves an index file. For example, code below serves
-index.html for path `/`
+`echo.Index(file string)` serves an index file. For example, code below serves file
+`index.html`.
 
 ```go
 e.Index("index.html")
+```
+
+### Serving favicon 
+
+`echo.Favicon(file string)` serves default favicon - `GET /favicon.ico`. For example,
+code below serves file `favicon.ico`.
+
+```go
+e.Index("public/favicon.ico")
 ```
 
 ## Error Handling

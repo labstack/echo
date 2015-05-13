@@ -293,7 +293,7 @@ func (e *Echo) add(method, path string, h Handler) {
 // Static serves static files.
 func (e *Echo) Static(path, root string) {
 	fs := http.StripPrefix(path, http.FileServer(http.Dir(root)))
-	e.Get(path+"/*", func(c *Context) *HTTPError {
+	e.Get(path+"*", func(c *Context) *HTTPError {
 		fs.ServeHTTP(c.Response, c.Request)
 		return nil
 	})
@@ -310,6 +310,11 @@ func (e *Echo) ServeFile(path, file string) {
 // Index serves index file.
 func (e *Echo) Index(file string) {
 	e.ServeFile("/", file)
+}
+
+// Favicon serves the default favicon - GET /favicon.ico.
+func (e *Echo) Favicon(file string) {
+	e.ServeFile("/favicon.ico", file)
 }
 
 func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {

@@ -36,8 +36,12 @@ func (t *Template) Render(w io.Writer, name string, data interface{}) *echo.HTTP
 	return nil
 }
 
-func welcome(c *echo.Context) {
-	c.Render(http.StatusOK, "welcome", "Joe")
+//----------
+// Handlers
+//----------
+
+func welcome(c *echo.Context) *echo.HTTPError {
+	return c.Render(http.StatusOK, "welcome", "Joe")
 }
 
 func createUser(c *echo.Context) *echo.HTTPError {
@@ -74,15 +78,18 @@ func main() {
 	s := stats.New()
 	e.Use(s.Handler)
 	// Route
-	e.Get("/stats", func(c *echo.Context) {
-		c.JSON(http.StatusOK, s.Data())
+	e.Get("/stats", func(c *echo.Context) *echo.HTTPError {
+		return c.JSON(http.StatusOK, s.Data())
 	})
 
 	// Serve index file
 	e.Index("public/index.html")
 
+	// Serve favicon
+	e.Favicon("public/favicon.ico")
+
 	// Serve static files
-	e.Static("/scripts", "public/scripts")
+	e.Static("/scripts/", "public/scripts")
 
 	//--------
 	// Routes
@@ -109,19 +116,21 @@ func main() {
 
 	// Group with parent middleware
 	a := e.Group("/admin")
-	a.Use(func(c *echo.Context) {
+	a.Use(func(c *echo.Context) *echo.HTTPError {
 		// Security middleware
+		return nil
 	})
-	a.Get("", func(c *echo.Context) {
-		c.String(http.StatusOK, "Welcome admin!")
+	a.Get("", func(c *echo.Context) *echo.HTTPError {
+		return c.String(http.StatusOK, "Welcome admin!")
 	})
 
 	// Group with no parent middleware
-	g := e.Group("/files", func(c *echo.Context) {
+	g := e.Group("/files", func(c *echo.Context) *echo.HTTPError {
 		// Security middleware
+		return nil
 	})
-	g.Get("", func(c *echo.Context) {
-		c.String(http.StatusOK, "Your files!")
+	g.Get("", func(c *echo.Context) *echo.HTTPError {
+		return c.String(http.StatusOK, "Your files!")
 	})
 
 	// Start server
