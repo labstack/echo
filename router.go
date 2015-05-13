@@ -137,11 +137,11 @@ func (r *router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 	}
 }
 
-func newNode(t ntype, pfx string, p *node, c children, h HandlerFunc, pnames []string, echo *Echo) *node {
+func newNode(t ntype, pre string, p *node, c children, h HandlerFunc, pnames []string, echo *Echo) *node {
 	return &node{
 		typ:      t,
-		label:    pfx[0],
-		prefix:   pfx,
+		label:    pre[0],
+		prefix:   pre,
 		parent:   p,
 		children: c,
 		handler:  h,

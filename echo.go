@@ -312,6 +312,11 @@ func (e *Echo) Index(file string) {
 	e.ServeFile("/", file)
 }
 
+// Favicon serves the default favicon - GET /favicon.ico.
+func (e *Echo) Favicon(file string) {
+	e.ServeFile("/favicon.ico", file)
+}
+
 func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c := e.pool.Get().(*Context)
 	h, echo := e.Router.Find(r.Method, r.URL.Path, c)

@@ -39,6 +39,17 @@ func TestEchoIndex(t *testing.T) {
 	}
 }
 
+func TestEchoFavicon(t *testing.T) {
+	e := New()
+	e.Favicon("examples/web/public/favicon.ico")
+	w := httptest.NewRecorder()
+	r, _ := http.NewRequest(GET, "/favicon.ico", nil)
+	e.ServeHTTP(w, r)
+	if w.Code != 200 {
+		t.Errorf("status code should be 200, found %d", w.Code)
+	}
+}
+
 func TestEchoStatic(t *testing.T) {
 	e := New()
 	e.Static("/scripts", "examples/web/public/scripts")
