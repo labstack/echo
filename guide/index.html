@@ -270,22 +270,27 @@ e.Get(&quot;/users/:id&quot;, h)
 
 <p>Sends an HTML HTTP response with status code.</p>
 <h3 id="static-files">Static files</h3>
-<p><code>echo.Static(path, root string)</code> serves static files. For example, code below
-serves all files from <code>public/scripts</code> directory for any path starting
-with <code>/scripts/</code></p>
-<pre><code class="go">e.Static(&quot;/scripts&quot;, &quot;public/scripts&quot;)
+<p><code>echo.Static(path, root string)</code> serves static files. For example, code below serves
+files from directory <code>public/scripts</code> for any URL path starting with <code>/scripts/</code>.</p>
+<pre><code class="go">e.Static(&quot;/scripts/&quot;, &quot;public/scripts&quot;)
 </code></pre>
 
 <h3 id="serving-a-file">Serving a file</h3>
 <p><code>echo.ServeFile(path, file string)</code> serves a file. For example, code below serves
-welcome.html for path <code>/welcome</code></p>
+file <code>welcome.html</code> for URL path <code>/welcome</code>.</p>
 <pre><code class="go">e.ServeFile(&quot;/welcome&quot;, &quot;welcome.html&quot;)
 </code></pre>
 
 <h3 id="serving-an-index-file">Serving an index file</h3>
-<p><code>echo.Index(file string)</code> serves an index file. For example, code below serves
-index.html for path <code>/</code></p>
+<p><code>echo.Index(file string)</code> serves an index file. For example, code below serves file
+<code>index.html</code>.</p>
 <pre><code class="go">e.Index(&quot;index.html&quot;)
+</code></pre>
+
+<h3 id="serving-favicon">Serving favicon</h3>
+<p><code>echo.Favicon(file string)</code> serves default favicon - <code>GET /favicon.ico</code>. For example,
+code below serves file <code>favicon.ico</code>.</p>
+<pre><code class="go">e.Index(&quot;public/favicon.ico&quot;)
 </code></pre>
 
 <h2 id="error-handling">Error Handling</h2>
