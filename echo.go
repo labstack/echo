@@ -293,7 +293,7 @@ func (e *Echo) add(method, path string, h Handler) {
 // Static serves static files.
 func (e *Echo) Static(path, root string) {
 	fs := http.StripPrefix(path, http.FileServer(http.Dir(root)))
-	e.Get(path+"/*", func(c *Context) *HTTPError {
+	e.Get(path+"*", func(c *Context) *HTTPError {
 		fs.ServeHTTP(c.Response, c.Request)
 		return nil
 	})

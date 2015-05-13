@@ -89,7 +89,7 @@ func main() {
 	e.Favicon("public/favicon.ico")
 
 	// Serve static files
-	e.Static("/scripts", "public/scripts")
+	e.Static("/scripts/", "public/scripts")
 
 	//--------
 	// Routes
