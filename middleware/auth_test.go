@@ -18,7 +18,7 @@ func TestBasicAuth(t *testing.T) {
 		}
 		return false
 	}
-	b := BasicAuth(fn)
+	ba := BasicAuth(fn)
 
 	//-------------------
 	// Valid credentials
@@ -26,14 +26,14 @@ func TestBasicAuth(t *testing.T) {
 
 	auth := Basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:secret"))
 	req.Header.Set(echo.Authorization, auth)
-	if b(c) != nil {
+	if ba(c) != nil {
 		t.Error("basic auth should pass")
 	}
 
 	// Case insensitive
 	auth = "basic " + base64.StdEncoding.EncodeToString([]byte("joe:secret"))
 	req.Header.Set(echo.Authorization, auth)
-	if b(c) != nil {
+	if ba(c) != nil {
 		t.Error("basic auth should ignore case and pass")
 	}
 
@@ -43,31 +43,31 @@ func TestBasicAuth(t *testing.T) {
 
 	auth = Basic + "  " + base64.StdEncoding.EncodeToString([]byte(" joe: secret"))
 	req.Header.Set(echo.Authorization, auth)
-	b = BasicAuth(fn)
-	if b(c) == nil {
+	ba = BasicAuth(fn)
+	if ba(c) == nil {
 		t.Error("basic auth should fail")
 	}
 
 	// Invalid header
 	auth = base64.StdEncoding.EncodeToString([]byte(" :secret"))
 	req.Header.Set(echo.Authorization, auth)
-	b = BasicAuth(fn)
-	if b(c) == nil {
+	ba = BasicAuth(fn)
+	if ba(c) == nil {
 		t.Error("basic auth should fail for invalid scheme")
 	}
 
 	// Invalid scheme
 	auth = "Base " + base64.StdEncoding.EncodeToString([]byte(" :secret"))
 	req.Header.Set(echo.Authorization, auth)
-	b = BasicAuth(fn)
-	if b(c) == nil {
+	ba = BasicAuth(fn)
+	if ba(c) == nil {
 		t.Error("basic auth should fail for invalid scheme")
 	}
 
 	// Empty auth header
 	req.Header.Set(echo.Authorization, "")
-	b = BasicAuth(fn)
-	if b(c) == nil {
+	ba = BasicAuth(fn)
+	if ba(c) == nil {
 		t.Error("basic auth should fail for empty auth header")
 	}
 }
