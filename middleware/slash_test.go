@@ -22,10 +22,9 @@ func TestRedirectToSlash(t *testing.T) {
 	req, _ := http.NewRequest(echo.GET, "/users", nil)
 	res := &echo.Response{Writer: httptest.NewRecorder()}
 	c := echo.NewContext(req, res, echo.New())
-	RedirectToSlash(301)(c)
-	println(c.Response.Header().Get("Location"))
-	if res.Status() != 301 {
-		t.Errorf("status code should be 301, found %d", res.Status())
+	RedirectToSlash(RedirectToSlashOptions{Code: http.StatusTemporaryRedirect})(c)
+	if res.Status() != http.StatusTemporaryRedirect {
+		t.Errorf("status code should be 307, found %d", res.Status())
 	}
 	if c.Response.Header().Get("Location") != "/users/" {
 		t.Error("Location header should be /users/")

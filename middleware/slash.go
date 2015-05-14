@@ -1,6 +1,15 @@
 package middleware
 
-import "github.com/labstack/echo"
+import (
+	"github.com/labstack/echo"
+	"net/http"
+)
+
+type (
+	RedirectToSlashOptions struct {
+		Code int
+	}
+)
 
 // StripTrailingSlash removes trailing slash from request path.
 func StripTrailingSlash() echo.HandlerFunc {
@@ -15,8 +24,16 @@ func StripTrailingSlash() echo.HandlerFunc {
 }
 
 // RedirectToSlash redirects requests without trailing slash path to trailing slash
-// path, with status code.
-func RedirectToSlash(code int) echo.HandlerFunc {
+// path, with .
+func RedirectToSlash(opts ...RedirectToSlashOptions) echo.HandlerFunc {
+	code := http.StatusMovedPermanently
+
+	for _, o := range opts {
+		if o.Code != 0 {
+			code = o.Code
+		}
+	}
+
 	return func(c *echo.Context) (he *echo.HTTPError) {
 		p := c.Request.URL.Path
 		l := len(p)

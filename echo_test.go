@@ -34,7 +34,7 @@ func TestEchoIndex(t *testing.T) {
 	w := httptest.NewRecorder()
 	r, _ := http.NewRequest(GET, "/", nil)
 	e.ServeHTTP(w, r)
-	if w.Code != 200 {
+	if w.Code != http.StatusOK {
 		t.Errorf("status code should be 200, found %d", w.Code)
 	}
 }
@@ -45,7 +45,7 @@ func TestEchoFavicon(t *testing.T) {
 	w := httptest.NewRecorder()
 	r, _ := http.NewRequest(GET, "/favicon.ico", nil)
 	e.ServeHTTP(w, r)
-	if w.Code != 200 {
+	if w.Code != http.StatusOK {
 		t.Errorf("status code should be 200, found %d", w.Code)
 	}
 }
@@ -56,7 +56,7 @@ func TestEchoStatic(t *testing.T) {
 	w := httptest.NewRecorder()
 	r, _ := http.NewRequest(GET, "/scripts/main.js", nil)
 	e.ServeHTTP(w, r)
-	if w.Code != 200 {
+	if w.Code != http.StatusOK {
 		t.Errorf("status code should be 200, found %d", w.Code)
 	}
 }
@@ -227,7 +227,7 @@ func TestEchoGroup(t *testing.T) {
 	w = httptest.NewRecorder()
 	r, _ = http.NewRequest(GET, "/group3/group4/home", nil)
 	e.ServeHTTP(w, r)
-	if w.Code != 200 {
+	if w.Code != http.StatusOK {
 		t.Errorf("status code should be 200, found %d", w.Code)
 	}
 }
