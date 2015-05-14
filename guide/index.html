@@ -185,7 +185,7 @@ types of handlers.</p>
 <h3 id="group">Group</h3>
 <p><em>WIP</em></p>
 <h3 id="path-parameter">Path parameter</h3>
-<p>URL path parameters can be extracted either by name <code>echo.Context.Param(name string) string</code>
+<p>Request path parameters can be extracted either by name <code>echo.Context.Param(name string) string</code>
 or by index <code>echo.Context.P(i uint8) string</code>. Getting parameter by index gives a
 slightly better performance.</p>
 <pre><code class="go">echo.Get(&quot;/users/:id&quot;, func(c *echo.Context) *HTTPError {
@@ -271,25 +271,25 @@ e.Get(&quot;/users/:id&quot;, h)
 <p>Sends an HTML HTTP response with status code.</p>
 <h3 id="static-files">Static files</h3>
 <p><code>echo.Static(path, root string)</code> serves static files. For example, code below serves
-files from directory <code>public/scripts</code> for any URL path starting with <code>/scripts/</code>.</p>
+files from directory <code>public/scripts</code> for any request path starting with <code>/scripts/</code>.</p>
 <pre><code class="go">e.Static(&quot;/scripts/&quot;, &quot;public/scripts&quot;)
 </code></pre>
 
 <h3 id="serving-a-file">Serving a file</h3>
 <p><code>echo.ServeFile(path, file string)</code> serves a file. For example, code below serves
-file <code>welcome.html</code> for URL path <code>/welcome</code>.</p>
+file <code>welcome.html</code> for request path <code>/welcome</code>.</p>
 <pre><code class="go">e.ServeFile(&quot;/welcome&quot;, &quot;welcome.html&quot;)
 </code></pre>
 
 <h3 id="serving-an-index-file">Serving an index file</h3>
-<p><code>echo.Index(file string)</code> serves an index file. For example, code below serves file
-<code>index.html</code>.</p>
-<pre><code class="go">e.Index(&quot;index.html&quot;)
+<p><code>echo.Index(file string)</code> serves root index page - <code>GET /</code>. For example, code below
+serves root index page from file <code>public/index.html</code>.</p>
+<pre><code class="go">e.Index(&quot;public/index.html&quot;)
 </code></pre>
 
 <h3 id="serving-favicon">Serving favicon</h3>
 <p><code>echo.Favicon(file string)</code> serves default favicon - <code>GET /favicon.ico</code>. For example,
-code below serves file <code>favicon.ico</code>.</p>
+code below serves favicon from file <code>public/favicon.ico</code>.</p>
 <pre><code class="go">e.Index(&quot;public/favicon.ico&quot;)
 </code></pre>
 
