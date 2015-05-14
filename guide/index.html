@@ -290,7 +290,7 @@ serves root index page from file <code>public/index.html</code>.</p>
 <h3 id="serving-favicon">Serving favicon</h3>
 <p><code>echo.Favicon(file string)</code> serves default favicon - <code>GET /favicon.ico</code>. For example,
 code below serves favicon from file <code>public/favicon.ico</code>.</p>
-<pre><code class="go">e.Index(&quot;public/favicon.ico&quot;)
+<pre><code class="go">e.Favicon(&quot;public/favicon.ico&quot;)
 </code></pre>
 
 <h2 id="error-handling">Error Handling</h2>
