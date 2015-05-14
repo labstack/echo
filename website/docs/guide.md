@@ -224,7 +224,7 @@ e.Index("public/index.html")
 code below serves favicon from file `public/favicon.ico`.
 
 ```go
-e.Index("public/favicon.ico")
+e.Favicon("public/favicon.ico")
 ```
 
 ## Error Handling
