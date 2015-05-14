@@ -163,7 +163,9 @@ h := func(*echo.Context) *HTTPError {
 e.Get("/users/:id", h)
 ```
 
-<!-- ## Middleware -->
+## (Middleware)[https://github.com/labstack/echo/tree/master/examples/middleware]
+
+*WIP*
 
 ## Response
 

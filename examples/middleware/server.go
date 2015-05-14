@@ -31,6 +31,16 @@ func main() {
 		return false
 	}))
 
+	//-------
+	// Slash
+	//-------
+
+	e.Use(mw.StripTrailingSlash())
+
+	// or
+
+	//	e.Use(mw.RedirectToSlash())
+
 	// Routes
 	e.Get("/", hello)
 
