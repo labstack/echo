@@ -113,6 +113,8 @@
         
             <li><a href="#routing">Routing</a></li>
         
+            <li><a href="#middlewarehttpsgithubcomlabstackechotreemasterexamplesmiddleware">(Middleware)[https://github.com/labstack/echo/tree/master/examples/middleware]</a></li>
+        
             <li><a href="#response">Response</a></li>
         
             <li><a href="#error-handling">Error Handling</a></li>
@@ -251,8 +253,8 @@ h := func(*echo.Context) *HTTPError {
 e.Get(&quot;/users/:id&quot;, h)
 </code></pre>
 
-<!-- ## Middleware -->
-
+<h2 id="middlewarehttpsgithubcomlabstackechotreemasterexamplesmiddleware">(Middleware)[https://github.com/labstack/echo/tree/master/examples/middleware]</h2>
+<p><em>WIP</em></p>
 <h2 id="response">Response</h2>
 <h3 id="json">JSON</h3>
 <pre><code class="go">context.JSON(code int, v interface{}) *HTTPError
@@ -290,7 +292,7 @@ serves root index page from file <code>public/index.html</code>.</p>
 <h3 id="serving-favicon">Serving favicon</h3>
 <p><code>echo.Favicon(file string)</code> serves default favicon - <code>GET /favicon.ico</code>. For example,
 code below serves favicon from file <code>public/favicon.ico</code>.</p>
-<pre><code class="go">e.Favicon(&quot;public/favicon.ico&quot;)
+<pre><code class="go">e.Index(&quot;public/favicon.ico&quot;)
 </code></pre>
 
 <h2 id="error-handling">Error Handling</h2>
