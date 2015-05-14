@@ -15,7 +15,7 @@ func StripTrailingSlash() echo.HandlerFunc {
 }
 
 // RedirectToSlash redirects requests without trailing slash path to trailing slash
-// path with status code.
+// path, with status code.
 func RedirectToSlash(code int) echo.HandlerFunc {
 	return func(c *echo.Context) (he *echo.HTTPError) {
 		p := c.Request.URL.Path
