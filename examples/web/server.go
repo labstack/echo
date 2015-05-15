@@ -65,7 +65,7 @@ func main() {
 	e := echo.New()
 
 	// Middleware
-	e.Use(mw.Logger)
+	e.Use(mw.Logger())
 
 	//------------------------
 	// Third-party middleware

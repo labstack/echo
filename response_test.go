@@ -34,7 +34,7 @@ func TestResponse(t *testing.T) {
 	// Write & Size
 	s := "echo"
 	r.Write([]byte(s))
-	if r.Size() != len(s) {
+	if r.Size() != int64(len(s)) {
 		t.Errorf("size should be %d", len(s))
 	}
 }

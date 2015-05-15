@@ -90,7 +90,9 @@ const (
 	//---------
 
 	Accept             = "Accept"
+	AcceptEncoding     = "Accept-Encoding"
 	ContentDisposition = "Content-Disposition"
+	ContentEncoding    = "Content-Encoding"
 	ContentLength      = "Content-Length"
 	ContentType        = "Content-Type"
 	Authorization      = "Authorization"

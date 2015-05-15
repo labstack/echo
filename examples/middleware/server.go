@@ -21,7 +21,7 @@ func main() {
 	//------------
 
 	// Logger
-	e.Use(mw.Logger)
+	e.Use(mw.Logger())
 
 	// Basic auth
 	e.Use(mw.BasicAuth(func(u, p string) bool {
@@ -40,6 +40,9 @@ func main() {
 	// or
 
 	//	e.Use(mw.RedirectToSlash())
+
+	// Gzip
+	e.Use(mw.Gzip())
 
 	// Routes
 	e.Get("/", hello)

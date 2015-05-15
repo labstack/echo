@@ -8,28 +8,34 @@ import (
 	"github.com/labstack/gommon/color"
 )
 
-func Logger(h echo.HandlerFunc) echo.HandlerFunc {
-	return func(c *echo.Context) *echo.HTTPError {
-		start := time.Now()
-		if he := h(c); he != nil {
-			c.Error(he)
-		}
-		end := time.Now()
-		m := c.Request.Method
-		p := c.Request.URL.Path
-		n := c.Response.Status()
-		col := color.Green
+func Logger() echo.MiddlewareFunc {
+	return func(h echo.HandlerFunc) echo.HandlerFunc {
+		return func(c *echo.Context) *echo.HTTPError {
+			start := time.Now()
+			if he := h(c); he != nil {
+				c.Error(he)
+			}
+			end := time.Now()
+			method := c.Request.Method
+			path := c.Request.URL.Path
+			if path == "" {
+				path = "/"
+			}
+			size := c.Response.Size()
 
-		switch {
-		case n >= 500:
-			col = color.Red
-		case n >= 400:
-			col = color.Yellow
-		case n >= 300:
-			col = color.Cyan
-		}
+			n := c.Response.Status()
+			code := color.Green(n)
+			switch {
+			case n >= 500:
+				code = color.Red(n)
+			case n >= 400:
+				code = color.Yellow(n)
+			case n >= 300:
+				code = color.Cyan(n)
+			}
 
-		log.Printf("%s %s %s %s", m, p, col(n), end.Sub(start))
-		return nil
+			log.Printf("%s %s %s %s %d", method, path, code, end.Sub(start), size)
+			return nil
+		}
 	}
 }

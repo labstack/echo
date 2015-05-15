@@ -53,8 +53,8 @@ func (c *Context) Param(name string) (value string) {
 
 // Bind binds the request body into specified type v. Default binder does it
 // based on Content-Type header.
-func (c *Context) Bind(v interface{}) *HTTPError {
-	return c.echo.binder(c.Request, v)
+func (c *Context) Bind(i interface{}) *HTTPError {
+	return c.echo.binder(c.Request, i)
 }
 
 // Render invokes the registered HTML template renderer and sends a text/html
@@ -69,10 +69,10 @@ func (c *Context) Render(code int, name string, data interface{}) *HTTPError {
 }
 
 // JSON sends an application/json response with status code.
-func (c *Context) JSON(code int, v interface{}) *HTTPError {
+func (c *Context) JSON(code int, i interface{}) *HTTPError {
 	c.Response.Header().Set(ContentType, ApplicationJSON+"; charset=utf-8")
 	c.Response.WriteHeader(code)
-	if err := json.NewEncoder(c.Response).Encode(v); err != nil {
+	if err := json.NewEncoder(c.Response).Encode(i); err != nil {
 		return &HTTPError{Error: err}
 	}
 	return nil
