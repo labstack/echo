@@ -10,8 +10,8 @@ import (
 type (
 	Response struct {
 		Writer    http.ResponseWriter
-		status      int
-		size      uint64
+		status    int
+		size      int64
 		committed bool
 	}
 )
@@ -33,7 +33,7 @@ func (r *Response) WriteHeader(code int) {
 
 func (r *Response) Write(b []byte) (n int, err error) {
 	n, err = r.Writer.Write(b)
-	r.size += uint64(n)
+	r.size += int64(n)
 	return n, err
 }
 
@@ -41,7 +41,7 @@ func (r *Response) Status() int {
 	return r.status
 }
 
-func (r *Response) Size() uint64 {
+func (r *Response) Size() int64 {
 	return r.size
 }
 
