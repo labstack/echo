@@ -61,7 +61,7 @@ func main() {
 	e := echo.New()
 
 	// Middleware
-	e.Use(mw.Logger)
+	e.Use(mw.Logger())
 
 	// Routes
 	e.Post("/users", createUser)

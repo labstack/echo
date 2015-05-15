@@ -10,8 +10,8 @@ import (
 type (
 	Response struct {
 		Writer    http.ResponseWriter
-		status    int
-		size      int
+		status      int
+		size      uint64
 		committed bool
 	}
 )
@@ -20,20 +20,20 @@ func (r *Response) Header() http.Header {
 	return r.Writer.Header()
 }
 
-func (r *Response) WriteHeader(n int) {
+func (r *Response) WriteHeader(code int) {
 	if r.committed {
 		// TODO: Warning
 		log.Printf("echo: %s", color.Yellow("response already committed"))
 		return
 	}
-	r.status = n
-	r.Writer.WriteHeader(n)
+	r.status = code
+	r.Writer.WriteHeader(code)
 	r.committed = true
 }
 
 func (r *Response) Write(b []byte) (n int, err error) {
 	n, err = r.Writer.Write(b)
-	r.size += n
+	r.size += uint64(n)
 	return n, err
 }
 
@@ -41,7 +41,7 @@ func (r *Response) Status() int {
 	return r.status
 }
 
-func (r *Response) Size() int {
+func (r *Response) Size() uint64 {
 	return r.size
 }
 
