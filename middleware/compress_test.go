@@ -21,7 +21,7 @@ func TestGzip(t *testing.T) {
 	})(c)
 
 	if w.Header().Get(echo.ContentEncoding) != "gzip" {
-		t.Errorf("expected Content-Encoding: gzip, got %d", w.Header().Get(echo.ContentEncoding))
+		t.Errorf("expected Content-Encoding header `gzip`, got %d.", w.Header().Get(echo.ContentEncoding))
 	}
 
 	r, err := gzip.NewReader(w.Body)
@@ -37,6 +37,6 @@ func TestGzip(t *testing.T) {
 	s := string(b)
 
 	if s != "test" {
-		t.Errorf(`expected "test", got "%s"`, s)
+		t.Errorf("expected `test`, got %s.", s)
 	}
 }
