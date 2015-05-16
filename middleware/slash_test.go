@@ -13,8 +13,9 @@ func TestStripTrailingSlash(t *testing.T) {
 	res := &echo.Response{Writer: httptest.NewRecorder()}
 	c := echo.NewContext(req, res, echo.New())
 	StripTrailingSlash()(c)
-	if c.Request.URL.Path != "/users" {
-		t.Error("it should strip the trailing slash")
+	p := c.Request.URL.Path
+	if p != "/users" {
+		t.Errorf("expected path `/users` got, %s.", p)
 	}
 }
 
@@ -23,10 +24,15 @@ func TestRedirectToSlash(t *testing.T) {
 	res := &echo.Response{Writer: httptest.NewRecorder()}
 	c := echo.NewContext(req, res, echo.New())
 	RedirectToSlash(RedirectToSlashOptions{Code: http.StatusTemporaryRedirect})(c)
+
+	// Status code
 	if res.Status() != http.StatusTemporaryRedirect {
-		t.Errorf("status code should be 307, found %d", res.Status())
+		t.Errorf("expected status `307`, got %d.", res.Status())
 	}
-	if c.Response.Header().Get("Location") != "/users/" {
-		t.Error("Location header should be /users/")
+
+	// Location header
+	l := c.Response.Header().Get("Location")
+	if l != "/users/" {
+		t.Errorf("expected Location header `/users/`, got %s.", l)
 	}
 }
