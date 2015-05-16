@@ -187,7 +187,7 @@ func main() {
     e := echo.New()
 
     // Middleware
-    e.Use(mw.Logger)
+    e.Use(mw.Logger())
 
     // Routes
     e.Get(&quot;/&quot;, hello)
@@ -198,7 +198,7 @@ func main() {
 </code></pre>
 
 <p><code>echo.New()</code> returns a new instance of Echo.</p>
-<p><code>e.Use(mw.Logger)</code> adds logging middleware to the chain. It logs every HTTP request
+<p><code>e.Use(mw.Logger())</code> adds logging middleware to the chain. It logs every HTTP request
 made to the server, producing output</p>
 <pre><code class="sh">2015/04/25 12:15:20 GET / 200 7.544µs
 2015/04/25 12:15:26 GET / 200 3.681µs
