@@ -90,15 +90,9 @@ func main() {
 	// Echo instance
 	e := echo.New()
 
-	//------------
 	// Middleware
-	//------------
-
-	// Recover
-	e.Use(mw.Recover())
-
-	// Logger
 	e.Use(mw.Logger())
+	e.Use(mw.Recover())
 
 	// Routes
 	e.Get("/", hello)

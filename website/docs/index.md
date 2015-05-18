@@ -67,6 +67,7 @@ func main() {
 
 	// Middleware
 	e.Use(mw.Logger())
+	e.Use(mw.Recover())
 
 	// Routes
 	e.Get("/", hello)
