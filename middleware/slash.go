@@ -11,7 +11,8 @@ type (
 	}
 )
 
-// StripTrailingSlash removes trailing slash from request path.
+// StripTrailingSlash returns a middleware which removes trailing slash from request
+// path.
 func StripTrailingSlash() echo.HandlerFunc {
 	return func(c *echo.Context) *echo.HTTPError {
 		p := c.Request.URL.Path
@@ -23,8 +24,8 @@ func StripTrailingSlash() echo.HandlerFunc {
 	}
 }
 
-// RedirectToSlash redirects requests without trailing slash path to trailing slash
-// path, with .
+// RedirectToSlash returns a middleware which redirects requests without trailing
+// slash path to trailing slash path.
 func RedirectToSlash(opts ...RedirectToSlashOptions) echo.HandlerFunc {
 	code := http.StatusMovedPermanently
 

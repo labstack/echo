@@ -285,16 +285,6 @@ func TestEchoNotFound(t *testing.T) {
 	if w.Code != http.StatusNotFound {
 		t.Errorf("status code should be 404, found %d", w.Code)
 	}
-
-	// Customized NotFound handler
-	e.NotFoundHandler(func(c *Context) *HTTPError {
-		return c.String(http.StatusNotFound, "not found")
-	})
-	w = httptest.NewRecorder()
-	e.ServeHTTP(w, r)
-	if w.Body.String() != "not found" {
-		t.Errorf("body should be `not found`")
-	}
 }
 
 func verifyUser(u2 *user, t *testing.T) {

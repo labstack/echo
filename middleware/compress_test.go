@@ -1,42 +1,52 @@
 package middleware
 
 import (
+	"compress/gzip"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"compress/gzip"
 	"github.com/labstack/echo"
-	"io/ioutil"
 )
 
 func TestGzip(t *testing.T) {
+	// Empty Accept-Encoding header
 	req, _ := http.NewRequest(echo.GET, "/", nil)
-	req.Header.Set(echo.AcceptEncoding, "gzip")
 	w := httptest.NewRecorder()
 	res := &echo.Response{Writer: w}
 	c := echo.NewContext(req, res, echo.New())
-	Gzip()(func(c *echo.Context) *echo.HTTPError {
+	h := func(c *echo.Context) *echo.HTTPError {
 		return c.String(http.StatusOK, "test")
-	})(c)
-
-	if w.Header().Get(echo.ContentEncoding) != "gzip" {
-		t.Errorf("expected Content-Encoding header `gzip`, got %d.", w.Header().Get(echo.ContentEncoding))
+	}
+	Gzip()(h)(c)
+	s := w.Body.String()
+	if s != "test" {
+		t.Errorf("expected `test`, with empty Accept-Encoding header, got %s.", s)
 	}
 
+	// Content-Encoding header
+	req.Header.Set(echo.AcceptEncoding, "gzip")
+	w = httptest.NewRecorder()
+	c.Response = &echo.Response{Writer: w}
+	Gzip()(h)(c)
+	ce := w.Header().Get(echo.ContentEncoding)
+	if ce != "gzip" {
+		t.Errorf("expected Content-Encoding header `gzip`, got %d.", ce)
+	}
+
+	// Body
 	r, err := gzip.NewReader(w.Body)
 	defer r.Close()
 	if err != nil {
 		t.Error(err)
 	}
-
 	b, err := ioutil.ReadAll(r)
 	if err != nil {
 		t.Error(err)
 	}
-	s := string(b)
-
+	s = string(b)
 	if s != "test" {
-		t.Errorf("expected `test`, got %s.", s)
+		t.Errorf("expected body `test`, got %s.", s)
 	}
 }

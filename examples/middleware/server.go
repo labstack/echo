@@ -16,9 +16,15 @@ func main() {
 	// Echo instance
 	e := echo.New()
 
+	// Debug mode
+	e.Debug(true)
+
 	//------------
 	// Middleware
 	//------------
+
+	// Recover
+	e.Use(mw.Recover())
 
 	// Logger
 	e.Use(mw.Logger())

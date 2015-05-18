@@ -16,7 +16,14 @@ func main() {
 	// Echo instance
 	e := echo.New()
 
+	//------------
 	// Middleware
+	//------------
+
+	// Recover
+	e.Use(mw.Recover())
+
+	// Logger
 	e.Use(mw.Logger())
 
 	// Routes
