@@ -69,7 +69,9 @@ BenchmarkZeus_GithubAll	        2000	    752907 ns/op	  300688 B/op	    2648 all
 $ go get github.com/labstack/echo
 ```
 
-##[Hello, World!](https://github.com/labstack/echo/tree/master/examples/hello)
+##[Examples](https://github.com/labstack/echo/tree/master/examples)
+
+###[Hello, World!](https://github.com/labstack/echo/tree/master/examples/hello)
 
 ```go
 package main
@@ -102,7 +104,301 @@ func main() {
 }
 ```
 
-##[Examples](https://github.com/labstack/echo/tree/master/examples)
+###[CRUD](https://github.com/labstack/echo/tree/master/examples/crud)
+
+```go
+package main
+
+import (
+	"net/http"
+	"strconv"
+
+	"github.com/labstack/echo"
+	mw "github.com/labstack/echo/middleware"
+)
+
+type (
+	user struct {
+		ID   int
+		Name string
+	}
+)
+
+var (
+	users = map[int]*user{}
+	seq   = 1
+)
+
+//----------
+// Handlers
+//----------
+
+func createUser(c *echo.Context) *echo.HTTPError {
+	u := &user{
+		ID: seq,
+	}
+	if he := c.Bind(u); he != nil {
+		return he
+	}
+	users[u.ID] = u
+	seq++
+	return c.JSON(http.StatusCreated, u)
+}
+
+func getUser(c *echo.Context) *echo.HTTPError {
+	id, _ := strconv.Atoi(c.Param("id"))
+	return c.JSON(http.StatusOK, users[id])
+}
+
+func updateUser(c *echo.Context) *echo.HTTPError {
+	u := new(user)
+	if he := c.Bind(u); he != nil {
+		return he
+	}
+	id, _ := strconv.Atoi(c.Param("id"))
+	users[id].Name = u.Name
+	return c.JSON(http.StatusOK, users[id])
+}
+
+func deleteUser(c *echo.Context) *echo.HTTPError {
+	id, _ := strconv.Atoi(c.Param("id"))
+	delete(users, id)
+	return c.NoContent(http.StatusNoContent)
+}
+
+func main() {
+	e := echo.New()
+
+	// Middleware
+	e.Use(mw.Logger())
+	e.Use(mw.Recover())
+
+	// Routes
+	e.Post("/users", createUser)
+	e.Get("/users/:id", getUser)
+	e.Patch("/users/:id", updateUser)
+	e.Delete("/users/:id", deleteUser)
+
+	// Start server
+	e.Run(":1323")
+}
+```
+
+###[Website](https://github.com/labstack/echo/tree/master/examples/website)
+
+```go
+package main
+
+import (
+	"io"
+	"net/http"
+
+	"html/template"
+
+	"github.com/labstack/echo"
+	mw "github.com/labstack/echo/middleware"
+	"github.com/rs/cors"
+	"github.com/thoas/stats"
+)
+
+type (
+	// Template provides HTML template rendering
+	Template struct {
+		templates *template.Template
+	}
+
+	user struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	}
+)
+
+var (
+	users map[string]user
+)
+
+// Render HTML
+func (t *Template) Render(w io.Writer, name string, data interface{}) *echo.HTTPError {
+	if err := t.templates.ExecuteTemplate(w, name, data); err != nil {
+		return &echo.HTTPError{Error: err}
+	}
+	return nil
+}
+
+//----------
+// Handlers
+//----------
+
+func welcome(c *echo.Context) *echo.HTTPError {
+	return c.Render(http.StatusOK, "welcome", "Joe")
+}
+
+func createUser(c *echo.Context) *echo.HTTPError {
+	u := new(user)
+	if err := c.Bind(u); err != nil {
+		return err
+	}
+	users[u.ID] = *u
+	return c.JSON(http.StatusCreated, u)
+}
+
+func getUsers(c *echo.Context) *echo.HTTPError {
+	return c.JSON(http.StatusOK, users)
+}
+
+func getUser(c *echo.Context) *echo.HTTPError {
+	return c.JSON(http.StatusOK, users[c.P(0)])
+}
+
+func main() {
+	e := echo.New()
+
+	// Middleware
+	e.Use(mw.Logger())
+	e.Use(mw.Recover())
+
+	//------------------------
+	// Third-party middleware
+	//------------------------
+
+	// https://github.com/rs/cors
+	e.Use(cors.Default().Handler)
+
+	// https://github.com/thoas/stats
+	s := stats.New()
+	e.Use(s.Handler)
+	// Route
+	e.Get("/stats", func(c *echo.Context) *echo.HTTPError {
+		return c.JSON(http.StatusOK, s.Data())
+	})
+
+	// Serve index file
+	e.Index("public/index.html")
+
+	// Serve favicon
+	e.Favicon("public/favicon.ico")
+
+	// Serve static files
+	e.Static("/scripts/", "public/scripts")
+
+	//--------
+	// Routes
+	//--------
+
+	e.Post("/users", createUser)
+	e.Get("/users", getUsers)
+	e.Get("/users/:id", getUser)
+
+	//-----------
+	// Templates
+	//-----------
+
+	t := &Template{
+		// Cached templates
+		templates: template.Must(template.ParseFiles("public/views/welcome.html")),
+	}
+	e.Renderer(t)
+	e.Get("/welcome", welcome)
+
+	//-------
+	// Group
+	//-------
+
+	// Group with parent middleware
+	a := e.Group("/admin")
+	a.Use(func(c *echo.Context) *echo.HTTPError {
+		// Security middleware
+		return nil
+	})
+	a.Get("", func(c *echo.Context) *echo.HTTPError {
+		return c.String(http.StatusOK, "Welcome admin!")
+	})
+
+	// Group with no parent middleware
+	g := e.Group("/files", func(c *echo.Context) *echo.HTTPError {
+		// Security middleware
+		return nil
+	})
+	g.Get("", func(c *echo.Context) *echo.HTTPError {
+		return c.String(http.StatusOK, "Your files!")
+	})
+
+	// Start server
+	e.Run(":1323")
+}
+
+func init() {
+	users = map[string]user{
+		"1": user{
+			ID:   "1",
+			Name: "Wreck-It Ralph",
+		},
+	}
+}
+```
+
+###[Middleware](https://github.com/labstack/echo/tree/master/examples/middleware)
+
+```go
+package main
+
+import (
+	"net/http"
+
+	"github.com/labstack/echo"
+	mw "github.com/labstack/echo/middleware"
+)
+
+// Handler
+func hello(c *echo.Context) *echo.HTTPError {
+	return c.String(http.StatusOK, "Hello, World!\n")
+}
+
+func main() {
+	// Echo instance
+	e := echo.New()
+
+	// Debug mode
+	e.Debug(true)
+
+	//------------
+	// Middleware
+	//------------
+
+	// Logger
+	e.Use(mw.Logger())
+
+	// Recover
+	e.Use(mw.Recover())
+
+	// Basic auth
+	e.Use(mw.BasicAuth(func(u, p string) bool {
+		if u == "joe" && p == "secret" {
+			return true
+		}
+		return false
+	}))
+
+	//-------
+	// Slash
+	//-------
+
+	e.Use(mw.StripTrailingSlash())
+
+	// or
+
+	//	e.Use(mw.RedirectToSlash())
+
+	// Gzip
+	e.Use(mw.Gzip())
+
+	// Routes
+	e.Get("/", hello)
+
+	// Start server
+	e.Run(":1323")
+}
+```
 
 ##[Guide](http://labstack.github.io/echo/guide)
 

@@ -23,7 +23,7 @@ func (r *Response) Header() http.Header {
 func (r *Response) WriteHeader(code int) {
 	if r.committed {
 		// TODO: Warning
-		log.Printf("echo ⇒ %s", color.Yellow("response already committed"))
+		log.Printf("echo => %s", color.Yellow("response already committed"))
 		return
 	}
 	r.status = code
