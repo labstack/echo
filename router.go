@@ -308,11 +308,11 @@ func (r *router) Find(method, path string, ctx *Context) (h HandlerFunc, echo *E
 func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	c := r.echo.pool.Get().(*Context)
 	h, _ := r.Find(req.Method, req.URL.Path, c)
-	c.reset(w, req, nil)
-	if h != nil {
-		h(c)
+	c.reset(w, req, r.echo)
+	if h == nil {
+		c.Error(&HTTPError{Code: http.StatusNotFound})
 	} else {
-		r.echo.notFoundHandler(c)
+		h(c)
 	}
 	r.echo.pool.Put(c)
 }

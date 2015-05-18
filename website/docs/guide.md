@@ -35,15 +35,6 @@ Sets the maximum number of path parameters allowed for the application.
 Default value is **5**, [good enough](https://github.com/interagent/http-api-design#minimize-path-nesting)
 for many use cases. Restricting path parameters allows us to use memory efficiently.
 
-### Not found handler
-
-`echo.NotFoundHandler(h Handler)`
-
-Registers a custom NotFound handler. This handler is called in case router doesn't
-find a matching route for the HTTP request.
-
-Default handler sends 404 "Not Found" response.
-
 ### HTTP error handler
 
 `echo.HTTPErrorHandler(h HTTPErrorHandler)`
@@ -53,7 +44,7 @@ Registers a custom centralized HTTP error handler `func(*HTTPError, *Context)`.
 Default handler sends `HTTPError.Message` HTTP response with `HTTPError.Code` status
 code.
 
-- If HTTPError.Code is not specified it uses 500 "Internal Server Error".
+- If HTTPError.Code is not specified it uses "500 - Internal Server Error".
 - If HTTPError.Message is not specified it uses HTTPError.Error.Error() or the status
 code text.
 

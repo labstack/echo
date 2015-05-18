@@ -90,14 +90,21 @@ func main() {
 	// Echo instance
 	e := echo.New()
 
+	//------------
 	// Middleware
+	//------------
+
+	// Recover
+	e.Use(mw.Recover())
+
+	// Logger
 	e.Use(mw.Logger())
 
 	// Routes
 	e.Get("/", hello)
 
 	// Start server
-	e.Run(":1323)
+	e.Run(":1323")
 }
 ```
 

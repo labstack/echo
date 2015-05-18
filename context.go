@@ -7,7 +7,7 @@ import (
 
 type (
 	// Context represents context for the current request. It holds request and
-	// response references, path parameters, data and registered handler.
+	// response objects, path parameters, data and registered handler.
 	Context struct {
 		Request  *http.Request
 		Response *Response

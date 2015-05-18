@@ -65,6 +65,7 @@ func main() {
 	e := echo.New()
 
 	// Middleware
+	e.Use(mw.Recover())
 	e.Use(mw.Logger())
 
 	//------------------------

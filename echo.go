@@ -22,12 +22,12 @@ type (
 		prefix           string
 		middleware       []MiddlewareFunc
 		maxParam         byte
-		notFoundHandler  HandlerFunc
 		httpErrorHandler HTTPErrorHandler
 		binder           BindFunc
 		renderer         Renderer
 		uris             map[Handler]string
 		pool             sync.Pool
+		debug            bool
 	}
 	HTTPError struct {
 		Code    int
@@ -115,8 +115,8 @@ var (
 	// Errors
 	//--------
 
-	UnsupportedMediaType  = errors.New("echo: unsupported media type")
-	RendererNotRegistered = errors.New("echo: renderer not registered")
+	UnsupportedMediaType  = errors.New("echo ⇒ unsupported media type")
+	RendererNotRegistered = errors.New("echo ⇒ renderer not registered")
 )
 
 // New creates an Echo instance.
@@ -134,19 +134,14 @@ func New() (e *Echo) {
 	//----------
 
 	e.MaxParam(5)
-	e.NotFoundHandler(func(c *Context) *HTTPError {
-		http.Error(c.Response, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-		return nil
-	})
 	e.HTTPErrorHandler(func(he *HTTPError, c *Context) {
 		if he.Code == 0 {
 			he.Code = http.StatusInternalServerError
 		}
 		if he.Message == "" {
-			if he.Error != nil {
+			he.Message = http.StatusText(he.Code)
+			if e.debug {
 				he.Message = he.Error.Error()
-			} else {
-				he.Message = http.StatusText(he.Code)
 			}
 		}
 		http.Error(c.Response, he.Message, he.Code)
@@ -185,12 +180,6 @@ func (e *Echo) MaxParam(n uint8) {
 	e.maxParam = n
 }
 
-// NotFoundHandler registers a custom NotFound handler used by router in case it
-// doesn't find any registered handler for HTTP method and path.
-func (e *Echo) NotFoundHandler(h Handler) {
-	e.notFoundHandler = wrapHandler(h)
-}
-
 // HTTPErrorHandler registers an HTTP error handler.
 func (e *Echo) HTTPErrorHandler(h HTTPErrorHandler) {
 	e.httpErrorHandler = h
@@ -205,6 +194,11 @@ func (e *Echo) Binder(b BindFunc) {
 // API.
 func (e *Echo) Renderer(r Renderer) {
 	e.renderer = r
+}
+
+// Debug runs the application in debug mode.
+func (e *Echo) Debug(on bool) {
+	e.debug = on
 }
 
 // Use adds handler to the middleware chain.
@@ -325,21 +319,20 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if echo != nil {
 		e = echo
 	}
-	if h == nil {
-		h = e.notFoundHandler
-	}
 	c.reset(w, r, e)
+	if h == nil {
+		c.Error(&HTTPError{Code: http.StatusNotFound})
+	} else {
+		// Chain middleware with handler in the end
+		for i := len(e.middleware) - 1; i >= 0; i-- {
+			h = e.middleware[i](h)
+		}
 
-	// Chain middleware with handler in the end
-	for i := len(e.middleware) - 1; i >= 0; i-- {
-		h = e.middleware[i](h)
+		// Execute chain
+		if he := h(c); he != nil {
+			e.httpErrorHandler(he, c)
+		}
 	}
-
-	// Execute chain
-	if he := h(c); he != nil {
-		e.httpErrorHandler(he, c)
-	}
-
 	e.pool.Put(c)
 }
 
@@ -394,7 +387,7 @@ func wrapMiddleware(m Middleware) MiddlewareFunc {
 	case func(http.ResponseWriter, *http.Request):
 		return wrapHTTPHandlerFuncMW(m)
 	default:
-		panic("echo: unknown middleware")
+		panic("echo ⇒ unknown middleware")
 	}
 }
 
@@ -440,7 +433,7 @@ func wrapHandler(h Handler) HandlerFunc {
 			return nil
 		}
 	default:
-		panic("echo: unknown handler")
+		panic("echo ⇒ unknown handler")
 	}
 }
 

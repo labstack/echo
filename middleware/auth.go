@@ -14,7 +14,7 @@ const (
 	Basic = "Basic"
 )
 
-// BasicAuth provides HTTP basic authentication.
+// BasicAuth returns an HTTP basic authentication middleware.
 func BasicAuth(fn AuthFunc) echo.HandlerFunc {
 	return func(c *echo.Context) (he *echo.HTTPError) {
 		auth := c.Request.Header.Get(echo.Authorization)
