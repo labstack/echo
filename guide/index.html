@@ -150,18 +150,13 @@ Specific version of Echo can be installed using any <a href="https://github.com/
 <p>Sets the maximum number of path parameters allowed for the application.
 Default value is <strong>5</strong>, <a href="https://github.com/interagent/http-api-design#minimize-path-nesting">good enough</a>
 for many use cases. Restricting path parameters allows us to use memory efficiently.</p>
-<h3 id="not-found-handler">Not found handler</h3>
-<p><code>echo.NotFoundHandler(h Handler)</code></p>
-<p>Registers a custom NotFound handler. This handler is called in case router doesn't
-find a matching route for the HTTP request.</p>
-<p>Default handler sends 404 "Not Found" response.</p>
 <h3 id="http-error-handler">HTTP error handler</h3>
 <p><code>echo.HTTPErrorHandler(h HTTPErrorHandler)</code></p>
 <p>Registers a custom centralized HTTP error handler <code>func(*HTTPError, *Context)</code>.</p>
 <p>Default handler sends <code>HTTPError.Message</code> HTTP response with <code>HTTPError.Code</code> status
 code.</p>
 <ul>
-<li>If HTTPError.Code is not specified it uses 500 "Internal Server Error".</li>
+<li>If HTTPError.Code is not specified it uses "500 - Internal Server Error".</li>
 <li>If HTTPError.Message is not specified it uses HTTPError.Error.Error() or the status
 code text.</li>
 </ul>
