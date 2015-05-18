@@ -392,7 +392,7 @@ func wrapMiddleware(m Middleware) MiddlewareFunc {
 	case func(http.ResponseWriter, *http.Request):
 		return wrapHTTPHandlerFuncMW(m)
 	default:
-		panic("echo ⇒ unknown middleware")
+		panic("echo => unknown middleware")
 	}
 }
 
