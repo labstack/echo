@@ -30,7 +30,7 @@ func TestEchoMaxParam(t *testing.T) {
 
 func TestEchoIndex(t *testing.T) {
 	e := New()
-	e.Index("examples/web/public/index.html")
+	e.Index("examples/website/public/index.html")
 	w := httptest.NewRecorder()
 	r, _ := http.NewRequest(GET, "/", nil)
 	e.ServeHTTP(w, r)
@@ -41,7 +41,7 @@ func TestEchoIndex(t *testing.T) {
 
 func TestEchoFavicon(t *testing.T) {
 	e := New()
-	e.Favicon("examples/web/public/favicon.ico")
+	e.Favicon("examples/website/public/favicon.ico")
 	w := httptest.NewRecorder()
 	r, _ := http.NewRequest(GET, "/favicon.ico", nil)
 	e.ServeHTTP(w, r)
@@ -52,7 +52,7 @@ func TestEchoFavicon(t *testing.T) {
 
 func TestEchoStatic(t *testing.T) {
 	e := New()
-	e.Static("/scripts", "examples/web/public/scripts")
+	e.Static("/scripts", "examples/website/public/scripts")
 	w := httptest.NewRecorder()
 	r, _ := http.NewRequest(GET, "/scripts/main.js", nil)
 	e.ServeHTTP(w, r)
