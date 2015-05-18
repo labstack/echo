@@ -310,9 +310,8 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	h, _ := r.Find(req.Method, req.URL.Path, c)
 	c.reset(w, req, r.echo)
 	if h == nil {
-		c.Error(&HTTPError{Code: http.StatusNotFound})
-	} else {
-		h(c)
+		h = r.echo.notFoundHandler
 	}
+	h(c)
 	r.echo.pool.Put(c)
 }

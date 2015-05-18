@@ -22,6 +22,7 @@ type (
 		prefix           string
 		middleware       []MiddlewareFunc
 		maxParam         byte
+		notFoundHandler  HandlerFunc
 		httpErrorHandler HTTPErrorHandler
 		binder           BindFunc
 		renderer         Renderer
@@ -134,13 +135,16 @@ func New() (e *Echo) {
 	//----------
 
 	e.MaxParam(5)
+	e.notFoundHandler = func(c *Context) *HTTPError {
+		return &HTTPError{Code: http.StatusNotFound}
+	}
 	e.HTTPErrorHandler(func(he *HTTPError, c *Context) {
 		if he.Code == 0 {
 			he.Code = http.StatusInternalServerError
 		}
 		if he.Message == "" {
 			he.Message = http.StatusText(he.Code)
-			if e.debug {
+			if e.debug && he.Error != nil {
 				he.Message = he.Error.Error()
 			}
 		}
@@ -321,18 +325,19 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	c.reset(w, r, e)
 	if h == nil {
-		c.Error(&HTTPError{Code: http.StatusNotFound})
-	} else {
-		// Chain middleware with handler in the end
-		for i := len(e.middleware) - 1; i >= 0; i-- {
-			h = e.middleware[i](h)
-		}
-
-		// Execute chain
-		if he := h(c); he != nil {
-			e.httpErrorHandler(he, c)
-		}
+		h = e.notFoundHandler
 	}
+
+	// Chain middleware with handler in the end
+	for i := len(e.middleware) - 1; i >= 0; i-- {
+		h = e.middleware[i](h)
+	}
+
+	// Execute chain
+	if he := h(c); he != nil {
+		e.httpErrorHandler(he, c)
+	}
+
 	e.pool.Put(c)
 }
 

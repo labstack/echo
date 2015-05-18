@@ -23,11 +23,11 @@ func main() {
 	// Middleware
 	//------------
 
-	// Recover
-	e.Use(mw.Recover())
-
 	// Logger
 	e.Use(mw.Logger())
+
+	// Recover
+	e.Use(mw.Recover())
 
 	// Basic auth
 	e.Use(mw.BasicAuth(func(u, p string) bool {
