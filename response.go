@@ -1,7 +1,9 @@
 package echo
 
 import (
+	"bufio"
 	"log"
+	"net"
 	"net/http"
 
 	"github.com/labstack/gommon/color"
@@ -37,6 +39,21 @@ func (r *Response) Write(b []byte) (n int, err error) {
 	return n, err
 }
 
+// Flush wraps response writer's Flush function.
+func (r *Response) Flush() {
+	r.Writer.(http.Flusher).Flush()
+}
+
+// Hijack wraps response writer's Hijack function.
+func (r *Response) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	return r.Writer.(http.Hijacker).Hijack()
+}
+
+// CloseNotify wraps response writer's CloseNotify function.
+func (r *Response) CloseNotify() <-chan bool {
+	return r.Writer.(http.CloseNotifier).CloseNotify()
+}
+
 func (r *Response) Status() int {
 	return r.status
 }
@@ -47,5 +64,6 @@ func (r *Response) Size() int64 {
 
 func (r *Response) reset(w http.ResponseWriter) {
 	r.Writer = w
+	r.status = http.StatusOK
 	r.committed = false
 }
