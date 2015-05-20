@@ -108,7 +108,7 @@ func main() {
 		// Cached templates
 		templates: template.Must(template.ParseFiles("public/views/welcome.html")),
 	}
-	e.Renderer(t)
+	e.SetRenderer(t)
 	e.Get("/welcome", welcome)
 
 	//-------

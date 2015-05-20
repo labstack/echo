@@ -22,7 +22,7 @@ var u1 = user{
 // TODO: Improve me!
 func TestEchoMaxParam(t *testing.T) {
 	e := New()
-	e.MaxParam(8)
+	e.SetMaxParam(8)
 	if e.maxParam != 8 {
 		t.Errorf("max param should be 8, found %d", e.maxParam)
 	}
