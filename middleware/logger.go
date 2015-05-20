@@ -10,10 +10,10 @@ import (
 
 func Logger() echo.MiddlewareFunc {
 	return func(h echo.HandlerFunc) echo.HandlerFunc {
-		return func(c *echo.Context) *echo.HTTPError {
+		return func(c *echo.Context) error {
 			start := time.Now()
-			if he := h(c); he != nil {
-				c.Error(he)
+			if err := h(c); err != nil {
+				c.Error(err)
 			}
 			end := time.Now()
 			method := c.Request.Method

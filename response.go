@@ -11,15 +11,23 @@ import (
 
 type (
 	Response struct {
-		Writer    http.ResponseWriter
+		writer    http.ResponseWriter
 		status    int
 		size      int64
 		committed bool
 	}
 )
 
+func NewResponse(w http.ResponseWriter) *Response {
+	return &Response{writer: w}
+}
+
 func (r *Response) Header() http.Header {
-	return r.Writer.Header()
+	return r.writer.Header()
+}
+
+func (r *Response) Writer() http.ResponseWriter {
+	return r.writer
 }
 
 func (r *Response) WriteHeader(code int) {
@@ -29,29 +37,29 @@ func (r *Response) WriteHeader(code int) {
 		return
 	}
 	r.status = code
-	r.Writer.WriteHeader(code)
+	r.writer.WriteHeader(code)
 	r.committed = true
 }
 
 func (r *Response) Write(b []byte) (n int, err error) {
-	n, err = r.Writer.Write(b)
+	n, err = r.writer.Write(b)
 	r.size += int64(n)
 	return n, err
 }
 
 // Flush wraps response writer's Flush function.
 func (r *Response) Flush() {
-	r.Writer.(http.Flusher).Flush()
+	r.writer.(http.Flusher).Flush()
 }
 
 // Hijack wraps response writer's Hijack function.
 func (r *Response) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	return r.Writer.(http.Hijacker).Hijack()
+	return r.writer.(http.Hijacker).Hijack()
 }
 
 // CloseNotify wraps response writer's CloseNotify function.
 func (r *Response) CloseNotify() <-chan bool {
-	return r.Writer.(http.CloseNotifier).CloseNotify()
+	return r.writer.(http.CloseNotifier).CloseNotify()
 }
 
 func (r *Response) Status() int {
@@ -63,7 +71,7 @@ func (r *Response) Size() int64 {
 }
 
 func (r *Response) reset(w http.ResponseWriter) {
-	r.Writer = w
+	r.writer = w
 	r.status = http.StatusOK
 	r.committed = false
 }

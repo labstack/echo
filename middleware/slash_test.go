@@ -10,7 +10,7 @@ import (
 
 func TestStripTrailingSlash(t *testing.T) {
 	req, _ := http.NewRequest(echo.GET, "/users/", nil)
-	res := &echo.Response{Writer: httptest.NewRecorder()}
+	res := echo.NewResponse(httptest.NewRecorder())
 	c := echo.NewContext(req, res, echo.New())
 	StripTrailingSlash()(c)
 	p := c.Request.URL.Path
@@ -21,7 +21,7 @@ func TestStripTrailingSlash(t *testing.T) {
 
 func TestRedirectToSlash(t *testing.T) {
 	req, _ := http.NewRequest(echo.GET, "/users", nil)
-	res := &echo.Response{Writer: httptest.NewRecorder()}
+	res := echo.NewResponse(httptest.NewRecorder())
 	c := echo.NewContext(req, res, echo.New())
 	RedirectToSlash(RedirectToSlashOptions{Code: http.StatusTemporaryRedirect})(c)
 

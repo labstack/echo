@@ -7,7 +7,7 @@ import (
 )
 
 func TestResponse(t *testing.T) {
-	r := &Response{Writer: httptest.NewRecorder()}
+	r := NewResponse(httptest.NewRecorder())
 
 	// Header
 	if r.Header() == nil {

@@ -16,17 +16,14 @@ type (
 	}
 )
 
-func (t *Template) Render(w io.Writer, name string, data interface{}) *HTTPError {
-	if err := t.templates.ExecuteTemplate(w, name, data); err != nil {
-		return &HTTPError{Error: err}
-	}
-	return nil
+func (t *Template) Render(w io.Writer, name string, data interface{}) error {
+	return t.templates.ExecuteTemplate(w, name, data)
 }
 
 func TestContext(t *testing.T) {
 	b, _ := json.Marshal(u1)
 	r, _ := http.NewRequest(POST, "/users/1", bytes.NewReader(b))
-	c := NewContext(r, &Response{Writer: httptest.NewRecorder()}, New())
+	c := NewContext(r, NewResponse(httptest.NewRecorder()), New())
 
 	//------
 	// Bind

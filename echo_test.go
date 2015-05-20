@@ -67,7 +67,7 @@ func TestEchoMiddleware(t *testing.T) {
 
 	// MiddlewareFunc
 	e.Use(MiddlewareFunc(func(h HandlerFunc) HandlerFunc {
-		return func(c *Context) *HTTPError {
+		return func(c *Context) error {
 			b.WriteString("a")
 			return h(c)
 		}
@@ -75,14 +75,14 @@ func TestEchoMiddleware(t *testing.T) {
 
 	// func(echo.HandlerFunc) echo.HandlerFunc
 	e.Use(func(h HandlerFunc) HandlerFunc {
-		return func(c *Context) *HTTPError {
+		return func(c *Context) error {
 			b.WriteString("b")
 			return h(c)
 		}
 	})
 
-	// func(*echo.Context) *HTTPError
-	e.Use(func(c *Context) *HTTPError {
+	// func(*echo.Context) error
+	e.Use(func(c *Context) error {
 		b.WriteString("c")
 		return nil
 	})
@@ -111,7 +111,7 @@ func TestEchoMiddleware(t *testing.T) {
 	})
 
 	// Route
-	e.Get("/hello", func(c *Context) *HTTPError {
+	e.Get("/hello", func(c *Context) error {
 		return c.String(http.StatusOK, "world")
 	})
 
@@ -130,7 +130,7 @@ func TestEchoHandler(t *testing.T) {
 	e := New()
 
 	// HandlerFunc
-	e.Get("/1", HandlerFunc(func(c *Context) *HTTPError {
+	e.Get("/1", HandlerFunc(func(c *Context) error {
 		return c.String(http.StatusOK, "1")
 	}))
 	w := httptest.NewRecorder()
@@ -140,8 +140,8 @@ func TestEchoHandler(t *testing.T) {
 		t.Error("body should be 1")
 	}
 
-	// func(*echo.Context) *HTTPError
-	e.Get("/2", func(c *Context) *HTTPError {
+	// func(*echo.Context) error
+	e.Get("/2", func(c *Context) error {
 		return c.String(http.StatusOK, "2")
 	})
 	w = httptest.NewRecorder()
@@ -177,11 +177,11 @@ func TestEchoHandler(t *testing.T) {
 func TestEchoGroup(t *testing.T) {
 	b := new(bytes.Buffer)
 	e := New()
-	e.Use(func(*Context) *HTTPError {
+	e.Use(func(*Context) error {
 		b.WriteString("1")
 		return nil
 	})
-	e.Get("/users", func(*Context) *HTTPError { return nil })
+	e.Get("/users", func(*Context) error { return nil })
 	w := httptest.NewRecorder()
 	r, _ := http.NewRequest(GET, "/users", nil)
 	e.ServeHTTP(w, r)
@@ -191,11 +191,11 @@ func TestEchoGroup(t *testing.T) {
 
 	// Group
 	g1 := e.Group("/group1")
-	g1.Use(func(*Context) *HTTPError {
+	g1.Use(func(*Context) error {
 		b.WriteString("2")
 		return nil
 	})
-	g1.Get("/home", func(*Context) *HTTPError { return nil })
+	g1.Get("/home", func(*Context) error { return nil })
 	b.Reset()
 	w = httptest.NewRecorder()
 	r, _ = http.NewRequest(GET, "/group1/home", nil)
@@ -205,11 +205,11 @@ func TestEchoGroup(t *testing.T) {
 	}
 
 	// Group with no parent middleware
-	g2 := e.Group("/group2", func(*Context) *HTTPError {
+	g2 := e.Group("/group2", func(*Context) error {
 		b.WriteString("3")
 		return nil
 	})
-	g2.Get("/home", func(*Context) *HTTPError { return nil })
+	g2.Get("/home", func(*Context) error { return nil })
 	b.Reset()
 	w = httptest.NewRecorder()
 	r, _ = http.NewRequest(GET, "/group2/home", nil)
@@ -221,7 +221,7 @@ func TestEchoGroup(t *testing.T) {
 	// Nested group
 	g3 := e.Group("/group3")
 	g4 := g3.Group("/group4")
-	g4.Get("/home", func(c *Context) *HTTPError {
+	g4.Get("/home", func(c *Context) error {
 		return c.NoContent(http.StatusOK)
 	})
 	w = httptest.NewRecorder()
@@ -234,7 +234,7 @@ func TestEchoGroup(t *testing.T) {
 
 func TestEchoMethod(t *testing.T) {
 	e := New()
-	h := func(*Context) *HTTPError { return nil }
+	h := func(*Context) error { return nil }
 	e.Connect("/", h)
 	e.Delete("/", h)
 	e.Get("/", h)
@@ -248,9 +248,9 @@ func TestEchoMethod(t *testing.T) {
 
 func TestEchoURL(t *testing.T) {
 	e := New()
-	static := func(*Context) *HTTPError { return nil }
-	getUser := func(*Context) *HTTPError { return nil }
-	getFile := func(*Context) *HTTPError { return nil }
+	static := func(*Context) error { return nil }
+	getUser := func(*Context) error { return nil }
+	getFile := func(*Context) error { return nil }
 	e.Get("/static/file", static)
 	e.Get("/users/:id", getUser)
 	e.Get("/users/:uid/files/:fid", getFile)

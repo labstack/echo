@@ -14,7 +14,7 @@ type (
 // StripTrailingSlash returns a middleware which removes trailing slash from request
 // path.
 func StripTrailingSlash() echo.HandlerFunc {
-	return func(c *echo.Context) *echo.HTTPError {
+	return func(c *echo.Context) error {
 		p := c.Request.URL.Path
 		l := len(p)
 		if p[l-1] == '/' {
@@ -35,7 +35,7 @@ func RedirectToSlash(opts ...RedirectToSlashOptions) echo.HandlerFunc {
 		}
 	}
 
-	return func(c *echo.Context) (he *echo.HTTPError) {
+	return func(c *echo.Context) error {
 		p := c.Request.URL.Path
 		l := len(p)
 		if p[l-1] != '/' {

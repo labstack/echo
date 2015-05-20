@@ -3,6 +3,8 @@ package echo
 import (
 	"encoding/json"
 	"net/http"
+
+	"golang.org/x/net/websocket"
 )
 
 type (
@@ -11,6 +13,7 @@ type (
 	Context struct {
 		Request  *http.Request
 		Response *Response
+		Socket   *websocket.Conn
 		pnames   []string
 		pvalues  []string
 		store    store
@@ -53,15 +56,15 @@ func (c *Context) Param(name string) (value string) {
 
 // Bind binds the request body into specified type v. Default binder does it
 // based on Content-Type header.
-func (c *Context) Bind(i interface{}) *HTTPError {
+func (c *Context) Bind(i interface{}) error {
 	return c.echo.binder(c.Request, i)
 }
 
 // Render invokes the registered HTML template renderer and sends a text/html
 // response with status code.
-func (c *Context) Render(code int, name string, data interface{}) *HTTPError {
+func (c *Context) Render(code int, name string, data interface{}) error {
 	if c.echo.renderer == nil {
-		return &HTTPError{Error: RendererNotRegistered}
+		return RendererNotRegistered
 	}
 	c.Response.Header().Set(ContentType, TextHTML+"; charset=utf-8")
 	c.Response.WriteHeader(code)
@@ -69,44 +72,37 @@ func (c *Context) Render(code int, name string, data interface{}) *HTTPError {
 }
 
 // JSON sends an application/json response with status code.
-func (c *Context) JSON(code int, i interface{}) *HTTPError {
+func (c *Context) JSON(code int, i interface{}) error {
 	c.Response.Header().Set(ContentType, ApplicationJSON+"; charset=utf-8")
 	c.Response.WriteHeader(code)
-	if err := json.NewEncoder(c.Response).Encode(i); err != nil {
-		return &HTTPError{Error: err}
-	}
-	return nil
+	return json.NewEncoder(c.Response).Encode(i)
 }
 
 // String sends a text/plain response with status code.
-func (c *Context) String(code int, s string) *HTTPError {
+func (c *Context) String(code int, s string) error {
 	c.Response.Header().Set(ContentType, TextPlain+"; charset=utf-8")
 	c.Response.WriteHeader(code)
-	if _, err := c.Response.Write([]byte(s)); err != nil {
-		return &HTTPError{Error: err}
-	}
-	return nil
+	_, err := c.Response.Write([]byte(s))
+	return err
 }
 
 // HTML sends a text/html response with status code.
-func (c *Context) HTML(code int, html string) *HTTPError {
+func (c *Context) HTML(code int, html string) error {
 	c.Response.Header().Set(ContentType, TextHTML+"; charset=utf-8")
 	c.Response.WriteHeader(code)
-	if _, err := c.Response.Write([]byte(html)); err != nil {
-		return &HTTPError{Error: err}
-	}
-	return nil
+	_, err := c.Response.Write([]byte(html))
+	return err
 }
 
 // NoContent sends a response with no body and a status code.
-func (c *Context) NoContent(code int) *HTTPError {
+func (c *Context) NoContent(code int) error {
 	c.Response.WriteHeader(code)
 	return nil
 }
 
 // Error invokes the registered HTTP error handler.
-func (c *Context) Error(he *HTTPError) {
-	c.echo.httpErrorHandler(he, c)
+func (c *Context) Error(err error) {
+	c.echo.httpErrorHandler(err, c)
 }
 
 // Get retrieves data from the context.
