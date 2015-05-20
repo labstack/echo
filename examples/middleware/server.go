@@ -17,7 +17,7 @@ func main() {
 	e := echo.New()
 
 	// Debug mode
-	e.Debug(true)
+	e.SetDebug(true)
 
 	//------------
 	// Middleware

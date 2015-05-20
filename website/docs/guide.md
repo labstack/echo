@@ -29,7 +29,7 @@ Specific version of Echo can be installed using any [package manager](https://gi
 
 ### Max path parameters
 
-`echo.MaxParam(n uint8)`
+`Echo.SetMaxParam(n uint8)`
 
 Sets the maximum number of path parameters allowed for the application.
 Default value is **5**, [good enough](https://github.com/interagent/http-api-design#minimize-path-nesting)
@@ -37,16 +37,22 @@ for many use cases. Restricting path parameters allows us to use memory efficien
 
 ### HTTP error handler
 
-`echo.HTTPErrorHandler(h HTTPErrorHandler)`
+`Echo.SetHTTPErrorHandler(h HTTPErrorHandler)`
 
-Registers a custom centralized HTTP error handler `func(*HTTPError, *Context)`.
+Registers a custom `Echo.HTTPErrorHandler`.
 
 Default handler sends `HTTPError.Message` HTTP response with `HTTPError.Code` status
 code.
 
-- If HTTPError.Code is not specified it uses "500 - Internal Server Error".
-- If HTTPError.Message is not specified it uses HTTPError.Error.Error() or the status
-code text.
+- If HTTPError.Code is not set it uses `500`".
+- If HTTPError.Message is not set it uses status code text.
+- If debug mode is enabled, HTTPError.Message is set to `HTTPError.Error.Error()`.
+
+### Debug
+
+`echo.SetDebug(on bool)`
+
+Enables debug mode.
 
 ## Routing
 

@@ -134,23 +134,23 @@ func New() (e *Echo) {
 	// Defaults
 	//----------
 
-	e.MaxParam(5)
+	e.SetMaxParam(5)
 	e.notFoundHandler = func(c *Context) *HTTPError {
 		return &HTTPError{Code: http.StatusNotFound}
 	}
-	e.HTTPErrorHandler(func(he *HTTPError, c *Context) {
+	e.SetHTTPErrorHandler(func(he *HTTPError, c *Context) {
 		if he.Code == 0 {
 			he.Code = http.StatusInternalServerError
 		}
 		if he.Message == "" {
 			he.Message = http.StatusText(he.Code)
-			if e.debug && he.Error != nil {
-				he.Message = he.Error.Error()
-			}
+		}
+		if e.debug && he.Error != nil {
+			he.Message = he.Error.Error()
 		}
 		http.Error(c.Response, he.Message, he.Code)
 	})
-	e.Binder(func(r *http.Request, v interface{}) *HTTPError {
+	e.SetBinder(func(r *http.Request, v interface{}) *HTTPError {
 		ct := r.Header.Get(ContentType)
 		err := UnsupportedMediaType
 		if strings.HasPrefix(ct, ApplicationJSON) {
@@ -178,31 +178,35 @@ func (e *Echo) Group(pfx string, m ...Middleware) *Echo {
 	return &g
 }
 
-// MaxParam sets the maximum number of path parameters allowed for the application.
+// SetMaxParam sets the maximum number of path parameters allowed for the application.
 // Default value is 5, good enough for many use cases.
-func (e *Echo) MaxParam(n uint8) {
+func (e *Echo) SetMaxParam(n uint8) {
 	e.maxParam = n
 }
 
-// HTTPErrorHandler registers an HTTP error handler.
-func (e *Echo) HTTPErrorHandler(h HTTPErrorHandler) {
+// SetHTTPErrorHandler registers an Echo.HTTPErrorHandler.
+func (e *Echo) SetHTTPErrorHandler(h HTTPErrorHandler) {
 	e.httpErrorHandler = h
 }
 
-// Binder registers a custom binder. It's invoked by Context.Bind API.
-func (e *Echo) Binder(b BindFunc) {
+// SetBinder registers a custom binder. It's invoked by Context.Bind().
+func (e *Echo) SetBinder(b BindFunc) {
 	e.binder = b
 }
 
-// Renderer registers an HTML template renderer. It's invoked by Context.Render
-// API.
-func (e *Echo) Renderer(r Renderer) {
+// SetRenderer registers an HTML template renderer. It's invoked by Context.Render().
+func (e *Echo) SetRenderer(r Renderer) {
 	e.renderer = r
 }
 
-// Debug runs the application in debug mode.
-func (e *Echo) Debug(on bool) {
+// SetDebug sets debug mode.
+func (e *Echo) SetDebug(on bool) {
 	e.debug = on
+}
+
+// Debug returns debug mode.
+func (e *Echo) Debug() bool {
+	return e.debug
 }
 
 // Use adds handler to the middleware chain.
@@ -257,6 +261,39 @@ func (e *Echo) Trace(path string, h Handler) {
 	e.add(TRACE, path, h)
 }
 
+func (e *Echo) add(method, path string, h Handler) {
+	key := runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name()
+	e.uris[key] = path
+	e.Router.Add(method, e.prefix+path, wrapHandler(h), e)
+}
+
+// Index serves index file.
+func (e *Echo) Index(file string) {
+	e.ServeFile("/", file)
+}
+
+// Favicon serves the default favicon - GET /favicon.ico.
+func (e *Echo) Favicon(file string) {
+	e.ServeFile("/favicon.ico", file)
+}
+
+// Static serves static files.
+func (e *Echo) Static(path, root string) {
+	fs := http.StripPrefix(path, http.FileServer(http.Dir(root)))
+	e.Get(path+"*", func(c *Context) *HTTPError {
+		fs.ServeHTTP(c.Response, c.Request)
+		return nil
+	})
+}
+
+// ServeFile serves a file.
+func (e *Echo) ServeFile(path, file string) {
+	e.Get(path, func(c *Context) *HTTPError {
+		http.ServeFile(c.Response, c.Request, file)
+		return nil
+	})
+}
+
 // URI generates a URI from handler.
 func (e *Echo) URI(h Handler, params ...interface{}) string {
 	uri := new(bytes.Buffer)
@@ -282,39 +319,6 @@ func (e *Echo) URI(h Handler, params ...interface{}) string {
 // URL is an alias for URI
 func (e *Echo) URL(h Handler, params ...interface{}) string {
 	return e.URI(h, params...)
-}
-
-func (e *Echo) add(method, path string, h Handler) {
-	key := runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name()
-	e.uris[key] = path
-	e.Router.Add(method, e.prefix+path, wrapHandler(h), e)
-}
-
-// Static serves static files.
-func (e *Echo) Static(path, root string) {
-	fs := http.StripPrefix(path, http.FileServer(http.Dir(root)))
-	e.Get(path+"*", func(c *Context) *HTTPError {
-		fs.ServeHTTP(c.Response, c.Request)
-		return nil
-	})
-}
-
-// ServeFile serves a file.
-func (e *Echo) ServeFile(path, file string) {
-	e.Get(path, func(c *Context) *HTTPError {
-		http.ServeFile(c.Response, c.Request, file)
-		return nil
-	})
-}
-
-// Index serves index file.
-func (e *Echo) Index(file string) {
-	e.ServeFile("/", file)
-}
-
-// Favicon serves the default favicon - GET /favicon.ico.
-func (e *Echo) Favicon(file string) {
-	e.ServeFile("/favicon.ico", file)
 }
 
 func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
