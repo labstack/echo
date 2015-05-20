@@ -10,7 +10,7 @@ import (
 
 func TestRecover(t *testing.T) {
 	e := echo.New()
-	e.Debug(true)
+	e.SetDebug(true)
 	req, _ := http.NewRequest(echo.GET, "/", nil)
 	w := httptest.NewRecorder()
 	res := &echo.Response{Writer: w}
