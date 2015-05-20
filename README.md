@@ -9,14 +9,14 @@ Echo is a fast HTTP router (zero memory allocation) and micro web framework in G
 		- `echo.MiddlewareFunc`
 		- `func(echo.HandlerFunc) echo.HandlerFunc`
 		- `echo.HandlerFunc`
-		- `func(*echo.Context) *echo.HTTPError`
+		- `func(*echo.Context) error`
 		- `func(http.Handler) http.Handler`
 		- `http.Handler`
 		- `http.HandlerFunc`
 		- `func(http.ResponseWriter, *http.Request)`
 	- Handler
 		- `echo.HandlerFunc`
-		- `func(*echo.Context) *echo.HTTPError`
+		- `func(*echo.Context) error`
 		- `http.Handler`
 		- `http.HandlerFunc`
 		- `func(http.ResponseWriter, *http.Request)`
@@ -84,7 +84,7 @@ import (
 )
 
 // Handler
-func hello(c *echo.Context) *echo.HTTPError {
+func hello(c *echo.Context) error {
 	return c.String(http.StatusOK, "Hello, World!\n")
 }
 
@@ -133,34 +133,34 @@ var (
 // Handlers
 //----------
 
-func createUser(c *echo.Context) *echo.HTTPError {
+func createUser(c *echo.Context) error {
 	u := &user{
 		ID: seq,
 	}
-	if he := c.Bind(u); he != nil {
-		return he
+	if err := c.Bind(u); err != nil {
+		return err
 	}
 	users[u.ID] = u
 	seq++
 	return c.JSON(http.StatusCreated, u)
 }
 
-func getUser(c *echo.Context) *echo.HTTPError {
+func getUser(c *echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	return c.JSON(http.StatusOK, users[id])
 }
 
-func updateUser(c *echo.Context) *echo.HTTPError {
+func updateUser(c *echo.Context) error {
 	u := new(user)
-	if he := c.Bind(u); he != nil {
-		return he
+	if err := c.Bind(u); err != nil {
+		return err
 	}
 	id, _ := strconv.Atoi(c.Param("id"))
 	users[id].Name = u.Name
 	return c.JSON(http.StatusOK, users[id])
 }
 
-func deleteUser(c *echo.Context) *echo.HTTPError {
+func deleteUser(c *echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	delete(users, id)
 	return c.NoContent(http.StatusNoContent)
@@ -218,22 +218,19 @@ var (
 )
 
 // Render HTML
-func (t *Template) Render(w io.Writer, name string, data interface{}) *echo.HTTPError {
-	if err := t.templates.ExecuteTemplate(w, name, data); err != nil {
-		return &echo.HTTPError{Error: err}
-	}
-	return nil
+func (t *Template) Render(w io.Writer, name string, data interface{}) error {
+	return t.templates.ExecuteTemplate(w, name, data)
 }
 
 //----------
 // Handlers
 //----------
 
-func welcome(c *echo.Context) *echo.HTTPError {
+func welcome(c *echo.Context) error {
 	return c.Render(http.StatusOK, "welcome", "Joe")
 }
 
-func createUser(c *echo.Context) *echo.HTTPError {
+func createUser(c *echo.Context) error {
 	u := new(user)
 	if err := c.Bind(u); err != nil {
 		return err
@@ -242,11 +239,11 @@ func createUser(c *echo.Context) *echo.HTTPError {
 	return c.JSON(http.StatusCreated, u)
 }
 
-func getUsers(c *echo.Context) *echo.HTTPError {
+func getUsers(c *echo.Context) error {
 	return c.JSON(http.StatusOK, users)
 }
 
-func getUser(c *echo.Context) *echo.HTTPError {
+func getUser(c *echo.Context) error {
 	return c.JSON(http.StatusOK, users[c.P(0)])
 }
 
@@ -268,7 +265,7 @@ func main() {
 	s := stats.New()
 	e.Use(s.Handler)
 	// Route
-	e.Get("/stats", func(c *echo.Context) *echo.HTTPError {
+	e.Get("/stats", func(c *echo.Context) error {
 		return c.JSON(http.StatusOK, s.Data())
 	})
 
@@ -297,7 +294,7 @@ func main() {
 		// Cached templates
 		templates: template.Must(template.ParseFiles("public/views/welcome.html")),
 	}
-	e.Renderer(t)
+	e.SetRenderer(t)
 	e.Get("/welcome", welcome)
 
 	//-------
@@ -306,20 +303,20 @@ func main() {
 
 	// Group with parent middleware
 	a := e.Group("/admin")
-	a.Use(func(c *echo.Context) *echo.HTTPError {
+	a.Use(func(c *echo.Context) error {
 		// Security middleware
 		return nil
 	})
-	a.Get("", func(c *echo.Context) *echo.HTTPError {
+	a.Get("", func(c *echo.Context) error {
 		return c.String(http.StatusOK, "Welcome admin!")
 	})
 
 	// Group with no parent middleware
-	g := e.Group("/files", func(c *echo.Context) *echo.HTTPError {
+	g := e.Group("/files", func(c *echo.Context) error {
 		// Security middleware
 		return nil
 	})
-	g.Get("", func(c *echo.Context) *echo.HTTPError {
+	g.Get("", func(c *echo.Context) error {
 		return c.String(http.StatusOK, "Your files!")
 	})
 
@@ -350,7 +347,7 @@ import (
 )
 
 // Handler
-func hello(c *echo.Context) *echo.HTTPError {
+func hello(c *echo.Context) error {
 	return c.String(http.StatusOK, "Hello, World!\n")
 }
 
@@ -359,7 +356,7 @@ func main() {
 	e := echo.New()
 
 	// Debug mode
-	e.Debug(true)
+	e.SetDebug(true)
 
 	//------------
 	// Middleware

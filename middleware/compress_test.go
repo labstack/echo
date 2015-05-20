@@ -14,9 +14,9 @@ func TestGzip(t *testing.T) {
 	// Empty Accept-Encoding header
 	req, _ := http.NewRequest(echo.GET, "/", nil)
 	w := httptest.NewRecorder()
-	res := &echo.Response{Writer: w}
+	res := echo.NewResponse(w)
 	c := echo.NewContext(req, res, echo.New())
-	h := func(c *echo.Context) *echo.HTTPError {
+	h := func(c *echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}
 	Gzip()(h)(c)
@@ -28,7 +28,7 @@ func TestGzip(t *testing.T) {
 	// Content-Encoding header
 	req.Header.Set(echo.AcceptEncoding, "gzip")
 	w = httptest.NewRecorder()
-	c.Response = &echo.Response{Writer: w}
+	c.Response = echo.NewResponse(w)
 	Gzip()(h)(c)
 	ce := w.Header().Get(echo.ContentEncoding)
 	if ce != "gzip" {

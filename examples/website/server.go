@@ -29,22 +29,19 @@ var (
 )
 
 // Render HTML
-func (t *Template) Render(w io.Writer, name string, data interface{}) *echo.HTTPError {
-	if err := t.templates.ExecuteTemplate(w, name, data); err != nil {
-		return &echo.HTTPError{Error: err}
-	}
-	return nil
+func (t *Template) Render(w io.Writer, name string, data interface{}) error {
+	return t.templates.ExecuteTemplate(w, name, data)
 }
 
 //----------
 // Handlers
 //----------
 
-func welcome(c *echo.Context) *echo.HTTPError {
+func welcome(c *echo.Context) error {
 	return c.Render(http.StatusOK, "welcome", "Joe")
 }
 
-func createUser(c *echo.Context) *echo.HTTPError {
+func createUser(c *echo.Context) error {
 	u := new(user)
 	if err := c.Bind(u); err != nil {
 		return err
@@ -53,11 +50,11 @@ func createUser(c *echo.Context) *echo.HTTPError {
 	return c.JSON(http.StatusCreated, u)
 }
 
-func getUsers(c *echo.Context) *echo.HTTPError {
+func getUsers(c *echo.Context) error {
 	return c.JSON(http.StatusOK, users)
 }
 
-func getUser(c *echo.Context) *echo.HTTPError {
+func getUser(c *echo.Context) error {
 	return c.JSON(http.StatusOK, users[c.P(0)])
 }
 
@@ -79,7 +76,7 @@ func main() {
 	s := stats.New()
 	e.Use(s.Handler)
 	// Route
-	e.Get("/stats", func(c *echo.Context) *echo.HTTPError {
+	e.Get("/stats", func(c *echo.Context) error {
 		return c.JSON(http.StatusOK, s.Data())
 	})
 
@@ -117,20 +114,20 @@ func main() {
 
 	// Group with parent middleware
 	a := e.Group("/admin")
-	a.Use(func(c *echo.Context) *echo.HTTPError {
+	a.Use(func(c *echo.Context) error {
 		// Security middleware
 		return nil
 	})
-	a.Get("", func(c *echo.Context) *echo.HTTPError {
+	a.Get("", func(c *echo.Context) error {
 		return c.String(http.StatusOK, "Welcome admin!")
 	})
 
 	// Group with no parent middleware
-	g := e.Group("/files", func(c *echo.Context) *echo.HTTPError {
+	g := e.Group("/files", func(c *echo.Context) error {
 		// Security middleware
 		return nil
 	})
-	g.Get("", func(c *echo.Context) *echo.HTTPError {
+	g.Get("", func(c *echo.Context) error {
 		return c.String(http.StatusOK, "Your files!")
 	})
 

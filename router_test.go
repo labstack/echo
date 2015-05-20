@@ -283,7 +283,7 @@ func TestRouterStatic(t *testing.T) {
 	r := New().Router
 	b := new(bytes.Buffer)
 	path := "/folders/a/files/echo.gif"
-	r.Add(GET, path, func(*Context) *HTTPError {
+	r.Add(GET, path, func(*Context) error {
 		b.WriteString(path)
 		return nil
 	}, nil)
@@ -300,7 +300,7 @@ func TestRouterStatic(t *testing.T) {
 
 func TestRouterParam(t *testing.T) {
 	r := New().Router
-	r.Add(GET, "/users/:id", func(c *Context) *HTTPError {
+	r.Add(GET, "/users/:id", func(c *Context) error {
 		return nil
 	}, nil)
 	h, _ := r.Find(GET, "/users/1", context)
@@ -315,7 +315,7 @@ func TestRouterParam(t *testing.T) {
 
 func TestRouterTwoParam(t *testing.T) {
 	r := New().Router
-	r.Add(GET, "/users/:uid/files/:fid", func(*Context) *HTTPError {
+	r.Add(GET, "/users/:uid/files/:fid", func(*Context) error {
 		return nil
 	}, nil)
 
@@ -339,7 +339,7 @@ func TestRouterTwoParam(t *testing.T) {
 
 func TestRouterMatchAny(t *testing.T) {
 	r := New().Router
-	r.Add(GET, "/users/*", func(*Context) *HTTPError {
+	r.Add(GET, "/users/*", func(*Context) error {
 		return nil
 	}, nil)
 
@@ -364,7 +364,7 @@ func TestRouterMatchAny(t *testing.T) {
 
 func TestRouterMicroParam(t *testing.T) {
 	r := New().Router
-	r.Add(GET, "/:a/:b/:c", func(c *Context) *HTTPError {
+	r.Add(GET, "/:a/:b/:c", func(c *Context) error {
 		return nil
 	}, nil)
 	h, _ := r.Find(GET, "/1/2/3", context)
@@ -388,11 +388,11 @@ func TestRouterMultiRoute(t *testing.T) {
 	b := new(bytes.Buffer)
 
 	// Routes
-	r.Add(GET, "/users", func(*Context) *HTTPError {
+	r.Add(GET, "/users", func(*Context) error {
 		b.WriteString("/users")
 		return nil
 	}, nil)
-	r.Add(GET, "/users/:id", func(c *Context) *HTTPError {
+	r.Add(GET, "/users/:id", func(c *Context) error {
 		return nil
 	}, nil)
 
@@ -428,31 +428,31 @@ func TestRouterPriority(t *testing.T) {
 	r := New().Router
 
 	// Routes
-	r.Add(GET, "/users", func(c *Context) *HTTPError {
+	r.Add(GET, "/users", func(c *Context) error {
 		c.Set("a", 1)
 		return nil
 	}, nil)
-	r.Add(GET, "/users/new", func(c *Context) *HTTPError {
+	r.Add(GET, "/users/new", func(c *Context) error {
 		c.Set("b", 2)
 		return nil
 	}, nil)
-	r.Add(GET, "/users/:id", func(c *Context) *HTTPError {
+	r.Add(GET, "/users/:id", func(c *Context) error {
 		c.Set("c", 3)
 		return nil
 	}, nil)
-	r.Add(GET, "/users/dew", func(c *Context) *HTTPError {
+	r.Add(GET, "/users/dew", func(c *Context) error {
 		c.Set("d", 4)
 		return nil
 	}, nil)
-	r.Add(GET, "/users/:id/files", func(c *Context) *HTTPError {
+	r.Add(GET, "/users/:id/files", func(c *Context) error {
 		c.Set("e", 5)
 		return nil
 	}, nil)
-	r.Add(GET, "/users/newsee", func(c *Context) *HTTPError {
+	r.Add(GET, "/users/newsee", func(c *Context) error {
 		c.Set("f", 6)
 		return nil
 	}, nil)
-	r.Add(GET, "/users/*", func(c *Context) *HTTPError {
+	r.Add(GET, "/users/*", func(c *Context) error {
 		c.Set("g", 7)
 		return nil
 	}, nil)
@@ -540,14 +540,14 @@ func TestRouterParamNames(t *testing.T) {
 	b := new(bytes.Buffer)
 
 	// Routes
-	r.Add(GET, "/users", func(*Context) *HTTPError {
+	r.Add(GET, "/users", func(*Context) error {
 		b.WriteString("/users")
 		return nil
 	}, nil)
-	r.Add(GET, "/users/:id", func(c *Context) *HTTPError {
+	r.Add(GET, "/users/:id", func(c *Context) error {
 		return nil
 	}, nil)
-	r.Add(GET, "/users/:uid/files/:fid", func(c *Context) *HTTPError {
+	r.Add(GET, "/users/:uid/files/:fid", func(c *Context) error {
 		return nil
 	}, nil)
 
@@ -598,7 +598,7 @@ func TestRouterParamNames(t *testing.T) {
 func TestRouterAPI(t *testing.T) {
 	r := New().Router
 	for _, route := range api {
-		r.Add(route.method, route.path, func(c *Context) *HTTPError {
+		r.Add(route.method, route.path, func(c *Context) error {
 			for i, n := range c.pnames {
 				if n != "" {
 					if ":"+n != c.P(uint8(i)) {
@@ -619,7 +619,7 @@ func TestRouterAPI(t *testing.T) {
 
 func TestRouterServeHTTP(t *testing.T) {
 	r := New().Router
-	r.Add(GET, "/users", func(*Context) *HTTPError {
+	r.Add(GET, "/users", func(*Context) error {
 		return nil
 	}, nil)
 

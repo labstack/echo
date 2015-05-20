@@ -13,9 +13,9 @@ func TestRecover(t *testing.T) {
 	e.SetDebug(true)
 	req, _ := http.NewRequest(echo.GET, "/", nil)
 	w := httptest.NewRecorder()
-	res := &echo.Response{Writer: w}
+	res := echo.NewResponse(w)
 	c := echo.NewContext(req, res, e)
-	h := func(c *echo.Context) *echo.HTTPError {
+	h := func(c *echo.Context) error {
 		panic("test")
 	}
 

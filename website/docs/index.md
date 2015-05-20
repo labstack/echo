@@ -16,14 +16,14 @@ Echo is a fast HTTP router (zero memory allocation) and micro web framework in G
 		- `echo.MiddlewareFunc`
 		- `func(echo.HandlerFunc) echo.HandlerFunc`
 		- `echo.HandlerFunc`
-		- `func(*echo.Context) *echo.HTTPError`
+		- `func(*echo.Context) error`
 		- `func(http.Handler) http.Handler`
 		- `http.Handler`
 		- `http.HandlerFunc`
 		- `func(http.ResponseWriter, *http.Request)`
 	- Handler
 		- `echo.HandlerFunc`
-		- `func(*echo.Context) *echo.HTTPError`
+		- `func(*echo.Context) error`
 		- `http.Handler`
 		- `http.HandlerFunc`
 		- `func(http.ResponseWriter, *http.Request)`
@@ -57,7 +57,7 @@ import (
 )
 
 // Handler
-func hello(c *echo.Context) *echo.HTTPError {
+func hello(c *echo.Context) error {
 	return c.String(http.StatusOK, "Hello, World!\n")
 }
 

@@ -14,6 +14,7 @@ import (
 	"sync"
 
 	"github.com/mattn/go-colorable"
+	"golang.org/x/net/websocket"
 )
 
 type (
@@ -33,24 +34,23 @@ type (
 	HTTPError struct {
 		Code    int
 		Message string
-		Error   error
 	}
 	Middleware     interface{}
 	MiddlewareFunc func(HandlerFunc) HandlerFunc
 	Handler        interface{}
-	HandlerFunc    func(*Context) *HTTPError
+	HandlerFunc    func(*Context) error
 
 	// HTTPErrorHandler is a centralized HTTP error handler.
-	HTTPErrorHandler func(*HTTPError, *Context)
+	HTTPErrorHandler func(error, *Context)
 
-	BindFunc func(*http.Request, interface{}) *HTTPError
+	BindFunc func(*http.Request, interface{}) error
 
 	// Renderer is the interface that wraps the Render method.
 	//
 	// Render renders the HTML template with given name and specified data.
 	// It writes the output to w.
 	Renderer interface {
-		Render(w io.Writer, name string, data interface{}) *HTTPError
+		Render(w io.Writer, name string, data interface{}) error
 	}
 )
 
@@ -120,6 +120,18 @@ var (
 	RendererNotRegistered = errors.New("echo ⇒ renderer not registered")
 )
 
+func NewHTTPError(code int, msgs ...string) *HTTPError {
+	he := &HTTPError{Code: code}
+	if len(msgs) == 0 {
+		he.Message = http.StatusText(code)
+	}
+	return he
+}
+
+func (e *HTTPError) Error() string {
+	return e.Message
+}
+
 // New creates an Echo instance.
 func New() (e *Echo) {
 	e = &Echo{
@@ -135,22 +147,22 @@ func New() (e *Echo) {
 	//----------
 
 	e.SetMaxParam(5)
-	e.notFoundHandler = func(c *Context) *HTTPError {
-		return &HTTPError{Code: http.StatusNotFound}
+	e.notFoundHandler = func(c *Context) error {
+		return NewHTTPError(http.StatusNotFound)
 	}
-	e.SetHTTPErrorHandler(func(he *HTTPError, c *Context) {
-		if he.Code == 0 {
-			he.Code = http.StatusInternalServerError
+	e.SetHTTPErrorHandler(func(err error, c *Context) {
+		code := http.StatusInternalServerError
+		msg := http.StatusText(code)
+		if he, ok := err.(*HTTPError); ok {
+			code = he.Code
+			msg = he.Message
 		}
-		if he.Message == "" {
-			he.Message = http.StatusText(he.Code)
+		if e.Debug() {
+			msg = err.Error()
 		}
-		if e.debug && he.Error != nil {
-			he.Message = he.Error.Error()
-		}
-		http.Error(c.Response, he.Message, he.Code)
+		http.Error(c.Response, msg, code)
 	})
-	e.SetBinder(func(r *http.Request, v interface{}) *HTTPError {
+	e.SetBinder(func(r *http.Request, v interface{}) error {
 		ct := r.Header.Get(ContentType)
 		err := UnsupportedMediaType
 		if strings.HasPrefix(ct, ApplicationJSON) {
@@ -158,10 +170,7 @@ func New() (e *Echo) {
 		} else if strings.HasPrefix(ct, ApplicationForm) {
 			err = nil
 		}
-		if err != nil {
-			return &HTTPError{Error: err}
-		}
-		return nil
+		return err
 	})
 	return
 }
@@ -261,6 +270,21 @@ func (e *Echo) Trace(path string, h Handler) {
 	e.add(TRACE, path, h)
 }
 
+// WebSocket adds a WebSocket route > handler to the router.
+func (e *Echo) WebSocket(path string, h HandlerFunc) {
+	e.Get(path, func(c *Context) *HTTPError {
+		wss := websocket.Server{
+			Handler: func(ws *websocket.Conn) {
+				c.Socket = ws
+				c.Response.status = http.StatusSwitchingProtocols
+				h(c)
+			},
+		}
+		wss.ServeHTTP(c.Response.writer, c.Request)
+		return nil
+	})
+}
+
 func (e *Echo) add(method, path string, h Handler) {
 	key := runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name()
 	e.uris[key] = path
@@ -280,7 +304,7 @@ func (e *Echo) Favicon(file string) {
 // Static serves static files.
 func (e *Echo) Static(path, root string) {
 	fs := http.StripPrefix(path, http.FileServer(http.Dir(root)))
-	e.Get(path+"*", func(c *Context) *HTTPError {
+	e.Get(path+"*", func(c *Context) error {
 		fs.ServeHTTP(c.Response, c.Request)
 		return nil
 	})
@@ -288,7 +312,7 @@ func (e *Echo) Static(path, root string) {
 
 // ServeFile serves a file.
 func (e *Echo) ServeFile(path, file string) {
-	e.Get(path, func(c *Context) *HTTPError {
+	e.Get(path, func(c *Context) error {
 		http.ServeFile(c.Response, c.Request, file)
 		return nil
 	})
@@ -376,16 +400,16 @@ func wrapMiddleware(m Middleware) MiddlewareFunc {
 		return m
 	case HandlerFunc:
 		return wrapHandlerFuncMW(m)
-	case func(*Context) *HTTPError:
+	case func(*Context) error:
 		return wrapHandlerFuncMW(m)
 	case func(http.Handler) http.Handler:
 		return func(h HandlerFunc) HandlerFunc {
-			return func(c *Context) (he *HTTPError) {
+			return func(c *Context) (err error) {
 				m(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					c.Response.Writer = w
+					c.Response.writer = w
 					c.Request = r
-					he = h(c)
-				})).ServeHTTP(c.Response.Writer, c.Request)
+					err = h(c)
+				})).ServeHTTP(c.Response.writer, c.Request)
 				return
 			}
 		}
@@ -403,9 +427,9 @@ func wrapMiddleware(m Middleware) MiddlewareFunc {
 // Wraps HandlerFunc middleware
 func wrapHandlerFuncMW(m HandlerFunc) MiddlewareFunc {
 	return func(h HandlerFunc) HandlerFunc {
-		return func(c *Context) *HTTPError {
-			if he := m(c); he != nil {
-				return he
+		return func(c *Context) error {
+			if err := m(c); err != nil {
+				return err
 			}
 			return h(c)
 		}
@@ -415,9 +439,9 @@ func wrapHandlerFuncMW(m HandlerFunc) MiddlewareFunc {
 // Wraps http.HandlerFunc middleware
 func wrapHTTPHandlerFuncMW(m http.HandlerFunc) MiddlewareFunc {
 	return func(h HandlerFunc) HandlerFunc {
-		return func(c *Context) *HTTPError {
+		return func(c *Context) error {
 			if !c.Response.committed {
-				m.ServeHTTP(c.Response.Writer, c.Request)
+				m.ServeHTTP(c.Response.writer, c.Request)
 			}
 			return h(c)
 		}
@@ -429,15 +453,15 @@ func wrapHandler(h Handler) HandlerFunc {
 	switch h := h.(type) {
 	case HandlerFunc:
 		return h
-	case func(*Context) *HTTPError:
+	case func(*Context) error:
 		return h
 	case http.Handler, http.HandlerFunc:
-		return func(c *Context) *HTTPError {
+		return func(c *Context) error {
 			h.(http.Handler).ServeHTTP(c.Response, c.Request)
 			return nil
 		}
 	case func(http.ResponseWriter, *http.Request):
-		return func(c *Context) *HTTPError {
+		return func(c *Context) error {
 			h(c.Response, c.Request)
 			return nil
 		}
