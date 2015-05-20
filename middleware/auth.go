@@ -19,7 +19,7 @@ func BasicAuth(fn AuthFunc) echo.HandlerFunc {
 	return func(c *echo.Context) error {
 		auth := c.Request.Header.Get(echo.Authorization)
 		i := 0
-		he := &echo.HTTPError{Code: http.StatusUnauthorized}
+		he := echo.NewHTTPError(http.StatusUnauthorized)
 
 		for ; i < len(auth); i++ {
 			c := auth[i]

@@ -120,6 +120,14 @@ var (
 	RendererNotRegistered = errors.New("echo ⇒ renderer not registered")
 )
 
+func NewHTTPError(code int, msgs ...string) *HTTPError {
+	he := &HTTPError{Code: code}
+	if len(msgs) == 0 {
+		he.Message = http.StatusText(code)
+	}
+	return he
+}
+
 func (e *HTTPError) Error() string {
 	return e.Message
 }
@@ -140,7 +148,7 @@ func New() (e *Echo) {
 
 	e.SetMaxParam(5)
 	e.notFoundHandler = func(c *Context) error {
-		return &HTTPError{Code: http.StatusNotFound}
+		return NewHTTPError(http.StatusNotFound)
 	}
 	e.SetHTTPErrorHandler(func(err error, c *Context) {
 		code := http.StatusInternalServerError

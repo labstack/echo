@@ -41,16 +41,16 @@ for many use cases. Restricting path parameters allows us to use memory efficien
 
 Registers a custom `Echo.HTTPErrorHandler`.
 
-Default handler sends `HTTPError.Message` HTTP response with `HTTPError.Code` status
-code.
+Default handler rules
 
-- If HTTPError.Code is not set it uses `500`".
-- If HTTPError.Message is not set it uses status code text.
-- If debug mode is enabled, HTTPError.Message is set to `HTTPError.Error.Error()`.
+- If error is of type `Echo.HTTPError` it sends HTTP response with status code `HTTPError.Code`
+and message `HTTPError.Message`.
+- Else it sends `500 - Internal Server Error`.
+- If debug mode is enabled, it uses `error.Error()` as status message.
 
 ### Debug
 
-`echo.SetDebug(on bool)`
+`Echo.SetDebug(on bool)`
 
 Enables debug mode.
 
@@ -67,12 +67,12 @@ code below registers a route for method `GET`, path `/hello` and a handler which
 `Hello!` HTTP response.
 
 ```go
-echo.Get("/hello", func(*echo.Context) *HTTPError {
+echo.Get("/hello", func(*echo.Context) error {
 	return c.String(http.StatusOK, "Hello!")
 })
 ```
 
-Echo's default handler is `func(*echo.Context) *echo.HTTPError` where `echo.Context`
+Echo's default handler is `func(*echo.Context) error` where `echo.Context`
 primarily holds HTTP request and response objects. Echo also has a support for other
 types of handlers.
 
@@ -89,7 +89,7 @@ or by index `echo.Context.P(i uint8) string`. Getting parameter by index gives a
 slightly better performance.
 
 ```go
-echo.Get("/users/:id", func(c *echo.Context) *HTTPError {
+echo.Get("/users/:id", func(c *echo.Context) error {
 	// By name
 	id := c.Param("id")
 
@@ -119,15 +119,15 @@ match
 #### Example
 
 ```go
-e.Get("/users/:id", func(c *echo.Context) *HTTPError {
+e.Get("/users/:id", func(c *echo.Context) error {
 	return c.String(http.StatusOK, "/users/:id")
 })
 
-e.Get("/users/new", func(c *echo.Context) *HTTPError {
+e.Get("/users/new", func(c *echo.Context) error {
 	return c.String(http.StatusOK, "/users/new")
 })
 
-e.Get("/users/1/files/*", func(c *echo.Context) *HTTPError {
+e.Get("/users/1/files/*", func(c *echo.Context) error {
 	return c.String(http.StatusOK, "/users/1/files/*")
 })
 ```
@@ -152,7 +152,7 @@ application.
 
 ```go
 // Handler
-h := func(*echo.Context) *HTTPError {
+h := func(*echo.Context) error {
 	return c.String(http.StatusOK, "OK")
 }
 
@@ -169,7 +169,7 @@ e.Get("/users/:id", h)
 ### JSON
 
 ```go
-context.JSON(code int, v interface{}) *HTTPError
+context.JSON(code int, v interface{}) error
 ```
 
 Sends a JSON HTTP response with status code.
@@ -177,7 +177,7 @@ Sends a JSON HTTP response with status code.
 ### String
 
 ```go
-context.String(code int, s string) *HTTPError
+context.String(code int, s string) error
 ```
 
 Sends a text/plain HTTP response with status code.
@@ -185,7 +185,7 @@ Sends a text/plain HTTP response with status code.
 ### HTML
 
 ```go
-func (c *Context) HTML(code int, html string) *HTTPError
+func (c *Context) HTML(code int, html string) error
 ```
 
 Sends an HTML HTTP response with status code.
@@ -228,8 +228,8 @@ e.Favicon("public/favicon.ico")
 
 ## Error Handling
 
-Echo advocates centralized HTTP error handling by returning `*echo.HTTPError` from
-middleware and handlers.
+Echo advocates centralized HTTP error handling by returning `error` from middleware
+and handlers.
 
 It allows you to
 
@@ -237,8 +237,8 @@ It allows you to
 - Customize HTTP responses.
 - Recover from panics inside middleware or handlers.
 
-For example, when a basic auth middleware finds invalid credentials it returns 401
-"Unauthorized" error, aborting the current HTTP request.
+For example, when a basic auth middleware finds invalid credentials it returns
+`401 - Unauthorized` error, aborting the current HTTP request.
 
 ```go
 package main
@@ -251,18 +251,18 @@ import (
 
 func main() {
 	e := echo.New()
-	e.Use(func(c *echo.Context) *echo.HTTPError {
+	e.Use(func(c *echo.Context) error {
 		// Extract the credentials from HTTP request header and perform a security
 		// check
 
 		// For invalid credentials
-		return &echo.HTTPError{Code: http.StatusUnauthorized}
+		return echo.NewHTTPError(http.StatusUnauthorized)
 	})
 	e.Get("/welcome", welcome)
 	e.Run(":1323")
 }
 
-func welcome(c *echo.Context) *echo.HTTPError {
+func welcome(c *echo.Context) error {
 	return c.String(http.StatusOK, "Welcome!")
 }
 ```
