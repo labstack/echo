@@ -146,20 +146,23 @@
 Specific version of Echo can be installed using any <a href="https://github.com/avelino/awesome-go#package-management">package manager</a>.</p>
 <h2 id="customization">Customization</h2>
 <h3 id="max-path-parameters">Max path parameters</h3>
-<p><code>echo.MaxParam(n uint8)</code></p>
+<p><code>Echo.SetMaxParam(n uint8)</code></p>
 <p>Sets the maximum number of path parameters allowed for the application.
 Default value is <strong>5</strong>, <a href="https://github.com/interagent/http-api-design#minimize-path-nesting">good enough</a>
 for many use cases. Restricting path parameters allows us to use memory efficiently.</p>
 <h3 id="http-error-handler">HTTP error handler</h3>
-<p><code>echo.HTTPErrorHandler(h HTTPErrorHandler)</code></p>
-<p>Registers a custom centralized HTTP error handler <code>func(*HTTPError, *Context)</code>.</p>
+<p><code>Echo.SetHTTPErrorHandler(h HTTPErrorHandler)</code></p>
+<p>Registers a custom <code>Echo.HTTPErrorHandler</code>.</p>
 <p>Default handler sends <code>HTTPError.Message</code> HTTP response with <code>HTTPError.Code</code> status
 code.</p>
 <ul>
-<li>If HTTPError.Code is not specified it uses "500 - Internal Server Error".</li>
-<li>If HTTPError.Message is not specified it uses HTTPError.Error.Error() or the status
-code text.</li>
+<li>If HTTPError.Code is not set it uses <code>500</code>".</li>
+<li>If HTTPError.Message is not set it uses status code text.</li>
+<li>If debug mode is enabled, HTTPError.Message is set to <code>HTTPError.Error.Error()</code>.</li>
 </ul>
+<h3 id="debug">Debug</h3>
+<p><code>echo.SetDebug(on bool)</code></p>
+<p>Enables debug mode.</p>
 <h2 id="routing">Routing</h2>
 <p>Echo's router is <a href="https://github.com/labstack/echo#benchmark">fast, optimized</a> and
 flexible. It's based on <a href="http://en.wikipedia.org/wiki/Radix_tree">redix tree</a>
@@ -287,7 +290,7 @@ serves root index page from file <code>public/index.html</code>.</p>
 <h3 id="serving-favicon">Serving favicon</h3>
 <p><code>echo.Favicon(file string)</code> serves default favicon - <code>GET /favicon.ico</code>. For example,
 code below serves favicon from file <code>public/favicon.ico</code>.</p>
-<pre><code class="go">e.Index(&quot;public/favicon.ico&quot;)
+<pre><code class="go">e.Favicon(&quot;public/favicon.ico&quot;)
 </code></pre>
 
 <h2 id="error-handling">Error Handling</h2>
