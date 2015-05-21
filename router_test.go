@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sort"
+	"strings"
 	"testing"
 )
 
@@ -632,6 +634,81 @@ func TestRouterServeHTTP(t *testing.T) {
 	req, _ = http.NewRequest(GET, "/files", nil)
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, req)
+}
+
+func TestPaths(t *testing.T) {
+	e := New()
+
+	e.Get("/foo", func(res http.ResponseWriter, req *http.Request) {})
+	e.Put("/foo", func(res http.ResponseWriter, req *http.Request) {})
+	e.Get("/foo/:id", func(res http.ResponseWriter, req *http.Request) {})
+	e.Get("/bar/baz/:id", func(res http.ResponseWriter, req *http.Request) {})
+	e.Get("/:controller/:action/:id", func(res http.ResponseWriter, req *http.Request) {})
+
+	g := e.Group("/api/v1")
+	g.Get("/users/:id", func(res http.ResponseWriter, req *http.Request) {})
+	g.Get("/users/:id/edit", func(res http.ResponseWriter, req *http.Request) {})
+	g.Post("/users/:id", func(res http.ResponseWriter, req *http.Request) {})
+
+	trees := e.Router.trees
+
+	exm := map[string][]string{
+		"GET":  []string{"/:controller/:action/:id", "/api/v1/users/:id", "/api/v1/users/:id/edit", "/bar/baz/:id", "/foo", "/foo/:id"},
+		"PUT":  []string{"/foo"},
+		"POST": []string{"/api/v1/users/:id"},
+	}
+
+	for verb, exp := range exm {
+		paths := trees[verb].Paths()
+		sort.Strings(paths)
+
+		for _, e := range exp {
+			found := false
+			for _, p := range paths {
+				if p == e {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("expected %q to contain %s", paths, e)
+			}
+		}
+	}
+
+}
+
+func TestPrint(t *testing.T) {
+	e := New()
+
+	e.Get("/foo", func(res http.ResponseWriter, req *http.Request) {})
+	e.Put("/foo", func(res http.ResponseWriter, req *http.Request) {})
+	e.Get("/foo/:id", func(res http.ResponseWriter, req *http.Request) {})
+	e.Get("/bar/baz/:id", func(res http.ResponseWriter, req *http.Request) {})
+	e.Get("/:controller/:action/:id", func(res http.ResponseWriter, req *http.Request) {})
+
+	g := e.Group("/api/v1")
+	g.Get("/users/:id", func(res http.ResponseWriter, req *http.Request) {})
+	g.Get("/users/:id/edit", func(res http.ResponseWriter, req *http.Request) {})
+	g.Post("/users/:id", func(res http.ResponseWriter, req *http.Request) {})
+
+	var b bytes.Buffer
+	e.Router.Print(&b)
+	get := `GET	/foo
+	/foo/:id
+	/bar/baz/:id
+	/:controller/:action/:id
+	/api/v1/users/:id
+	/api/v1/users/:id/edit`
+	post := `POST	/api/v1/users/:id`
+	put := `PUT	/foo`
+
+	res := b.String()
+	for _, exp := range []string{get, post, put} {
+		if !strings.Contains(res, exp) {
+			t.Errorf("expected %q to contain %q", res, exp)
+		}
+	}
 }
 
 func (n *node) printTree(pfx string, tail bool) {
