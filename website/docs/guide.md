@@ -84,8 +84,8 @@ types of handlers.
 
 ### Path parameter
 
-Request path parameters can be extracted either by name `echo.Context.Param(name string) string`
-or by index `echo.Context.P(i uint8) string`. Getting parameter by index gives a
+Request path parameters can be extracted either by name `Echo.Context.Param(name string) string`
+or by index `Echo.Context.P(i uint8) string`. Getting parameter by index gives a
 slightly better performance.
 
 ```go
@@ -144,7 +144,7 @@ Routes can be written in any order.
 
 ### URI building
 
-`echo.URI` can be used generate URI for any handler with specified path parameters.
+`Echo.URI` can be used generate URI for any handler with specified path parameters.
 It's helpful to centralize all your URI patterns which ease in refactoring your
 application.
 
@@ -192,7 +192,7 @@ Sends an HTML HTTP response with status code.
 
 ### Static files
 
-`echo.Static(path, root string)` serves static files. For example, code below serves
+`Echo.Static(path, root string)` serves static files. For example, code below serves
 files from directory `public/scripts` for any request path starting with `/scripts/`.
 
 ```go
@@ -201,7 +201,7 @@ e.Static("/scripts/", "public/scripts")
 
 ### Serving a file
 
-`echo.ServeFile(path, file string)` serves a file. For example, code below serves
+`Echo.ServeFile(path, file string)` serves a file. For example, code below serves
 file `welcome.html` for request path `/welcome`.
 
 ```go
@@ -210,16 +210,16 @@ e.ServeFile("/welcome", "welcome.html")
 
 ### Serving an index file
 
-`echo.Index(file string)` serves root index page - `GET /`. For example, code below
+`Echo.Index(file string)` serves root index page - `GET /`. For example, code below
 serves root index page from file `public/index.html`.
 
 ```go
 e.Index("public/index.html")
 ```
 
-### Serving favicon 
+### Serving favicon
 
-`echo.Favicon(file string)` serves default favicon - `GET /favicon.ico`. For example,
+`Echo.Favicon(file string)` serves default favicon - `GET /favicon.ico`. For example,
 code below serves favicon from file `public/favicon.ico`.
 
 ```go
@@ -237,7 +237,7 @@ It allows you to
 - Customize HTTP responses.
 - Recover from panics inside middleware or handlers.
 
-For example, when a basic auth middleware finds invalid credentials it returns
+For example, when basic auth middleware finds invalid credentials it returns
 `401 - Unauthorized` error, aborting the current HTTP request.
 
 ```go
