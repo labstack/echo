@@ -42,34 +42,45 @@ func TestBasicAuth(t *testing.T) {
 	//---------------------
 
 	// Incorrect password
-	auth = Basic + "  " + base64.StdEncoding.EncodeToString([]byte("joe: password"))
+	auth = Basic + "  " + base64.StdEncoding.EncodeToString([]byte("joe:password"))
 	req.Header.Set(echo.Authorization, auth)
 	ba = BasicAuth(fn)
+	he := ba(c).(*echo.HTTPError)
 	if ba(c) == nil {
 		t.Error("expected `fail`, with incorrect password.")
+	} else if he.Code != http.StatusUnauthorized {
+		t.Errorf("expected status `401`, got %d", he.Code)
 	}
 
 	// Empty Authorization header
 	req.Header.Set(echo.Authorization, "")
 	ba = BasicAuth(fn)
-	if ba(c) == nil {
+	he = ba(c).(*echo.HTTPError)
+	if he == nil {
 		t.Error("expected `fail`, with empty Authorization header.")
+	} else if he.Code != http.StatusBadRequest {
+		t.Errorf("expected status `400`, got %d", he.Code)
 	}
 
 	// Invalid Authorization header
 	auth = base64.StdEncoding.EncodeToString([]byte(" :secret"))
 	req.Header.Set(echo.Authorization, auth)
 	ba = BasicAuth(fn)
-	if ba(c) == nil {
+	he = ba(c).(*echo.HTTPError)
+	if he == nil {
 		t.Error("expected `fail`, with invalid Authorization header.")
+	} else if he.Code != http.StatusBadRequest {
+		t.Errorf("expected status `400`, got %d", he.Code)
 	}
 
 	// Invalid scheme
-	auth = "Base " + base64.StdEncoding.EncodeToString([]byte(" :secret"))
+	auth = "Ace " + base64.StdEncoding.EncodeToString([]byte(" :secret"))
 	req.Header.Set(echo.Authorization, auth)
 	ba = BasicAuth(fn)
-	if ba(c) == nil {
+	he = ba(c).(*echo.HTTPError)
+	if he == nil {
 		t.Error("expected `fail`, with invalid scheme.")
+	} else if he.Code != http.StatusBadRequest {
+		t.Errorf("expected status `400`, got %d", he.Code)
 	}
-
 }

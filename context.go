@@ -100,7 +100,7 @@ func (c *Context) NoContent(code int) error {
 	return nil
 }
 
-// Error invokes the registered HTTP error handler.
+// Error invokes the registered HTTP error handler. Usually used by middleware.
 func (c *Context) Error(err error) {
 	c.echo.httpErrorHandler(err, c)
 }
