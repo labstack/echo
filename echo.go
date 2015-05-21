@@ -121,9 +121,9 @@ var (
 )
 
 func NewHTTPError(code int, msgs ...string) *HTTPError {
-	he := &HTTPError{Code: code}
-	if len(msgs) == 0 {
-		he.Message = http.StatusText(code)
+	he := &HTTPError{Code: code, Message: http.StatusText(code)}
+	for _, m := range msgs {
+		he.Message = m
 	}
 	return he
 }
