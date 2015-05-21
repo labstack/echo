@@ -153,15 +153,15 @@ for many use cases. Restricting path parameters allows us to use memory efficien
 <h3 id="http-error-handler">HTTP error handler</h3>
 <p><code>Echo.SetHTTPErrorHandler(h HTTPErrorHandler)</code></p>
 <p>Registers a custom <code>Echo.HTTPErrorHandler</code>.</p>
-<p>Default handler sends <code>HTTPError.Message</code> HTTP response with <code>HTTPError.Code</code> status
-code.</p>
+<p>Default handler rules</p>
 <ul>
-<li>If HTTPError.Code is not set it uses <code>500</code>".</li>
-<li>If HTTPError.Message is not set it uses status code text.</li>
-<li>If debug mode is enabled, HTTPError.Message is set to <code>HTTPError.Error.Error()</code>.</li>
+<li>If error is of type <code>Echo.HTTPError</code> it sends HTTP response with status code <code>HTTPError.Code</code>
+and message <code>HTTPError.Message</code>.</li>
+<li>Else it sends <code>500 - Internal Server Error</code>.</li>
+<li>If debug mode is enabled, it uses <code>error.Error()</code> as status message.</li>
 </ul>
 <h3 id="debug">Debug</h3>
-<p><code>echo.SetDebug(on bool)</code></p>
+<p><code>Echo.SetDebug(on bool)</code></p>
 <p>Enables debug mode.</p>
 <h2 id="routing">Routing</h2>
 <p>Echo's router is <a href="https://github.com/labstack/echo#benchmark">fast, optimized</a> and
@@ -172,12 +172,12 @@ zero dynamic memory allocation with no GC overhead.</p>
 <p>Routes can be registered by specifying HTTP method, path and a handler. For example,
 code below registers a route for method <code>GET</code>, path <code>/hello</code> and a handler which sends
 <code>Hello!</code> HTTP response.</p>
-<pre><code class="go">echo.Get(&quot;/hello&quot;, func(*echo.Context) *HTTPError {
+<pre><code class="go">echo.Get(&quot;/hello&quot;, func(*echo.Context) error {
     return c.String(http.StatusOK, &quot;Hello!&quot;)
 })
 </code></pre>
 
-<p>Echo's default handler is <code>func(*echo.Context) *echo.HTTPError</code> where <code>echo.Context</code>
+<p>Echo's default handler is <code>func(*echo.Context) error</code> where <code>echo.Context</code>
 primarily holds HTTP request and response objects. Echo also has a support for other
 types of handlers.</p>
 <!-- TODO mention about not able to take advantage -->
@@ -188,7 +188,7 @@ types of handlers.</p>
 <p>Request path parameters can be extracted either by name <code>echo.Context.Param(name string) string</code>
 or by index <code>echo.Context.P(i uint8) string</code>. Getting parameter by index gives a
 slightly better performance.</p>
-<pre><code class="go">echo.Get(&quot;/users/:id&quot;, func(c *echo.Context) *HTTPError {
+<pre><code class="go">echo.Get(&quot;/users/:id&quot;, func(c *echo.Context) error {
     // By name
     id := c.Param(&quot;id&quot;)
 
@@ -215,15 +215,15 @@ match</p>
 <li>Match any</li>
 </ul>
 <h4 id="example">Example</h4>
-<pre><code class="go">e.Get(&quot;/users/:id&quot;, func(c *echo.Context) *HTTPError {
+<pre><code class="go">e.Get(&quot;/users/:id&quot;, func(c *echo.Context) error {
     return c.String(http.StatusOK, &quot;/users/:id&quot;)
 })
 
-e.Get(&quot;/users/new&quot;, func(c *echo.Context) *HTTPError {
+e.Get(&quot;/users/new&quot;, func(c *echo.Context) error {
     return c.String(http.StatusOK, &quot;/users/new&quot;)
 })
 
-e.Get(&quot;/users/1/files/*&quot;, func(c *echo.Context) *HTTPError {
+e.Get(&quot;/users/1/files/*&quot;, func(c *echo.Context) error {
     return c.String(http.StatusOK, &quot;/users/1/files/*&quot;)
 })
 </code></pre>
@@ -243,7 +243,7 @@ It's helpful to centralize all your URI patterns which ease in refactoring your
 application.</p>
 <p><code>echo.URI(h, 1)</code> will generate <code>/users/1</code> for the route registered below</p>
 <pre><code class="go">// Handler
-h := func(*echo.Context) *HTTPError {
+h := func(*echo.Context) error {
     return c.String(http.StatusOK, &quot;OK&quot;)
 }
 
@@ -255,17 +255,17 @@ e.Get(&quot;/users/:id&quot;, h)
 <p><a href="https://github.com/labstack/echo/tree/master/examples/middleware"><em>WIP</em></a></p>
 <h2 id="response">Response</h2>
 <h3 id="json">JSON</h3>
-<pre><code class="go">context.JSON(code int, v interface{}) *HTTPError
+<pre><code class="go">context.JSON(code int, v interface{}) error
 </code></pre>
 
 <p>Sends a JSON HTTP response with status code.</p>
 <h3 id="string">String</h3>
-<pre><code class="go">context.String(code int, s string) *HTTPError
+<pre><code class="go">context.String(code int, s string) error
 </code></pre>
 
 <p>Sends a text/plain HTTP response with status code.</p>
 <h3 id="html">HTML</h3>
-<pre><code class="go">func (c *Context) HTML(code int, html string) *HTTPError
+<pre><code class="go">func (c *Context) HTML(code int, html string) error
 </code></pre>
 
 <p>Sends an HTML HTTP response with status code.</p>
@@ -294,16 +294,16 @@ code below serves favicon from file <code>public/favicon.ico</code>.</p>
 </code></pre>
 
 <h2 id="error-handling">Error Handling</h2>
-<p>Echo advocates centralized HTTP error handling by returning <code>*echo.HTTPError</code> from
-middleware and handlers.</p>
+<p>Echo advocates centralized HTTP error handling by returning <code>error</code> from middleware
+and handlers.</p>
 <p>It allows you to</p>
 <ul>
 <li>Debug by writing stack trace to the HTTP response.</li>
 <li>Customize HTTP responses.</li>
 <li>Recover from panics inside middleware or handlers.</li>
 </ul>
-<p>For example, when a basic auth middleware finds invalid credentials it returns 401
-"Unauthorized" error, aborting the current HTTP request.</p>
+<p>For example, when a basic auth middleware finds invalid credentials it returns
+<code>401 - Unauthorized</code> error, aborting the current HTTP request.</p>
 <pre><code class="go">package main
 
 import (
@@ -314,18 +314,18 @@ import (
 
 func main() {
     e := echo.New()
-    e.Use(func(c *echo.Context) *echo.HTTPError {
+    e.Use(func(c *echo.Context) error {
         // Extract the credentials from HTTP request header and perform a security
         // check
 
         // For invalid credentials
-        return &amp;echo.HTTPError{Code: http.StatusUnauthorized}
+        return echo.NewHTTPError(http.StatusUnauthorized)
     })
     e.Get(&quot;/welcome&quot;, welcome)
     e.Run(&quot;:1323&quot;)
 }
 
-func welcome(c *echo.Context) *echo.HTTPError {
+func welcome(c *echo.Context) error {
     return c.String(http.StatusOK, &quot;Welcome!&quot;)
 }
 </code></pre>

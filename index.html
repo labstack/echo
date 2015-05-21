@@ -137,7 +137,7 @@
 <li><code>echo.MiddlewareFunc</code></li>
 <li><code>func(echo.HandlerFunc) echo.HandlerFunc</code></li>
 <li><code>echo.HandlerFunc</code></li>
-<li><code>func(*echo.Context) *echo.HTTPError</code></li>
+<li><code>func(*echo.Context) error</code></li>
 <li><code>func(http.Handler) http.Handler</code></li>
 <li><code>http.Handler</code></li>
 <li><code>http.HandlerFunc</code></li>
@@ -146,7 +146,7 @@
 </li>
 <li>Handler<ul>
 <li><code>echo.HandlerFunc</code></li>
-<li><code>func(*echo.Context) *echo.HTTPError</code></li>
+<li><code>func(*echo.Context) error</code></li>
 <li><code>http.Handler</code></li>
 <li><code>http.HandlerFunc</code></li>
 <li><code>func(http.ResponseWriter, *http.Request)</code></li>
@@ -157,6 +157,7 @@
 <li>Sub routing with groups.</li>
 <li>Handy encoding/decoding functions.</li>
 <li>Serve static files, including index.</li>
+<li>Built-in support for WebSocket.</li>
 <li>Centralized HTTP error handling.</li>
 <li>Use a customized function to bind HTTP request body to a Go type.</li>
 <li>Register a view render so you can use any HTML template engine.</li>
@@ -178,7 +179,7 @@ import (
 )
 
 // Handler
-func hello(c *echo.Context) *echo.HTTPError {
+func hello(c *echo.Context) error {
     return c.String(http.StatusOK, &quot;Hello, World!\n&quot;)
 }
 
