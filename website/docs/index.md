@@ -30,6 +30,7 @@ Echo is a fast HTTP router (zero memory allocation) and micro web framework in G
 - Sub routing with groups.
 - Handy encoding/decoding functions.
 - Serve static files, including index.
+- Built-in support for WebSocket.
 - Centralized HTTP error handling.
 - Use a customized function to bind HTTP request body to a Go type.
 - Register a view render so you can use any HTML template engine.
