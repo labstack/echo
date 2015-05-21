@@ -185,8 +185,8 @@ types of handlers.</p>
 <h3 id="group">Group</h3>
 <p><em>WIP</em></p>
 <h3 id="path-parameter">Path parameter</h3>
-<p>Request path parameters can be extracted either by name <code>echo.Context.Param(name string) string</code>
-or by index <code>echo.Context.P(i uint8) string</code>. Getting parameter by index gives a
+<p>Request path parameters can be extracted either by name <code>Echo.Context.Param(name string) string</code>
+or by index <code>Echo.Context.P(i uint8) string</code>. Getting parameter by index gives a
 slightly better performance.</p>
 <pre><code class="go">echo.Get(&quot;/users/:id&quot;, func(c *echo.Context) error {
     // By name
@@ -238,7 +238,7 @@ e.Get(&quot;/users/1/files/*&quot;, func(c *echo.Context) error {
 <!-- Different use cases -->
 
 <h3 id="uri-building">URI building</h3>
-<p><code>echo.URI</code> can be used generate URI for any handler with specified path parameters.
+<p><code>Echo.URI</code> can be used generate URI for any handler with specified path parameters.
 It's helpful to centralize all your URI patterns which ease in refactoring your
 application.</p>
 <p><code>echo.URI(h, 1)</code> will generate <code>/users/1</code> for the route registered below</p>
@@ -270,25 +270,25 @@ e.Get(&quot;/users/:id&quot;, h)
 
 <p>Sends an HTML HTTP response with status code.</p>
 <h3 id="static-files">Static files</h3>
-<p><code>echo.Static(path, root string)</code> serves static files. For example, code below serves
+<p><code>Echo.Static(path, root string)</code> serves static files. For example, code below serves
 files from directory <code>public/scripts</code> for any request path starting with <code>/scripts/</code>.</p>
 <pre><code class="go">e.Static(&quot;/scripts/&quot;, &quot;public/scripts&quot;)
 </code></pre>
 
 <h3 id="serving-a-file">Serving a file</h3>
-<p><code>echo.ServeFile(path, file string)</code> serves a file. For example, code below serves
+<p><code>Echo.ServeFile(path, file string)</code> serves a file. For example, code below serves
 file <code>welcome.html</code> for request path <code>/welcome</code>.</p>
 <pre><code class="go">e.ServeFile(&quot;/welcome&quot;, &quot;welcome.html&quot;)
 </code></pre>
 
 <h3 id="serving-an-index-file">Serving an index file</h3>
-<p><code>echo.Index(file string)</code> serves root index page - <code>GET /</code>. For example, code below
+<p><code>Echo.Index(file string)</code> serves root index page - <code>GET /</code>. For example, code below
 serves root index page from file <code>public/index.html</code>.</p>
 <pre><code class="go">e.Index(&quot;public/index.html&quot;)
 </code></pre>
 
 <h3 id="serving-favicon">Serving favicon</h3>
-<p><code>echo.Favicon(file string)</code> serves default favicon - <code>GET /favicon.ico</code>. For example,
+<p><code>Echo.Favicon(file string)</code> serves default favicon - <code>GET /favicon.ico</code>. For example,
 code below serves favicon from file <code>public/favicon.ico</code>.</p>
 <pre><code class="go">e.Favicon(&quot;public/favicon.ico&quot;)
 </code></pre>
@@ -302,7 +302,7 @@ and handlers.</p>
 <li>Customize HTTP responses.</li>
 <li>Recover from panics inside middleware or handlers.</li>
 </ul>
-<p>For example, when a basic auth middleware finds invalid credentials it returns
+<p>For example, when basic auth middleware finds invalid credentials it returns
 <code>401 - Unauthorized</code> error, aborting the current HTTP request.</p>
 <pre><code class="go">package main
 
