@@ -11,9 +11,9 @@ type (
 	// Context represents context for the current request. It holds request and
 	// response objects, path parameters, data and registered handler.
 	Context struct {
-		Request  *http.Request
-		Response *Response
-		Socket   *websocket.Conn
+		request  *http.Request
+		response *Response
+		socket   *websocket.Conn
 		pnames   []string
 		pvalues  []string
 		store    store
@@ -24,13 +24,28 @@ type (
 
 func NewContext(req *http.Request, res *Response, e *Echo) *Context {
 	return &Context{
-		Request:  req,
-		Response: res,
+		request:  req,
+		response: res,
 		echo:     e,
 		pnames:   make([]string, e.maxParam),
 		pvalues:  make([]string, e.maxParam),
 		store:    make(store),
 	}
+}
+
+// Request returns *http.Request.
+func (c *Context) Request() *http.Request {
+	return c.request
+}
+
+// Response returns *Response.
+func (c *Context) Response() *Response {
+	return c.response
+}
+
+// Socket returns *websocket.Conn.
+func (c *Context) Socket() *websocket.Conn {
+	return c.socket
 }
 
 // P returns path parameter by index.
@@ -57,7 +72,7 @@ func (c *Context) Param(name string) (value string) {
 // Bind binds the request body into specified type v. Default binder does it
 // based on Content-Type header.
 func (c *Context) Bind(i interface{}) error {
-	return c.echo.binder(c.Request, i)
+	return c.echo.binder(c.request, i)
 }
 
 // Render invokes the registered HTML template renderer and sends a text/html
@@ -66,37 +81,37 @@ func (c *Context) Render(code int, name string, data interface{}) error {
 	if c.echo.renderer == nil {
 		return RendererNotRegistered
 	}
-	c.Response.Header().Set(ContentType, TextHTML+"; charset=utf-8")
-	c.Response.WriteHeader(code)
-	return c.echo.renderer.Render(c.Response, name, data)
+	c.response.Header().Set(ContentType, TextHTML+"; charset=utf-8")
+	c.response.WriteHeader(code)
+	return c.echo.renderer.Render(c.response, name, data)
 }
 
 // JSON sends an application/json response with status code.
 func (c *Context) JSON(code int, i interface{}) error {
-	c.Response.Header().Set(ContentType, ApplicationJSON+"; charset=utf-8")
-	c.Response.WriteHeader(code)
-	return json.NewEncoder(c.Response).Encode(i)
+	c.response.Header().Set(ContentType, ApplicationJSON+"; charset=utf-8")
+	c.response.WriteHeader(code)
+	return json.NewEncoder(c.response).Encode(i)
 }
 
 // String sends a text/plain response with status code.
 func (c *Context) String(code int, s string) error {
-	c.Response.Header().Set(ContentType, TextPlain+"; charset=utf-8")
-	c.Response.WriteHeader(code)
-	_, err := c.Response.Write([]byte(s))
+	c.response.Header().Set(ContentType, TextPlain+"; charset=utf-8")
+	c.response.WriteHeader(code)
+	_, err := c.response.Write([]byte(s))
 	return err
 }
 
 // HTML sends a text/html response with status code.
 func (c *Context) HTML(code int, html string) error {
-	c.Response.Header().Set(ContentType, TextHTML+"; charset=utf-8")
-	c.Response.WriteHeader(code)
-	_, err := c.Response.Write([]byte(html))
+	c.response.Header().Set(ContentType, TextHTML+"; charset=utf-8")
+	c.response.WriteHeader(code)
+	_, err := c.response.Write([]byte(html))
 	return err
 }
 
 // NoContent sends a response with no body and a status code.
 func (c *Context) NoContent(code int) error {
-	c.Response.WriteHeader(code)
+	c.response.WriteHeader(code)
 	return nil
 }
 
@@ -117,11 +132,11 @@ func (c *Context) Set(key string, val interface{}) {
 
 // Redirect redirects the request using http.Redirect with status code.
 func (c *Context) Redirect(code int, url string) {
-	http.Redirect(c.Response, c.Request, url, code)
+	http.Redirect(c.response, c.request, url, code)
 }
 
 func (c *Context) reset(w http.ResponseWriter, r *http.Request, e *Echo) {
-	c.Request = r
-	c.Response.reset(w)
+	c.request = r
+	c.response.reset(w)
 	c.echo = e
 }

@@ -13,7 +13,7 @@ func TestStripTrailingSlash(t *testing.T) {
 	res := echo.NewResponse(httptest.NewRecorder())
 	c := echo.NewContext(req, res, echo.New())
 	StripTrailingSlash()(c)
-	p := c.Request.URL.Path
+	p := c.Request().URL.Path
 	if p != "/users" {
 		t.Errorf("expected path `/users` got, %s.", p)
 	}
@@ -31,7 +31,7 @@ func TestRedirectToSlash(t *testing.T) {
 	}
 
 	// Location header
-	l := c.Response.Header().Get("Location")
+	l := c.Response().Header().Get("Location")
 	if l != "/users/" {
 		t.Errorf("expected Location header `/users/`, got %s.", l)
 	}

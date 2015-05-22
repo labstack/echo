@@ -13,9 +13,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/bradfitz/http2"
 	"github.com/mattn/go-colorable"
 	"golang.org/x/net/websocket"
-	"github.com/bradfitz/http2"
 )
 
 type (
@@ -34,8 +34,8 @@ type (
 		debug            bool
 	}
 	HTTPError struct {
-		Code    int
-		Message string
+		code    int
+		message string
 	}
 	Middleware     interface{}
 	MiddlewareFunc func(HandlerFunc) HandlerFunc
@@ -123,15 +123,21 @@ var (
 )
 
 func NewHTTPError(code int, msg ...string) *HTTPError {
-	he := &HTTPError{Code: code, Message: http.StatusText(code)}
+	he := &HTTPError{code: code, message: http.StatusText(code)}
 	for _, m := range msg {
-		he.Message = m
+		he.message = m
 	}
 	return he
 }
 
+// Code returns code.
+func (e *HTTPError) Code() int {
+	return e.code
+}
+
+// Error returns message.
 func (e *HTTPError) Error() string {
-	return e.Message
+	return e.message
 }
 
 // New creates an Echo instance.
@@ -157,13 +163,13 @@ func New() (e *Echo) {
 		code := http.StatusInternalServerError
 		msg := http.StatusText(code)
 		if he, ok := err.(*HTTPError); ok {
-			code = he.Code
-			msg = he.Message
+			code = he.code
+			msg = he.message
 		}
 		if e.Debug() {
 			msg = err.Error()
 		}
-		http.Error(c.Response, msg, code)
+		http.Error(c.response, msg, code)
 	})
 	e.SetBinder(func(r *http.Request, v interface{}) error {
 		ct := r.Header.Get(ContentType)
@@ -283,12 +289,12 @@ func (e *Echo) WebSocket(path string, h HandlerFunc) {
 	e.Get(path, func(c *Context) (err error) {
 		wss := websocket.Server{
 			Handler: func(ws *websocket.Conn) {
-				c.Socket = ws
-				c.Response.status = http.StatusSwitchingProtocols
+				c.socket = ws
+				c.response.status = http.StatusSwitchingProtocols
 				err = h(c)
 			},
 		}
-		wss.ServeHTTP(c.Response.writer, c.Request)
+		wss.ServeHTTP(c.response.writer, c.request)
 		return err
 	})
 }
@@ -313,7 +319,7 @@ func (e *Echo) Favicon(file string) {
 func (e *Echo) Static(path, root string) {
 	fs := http.StripPrefix(path, http.FileServer(http.Dir(root)))
 	e.Get(path+"*", func(c *Context) error {
-		fs.ServeHTTP(c.Response, c.Request)
+		fs.ServeHTTP(c.response, c.request)
 		return nil
 	})
 }
@@ -321,7 +327,7 @@ func (e *Echo) Static(path, root string) {
 // ServeFile serves a file.
 func (e *Echo) ServeFile(path, file string) {
 	e.Get(path, func(c *Context) error {
-		http.ServeFile(c.Response, c.Request, file)
+		http.ServeFile(c.response, c.request, file)
 		return nil
 	})
 }
@@ -399,17 +405,17 @@ func (e *Echo) RunTLSServer(srv *http.Server, certFile, keyFile string) {
 	e.run(srv, certFile, keyFile)
 }
 
-func (e *Echo) run(s *http.Server, f ...string) {
+func (e *Echo) run(s *http.Server, files ...string) {
 	s.Handler = e
 	if e.http2 {
 		http2.ConfigureServer(s, nil)
 	}
-	if len(f) == 0 {
+	if len(files) == 0 {
 		log.Fatal(s.ListenAndServe())
-	} else if len(f) == 2 {
-		log.Fatal(s.ListenAndServeTLS(f[0], f[1]))
+	} else if len(files) == 2 {
+		log.Fatal(s.ListenAndServeTLS(files[0], files[1]))
 	} else {
-		log.Fatal("echo: invalid TLS configuration")
+		log.Fatal("echo => invalid TLS configuration")
 	}
 }
 
@@ -428,10 +434,10 @@ func wrapMiddleware(m Middleware) MiddlewareFunc {
 		return func(h HandlerFunc) HandlerFunc {
 			return func(c *Context) (err error) {
 				m(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					c.Response.writer = w
-					c.Request = r
+					c.response.writer = w
+					c.request = r
 					err = h(c)
-				})).ServeHTTP(c.Response.writer, c.Request)
+				})).ServeHTTP(c.response.writer, c.request)
 				return
 			}
 		}
@@ -462,8 +468,8 @@ func wrapHandlerFuncMW(m HandlerFunc) MiddlewareFunc {
 func wrapHTTPHandlerFuncMW(m http.HandlerFunc) MiddlewareFunc {
 	return func(h HandlerFunc) HandlerFunc {
 		return func(c *Context) error {
-			if !c.Response.committed {
-				m.ServeHTTP(c.Response.writer, c.Request)
+			if !c.response.committed {
+				m.ServeHTTP(c.response.writer, c.request)
 			}
 			return h(c)
 		}
@@ -479,12 +485,12 @@ func wrapHandler(h Handler) HandlerFunc {
 		return h
 	case http.Handler, http.HandlerFunc:
 		return func(c *Context) error {
-			h.(http.Handler).ServeHTTP(c.Response, c.Request)
+			h.(http.Handler).ServeHTTP(c.response, c.request)
 			return nil
 		}
 	case func(http.ResponseWriter, *http.Request):
 		return func(c *Context) error {
-			h(c.Response, c.Request)
+			h(c.response, c.request)
 			return nil
 		}
 	default:

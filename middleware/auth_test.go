@@ -48,8 +48,8 @@ func TestBasicAuth(t *testing.T) {
 	he := ba(c).(*echo.HTTPError)
 	if ba(c) == nil {
 		t.Error("expected `fail`, with incorrect password.")
-	} else if he.Code != http.StatusUnauthorized {
-		t.Errorf("expected status `401`, got %d", he.Code)
+	} else if he.Code() != http.StatusUnauthorized {
+		t.Errorf("expected status `401`, got %d", he.Code())
 	}
 
 	// Empty Authorization header
@@ -58,8 +58,8 @@ func TestBasicAuth(t *testing.T) {
 	he = ba(c).(*echo.HTTPError)
 	if he == nil {
 		t.Error("expected `fail`, with empty Authorization header.")
-	} else if he.Code != http.StatusBadRequest {
-		t.Errorf("expected status `400`, got %d", he.Code)
+	} else if he.Code() != http.StatusBadRequest {
+		t.Errorf("expected status `400`, got %d", he.Code())
 	}
 
 	// Invalid Authorization header
@@ -69,8 +69,8 @@ func TestBasicAuth(t *testing.T) {
 	he = ba(c).(*echo.HTTPError)
 	if he == nil {
 		t.Error("expected `fail`, with invalid Authorization header.")
-	} else if he.Code != http.StatusBadRequest {
-		t.Errorf("expected status `400`, got %d", he.Code)
+	} else if he.Code() != http.StatusBadRequest {
+		t.Errorf("expected status `400`, got %d", he.Code())
 	}
 
 	// Invalid scheme
@@ -80,7 +80,7 @@ func TestBasicAuth(t *testing.T) {
 	he = ba(c).(*echo.HTTPError)
 	if he == nil {
 		t.Error("expected `fail`, with invalid scheme.")
-	} else if he.Code != http.StatusBadRequest {
-		t.Errorf("expected status `400`, got %d", he.Code)
+	} else if he.Code() != http.StatusBadRequest {
+		t.Errorf("expected status `400`, got %d", he.Code())
 	}
 }

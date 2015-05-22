@@ -16,14 +16,14 @@ func Logger() echo.MiddlewareFunc {
 				c.Error(err)
 			}
 			end := time.Now()
-			method := c.Request.Method
-			path := c.Request.URL.Path
+			method := c.Request().Method
+			path := c.Request().URL.Path
 			if path == "" {
 				path = "/"
 			}
-			size := c.Response.Size()
+			size := c.Response().Size()
 
-			n := c.Response.Status()
+			n := c.Response().Status()
 			code := color.Green(n)
 			switch {
 			case n >= 500:

@@ -6,17 +6,18 @@ import (
 	"strings"
 
 	"github.com/labstack/echo"
+	"net/http"
 )
 
 type (
 	gzipWriter struct {
 		io.Writer
-		*echo.Response
+		http.ResponseWriter
 	}
 )
 
-func (g gzipWriter) Write(b []byte) (int, error) {
-	return g.Writer.Write(b)
+func (w gzipWriter) Write(b []byte) (int, error) {
+	return w.Writer.Write(b)
 }
 
 // Gzip returns a middleware which compresses HTTP response using gzip compression
@@ -26,12 +27,12 @@ func Gzip() echo.MiddlewareFunc {
 
 	return func(h echo.HandlerFunc) echo.HandlerFunc {
 		return func(c *echo.Context) error {
-			if strings.Contains(c.Request.Header.Get(echo.AcceptEncoding), scheme) {
-				w := gzip.NewWriter(c.Response.Writer())
+			if strings.Contains(c.Request().Header.Get(echo.AcceptEncoding), scheme) {
+				w := gzip.NewWriter(c.Response().Writer())
 				defer w.Close()
-				gw := gzipWriter{Writer: w, Response: c.Response}
-				c.Response.Header().Set(echo.ContentEncoding, scheme)
-				c.Response = echo.NewResponse(gw)
+				gw := gzipWriter{Writer: w, ResponseWriter: c.Response().Writer()}
+				c.Response().Header().Set(echo.ContentEncoding, scheme)
+				c.Response().SetWriter(gw)
 			}
 			return h(c)
 		}

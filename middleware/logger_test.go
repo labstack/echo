@@ -21,14 +21,14 @@ func TestLogger(t *testing.T) {
 	Logger()(h)(c)
 
 	// Status 4xx
-	c.Response = echo.NewResponse(w)
+	c = echo.NewContext(req, echo.NewResponse(w), e)
 	h = func(c *echo.Context) error {
 		return c.String(http.StatusNotFound, "test")
 	}
 	Logger()(h)(c)
 
 	// Status 5xx
-	c.Response = echo.NewResponse(w)
+	c = echo.NewContext(req, echo.NewResponse(w), e)
 	h = func(c *echo.Context) error {
 		return c.String(http.StatusInternalServerError, "test")
 	}

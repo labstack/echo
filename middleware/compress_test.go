@@ -29,7 +29,7 @@ func TestGzip(t *testing.T) {
 	// Content-Encoding header
 	req.Header.Set(echo.AcceptEncoding, "gzip")
 	w = httptest.NewRecorder()
-	c.Response = echo.NewResponse(w)
+	c.Response().SetWriter(w)
 	Gzip()(h)(c)
 	ce := w.Header().Get(echo.ContentEncoding)
 	if ce != "gzip" {

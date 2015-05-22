@@ -15,10 +15,10 @@ type (
 // path.
 func StripTrailingSlash() echo.HandlerFunc {
 	return func(c *echo.Context) error {
-		p := c.Request.URL.Path
+		p := c.Request().URL.Path
 		l := len(p)
 		if p[l-1] == '/' {
-			c.Request.URL.Path = p[:l-1]
+			c.Request().URL.Path = p[:l-1]
 		}
 		return nil
 	}
@@ -36,7 +36,7 @@ func RedirectToSlash(opts ...RedirectToSlashOptions) echo.HandlerFunc {
 	}
 
 	return func(c *echo.Context) error {
-		p := c.Request.URL.Path
+		p := c.Request().URL.Path
 		l := len(p)
 		if p[l-1] != '/' {
 			c.Redirect(code, p+"/")

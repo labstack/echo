@@ -252,7 +252,7 @@ func TestEchoMethod(t *testing.T) {
 func TestWebSocket(t *testing.T) {
 	e := New()
 	e.WebSocket("/ws", func(c *Context) error {
-		c.Socket.Write([]byte("test"))
+		c.socket.Write([]byte("test"))
 		return nil
 	})
 	srv := httptest.NewServer(e)

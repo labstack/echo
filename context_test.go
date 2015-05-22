@@ -91,26 +91,26 @@ func TestContext(t *testing.T) {
 
 	// JSON
 	r.Header.Set(Accept, ApplicationJSON)
-	c.Response.committed = false
+	c.response.committed = false
 	if he := c.JSON(http.StatusOK, u1); he != nil {
 		t.Errorf("json %#v", he)
 	}
 
 	// String
 	r.Header.Set(Accept, TextPlain)
-	c.Response.committed = false
+	c.response.committed = false
 	if he := c.String(http.StatusOK, "Hello, World!"); he != nil {
 		t.Errorf("string %#v", he.Error)
 	}
 
 	// HTML
 	r.Header.Set(Accept, TextHTML)
-	c.Response.committed = false
+	c.response.committed = false
 	if he := c.HTML(http.StatusOK, "Hello, <strong>World!</strong>"); he != nil {
 		t.Errorf("html %v", he.Error)
 	}
 
 	// Redirect
-	c.Response.committed = false
+	c.response.committed = false
 	c.Redirect(http.StatusMovedPermanently, "http://labstack.github.io/echo")
 }
