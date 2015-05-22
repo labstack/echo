@@ -120,9 +120,9 @@ var (
 	RendererNotRegistered = errors.New("echo ⇒ renderer not registered")
 )
 
-func NewHTTPError(code int, msgs ...string) *HTTPError {
+func NewHTTPError(code int, msg ...string) *HTTPError {
 	he := &HTTPError{Code: code, Message: http.StatusText(code)}
-	for _, m := range msgs {
+	for _, m := range msg {
 		he.Message = m
 	}
 	return he
@@ -272,16 +272,16 @@ func (e *Echo) Trace(path string, h Handler) {
 
 // WebSocket adds a WebSocket route > handler to the router.
 func (e *Echo) WebSocket(path string, h HandlerFunc) {
-	e.Get(path, func(c *Context) *HTTPError {
+	e.Get(path, func(c *Context) (err error) {
 		wss := websocket.Server{
 			Handler: func(ws *websocket.Conn) {
 				c.Socket = ws
 				c.Response.status = http.StatusSwitchingProtocols
-				h(c)
+				err = h(c)
 			},
 		}
 		wss.ServeHTTP(c.Response.writer, c.Request)
-		return nil
+		return err
 	})
 }
 

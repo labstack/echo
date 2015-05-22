@@ -2,10 +2,11 @@ package middleware
 
 import (
 	"compress/gzip"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"bytes"
 
 	"github.com/labstack/echo"
 )
@@ -39,13 +40,11 @@ func TestGzip(t *testing.T) {
 	r, err := gzip.NewReader(w.Body)
 	defer r.Close()
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
-	b, err := ioutil.ReadAll(r)
-	if err != nil {
-		t.Error(err)
-	}
-	s = string(b)
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(r)
+	s = buf.String()
 	if s != "test" {
 		t.Errorf("expected body `test`, got %s.", s)
 	}

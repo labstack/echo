@@ -2,9 +2,12 @@ package echo
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"golang.org/x/net/websocket"
 )
 
 type (
@@ -244,6 +247,31 @@ func TestEchoMethod(t *testing.T) {
 	e.Post("/", h)
 	e.Put("/", h)
 	e.Trace("/", h)
+}
+
+func TestWebSocket(t *testing.T) {
+	e := New()
+	e.WebSocket("/ws", func(c *Context) error {
+		c.Socket.Write([]byte("test"))
+		return nil
+	})
+	srv := httptest.NewServer(e)
+	defer srv.Close()
+	addr := srv.Listener.Addr().String()
+	origin := "http://localhost"
+	url := fmt.Sprintf("ws://%s/ws", addr)
+	ws, err := websocket.Dial(url, "", origin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ws.Write([]byte("test"))
+	defer ws.Close()
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(ws)
+	s := buf.String()
+	if s != "test" {
+		t.Errorf("expected `test`, got %s.", s)
+	}
 }
 
 func TestEchoURL(t *testing.T) {
