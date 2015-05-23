@@ -175,18 +175,6 @@ func New() (e *Echo) {
 	return
 }
 
-// Group creates a new sub router with prefix. It inherits all properties from
-// the parent. Passing middleware overrides parent middleware.
-func (e *Echo) Group(pfx string, m ...Middleware) *Echo {
-	g := *e
-	g.prefix = g.prefix + pfx
-	if len(m) > 0 {
-		g.middleware = nil
-		g.Use(m...)
-	}
-	return &g
-}
-
 // Router returns router.
 func (e *Echo) Router() *Router {
 	return e.router
@@ -353,6 +341,18 @@ func (e *Echo) URI(h Handler, params ...interface{}) string {
 // URL is an alias for URI
 func (e *Echo) URL(h Handler, params ...interface{}) string {
 	return e.URI(h, params...)
+}
+
+// Group creates a new sub router with prefix. It inherits all properties from
+// the parent. Passing middleware overrides parent middleware.
+func (e *Echo) Group(prefix string, m ...Middleware) *Group {
+	g := &Group{*e}
+	g.echo.prefix += prefix
+	if len(m) > 0 {
+		g.echo.middleware = nil
+		g.Use(m...)
+	}
+	return g
 }
 
 func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
