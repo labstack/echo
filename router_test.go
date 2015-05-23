@@ -280,7 +280,7 @@ var (
 )
 
 func TestRouterStatic(t *testing.T) {
-	r := New().Router
+	r := New().router
 	b := new(bytes.Buffer)
 	path := "/folders/a/files/echo.gif"
 	r.Add(GET, path, func(*Context) error {
@@ -299,7 +299,7 @@ func TestRouterStatic(t *testing.T) {
 }
 
 func TestRouterParam(t *testing.T) {
-	r := New().Router
+	r := New().router
 	r.Add(GET, "/users/:id", func(c *Context) error {
 		return nil
 	}, nil)
@@ -314,7 +314,7 @@ func TestRouterParam(t *testing.T) {
 }
 
 func TestRouterTwoParam(t *testing.T) {
-	r := New().Router
+	r := New().router
 	r.Add(GET, "/users/:uid/files/:fid", func(*Context) error {
 		return nil
 	}, nil)
@@ -338,7 +338,7 @@ func TestRouterTwoParam(t *testing.T) {
 }
 
 func TestRouterMatchAny(t *testing.T) {
-	r := New().Router
+	r := New().router
 	r.Add(GET, "/users/*", func(*Context) error {
 		return nil
 	}, nil)
@@ -363,7 +363,7 @@ func TestRouterMatchAny(t *testing.T) {
 }
 
 func TestRouterMicroParam(t *testing.T) {
-	r := New().Router
+	r := New().router
 	r.Add(GET, "/:a/:b/:c", func(c *Context) error {
 		return nil
 	}, nil)
@@ -384,7 +384,7 @@ func TestRouterMicroParam(t *testing.T) {
 }
 
 func TestRouterMultiRoute(t *testing.T) {
-	r := New().Router
+	r := New().router
 	b := new(bytes.Buffer)
 
 	// Routes
@@ -425,7 +425,7 @@ func TestRouterMultiRoute(t *testing.T) {
 }
 
 func TestRouterPriority(t *testing.T) {
-	r := New().Router
+	r := New().router
 
 	// Routes
 	r.Add(GET, "/users", func(c *Context) error {
@@ -536,7 +536,7 @@ func TestRouterPriority(t *testing.T) {
 }
 
 func TestRouterParamNames(t *testing.T) {
-	r := New().Router
+	r := New().router
 	b := new(bytes.Buffer)
 
 	// Routes
@@ -596,7 +596,7 @@ func TestRouterParamNames(t *testing.T) {
 }
 
 func TestRouterAPI(t *testing.T) {
-	r := New().Router
+	r := New().router
 	for _, route := range api {
 		r.Add(route.method, route.path, func(c *Context) error {
 			for i, n := range c.pnames {
@@ -618,7 +618,7 @@ func TestRouterAPI(t *testing.T) {
 }
 
 func TestRouterServeHTTP(t *testing.T) {
-	r := New().Router
+	r := New().router
 	r.Add(GET, "/users", func(*Context) error {
 		return nil
 	}, nil)

@@ -3,7 +3,7 @@ package echo
 import "net/http"
 
 type (
-	router struct {
+	Router struct {
 		trees map[string]*node
 		echo  *Echo
 	}
@@ -27,8 +27,8 @@ const (
 	mtype
 )
 
-func NewRouter(e *Echo) (r *router) {
-	r = &router{
+func NewRouter(e *Echo) (r *Router) {
+	r = &Router{
 		trees: make(map[string]*node),
 		echo:  e,
 	}
@@ -41,7 +41,7 @@ func NewRouter(e *Echo) (r *router) {
 	return
 }
 
-func (r *router) Add(method, path string, h HandlerFunc, echo *Echo) {
+func (r *Router) Add(method, path string, h HandlerFunc, echo *Echo) {
 	var pnames []string // Param names
 
 	for i, l := 0, len(path); i < l; i++ {
@@ -71,7 +71,7 @@ func (r *router) Add(method, path string, h HandlerFunc, echo *Echo) {
 	r.insert(method, path, h, stype, pnames, echo)
 }
 
-func (r *router) insert(method, path string, h HandlerFunc, t ntype, pnames []string, echo *Echo) {
+func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []string, echo *Echo) {
 	cn := r.trees[method] // Current node as root
 	search := path
 
@@ -201,7 +201,7 @@ func lcp(a, b string) (i int) {
 	return
 }
 
-func (r *router) Find(method, path string, ctx *Context) (h HandlerFunc, echo *Echo) {
+func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, echo *Echo) {
 	cn := r.trees[method] // Current node as root
 	search := path
 
@@ -305,7 +305,7 @@ func (r *router) Find(method, path string, ctx *Context) (h HandlerFunc, echo *E
 	}
 }
 
-func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	c := r.echo.pool.Get().(*Context)
 	h, _ := r.Find(req.Method, req.URL.Path, c)
 	c.reset(w, req, r.echo)

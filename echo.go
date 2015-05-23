@@ -20,7 +20,7 @@ import (
 
 type (
 	Echo struct {
-		Router           *router
+		router           *Router
 		prefix           string
 		middleware       []MiddlewareFunc
 		http2            bool
@@ -33,10 +33,12 @@ type (
 		pool             sync.Pool
 		debug            bool
 	}
+
 	HTTPError struct {
 		code    int
 		message string
 	}
+
 	Middleware     interface{}
 	MiddlewareFunc func(HandlerFunc) HandlerFunc
 	Handler        interface{}
@@ -99,6 +101,13 @@ const (
 	ContentLength      = "Content-Length"
 	ContentType        = "Content-Type"
 	Authorization      = "Authorization"
+	Upgrade            = "Upgrade"
+
+	//-----------
+	// Protocols
+	//-----------
+
+	WebSocket = "websocket"
 )
 
 var (
@@ -122,30 +131,12 @@ var (
 	RendererNotRegistered = errors.New("echo ⇒ renderer not registered")
 )
 
-func NewHTTPError(code int, msg ...string) *HTTPError {
-	he := &HTTPError{code: code, message: http.StatusText(code)}
-	for _, m := range msg {
-		he.message = m
-	}
-	return he
-}
-
-// Code returns code.
-func (e *HTTPError) Code() int {
-	return e.code
-}
-
-// Error returns message.
-func (e *HTTPError) Error() string {
-	return e.message
-}
-
 // New creates an Echo instance.
 func New() (e *Echo) {
 	e = &Echo{
 		uris: make(map[Handler]string),
 	}
-	e.Router = NewRouter(e)
+	e.router = NewRouter(e)
 	e.pool.New = func() interface{} {
 		return NewContext(nil, new(Response), e)
 	}
@@ -194,6 +185,11 @@ func (e *Echo) Group(pfx string, m ...Middleware) *Echo {
 		g.Use(m...)
 	}
 	return &g
+}
+
+// Router returns router.
+func (e *Echo) Router() *Router {
+	return e.router
 }
 
 // HTTP2 enables HTTP2 support.
@@ -302,7 +298,7 @@ func (e *Echo) WebSocket(path string, h HandlerFunc) {
 func (e *Echo) add(method, path string, h Handler) {
 	key := runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name()
 	e.uris[key] = path
-	e.Router.Add(method, e.prefix+path, wrapHandler(h), e)
+	e.router.Add(method, e.prefix+path, wrapHandler(h), e)
 }
 
 // Index serves index file.
@@ -361,7 +357,7 @@ func (e *Echo) URL(h Handler, params ...interface{}) string {
 
 func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c := e.pool.Get().(*Context)
-	h, echo := e.Router.Find(r.Method, r.URL.Path, c)
+	h, echo := e.router.Find(r.Method, r.URL.Path, c)
 	if echo != nil {
 		e = echo
 	}
@@ -417,6 +413,24 @@ func (e *Echo) run(s *http.Server, files ...string) {
 	} else {
 		log.Fatal("echo => invalid TLS configuration")
 	}
+}
+
+func NewHTTPError(code int, msg ...string) *HTTPError {
+	he := &HTTPError{code: code, message: http.StatusText(code)}
+	for _, m := range msg {
+		he.message = m
+	}
+	return he
+}
+
+// Code returns code.
+func (e *HTTPError) Code() int {
+	return e.code
+}
+
+// Error returns message.
+func (e *HTTPError) Error() string {
+	return e.message
 }
 
 // wraps middleware

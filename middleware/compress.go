@@ -5,8 +5,9 @@ import (
 	"io"
 	"strings"
 
-	"github.com/labstack/echo"
 	"net/http"
+
+	"github.com/labstack/echo"
 )
 
 type (
@@ -27,7 +28,8 @@ func Gzip() echo.MiddlewareFunc {
 
 	return func(h echo.HandlerFunc) echo.HandlerFunc {
 		return func(c *echo.Context) error {
-			if strings.Contains(c.Request().Header.Get(echo.AcceptEncoding), scheme) {
+			if (c.Request().Header.Get(echo.Upgrade)) != echo.WebSocket && // Skip for WebSocket
+				strings.Contains(c.Request().Header.Get(echo.AcceptEncoding), scheme) {
 				w := gzip.NewWriter(c.Response().Writer())
 				defer w.Close()
 				gw := gzipWriter{Writer: w, ResponseWriter: c.Response().Writer()}

@@ -21,6 +21,11 @@ const (
 // For invalid credentials, it sends "401 - Unauthorized" response.
 func BasicAuth(fn AuthFunc) echo.HandlerFunc {
 	return func(c *echo.Context) error {
+		// Skip for WebSocket
+		if (c.Request().Header.Get(echo.Upgrade)) == echo.WebSocket {
+			return nil
+		}
+
 		auth := c.Request().Header.Get(echo.Authorization)
 		i := 0
 		code := http.StatusBadRequest
