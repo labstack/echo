@@ -13,6 +13,8 @@ import (
 	"strings"
 	"sync"
 
+	"path/filepath"
+
 	"github.com/bradfitz/http2"
 	"github.com/mattn/go-colorable"
 	"golang.org/x/net/websocket"
@@ -157,7 +159,7 @@ func New() (e *Echo) {
 			code = he.code
 			msg = he.message
 		}
-		if e.Debug() {
+		if e.debug {
 			msg = err.Error()
 		}
 		http.Error(c.response, msg, code)
@@ -299,21 +301,43 @@ func (e *Echo) Favicon(file string) {
 	e.ServeFile("/favicon.ico", file)
 }
 
-// Static serves static files.
-func (e *Echo) Static(path, root string) {
-	fs := http.StripPrefix(path, http.FileServer(http.Dir(root)))
+// Static serves static files from a directory. It's an alias for `Echo.ServeDir`
+func (e *Echo) Static(path, dir string) {
+	e.ServeDir(path, dir)
+}
+
+// ServeDir serves files from a directory.
+func (e *Echo) ServeDir(path, dir string) {
 	e.Get(path+"*", func(c *Context) error {
-		fs.ServeHTTP(c.response, c.request)
-		return nil
+		return serveFile(dir, c.P(0), c) // Param `_name`
 	})
 }
 
 // ServeFile serves a file.
 func (e *Echo) ServeFile(path, file string) {
 	e.Get(path, func(c *Context) error {
-		http.ServeFile(c.response, c.request, file)
-		return nil
+		dir, file := filepath.Split(file)
+		return serveFile(dir, file, c)
 	})
+}
+
+func serveFile(dir, file string, c *Context) error {
+	fs := http.Dir(dir)
+	f, err := fs.Open(file)
+	if err != nil {
+		return NewHTTPError(http.StatusNotFound)
+	}
+
+	fi, err := f.Stat()
+	if err != nil {
+		return NewHTTPError(http.StatusNotFound)
+	}
+	if fi.IsDir() {
+		return NewHTTPError(http.StatusForbidden)
+	}
+
+	http.ServeContent(c.response, c.request, fi.Name(), fi.ModTime(), f)
+	return nil
 }
 
 // URI generates a URI from handler.

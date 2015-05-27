@@ -52,6 +52,18 @@ func (g *Group) WebSocket(path string, h HandlerFunc) {
 	g.echo.WebSocket(path, h)
 }
 
+func (g *Group) Static(path, root string) {
+	g.echo.Static(path, root)
+}
+
+func (g *Group) ServeDir(path, root string) {
+	g.echo.ServeDir(path, root)
+}
+
+func (g *Group) ServeFile(path, file string) {
+	g.echo.ServeFile(path, file)
+}
+
 func (g *Group) Group(prefix string, m ...Middleware) *Group {
 	return g.echo.Group(prefix, m...)
 }
