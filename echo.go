@@ -22,18 +22,19 @@ import (
 
 type (
 	Echo struct {
-		router           *Router
-		prefix           string
-		middleware       []MiddlewareFunc
-		http2            bool
-		maxParam         byte
-		notFoundHandler  HandlerFunc
-		httpErrorHandler HTTPErrorHandler
-		binder           BindFunc
-		renderer         Renderer
-		uris             map[Handler]string
-		pool             sync.Pool
-		debug            bool
+		router                  *Router
+		prefix                  string
+		middleware              []MiddlewareFunc
+		http2                   bool
+		maxParam                byte
+		notFoundHandler         HandlerFunc
+		defaultHTTPErrorHandler HTTPErrorHandler
+		httpErrorHandler        HTTPErrorHandler
+		binder                  BindFunc
+		renderer                Renderer
+		uris                    map[Handler]string
+		pool                    sync.Pool
+		debug                   bool
 	}
 
 	HTTPError struct {
@@ -152,7 +153,7 @@ func New() (e *Echo) {
 	e.notFoundHandler = func(c *Context) error {
 		return NewHTTPError(http.StatusNotFound)
 	}
-	e.SetHTTPErrorHandler(func(err error, c *Context) {
+	e.defaultHTTPErrorHandler = func(err error, c *Context) {
 		code := http.StatusInternalServerError
 		msg := http.StatusText(code)
 		if he, ok := err.(*HTTPError); ok {
@@ -163,7 +164,8 @@ func New() (e *Echo) {
 			msg = err.Error()
 		}
 		http.Error(c.response, msg, code)
-	})
+	}
+	e.SetHTTPErrorHandler(e.defaultHTTPErrorHandler)
 	e.SetBinder(func(r *http.Request, v interface{}) error {
 		ct := r.Header.Get(ContentType)
 		err := UnsupportedMediaType
@@ -193,7 +195,12 @@ func (e *Echo) SetMaxParam(n uint8) {
 	e.maxParam = n
 }
 
-// SetHTTPErrorHandler registers an Echo.HTTPErrorHandler.
+// DefaultHTTPErrorHandler invokes the default HTTP error handler.
+func (e *Echo) DefaultHTTPErrorHandler(err error, c *Context) {
+	e.defaultHTTPErrorHandler(err, c)
+}
+
+// SetHTTPErrorHandler registers a custom Echo.HTTPErrorHandler.
 func (e *Echo) SetHTTPErrorHandler(h HTTPErrorHandler) {
 	e.httpErrorHandler = h
 }
@@ -441,7 +448,8 @@ func (e *Echo) run(s *http.Server, files ...string) {
 
 func NewHTTPError(code int, msg ...string) *HTTPError {
 	he := &HTTPError{code: code, message: http.StatusText(code)}
-	for _, m := range msg {
+	if len(msg) > 0 {
+		m := msg[0]
 		he.message = m
 	}
 	return he

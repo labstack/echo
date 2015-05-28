@@ -37,8 +37,8 @@ func TestResponse(t *testing.T) {
 	if r.Size() != int64(len(s)) {
 		t.Errorf("size should be %d", len(s))
 	}
-	
-	// reser
+
+	// reset
 	r.reset(httptest.NewRecorder())
 	if r.Size() != int64(0) {
 		t.Error("size should be 0")

@@ -1,8 +1,9 @@
 package middleware
 
 import (
-	"github.com/labstack/echo"
 	"net/http"
+
+	"github.com/labstack/echo"
 )
 
 type (
@@ -29,10 +30,9 @@ func StripTrailingSlash() echo.HandlerFunc {
 func RedirectToSlash(opts ...RedirectToSlashOptions) echo.HandlerFunc {
 	code := http.StatusMovedPermanently
 
-	for _, o := range opts {
-		if o.Code != 0 {
-			code = o.Code
-		}
+	if len(opts) > 0 {
+		o := opts[0]
+		code = o.Code
 	}
 
 	return func(c *echo.Context) error {

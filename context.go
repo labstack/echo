@@ -22,6 +22,7 @@ type (
 	store map[string]interface{}
 )
 
+// NewContext creates a Context object.
 func NewContext(req *http.Request, res *Response, e *Echo) *Context {
 	return &Context{
 		request:  req,
