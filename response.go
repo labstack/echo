@@ -76,6 +76,7 @@ func (r *Response) Size() int64 {
 
 func (r *Response) reset(w http.ResponseWriter) {
 	r.writer = w
+	r.size = 0
 	r.status = http.StatusOK
 	r.committed = false
 }
