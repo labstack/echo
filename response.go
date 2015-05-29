@@ -22,12 +22,12 @@ func NewResponse(w http.ResponseWriter) *Response {
 	return &Response{writer: w}
 }
 
-func (r *Response) Header() http.Header {
-	return r.writer.Header()
-}
-
 func (r *Response) SetWriter(w http.ResponseWriter) {
 	r.writer = w
+}
+
+func (r *Response) Header() http.Header {
+	return r.writer.Header()
 }
 
 func (r *Response) Writer() http.ResponseWriter {

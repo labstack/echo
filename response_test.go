@@ -4,43 +4,57 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestResponse(t *testing.T) {
-	r := NewResponse(httptest.NewRecorder())
+	w := httptest.NewRecorder()
+	r := NewResponse(w)
+
+	// SetWriter
+	r.SetWriter(w)
+
+	// Writer
+	assert.Equal(t, w, r.Writer())
 
 	// Header
-	if r.Header() == nil {
-		t.Error("header should not be nil")
-	}
+	assert.NotNil(t, r.Header())
 
 	// WriteHeader
 	r.WriteHeader(http.StatusOK)
-	if r.status != http.StatusOK {
-		t.Errorf("status should be %d", http.StatusOK)
-	}
-	if r.committed != true {
-		t.Error("response should be true")
-	}
+	assert.Equal(t, http.StatusOK, r.status)
+
+	// committed
+	assert.True(t, r.committed)
+
 	// Response already committed
 	r.WriteHeader(http.StatusOK)
 
 	// Status
 	r.status = http.StatusOK
-	if r.Status() != http.StatusOK {
-		t.Errorf("status should be %d", http.StatusOK)
-	}
+	assert.Equal(t, http.StatusOK, r.Status())
 
-	// Write & Size
+	// Write
 	s := "echo"
-	r.Write([]byte(s))
-	if r.Size() != int64(len(s)) {
-		t.Errorf("size should be %d", len(s))
-	}
+	_, err := r.Write([]byte(s))
+	assert.NoError(t, err)
+
+	// Flush
+	r.Flush()
+
+	// Size
+	assert.Equal(t, int64(len(s)), r.Size())
+
+	// Hijack
+	assert.Panics(t, func() {
+		r.Hijack()
+	})
+
+	// CloseNotify
+	assert.Panics(t, func() {
+		r.CloseNotify()
+	})
 
 	// reset
 	r.reset(httptest.NewRecorder())
-	if r.Size() != int64(0) {
-		t.Error("size should be 0")
-	}
 }
