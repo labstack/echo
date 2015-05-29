@@ -7,6 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"reflect"
+	"strings"
+
 	"golang.org/x/net/websocket"
 )
 
@@ -235,18 +238,75 @@ func TestEchoGroup(t *testing.T) {
 	}
 }
 
-func TestEchoMethod(t *testing.T) {
+func TestEchoConnect(t *testing.T) {
 	e := New()
-	h := func(*Context) error { return nil }
-	e.Connect("/", h)
-	e.Delete("/", h)
-	e.Get("/", h)
-	e.Head("/", h)
-	e.Options("/", h)
-	e.Patch("/", h)
-	e.Post("/", h)
-	e.Put("/", h)
-	e.Trace("/", h)
+	testMethod(CONNECT, "/", e, nil, t)
+}
+
+func TestEchoDelete(t *testing.T) {
+	e := New()
+	testMethod(DELETE, "/", e, nil, t)
+}
+
+func TestEchoGet(t *testing.T) {
+	e := New()
+	testMethod(GET, "/", e, nil, t)
+}
+
+func TestEchoHead(t *testing.T) {
+	e := New()
+	testMethod(HEAD, "/", e, nil, t)
+}
+
+func TestEchoOptions(t *testing.T) {
+	e := New()
+	testMethod(OPTIONS, "/", e, nil, t)
+}
+
+func TestEchoPatch(t *testing.T) {
+	e := New()
+	testMethod(PATCH, "/", e, nil, t)
+}
+
+func TestEchoPost(t *testing.T) {
+	e := New()
+	testMethod(POST, "/", e, nil, t)
+}
+
+func TestEchoPut(t *testing.T) {
+	e := New()
+	testMethod(PUT, "/", e, nil, t)
+}
+
+func TestEchoTrace(t *testing.T) {
+	e := New()
+	testMethod(TRACE, "/", e, nil, t)
+}
+
+func testMethod(method, path string, e *Echo, g *Group, t *testing.T) {
+	m := fmt.Sprintf("%c%s", method[0], strings.ToLower(method[1:]))
+	p := reflect.ValueOf(path)
+	h := reflect.ValueOf(func(c *Context) error {
+		c.String(http.StatusOK, method)
+		return nil
+	})
+	i := interface{}(e)
+	if g != nil {
+		path = e.prefix + path
+		i = g
+	}
+	reflect.ValueOf(i).MethodByName(m).Call([]reflect.Value{p, h})
+	_, body := request(method, path, e)
+	if body != method {
+		t.Errorf("expected body `%s`, got %s.", method, body)
+	}
+}
+
+func request(method, path string, e *Echo) (int, string) {
+	r, _ := http.NewRequest(method, path, nil)
+	w := httptest.NewRecorder()
+	e.ServeHTTP(w, r)
+	return w.Code, w.Body.String()
 }
 
 func TestWebSocket(t *testing.T) {
