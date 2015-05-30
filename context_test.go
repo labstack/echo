@@ -80,7 +80,7 @@ func TestContext(t *testing.T) {
 	tpl := &Template{
 		templates: template.Must(template.New("hello").Parse("Hello, {{.}}!")),
 	}
-	c.echo.renderer = tpl
+	c.echo.SetRenderer(tpl)
 	err = c.Render(http.StatusOK, "hello", "Joe")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)

@@ -1,10 +1,10 @@
 package echo
 
 import (
+	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestResponse(t *testing.T) {
@@ -44,7 +44,7 @@ func TestResponse(t *testing.T) {
 	r.Flush()
 
 	// Size
-	assert.Len(t, s, int(r.Size()))
+	assert.EqualValues(t, len(s), r.Size())
 
 	// Hijack
 	assert.Panics(t, func() {

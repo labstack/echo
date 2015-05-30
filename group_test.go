@@ -2,47 +2,20 @@ package echo
 
 import "testing"
 
-func TestGroupConnect(t *testing.T) {
+func TestGroup(t *testing.T) {
 	g := New().Group("/group")
-	testMethod(t, &g.echo, g, CONNECT, "/")
-}
-
-func TestGroupDelete(t *testing.T) {
-	g := New().Group("/group")
-	testMethod(t, &g.echo, g, DELETE, "/")
-}
-
-func TestGroupGet(t *testing.T) {
-	g := New().Group("/group")
-	testMethod(t, &g.echo, g, GET, "/")
-}
-
-func TestGroupHead(t *testing.T) {
-	g := New().Group("/group")
-	testMethod(t, &g.echo, g, HEAD, "/")
-}
-
-func TestGroupOptions(t *testing.T) {
-	g := New().Group("/group")
-	testMethod(t, &g.echo, g, OPTIONS, "/")
-}
-
-func TestGroupPatch(t *testing.T) {
-	g := New().Group("/group")
-	testMethod(t, &g.echo, g, PATCH, "/")
-}
-
-func TestGroupPost(t *testing.T) {
-	g := New().Group("/group")
-	testMethod(t, &g.echo, g, POST, "/")
-}
-
-func TestGroupPut(t *testing.T) {
-	g := New().Group("/group")
-	testMethod(t, &g.echo, g, PUT, "/")
-}
-
-func TestGroupTrace(t *testing.T) {
-	g := New().Group("/group")
-	testMethod(t, &g.echo, g, TRACE, "/")
+	h := func(*Context) error { return nil }
+	g.Connect("/", h)
+	g.Delete("/", h)
+	g.Get("/", h)
+	g.Head("/", h)
+	g.Options("/", h)
+	g.Patch("/", h)
+	g.Post("/", h)
+	g.Put("/", h)
+	g.Trace("/", h)
+	g.WebSocket("/ws", h)
+	g.Static("/scripts", "scripts")
+	g.ServeDir("/scripts", "scripts")
+	g.ServeFile("/scripts/main.js", "scripts/main.js")
 }

@@ -1,11 +1,11 @@
 package middleware
 
 import (
+	"errors"
 	"github.com/labstack/echo"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"errors"
 )
 
 func TestLogger(t *testing.T) {

@@ -1,11 +1,12 @@
 package echo
 
 import (
-	"bytes"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type route struct {
@@ -281,20 +282,15 @@ var (
 
 func TestRouterStatic(t *testing.T) {
 	r := New().router
-	b := new(bytes.Buffer)
 	path := "/folders/a/files/echo.gif"
-	r.Add(GET, path, func(*Context) error {
-		b.WriteString(path)
+	r.Add(GET, path, func(c *Context) error {
+		c.Set("path", path)
 		return nil
 	}, nil)
 	h, _ := r.Find(GET, path, context)
-	if h == nil {
-		t.Error("handler not found")
-	} else {
-		h(nil)
-		if b.String() != path {
-			t.Errorf("buffer should %s", path)
-		}
+	if assert.NotNil(t, h) {
+		h(context)
+		assert.Equal(t, path, context.Get("path"))
 	}
 }
 
@@ -304,12 +300,8 @@ func TestRouterParam(t *testing.T) {
 		return nil
 	}, nil)
 	h, _ := r.Find(GET, "/users/1", context)
-	if h == nil {
-		t.Error("handler not found")
-	} else {
-		if context.P(0) != "1" {
-			t.Error("param id should be 1")
-		}
+	if assert.NotNil(t, h) {
+		assert.Equal(t, "1", context.P(0))
 	}
 }
 
@@ -320,21 +312,13 @@ func TestRouterTwoParam(t *testing.T) {
 	}, nil)
 
 	h, _ := r.Find(GET, "/users/1/files/1", context)
-	if h == nil {
-		t.Error("handler not found")
-	} else {
-		if context.P(0) != "1" {
-			t.Error("param uid should be 1")
-		}
-		if context.P(1) != "1" {
-			t.Error("param fid should be 1")
-		}
+	if assert.NotNil(t, h) {
+		assert.Equal(t, "1", context.P(0))
+		assert.Equal(t, "1", context.P(1))
 	}
 
 	h, _ = r.Find(GET, "/users/1", context)
-	if h != nil {
-		t.Error("should not found handler")
-	}
+	assert.Nil(t, h)
 }
 
 func TestRouterMatchAny(t *testing.T) {
@@ -344,21 +328,13 @@ func TestRouterMatchAny(t *testing.T) {
 	}, nil)
 
 	h, _ := r.Find(GET, "/users/", context)
-	if h == nil {
-		t.Error("should match empty value")
-	} else {
-		if context.P(0) != "" {
-			t.Error("value should be empty")
-		}
+	if assert.NotNil(t, h) {
+		assert.Equal(t, "", context.P(0))
 	}
 
-	h, _ = r.Find(GET, "/users/joe", context)
-	if h == nil {
-		t.Error("should match non-empty value")
-	} else {
-		if context.P(0) != "joe" {
-			t.Error("value should be joe")
-		}
+	h, _ = r.Find(GET, "/users/1", context)
+	if assert.NotNil(t, h) {
+		assert.Equal(t, "1", context.P(0))
 	}
 }
 
@@ -368,28 +344,19 @@ func TestRouterMicroParam(t *testing.T) {
 		return nil
 	}, nil)
 	h, _ := r.Find(GET, "/1/2/3", context)
-	if h == nil {
-		t.Error("handler not found")
-	} else {
-		if context.P(0) != "1" {
-			t.Error("param a should be 1")
-		}
-		if context.P(1) != "2" {
-			t.Error("param b should be 2")
-		}
-		if context.P(2) != "3" {
-			t.Error("param c should be 3")
-		}
+	if assert.NotNil(t, h) {
+		assert.Equal(t, "1", context.P(0))
+		assert.Equal(t, "2", context.P(1))
+		assert.Equal(t, "3", context.P(2))
 	}
 }
 
 func TestRouterMultiRoute(t *testing.T) {
 	r := New().router
-	b := new(bytes.Buffer)
 
 	// Routes
-	r.Add(GET, "/users", func(*Context) error {
-		b.WriteString("/users")
+	r.Add(GET, "/users", func(c *Context) error {
+		c.Set("path", "/users")
 		return nil
 	}, nil)
 	r.Add(GET, "/users/:id", func(c *Context) error {
@@ -398,30 +365,20 @@ func TestRouterMultiRoute(t *testing.T) {
 
 	// Route > /users
 	h, _ := r.Find(GET, "/users", context)
-	if h == nil {
-		t.Error("handler not found")
-	} else {
-		h(nil)
-		if b.String() != "/users" {
-			t.Errorf("buffer should be /users")
-		}
+	if assert.NotNil(t, h) {
+		h(context)
+		assert.Equal(t, "/users", context.Get("path"))
 	}
 
 	// Route > /users/:id
 	h, _ = r.Find(GET, "/users/1", context)
-	if h == nil {
-		t.Error("handler not found")
-	} else {
-		if context.P(0) != "1" {
-			t.Error("param id should be 1")
-		}
+	if assert.NotNil(t, h) {
+		assert.Equal(t, "1", context.P(0))
 	}
 
 	// Route > /user
 	h, _ = r.Find(GET, "/user", context)
-	if h != nil {
-		t.Error("handler should be nil")
-	}
+	assert.Nil(t, h)
 }
 
 func TestRouterPriority(t *testing.T) {
@@ -459,89 +416,60 @@ func TestRouterPriority(t *testing.T) {
 
 	// Route > /users
 	h, _ := r.Find(GET, "/users", context)
-	if h == nil {
-		t.Error("handler not found")
-	} else {
+	if assert.NotNil(t, h) {
 		h(context)
-		if context.Get("a") != 1 {
-			t.Error("a should map to 1")
-		}
+		assert.Equal(t, 1, context.Get("a"))
 	}
 
 	// Route > /users/new
 	h, _ = r.Find(GET, "/users/new", context)
-	if h == nil {
-		t.Error("handler not found")
-	} else {
+	if assert.NotNil(t, h) {
 		h(context)
-		if context.Get("b") != 2 {
-			t.Error("b should map to 2")
-		}
+		assert.Equal(t, 2, context.Get("b"))
 	}
 
 	// Route > /users/:id
 	h, _ = r.Find(GET, "/users/1", context)
-	if h == nil {
-		t.Error("handler not found")
-	} else {
+	if assert.NotNil(t, h) {
 		h(context)
-		if context.Get("c") != 3 {
-			t.Error("c should map to 3")
-		}
+		assert.Equal(t, 3, context.Get("c"))
 	}
 
 	// Route > /users/dew
 	h, _ = r.Find(GET, "/users/dew", context)
-	if h == nil {
-		t.Error("handler not found")
-	} else {
+	if assert.NotNil(t, h) {
 		h(context)
-		if context.Get("d") != 4 {
-			t.Error("d should map to 4")
-		}
+		assert.Equal(t, 4, context.Get("d"))
 	}
 
 	// Route > /users/:id/files
 	h, _ = r.Find(GET, "/users/1/files", context)
-	if h == nil {
-		t.Error("handler not found")
-	} else {
+	if assert.NotNil(t, h) {
 		h(context)
-		if context.Get("e") != 5 {
-			t.Error("e should map to 5")
-		}
+		assert.Equal(t, 5, context.Get("e"))
 	}
 
 	// Route > /users/:id
 	h, _ = r.Find(GET, "/users/news", context)
-	if h == nil {
-		t.Error("handler not found")
-	} else {
+	if assert.NotNil(t, h) {
 		h(context)
-		if context.Get("c") != 3 {
-			t.Error("c should map to 3")
-		}
+		assert.Equal(t, 3, context.Get("c"))
 	}
 
 	// Route > /users/*
 	h, _ = r.Find(GET, "/users/joe/books", context)
-	if h == nil {
-		t.Error("handler not found")
-	} else {
+	if assert.NotNil(t, h) {
 		h(context)
-		if context.Get("g") != 7 {
-			t.Error("g should map to 7")
-		}
+		assert.Equal(t, 7, context.Get("g"))
 	}
 }
 
 func TestRouterParamNames(t *testing.T) {
 	r := New().router
-	b := new(bytes.Buffer)
 
 	// Routes
-	r.Add(GET, "/users", func(*Context) error {
-		b.WriteString("/users")
+	r.Add(GET, "/users", func(c *Context) error {
+		c.Set("path", "/users")
 		return nil
 	}, nil)
 	r.Add(GET, "/users/:id", func(c *Context) error {
@@ -553,45 +481,25 @@ func TestRouterParamNames(t *testing.T) {
 
 	// Route > /users
 	h, _ := r.Find(GET, "/users", context)
-	if h == nil {
-		t.Error("handler not found")
-	} else {
+	if assert.NotNil(t, h) {
 		h(context)
-		if b.String() != "/users" {
-			t.Errorf("buffer should be /users")
-		}
+		assert.Equal(t, "/users", context.Get("path"))
 	}
 
 	// Route > /users/:id
 	h, _ = r.Find(GET, "/users/1", context)
-	if h == nil {
-		t.Error("handler not found")
-	} else {
-		if context.pnames[0] != "id" {
-			t.Error("param name should be id")
-		}
-		if context.P(0) != "1" {
-			t.Error("param id should be 1")
-		}
+	if assert.NotNil(t, h) {
+		assert.Equal(t, "id", context.pnames[0])
+		assert.Equal(t, "1", context.P(0))
 	}
 
 	// Route > /users/:uid/files/:fid
 	h, _ = r.Find(GET, "/users/1/files/1", context)
-	if h == nil {
-		t.Error("handler not found")
-	} else {
-		if context.pnames[0] != "uid" {
-			t.Error("param name should be id")
-		}
-		if context.P(0) != "1" {
-			t.Error("param id should be 1")
-		}
-		if context.pnames[1] != "fid" {
-			t.Error("param name should be id")
-		}
-		if context.P(1) != "1" {
-			t.Error("param id should be 1")
-		}
+	if assert.NotNil(t, h) {
+		assert.Equal(t, "uid", context.pnames[0])
+		assert.Equal(t, "1", context.P(0))
+		assert.Equal(t, "fid", context.pnames[1])
+		assert.Equal(t, "1", context.P(1))
 	}
 }
 
@@ -600,18 +508,14 @@ func TestRouterAPI(t *testing.T) {
 	for _, route := range api {
 		r.Add(route.method, route.path, func(c *Context) error {
 			for i, n := range c.pnames {
-				if n != "" {
-					if ":"+n != c.P(uint8(i)) {
-						t.Errorf("param not found, method=%s, path=%s", route.method, route.path)
-					}
+				if assert.NotEmpty(t, n) {
+					assert.Equal(t, ":"+n, c.P(uint8(i)))
 				}
 			}
 			return nil
 		}, nil)
 		h, _ := r.Find(route.method, route.path, context)
-		if h == nil {
-			t.Fatalf("handler not found, method=%s, path=%s", route.method, route.path)
-		} else {
+		if assert.NotNil(t, h) {
 			h(context)
 		}
 	}
@@ -628,7 +532,7 @@ func TestRouterServeHTTP(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	// NotFound handler
+	// Not found
 	req, _ = http.NewRequest(GET, "/files", nil)
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, req)

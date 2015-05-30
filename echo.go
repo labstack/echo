@@ -293,9 +293,9 @@ func (e *Echo) WebSocket(path string, h HandlerFunc) {
 }
 
 func (e *Echo) add(method, path string, h Handler) {
+	e.router.Add(method, e.prefix+path, wrapHandler(h), e)
 	key := runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name()
 	e.uris[key] = path
-	e.router.Add(method, e.prefix+path, wrapHandler(h), e)
 }
 
 // Index serves index file.
@@ -335,10 +335,7 @@ func serveFile(dir, file string, c *Context) error {
 		return NewHTTPError(http.StatusNotFound)
 	}
 
-	fi, err := f.Stat()
-	if err != nil {
-		return NewHTTPError(http.StatusNotFound)
-	}
+	fi, _ := f.Stat()
 	if fi.IsDir() {
 		return NewHTTPError(http.StatusForbidden)
 	}
@@ -538,7 +535,7 @@ func wrapHandler(h Handler) HandlerFunc {
 			return nil
 		}
 	default:
-		panic("echo ⇒ unknown handler")
+		panic("echo => unknown handler")
 	}
 }
 

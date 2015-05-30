@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/labstack/echo"
-	"net/http/httptest"
 	"github.com/stretchr/testify/assert"
+	"net/http/httptest"
 )
 
 func TestBasicAuth(t *testing.T) {
