@@ -392,7 +392,7 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if echo != nil {
 		e = echo
 	}
-	c.reset(w, r, e)
+	c.reset(r, w, e)
 	if h == nil {
 		h = e.notFoundHandler
 	}

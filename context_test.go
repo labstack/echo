@@ -3,11 +3,14 @@ package echo
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"text/template"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type (
@@ -24,6 +27,15 @@ func TestContext(t *testing.T) {
 	b, _ := json.Marshal(u1)
 	r, _ := http.NewRequest(POST, "/users/1", bytes.NewReader(b))
 	c := NewContext(r, NewResponse(httptest.NewRecorder()), New())
+
+	// Request
+	assert.NotEmpty(t, c.Request())
+
+	// Response
+	assert.NotEmpty(t, c.Response())
+
+	// Socket
+	assert.Nil(t, c.Socket())
 
 	//------
 	// Bind
@@ -110,7 +122,19 @@ func TestContext(t *testing.T) {
 		t.Errorf("html %v", he.Error)
 	}
 
+	// NoContent
+	c.NoContent(http.StatusOK)
+	assert.Equal(t, http.StatusOK, c.response.status)
+
 	// Redirect
 	c.response.committed = false
 	c.Redirect(http.StatusMovedPermanently, "http://labstack.github.io/echo")
+
+	// Error
+	c.response.committed = false
+	c.Error(errors.New("error"))
+	assert.Equal(t, http.StatusInternalServerError, c.response.status)
+
+	// reset
+	c.reset(r, NewResponse(httptest.NewRecorder()), New())
 }

@@ -308,7 +308,7 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, echo *E
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	c := r.echo.pool.Get().(*Context)
 	h, _ := r.Find(req.Method, req.URL.Path, c)
-	c.reset(w, req, r.echo)
+	c.reset(req, w, r.echo)
 	if h == nil {
 		h = r.echo.notFoundHandler
 	}

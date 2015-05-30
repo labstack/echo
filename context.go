@@ -116,6 +116,11 @@ func (c *Context) NoContent(code int) error {
 	return nil
 }
 
+// Redirect redirects the request using http.Redirect with status code.
+func (c *Context) Redirect(code int, url string) {
+	http.Redirect(c.response, c.request, url, code)
+}
+
 // Error invokes the registered HTTP error handler. Usually used by middleware.
 func (c *Context) Error(err error) {
 	c.echo.httpErrorHandler(err, c)
@@ -131,12 +136,7 @@ func (c *Context) Set(key string, val interface{}) {
 	c.store[key] = val
 }
 
-// Redirect redirects the request using http.Redirect with status code.
-func (c *Context) Redirect(code int, url string) {
-	http.Redirect(c.response, c.request, url, code)
-}
-
-func (c *Context) reset(w http.ResponseWriter, r *http.Request, e *Echo) {
+func (c *Context) reset(r *http.Request, w http.ResponseWriter, e *Echo) {
 	c.request = r
 	c.response.reset(w)
 	c.echo = e
