@@ -307,8 +307,9 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	h, _ := r.Find(req.Method, req.URL.Path, c)
 	c.reset(req, w, r.echo)
 	if h == nil {
-		h = r.echo.notFoundHandler
+		c.Error(NewHTTPError(http.StatusNotFound))
+	} else {
+		h(c)
 	}
-	h(c)
 	r.echo.pool.Put(c)
 }

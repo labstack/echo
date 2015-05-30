@@ -531,11 +531,13 @@ func TestRouterServeHTTP(t *testing.T) {
 	req, _ := http.NewRequest(GET, "/users", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
 
 	// Not found
 	req, _ = http.NewRequest(GET, "/files", nil)
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
 func (n *node) printTree(pfx string, tail bool) {
