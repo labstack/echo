@@ -24,11 +24,12 @@ func TestResponse(t *testing.T) {
 	r.WriteHeader(http.StatusOK)
 	assert.Equal(t, http.StatusOK, r.status)
 
-	// committed
+	// Committed
 	assert.True(t, r.committed)
 
-	// Response already committed
-	r.WriteHeader(http.StatusOK)
+	// Already committed
+	r.WriteHeader(http.StatusTeapot)
+	assert.NotEqual(t, http.StatusTeapot, r.Status())
 
 	// Status
 	r.status = http.StatusOK
@@ -43,7 +44,7 @@ func TestResponse(t *testing.T) {
 	r.Flush()
 
 	// Size
-	assert.Equal(t, int64(len(s)), r.Size())
+	assert.Len(t, s, int(r.Size()))
 
 	// Hijack
 	assert.Panics(t, func() {

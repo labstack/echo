@@ -6,12 +6,14 @@ import (
 	"testing"
 
 	"github.com/labstack/echo"
+	"net/http/httptest"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestBasicAuth(t *testing.T) {
-	req, _ := http.NewRequest(echo.POST, "/", nil)
-	res := &echo.Response{}
-	c := echo.NewContext(req, res, echo.New())
+	req, _ := http.NewRequest(echo.GET, "/", nil)
+	rec := httptest.NewRecorder()
+	c := echo.NewContext(req, echo.NewResponse(rec), echo.New())
 	fn := func(u, p string) bool {
 		if u == "joe" && p == "secret" {
 			return true
@@ -26,16 +28,12 @@ func TestBasicAuth(t *testing.T) {
 
 	auth := Basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:secret"))
 	req.Header.Set(echo.Authorization, auth)
-	if ba(c) != nil {
-		t.Error("expected `pass`")
-	}
+	assert.NoError(t, ba(c))
 
 	// Case insensitive
 	auth = "basic " + base64.StdEncoding.EncodeToString([]byte("joe:secret"))
 	req.Header.Set(echo.Authorization, auth)
-	if ba(c) != nil {
-		t.Error("expected `pass`, with case insensitive header.")
-	}
+	assert.NoError(t, ba(c))
 
 	//---------------------
 	// Invalid credentials
@@ -46,41 +44,30 @@ func TestBasicAuth(t *testing.T) {
 	req.Header.Set(echo.Authorization, auth)
 	ba = BasicAuth(fn)
 	he := ba(c).(*echo.HTTPError)
-	if ba(c) == nil {
-		t.Error("expected `fail`, with incorrect password.")
-	} else if he.Code() != http.StatusUnauthorized {
-		t.Errorf("expected status `401`, got %d", he.Code())
-	}
+	assert.Equal(t, http.StatusUnauthorized, he.Code())
 
 	// Empty Authorization header
 	req.Header.Set(echo.Authorization, "")
 	ba = BasicAuth(fn)
 	he = ba(c).(*echo.HTTPError)
-	if he == nil {
-		t.Error("expected `fail`, with empty Authorization header.")
-	} else if he.Code() != http.StatusBadRequest {
-		t.Errorf("expected status `400`, got %d", he.Code())
-	}
+	assert.Equal(t, http.StatusBadRequest, he.Code())
 
 	// Invalid Authorization header
 	auth = base64.StdEncoding.EncodeToString([]byte(" :secret"))
 	req.Header.Set(echo.Authorization, auth)
 	ba = BasicAuth(fn)
 	he = ba(c).(*echo.HTTPError)
-	if he == nil {
-		t.Error("expected `fail`, with invalid Authorization header.")
-	} else if he.Code() != http.StatusBadRequest {
-		t.Errorf("expected status `400`, got %d", he.Code())
-	}
+	assert.Equal(t, http.StatusBadRequest, he.Code())
 
 	// Invalid scheme
-	auth = "Ace " + base64.StdEncoding.EncodeToString([]byte(" :secret"))
+	auth = "Base " + base64.StdEncoding.EncodeToString([]byte(" :secret"))
 	req.Header.Set(echo.Authorization, auth)
 	ba = BasicAuth(fn)
 	he = ba(c).(*echo.HTTPError)
-	if he == nil {
-		t.Error("expected `fail`, with invalid scheme.")
-	} else if he.Code() != http.StatusBadRequest {
-		t.Errorf("expected status `400`, got %d", he.Code())
-	}
+	assert.Equal(t, http.StatusBadRequest, he.Code())
+
+	// WebSocket
+	c.Request().Header.Set(echo.Upgrade, echo.WebSocket)
+	ba = BasicAuth(fn)
+	assert.NoError(t, ba(c))
 }

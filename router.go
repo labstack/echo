@@ -150,9 +150,6 @@ func newNode(t ntype, pre string, p *node, c children, h HandlerFunc, pnames []s
 	}
 }
 
-func (n *node) addChild(c *node) {
-}
-
 func (n *node) findChild(l byte) *node {
 	for _, c := range n.children {
 		if c.label == l {

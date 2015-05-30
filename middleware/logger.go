@@ -15,7 +15,7 @@ func Logger() echo.MiddlewareFunc {
 			if err := h(c); err != nil {
 				c.Error(err)
 			}
-			end := time.Now()
+			stop := time.Now()
 			method := c.Request().Method
 			path := c.Request().URL.Path
 			if path == "" {
@@ -34,7 +34,7 @@ func Logger() echo.MiddlewareFunc {
 				code = color.Cyan(n)
 			}
 
-			log.Printf("%s %s %s %s %d", method, path, code, end.Sub(start), size)
+			log.Printf("%s %s %s %s %d", method, path, code, stop.Sub(start), size)
 			return nil
 		}
 	}

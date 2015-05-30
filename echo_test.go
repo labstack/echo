@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/websocket"
 )
 
@@ -19,11 +20,6 @@ type (
 		Name string `json:"name"`
 	}
 )
-
-var u1 = user{
-	ID:   "1",
-	Name: "Joe",
-}
 
 // TODO: Improve me!
 func TestEchoMaxParam(t *testing.T) {
@@ -71,7 +67,7 @@ func TestEchoMiddleware(t *testing.T) {
 	e := New()
 	b := new(bytes.Buffer)
 
-	// MiddlewareFunc
+	// echo.MiddlewareFunc
 	e.Use(MiddlewareFunc(func(h HandlerFunc) HandlerFunc {
 		return func(c *Context) error {
 			b.WriteString("a")
@@ -87,33 +83,44 @@ func TestEchoMiddleware(t *testing.T) {
 		}
 	})
 
+	// echo.HandlerFunc
+	e.Use(HandlerFunc(func(c *Context) error {
+		b.WriteString("c")
+		return nil
+	}))
+
 	// func(*echo.Context) error
 	e.Use(func(c *Context) error {
-		b.WriteString("c")
+		b.WriteString("d")
 		return nil
 	})
 
 	// func(http.Handler) http.Handler
 	e.Use(func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			b.WriteString("d")
+			b.WriteString("e")
 			h.ServeHTTP(w, r)
 		})
 	})
 
 	// http.Handler
 	e.Use(http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		b.WriteString("e")
+		b.WriteString("f")
 	})))
 
 	// http.HandlerFunc
 	e.Use(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		b.WriteString("f")
+		b.WriteString("g")
 	}))
 
 	// func(http.ResponseWriter, *http.Request)
 	e.Use(func(w http.ResponseWriter, r *http.Request) {
-		b.WriteString("g")
+		b.WriteString("h")
+	})
+
+	// Unknown
+	assert.Panics(t, func() {
+		e.Use(nil)
 	})
 
 	// Route
@@ -124,8 +131,8 @@ func TestEchoMiddleware(t *testing.T) {
 	w := httptest.NewRecorder()
 	r, _ := http.NewRequest(GET, "/hello", nil)
 	e.ServeHTTP(w, r)
-	if b.String() != "abcdefg" {
-		t.Errorf("buffer should be abcdefghi, found %s", b.String())
+	if b.String() != "abcdefgh" {
+		t.Errorf("buffer should be abcdefgh, found %s", b.String())
 	}
 	if w.Body.String() != "world" {
 		t.Error("body should be world")
@@ -178,6 +185,11 @@ func TestEchoHandler(t *testing.T) {
 	if w.Body.String() != "4" {
 		t.Error("body should be 4")
 	}
+
+	// Unknown
+	assert.Panics(t, func() {
+		e.Get("/5", nil)
+	})
 }
 
 func TestEchoGroup(t *testing.T) {
@@ -240,50 +252,50 @@ func TestEchoGroup(t *testing.T) {
 
 func TestEchoConnect(t *testing.T) {
 	e := New()
-	testMethod(CONNECT, "/", e, nil, t)
+	testMethod(t, e, nil, CONNECT, "/")
 }
 
 func TestEchoDelete(t *testing.T) {
 	e := New()
-	testMethod(DELETE, "/", e, nil, t)
+	testMethod(t, e, nil, DELETE, "/")
 }
 
 func TestEchoGet(t *testing.T) {
 	e := New()
-	testMethod(GET, "/", e, nil, t)
+	testMethod(t, e, nil, GET, "/")
 }
 
 func TestEchoHead(t *testing.T) {
 	e := New()
-	testMethod(HEAD, "/", e, nil, t)
+	testMethod(t, e, nil, HEAD, "/")
 }
 
 func TestEchoOptions(t *testing.T) {
 	e := New()
-	testMethod(OPTIONS, "/", e, nil, t)
+	testMethod(t, e, nil, OPTIONS, "/")
 }
 
 func TestEchoPatch(t *testing.T) {
 	e := New()
-	testMethod(PATCH, "/", e, nil, t)
+	testMethod(t, e, nil, PATCH, "/")
 }
 
 func TestEchoPost(t *testing.T) {
 	e := New()
-	testMethod(POST, "/", e, nil, t)
+	testMethod(t, e, nil, POST, "/")
 }
 
 func TestEchoPut(t *testing.T) {
 	e := New()
-	testMethod(PUT, "/", e, nil, t)
+	testMethod(t, e, nil, PUT, "/")
 }
 
 func TestEchoTrace(t *testing.T) {
 	e := New()
-	testMethod(TRACE, "/", e, nil, t)
+	testMethod(t, e, nil, TRACE, "/")
 }
 
-func testMethod(method, path string, e *Echo, g *Group, t *testing.T) {
+func testMethod(t *testing.T, e *Echo, g *Group, method, path string) {
 	m := fmt.Sprintf("%c%s", method[0], strings.ToLower(method[1:]))
 	p := reflect.ValueOf(path)
 	h := reflect.ValueOf(func(c *Context) error {
@@ -375,11 +387,11 @@ func TestEchoNotFound(t *testing.T) {
 	}
 }
 
-func verifyUser(u2 *user, t *testing.T) {
-	if u2.ID != u1.ID {
-		t.Errorf("user id should be %s, found %s", u1.ID, u2.ID)
-	}
-	if u2.Name != u1.Name {
-		t.Errorf("user name should be %s, found %s", u1.Name, u2.Name)
-	}
-}
+//func verifyUser(u2 *user, t *testing.T) {
+//	if u2.ID != u1.ID {
+//		t.Errorf("user id should be %s, found %s", u1.ID, u2.ID)
+//	}
+//	if u2.Name != u1.Name {
+//		t.Errorf("user name should be %s, found %s", u1.Name, u2.Name)
+//	}
+//}

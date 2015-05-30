@@ -489,8 +489,6 @@ func wrapMiddleware(m Middleware) MiddlewareFunc {
 		}
 	case http.Handler:
 		return wrapHTTPHandlerFuncMW(m.ServeHTTP)
-	case http.HandlerFunc:
-		return wrapHTTPHandlerFuncMW(m)
 	case func(http.ResponseWriter, *http.Request):
 		return wrapHTTPHandlerFuncMW(m)
 	default:

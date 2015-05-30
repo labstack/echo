@@ -70,6 +70,16 @@ func (c *Context) Param(name string) (value string) {
 	return
 }
 
+// Get retrieves data from the context.
+func (c *Context) Get(key string) interface{} {
+	return c.store[key]
+}
+
+// Set saves data in the context.
+func (c *Context) Set(key string, val interface{}) {
+	c.store[key] = val
+}
+
 // Bind binds the request body into specified type v. Default binder does it
 // based on Content-Type header.
 func (c *Context) Bind(i interface{}) error {
@@ -82,21 +92,21 @@ func (c *Context) Render(code int, name string, data interface{}) error {
 	if c.echo.renderer == nil {
 		return RendererNotRegistered
 	}
-	c.response.Header().Set(ContentType, TextHTML+"; charset=utf-8")
+	c.response.Header().Set(ContentType, TextHTML)
 	c.response.WriteHeader(code)
 	return c.echo.renderer.Render(c.response, name, data)
 }
 
 // JSON sends an application/json response with status code.
 func (c *Context) JSON(code int, i interface{}) error {
-	c.response.Header().Set(ContentType, ApplicationJSON+"; charset=utf-8")
+	c.response.Header().Set(ContentType, ApplicationJSON)
 	c.response.WriteHeader(code)
 	return json.NewEncoder(c.response).Encode(i)
 }
 
 // String sends a text/plain response with status code.
 func (c *Context) String(code int, s string) error {
-	c.response.Header().Set(ContentType, TextPlain+"; charset=utf-8")
+	c.response.Header().Set(ContentType, TextPlain)
 	c.response.WriteHeader(code)
 	_, err := c.response.Write([]byte(s))
 	return err
@@ -104,7 +114,7 @@ func (c *Context) String(code int, s string) error {
 
 // HTML sends a text/html response with status code.
 func (c *Context) HTML(code int, html string) error {
-	c.response.Header().Set(ContentType, TextHTML+"; charset=utf-8")
+	c.response.Header().Set(ContentType, TextHTML)
 	c.response.WriteHeader(code)
 	_, err := c.response.Write([]byte(html))
 	return err
@@ -124,16 +134,6 @@ func (c *Context) Redirect(code int, url string) {
 // Error invokes the registered HTTP error handler. Usually used by middleware.
 func (c *Context) Error(err error) {
 	c.echo.httpErrorHandler(err, c)
-}
-
-// Get retrieves data from the context.
-func (c *Context) Get(key string) interface{} {
-	return c.store[key]
-}
-
-// Set saves data in the context.
-func (c *Context) Set(key string, val interface{}) {
-	c.store[key] = val
 }
 
 func (c *Context) reset(r *http.Request, w http.ResponseWriter, e *Echo) {

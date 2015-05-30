@@ -9,43 +9,34 @@ import (
 	"bytes"
 
 	"github.com/labstack/echo"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGzip(t *testing.T) {
 	// Empty Accept-Encoding header
 	req, _ := http.NewRequest(echo.GET, "/", nil)
-	w := httptest.NewRecorder()
-	res := echo.NewResponse(w)
-	c := echo.NewContext(req, res, echo.New())
+	rec := httptest.NewRecorder()
+	c := echo.NewContext(req, echo.NewResponse(rec), echo.New())
 	h := func(c *echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}
 	Gzip()(h)(c)
-	s := w.Body.String()
-	if s != "test" {
-		t.Errorf("expected `test`, with empty Accept-Encoding header, got %s.", s)
-	}
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "test", rec.Body.String())
 
-	// Content-Encoding header
+	// With Accept-Encoding header
+	req, _ = http.NewRequest(echo.GET, "/", nil)
 	req.Header.Set(echo.AcceptEncoding, "gzip")
-	w = httptest.NewRecorder()
-	c.Response().SetWriter(w)
+	rec = httptest.NewRecorder()
+	c = echo.NewContext(req, echo.NewResponse(rec), echo.New())
 	Gzip()(h)(c)
-	ce := w.Header().Get(echo.ContentEncoding)
-	if ce != "gzip" {
-		t.Errorf("expected Content-Encoding header `gzip`, got %d.", ce)
-	}
-
-	// Body
-	r, err := gzip.NewReader(w.Body)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "gzip", rec.Header().Get(echo.ContentEncoding))
+	r, err := gzip.NewReader(rec.Body)
 	defer r.Close()
-	if err != nil {
-		t.Fatal(err)
-	}
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(r)
-	s = buf.String()
-	if s != "test" {
-		t.Errorf("expected body `test`, got %s.", s)
+	if assert.NoError(t, err) {
+		buf := new(bytes.Buffer)
+		buf.ReadFrom(r)
+		assert.Equal(t, "test", buf.String())
 	}
 }

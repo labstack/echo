@@ -5,14 +5,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"errors"
 )
 
 func TestLogger(t *testing.T) {
 	e := echo.New()
 	req, _ := http.NewRequest(echo.GET, "/", nil)
-	w := httptest.NewRecorder()
-	res := echo.NewResponse(w)
-	c := echo.NewContext(req, res, e)
+	rec := httptest.NewRecorder()
+	c := echo.NewContext(req, echo.NewResponse(rec), e)
 
 	// Status 2xx
 	h := func(c *echo.Context) error {
@@ -20,17 +20,28 @@ func TestLogger(t *testing.T) {
 	}
 	Logger()(h)(c)
 
+	// Status 3xx
+	rec = httptest.NewRecorder()
+	c = echo.NewContext(req, echo.NewResponse(rec), e)
+	h = func(c *echo.Context) error {
+		return c.String(http.StatusTemporaryRedirect, "test")
+	}
+	Logger()(h)(c)
+
 	// Status 4xx
-	c = echo.NewContext(req, echo.NewResponse(w), e)
+	rec = httptest.NewRecorder()
+	c = echo.NewContext(req, echo.NewResponse(rec), e)
 	h = func(c *echo.Context) error {
 		return c.String(http.StatusNotFound, "test")
 	}
 	Logger()(h)(c)
 
-	// Status 5xx
-	c = echo.NewContext(req, echo.NewResponse(w), e)
+	// Status 5xx with empty path
+	req, _ = http.NewRequest(echo.GET, "", nil)
+	rec = httptest.NewRecorder()
+	c = echo.NewContext(req, echo.NewResponse(rec), e)
 	h = func(c *echo.Context) error {
-		return c.String(http.StatusInternalServerError, "test")
+		return errors.New("error")
 	}
 	Logger()(h)(c)
 }
