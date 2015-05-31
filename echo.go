@@ -293,7 +293,8 @@ func (e *Echo) WebSocket(path string, h HandlerFunc) {
 }
 
 func (e *Echo) add(method, path string, h Handler) {
-	e.router.Add(method, e.prefix+path, wrapHandler(h), e)
+	path = e.prefix + path
+	e.router.Add(method, path, wrapHandler(h), e)
 	key := runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name()
 	e.uris[key] = path
 }

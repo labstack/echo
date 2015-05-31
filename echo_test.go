@@ -307,58 +307,40 @@ func TestEchoWebSocket(t *testing.T) {
 	origin := "http://localhost"
 	url := fmt.Sprintf("ws://%s/ws", addr)
 	ws, err := websocket.Dial(url, "", origin)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ws.Write([]byte("test"))
-	defer ws.Close()
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(ws)
-	s := buf.String()
-	if s != "test" {
-		t.Errorf("expected `test`, got %s.", s)
+	if assert.NoError(t, err) {
+		ws.Write([]byte("test"))
+		defer ws.Close()
+		buf := new(bytes.Buffer)
+		buf.ReadFrom(ws)
+		assert.Equal(t, "test", buf.String())
 	}
 }
 
 func TestEchoURL(t *testing.T) {
 	e := New()
+
 	static := func(*Context) error { return nil }
 	getUser := func(*Context) error { return nil }
 	getFile := func(*Context) error { return nil }
+
 	e.Get("/static/file", static)
 	e.Get("/users/:id", getUser)
-	e.Get("/users/:uid/files/:fid", getFile)
+	g := e.Group("/group")
+	g.Get("/users/:uid/files/:fid", getFile)
 
-	if e.URL(static) != "/static/file" {
-		t.Error("uri should be /static/file")
-	}
-	if e.URI(static) != "/static/file" {
-		t.Error("uri should be /static/file")
-	}
-	if e.URI(getUser) != "/users/:id" {
-		t.Error("uri should be /users/:id")
-	}
-	if e.URI(getUser, "1") != "/users/1" {
-		t.Error("uri should be /users/1")
-	}
-	if e.URI(getFile, "1") != "/users/1/files/:fid" {
-		t.Error("uri should be /users/1/files/:fid")
-	}
-	if e.URI(getFile, "1", "1") != "/users/1/files/1" {
-		t.Error("uri should be /users/1/files/1")
-	}
+	assert.Equal(t, "/static/file", e.URL(static))
+	assert.Equal(t, "/users/:id", e.URL(getUser))
+	assert.Equal(t, "/users/1", e.URL(getUser, "1"))
+	assert.Equal(t, "/group/users/1/files/:fid", e.URL(getFile, "1"))
+	assert.Equal(t, "/group/users/1/files/1", e.URL(getFile, "1", "1"))
 }
 
 func TestEchoNotFound(t *testing.T) {
 	e := New()
-
-	// Default NotFound handler
 	r, _ := http.NewRequest(GET, "/files", nil)
 	w := httptest.NewRecorder()
 	e.ServeHTTP(w, r)
-	if w.Code != http.StatusNotFound {
-		t.Errorf("status code should be 404, found %d", w.Code)
-	}
+	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
 func TestEchoHTTPError(t *testing.T) {
