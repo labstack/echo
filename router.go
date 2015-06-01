@@ -4,8 +4,9 @@ import "net/http"
 
 type (
 	Router struct {
-		trees map[string]*node
-		echo  *Echo
+		trees  map[string]*node
+		routes []Route
+		echo   *Echo
 	}
 	node struct {
 		typ      ntype
@@ -29,8 +30,9 @@ const (
 
 func NewRouter(e *Echo) (r *Router) {
 	r = &Router{
-		trees: make(map[string]*node),
-		echo:  e,
+		trees:  make(map[string]*node),
+		routes: []Route{},
+		echo:   e,
 	}
 	for _, m := range methods {
 		r.trees[m] = &node{

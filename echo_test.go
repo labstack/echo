@@ -197,59 +197,6 @@ func TestEchoHandler(t *testing.T) {
 	})
 }
 
-func TestEchoGroup(t *testing.T) {
-	e := New()
-	buf := new(bytes.Buffer)
-	e.Use(func(*Context) error {
-		buf.WriteString("0")
-		return nil
-	})
-	h := func(*Context) error { return nil }
-
-	//--------
-	// Routes
-	//--------
-
-	e.Get("/users", h)
-
-	// Group
-	g1 := e.Group("/group1")
-	g1.Use(func(*Context) error {
-		buf.WriteString("1")
-		return nil
-	})
-	g1.Get("/", h)
-
-	// Group with no parent middleware
-	g2 := e.Group("/group2", func(*Context) error {
-		buf.WriteString("2")
-		return nil
-	})
-	g2.Get("/", h)
-
-	// Nested groups
-	g3 := e.Group("/group3")
-	g4 := g3.Group("/group4")
-	g4.Get("/", func(c *Context) error {
-		return c.NoContent(http.StatusOK)
-	})
-
-	request(GET, "/users", e)
-	assert.Equal(t, "0", buf.String())
-
-	buf.Reset()
-	request(GET, "/group1/", e)
-	assert.Equal(t, "01", buf.String())
-
-	buf.Reset()
-	request(GET, "/group2/", e)
-	assert.Equal(t, "2", buf.String())
-
-	buf.Reset()
-	c, _ := request(GET, "/group3/group4/", e)
-	assert.Equal(t, http.StatusOK, c)
-}
-
 func TestEchoConnect(t *testing.T) {
 	e := New()
 	testMethod(t, CONNECT, "/", e)
@@ -333,6 +280,80 @@ func TestEchoURL(t *testing.T) {
 	assert.Equal(t, "/users/1", e.URL(getUser, "1"))
 	assert.Equal(t, "/group/users/1/files/:fid", e.URL(getFile, "1"))
 	assert.Equal(t, "/group/users/1/files/1", e.URL(getFile, "1", "1"))
+}
+
+func TestEchoRoutes(t *testing.T) {
+	e := New()
+	h := func(*Context) error { return nil }
+	routes := []Route{
+		{GET, "/users/:user/events", h},
+		{GET, "/users/:user/events/public", h},
+		{POST, "/repos/:owner/:repo/git/refs", h},
+		{POST, "/repos/:owner/:repo/git/tags", h},
+	}
+	for _, r := range routes {
+		e.add(r.Method, r.Path, h)
+	}
+
+	for i, r := range e.Routes() {
+		assert.Equal(t, routes[i].Method, r.Method)
+		assert.Equal(t, routes[i].Path, r.Path)
+	}
+}
+
+func TestEchoGroup(t *testing.T) {
+	e := New()
+	buf := new(bytes.Buffer)
+	e.Use(func(*Context) error {
+		buf.WriteString("0")
+		return nil
+	})
+	h := func(*Context) error { return nil }
+
+	//--------
+	// Routes
+	//--------
+
+	e.Get("/users", h)
+
+	// Group
+	g1 := e.Group("/group1")
+	g1.Use(func(*Context) error {
+		buf.WriteString("1")
+		return nil
+	})
+	g1.Get("/", h)
+
+	// Group with no parent middleware
+	g2 := e.Group("/group2", func(*Context) error {
+		buf.WriteString("2")
+		return nil
+	})
+	g2.Get("/", h)
+
+	// Nested groups
+	g3 := e.Group("/group3")
+	g4 := g3.Group("/group4")
+	g4.Get("/", func(c *Context) error {
+		return c.NoContent(http.StatusOK)
+	})
+
+	request(GET, "/users", e)
+	// println(len(e.middleware))
+	assert.Equal(t, "0", buf.String())
+
+	buf.Reset()
+	request(GET, "/group1/", e)
+	// println(len(g1.echo.middleware))
+	assert.Equal(t, "01", buf.String())
+
+	buf.Reset()
+	request(GET, "/group2/", e)
+	assert.Equal(t, "2", buf.String())
+
+	buf.Reset()
+	c, _ := request(GET, "/group3/group4/", e)
+	assert.Equal(t, http.StatusOK, c)
 }
 
 func TestEchoNotFound(t *testing.T) {

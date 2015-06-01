@@ -22,7 +22,6 @@ import (
 
 type (
 	Echo struct {
-		router                  *Router
 		prefix                  string
 		middleware              []MiddlewareFunc
 		http2                   bool
@@ -32,9 +31,15 @@ type (
 		httpErrorHandler        HTTPErrorHandler
 		binder                  BindFunc
 		renderer                Renderer
-		uris                    map[Handler]string
 		pool                    sync.Pool
 		debug                   bool
+		router                  *Router
+	}
+
+	Route struct {
+		Method  string
+		Path    string
+		Handler Handler
 	}
 
 	HTTPError struct {
@@ -136,9 +141,7 @@ var (
 
 // New creates an Echo instance.
 func New() (e *Echo) {
-	e = &Echo{
-		uris: make(map[Handler]string),
-	}
+	e = &Echo{}
 	e.router = NewRouter(e)
 	e.pool.New = func() interface{} {
 		return NewContext(nil, new(Response), e)
@@ -295,8 +298,12 @@ func (e *Echo) WebSocket(path string, h HandlerFunc) {
 func (e *Echo) add(method, path string, h Handler) {
 	path = e.prefix + path
 	e.router.Add(method, path, wrapHandler(h), e)
-	key := runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name()
-	e.uris[key] = path
+	r := Route{
+		Method:  method,
+		Path:    path,
+		Handler: runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name(),
+	}
+	e.router.routes = append(e.router.routes, r)
 }
 
 // Index serves index file.
@@ -345,33 +352,6 @@ func serveFile(dir, file string, c *Context) error {
 	return nil
 }
 
-// URI generates a URI from handler.
-func (e *Echo) URI(h Handler, params ...interface{}) string {
-	uri := new(bytes.Buffer)
-	lp := len(params)
-	n := 0
-	key := runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name()
-	if path, ok := e.uris[key]; ok {
-		for i, l := 0, len(path); i < l; i++ {
-			if path[i] == ':' && n < lp {
-				for ; i < l && path[i] != '/'; i++ {
-				}
-				uri.WriteString(fmt.Sprintf("%v", params[n]))
-				n++
-			}
-			if i < l {
-				uri.WriteByte(path[i])
-			}
-		}
-	}
-	return uri.String()
-}
-
-// URL is an alias for URI
-func (e *Echo) URL(h Handler, params ...interface{}) string {
-	return e.URI(h, params...)
-}
-
 // Group creates a new sub router with prefix. It inherits all properties from
 // the parent. Passing middleware overrides parent middleware.
 func (e *Echo) Group(prefix string, m ...Middleware) *Group {
@@ -382,6 +362,41 @@ func (e *Echo) Group(prefix string, m ...Middleware) *Group {
 		g.Use(m...)
 	}
 	return g
+}
+
+// URI generates a URI from handler.
+func (e *Echo) URI(h Handler, params ...interface{}) string {
+	uri := new(bytes.Buffer)
+	pl := len(params)
+	n := 0
+	hn := runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name()
+	for _, r := range e.router.routes {
+		if r.Handler == hn {
+			for i, l := 0, len(r.Path); i < l; i++ {
+				if r.Path[i] == ':' && n < pl {
+					for ; i < l && r.Path[i] != '/'; i++ {
+					}
+					uri.WriteString(fmt.Sprintf("%v", params[n]))
+					n++
+				}
+				if i < l {
+					uri.WriteByte(r.Path[i])
+				}
+			}
+			break
+		}
+	}
+	return uri.String()
+}
+
+// URL is an alias for URI
+func (e *Echo) URL(h Handler, params ...interface{}) string {
+	return e.URI(h, params...)
+}
+
+// Routes returns the registered routes.
+func (e *Echo) Routes() []Route {
+	return e.router.routes
 }
 
 func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -401,8 +416,8 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Execute chain
-	if he := h(c); he != nil {
-		e.httpErrorHandler(he, c)
+	if err := h(c); err != nil {
+		e.httpErrorHandler(err, c)
 	}
 
 	e.pool.Put(c)
