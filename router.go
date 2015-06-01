@@ -1,6 +1,10 @@
 package echo
 
-import "net/http"
+import (
+	"fmt"
+	"io"
+	"net/http"
+)
 
 type (
 	Router struct {
@@ -314,4 +318,62 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		h(c)
 	}
 	r.echo.pool.Put(c)
+}
+
+/*
+Print writes out a formatted listing of paths corresponding to each
+HTTP method that has been added to the router.
+
+Example output:
+GET	/foo
+	/foo/:id
+	/bar/baz/:id
+	/:controller/:action/:id
+	/api/v1/users/:id
+	/api/v1/users/:id/edit
+POST	/api/v1/users/:id
+PUT	/foo
+*/
+func (r *router) Print(out io.Writer) {
+	for verb, node := range r.trees {
+		x := node.Paths()
+		if len(x) > 0 {
+			fmt.Fprintf(out, "%s\t%s\n", verb, x[0])
+			for _, n := range x[1:] {
+				fmt.Fprintf(out, "\t%s\n", n)
+			}
+		}
+	}
+}
+
+/*
+Paths generates a list of all of the paths, and subpaths, for a particular node.
+
+Example output:
+[]string{"/:controller/:action/:id", "/api/v1/users/:id", "/api/v1/users/:id/edit", "/bar/baz/:id", "/foo", "/foo/:id"}
+*/
+func (n *node) Paths() []string {
+	prefix := n.prefix
+	x := []string{}
+	if prefix != "" {
+		pl := len(n.pnames)
+		if pl > 0 && prefix == ":" {
+			prefix = prefix + n.pnames[pl-1]
+		}
+		children := n.children
+		if len(children) > 0 {
+			if n.handler != nil {
+				x = append(x, prefix)
+			}
+			for _, c := range children {
+				y := c.Paths()
+				for _, s := range y {
+					x = append(x, prefix+s)
+				}
+			}
+		} else {
+			x = append(x, prefix)
+		}
+	}
+	return x
 }
