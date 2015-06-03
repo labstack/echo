@@ -3,30 +3,32 @@ Echo is a fast HTTP router (zero memory allocation) and micro web framework in G
 
 ## Features
 
-- Fast HTTP router which smartly prioritize routes.
-- Extensible middleware/handler, supports:
-	- Middleware
-		- `echo.MiddlewareFunc`
-		- `func(echo.HandlerFunc) echo.HandlerFunc`
-		- `echo.HandlerFunc`
-		- `func(*echo.Context) error`
-		- `func(http.Handler) http.Handler`
-		- `http.Handler`
-		- `http.HandlerFunc`
-		- `func(http.ResponseWriter, *http.Request)`
-	- Handler
-		- `echo.HandlerFunc`
-		- `func(*echo.Context) error`
-		- `http.Handler`
-		- `http.HandlerFunc`
-		- `func(http.ResponseWriter, *http.Request)`
-- Sub routing with groups.
-- Handy encoding/decoding functions.
-- Serve static files, including index.
-- Built-in support for WebSocket.
-- Centralized HTTP error handling.
-- Use a customized function to bind request body to a Go type.
-- Register a view render so you can use any HTML template engine.
+- Fast HTTP router which smartly prioritize routes
+- Extensible middleware, supports:
+	- `echo.MiddlewareFunc`
+	- `func(echo.HandlerFunc) echo.HandlerFunc`
+	- `echo.HandlerFunc`
+	- `func(*echo.Context) error`
+	- `func(http.Handler) http.Handler`
+	- `http.Handler`
+	- `http.HandlerFunc`
+	- `func(http.ResponseWriter, *http.Request)`
+- Extensible handler, supports:
+    - `echo.HandlerFunc`
+    - `func(*echo.Context) error`
+    - `http.Handler`
+    - `http.HandlerFunc`
+    - `func(http.ResponseWriter, *http.Request)`
+- Sub-router
+- Groups
+- Handy encoding/decoding functions
+- Build-in support for:
+	- Static files
+	- WebSocket
+- API to serve index and favicon
+- Centralized HTTP error handling
+- Customizable request binding function
+- Customizable response rendering function, allowing you to use any HTML template engine.
 
 ## Benchmark
 
@@ -76,6 +78,7 @@ $ go get github.com/labstack/echo
 - [CRUD](https://github.com/labstack/echo/tree/master/examples/crud)
 - [Website](https://github.com/labstack/echo/tree/master/examples/website)
 - [Middleware](https://github.com/labstack/echo/tree/master/examples/middleware)
+- [Stream](https://github.com/labstack/echo/tree/master/examples/stream)
 
 ##[Guide](http://labstack.github.io/echo/guide)
 
