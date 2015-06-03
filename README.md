@@ -32,7 +32,7 @@ Echo is a fast HTTP router (zero memory allocation) and micro web framework in G
 
 ## Benchmark
 
-Based on [julienschmidt/go-http-routing-benchmark] (https://github.com/vishr/go-http-routing-benchmark), June 3, 2015.
+Based on [vishr/go-http-routing-benchmark] (https://github.com/vishr/go-http-routing-benchmark), June 3, 2015.
 
 ##### [GitHub API](http://developer.github.com/v3)
 
