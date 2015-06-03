@@ -10,7 +10,6 @@ import (
 )
 
 var (
-	context = NewContext(nil, nil, New())
 	api     = []Route{
 		// OAuth Authorizations
 		{"GET", "/authorizations", nil},
@@ -276,230 +275,248 @@ var (
 )
 
 func TestRouterStatic(t *testing.T) {
-	r := New().router
+	e := New()
+	r := e.router
 	path := "/folders/a/files/echo.gif"
 	r.Add(GET, path, func(c *Context) error {
 		c.Set("path", path)
 		return nil
-	}, nil)
-	h, _ := r.Find(GET, path, context)
+	}, e)
+	c := NewContext(nil, nil, e)
+	h, _ := r.Find(GET, path, c)
 	if assert.NotNil(t, h) {
-		h(context)
-		assert.Equal(t, path, context.Get("path"))
+		h(c)
+		assert.Equal(t, path, c.Get("path"))
 	}
 }
 
 func TestRouterParam(t *testing.T) {
-	r := New().router
+	e := New()
+	r := e.router
 	r.Add(GET, "/users/:id", func(c *Context) error {
 		return nil
-	}, nil)
-	h, _ := r.Find(GET, "/users/1", context)
+	}, e)
+	c := NewContext(nil, nil, e)
+	h, _ := r.Find(GET, "/users/1", c)
 	if assert.NotNil(t, h) {
-		assert.Equal(t, "1", context.P(0))
+		assert.Equal(t, "1", c.P(0))
 	}
 }
 
 func TestRouterTwoParam(t *testing.T) {
-	r := New().router
+	e := New()
+	r := e.router
 	r.Add(GET, "/users/:uid/files/:fid", func(*Context) error {
 		return nil
-	}, nil)
+	}, e)
+	c := NewContext(nil, nil, e)
 
-	h, _ := r.Find(GET, "/users/1/files/1", context)
+	h, _ := r.Find(GET, "/users/1/files/1", c)
 	if assert.NotNil(t, h) {
-		assert.Equal(t, "1", context.P(0))
-		assert.Equal(t, "1", context.P(1))
+		assert.Equal(t, "1", c.P(0))
+		assert.Equal(t, "1", c.P(1))
 	}
 
-	h, _ = r.Find(GET, "/users/1", context)
+	h, _ = r.Find(GET, "/users/1", c)
 	assert.Nil(t, h)
 }
 
 func TestRouterMatchAny(t *testing.T) {
-	r := New().router
+	e := New()
+	r := e.router
 	r.Add(GET, "/users/*", func(*Context) error {
 		return nil
-	}, nil)
+	}, e)
+	c := NewContext(nil, nil, e)
 
-	h, _ := r.Find(GET, "/users/", context)
+	h, _ := r.Find(GET, "/users/", c)
 	if assert.NotNil(t, h) {
-		assert.Equal(t, "", context.P(0))
+		assert.Equal(t, "", c.P(0))
 	}
 
-	h, _ = r.Find(GET, "/users/1", context)
+	h, _ = r.Find(GET, "/users/1", c)
 	if assert.NotNil(t, h) {
-		assert.Equal(t, "1", context.P(0))
+		assert.Equal(t, "1", c.P(0))
 	}
 }
 
 func TestRouterMicroParam(t *testing.T) {
-	r := New().router
+	e := New()
+	r := e.router
 	r.Add(GET, "/:a/:b/:c", func(c *Context) error {
 		return nil
-	}, nil)
-	h, _ := r.Find(GET, "/1/2/3", context)
+	}, e)
+	c := NewContext(nil, nil, e)
+	h, _ := r.Find(GET, "/1/2/3", c)
 	if assert.NotNil(t, h) {
-		assert.Equal(t, "1", context.P(0))
-		assert.Equal(t, "2", context.P(1))
-		assert.Equal(t, "3", context.P(2))
+		assert.Equal(t, "1", c.P(0))
+		assert.Equal(t, "2", c.P(1))
+		assert.Equal(t, "3", c.P(2))
 	}
 }
 
 func TestRouterMultiRoute(t *testing.T) {
-	r := New().router
+	e := New()
+	r := e.router
 
 	// Routes
 	r.Add(GET, "/users", func(c *Context) error {
 		c.Set("path", "/users")
 		return nil
-	}, nil)
+	}, e)
 	r.Add(GET, "/users/:id", func(c *Context) error {
 		return nil
-	}, nil)
+	}, e)
+	c := NewContext(nil, nil, e)
 
 	// Route > /users
-	h, _ := r.Find(GET, "/users", context)
+	h, _ := r.Find(GET, "/users", c)
 	if assert.NotNil(t, h) {
-		h(context)
-		assert.Equal(t, "/users", context.Get("path"))
+		h(c)
+		assert.Equal(t, "/users", c.Get("path"))
 	}
 
 	// Route > /users/:id
-	h, _ = r.Find(GET, "/users/1", context)
+	h, _ = r.Find(GET, "/users/1", c)
 	if assert.NotNil(t, h) {
-		assert.Equal(t, "1", context.P(0))
+		assert.Equal(t, "1", c.P(0))
 	}
 
 	// Route > /user
-	h, _ = r.Find(GET, "/user", context)
+	h, _ = r.Find(GET, "/user", c)
 	assert.Nil(t, h)
 }
 
 func TestRouterPriority(t *testing.T) {
-	r := New().router
+	e := New()
+	r := e.router
 
 	// Routes
 	r.Add(GET, "/users", func(c *Context) error {
 		c.Set("a", 1)
 		return nil
-	}, nil)
+	}, e)
 	r.Add(GET, "/users/new", func(c *Context) error {
 		c.Set("b", 2)
 		return nil
-	}, nil)
+	}, e)
 	r.Add(GET, "/users/:id", func(c *Context) error {
 		c.Set("c", 3)
 		return nil
-	}, nil)
+	}, e)
 	r.Add(GET, "/users/dew", func(c *Context) error {
 		c.Set("d", 4)
 		return nil
-	}, nil)
+	}, e)
 	r.Add(GET, "/users/:id/files", func(c *Context) error {
 		c.Set("e", 5)
 		return nil
-	}, nil)
+	}, e)
 	r.Add(GET, "/users/newsee", func(c *Context) error {
 		c.Set("f", 6)
 		return nil
-	}, nil)
+	}, e)
 	r.Add(GET, "/users/*", func(c *Context) error {
 		c.Set("g", 7)
 		return nil
-	}, nil)
+	}, e)
+	c := NewContext(nil, nil, e)
 
 	// Route > /users
-	h, _ := r.Find(GET, "/users", context)
+	h, _ := r.Find(GET, "/users", c)
 	if assert.NotNil(t, h) {
-		h(context)
-		assert.Equal(t, 1, context.Get("a"))
+		h(c)
+		assert.Equal(t, 1, c.Get("a"))
 	}
 
 	// Route > /users/new
-	h, _ = r.Find(GET, "/users/new", context)
+	h, _ = r.Find(GET, "/users/new", c)
 	if assert.NotNil(t, h) {
-		h(context)
-		assert.Equal(t, 2, context.Get("b"))
+		h(c)
+		assert.Equal(t, 2, c.Get("b"))
 	}
 
 	// Route > /users/:id
-	h, _ = r.Find(GET, "/users/1", context)
+	h, _ = r.Find(GET, "/users/1", c)
 	if assert.NotNil(t, h) {
-		h(context)
-		assert.Equal(t, 3, context.Get("c"))
+		h(c)
+		assert.Equal(t, 3, c.Get("c"))
 	}
 
 	// Route > /users/dew
-	h, _ = r.Find(GET, "/users/dew", context)
+	h, _ = r.Find(GET, "/users/dew", c)
 	if assert.NotNil(t, h) {
-		h(context)
-		assert.Equal(t, 4, context.Get("d"))
+		h(c)
+		assert.Equal(t, 4, c.Get("d"))
 	}
 
 	// Route > /users/:id/files
-	h, _ = r.Find(GET, "/users/1/files", context)
+	h, _ = r.Find(GET, "/users/1/files", c)
 	if assert.NotNil(t, h) {
-		h(context)
-		assert.Equal(t, 5, context.Get("e"))
+		h(c)
+		assert.Equal(t, 5, c.Get("e"))
 	}
 
 	// Route > /users/:id
-	h, _ = r.Find(GET, "/users/news", context)
+	h, _ = r.Find(GET, "/users/news", c)
 	if assert.NotNil(t, h) {
-		h(context)
-		assert.Equal(t, 3, context.Get("c"))
+		h(c)
+		assert.Equal(t, 3, c.Get("c"))
 	}
 
 	// Route > /users/*
-	h, _ = r.Find(GET, "/users/joe/books", context)
+	h, _ = r.Find(GET, "/users/joe/books", c)
 	if assert.NotNil(t, h) {
-		h(context)
-		assert.Equal(t, 7, context.Get("g"))
+		h(c)
+		assert.Equal(t, 7, c.Get("g"))
 	}
 }
 
 func TestRouterParamNames(t *testing.T) {
-	r := New().router
+	e := New()
+	r := e.router
 
 	// Routes
 	r.Add(GET, "/users", func(c *Context) error {
 		c.Set("path", "/users")
 		return nil
-	}, nil)
+	}, e)
 	r.Add(GET, "/users/:id", func(c *Context) error {
 		return nil
-	}, nil)
+	}, e)
 	r.Add(GET, "/users/:uid/files/:fid", func(c *Context) error {
 		return nil
-	}, nil)
+	}, e)
+	c := NewContext(nil, nil, e)
 
 	// Route > /users
-	h, _ := r.Find(GET, "/users", context)
+	h, _ := r.Find(GET, "/users", c)
 	if assert.NotNil(t, h) {
-		h(context)
-		assert.Equal(t, "/users", context.Get("path"))
+		h(c)
+		assert.Equal(t, "/users", c.Get("path"))
 	}
 
 	// Route > /users/:id
-	h, _ = r.Find(GET, "/users/1", context)
+	h, _ = r.Find(GET, "/users/1", c)
 	if assert.NotNil(t, h) {
-		assert.Equal(t, "id", context.pnames[0])
-		assert.Equal(t, "1", context.P(0))
+		assert.Equal(t, "id", c.pnames[0])
+		assert.Equal(t, "1", c.P(0))
 	}
 
 	// Route > /users/:uid/files/:fid
-	h, _ = r.Find(GET, "/users/1/files/1", context)
+	h, _ = r.Find(GET, "/users/1/files/1", c)
 	if assert.NotNil(t, h) {
-		assert.Equal(t, "uid", context.pnames[0])
-		assert.Equal(t, "1", context.P(0))
-		assert.Equal(t, "fid", context.pnames[1])
-		assert.Equal(t, "1", context.P(1))
+		assert.Equal(t, "uid", c.pnames[0])
+		assert.Equal(t, "1", c.P(0))
+		assert.Equal(t, "fid", c.pnames[1])
+		assert.Equal(t, "1", c.P(1))
 	}
 }
 
 func TestRouterAPI(t *testing.T) {
-	r := New().router
+	e := New()
+	r := e.router
+
 	for _, route := range api {
 		r.Add(route.Method, route.Path, func(c *Context) error {
 			for i, n := range c.pnames {
@@ -508,19 +525,24 @@ func TestRouterAPI(t *testing.T) {
 				}
 			}
 			return nil
-		}, nil)
-		h, _ := r.Find(route.Method, route.Path, context)
+		}, e)
+	}
+	c := NewContext(nil, nil, e)
+	for _, route := range api {
+		h, _ := r.Find(route.Method, route.Path, c)
 		if assert.NotNil(t, h) {
-			h(context)
+			h(c)
 		}
 	}
 }
 
 func TestRouterServeHTTP(t *testing.T) {
-	r := New().router
+	e := New()
+	r := e.router
+
 	r.Add(GET, "/users", func(*Context) error {
 		return nil
-	}, nil)
+	}, e)
 
 	// OK
 	req, _ := http.NewRequest(GET, "/users", nil)

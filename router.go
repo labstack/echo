@@ -4,9 +4,9 @@ import "net/http"
 
 type (
 	Router struct {
-		trees  map[string]*node
-		routes []Route
-		echo   *Echo
+		trees    map[string]*node
+		routes   []Route
+		echo     *Echo
 	}
 	node struct {
 		typ      ntype
@@ -43,14 +43,14 @@ func NewRouter(e *Echo) (r *Router) {
 	return
 }
 
-func (r *Router) Add(method, path string, h HandlerFunc, echo *Echo) {
-	var pnames []string // Param names
+func (r *Router) Add(method, path string, h HandlerFunc, e *Echo) {
+	pnames := []string{} // Param names
 
 	for i, l := 0, len(path); i < l; i++ {
 		if path[i] == ':' {
 			j := i + 1
 
-			r.insert(method, path[:i], nil, stype, nil, echo)
+			r.insert(method, path[:i], nil, stype, nil, e)
 			for ; i < l && path[i] != '/'; i++ {
 			}
 
@@ -59,21 +59,28 @@ func (r *Router) Add(method, path string, h HandlerFunc, echo *Echo) {
 			i, l = j, len(path)
 
 			if i == l {
-				r.insert(method, path[:i], h, ptype, pnames, echo)
+				r.insert(method, path[:i], h, ptype, pnames, e)
 				return
 			}
-			r.insert(method, path[:i], nil, ptype, pnames, echo)
+			r.insert(method, path[:i], nil, ptype, pnames, e)
 		} else if path[i] == '*' {
-			r.insert(method, path[:i], nil, stype, nil, echo)
+			r.insert(method, path[:i], nil, stype, nil, e)
 			pnames = append(pnames, "_name")
-			r.insert(method, path[:i+1], h, mtype, pnames, echo)
+			r.insert(method, path[:i+1], h, mtype, pnames, e)
 			return
 		}
 	}
-	r.insert(method, path, h, stype, pnames, echo)
+
+	r.insert(method, path, h, stype, pnames, e)
 }
 
-func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []string, echo *Echo) {
+func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []string, e *Echo) {
+	// Adjust max param
+	l := len(pnames)
+	if *e.maxParam < l {
+		*e.maxParam = l
+	}
+
 	cn := r.trees[method] // Current node as root
 	search := path
 
@@ -90,7 +97,7 @@ func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 				cn.typ = t
 				cn.handler = h
 				cn.pnames = pnames
-				cn.echo = echo
+				cn.echo = e
 			}
 		} else if l < pl {
 			// Split node
@@ -110,10 +117,10 @@ func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 				cn.typ = t
 				cn.handler = h
 				cn.pnames = pnames
-				cn.echo = echo
+				cn.echo = e
 			} else {
 				// Create child node
-				n = newNode(t, search[l:], cn, nil, h, pnames, echo)
+				n = newNode(t, search[l:], cn, nil, h, pnames, e)
 				cn.children = append(cn.children, n)
 			}
 		} else if l < sl {
@@ -125,21 +132,21 @@ func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 				continue
 			}
 			// Create child node
-			n := newNode(t, search, cn, nil, h, pnames, echo)
+			n := newNode(t, search, cn, nil, h, pnames, e)
 			cn.children = append(cn.children, n)
 		} else {
 			// Node already exists
 			if h != nil {
 				cn.handler = h
 				cn.pnames = pnames
-				cn.echo = echo
+				cn.echo = e
 			}
 		}
 		return
 	}
 }
 
-func newNode(t ntype, pre string, p *node, c children, h HandlerFunc, pnames []string, echo *Echo) *node {
+func newNode(t ntype, pre string, p *node, c children, h HandlerFunc, pnames []string, e *Echo) *node {
 	return &node{
 		typ:      t,
 		label:    pre[0],
@@ -148,7 +155,7 @@ func newNode(t ntype, pre string, p *node, c children, h HandlerFunc, pnames []s
 		children: c,
 		handler:  h,
 		pnames:   pnames,
-		echo:     echo,
+		echo:     e,
 	}
 }
 
@@ -200,7 +207,7 @@ func lcp(a, b string) (i int) {
 	return
 }
 
-func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, echo *Echo) {
+func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo) {
 	cn := r.trees[method] // Current node as root
 	search := path
 
@@ -220,7 +227,7 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, echo *E
 			// Found
 			ctx.pnames = cn.pnames
 			h = cn.handler
-			echo = cn.echo
+			e = cn.echo
 			return
 		}
 

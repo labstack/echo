@@ -25,7 +25,7 @@ type (
 		prefix                  string
 		middleware              []MiddlewareFunc
 		http2                   bool
-		maxParam                byte
+		maxParam                *int
 		notFoundHandler         HandlerFunc
 		defaultHTTPErrorHandler HTTPErrorHandler
 		httpErrorHandler        HTTPErrorHandler
@@ -141,8 +141,7 @@ var (
 
 // New creates an Echo instance.
 func New() (e *Echo) {
-	e = &Echo{}
-	e.router = NewRouter(e)
+	e = &Echo{maxParam: new(int), router: NewRouter(e)}
 	e.pool.New = func() interface{} {
 		return NewContext(nil, new(Response), e)
 	}
@@ -152,7 +151,6 @@ func New() (e *Echo) {
 	//----------
 
 	e.HTTP2(true)
-	e.SetMaxParam(5)
 	e.notFoundHandler = func(c *Context) error {
 		return NewHTTPError(http.StatusNotFound)
 	}
@@ -190,12 +188,6 @@ func (e *Echo) Router() *Router {
 // HTTP2 enables HTTP2 support.
 func (e *Echo) HTTP2(on bool) {
 	e.http2 = on
-}
-
-// SetMaxParam sets the maximum number of path parameters allowed for the application.
-// Default value is 5, good enough for many use cases.
-func (e *Echo) SetMaxParam(n uint8) {
-	e.maxParam = n
 }
 
 // DefaultHTTPErrorHandler invokes the default HTTP error handler.

@@ -28,8 +28,7 @@ func NewContext(req *http.Request, res *Response, e *Echo) *Context {
 		request:  req,
 		response: res,
 		echo:     e,
-		pnames:   make([]string, e.maxParam),
-		pvalues:  make([]string, e.maxParam),
+		pvalues:  make([]string, *e.maxParam),
 		store:    make(store),
 	}
 }

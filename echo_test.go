@@ -41,13 +41,6 @@ func TestEcho(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 }
 
-// TODO: Improve me!
-func TestEchoMaxParam(t *testing.T) {
-	e := New()
-	e.SetMaxParam(8)
-	assert.EqualValues(t, 8, e.maxParam)
-}
-
 func TestEchoIndex(t *testing.T) {
 	e := New()
 	e.Index("examples/website/public/index.html")

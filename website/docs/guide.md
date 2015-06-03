@@ -27,14 +27,6 @@ Specific version of Echo can be installed using any [package manager](https://gi
 
 ## Customization
 
-### Max path parameters
-
-`Echo.SetMaxParam(n uint8)`
-
-Sets the maximum number of path parameters allowed for the application.
-Default value is **5**, [good enough](https://github.com/interagent/http-api-design#minimize-path-nesting)
-for many use cases. Restricting path parameters allows us to use memory efficiently.
-
 ### HTTP error handler
 
 `Echo.SetHTTPErrorHandler(h HTTPErrorHandler)`
