@@ -141,10 +141,11 @@ var (
 
 // New creates an Echo instance.
 func New() (e *Echo) {
-	e = &Echo{maxParam: new(int), router: NewRouter(e)}
+	e = &Echo{maxParam: new(int)}
 	e.pool.New = func() interface{} {
 		return NewContext(nil, new(Response), e)
 	}
+	e.router = NewRouter(e)
 
 	//----------
 	// Defaults
