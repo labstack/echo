@@ -75,7 +75,6 @@
 
             <!-- Search, Navigation and Repo links -->
             <ul class="nav navbar-nav navbar-right">
-                
                 <li class="disabled">
                     <a rel="next" >
                         <i class="fa fa-arrow-left"></i> Previous
@@ -131,9 +130,8 @@
 <p>Echo is a fast HTTP router (zero memory allocation) and micro web framework in Go.</p>
 <h2 id="features">Features</h2>
 <ul>
-<li>Fast HTTP router which smartly prioritize routes.</li>
-<li>Extensible middleware/handler, supports:<ul>
-<li>Middleware<ul>
+<li>Fast HTTP router which smartly prioritize routes</li>
+<li>Extensible middleware, supports:<ul>
 <li><code>echo.MiddlewareFunc</code></li>
 <li><code>func(echo.HandlerFunc) echo.HandlerFunc</code></li>
 <li><code>echo.HandlerFunc</code></li>
@@ -144,7 +142,7 @@
 <li><code>func(http.ResponseWriter, *http.Request)</code></li>
 </ul>
 </li>
-<li>Handler<ul>
+<li>Extensible handler, supports:<ul>
 <li><code>echo.HandlerFunc</code></li>
 <li><code>func(*echo.Context) error</code></li>
 <li><code>http.Handler</code></li>
@@ -152,15 +150,18 @@
 <li><code>func(http.ResponseWriter, *http.Request)</code></li>
 </ul>
 </li>
+<li>Sub-router</li>
+<li>Groups</li>
+<li>Handy encoding/decoding functions</li>
+<li>Build-in support for:<ul>
+<li>Static files</li>
+<li>WebSocket</li>
 </ul>
 </li>
-<li>Sub routing with groups.</li>
-<li>Handy encoding/decoding functions.</li>
-<li>Serve static files, including index.</li>
-<li>Built-in support for WebSocket.</li>
-<li>Centralized HTTP error handling.</li>
-<li>Use a customized function to bind HTTP request body to a Go type.</li>
-<li>Register a view render so you can use any HTML template engine.</li>
+<li>API to serve index and favicon</li>
+<li>Centralized HTTP error handling</li>
+<li>Customizable request binding function</li>
+<li>Customizable response rendering function, allowing you to use any HTML template engine.</li>
 </ul>
 <h2 id="getting-started">Getting Started</h2>
 <h3 id="installation">Installation</h3>
@@ -241,7 +242,11 @@ Hello, World! on the page.</p>
 <p><a href="https://github.com/labstack/echo/blob/master/LICENSE">MIT</a></p></div>
         </div>
 
-        
+        <footer class="col-md-12">
+            <hr>
+            
+            <center>Documentation built with <a href="http://www.mkdocs.org/">MkDocs</a>.</center>
+        </footer>
 
         <script src="./js/jquery-1.10.2.min.js"></script>
         <script src="./js/bootstrap-3.0.3.min.js"></script>

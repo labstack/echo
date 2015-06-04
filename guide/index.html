@@ -75,7 +75,6 @@
 
             <!-- Search, Navigation and Repo links -->
             <ul class="nav navbar-nav navbar-right">
-                
                 <li >
                     <a rel="next" href="..">
                         <i class="fa fa-arrow-left"></i> Previous
@@ -145,11 +144,6 @@
 <p>Echo follows <a href="http://semver.org">semantic versioning</a> managed through GitHub releases.
 Specific version of Echo can be installed using any <a href="https://github.com/avelino/awesome-go#package-management">package manager</a>.</p>
 <h2 id="customization">Customization</h2>
-<h3 id="max-path-parameters">Max path parameters</h3>
-<p><code>Echo.SetMaxParam(n uint8)</code></p>
-<p>Sets the maximum number of path parameters allowed for the application.
-Default value is <strong>5</strong>, <a href="https://github.com/interagent/http-api-design#minimize-path-nesting">good enough</a>
-for many use cases. Restricting path parameters allows us to use memory efficiently.</p>
 <h3 id="http-error-handler">HTTP error handler</h3>
 <p><code>Echo.SetHTTPErrorHandler(h HTTPErrorHandler)</code></p>
 <p>Registers a custom <code>Echo.HTTPErrorHandler</code>.</p>
@@ -335,7 +329,11 @@ func welcome(c *echo.Context) error {
 <p><em>WIP</em></p></div>
         </div>
 
-        
+        <footer class="col-md-12">
+            <hr>
+            
+            <center>Documentation built with <a href="http://www.mkdocs.org/">MkDocs</a>.</center>
+        </footer>
 
         <script src="../js/jquery-1.10.2.min.js"></script>
         <script src="../js/bootstrap-3.0.3.min.js"></script>
