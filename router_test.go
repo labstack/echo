@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	api     = []Route{
+	api = []Route{
 		// OAuth Authorizations
 		{"GET", "/authorizations", nil},
 		{"GET", "/authorizations/:id", nil},
@@ -520,11 +520,6 @@ func TestRouterAPI(t *testing.T) {
 
 	for _, route := range api {
 		r.Add(route.Method, route.Path, func(c *Context) error {
-			for i, n := range c.pnames {
-				if assert.NotEmpty(t, n) {
-					assert.Equal(t, ":"+n, c.P(uint8(i)))
-				}
-			}
 			return nil
 		}, e)
 	}
@@ -532,6 +527,11 @@ func TestRouterAPI(t *testing.T) {
 	for _, route := range api {
 		h, _ := r.Find(route.Method, route.Path, c)
 		if assert.NotNil(t, h) {
+			for i, n := range c.pnames {
+				if assert.NotEmpty(t, n) {
+					assert.Equal(t, ":"+n, c.P(i))
+				}
+			}
 			h(c)
 		}
 	}

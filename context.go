@@ -49,8 +49,8 @@ func (c *Context) Socket() *websocket.Conn {
 }
 
 // P returns path parameter by index.
-func (c *Context) P(i uint8) (value string) {
-	l := uint8(len(c.pnames))
+func (c *Context) P(i int) (value string) {
+	l := len(c.pnames)
 	if i <= l {
 		value = c.pvalues[i]
 	}

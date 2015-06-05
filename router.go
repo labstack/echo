@@ -4,9 +4,9 @@ import "net/http"
 
 type (
 	Router struct {
-		trees    map[string]*node
-		routes   []Route
-		echo     *Echo
+		trees  [21]*node
+		routes []Route
+		echo   *Echo
 	}
 	node struct {
 		typ      ntype
@@ -30,12 +30,12 @@ const (
 
 func NewRouter(e *Echo) (r *Router) {
 	r = &Router{
-		trees:  make(map[string]*node),
+		//		trees:  make(map[string]*node),
 		routes: []Route{},
 		echo:   e,
 	}
 	for _, m := range methods {
-		r.trees[m] = &node{
+		r.trees[r.treeIndex(m)] = &node{
 			prefix:   "",
 			children: children{},
 		}
@@ -81,13 +81,21 @@ func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 		*e.maxParam = l
 	}
 
-	cn := r.trees[method] // Current node as root
+	cn := r.trees[r.treeIndex(method)] // Current node as root
 	search := path
 
 	for {
 		sl := len(search)
 		pl := len(cn.prefix)
-		l := lcp(search, cn.prefix)
+		l := 0
+
+		// LCP
+		max := pl
+		if sl < max {
+			max = sl
+		}
+		for ; l < max && search[l] == cn.prefix[l]; l++ {
+		}
 
 		if l == 0 {
 			// At root node
@@ -102,15 +110,17 @@ func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 		} else if l < pl {
 			// Split node
 			n := newNode(cn.typ, cn.prefix[l:], cn, cn.children, cn.handler, cn.pnames, cn.echo)
-			cn.children = children{n} // Add to parent
 
 			// Reset parent node
 			cn.typ = stype
 			cn.label = cn.prefix[0]
 			cn.prefix = cn.prefix[:l]
+			cn.children = nil
 			cn.handler = nil
 			cn.pnames = nil
 			cn.echo = nil
+
+			cn.addChild(n)
 
 			if l == sl {
 				// At parent node
@@ -121,11 +131,11 @@ func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 			} else {
 				// Create child node
 				n = newNode(t, search[l:], cn, nil, h, pnames, e)
-				cn.children = append(cn.children, n)
+				cn.addChild(n)
 			}
 		} else if l < sl {
 			search = search[l:]
-			c := cn.findChild(search[0])
+			c := cn.findChildWithLabel(search[0])
 			if c != nil {
 				// Go deeper
 				cn = c
@@ -133,7 +143,7 @@ func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 			}
 			// Create child node
 			n := newNode(t, search, cn, nil, h, pnames, e)
-			cn.children = append(cn.children, n)
+			cn.addChild(n)
 		} else {
 			// Node already exists
 			if h != nil {
@@ -159,7 +169,20 @@ func newNode(t ntype, pre string, p *node, c children, h HandlerFunc, pnames []s
 	}
 }
 
-func (n *node) findChild(l byte) *node {
+func (n *node) addChild(c *node) {
+	n.children = append(n.children, c)
+}
+
+func (n *node) findChild(l byte, t ntype) *node {
+	for _, c := range n.children {
+		if c.label == l && c.typ == t {
+			return c
+		}
+	}
+	return nil
+}
+
+func (n *node) findChildWithLabel(l byte) *node {
 	for _, c := range n.children {
 		if c.label == l {
 			return c
@@ -168,47 +191,25 @@ func (n *node) findChild(l byte) *node {
 	return nil
 }
 
-func (n *node) findSchild(l byte) *node {
+func (n *node) findChildWithType(t ntype) *node {
 	for _, c := range n.children {
-		if c.label == l && c.typ == stype {
+		if c.typ == t {
 			return c
 		}
 	}
 	return nil
 }
 
-func (n *node) findPchild() *node {
-	for _, c := range n.children {
-		if c.typ == ptype {
-			return c
-		}
+func (r *Router) treeIndex(method string) uint8 {
+	if method[0] == 'P' {
+		return method[0]%10 + method[1] - 65
+	} else {
+		return method[0] % 10
 	}
-	return nil
-}
-
-func (n *node) findMchild() *node {
-	for _, c := range n.children {
-		if c.typ == mtype {
-			return c
-		}
-	}
-	return nil
-}
-
-// Length of longest common prefix
-func lcp(a, b string) (i int) {
-	max := len(a)
-	l := len(b)
-	if l < max {
-		max = l
-	}
-	for ; i < max && a[i] == b[i]; i++ {
-	}
-	return
 }
 
 func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo) {
-	cn := r.trees[method] // Current node as root
+	cn := r.trees[r.treeIndex(method)] // Current node as root
 	search := path
 
 	var (
@@ -235,8 +236,16 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 		l := 0  // LCP length
 
 		if cn.label != ':' {
+			sl := len(search)
 			pl = len(cn.prefix)
-			l = lcp(search, cn.prefix)
+
+			// LCP
+			max := pl
+			if sl < max  {
+				max = sl
+			}
+			for ; l < max && search[l] == cn.prefix[l]; l++ {
+			}
 		}
 
 		if l == pl {
@@ -257,7 +266,7 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 
 		if search == "" {
 			// TODO: Needs improvement
-			if cn.findMchild() == nil {
+			if cn.findChildWithType(mtype) == nil {
 				continue
 			}
 			// Empty value
@@ -265,7 +274,7 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 		}
 
 		// Static node
-		c = cn.findSchild(search[0])
+		c = cn.findChild(search[0], stype)
 		if c != nil {
 			// Save next
 			if cn.label == '/' {
@@ -279,7 +288,7 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 
 		// Param node
 	Param:
-		c = cn.findPchild()
+		c = cn.findChildWithType(ptype)
 		if c != nil {
 			// Save next
 			if cn.label == '/' {
@@ -299,13 +308,15 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 
 		// Match-any node
 	MatchAny:
-		c = cn.findMchild()
+		//		c = cn.getChild()
+		c = cn.findChildWithType(mtype)
 		if c != nil {
 			cn = c
 			ctx.pvalues[0] = search
 			search = "" // End search
 			continue
 		}
+
 		// Not found
 		return
 	}
