@@ -77,7 +77,7 @@ types of handlers.
 ### Path parameter
 
 Request path parameters can be extracted either by name `Echo.Context.Param(name string) string`
-or by index `Echo.Context.P(i uint8) string`. Getting parameter by index gives a
+or by index `Echo.Context.P(i int) string`. Getting parameter by index gives a
 slightly better performance.
 
 ```go
