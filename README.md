@@ -66,8 +66,6 @@ BenchmarkTigerTonic_GithubAll        2000            931401 ns/op          24108
 BenchmarkTraffic_GithubAll            200           7292170 ns/op         2664770 B/op     22390 allocs/op
 BenchmarkVulcan_GithubAll            5000            271682 ns/op           19894 B/op       609 allocs/op
 BenchmarkZeus_GithubAll              2000            748827 ns/op          300688 B/op     2648 allocs/op
-BenchmarkAce_Param                5000000               297 ns/op              32 B/op        1 allocs/op
-BenchmarkBear_Param               2000000               995 ns/op             424 B/op        5 allocs/op
 ```
 
 ## Installation
