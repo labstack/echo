@@ -180,7 +180,7 @@ types of handlers.</p>
 <p><em>WIP</em></p>
 <h3 id="path-parameter">Path parameter</h3>
 <p>Request path parameters can be extracted either by name <code>Echo.Context.Param(name string) string</code>
-or by index <code>Echo.Context.P(i uint8) string</code>. Getting parameter by index gives a
+or by index <code>Echo.Context.P(i int) string</code>. Getting parameter by index gives a
 slightly better performance.</p>
 <pre><code class="go">echo.Get(&quot;/users/:id&quot;, func(c *echo.Context) error {
     // By name
