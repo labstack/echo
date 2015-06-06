@@ -151,7 +151,6 @@ func New() (e *Echo) {
 	// Defaults
 	//----------
 
-	e.HTTP2(true)
 	e.notFoundHandler = func(c *Context) error {
 		return NewHTTPError(http.StatusNotFound)
 	}
@@ -440,12 +439,15 @@ func (e *Echo) RunTLSServer(srv *http.Server, certFile, keyFile string) {
 
 func (e *Echo) run(s *http.Server, files ...string) {
 	s.Handler = e
-	if e.http2 {
-		http2.ConfigureServer(s, nil)
-	}
 	if len(files) == 0 {
+		if e.http2 {
+			log.Fatal("echo => http2 support for tcp is not implemented")
+		}
 		log.Fatal(s.ListenAndServe())
 	} else if len(files) == 2 {
+		if e.http2 {
+			http2.ConfigureServer(s, nil)
+		}
 		log.Fatal(s.ListenAndServeTLS(files[0], files[1]))
 	} else {
 		log.Fatal("echo => invalid TLS configuration")
