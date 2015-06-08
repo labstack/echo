@@ -1,6 +1,10 @@
 site_name: Echo
 
-theme: flatly
+theme: journal
+
+theme_dir: echo
+
+copyright: © 2015 LabStack
 
 repo_url: https://github.com/labstack/echo
 

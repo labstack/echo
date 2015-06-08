@@ -30,8 +30,8 @@ func main() {
 	e.Use(mw.Recover())
 
 	// Basic auth
-	e.Use(mw.BasicAuth(func(u, p string) bool {
-		if u == "joe" && p == "secret" {
+	e.Use(mw.BasicAuth(func(usr, pwd string) bool {
+		if usr == "joe" && pwd == "secret" {
 			return true
 		}
 		return false

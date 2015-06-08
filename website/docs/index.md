@@ -86,9 +86,7 @@ func main() {
 made to the server, producing output
 
 ```sh
-2015/04/25 12:15:20 GET / 200 7.544µs
-2015/04/25 12:15:26 GET / 200 3.681µs
-2015/04/25 12:15:29 GET / 200 5.434µs
+2015/06/07 18:16:16 GET / 200 13.238µs 14
 ```
 
 `e.Get("/", hello)` Registers hello handler for HTTP method `GET` and path `/`, so

@@ -59,7 +59,7 @@ code below registers a route for method `GET`, path `/hello` and a handler which
 `Hello!` HTTP response.
 
 ```go
-echo.Get("/hello", func(*echo.Context) error {
+echo.Get("/hello", func(c *echo.Context) error {
 	return c.String(http.StatusOK, "Hello!")
 })
 ```
@@ -68,11 +68,27 @@ Echo's default handler is `func(*echo.Context) error` where `echo.Context`
 primarily holds HTTP request and response objects. Echo also has a support for other
 types of handlers.
 
-<!-- TODO mention about not able to take advantage -->
-
 ### Group
 
-*WIP*
+`Echo.Group(prefix string, m ...Middleware) *Group`
+
+Routes with common prefix can be grouped to define a new sub-router with optional
+middleware. If middleware is passed to the function, it overrides parent middleware
+- helpful if you want a completly new middleware stack for the group. To add middleware
+later you can use `Group.Use(m ...Middleware)`. Groups can also be nested.
+
+In the code below, we create an admin group which requires basic HTTP authentication
+for routes `/admin/*`.
+
+```go
+echo.Group("/admin")
+e.Use(mw.BasicAuth(func(usr, pwd string) bool {
+	if usr == "joe" && pwd == "secret" {
+		return true
+	}
+	return false
+}))
+```
 
 ### Path parameter
 
@@ -154,7 +170,93 @@ e.Get("/users/:id", h)
 
 ## Middleware
 
-[*WIP*](https://github.com/labstack/echo/tree/master/examples/middleware)
+Middleware is function which is chained in the HTTP request-response cycle. Middleware
+has access to the request and response objects which it utilizes to perform a specific
+action for example, logging every request. Echo supports variety of [middleware](/#features).
+
+### Logger
+
+Logs each HTTP request with method, path, status, response time and bytes served.
+
+*Example*
+
+```go
+e.Use(Logger())
+
+// Output: `2015/06/07 18:16:16 GET / 200 13.238µs 14`
+```
+
+### BasicAuth
+
+BasicAuth middleware provides an HTTP basic authentication.
+
+- For valid credentials it calls the next handler in the chain.
+- For invalid Authorization header it sends "404 - Bad Request" response.
+- For invalid credentials, it sends "401 - Unauthorized" response.
+
+*Example*
+
+```go
+echo.Group("/admin")
+e.Use(mw.BasicAuth(func(usr, pwd string) bool {
+	if usr == "joe" && pwd == "secret" {
+		return true
+	}
+	return false
+}))
+```
+
+### Gzip
+
+Gzip middleware compresses HTTP response using gzip compression scheme.
+
+*Example*
+
+```go
+e.Use(mw.Gzip())
+```
+
+### Recover
+
+Recover middleware recovers from panics anywhere in the chain and handles the control
+to the centralized [HTTPErrorHandler](#error-handling).
+
+*Example*
+
+```go
+e.Use(mw.Recover())
+```
+
+### StripTrailingSlash
+
+StripTrailingSlash middleware removes the trailing slash from request path.
+
+*Example*
+
+```go
+e.Use(mw.StripTrailingSlash())
+```
+
+### RedirectToSlash
+RedirectToSlash middleware redirects requests without trailing slash path to trailing
+slash path.
+
+*Options*
+```go
+RedirectToSlashOptions struct {
+    Code int
+}
+```
+
+*Example*
+
+```go
+e.Use(mw.RedirectToSlash())
+```
+
+*Note*: StripTrailingSlash and RedirectToSlash should not be used together.
+
+[Examples](https://github.com/labstack/echo/tree/master/examples/middleware)
 
 ## Response
 
