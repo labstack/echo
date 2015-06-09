@@ -179,7 +179,7 @@ types of handlers.</p>
 <p><code>Echo.Group(prefix string, m ...Middleware) *Group</code></p>
 <p>Routes with common prefix can be grouped to define a new sub-router with optional
 middleware. If middleware is passed to the function, it overrides parent middleware
-- helpful if you want a completly new middleware stack for the group. To add middleware
+- helpful if you want a completely new middleware stack for the group. To add middleware
 later you can use <code>Group.Use(m ...Middleware)</code>. Groups can also be nested.</p>
 <p>In the code below, we create an admin group which requires basic HTTP authentication
 for routes <code>/admin/*</code>.</p>
