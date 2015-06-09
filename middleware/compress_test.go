@@ -24,14 +24,6 @@ func TestGzip(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "test", rec.Body.String())
 
-	// Skip if WebSocket
-	rec = httptest.NewRecorder()
-	c = echo.NewContext(req, echo.NewResponse(rec), echo.New())
-	c.Request().Header.Set(echo.Upgrade, echo.WebSocket)
-	Gzip()(h)(c)
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.NotEqual(t, "gzip", rec.Header().Get(echo.ContentEncoding))
-
 	// Gzip
 	req, _ = http.NewRequest(echo.GET, "/", nil)
 	req.Header.Set(echo.AcceptEncoding, "gzip")

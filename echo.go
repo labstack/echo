@@ -283,7 +283,7 @@ func (e *Echo) WebSocket(path string, h HandlerFunc) {
 				err = h(c)
 			},
 		}
-		wss.ServeHTTP(c.response.writer, c.request)
+		wss.ServeHTTP(c.response, c.request)
 		return err
 	})
 }
@@ -400,7 +400,6 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	c.reset(r, w, e)
 	if h == nil {
-		c.response.status = http.StatusNotFound // Helpful to skip middleware
 		h = e.notFoundHandler
 	}
 
