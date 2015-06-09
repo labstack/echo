@@ -1,30 +1,38 @@
 package middleware
 
 import (
+	"bytes"
 	"compress/gzip"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"bytes"
 
 	"github.com/labstack/echo"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGzip(t *testing.T) {
-	// Empty Accept-Encoding header
 	req, _ := http.NewRequest(echo.GET, "/", nil)
 	rec := httptest.NewRecorder()
 	c := echo.NewContext(req, echo.NewResponse(rec), echo.New())
 	h := func(c *echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}
+
+	// Skip if no Accept-Encoding header
 	Gzip()(h)(c)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "test", rec.Body.String())
 
-	// With Accept-Encoding header
+	// Skip if WebSocket
+	rec = httptest.NewRecorder()
+	c = echo.NewContext(req, echo.NewResponse(rec), echo.New())
+	c.Request().Header.Set(echo.Upgrade, echo.WebSocket)
+	Gzip()(h)(c)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.NotEqual(t, "gzip", rec.Header().Get(echo.ContentEncoding))
+
+	// Gzip
 	req, _ = http.NewRequest(echo.GET, "/", nil)
 	req.Header.Set(echo.AcceptEncoding, "gzip")
 	rec = httptest.NewRecorder()

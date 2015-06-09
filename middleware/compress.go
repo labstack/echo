@@ -29,7 +29,8 @@ func Gzip() echo.MiddlewareFunc {
 	return func(h echo.HandlerFunc) echo.HandlerFunc {
 		return func(c *echo.Context) error {
 			if (c.Request().Header.Get(echo.Upgrade)) != echo.WebSocket && // Skip for WebSocket
-				strings.Contains(c.Request().Header.Get(echo.AcceptEncoding), scheme) {
+				strings.Contains(c.Request().Header.Get(echo.AcceptEncoding), scheme) &&
+				c.Response().Status() != http.StatusNotFound { // Skip for "404 - Not Found"
 				w := gzip.NewWriter(c.Response().Writer())
 				defer w.Close()
 				gw := gzipWriter{Writer: w, ResponseWriter: c.Response().Writer()}

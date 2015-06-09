@@ -382,7 +382,7 @@ func (e *Echo) URI(h Handler, params ...interface{}) string {
 	return uri.String()
 }
 
-// URL is an alias for URI
+// URL is an alias for URI.
 func (e *Echo) URL(h Handler, params ...interface{}) string {
 	return e.URI(h, params...)
 }
@@ -400,6 +400,7 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	c.reset(r, w, e)
 	if h == nil {
+		c.response.status = http.StatusNotFound // Helpful to skip middleware
 		h = e.notFoundHandler
 	}
 

@@ -74,7 +74,7 @@ types of handlers.
 
 Routes with common prefix can be grouped to define a new sub-router with optional
 middleware. If middleware is passed to the function, it overrides parent middleware
-- helpful if you want a completly new middleware stack for the group. To add middleware
+- helpful if you want a completely new middleware stack for the group. To add middleware
 later you can use `Group.Use(m ...Middleware)`. Groups can also be nested.
 
 In the code below, we create an admin group which requires basic HTTP authentication
@@ -254,7 +254,7 @@ RedirectToSlashOptions struct {
 e.Use(mw.RedirectToSlash())
 ```
 
-*Note*: StripTrailingSlash and RedirectToSlash should not be used together.
+> StripTrailingSlash and RedirectToSlash middleware should not be used together.
 
 [Examples](https://github.com/labstack/echo/tree/master/examples/middleware)
 
