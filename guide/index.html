@@ -175,23 +175,6 @@ code below registers a route for method <code>GET</code>, path <code>/hello</cod
 <p>Echo's default handler is <code>func(*echo.Context) error</code> where <code>echo.Context</code>
 primarily holds HTTP request and response objects. Echo also has a support for other
 types of handlers.</p>
-<h3 id="group">Group</h3>
-<p><code>Echo.Group(prefix string, m ...Middleware) *Group</code></p>
-<p>Routes with common prefix can be grouped to define a new sub-router with optional
-middleware. If middleware is passed to the function, it overrides parent middleware
-- helpful if you want a completely new middleware stack for the group. To add middleware
-later you can use <code>Group.Use(m ...Middleware)</code>. Groups can also be nested.</p>
-<p>In the code below, we create an admin group which requires basic HTTP authentication
-for routes <code>/admin/*</code>.</p>
-<pre><code class="go">echo.Group(&quot;/admin&quot;)
-e.Use(mw.BasicAuth(func(usr, pwd string) bool {
-    if usr == &quot;joe&quot; &amp;&amp; pwd == &quot;secret&quot; {
-        return true
-    }
-    return false
-}))
-</code></pre>
-
 <h3 id="path-parameter">Path parameter</h3>
 <p>Request path parameters can be extracted either by name <code>Echo.Context.Param(name string) string</code>
 or by index <code>Echo.Context.P(i int) string</code>. Getting parameter by index gives a
@@ -243,7 +226,22 @@ e.Get(&quot;/users/1/files/*&quot;, func(c *echo.Context) error {
 <li><code>/users/1/files/*</code></li>
 </ul>
 <p>Routes can be written in any order.</p>
-<!-- Different use cases -->
+<h3 id="group">Group</h3>
+<p><code>Echo.Group(prefix string, m ...Middleware) *Group</code></p>
+<p>Routes with common prefix can be grouped to define a new sub-router with optional
+middleware. If middleware is passed to the function, it overrides parent middleware
+- helpful if you want a completely new middleware stack for the group. To add middleware
+later you can use <code>Group.Use(m ...Middleware)</code>. Groups can also be nested.</p>
+<p>In the code below, we create an admin group which requires basic HTTP authentication
+for routes <code>/admin/*</code>.</p>
+<pre><code class="go">echo.Group(&quot;/admin&quot;)
+e.Use(mw.BasicAuth(func(usr, pwd string) bool {
+    if usr == &quot;joe&quot; &amp;&amp; pwd == &quot;secret&quot; {
+        return true
+    }
+    return false
+}))
+</code></pre>
 
 <h3 id="uri-building">URI building</h3>
 <p><code>Echo.URI</code> can be used generate URI for any handler with specified path parameters.

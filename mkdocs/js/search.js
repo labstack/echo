@@ -15,7 +15,7 @@ require([
             var sParameterName = sURLVariables[i].split('=');
             if (sParameterName[0] == 'q')
             {
-                return sParameterName[1];
+                return decodeURIComponent(sParameterName[1].replace(/\+/g, '%20'));
             }
         }
     }
