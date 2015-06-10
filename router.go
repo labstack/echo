@@ -241,7 +241,7 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 
 			// LCP
 			max := pl
-			if sl < max  {
+			if sl < max {
 				max = sl
 			}
 			for ; l < max && search[l] == cn.prefix[l]; l++ {

@@ -461,6 +461,11 @@ func NewHTTPError(code int, msg ...string) *HTTPError {
 	return he
 }
 
+// SetCode sets code.
+func (e *HTTPError) SetCode(code int) {
+	e.code = code
+}
+
 // Code returns code.
 func (e *HTTPError) Code() int {
 	return e.code
