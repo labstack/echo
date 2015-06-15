@@ -68,28 +68,6 @@ Echo's default handler is `func(*echo.Context) error` where `echo.Context`
 primarily holds HTTP request and response objects. Echo also has a support for other
 types of handlers.
 
-### Group
-
-`Echo.Group(prefix string, m ...Middleware) *Group`
-
-Routes with common prefix can be grouped to define a new sub-router with optional
-middleware. If middleware is passed to the function, it overrides parent middleware
-- helpful if you want a completely new middleware stack for the group. To add middleware
-later you can use `Group.Use(m ...Middleware)`. Groups can also be nested.
-
-In the code below, we create an admin group which requires basic HTTP authentication
-for routes `/admin/*`.
-
-```go
-echo.Group("/admin")
-e.Use(mw.BasicAuth(func(usr, pwd string) bool {
-	if usr == "joe" && pwd == "secret" {
-		return true
-	}
-	return false
-}))
-```
-
 ### Path parameter
 
 Request path parameters can be extracted either by name `Echo.Context.Param(name string) string`
@@ -148,7 +126,27 @@ Above routes would resolve in order
 
 Routes can be written in any order.
 
-<!-- Different use cases -->
+### Group
+
+`Echo.Group(prefix string, m ...Middleware) *Group`
+
+Routes with common prefix can be grouped to define a new sub-router with optional
+middleware. If middleware is passed to the function, it overrides parent middleware
+- helpful if you want a completely new middleware stack for the group. To add middleware
+later you can use `Group.Use(m ...Middleware)`. Groups can also be nested.
+
+In the code below, we create an admin group which requires basic HTTP authentication
+for routes `/admin/*`.
+
+```go
+echo.Group("/admin")
+e.Use(mw.BasicAuth(func(usr, pwd string) bool {
+	if usr == "joe" && pwd == "secret" {
+		return true
+	}
+	return false
+}))
+```
 
 ### URI building
 
