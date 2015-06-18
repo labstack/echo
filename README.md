@@ -1,9 +1,9 @@
 # [Echo](http://echo.labstack.com) [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/labstack/echo) [![Build Status](http://img.shields.io/travis/labstack/echo.svg?style=flat-square)](https://travis-ci.org/labstack/echo) [![Coverage Status](http://img.shields.io/coveralls/labstack/echo.svg?style=flat-square)](https://coveralls.io/r/labstack/echo) [![Join the chat at https://gitter.im/labstack/echo](https://img.shields.io/badge/gitter-join%20chat-brightgreen.svg?style=flat-square)](https://gitter.im/labstack/echo)
-Echo is a fast HTTP router (zero memory allocation) and micro web framework in Go.
+Echo is a fast HTTP router (zero dynamic memory allocation) and micro web framework in Go.
 
 ## Features
 
-- Fast HTTP router which smartly prioritize routes
+- Fast HTTP router which smartly prioritize routes.
 - Extensible middleware, supports:
 	- `echo.MiddlewareFunc`
 	- `func(echo.HandlerFunc) echo.HandlerFunc`
@@ -19,15 +19,14 @@ Echo is a fast HTTP router (zero memory allocation) and micro web framework in G
     - `http.Handler`
     - `http.HandlerFunc`
     - `func(http.ResponseWriter, *http.Request)`
-- Sub-router
-- Groups
-- Handy encoding/decoding functions
+- Sub-router/Groups
+- Handy encoding/decoding functions.
 - Build-in support for:
 	- Static files
 	- WebSocket
-- API to serve index and favicon
-- Centralized HTTP error handling
-- Customizable request binding function
+- API to serve index and favicon.
+- Centralized HTTP error handling.
+- Customizable request binding function.
 - Customizable response rendering function, allowing you to use any HTML template engine.
 
 ## Benchmark

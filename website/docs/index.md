@@ -6,11 +6,11 @@ Build simple and performant systems!
 
 ## Overview
 
-Echo is a fast HTTP router (zero memory allocation) and micro web framework in Go.
+Echo is a fast HTTP router (zero dynamic memory allocation) and micro web framework in Go.
 
 ## Features
 
-- Fast HTTP router which smartly prioritize routes
+- Fast HTTP router which smartly prioritize routes.
 - Extensible middleware, supports:
 	- `echo.MiddlewareFunc`
 	- `func(echo.HandlerFunc) echo.HandlerFunc`
@@ -26,15 +26,14 @@ Echo is a fast HTTP router (zero memory allocation) and micro web framework in G
     - `http.Handler`
     - `http.HandlerFunc`
     - `func(http.ResponseWriter, *http.Request)`
-- Sub-router
-- Groups
-- Handy encoding/decoding functions
+- Sub-router/Groups
+- Handy encoding/decoding functions.
 - Build-in support for:
-    - Static files
-    - WebSocket
-- API to serve index and favicon
-- Centralized HTTP error handling
-- Customizable request binding function
+	- Static files
+	- WebSocket
+- API to serve index and favicon.
+- Centralized HTTP error handling.
+- Customizable request binding function.
 - Customizable response rendering function, allowing you to use any HTML template engine.
 
 ## Getting Started
