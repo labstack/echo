@@ -75,6 +75,11 @@ func TestEchoStatic(t *testing.T) {
 	e.Static("/scripts", "examples/website/public/scripts")
 	c, _ = request(GET, "/scripts", e)
 	assert.Equal(t, http.StatusForbidden, c)
+
+	// Directory with index.html
+	e.Static("/", "examples/website/public")
+	c, _ = request(GET, "/", e)
+	assert.Equal(t, http.StatusOK, c)
 }
 
 func TestEchoMiddleware(t *testing.T) {
