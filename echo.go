@@ -338,7 +338,7 @@ func serveFile(dir, file string, c *Context) error {
 
 	fi, _ := f.Stat()
 	if fi.IsDir() {
-		f, err = fs.Open("index.html")
+		f, err = fs.Open(file + "/index.html")
 		if err != nil {
 			return NewHTTPError(http.StatusForbidden)
 		}

@@ -78,8 +78,14 @@ func TestEchoStatic(t *testing.T) {
 
 	// Directory with index.html
 	e.Static("/", "examples/website/public")
-	c, _ = request(GET, "/", e)
+	c, r := request(GET, "/", e)
 	assert.Equal(t, http.StatusOK, c)
+	assert.Equal(t, true, strings.HasPrefix(r, "<!doctype html>"))
+
+	// Sub-directory with index.html
+	c, r = request(GET, "/folder", e)
+	assert.Equal(t, http.StatusOK, c)
+	assert.Equal(t, "sub directory", r)
 }
 
 func TestEchoMiddleware(t *testing.T) {
