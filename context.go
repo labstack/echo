@@ -51,7 +51,7 @@ func (c *Context) Socket() *websocket.Conn {
 // P returns path parameter by index.
 func (c *Context) P(i int) (value string) {
 	l := len(c.pnames)
-	if i <= l {
+	if i < l {
 		value = c.pvalues[i]
 	}
 	return
@@ -61,7 +61,7 @@ func (c *Context) P(i int) (value string) {
 func (c *Context) Param(name string) (value string) {
 	l := len(c.pnames)
 	for i, n := range c.pnames {
-		if n == name && i <= l {
+		if n == name && i < l {
 			value = c.pvalues[i]
 			break
 		}
