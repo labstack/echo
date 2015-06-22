@@ -36,6 +36,10 @@ Echo is a fast HTTP router (zero dynamic memory allocation) and micro web framew
 - Customizable request binding function.
 - Customizable response rendering function, allowing you to use any HTML template engine.
 
+## Performance
+
+![Performance](http://i.imgur.com/UskYRUl.png)
+
 ## Getting Started
 
 ### Installation
