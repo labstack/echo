@@ -38,7 +38,7 @@ Echo is a fast HTTP router (zero dynamic memory allocation) and micro web framew
 
 ## Performance
 
-![Performance](http://i.imgur.com/UskYRUl.png)
+![Performance](http://i.imgur.com/dTBFmte.png)
 
 ## Getting Started
 
