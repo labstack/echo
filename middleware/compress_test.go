@@ -43,3 +43,40 @@ func TestGzip(t *testing.T) {
 		assert.Equal(t, "test", buf.String())
 	}
 }
+
+func TestGzipFlush(t *testing.T) {
+	rec := httptest.NewRecorder()
+	buf := new(bytes.Buffer)
+	w := gzip.NewWriter(buf)
+	gw := gzipWriter{Writer: w, ResponseWriter: rec}
+
+	n0 := buf.Len()
+	if n0 != 0 {
+		t.Fatalf("buffer size = %d before writes; want 0", n0)
+	}
+
+	if err := gw.Flush(); err != nil {
+		t.Fatal(err)
+	}
+
+	n1 := buf.Len()
+	if n1 == 0 {
+		t.Fatal("no data after first flush")
+	}
+
+	gw.Write([]byte("x"))
+
+	n2 := buf.Len()
+	if n1 != n2 {
+		t.Fatalf("after writing a single byte, size changed from %d to %d; want no change", n1, n2)
+	}
+
+	if err := gw.Flush(); err != nil {
+		t.Fatal(err)
+	}
+
+	n3 := buf.Len()
+	if n2 == n3 {
+		t.Fatal("Flush didn't flush any data")
+	}
+}
