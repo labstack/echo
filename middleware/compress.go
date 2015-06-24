@@ -19,8 +19,8 @@ type (
 )
 
 func (w gzipWriter) Write(b []byte) (int, error) {
-	if "" == w.Header().Get("Content-Type") {
-		w.Header().Set("Content-Type", http.DetectContentType(b))
+	if "" == w.Header().Get(echo.ContentType) {
+		w.Header().Set(echo.ContentType, http.DetectContentType(b))
 	}
 	return w.Writer.Write(b)
 }
