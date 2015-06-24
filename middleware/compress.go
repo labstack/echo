@@ -1,16 +1,14 @@
 package middleware
 
 import (
+	"bufio"
 	"compress/gzip"
+	"io"
+	"net"
+	"net/http"
 	"strings"
 
-	"net/http"
-
-	"bufio"
-	"net"
-
 	"github.com/labstack/echo"
-	"io"
 )
 
 type (
@@ -21,6 +19,9 @@ type (
 )
 
 func (w gzipWriter) Write(b []byte) (int, error) {
+	if "" == w.Header().Get("Content-Type") {
+		w.Header().Set("Content-Type", http.DetectContentType(b))
+	}
 	return w.Writer.Write(b)
 }
 
