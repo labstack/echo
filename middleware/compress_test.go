@@ -40,3 +40,30 @@ func TestGzip(t *testing.T) {
 		assert.Equal(t, "test", buf.String())
 	}
 }
+
+func TestGzipNoContentType(t *testing.T) {
+	req, _ := http.NewRequest(echo.GET, "/", nil)
+	rec := httptest.NewRecorder()
+	c := echo.NewContext(req, echo.NewResponse(rec), echo.New())
+	h := func(c *echo.Context) error {
+		c.Response().Write([]byte("test"))
+		return nil
+	}
+
+	req, _ = http.NewRequest(echo.GET, "/", nil)
+	req.Header.Set(echo.AcceptEncoding, "gzip")
+	rec = httptest.NewRecorder()
+	c = echo.NewContext(req, echo.NewResponse(rec), echo.New())
+	Gzip()(h)(c)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "gzip", rec.Header().Get(echo.ContentEncoding))
+
+	r, err := gzip.NewReader(rec.Body)
+	defer r.Close()
+	if assert.NoError(t, err) {
+		buf := new(bytes.Buffer)
+		buf.ReadFrom(r)
+		assert.Equal(t, "test", buf.String())
+	}
+}
