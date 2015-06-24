@@ -110,6 +110,7 @@ const (
 	ContentType        = "Content-Type"
 	Authorization      = "Authorization"
 	Upgrade            = "Upgrade"
+	Vary               = "Vary"
 
 	//-----------
 	// Protocols

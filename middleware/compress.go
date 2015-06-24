@@ -1,16 +1,14 @@
 package middleware
 
 import (
+	"bufio"
 	"compress/gzip"
+	"io"
+	"net"
+	"net/http"
 	"strings"
 
-	"net/http"
-
-	"bufio"
-	"net"
-
 	"github.com/labstack/echo"
-	"io"
 )
 
 type (
@@ -21,6 +19,9 @@ type (
 )
 
 func (w gzipWriter) Write(b []byte) (int, error) {
+	if w.Header().Get(echo.ContentType) == "" {
+		w.Header().Set(echo.ContentType, http.DetectContentType(b))
+	}
 	return w.Writer.Write(b)
 }
 
@@ -43,6 +44,7 @@ func Gzip() echo.MiddlewareFunc {
 
 	return func(h echo.HandlerFunc) echo.HandlerFunc {
 		return func(c *echo.Context) error {
+			c.Response().Header().Add(echo.Vary, echo.AcceptEncoding)
 			if strings.Contains(c.Request().Header.Get(echo.AcceptEncoding), scheme) {
 				w := gzip.NewWriter(c.Response().Writer())
 				defer w.Close()

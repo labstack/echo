@@ -32,7 +32,6 @@ func BasicAuth(fn BasicValidateFunc) echo.HandlerFunc {
 		auth := c.Request().Header.Get(echo.Authorization)
 		l := len(Basic)
 		he := echo.NewHTTPError(http.StatusBadRequest)
-		println(auth)
 
 		if len(auth) > l+1 && auth[:l] == Basic {
 			b, err := base64.StdEncoding.DecodeString(auth[l+1:])
