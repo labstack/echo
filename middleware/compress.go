@@ -25,8 +25,8 @@ func (w gzipWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
 }
 
-func (w gzipWriter) Flush() {
-	w.Writer.(*gzip.Writer).Flush()
+func (w gzipWriter) Flush() error {
+	return w.Writer.(*gzip.Writer).Flush()
 }
 
 func (w gzipWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
