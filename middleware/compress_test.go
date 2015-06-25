@@ -6,10 +6,31 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/labstack/echo"
 	"github.com/stretchr/testify/assert"
 )
+
+type closeNotifyingRecorder struct {
+	*httptest.ResponseRecorder
+	closed chan bool
+}
+
+func newCloseNotifyingRecorder() *closeNotifyingRecorder {
+	return &closeNotifyingRecorder{
+		httptest.NewRecorder(),
+		make(chan bool, 1),
+	}
+}
+
+func (c *closeNotifyingRecorder) close() {
+	c.closed <- true
+}
+
+func (c *closeNotifyingRecorder) CloseNotify() <-chan bool {
+	return c.closed
+}
 
 func TestGzip(t *testing.T) {
 	req, _ := http.NewRequest(echo.GET, "/", nil)
@@ -79,4 +100,22 @@ func TestGzipFlush(t *testing.T) {
 	if n2 == n3 {
 		t.Fatal("Flush didn't flush any data")
 	}
+}
+
+func TestCloseNotify(t *testing.T) {
+	rec := newCloseNotifyingRecorder()
+	buf := new(bytes.Buffer)
+	w := gzip.NewWriter(buf)
+	gw := gzipWriter{Writer: w, ResponseWriter: rec}
+	closed := false
+	notifier := gw.CloseNotify()
+	rec.close()
+
+	select {
+	case <-notifier:
+		closed = true
+	case <-time.After(time.Second):
+	}
+
+	assert.Equal(t, closed, true)
 }
