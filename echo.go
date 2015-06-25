@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"path"
 	"reflect"
 	"runtime"
 	"strings"
@@ -339,7 +340,7 @@ func serveFile(dir, file string, c *Context) error {
 
 	fi, _ := f.Stat()
 	if fi.IsDir() {
-		file = filepath.Join(file, "index.html")
+		file = path.Join(file, "index.html")
 		f, err = fs.Open(file)
 		if err != nil {
 			return NewHTTPError(http.StatusForbidden)
