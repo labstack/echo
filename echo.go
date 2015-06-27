@@ -423,15 +423,25 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	e.pool.Put(c)
 }
 
+// Server returns the internal *http.Server
+func (e *Echo) Server(addr string) *http.Server {
+	s := &http.Server{Addr: addr}
+	s.Handler = e
+	if e.http2 {
+		http2.ConfigureServer(s, nil)
+	}
+	return s
+}
+
 // Run runs a server.
 func (e *Echo) Run(addr string) {
-	s := &http.Server{Addr: addr}
+	s := e.Server(addr)
 	e.run(s)
 }
 
 // RunTLS runs a server with TLS configuration.
 func (e *Echo) RunTLS(addr, certFile, keyFile string) {
-	s := &http.Server{Addr: addr}
+	s := e.Server(addr)
 	e.run(s, certFile, keyFile)
 }
 
@@ -446,10 +456,6 @@ func (e *Echo) RunTLSServer(srv *http.Server, certFile, keyFile string) {
 }
 
 func (e *Echo) run(s *http.Server, files ...string) {
-	s.Handler = e
-	if e.http2 {
-		http2.ConfigureServer(s, nil)
-	}
 	if len(files) == 0 {
 		log.Fatal(s.ListenAndServe())
 	} else if len(files) == 2 {
