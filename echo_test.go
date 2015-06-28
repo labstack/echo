@@ -375,6 +375,12 @@ func TestEchoHTTPError(t *testing.T) {
 	assert.Equal(t, m, he.Error())
 }
 
+func TestServer(t *testing.T) {
+	e := New()
+	s := e.Server(":1234")
+	assert.IsType(t, &http.Server{}, s, "Unexpected value")
+}
+
 func testMethod(t *testing.T, method, path string, e *Echo) {
 	m := fmt.Sprintf("%c%s", method[0], strings.ToLower(method[1:]))
 	p := reflect.ValueOf(path)
