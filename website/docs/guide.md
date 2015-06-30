@@ -49,7 +49,7 @@ Enables debug mode.
 ## Routing
 
 Echo's router is [fast, optimized](https://github.com/labstack/echo#benchmark) and
-flexible. It's based on [redix tree](http://en.wikipedia.org/wiki/Radix_tree)
+flexible. It's based on [radix tree](http://en.wikipedia.org/wiki/Radix_tree)
 data structure which makes routing lookup really fast. It leverages
 [sync pool](https://golang.org/pkg/sync/#Pool) to reuse memory and achieve
 zero dynamic memory allocation with no GC overhead.

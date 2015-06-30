@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"fmt"
+
 	"golang.org/x/net/websocket"
 )
 
@@ -103,19 +105,21 @@ func (c *Context) JSON(code int, i interface{}) error {
 	return json.NewEncoder(c.response).Encode(i)
 }
 
-// String sends a text/plain response with status code.
-func (c *Context) String(code int, s string) error {
+// String formats according to a format specifier and sends text/plain response
+// with status code.
+func (c *Context) String(code int, format string, a ...interface{}) error {
 	c.response.Header().Set(ContentType, TextPlain)
 	c.response.WriteHeader(code)
-	_, err := c.response.Write([]byte(s))
+	_, err := fmt.Fprintf(c.response, format, a...)
 	return err
 }
 
-// HTML sends a text/html response with status code.
-func (c *Context) HTML(code int, html string) error {
+// HTML formats according to a format specifier and sends text/html response with
+// status code.
+func (c *Context) HTML(code int, format string, a ...interface{}) error {
 	c.response.Header().Set(ContentType, TextHTML)
 	c.response.WriteHeader(code)
-	_, err := c.response.Write([]byte(html))
+	_, err := fmt.Fprintf(c.response, format, a...)
 	return err
 }
 
