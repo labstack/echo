@@ -177,7 +177,7 @@ var (
 
 func main() {
     e := echo.New()
-    e.Get(&quot;/stream&quot;, func(c *echo.Context) error {
+    e.Get(&quot;/&quot;, func(c *echo.Context) error {
         c.Response().Header().Set(echo.ContentType, echo.ApplicationJSON)
         c.Response().WriteHeader(http.StatusOK)
         for _, l := range locations {
@@ -191,6 +191,14 @@ func main() {
     })
     e.Run(&quot;:1323&quot;)
 }
+</code></pre>
+
+<p><code>curl localhost:1323</code></p>
+<pre><code class="js">{&quot;Altitude&quot;:-97,&quot;Latitude&quot;:37.819929,&quot;Longitude&quot;:-122.478255}
+{&quot;Altitude&quot;:1899,&quot;Latitude&quot;:39.096849,&quot;Longitude&quot;:-120.032351}
+{&quot;Altitude&quot;:2619,&quot;Latitude&quot;:37.865101,&quot;Longitude&quot;:-119.538329}
+{&quot;Altitude&quot;:42,&quot;Latitude&quot;:33.812092,&quot;Longitude&quot;:-117.918974}
+{&quot;Altitude&quot;:15,&quot;Latitude&quot;:37.77493,&quot;Longitude&quot;:-122.419416}
 </code></pre>
 
 <h2 id="source-code"><a href="https://github.com/labstack/echo/blob/master/recipes/streaming-response">Source Code</a></h2></div>
