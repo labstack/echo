@@ -32,12 +32,6 @@
     </url>
         
     <url>
-     <loc>None/recipes/graceful-shutdown/</loc>
-     <lastmod>2015-06-30</lastmod>
-     <changefreq>daily</changefreq>
-    </url>
-        
-    <url>
      <loc>None/recipes/streaming-response/</loc>
      <lastmod>2015-06-30</lastmod>
      <changefreq>daily</changefreq>
@@ -45,6 +39,12 @@
         
     <url>
      <loc>None/recipes/websocket/</loc>
+     <lastmod>2015-06-30</lastmod>
+     <changefreq>daily</changefreq>
+    </url>
+        
+    <url>
+     <loc>None/recipes/graceful-shutdown/</loc>
      <lastmod>2015-06-30</lastmod>
      <changefreq>daily</changefreq>
     </url>

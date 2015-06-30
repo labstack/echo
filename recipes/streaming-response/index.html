@@ -85,16 +85,16 @@
                             <a href="../streaming-file-upload/">Streaming File Upload</a>
                         </li>
                     
-                        <li >
-                            <a href="../graceful-shutdown/">Graceful Shutdown</a>
-                        </li>
-                    
                         <li class="active">
                             <a href="./">Streaming Response</a>
                         </li>
                     
                         <li >
                             <a href="../websocket/">WebSocket</a>
+                        </li>
+                    
+                        <li >
+                            <a href="../graceful-shutdown/">Graceful Shutdown</a>
                         </li>
                     
                     </ul>
@@ -106,7 +106,7 @@
             <!-- Search, Navigation and Repo links -->
             <ul class="nav navbar-nav navbar-right">
                 <li >
-                    <a rel="next" href="../graceful-shutdown/">
+                    <a rel="next" href="../streaming-file-upload/">
                         <i class="fa fa-arrow-left"></i> Previous
                     </a>
                 </li>
@@ -145,6 +145,11 @@
     <div class="col-md-9" role="main">
 
 <h2 id="streaming-response">Streaming Response</h2>
+<ul>
+<li>Send data as it is produced</li>
+<li>Streaming JSON response</li>
+<li>Chunked transfer encoding</li>
+</ul>
 <p><code>server.go</code></p>
 <pre><code class="go">package main
 
