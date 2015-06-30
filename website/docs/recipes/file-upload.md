@@ -1,4 +1,10 @@
-## Multipart File Upload
+## File Upload
+
+- Multipart/form-data file upload
+- Multiple form fields and files
+
+Use `req.ParseMultipartForm(16 << 20)` for manually parsing multipart form. It gives
+us option to specify maximum memory used while parsing the request body. 
 
 `server.go`
 
@@ -64,11 +70,11 @@ func main() {
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Multipart File Upload</title>
+    <title>File Upload</title>
 </head>
 <body>
     <h1>Upload Files</h1>
-    <form action="/upload" method=post enctype=multipart/form-data>
+    <form action="/upload" method="post" enctype="multipart/form-data">
         Name: <input type="text" name="name"><br>
         Email: <input type="email" name="email"><br>
         Files: <input type="file" name="files" multiple><br><br>
@@ -79,4 +85,4 @@ func main() {
 
 ```
 
-## [Source Code]
+## [Source Code](https://github.com/labstack/echo/blob/master/recipes/file-upload)

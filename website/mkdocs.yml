@@ -9,6 +9,9 @@ pages:
   - Guide: guide.md
   - Recipes:
     - File Upload: recipes/file-upload.md
-    - Graceful Shutdown: recipes/graceful-shutdown.md
+    - Streaming File Upload: recipes/streaming-file-upload.md
     - Streaming Response: recipes/streaming-response.md
     - WebSocket: recipes/websocket.md
+    - Graceful Shutdown: recipes/graceful-shutdown.md
+extra:
+  site_title: Echo, a fast and unfancy micro web framework for Golang.

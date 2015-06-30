@@ -1,3 +1,11 @@
+## Streaming File Upload
+
+- Streaming multipart/form-data file upload
+- Multiple form fields and files
+
+`server.go`
+
+```go
 package main
 
 import (
@@ -69,7 +77,33 @@ func upload(c *echo.Context) error {
 func main() {
 	e := echo.New()
 	e.SetDebug(true)
-	e.Index("public/index.html")
+	e.Index("../file-upload/public/index.html")
 	e.Post("/upload", upload)
 	e.Run(":1323")
 }
+```
+
+`index.html`
+
+```html
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>File Upload</title>
+</head>
+<body>
+    <h1>Upload Files</h1>
+    <form action="/upload" method="post" enctype="multipart/form-data">
+        Name: <input type="text" name="name"><br>
+        Email: <input type="email" name="email"><br>
+        Files: <input type="file" name="files" multiple><br><br>
+        <input type="submit" value="Submit">
+    </form>
+</body>
+</html>
+
+```
+
+## [Source Code](https://github.com/labstack/echo/blob/master/recipes/streaming-file-upload)
+

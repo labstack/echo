@@ -1,5 +1,6 @@
 # [Echo](http://echo.labstack.com) [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/labstack/echo) [![Build Status](http://img.shields.io/travis/labstack/echo.svg?style=flat-square)](https://travis-ci.org/labstack/echo) [![Coverage Status](http://img.shields.io/coveralls/labstack/echo.svg?style=flat-square)](https://coveralls.io/r/labstack/echo) [![Join the chat at https://gitter.im/labstack/echo](https://img.shields.io/badge/gitter-join%20chat-brightgreen.svg?style=flat-square)](https://gitter.im/labstack/echo)
-Echo is a fast HTTP router (zero dynamic memory allocation) and micro web framework in Go.
+
+Echo, a fast and unfancy micro web framework for Golang.
 
 ## Features
 
@@ -75,13 +76,13 @@ BenchmarkZeus_GithubAll              2000            748827 ns/op          30068
 $ go get github.com/labstack/echo
 ```
 
-##[Examples](https://github.com/labstack/echo/tree/master/examples)
+## [Recipes](https://github.com/labstack/echo/tree/master/recipes)
 
-- [Hello, World!](https://github.com/labstack/echo/tree/master/examples/hello)
-- [CRUD](https://github.com/labstack/echo/tree/master/examples/crud)
-- [Website](https://github.com/labstack/echo/tree/master/examples/website)
-- [Middleware](https://github.com/labstack/echo/tree/master/examples/middleware)
-- [Stream](https://github.com/labstack/echo/tree/master/examples/stream)
+- [File Upload](http://echo.labstack.com/recipes/file-upload)
+- [Streaming File Upload](http://echo.labstack.com/recipes/streaming-file-upload)
+- [Streaming Response](http://echo.labstack.com/recipes/streaming-response)
+- [WebSocket](http://echo.labstack.com/recipes/websocket)
+- [Graceful Shutdown](http://echo.labstack.com/recipes/graceful-shutdown)
 
 ##[Guide](http://echo.labstack.com/guide)
 

@@ -1,5 +1,8 @@
 ## Streaming Response
 
+- Send data as it is produced
+- Streaming JSON response with chunked transfer encoding
+
 `server.go`
 
 ```go
@@ -34,7 +37,7 @@ var (
 
 func main() {
 	e := echo.New()
-	e.Get("/stream", func(c *echo.Context) error {
+	e.Get("/", func(c *echo.Context) error {
 		c.Response().Header().Set(echo.ContentType, echo.ApplicationJSON)
 		c.Response().WriteHeader(http.StatusOK)
 		for _, l := range locations {
@@ -50,4 +53,15 @@ func main() {
 }
 ```
 
-## [Source Code]()
+`curl localhost:1323`
+
+```js
+{"Altitude":-97,"Latitude":37.819929,"Longitude":-122.478255}
+{"Altitude":1899,"Latitude":39.096849,"Longitude":-120.032351}
+{"Altitude":2619,"Latitude":37.865101,"Longitude":-119.538329}
+{"Altitude":42,"Latitude":33.812092,"Longitude":-117.918974}
+{"Altitude":15,"Latitude":37.77493,"Longitude":-122.419416}
+```
+
+## [Source Code](https://github.com/labstack/echo/blob/master/recipes/streaming-response)
+

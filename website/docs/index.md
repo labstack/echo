@@ -1,12 +1,8 @@
 # Echo
 
-Build simple and performant systems!
+A fast and light web framework for Golang.
 
 ---
-
-## Overview
-
-Echo is a fast HTTP router (zero dynamic memory allocation) and micro web framework in Go.
 
 ## Features
 
@@ -110,7 +106,7 @@ Browse to [http://localhost:1323](http://localhost:1323) and you should see
 Hello, World! on the page.
 
 ### Next?
-- Browse [examples](https://github.com/labstack/echo/tree/master/examples)
+- Browse [recipes](https://github.com/labstack/echo/tree/master/recipes)
 - Head over to [Guide](guide.md)
 
 ## Contribute
