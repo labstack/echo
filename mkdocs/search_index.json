@@ -89,6 +89,81 @@
             "location": "/guide/#deployment", 
             "text": "WIP", 
             "title": "Deployment"
+        }, 
+        {
+            "location": "/recipes/file-upload/", 
+            "text": "File Upload\n\n\n\n\nMultipart/form-data file upload\n\n\nMultiple form fields and files\n\n\n\n\nUse \nreq.ParseMultipartForm(16 \n 20)\n for manually parsing multipart form. It gives\nus option to specify maximum memory (bytes) while parsing the request body. \n\n\nserver.go\n\n\npackage main\n\nimport (\n    \nio\n\n    \nos\n\n\n    \nnet/http\n\n\n    \ngithub.com/labstack/echo\n\n)\n\nfunc upload(c *echo.Context) error {\n    req := c.Request()\n\n    // req.ParseMultipartForm(16 \n 20) // Max memory 16 MiB\n\n    // Read form fields\n    name := req.FormValue(\nname\n)\n    email := req.FormValue(\nemail\n)\n\n    // Read files\n    files := req.MultipartForm.File[\nfiles\n]\n    for _, f := range(files) {\n        // Source file\n        src, err := f.Open()\n        if err != nil {\n            return err\n        }\n        defer src.Close()\n\n        // Destination file\n        dst, err := os.Create(f.Filename)\n        if err != nil {\n            return err\n        }\n        defer dst.Close()\n\n        if _, err = io.Copy(dst, src); err != nil {\n            return err\n        }\n    }\n    return c.String(http.StatusOK, \nThank You! %s \n%s\n, %d files uploaded successfully.\n,\n        name, email, len(files))\n}\n\nfunc main() {\n    e := echo.New()\n    e.Index(\npublic/index.html\n)\n    e.Post(\n/upload\n, upload)\n    e.Run(\n:1323\n)\n}\n\n\n\n\n\nindex.html\n\n\n!doctype html\n\n\nhtml lang=\nen\n\n\nhead\n\n    \nmeta charset=\nutf-8\n\n    \ntitle\nFile Upload\n/title\n\n\n/head\n\n\nbody\n\n    \nh1\nUpload Files\n/h1\n\n    \nform action=\n/upload\n method=\npost\n enctype=\nmultipart/form-data\n\n        Name: \ninput type=\ntext\n name=\nname\nbr\n\n        Email: \ninput type=\nemail\n name=\nemail\nbr\n\n        Files: \ninput type=\nfile\n name=\nfiles\n multiple\nbr\nbr\n\n        \ninput type=\nsubmit\n value=\nSubmit\n\n    \n/form\n\n\n/body\n\n\n/html\n\n\n\n\n\n\nSource Code", 
+            "title": "File Upload"
+        }, 
+        {
+            "location": "/recipes/file-upload/#file-upload", 
+            "text": "Multipart/form-data file upload  Multiple form fields and files   Use  req.ParseMultipartForm(16   20)  for manually parsing multipart form. It gives\nus option to specify maximum memory (bytes) while parsing the request body.   server.go  package main\n\nimport (\n     io \n     os \n\n     net/http \n\n     github.com/labstack/echo \n)\n\nfunc upload(c *echo.Context) error {\n    req := c.Request()\n\n    // req.ParseMultipartForm(16   20) // Max memory 16 MiB\n\n    // Read form fields\n    name := req.FormValue( name )\n    email := req.FormValue( email )\n\n    // Read files\n    files := req.MultipartForm.File[ files ]\n    for _, f := range(files) {\n        // Source file\n        src, err := f.Open()\n        if err != nil {\n            return err\n        }\n        defer src.Close()\n\n        // Destination file\n        dst, err := os.Create(f.Filename)\n        if err != nil {\n            return err\n        }\n        defer dst.Close()\n\n        if _, err = io.Copy(dst, src); err != nil {\n            return err\n        }\n    }\n    return c.String(http.StatusOK,  Thank You! %s  %s , %d files uploaded successfully. ,\n        name, email, len(files))\n}\n\nfunc main() {\n    e := echo.New()\n    e.Index( public/index.html )\n    e.Post( /upload , upload)\n    e.Run( :1323 )\n}  index.html  !doctype html  html lang= en  head \n     meta charset= utf-8 \n     title File Upload /title  /head  body \n     h1 Upload Files /h1 \n     form action= /upload  method= post  enctype= multipart/form-data \n        Name:  input type= text  name= name br \n        Email:  input type= email  name= email br \n        Files:  input type= file  name= files  multiple br br \n         input type= submit  value= Submit \n     /form  /body  /html", 
+            "title": "File Upload"
+        }, 
+        {
+            "location": "/recipes/file-upload/#source-code", 
+            "text": "", 
+            "title": "Source Code"
+        }, 
+        {
+            "location": "/recipes/streaming-file-upload/", 
+            "text": "Streaming File Upload\n\n\n\n\nStreaming multipart/form-data file upload\n\n\nMultiple form fields and files\n\n\n\n\nserver.go\n\n\npackage main\n\nimport (\n    \nio/ioutil\n\n\n    \ngithub.com/labstack/echo\n\n    \nio\n\n    \nos\n\n    \nnet/http\n\n)\n\nfunc upload(c *echo.Context) error {\n    mr, err := c.Request().MultipartReader()\n    if err != nil {\n        return err\n    }\n\n    // Read form field `name`\n    part, err := mr.NextPart()\n    if err != nil {\n        return err\n    }\n    defer part.Close()\n    b, err := ioutil.ReadAll(part)\n    if err != nil {\n        return err\n    }\n    name := string(b)\n\n    // Read form field `email`\n    part, err = mr.NextPart()\n    if err != nil {\n        return err\n    }\n    defer part.Close()\n    b, err = ioutil.ReadAll(part)\n    if err != nil {\n        return err\n    }\n    email := string(b)\n\n    // Read files\n    i := 0\n    for {\n        part, err := mr.NextPart()\n        if err != nil {\n            if err == io.EOF {\n                break\n            }\n            return err\n        }\n        defer part.Close()\n\n        file, err := os.Create(part.FileName())\n        if err != nil {\n            return err\n        }\n        defer file.Close()\n\n        if _, err := io.Copy(file, part); err != nil {\n            return err\n        }\n        i++\n    }\n    return c.String(http.StatusOK, \nThank You! %s \n%s\n, %d files uploaded successfully.\n,\n        name, email, i)\n}\n\nfunc main() {\n    e := echo.New()\n    e.SetDebug(true)\n    e.Index(\n../file-upload/public/index.html\n)\n    e.Post(\n/upload\n, upload)\n    e.Run(\n:1323\n)\n}\n\n\n\n\nindex.html\n\n\n!doctype html\n\n\nhtml lang=\nen\n\n\nhead\n\n    \nmeta charset=\nutf-8\n\n    \ntitle\nFile Upload\n/title\n\n\n/head\n\n\nbody\n\n    \nh1\nUpload Files\n/h1\n\n    \nform action=\n/upload\n method=\npost\n enctype=\nmultipart/form-data\n\n        Name: \ninput type=\ntext\n name=\nname\nbr\n\n        Email: \ninput type=\nemail\n name=\nemail\nbr\n\n        Files: \ninput type=\nfile\n name=\nfiles\n multiple\nbr\nbr\n\n        \ninput type=\nsubmit\n value=\nSubmit\n\n    \n/form\n\n\n/body\n\n\n/html\n\n\n\n\n\n\nSource Code", 
+            "title": "Streaming File Upload"
+        }, 
+        {
+            "location": "/recipes/streaming-file-upload/#streaming-file-upload", 
+            "text": "Streaming multipart/form-data file upload  Multiple form fields and files   server.go  package main\n\nimport (\n     io/ioutil \n\n     github.com/labstack/echo \n     io \n     os \n     net/http \n)\n\nfunc upload(c *echo.Context) error {\n    mr, err := c.Request().MultipartReader()\n    if err != nil {\n        return err\n    }\n\n    // Read form field `name`\n    part, err := mr.NextPart()\n    if err != nil {\n        return err\n    }\n    defer part.Close()\n    b, err := ioutil.ReadAll(part)\n    if err != nil {\n        return err\n    }\n    name := string(b)\n\n    // Read form field `email`\n    part, err = mr.NextPart()\n    if err != nil {\n        return err\n    }\n    defer part.Close()\n    b, err = ioutil.ReadAll(part)\n    if err != nil {\n        return err\n    }\n    email := string(b)\n\n    // Read files\n    i := 0\n    for {\n        part, err := mr.NextPart()\n        if err != nil {\n            if err == io.EOF {\n                break\n            }\n            return err\n        }\n        defer part.Close()\n\n        file, err := os.Create(part.FileName())\n        if err != nil {\n            return err\n        }\n        defer file.Close()\n\n        if _, err := io.Copy(file, part); err != nil {\n            return err\n        }\n        i++\n    }\n    return c.String(http.StatusOK,  Thank You! %s  %s , %d files uploaded successfully. ,\n        name, email, i)\n}\n\nfunc main() {\n    e := echo.New()\n    e.SetDebug(true)\n    e.Index( ../file-upload/public/index.html )\n    e.Post( /upload , upload)\n    e.Run( :1323 )\n}  index.html  !doctype html  html lang= en  head \n     meta charset= utf-8 \n     title File Upload /title  /head  body \n     h1 Upload Files /h1 \n     form action= /upload  method= post  enctype= multipart/form-data \n        Name:  input type= text  name= name br \n        Email:  input type= email  name= email br \n        Files:  input type= file  name= files  multiple br br \n         input type= submit  value= Submit \n     /form  /body  /html", 
+            "title": "Streaming File Upload"
+        }, 
+        {
+            "location": "/recipes/streaming-file-upload/#source-code", 
+            "text": "", 
+            "title": "Source Code"
+        }, 
+        {
+            "location": "/recipes/graceful-shutdown/", 
+            "text": "Graceful Shutdown\n\n\nWith \ngraceful\n\n\nserver.go\n\n\npackage main\n\nimport (\n    \nnet/http\n\n    \ntime\n\n\n    \ngithub.com/labstack/echo\n\n    \ngithub.com/tylerb/graceful\n\n)\n\nfunc main() {\n    // Setup\n    e := echo.New()\n    e.Get(\n/\n, func(c *echo.Context) error {\n        return c.String(http.StatusOK, \nSue sews rose on slow jor crows nose\n)\n    })\n\n    graceful.ListenAndServe(e.Server(\n:1323\n), 5*time.Second)\n}\n\n\n\n\nWith \ngrace\n\n\nserver.go\n\n\npackage main\n\nimport (\n    \nnet/http\n\n\n    \ngithub.com/facebookgo/grace/gracehttp\n\n    \ngithub.com/labstack/echo\n\n)\n\nfunc main() {\n    // Setup\n    e := echo.New()\n    e.Get(\n/\n, func(c *echo.Context) error {\n        return c.String(http.StatusOK, \nSix sick bricks tick\n)\n    })\n\n    gracehttp.Serve(e.Server(\n:1323\n))\n}\n\n\n\n\nSource Code\n\n\ngraceful\n\n\ngrace", 
+            "title": "Graceful Shutdown"
+        }, 
+        {
+            "location": "/recipes/graceful-shutdown/#graceful-shutdown", 
+            "text": "With  graceful  server.go  package main\n\nimport (\n     net/http \n     time \n\n     github.com/labstack/echo \n     github.com/tylerb/graceful \n)\n\nfunc main() {\n    // Setup\n    e := echo.New()\n    e.Get( / , func(c *echo.Context) error {\n        return c.String(http.StatusOK,  Sue sews rose on slow jor crows nose )\n    })\n\n    graceful.ListenAndServe(e.Server( :1323 ), 5*time.Second)\n}  With  grace  server.go  package main\n\nimport (\n     net/http \n\n     github.com/facebookgo/grace/gracehttp \n     github.com/labstack/echo \n)\n\nfunc main() {\n    // Setup\n    e := echo.New()\n    e.Get( / , func(c *echo.Context) error {\n        return c.String(http.StatusOK,  Six sick bricks tick )\n    })\n\n    gracehttp.Serve(e.Server( :1323 ))\n}", 
+            "title": "Graceful Shutdown"
+        }, 
+        {
+            "location": "/recipes/graceful-shutdown/#source-code", 
+            "text": "graceful  grace", 
+            "title": "Source Code"
+        }, 
+        {
+            "location": "/recipes/streaming-response/", 
+            "text": "Streaming Response\n\n\nserver.go\n\n\npackage main\n\nimport (\n    \nnet/http\n\n    \ntime\n\n\n    \nencoding/json\n\n\n    \ngithub.com/labstack/echo\n\n)\n\ntype (\n    Geolocation struct {\n        Altitude  float64\n        Latitude  float64\n        Longitude float64\n    }\n)\n\nvar (\n    locations = []Geolocation{\n        {-97, 37.819929, -122.478255},\n        {1899, 39.096849, -120.032351},\n        {2619, 37.865101, -119.538329},\n        {42, 33.812092, -117.918974},\n        {15, 37.77493, -122.419416},\n    }\n)\n\nfunc main() {\n    e := echo.New()\n    e.Get(\n/stream\n, func(c *echo.Context) error {\n        c.Response().Header().Set(echo.ContentType, echo.ApplicationJSON)\n        c.Response().WriteHeader(http.StatusOK)\n        for _, l := range locations {\n            if err := json.NewEncoder(c.Response()).Encode(l); err != nil {\n                return err\n            }\n            c.Response().Flush()\n            time.Sleep(1 * time.Second)\n        }\n        return nil\n    })\n    e.Run(\n:1323\n)\n}\n\n\n\n\nSource Code", 
+            "title": "Streaming Response"
+        }, 
+        {
+            "location": "/recipes/streaming-response/#streaming-response", 
+            "text": "server.go  package main\n\nimport (\n     net/http \n     time \n\n     encoding/json \n\n     github.com/labstack/echo \n)\n\ntype (\n    Geolocation struct {\n        Altitude  float64\n        Latitude  float64\n        Longitude float64\n    }\n)\n\nvar (\n    locations = []Geolocation{\n        {-97, 37.819929, -122.478255},\n        {1899, 39.096849, -120.032351},\n        {2619, 37.865101, -119.538329},\n        {42, 33.812092, -117.918974},\n        {15, 37.77493, -122.419416},\n    }\n)\n\nfunc main() {\n    e := echo.New()\n    e.Get( /stream , func(c *echo.Context) error {\n        c.Response().Header().Set(echo.ContentType, echo.ApplicationJSON)\n        c.Response().WriteHeader(http.StatusOK)\n        for _, l := range locations {\n            if err := json.NewEncoder(c.Response()).Encode(l); err != nil {\n                return err\n            }\n            c.Response().Flush()\n            time.Sleep(1 * time.Second)\n        }\n        return nil\n    })\n    e.Run( :1323 )\n}", 
+            "title": "Streaming Response"
+        }, 
+        {
+            "location": "/recipes/streaming-response/#source-code", 
+            "text": "", 
+            "title": "Source Code"
+        }, 
+        {
+            "location": "/recipes/websocket/", 
+            "text": "WebSocket\n\n\nserver.go\n\n\npackage main\n\nimport (\n    \nio\n\n\n    \ngithub.com/labstack/echo\n\n    mw \ngithub.com/labstack/echo/middleware\n\n)\n\nfunc main() {\n    e := echo.New()\n    e.Use(mw.Logger())\n    e.WebSocket(\n/ws\n, func(c *echo.Context) error {\n        io.Copy(c.Socket(), c.Socket())\n        return nil\n    })\n    e.Run(\n:1323\n)\n}\n\n\n\n\nSource Code", 
+            "title": "WebSocket"
+        }, 
+        {
+            "location": "/recipes/websocket/#websocket", 
+            "text": "server.go  package main\n\nimport (\n     io \n\n     github.com/labstack/echo \n    mw  github.com/labstack/echo/middleware \n)\n\nfunc main() {\n    e := echo.New()\n    e.Use(mw.Logger())\n    e.WebSocket( /ws , func(c *echo.Context) error {\n        io.Copy(c.Socket(), c.Socket())\n        return nil\n    })\n    e.Run( :1323 )\n}", 
+            "title": "WebSocket"
+        }, 
+        {
+            "location": "/recipes/websocket/#source-code", 
+            "text": "", 
+            "title": "Source Code"
         }
     ]
 }
