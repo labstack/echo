@@ -1,3 +1,8 @@
+## Multiple subdomains
+
+`server.go`
+
+```go
 package main
 
 import (
@@ -47,3 +52,8 @@ func main() {
 
     http.ListenAndServe(":8080", hosts)
 }
+
+```
+
+
+## [Source Code](https://github.com/labstack/echo/blob/master/recipes/subdomains)
