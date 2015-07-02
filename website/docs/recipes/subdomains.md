@@ -45,8 +45,8 @@ func main() {
 	//------
 
 	blog := echo.New()
-	api.Use(mw.Logger())
-	api.Use(mw.Recover())
+	blog.Use(mw.Logger())
+	blog.Use(mw.Recover())
 
 	hosts["blog.localhost:1323"] = blog
 
@@ -54,17 +54,17 @@ func main() {
 		return c.String(http.StatusOK, "Blog")
 	})
 
-	//------
-	// Main
-	//------
+	//---------
+	// Website
+	//---------
 
-	main := echo.New()
-	main.Use(mw.Logger())
-	main.Use(mw.Recover())
+	site := echo.New()
+	site.Use(mw.Logger())
+	site.Use(mw.Recover())
 
-	hosts["localhost:1323"] = main
+	hosts["localhost:1323"] = site
 
-	main.Get("/", func(c *echo.Context) error {
+	site.Get("/", func(c *echo.Context) error {
 		return c.String(http.StatusOK, "Welcome!")
 	})
 

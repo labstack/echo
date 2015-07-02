@@ -40,8 +40,8 @@ func main() {
 	//------
 
 	blog := echo.New()
-	api.Use(mw.Logger())
-	api.Use(mw.Recover())
+	blog.Use(mw.Logger())
+	blog.Use(mw.Recover())
 
 	hosts["blog.localhost:1323"] = blog
 

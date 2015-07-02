@@ -389,7 +389,7 @@ func (e *Echo) URI(h Handler, params ...interface{}) string {
 	return uri.String()
 }
 
-// URL is an alias for URI.
+// URL is an alias for `URI` function.
 func (e *Echo) URL(h Handler, params ...interface{}) string {
 	return e.URI(h, params...)
 }
@@ -399,6 +399,7 @@ func (e *Echo) Routes() []Route {
 	return e.router.routes
 }
 
+// ServeHTTP implements `http.Handler` interface, which serves HTTP requests.
 func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c := e.pool.Get().(*Context)
 	h, echo := e.router.Find(r.Method, r.URL.Path, c)
@@ -423,7 +424,7 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	e.pool.Put(c)
 }
 
-// Server returns the internal *http.Server
+// Server returns the internal *http.Server.
 func (e *Echo) Server(addr string) *http.Server {
 	s := &http.Server{Addr: addr}
 	s.Handler = e
@@ -446,13 +447,13 @@ func (e *Echo) RunTLS(addr, certFile, keyFile string) {
 }
 
 // RunServer runs a custom server.
-func (e *Echo) RunServer(srv *http.Server) {
-	e.run(srv)
+func (e *Echo) RunServer(s *http.Server) {
+	e.run(s)
 }
 
 // RunTLSServer runs a custom server with TLS configuration.
-func (e *Echo) RunTLSServer(srv *http.Server, certFile, keyFile string) {
-	e.run(srv, certFile, keyFile)
+func (e *Echo) RunTLSServer(s *http.Server, certFile, keyFile string) {
+	e.run(s, certFile, keyFile)
 }
 
 func (e *Echo) run(s *http.Server, files ...string) {
@@ -489,7 +490,7 @@ func (e *HTTPError) Error() string {
 	return e.message
 }
 
-// wraps middleware
+// wrapMiddleware wraps middleware.
 func wrapMiddleware(m Middleware) MiddlewareFunc {
 	switch m := m.(type) {
 	case MiddlewareFunc:
@@ -520,7 +521,7 @@ func wrapMiddleware(m Middleware) MiddlewareFunc {
 	}
 }
 
-// Wraps HandlerFunc middleware
+// wrapHandlerFuncMW wraps HandlerFunc middleware.
 func wrapHandlerFuncMW(m HandlerFunc) MiddlewareFunc {
 	return func(h HandlerFunc) HandlerFunc {
 		return func(c *Context) error {
@@ -532,7 +533,7 @@ func wrapHandlerFuncMW(m HandlerFunc) MiddlewareFunc {
 	}
 }
 
-// Wraps http.HandlerFunc middleware
+// wrapHTTPHandlerFuncMW wraps http.HandlerFunc middleware.
 func wrapHTTPHandlerFuncMW(m http.HandlerFunc) MiddlewareFunc {
 	return func(h HandlerFunc) HandlerFunc {
 		return func(c *Context) error {
@@ -544,7 +545,7 @@ func wrapHTTPHandlerFuncMW(m http.HandlerFunc) MiddlewareFunc {
 	}
 }
 
-// wraps handler
+// wrapHandler wraps handler.
 func wrapHandler(h Handler) HandlerFunc {
 	switch h := h.(type) {
 	case HandlerFunc:

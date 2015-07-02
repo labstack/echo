@@ -12,9 +12,10 @@ import (
 	"io/ioutil"
 
 	"github.com/labstack/echo"
+	mw "github.com/labstack/echo/middleware"
 	"io"
-	"os"
 	"net/http"
+	"os"
 )
 
 func upload(c *echo.Context) error {
@@ -76,9 +77,13 @@ func upload(c *echo.Context) error {
 
 func main() {
 	e := echo.New()
-	e.SetDebug(true)
-	e.Index("../file-upload/public/index.html")
+
+	e.Use(mw.Logger())
+	e.Use(mw.Recover())
+
+	e.Static("/", "public")
 	e.Post("/upload", upload)
+
 	e.Run(":1323")
 }
 ```
