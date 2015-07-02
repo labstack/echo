@@ -165,6 +165,7 @@ import (
     &quot;net/http&quot;
 
     &quot;github.com/labstack/echo&quot;
+    mw &quot;github.com/labstack/echo/middleware&quot;
 )
 
 func upload(c *echo.Context) error {
@@ -178,7 +179,7 @@ func upload(c *echo.Context) error {
 
     // Read files
     files := req.MultipartForm.File[&quot;files&quot;]
-    for _, f := range(files) {
+    for _, f := range files {
         // Source file
         src, err := f.Open()
         if err != nil {
@@ -203,11 +204,14 @@ func upload(c *echo.Context) error {
 
 func main() {
     e := echo.New()
-    e.Index(&quot;public/index.html&quot;)
+    e.Use(mw.Logger())
+    e.Use(mw.Recover())
+
+    e.Static(&quot;/&quot;, &quot;public&quot;)
     e.Post(&quot;/upload&quot;, upload)
+
     e.Run(&quot;:1323&quot;)
 }
-
 </code></pre>
 
 <p><code>index.html</code></p>
