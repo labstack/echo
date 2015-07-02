@@ -146,6 +146,21 @@
             "title": "Source Code"
         }, 
         {
+            "location": "/recipes/subdomains/", 
+            "text": "Subdomains\n\n\nserver.go\n\n\npackage main\n\nimport (\n    \nnet/http\n\n\n    \ngithub.com/labstack/echo\n\n    mw \ngithub.com/labstack/echo/middleware\n\n)\n\ntype Hosts map[string]http.Handler\n\nfunc (h Hosts) ServeHTTP(w http.ResponseWriter, r *http.Request) {\n    if handler := h[r.Host]; handler != nil {\n        handler.ServeHTTP(w, r)\n    } else {\n        http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)\n    }\n}\n\nfunc main() {\n    // Host map\n    hosts := make(Hosts)\n\n    //-----\n    // API\n    //-----\n\n    api := echo.New()\n    api.Use(mw.Logger())\n    api.Use(mw.Recover())\n\n    hosts[\napi.localhost:1323\n] = api\n\n    api.Get(\n/\n, func(c *echo.Context) error {\n        return c.String(http.StatusOK, \nAPI\n)\n    })\n\n    //------\n    // Blog\n    //------\n\n    blog := echo.New()\n    api.Use(mw.Logger())\n    api.Use(mw.Recover())\n\n    hosts[\nblog.localhost:1323\n] = blog\n\n    blog.Get(\n/\n, func(c *echo.Context) error {\n        return c.String(http.StatusOK, \nBlog\n)\n    })\n\n    //------\n    // Main\n    //------\n\n    main := echo.New()\n    main.Use(mw.Logger())\n    main.Use(mw.Recover())\n\n    hosts[\nlocalhost:1323\n] = main\n\n    main.Get(\n/\n, func(c *echo.Context) error {\n        return c.String(http.StatusOK, \nWelcome!\n)\n    })\n\n    http.ListenAndServe(\n:1323\n, hosts)\n}\n\n\n\n\nSource Code", 
+            "title": "Subdomains"
+        }, 
+        {
+            "location": "/recipes/subdomains/#subdomains", 
+            "text": "server.go  package main\n\nimport (\n     net/http \n\n     github.com/labstack/echo \n    mw  github.com/labstack/echo/middleware \n)\n\ntype Hosts map[string]http.Handler\n\nfunc (h Hosts) ServeHTTP(w http.ResponseWriter, r *http.Request) {\n    if handler := h[r.Host]; handler != nil {\n        handler.ServeHTTP(w, r)\n    } else {\n        http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)\n    }\n}\n\nfunc main() {\n    // Host map\n    hosts := make(Hosts)\n\n    //-----\n    // API\n    //-----\n\n    api := echo.New()\n    api.Use(mw.Logger())\n    api.Use(mw.Recover())\n\n    hosts[ api.localhost:1323 ] = api\n\n    api.Get( / , func(c *echo.Context) error {\n        return c.String(http.StatusOK,  API )\n    })\n\n    //------\n    // Blog\n    //------\n\n    blog := echo.New()\n    api.Use(mw.Logger())\n    api.Use(mw.Recover())\n\n    hosts[ blog.localhost:1323 ] = blog\n\n    blog.Get( / , func(c *echo.Context) error {\n        return c.String(http.StatusOK,  Blog )\n    })\n\n    //------\n    // Main\n    //------\n\n    main := echo.New()\n    main.Use(mw.Logger())\n    main.Use(mw.Recover())\n\n    hosts[ localhost:1323 ] = main\n\n    main.Get( / , func(c *echo.Context) error {\n        return c.String(http.StatusOK,  Welcome! )\n    })\n\n    http.ListenAndServe( :1323 , hosts)\n}", 
+            "title": "Subdomains"
+        }, 
+        {
+            "location": "/recipes/subdomains/#source-code", 
+            "text": "", 
+            "title": "Source Code"
+        }, 
+        {
             "location": "/recipes/graceful-shutdown/", 
             "text": "Graceful Shutdown\n\n\nWith \ngraceful\n\n\nserver.go\n\n\npackage main\n\nimport (\n    \nnet/http\n\n    \ntime\n\n\n    \ngithub.com/labstack/echo\n\n    \ngithub.com/tylerb/graceful\n\n)\n\nfunc main() {\n    // Setup\n    e := echo.New()\n    e.Get(\n/\n, func(c *echo.Context) error {\n        return c.String(http.StatusOK, \nSue sews rose on slow jor crows nose\n)\n    })\n\n    graceful.ListenAndServe(e.Server(\n:1323\n), 5*time.Second)\n}\n\n\n\n\nWith \ngrace\n\n\nserver.go\n\n\npackage main\n\nimport (\n    \nnet/http\n\n\n    \ngithub.com/facebookgo/grace/gracehttp\n\n    \ngithub.com/labstack/echo\n\n)\n\nfunc main() {\n    // Setup\n    e := echo.New()\n    e.Get(\n/\n, func(c *echo.Context) error {\n        return c.String(http.StatusOK, \nSix sick bricks tick\n)\n    })\n\n    gracehttp.Serve(e.Server(\n:1323\n))\n}\n\n\n\n\nSource Code\n\n\ngraceful\n\n\ngrace", 
             "title": "Graceful Shutdown"

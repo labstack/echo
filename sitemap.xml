@@ -44,6 +44,12 @@
     </url>
         
     <url>
+     <loc>None/recipes/subdomains/</loc>
+     <lastmod>2015-07-01</lastmod>
+     <changefreq>daily</changefreq>
+    </url>
+        
+    <url>
      <loc>None/recipes/graceful-shutdown/</loc>
      <lastmod>2015-07-01</lastmod>
      <changefreq>daily</changefreq>
