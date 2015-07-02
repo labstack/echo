@@ -410,12 +410,12 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h = e.notFoundHandler
 	}
 
-	// Chain middleware with handler in the end
+	// Chain middleware with handler in the end.
 	for i := len(e.middleware) - 1; i >= 0; i-- {
 		h = e.middleware[i](h)
 	}
 
-	// Execute chain
+	// Execute chain.
 	if err := h(c); err != nil {
 		e.httpErrorHandler(err, c)
 	}
@@ -423,7 +423,7 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	e.pool.Put(c)
 }
 
-// Server returns the internal *http.Server
+// Server returns the internal *http.Server.
 func (e *Echo) Server(addr string) *http.Server {
 	s := &http.Server{Addr: addr}
 	s.Handler = e
@@ -446,13 +446,13 @@ func (e *Echo) RunTLS(addr, certFile, keyFile string) {
 }
 
 // RunServer runs a custom server.
-func (e *Echo) RunServer(srv *http.Server) {
-	e.run(srv)
+func (e *Echo) RunServer(s *http.Server) {
+	e.run(s)
 }
 
 // RunTLSServer runs a custom server with TLS configuration.
-func (e *Echo) RunTLSServer(srv *http.Server, certFile, keyFile string) {
-	e.run(srv, certFile, keyFile)
+func (e *Echo) RunTLSServer(s *http.Server, certFile, keyFile string) {
+	e.run(s, certFile, keyFile)
 }
 
 func (e *Echo) run(s *http.Server, files ...string) {
@@ -489,7 +489,7 @@ func (e *HTTPError) Error() string {
 	return e.message
 }
 
-// wraps middleware
+// Wraps middleware.
 func wrapMiddleware(m Middleware) MiddlewareFunc {
 	switch m := m.(type) {
 	case MiddlewareFunc:
@@ -520,7 +520,7 @@ func wrapMiddleware(m Middleware) MiddlewareFunc {
 	}
 }
 
-// Wraps HandlerFunc middleware
+// Wraps HandlerFunc middleware.
 func wrapHandlerFuncMW(m HandlerFunc) MiddlewareFunc {
 	return func(h HandlerFunc) HandlerFunc {
 		return func(c *Context) error {
@@ -532,7 +532,7 @@ func wrapHandlerFuncMW(m HandlerFunc) MiddlewareFunc {
 	}
 }
 
-// Wraps http.HandlerFunc middleware
+// Wraps http.HandlerFunc middleware.
 func wrapHTTPHandlerFuncMW(m http.HandlerFunc) MiddlewareFunc {
 	return func(h HandlerFunc) HandlerFunc {
 		return func(c *Context) error {
@@ -544,7 +544,7 @@ func wrapHTTPHandlerFuncMW(m http.HandlerFunc) MiddlewareFunc {
 	}
 }
 
-// wraps handler
+// Wraps handler.
 func wrapHandler(h Handler) HandlerFunc {
 	switch h := h.(type) {
 	case HandlerFunc:
