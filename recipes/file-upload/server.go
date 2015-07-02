@@ -20,7 +20,7 @@ func upload(c *echo.Context) error {
 
 	// Read files
 	files := req.MultipartForm.File["files"]
-	for _, f := range(files) {
+	for _, f := range files {
 		// Source file
 		src, err := f.Open()
 		if err != nil {

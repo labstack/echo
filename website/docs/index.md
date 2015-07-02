@@ -1,6 +1,6 @@
 # Echo
 
-A fast and light web framework for Golang.
+A fast and unfancy micro web framework for Golang.
 
 ---
 
@@ -44,7 +44,7 @@ A fast and light web framework for Golang.
 $ go get github.com/labstack/echo
 ```
 
-###[Hello, World!](https://github.com/labstack/echo/tree/master/examples/hello)
+### Hello, World!
 
 Create `server.go` with the following content
 

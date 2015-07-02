@@ -4,7 +4,7 @@
 - Multiple form fields and files
 
 Use `req.ParseMultipartForm(16 << 20)` for manually parsing multipart form. It gives
-us option to specify maximum memory used while parsing the request body. 
+us an option to specify the maximum memory used while parsing the request body. 
 
 `server.go`
 

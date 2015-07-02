@@ -5,8 +5,8 @@ import (
 
 	"github.com/labstack/echo"
 	"io"
-	"os"
 	"net/http"
+	"os"
 )
 
 func upload(c *echo.Context) error {

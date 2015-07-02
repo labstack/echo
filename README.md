@@ -82,6 +82,7 @@ $ go get github.com/labstack/echo
 - [Streaming File Upload](http://echo.labstack.com/recipes/streaming-file-upload)
 - [Streaming Response](http://echo.labstack.com/recipes/streaming-response)
 - [WebSocket](http://echo.labstack.com/recipes/websocket)
+- [Subdomains](http://echo.labstack.com/recipes/subdomains)
 - [Graceful Shutdown](http://echo.labstack.com/recipes/graceful-shutdown)
 
 ##[Guide](http://echo.labstack.com/guide)
