@@ -153,21 +153,77 @@
 <pre><code class="go">package main
 
 import (
-    &quot;io&quot;
-
     &quot;github.com/labstack/echo&quot;
     mw &quot;github.com/labstack/echo/middleware&quot;
+    &quot;golang.org/x/net/websocket&quot;
 )
 
 func main() {
     e := echo.New()
+
     e.Use(mw.Logger())
-    e.WebSocket(&quot;/ws&quot;, func(c *echo.Context) error {
-        io.Copy(c.Socket(), c.Socket())
-        return nil
+    e.Use(mw.Recover())
+
+    e.Static(&quot;/&quot;, &quot;public&quot;)
+    e.WebSocket(&quot;/ws&quot;, func(c *echo.Context) (err error) {
+        ws := c.Socket()
+        msg := &quot;&quot;
+
+        for {
+            if err = websocket.Message.Send(ws, &quot;Hello, Client!&quot;); err != nil {
+                return
+            }
+            if err = websocket.Message.Receive(ws, &amp;msg); err != nil {
+                return
+            }
+            println(msg)
+        }
+        return
     })
+
     e.Run(&quot;:1323&quot;)
 }
+</code></pre>
+
+<p><code>index.html</code></p>
+<pre><code class="html">&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+    &lt;meta charset=&quot;utf-8&quot;&gt;
+    &lt;title&gt;WebSocket&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;p id=&quot;output&quot;&gt;&lt;/p&gt;
+
+    &lt;script&gt;
+        var loc = window.location;
+        var uri = 'ws:';
+        var start;
+
+        if (loc.protocol === 'https:') {
+            uri = 'wss:';
+        }
+        uri += '//' + loc.host;
+        uri += loc.pathname + 'ws';
+
+        ws = new WebSocket(uri)
+
+        ws.onopen = function() {
+            console.log('Connected')
+        }
+
+        ws.onmessage = function(evt) {
+            var out = document.getElementById('output');
+            out.innerHTML += evt.data + '&lt;br&gt;';
+        }
+
+        setInterval(function() {
+            start = new Date().getTime();
+            ws.send('Hello, Server!');
+        }, 1000);
+    &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
 </code></pre>
 
 <h2 id="source-code"><a href="https://github.com/labstack/echo/blob/master/recipes/websocket">Source Code</a></h2></div>
