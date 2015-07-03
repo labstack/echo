@@ -4,7 +4,7 @@
     
     <url>
      <loc>None/</loc>
-     <lastmod>2015-07-02</lastmod>
+     <lastmod>2015-07-03</lastmod>
      <changefreq>daily</changefreq>
     </url>
     
@@ -12,7 +12,7 @@
     
     <url>
      <loc>None/guide/</loc>
-     <lastmod>2015-07-02</lastmod>
+     <lastmod>2015-07-03</lastmod>
      <changefreq>daily</changefreq>
     </url>
     
@@ -21,37 +21,37 @@
         
     <url>
      <loc>None/recipes/file-upload/</loc>
-     <lastmod>2015-07-02</lastmod>
+     <lastmod>2015-07-03</lastmod>
      <changefreq>daily</changefreq>
     </url>
         
     <url>
      <loc>None/recipes/streaming-file-upload/</loc>
-     <lastmod>2015-07-02</lastmod>
+     <lastmod>2015-07-03</lastmod>
      <changefreq>daily</changefreq>
     </url>
         
     <url>
      <loc>None/recipes/streaming-response/</loc>
-     <lastmod>2015-07-02</lastmod>
+     <lastmod>2015-07-03</lastmod>
      <changefreq>daily</changefreq>
     </url>
         
     <url>
      <loc>None/recipes/websocket/</loc>
-     <lastmod>2015-07-02</lastmod>
+     <lastmod>2015-07-03</lastmod>
      <changefreq>daily</changefreq>
     </url>
         
     <url>
      <loc>None/recipes/subdomains/</loc>
-     <lastmod>2015-07-02</lastmod>
+     <lastmod>2015-07-03</lastmod>
      <changefreq>daily</changefreq>
     </url>
         
     <url>
      <loc>None/recipes/graceful-shutdown/</loc>
-     <lastmod>2015-07-02</lastmod>
+     <lastmod>2015-07-03</lastmod>
      <changefreq>daily</changefreq>
     </url>
         
