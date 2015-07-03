@@ -1,6 +1,6 @@
 # [Echo](http://echo.labstack.com) [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/labstack/echo) [![Build Status](http://img.shields.io/travis/labstack/echo.svg?style=flat-square)](https://travis-ci.org/labstack/echo) [![Coverage Status](http://img.shields.io/coveralls/labstack/echo.svg?style=flat-square)](https://coveralls.io/r/labstack/echo) [![Join the chat at https://gitter.im/labstack/echo](https://img.shields.io/badge/gitter-join%20chat-brightgreen.svg?style=flat-square)](https://gitter.im/labstack/echo)
 
-Echo, a fast and unfancy micro web framework for Golang.
+A fast and unfancy micro web framework for Golang.
 
 ## Features
 
@@ -86,6 +86,15 @@ $ go get github.com/labstack/echo
 - [Graceful Shutdown](http://echo.labstack.com/recipes/graceful-shutdown)
 
 ##[Guide](http://echo.labstack.com/guide)
+
+## Echo System
+
+Community created packages for Echo
+
+- [echo-logrus](https://github.com/deoxxa/echo-logrus)
+- [go_middleware](https://github.com/rightscale/go_middleware)
+- [permissions2](https://github.com/xyproto/permissions2)
+- [permissionbolt](https://github.com/xyproto/permissionbolt)
 
 ## Contribute
 

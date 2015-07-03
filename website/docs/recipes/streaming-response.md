@@ -57,7 +57,9 @@ func main() {
 
 ## Client
 
-`curl localhost:1323`
+```sh
+$ curl localhost:1323
+```
 
 ## Output
 
