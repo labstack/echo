@@ -57,7 +57,6 @@ func upload(c *echo.Context) error {
 
 func main() {
 	e := echo.New()
-
 	e.Use(mw.Logger())
 	e.Use(mw.Recover())
 

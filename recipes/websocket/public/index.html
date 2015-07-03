@@ -5,16 +5,14 @@
     <title>WebSocket</title>
 </head>
 <body>
-    <pre>
-    </pre>
+    <p id="output"></p>
+
     <script>
         var loc = window.location;
-        var uri;
+        var uri = 'ws:';
 
         if (loc.protocol === 'https:') {
             uri = 'wss:';
-        } else {
-            uri = 'ws:';
         }
         uri += '//' + loc.host;
         uri += loc.pathname + 'ws';
@@ -26,8 +24,13 @@
         }
 
         ws.onmessage = function(evt) {
-            console.log('Message')
+            var out = document.getElementById('output');
+            out.innerHTML += evt.data + '<br>';
         }
+
+        setInterval(function() {
+            ws.send('Hello, Server!');
+        }, 1000);
     </script>
 </body>
 </html>
