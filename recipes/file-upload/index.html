@@ -141,6 +141,12 @@
         <li class="main active"><a href="#file-upload">File Upload</a></li>
         
     
+        <li class="main "><a href="#server">Server</a></li>
+        
+    
+        <li class="main "><a href="#client">Client</a></li>
+        
+    
         <li class="main "><a href="#source-code">Source Code</a></li>
         
     
@@ -155,6 +161,7 @@
 </ul>
 <p>Use <code>req.ParseMultipartForm(16 &lt;&lt; 20)</code> for manually parsing multipart form. It gives
 us an option to specify the maximum memory used while parsing the request body. </p>
+<h2 id="server">Server</h2>
 <p><code>server.go</code></p>
 <pre><code class="go">package main
 
@@ -214,6 +221,7 @@ func main() {
 }
 </code></pre>
 
+<h2 id="client">Client</h2>
 <p><code>index.html</code></p>
 <pre><code class="html">&lt;!doctype html&gt;
 &lt;html lang=&quot;en&quot;&gt;

@@ -141,6 +141,15 @@
         <li class="main active"><a href="#websocket">WebSocket</a></li>
         
     
+        <li class="main "><a href="#server">Server</a></li>
+        
+    
+        <li class="main "><a href="#client">Client</a></li>
+        
+    
+        <li class="main "><a href="#output">Output</a></li>
+        
+    
         <li class="main "><a href="#source-code">Source Code</a></li>
         
     
@@ -149,6 +158,7 @@
     <div class="col-md-9" role="main">
 
 <h2 id="websocket">WebSocket</h2>
+<h2 id="server">Server</h2>
 <p><code>server.go</code></p>
 <pre><code class="go">package main
 
@@ -185,6 +195,7 @@ func main() {
 }
 </code></pre>
 
+<h2 id="client">Client</h2>
 <p><code>index.html</code></p>
 <pre><code class="html">&lt;!doctype html&gt;
 &lt;html lang=&quot;en&quot;&gt;
@@ -198,7 +209,6 @@ func main() {
     &lt;script&gt;
         var loc = window.location;
         var uri = 'ws:';
-        var start;
 
         if (loc.protocol === 'https:') {
             uri = 'wss:';
@@ -218,12 +228,28 @@ func main() {
         }
 
         setInterval(function() {
-            start = new Date().getTime();
             ws.send('Hello, Server!');
         }, 1000);
     &lt;/script&gt;
 &lt;/body&gt;
 &lt;/html&gt;
+</code></pre>
+
+<h2 id="output">Output</h2>
+<p><code>Client</code></p>
+<pre><code class="sh">Hello, Client!
+Hello, Client!
+Hello, Client!
+Hello, Client!
+Hello, Client!
+</code></pre>
+
+<p><code>Server</code></p>
+<pre><code class="sh">Hello, Server!
+Hello, Server!
+Hello, Server!
+Hello, Server!
+Hello, Server!
 </code></pre>
 
 <h2 id="source-code"><a href="https://github.com/labstack/echo/blob/master/recipes/websocket">Source Code</a></h2></div>

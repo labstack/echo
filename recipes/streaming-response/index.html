@@ -141,6 +141,15 @@
         <li class="main active"><a href="#streaming-response">Streaming Response</a></li>
         
     
+        <li class="main "><a href="#server">Server</a></li>
+        
+    
+        <li class="main "><a href="#client">Client</a></li>
+        
+    
+        <li class="main "><a href="#output">Output</a></li>
+        
+    
         <li class="main "><a href="#source-code">Source Code</a></li>
         
     
@@ -153,6 +162,7 @@
 <li>Send data as it is produced</li>
 <li>Streaming JSON response with chunked transfer encoding</li>
 </ul>
+<h2 id="server">Server</h2>
 <p><code>server.go</code></p>
 <pre><code class="go">package main
 
@@ -201,8 +211,10 @@ func main() {
 }
 </code></pre>
 
+<h2 id="client">Client</h2>
 <p><code>curl localhost:1323</code></p>
-<pre><code class="js">{&quot;Altitude&quot;:-97,&quot;Latitude&quot;:37.819929,&quot;Longitude&quot;:-122.478255}
+<h2 id="output">Output</h2>
+<pre><code class="sh">{&quot;Altitude&quot;:-97,&quot;Latitude&quot;:37.819929,&quot;Longitude&quot;:-122.478255}
 {&quot;Altitude&quot;:1899,&quot;Latitude&quot;:39.096849,&quot;Longitude&quot;:-120.032351}
 {&quot;Altitude&quot;:2619,&quot;Latitude&quot;:37.865101,&quot;Longitude&quot;:-119.538329}
 {&quot;Altitude&quot;:42,&quot;Latitude&quot;:33.812092,&quot;Longitude&quot;:-117.918974}
