@@ -3,6 +3,8 @@
 - Streaming multipart/form-data file upload
 - Multiple form fields and files
 
+## Server
+
 `server.go`
 
 ```go
@@ -86,6 +88,8 @@ func main() {
 	e.Run(":1323")
 }
 ```
+
+## Client
 
 `index.html`
 

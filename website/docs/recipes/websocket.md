@@ -1,5 +1,7 @@
 ## WebSocket
 
+## Server
+
 `server.go`
 
 ```go
@@ -37,6 +39,8 @@ func main() {
 	e.Run(":1323")
 }
 ```
+
+## Client
 
 `index.html`
 
@@ -77,6 +81,28 @@ func main() {
     </script>
 </body>
 </html>
+```
+
+## Output
+
+`Client`
+
+```sh
+Hello, Client!
+Hello, Client!
+Hello, Client!
+Hello, Client!
+Hello, Client!
+```
+
+`Server`
+
+```sh
+Hello, Server!
+Hello, Server!
+Hello, Server!
+Hello, Server!
+Hello, Server!
 ```
 
 ## [Source Code](https://github.com/labstack/echo/blob/master/recipes/websocket)

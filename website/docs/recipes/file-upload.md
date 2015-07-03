@@ -6,6 +6,8 @@
 Use `req.ParseMultipartForm(16 << 20)` for manually parsing multipart form. It gives
 us an option to specify the maximum memory used while parsing the request body. 
 
+## Server
+
 `server.go`
 
 ```go
@@ -66,6 +68,8 @@ func main() {
 	e.Run(":1323")
 }
 ```
+
+## Client
 
 `index.html`
 

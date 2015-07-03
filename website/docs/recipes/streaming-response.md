@@ -3,6 +3,8 @@
 - Send data as it is produced
 - Streaming JSON response with chunked transfer encoding
 
+## Server
+
 `server.go`
 
 ```go
@@ -53,9 +55,13 @@ func main() {
 }
 ```
 
+## Client
+
 `curl localhost:1323`
 
-```js
+## Output
+
+```sh
 {"Altitude":-97,"Latitude":37.819929,"Longitude":-122.478255}
 {"Altitude":1899,"Latitude":39.096849,"Longitude":-120.032351}
 {"Altitude":2619,"Latitude":37.865101,"Longitude":-119.538329}
