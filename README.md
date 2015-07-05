@@ -30,7 +30,7 @@ A fast and unfancy micro web framework for Golang.
 - Customizable request binding function.
 - Customizable response rendering function, allowing you to use any HTML template engine.
 
-## Benchmark
+## Performance 
 
 Based on [vishr/go-http-routing-benchmark] (https://github.com/vishr/go-http-routing-benchmark), June 5, 2015.
 
