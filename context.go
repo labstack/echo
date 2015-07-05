@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"golang.org/x/net/websocket"
+	"net/url"
 )
 
 type (
@@ -18,6 +19,7 @@ type (
 		socket   *websocket.Conn
 		pnames   []string
 		pvalues  []string
+		query    url.Values
 		store    store
 		echo     *Echo
 	}
@@ -69,6 +71,19 @@ func (c *Context) Param(name string) (value string) {
 		}
 	}
 	return
+}
+
+// Query returns query parameter by name.
+func (c *Context) Query(name string) string {
+	if c.query == nil {
+		c.query = c.request.URL.Query()
+	}
+	return c.query.Get(name)
+}
+
+// Form returns form parameter by name.
+func (c *Context) Form(name string) string {
+	return c.request.FormValue(name)
 }
 
 // Get retrieves data from the context.

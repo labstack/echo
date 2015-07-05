@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/stretchr/testify/assert"
+	"net/url"
 )
 
 type (
@@ -38,16 +39,12 @@ func TestContext(t *testing.T) {
 	// Socket
 	assert.Nil(t, c.Socket())
 
-	//-------
-	// Param
-	//-------
-
-	// By id
+	// Param by id
 	c.pnames = []string{"id"}
 	c.pvalues = []string{"1"}
 	assert.Equal(t, "1", c.P(0))
 
-	// By name
+	// Param by name
 	assert.Equal(t, "1", c.Param("id"))
 
 	// Store
@@ -143,6 +140,35 @@ func TestContext(t *testing.T) {
 
 	// reset
 	c.reset(req, NewResponse(httptest.NewRecorder()), New())
+}
+
+func TestContextQuery(t *testing.T) {
+	q := make(url.Values)
+	q.Set("name", "joe")
+	q.Set("email", "joe@labstack.com")
+
+	req, err := http.NewRequest(GET, "/", nil)
+	assert.NoError(t, err)
+	req.URL.RawQuery = q.Encode()
+
+	c := NewContext(req, nil, New())
+	assert.Equal(t, "joe", c.Query("name"))
+	assert.Equal(t, "joe@labstack.com", c.Query("email"))
+
+}
+
+func TestContextForm(t *testing.T) {
+	f := make(url.Values)
+	f.Set("name", "joe")
+	f.Set("email", "joe@labstack.com")
+
+	req, err := http.NewRequest(POST, "/", strings.NewReader(f.Encode()))
+	assert.NoError(t, err)
+	req.Header.Add(ContentType, ApplicationForm)
+
+	c := NewContext(req, nil, New())
+	assert.Equal(t, "joe", c.Form("name"))
+	assert.Equal(t, "joe@labstack.com", c.Form("email"))
 }
 
 func testBind(t *testing.T, c *Context, ct string) {

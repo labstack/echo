@@ -16,8 +16,8 @@ func upload(c *echo.Context) error {
 	// req.ParseMultipartForm(16 << 20) // Max memory 16 MiB
 
 	// Read form fields
-	name := req.FormValue("name")
-	email := req.FormValue("email")
+	name := c.Form("name")
+	email := c.Form("email")
 
 	// Read files
 	files := req.MultipartForm.File["files"]
