@@ -152,8 +152,6 @@
         
             <li><a href="#error-handling">Error Handling</a></li>
         
-            <li><a href="#deployment">Deployment</a></li>
-        
     
     </ul>
 </div></div>
@@ -176,7 +174,7 @@
 </code></pre>
 
 <p>Echo follows <a href="http://semver.org">semantic versioning</a> managed through GitHub releases.
-Specific version of Echo can be installed using any <a href="https://github.com/avelino/awesome-go#package-management">package manager</a>.</p>
+Specific version of Echo can be installed using a <a href="https://github.com/avelino/awesome-go#package-management">package manager</a>.</p>
 <h2 id="customization">Customization</h2>
 <h3 id="http-error-handler">HTTP error handler</h3>
 <p><code>Echo.SetHTTPErrorHandler(h HTTPErrorHandler)</code></p>
@@ -193,10 +191,9 @@ and message <code>HTTPError.Message</code>.</li>
 <p>Enables debug mode.</p>
 <h2 id="routing">Routing</h2>
 <p>Echo's router is <a href="https://github.com/labstack/echo#benchmark">fast, optimized</a> and
-flexible. It's based on <a href="http://en.wikipedia.org/wiki/Radix_tree">radix tree</a>
-data structure which makes routing lookup really fast. It leverages
-<a href="https://golang.org/pkg/sync/#Pool">sync pool</a> to reuse memory and achieve
-zero dynamic memory allocation with no GC overhead.</p>
+flexible. It's based on <a href="http://en.wikipedia.org/wiki/Radix_tree">radix tree</a> data
+structure which makes route lookup really fast. Router leverages <a href="https://golang.org/pkg/sync/#Pool">sync pool</a>
+to reuse memory and achieve zero dynamic memory allocation with no GC overhead.</p>
 <p>Routes can be registered by specifying HTTP method, path and a handler. For example,
 code below registers a route for method <code>GET</code>, path <code>/hello</code> and a handler which sends
 <code>Hello!</code> HTTP response.</p>
@@ -205,12 +202,12 @@ code below registers a route for method <code>GET</code>, path <code>/hello</cod
 })
 </code></pre>
 
-<p>Echo's default handler is <code>func(*echo.Context) error</code> where <code>echo.Context</code>
-primarily holds HTTP request and response objects. Echo also has a support for other
-types of handlers.</p>
+<p>Echo's default handler is <code>func(*echo.Context) error</code> where <code>echo.Context</code> primarily
+holds HTTP request and response objects. Echo also has a support for other types
+of handlers.</p>
 <h3 id="path-parameter">Path parameter</h3>
-<p>Request path parameters can be extracted either by name <code>Echo.Context.Param(name string) string</code>
-or by index <code>Echo.Context.P(i int) string</code>. Getting parameter by index gives a
+<p>Request path parameters can be extracted either by name <code>echo.Context.Param(name string) string</code>
+or by index <code>echo.Context.P(i int) string</code>. Getting parameter by index gives a
 slightly better performance.</p>
 <pre><code class="go">echo.Get(&quot;/users/:id&quot;, func(c *echo.Context) error {
     // By name
@@ -223,6 +220,8 @@ slightly better performance.</p>
 })
 </code></pre>
 
+<h3 id="query-parameter">Query parameter</h3>
+<p>URL query parameter can be extracted by name using <code>echo.Context.Query(name string)</code>.</p>
 <h3 id="match-any">Match-any</h3>
 <p>Matches zero or more characters in the path. For example, pattern <code>/users/*</code> will
 match</p>
@@ -291,9 +290,9 @@ e.Get(&quot;/users/:id&quot;, h)
 </code></pre>
 
 <h2 id="middleware">Middleware</h2>
-<p>Middleware is function which is chained in the HTTP request-response cycle. Middleware
+<p>Middleware is a function which is chained in the HTTP request-response cycle. Middleware
 has access to the request and response objects which it utilizes to perform a specific
-action for example, logging every request. Echo supports variety of <a href="../#features">middleware</a>.</p>
+action, for example, logging every request. Echo supports variety of <a href="../#features">middleware</a>.</p>
 <h3 id="logger">Logger</h3>
 <p>Logs each HTTP request with method, path, status, response time and bytes served.</p>
 <p><em>Example</em></p>
@@ -432,9 +431,7 @@ func welcome(c *echo.Context) error {
 }
 </code></pre>
 
-<p>See how <a href="#customization">HTTPErrorHandler</a> handles it.</p>
-<h2 id="deployment">Deployment</h2>
-<p><em>WIP</em></p></div>
+<p>See how <a href="#customization">HTTPErrorHandler</a> handles it.</p></div>
 </div>
 
 <footer class="col-md-12">
