@@ -145,13 +145,24 @@
         <li class="main active"><a href="#jwt-authentication">JWT Authentication</a></li>
         
     
+        <li class="main "><a href="#source-code">Source Code</a></li>
+        
+    
     </ul>
 </div></div>
     <div class="col-md-9" role="main">
 
 <h2 id="jwt-authentication">JWT Authentication</h2>
-<p>Most applications dealing with client authentication will require a more secure mechanism than that provided by <a href="https://github.com/labstack/echo/blob/master/middleware/auth.go">basic authentication</a>. <a href="http://jwt.io/">JSON Web Tokens</a> are one such mechanism - JWTs are a compact means of transfering cryptographically signed claims between the client and server. </p>
-<p>This recipe demonstrates the use of a simple JWT authentication Echo middleware using Dave Grijalva's <a href="https://github.com/dgrijalva/jwt-go">jwt-go</a>. This middleware expects the token to be present in an Authorization HTTP header using the method "Bearer", although JWTs are also frequently sent using cookies, the request URL, or even the request body. We will use the HS236 signing method, note that several other algorithms are avaible.</p>
+<p>Most applications dealing with client authentication will require a more secure
+mechanism than that provided by <a href="https://github.com/labstack/echo/blob/master/middleware/auth.go">basic authentication</a>. <a href="http://jwt.io/">JSON Web Tokens</a>
+are one such mechanism - JWTs are a compact means of transferring cryptographically
+signed claims between the client and server. </p>
+<p>This recipe demonstrates the use of a simple JWT authentication Echo middleware
+using Dave Grijalva's <a href="https://github.com/dgrijalva/jwt-go">jwt-go</a>. This middleware
+expects the token to be present in an Authorization HTTP header using the method
+"Bearer", although JWTs are also frequently sent using cookies, the request URL,
+or even the request body. We will use the HS236 signing method, note that several
+other algorithms are available.</p>
 <p><code>server.go</code></p>
 <pre><code class="go">package main
 
@@ -232,22 +243,25 @@ func main() {
 }
 </code></pre>
 
-<p><a href="https://github.com/labstack/echo/blob/master/recipes/jwt-auth">Source Code</a></p>
-<p>Run <code>server.go</code> and making a request to the root path <code>/</code> returns a 200 OK response, as this route does not use our JWT authentication middleware. Sending requests to <code>/restricted</code> (our authenticated route) with either no Authorization header or invalid Authorization headers / tokens will return 401 Unauthorized.</p>
-<pre><code>// Unauthenticated route
+<p>Run <code>server.go</code> and making a request to the root path <code>/</code> returns a 200 OK response,
+as this route does not use our JWT authentication middleware. Sending requests to
+<code>/restricted</code> (our authenticated route) with either no Authorization header or invalid
+Authorization headers / tokens will return 401 Unauthorized.</p>
+<pre><code class="sh"># Unauthenticated route
 $ curl localhost:1323/  =&gt; No auth required for this route.
 
-// No Authentication header
+# No Authentication header
 $ curl localhost:1323/restricted  =&gt; Unauthorized
 
-// Invalid Authentication method
+# Invalid Authentication method
 $  curl localhost:1323/restricted -H &quot;Authorization: Invalid &quot; =&gt; Unauthorized
 
-// Invalid token
+# Invalid token
 $  curl localhost:1323/restricted -H &quot;Authorization: Bearer InvalidToken&quot; =&gt; Unauthorized
 </code></pre>
 
-<p>Running <code>token.go</code> (source) will print JWT that is valid against this middleware to stdout. You can use this token to test succesful authentication on the <code>/restricted</code> path.</p>
+<p>Running <code>token.go</code> (source) will print JWT that is valid against this middleware
+to stdout. You can use this token to test succesful authentication on the <code>/restricted</code> path.</p>
 <pre><code class="go">package main
 
 import (
@@ -274,10 +288,11 @@ func main() {
 }
 </code></pre>
 
-<p><a href="https://github.com/labstack/echo/blob/master/recipes/jwt-auth/token">Source Code</a></p>
-<pre><code>// Valid token
+<pre><code class="sh"># Valid token
 $  curl localhost:1323/restricted -H &quot;Authorization: Bearer &lt;token&gt;&quot; =&gt; Access granted with JWT.
-</code></pre></div>
+</code></pre>
+
+<h2 id="source-code"><a href="https://github.com/labstack/echo/blob/master/recipes/jwt-authentication">Source Code</a></h2></div>
 </div>
 
 <footer class="col-md-12">
