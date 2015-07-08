@@ -152,6 +152,8 @@
         
             <li><a href="#middleware">Middleware</a></li>
         
+            <li><a href="#request">Request</a></li>
+        
             <li><a href="#response">Response</a></li>
         
             <li><a href="#error-handling">Error Handling</a></li>
@@ -209,26 +211,9 @@ code below registers a route for method <code>GET</code>, path <code>/hello</cod
 <p>Echo's default handler is <code>func(*echo.Context) error</code> where <code>echo.Context</code> primarily
 holds HTTP request and response objects. Echo also has a support for other types
 of handlers.</p>
-<h3 id="path-parameter">Path parameter</h3>
-<p>Request path parameters can be extracted either by name <code>echo.Context.Param(name string) string</code>
-or by index <code>echo.Context.P(i int) string</code>. Getting parameter by index gives a
-slightly better performance.</p>
-<pre><code class="go">echo.Get(&quot;/users/:id&quot;, func(c *echo.Context) error {
-    // By name
-    id := c.Param(&quot;id&quot;)
-
-    // By index
-    id := c.P(0)
-
-    return c.String(http.StatusOK, id)
-})
-</code></pre>
-
-<h3 id="query-parameter">Query parameter</h3>
-<p>URL query parameter can be extracted by name using <code>echo.Context.Query(name string)</code>.</p>
 <h3 id="match-any">Match-any</h3>
 <p>Matches zero or more characters in the path. For example, pattern <code>/users/*</code> will
-match</p>
+match:</p>
 <ul>
 <li><code>/users/</code></li>
 <li><code>/users/1</code></li>
@@ -255,13 +240,15 @@ e.Get(&quot;/users/1/files/*&quot;, func(c *echo.Context) error {
 })
 </code></pre>
 
-<p>Above routes would resolve in order</p>
+<p>Above routes would resolve in the following order:</p>
 <ul>
 <li><code>/users/new</code></li>
 <li><code>/users/:id</code></li>
 <li><code>/users/1/files/*</code></li>
 </ul>
+<blockquote>
 <p>Routes can be written in any order.</p>
+</blockquote>
 <h3 id="group">Group</h3>
 <p><code>Echo.Group(prefix string, m ...Middleware) *Group</code></p>
 <p>Routes with common prefix can be grouped to define a new sub-router with optional
@@ -296,7 +283,7 @@ e.Get(&quot;/users/:id&quot;, h)
 <h2 id="middleware">Middleware</h2>
 <p>Middleware is a function which is chained in the HTTP request-response cycle. Middleware
 has access to the request and response objects which it utilizes to perform a specific
-action, for example, logging every request. Echo supports variety of <a href="../#features">middleware</a>.</p>
+action, for example, logging every request.</p>
 <h3 id="logger">Logger</h3>
 <p>Logs each HTTP request with method, path, status, response time and bytes served.</p>
 <p><em>Example</em></p>
@@ -358,6 +345,50 @@ slash path.</p>
 <p>StripTrailingSlash and RedirectToSlash middleware should not be used together.</p>
 </blockquote>
 <p><a href="https://github.com/labstack/echo/tree/master/examples/middleware">Examples</a></p>
+<h2 id="request">Request</h2>
+<h3 id="path-parameter">Path parameter</h3>
+<p>Path parameter can be retrieved either by name <code>echo.Context.Param(name string) string</code>
+or by index <code>echo.Context.P(i int) string</code>. Getting parameter by index gives a slightly
+better performance.</p>
+<p><em>Example</em></p>
+<pre><code class="go">echo.Get(&quot;/users/:name&quot;, func(c *echo.Context) error {
+    // By name
+    name := c.Param(&quot;name&quot;)
+
+    // By index
+    name := c.P(0)
+
+    return c.String(http.StatusOK, name)
+})
+</code></pre>
+
+<pre><code class="sh">$ curl http://localhost:1323/users/joe
+</code></pre>
+
+<h3 id="query-parameter">Query parameter</h3>
+<p>Query parameter can be retrieved by name using <code>echo.Context.Query(name string)</code>.</p>
+<p><em>Example</em></p>
+<pre><code class="go">echo.Get(&quot;/users&quot;, func(c *echo.Context) error {
+    name := c.Query(&quot;name&quot;)
+    return c.String(http.StatusOK, name)
+})
+</code></pre>
+
+<pre><code class="sh">$ curl -G -d &quot;name=joe&quot; http://localhost:1323/users
+</code></pre>
+
+<h3 id="form-parameter">Form parameter</h3>
+<p>Form parameter can be retrieved by name using <code>echo.Context.Form(name string)</code>. </p>
+<p><em>Example</em></p>
+<pre><code class="go">echo.Post(&quot;/users&quot;, func(c *echo.Context) error {
+    name := c.Form(&quot;name&quot;)
+    return c.String(http.StatusOK, name)
+})
+</code></pre>
+
+<pre><code class="sh">$ curl -d &quot;name=joe&quot; http://localhost:1323/users
+</code></pre>
+
 <h2 id="response">Response</h2>
 <h3 id="json">JSON</h3>
 <pre><code class="go">context.JSON(code int, v interface{}) error
