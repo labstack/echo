@@ -25,7 +25,7 @@ func JWTAuth(key string) echo.HandlerFunc {
 
 		auth := c.Request().Header.Get("Authorization")
 		l := len(Bearer)
-		he := echo.NewHTTPError(http.StatusBadRequest)
+		he := echo.NewHTTPError(http.StatusUnauthorized)
 
 		if len(auth) > l+1 && auth[:l] == Bearer {
 			t, err := jwt.Parse(auth[l+1:], func(token *jwt.Token) (interface{}, error) {
@@ -42,8 +42,6 @@ func JWTAuth(key string) echo.HandlerFunc {
 				// Store token claims in echo.Context
 				c.Set("claims", t.Claims)
 				return nil
-			} else {
-				he.SetCode(http.StatusUnauthorized)
 			}
 		}
 		return he
@@ -51,11 +49,11 @@ func JWTAuth(key string) echo.HandlerFunc {
 }
 
 func accessible(c *echo.Context) error {
-	return c.String(http.StatusOK, "This route is accesible without authentication.\n")
+	return c.String(http.StatusOK, "No auth required for this route.\n")
 }
 
 func restricted(c *echo.Context) error {
-	return c.String(http.StatusOK, "Access granted with JSON Web Token\n")
+	return c.String(http.StatusOK, "Access granted with JWT.\n")
 }
 
 func main() {
