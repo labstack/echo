@@ -9,7 +9,7 @@
     
     <link rel="shortcut icon" href="../../img/favicon.ico">
 
-    <title>Subdomains - Echo, a fast and unfancy micro web framework for Golang.</title>
+    <title>JWT Authentication - Echo, a fast and unfancy micro web framework for Golang.</title>
 
     <link href="../../css/bootstrap-custom.min.css" rel="stylesheet">
     <link href="../../css/font-awesome-4.0.3.css" rel="stylesheet">
@@ -93,12 +93,12 @@
                             <a href="../websocket/">WebSocket</a>
                         </li>
                     
-                        <li class="active">
-                            <a href="./">Subdomains</a>
+                        <li >
+                            <a href="../subdomains/">Subdomains</a>
                         </li>
                     
-                        <li >
-                            <a href="../jwt-auth/">JWT Authentication</a>
+                        <li class="active">
+                            <a href="./">JWT Authentication</a>
                         </li>
                     
                         <li >
@@ -114,12 +114,12 @@
             <!-- Search, Navigation and Repo links -->
             <ul class="nav navbar-nav navbar-right">
                 <li >
-                    <a rel="next" href="../websocket/">
+                    <a rel="next" href="../subdomains/">
                         <i class="fa fa-arrow-left"></i> Previous
                     </a>
                 </li>
                 <li >
-                    <a rel="prev" href="../jwt-auth/">
+                    <a rel="prev" href="../graceful-shutdown/">
                         Next <i class="fa fa-arrow-right"></i>
                     </a>
                 </li>
@@ -142,88 +142,142 @@
     <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
     <ul class="nav bs-sidenav">
     
-        <li class="main active"><a href="#subdomains">Subdomains</a></li>
-        
-    
-        <li class="main "><a href="#source-code">Source Code</a></li>
+        <li class="main active"><a href="#jwt-authentication">JWT Authentication</a></li>
         
     
     </ul>
 </div></div>
     <div class="col-md-9" role="main">
 
-<h2 id="subdomains">Subdomains</h2>
+<h2 id="jwt-authentication">JWT Authentication</h2>
+<p>Most applications dealing with client authentication will require a more secure mechanism than that provided by <a href="https://github.com/labstack/echo/blob/master/middleware/auth.go">basic authentication</a>. <a href="http://jwt.io/">JSON Web Tokens</a> are one such mechanism - JWTs are a compact means of transfering cryptographically signed claims between the client and server. </p>
+<p>This recipe demonstrates the use of a simple JWT authentication Echo middleware using Dave Grijalva's <a href="https://github.com/dgrijalva/jwt-go">jwt-go</a>. This middleware expects the token to be present in an Authorization HTTP header using the method "Bearer", although JWTs are also frequently sent using cookies, the request URL, or even the request body. We will use the HS236 signing method, note that several other algorithms are avaible.</p>
 <p><code>server.go</code></p>
 <pre><code class="go">package main
 
 import (
+    &quot;fmt&quot;
     &quot;net/http&quot;
 
+    &quot;github.com/dgrijalva/jwt-go&quot;
     &quot;github.com/labstack/echo&quot;
     mw &quot;github.com/labstack/echo/middleware&quot;
 )
 
-type Hosts map[string]http.Handler
+const (
+    Bearer     = &quot;Bearer&quot;
+    SigningKey = &quot;somethingsupersecret&quot;
+)
 
-func (h Hosts) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-    if handler := h[r.Host]; handler != nil {
-        handler.ServeHTTP(w, r)
-    } else {
-        http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+// A JSON Web Token middleware
+func JWTAuth(key string) echo.HandlerFunc {
+    return func(c *echo.Context) error {
+
+        // Skip WebSocket
+        if (c.Request().Header.Get(echo.Upgrade)) == echo.WebSocket {
+            return nil
+        }
+
+        auth := c.Request().Header.Get(&quot;Authorization&quot;)
+        l := len(Bearer)
+        he := echo.NewHTTPError(http.StatusUnauthorized)
+
+        if len(auth) &gt; l+1 &amp;&amp; auth[:l] == Bearer {
+            t, err := jwt.Parse(auth[l+1:], func(token *jwt.Token) (interface{}, error) {
+
+                // Always check the signing method
+                if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+                    return nil, fmt.Errorf(&quot;Unexpected signing method: %v&quot;, token.Header[&quot;alg&quot;])
+                }
+
+                // Return the key for validation
+                return []byte(key), nil
+            })
+            if err == nil &amp;&amp; t.Valid {
+                // Store token claims in echo.Context
+                c.Set(&quot;claims&quot;, t.Claims)
+                return nil
+            }
+        }
+        return he
     }
 }
 
+func accessible(c *echo.Context) error {
+    return c.String(http.StatusOK, &quot;No auth required for this route.\n&quot;)
+}
+
+func restricted(c *echo.Context) error {
+    return c.String(http.StatusOK, &quot;Access granted with JWT.\n&quot;)
+}
+
 func main() {
-    // Host map
-    hosts := make(Hosts)
 
-    //-----
-    // API
-    //-----
+    // Echo instance
+    e := echo.New()
 
-    api := echo.New()
-    api.Use(mw.Logger())
-    api.Use(mw.Recover())
+    // Logger
+    e.Use(mw.Logger())
 
-    hosts[&quot;api.localhost:1323&quot;] = api
+    // Unauthenticated route
+    e.Get(&quot;/&quot;, accessible)
 
-    api.Get(&quot;/&quot;, func(c *echo.Context) error {
-        return c.String(http.StatusOK, &quot;API&quot;)
-    })
+    // Restricted group
+    r := e.Group(&quot;/restricted&quot;)
+    r.Use(JWTAuth(SigningKey))
+    r.Get(&quot;&quot;, restricted)
 
-    //------
-    // Blog
-    //------
-
-    blog := echo.New()
-    blog.Use(mw.Logger())
-    blog.Use(mw.Recover())
-
-    hosts[&quot;blog.localhost:1323&quot;] = blog
-
-    blog.Get(&quot;/&quot;, func(c *echo.Context) error {
-        return c.String(http.StatusOK, &quot;Blog&quot;)
-    })
-
-    //---------
-    // Website
-    //---------
-
-    site := echo.New()
-    site.Use(mw.Logger())
-    site.Use(mw.Recover())
-
-    hosts[&quot;localhost:1323&quot;] = site
-
-    site.Get(&quot;/&quot;, func(c *echo.Context) error {
-        return c.String(http.StatusOK, &quot;Welcome!&quot;)
-    })
-
-    http.ListenAndServe(&quot;:1323&quot;, hosts)
+    // Start server
+    e.Run(&quot;:1323&quot;)
 }
 </code></pre>
 
-<h2 id="source-code"><a href="https://github.com/labstack/echo/blob/master/recipes/subdomains">Source Code</a></h2></div>
+<p><a href="https://github.com/labstack/echo/blob/master/recipes/jwt-auth">Source Code</a></p>
+<p>Run <code>server.go</code> and making a request to the root path <code>/</code> returns a 200 OK response, as this route does not use our JWT authentication middleware. Sending requests to <code>/restricted</code> (our authenticated route) with either no Authorization header or invalid Authorization headers / tokens will return 401 Unauthorized.</p>
+<pre><code>// Unauthenticated route
+$ curl localhost:1323/  =&gt; No auth required for this route.
+
+// No Authentication header
+$ curl localhost:1323/restricted  =&gt; Unauthorized
+
+// Invalid Authentication method
+$  curl localhost:1323/restricted -H &quot;Authorization: Invalid &quot; =&gt; Unauthorized
+
+// Invalid token
+$  curl localhost:1323/restricted -H &quot;Authorization: Bearer InvalidToken&quot; =&gt; Unauthorized
+</code></pre>
+
+<p>Running <code>token.go</code> (source) will print JWT that is valid against this middleware to stdout. You can use this token to test succesful authentication on the <code>/restricted</code> path.</p>
+<pre><code class="go">package main
+
+import (
+    &quot;fmt&quot;
+    &quot;time&quot;
+
+    &quot;github.com/dgrijalva/jwt-go&quot;
+)
+
+const SigningKey = &quot;somethingsupersecret&quot;
+
+func main() {
+
+    // New web token.
+    token := jwt.New(jwt.SigningMethodHS256)
+
+    // Set a header and a claim
+    token.Header[&quot;typ&quot;] = &quot;JWT&quot;
+    token.Claims[&quot;exp&quot;] = time.Now().Add(time.Hour * 96).Unix()
+
+    // Generate encoded token
+    t, _ := token.SignedString([]byte(SigningKey))
+    fmt.Println(t)
+}
+</code></pre>
+
+<p><a href="https://github.com/labstack/echo/blob/master/recipes/jwt-auth/token">Source Code</a></p>
+<pre><code>// Valid token
+$  curl localhost:1323/restricted -H &quot;Authorization: Bearer &lt;token&gt;&quot; =&gt; Access granted with JWT.
+</code></pre></div>
 </div>
 
 <footer class="col-md-12">
