@@ -117,6 +117,17 @@ func (c *Context) Render(code int, name string, data interface{}) (err error) {
 	return
 }
 
+// HTML formats according to a format specifier and sends text/html response with
+// status code.
+func (c *Context) HTML(code int, format string, a ...interface{}) (err error) {
+	c.response.Header().Set(ContentType, TextHTML)
+	c.response.WriteHeader(code)
+	if _, err = fmt.Fprintf(c.response, format, a...); err != nil {
+		c.response.clear()
+	}
+	return
+}
+
 // JSON sends an application/json response with status code.
 func (c *Context) JSON(code int, i interface{}) (err error) {
 	c.response.Header().Set(ContentType, ApplicationJSON)
@@ -138,17 +149,6 @@ func (c *Context) String(code int, format string, a ...interface{}) (err error) 
 	return
 }
 
-// HTML formats according to a format specifier and sends text/html response with
-// status code.
-func (c *Context) HTML(code int, format string, a ...interface{}) (err error) {
-	c.response.Header().Set(ContentType, TextHTML)
-	c.response.WriteHeader(code)
-	if _, err = fmt.Fprintf(c.response, format, a...); err != nil {
-		c.response.clear()
-	}
-	return
-}
-
 // NoContent sends a response with no body and a status code.
 func (c *Context) NoContent(code int) error {
 	c.response.WriteHeader(code)
@@ -160,7 +160,7 @@ func (c *Context) Redirect(code int, url string) {
 	http.Redirect(c.response, c.request, url, code)
 }
 
-// Error invokes the registered HTTP error handler. Usually used by middleware.
+// Error invokes the registered HTTP error handler. Generally used by middleware.
 func (c *Context) Error(err error) {
 	c.echo.httpErrorHandler(err, c)
 }

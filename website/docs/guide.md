@@ -23,7 +23,7 @@ $ go get -u github.com/labstack/echo
 ```
 
 Echo follows [semantic versioning](http://semver.org) managed through GitHub releases.
-Specific version of Echo can be installed using any [package manager](https://github.com/avelino/awesome-go#package-management).
+Specific version of Echo can be installed using a [package manager](https://github.com/avelino/awesome-go#package-management).
 
 ## Customization
 
@@ -49,10 +49,9 @@ Enables debug mode.
 ## Routing
 
 Echo's router is [fast, optimized](https://github.com/labstack/echo#benchmark) and
-flexible. It's based on [radix tree](http://en.wikipedia.org/wiki/Radix_tree)
-data structure which makes routing lookup really fast. It leverages
-[sync pool](https://golang.org/pkg/sync/#Pool) to reuse memory and achieve
-zero dynamic memory allocation with no GC overhead.
+flexible. It's based on [radix tree](http://en.wikipedia.org/wiki/Radix_tree) data
+structure which makes route lookup really fast. Router leverages [sync pool](https://golang.org/pkg/sync/#Pool)
+to reuse memory and achieve zero dynamic memory allocation with no GC overhead.
 
 Routes can be registered by specifying HTTP method, path and a handler. For example,
 code below registers a route for method `GET`, path `/hello` and a handler which sends
@@ -64,32 +63,14 @@ echo.Get("/hello", func(c *echo.Context) error {
 })
 ```
 
-Echo's default handler is `func(*echo.Context) error` where `echo.Context`
-primarily holds HTTP request and response objects. Echo also has a support for other
-types of handlers.
-
-### Path parameter
-
-Request path parameters can be extracted either by name `Echo.Context.Param(name string) string`
-or by index `Echo.Context.P(i int) string`. Getting parameter by index gives a
-slightly better performance.
-
-```go
-echo.Get("/users/:id", func(c *echo.Context) error {
-	// By name
-	id := c.Param("id")
-
-	// By index
-	id := c.P(0)
-
-	return c.String(http.StatusOK, id)
-})
-```
+Echo's default handler is `func(*echo.Context) error` where `echo.Context` primarily
+holds HTTP request and response objects. Echo also has a support for other types
+of handlers.
 
 ### Match-any
 
 Matches zero or more characters in the path. For example, pattern `/users/*` will
-match
+match:
 
 - `/users/`
 - `/users/1`
@@ -118,13 +99,13 @@ e.Get("/users/1/files/*", func(c *echo.Context) error {
 })
 ```
 
-Above routes would resolve in order
+Above routes would resolve in the following order:
 
 - `/users/new`
 - `/users/:id`
 - `/users/1/files/*`
 
-Routes can be written in any order.
+> Routes can be written in any order.
 
 ### Group
 
@@ -168,9 +149,9 @@ e.Get("/users/:id", h)
 
 ## Middleware
 
-Middleware is function which is chained in the HTTP request-response cycle. Middleware
+Middleware is a function which is chained in the HTTP request-response cycle. Middleware
 has access to the request and response objects which it utilizes to perform a specific
-action for example, logging every request. Echo supports variety of [middleware](/#features).
+action, for example, logging every request.
 
 ### Logger
 
@@ -255,6 +236,66 @@ e.Use(mw.RedirectToSlash())
 > StripTrailingSlash and RedirectToSlash middleware should not be used together.
 
 [Examples](https://github.com/labstack/echo/tree/master/examples/middleware)
+
+## Request
+
+### Path parameter
+
+Path parameter can be retrieved either by name `echo.Context.Param(name string) string`
+or by index `echo.Context.P(i int) string`. Getting parameter by index gives a slightly
+better performance.
+
+*Example*
+
+```go
+echo.Get("/users/:name", func(c *echo.Context) error {
+	// By name
+	name := c.Param("name")
+
+	// By index
+	name := c.P(0)
+
+	return c.String(http.StatusOK, name)
+})
+```
+
+```sh
+$ curl http://localhost:1323/users/joe
+```
+
+### Query parameter
+
+Query parameter can be retrieved by name using `echo.Context.Query(name string)`.
+
+*Example*
+
+```go
+echo.Get("/users", func(c *echo.Context) error {
+	name := c.Query("name")
+	return c.String(http.StatusOK, name)
+})
+```
+
+```sh
+$ curl -G -d "name=joe" http://localhost:1323/users
+```
+
+### Form parameter
+
+Form parameter can be retrieved by name using `echo.Context.Form(name string)`. 
+
+*Example*
+
+```go
+echo.Post("/users", func(c *echo.Context) error {
+	name := c.Form("name")
+	return c.String(http.StatusOK, name)
+})
+```
+
+```sh
+$ curl -d "name=joe" http://localhost:1323/users
+```
 
 ## Response
 
@@ -361,6 +402,3 @@ func welcome(c *echo.Context) error {
 
 See how [HTTPErrorHandler](#customization) handles it.
 
-## Deployment
-
-*WIP*

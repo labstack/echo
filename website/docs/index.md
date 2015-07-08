@@ -23,14 +23,22 @@ A fast and unfancy micro web framework for Golang.
     - `http.HandlerFunc`
     - `func(http.ResponseWriter, *http.Request)`
 - Sub-router/Groups
-- Handy encoding/decoding functions.
+- Handy functions to send variety of HTTP response:
+    - HTML
+    - HTML via templates
+    - JSON
+    - String 
+    - NoContent
+    - Redirect
+    - Error
 - Build-in support for:
+	- Favicon
+	- Index file
 	- Static files
 	- WebSocket
-- API to serve index and favicon.
 - Centralized HTTP error handling.
-- Customizable request binding function.
-- Customizable response rendering function, allowing you to use any HTML template engine.
+- Customizable HTTP request binding function.
+- Customizable HTTP response rendering function, allowing you to use any HTML template engine.
 
 ## Performance
 
@@ -46,7 +54,7 @@ $ go get github.com/labstack/echo
 
 ### Hello, World!
 
-Create `server.go` with the following content
+Create `server.go`
 
 ```go
 package main
@@ -79,24 +87,7 @@ func main() {
 }
 ```
 
-`echo.New()` returns a new instance of Echo.
-
-`e.Use(mw.Logger())` adds logging middleware to the chain. It logs every HTTP request
-made to the server, producing output
-
-```sh
-2015/06/07 18:16:16 GET / 200 13.238µs 14
-```
-
-`e.Get("/", hello)` Registers hello handler for HTTP method `GET` and path `/`, so
-whenever server receives an HTTP request at `/`, hello function is called.
-
-In hello handler `c.String(http.StatusOK, "Hello, World!\n")` sends a text/plain
-HTTP response to the client with 200 status code.
-
-`e.Run(":1323")` Starts HTTP server at network address `:1323`.
-
-Now start the server using command
+Start server
 
 ```sh
 $ go run server.go

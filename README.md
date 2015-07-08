@@ -21,14 +21,22 @@ A fast and unfancy micro web framework for Golang.
     - `http.HandlerFunc`
     - `func(http.ResponseWriter, *http.Request)`
 - Sub-router/Groups
-- Handy encoding/decoding functions.
+- Handy functions to send variety of HTTP response:
+    - HTML
+    - HTML via templates
+    - JSON
+    - String 
+    - NoContent
+    - Redirect
+    - Error
 - Build-in support for:
+	- Favicon
+	- Index file
 	- Static files
 	- WebSocket
-- API to serve index and favicon.
 - Centralized HTTP error handling.
-- Customizable request binding function.
-- Customizable response rendering function, allowing you to use any HTML template engine.
+- Customizable HTTP request binding function.
+- Customizable HTTP response rendering function, allowing you to use any HTML template engine.
 
 ## Performance 
 
@@ -83,6 +91,7 @@ $ go get github.com/labstack/echo
 - [Streaming Response](http://echo.labstack.com/recipes/streaming-response)
 - [WebSocket](http://echo.labstack.com/recipes/websocket)
 - [Subdomains](http://echo.labstack.com/recipes/subdomains)
+- [JWT Authentication](http://echo.labstack.com/recipes/jwt-auth)
 - [Graceful Shutdown](http://echo.labstack.com/recipes/graceful-shutdown)
 
 ##[Guide](http://echo.labstack.com/guide)
