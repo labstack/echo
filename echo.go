@@ -103,11 +103,12 @@ const (
 
 	Accept             = "Accept"
 	AcceptEncoding     = "Accept-Encoding"
+	Authorization      = "Authorization"
 	ContentDisposition = "Content-Disposition"
 	ContentEncoding    = "Content-Encoding"
 	ContentLength      = "Content-Length"
 	ContentType        = "Content-Type"
-	Authorization      = "Authorization"
+	Location           = "Location"
 	Upgrade            = "Upgrade"
 	Vary               = "Vary"
 
@@ -141,7 +142,7 @@ var (
 	RendererNotRegistered = errors.New("echo ⇒ renderer not registered")
 )
 
-// New creates an Echo instance.
+// New creates an instance of Echo.
 func New() (e *Echo) {
 	e = &Echo{maxParam: new(int)}
 	e.pool.New = func() interface{} {

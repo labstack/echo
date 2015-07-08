@@ -80,3 +80,8 @@ func (r *Response) reset(w http.ResponseWriter) {
 	r.status = http.StatusOK
 	r.committed = false
 }
+
+func (r *Response) clear() {
+	r.Header().Del(ContentType)
+	r.committed = false
+}
