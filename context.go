@@ -104,38 +104,49 @@ func (c *Context) Bind(i interface{}) error {
 
 // Render invokes the registered HTML template renderer and sends a text/html
 // response with status code.
-func (c *Context) Render(code int, name string, data interface{}) error {
+func (c *Context) Render(code int, name string, data interface{}) (err error) {
 	if c.echo.renderer == nil {
 		return RendererNotRegistered
 	}
 	c.response.Header().Set(ContentType, TextHTML)
 	c.response.WriteHeader(code)
-	return c.echo.renderer.Render(c.response, name, data)
+	if err = c.echo.renderer.Render(c.response, name, data); err != nil {
+		println(err.Error())
+		c.response.clear()
+	}
+	return
 }
 
 // JSON sends an application/json response with status code.
-func (c *Context) JSON(code int, i interface{}) error {
+func (c *Context) JSON(code int, i interface{}) (err error) {
 	c.response.Header().Set(ContentType, ApplicationJSON)
 	c.response.WriteHeader(code)
-	return json.NewEncoder(c.response).Encode(i)
+	if err = json.NewEncoder(c.response).Encode(i); err != nil {
+		c.response.clear()
+	}
+	return
 }
 
 // String formats according to a format specifier and sends text/plain response
 // with status code.
-func (c *Context) String(code int, format string, a ...interface{}) error {
+func (c *Context) String(code int, format string, a ...interface{}) (err error) {
 	c.response.Header().Set(ContentType, TextPlain)
 	c.response.WriteHeader(code)
-	_, err := fmt.Fprintf(c.response, format, a...)
-	return err
+	if _, err = fmt.Fprintf(c.response, format, a...); err != nil {
+		c.response.clear()
+	}
+	return
 }
 
 // HTML formats according to a format specifier and sends text/html response with
 // status code.
-func (c *Context) HTML(code int, format string, a ...interface{}) error {
+func (c *Context) HTML(code int, format string, a ...interface{}) (err error) {
 	c.response.Header().Set(ContentType, TextHTML)
 	c.response.WriteHeader(code)
-	_, err := fmt.Fprintf(c.response, format, a...)
-	return err
+	if _, err = fmt.Fprintf(c.response, format, a...); err != nil {
+		c.response.clear()
+	}
+	return
 }
 
 // NoContent sends a response with no body and a status code.
