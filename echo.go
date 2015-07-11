@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 
+	"encoding/xml"
 	"github.com/bradfitz/http2"
 	"github.com/mattn/go-colorable"
 	"golang.org/x/net/websocket"
@@ -90,11 +91,12 @@ const (
 	//-------------
 
 	ApplicationJSON     = "application/json"
+	ApplicationXML      = "application/xml"
+	ApplicationForm     = "application/x-www-form-urlencoded"
 	ApplicationProtobuf = "application/protobuf"
 	ApplicationMsgpack  = "application/msgpack"
 	TextPlain           = "text/plain"
 	TextHTML            = "text/html"
-	ApplicationForm     = "application/x-www-form-urlencoded"
 	MultipartForm       = "multipart/form-data"
 
 	//---------
@@ -176,8 +178,8 @@ func New() (e *Echo) {
 		err := UnsupportedMediaType
 		if strings.HasPrefix(ct, ApplicationJSON) {
 			err = json.NewDecoder(r.Body).Decode(v)
-		} else if strings.HasPrefix(ct, ApplicationForm) {
-			err = nil
+		} else if strings.HasPrefix(ct, ApplicationXML) {
+			err = xml.NewDecoder(r.Body).Decode(v)
 		}
 		return err
 	})

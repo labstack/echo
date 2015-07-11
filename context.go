@@ -2,6 +2,7 @@ package echo
 
 import (
 	"encoding/json"
+	"encoding/xml"
 	"net/http"
 
 	"fmt"
@@ -111,7 +112,6 @@ func (c *Context) Render(code int, name string, data interface{}) (err error) {
 	c.response.Header().Set(ContentType, TextHTML)
 	c.response.WriteHeader(code)
 	if err = c.echo.renderer.Render(c.response, name, data); err != nil {
-		println(err.Error())
 		c.response.clear()
 	}
 	return
@@ -121,6 +121,17 @@ func (c *Context) Render(code int, name string, data interface{}) (err error) {
 // status code.
 func (c *Context) HTML(code int, format string, a ...interface{}) (err error) {
 	c.response.Header().Set(ContentType, TextHTML)
+	c.response.WriteHeader(code)
+	if _, err = fmt.Fprintf(c.response, format, a...); err != nil {
+		c.response.clear()
+	}
+	return
+}
+
+// String formats according to a format specifier and sends text/plain response
+// with status code.
+func (c *Context) String(code int, format string, a ...interface{}) (err error) {
+	c.response.Header().Set(ContentType, TextPlain)
 	c.response.WriteHeader(code)
 	if _, err = fmt.Fprintf(c.response, format, a...); err != nil {
 		c.response.clear()
@@ -138,12 +149,12 @@ func (c *Context) JSON(code int, i interface{}) (err error) {
 	return
 }
 
-// String formats according to a format specifier and sends text/plain response
-// with status code.
-func (c *Context) String(code int, format string, a ...interface{}) (err error) {
-	c.response.Header().Set(ContentType, TextPlain)
+// XML sends an application/xml response with status code.
+func (c *Context) XML(code int, i interface{}) (err error) {
+	c.response.Header().Set(ContentType, ApplicationXML)
 	c.response.WriteHeader(code)
-	if _, err = fmt.Fprintf(c.response, format, a...); err != nil {
+	c.response.Write([]byte(xml.Header))
+	if err = xml.NewEncoder(c.response).Encode(i); err != nil {
 		c.response.clear()
 	}
 	return

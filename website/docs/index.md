@@ -26,8 +26,9 @@ A fast and unfancy micro web framework for Golang.
 - Handy functions to send variety of HTTP response:
     - HTML
     - HTML via templates
-    - JSON
     - String 
+    - JSON
+    - XML
     - NoContent
     - Redirect
     - Error

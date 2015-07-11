@@ -10,6 +10,7 @@ import (
 
 	"strings"
 
+	"encoding/xml"
 	"github.com/stretchr/testify/assert"
 	"net/url"
 )
@@ -25,8 +26,10 @@ func (t *Template) Render(w io.Writer, name string, data interface{}) error {
 }
 
 func TestContext(t *testing.T) {
-	usr := `{"id":"1","name":"Joe"}`
-	req, _ := http.NewRequest(POST, "/", strings.NewReader(usr))
+	userJSON := `{"id":"1","name":"Joe"}`
+	userXML := `<user><id>1</id><name>Joe</name></user>`
+
+	req, _ := http.NewRequest(POST, "/", strings.NewReader(userJSON))
 	rec := httptest.NewRecorder()
 	c := NewContext(req, NewResponse(rec), New())
 
@@ -58,17 +61,12 @@ func TestContext(t *testing.T) {
 	// JSON
 	testBind(t, c, ApplicationJSON)
 
-	// TODO: Form
-	c.request.Header.Set(ContentType, ApplicationForm)
-	u := new(user)
-	err := c.Bind(u)
-	assert.NoError(t, err)
+	// XML
+	c.request, _ = http.NewRequest(POST, "/", strings.NewReader(userXML))
+	testBind(t, c, ApplicationXML)
 
 	// Unsupported
-	c.request.Header.Set(ContentType, "")
-	u = new(user)
-	err = c.Bind(u)
-	assert.Error(t, err)
+	testBind(t, c, "")
 
 	//--------
 	// Render
@@ -78,7 +76,7 @@ func TestContext(t *testing.T) {
 		templates: template.Must(template.New("hello").Parse("Hello, {{.}}!")),
 	}
 	c.echo.SetRenderer(tpl)
-	err = c.Render(http.StatusOK, "hello", "Joe")
+	err := c.Render(http.StatusOK, "hello", "Joe")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, "Hello, Joe!", rec.Body.String())
@@ -96,7 +94,18 @@ func TestContext(t *testing.T) {
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, ApplicationJSON, rec.Header().Get(ContentType))
-		assert.Equal(t, usr, strings.TrimSpace(rec.Body.String()))
+		assert.Equal(t, userJSON, strings.TrimSpace(rec.Body.String()))
+	}
+
+	// XML
+	req.Header.Set(Accept, ApplicationXML)
+	rec = httptest.NewRecorder()
+	c = NewContext(req, NewResponse(rec), New())
+	err = c.XML(http.StatusOK, user{"1", "Joe"})
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, ApplicationXML, rec.Header().Get(ContentType))
+		assert.Equal(t, xml.Header, xml.Header, rec.Body.String())
 	}
 
 	// String
@@ -175,7 +184,9 @@ func testBind(t *testing.T, c *Context, ct string) {
 	c.request.Header.Set(ContentType, ct)
 	u := new(user)
 	err := c.Bind(u)
-	if assert.NoError(t, err) {
+	if ct == "" {
+		assert.Error(t, UnsupportedMediaType)
+	} else if assert.NoError(t, err) {
 		assert.Equal(t, "1", u.ID)
 		assert.Equal(t, "Joe", u.Name)
 	}
