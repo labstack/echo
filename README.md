@@ -104,6 +104,7 @@ Community created packages for Echo
 - [go_middleware](https://github.com/rightscale/go_middleware)
 - [permissions2](https://github.com/xyproto/permissions2)
 - [permissionbolt](https://github.com/xyproto/permissionbolt)
+- [echo-middleware](https://github.com/syntaqx/echo-middleware)
 
 ## Contribute
 
