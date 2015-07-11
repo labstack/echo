@@ -99,6 +99,17 @@ func TestContext(t *testing.T) {
 		assert.Equal(t, usr, strings.TrimSpace(rec.Body.String()))
 	}
 
+	// XML
+	req.Header.Set(Accept, ApplicationXML)
+	rec = httptest.NewRecorder()
+	c = NewContext(req, NewResponse(rec), New())
+	err = c.XML(http.StatusOK, user{"1", "Joe"})
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, ApplicationXML, rec.Header().Get(ContentType))
+		assert.Equal(t, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<user><id>1</id><name>Joe</name></user>", strings.TrimSpace(rec.Body.String()))
+	}
+
 	// String
 	req.Header.Set(Accept, TextPlain)
 	rec = httptest.NewRecorder()
