@@ -90,6 +90,7 @@ const (
 	//-------------
 
 	ApplicationJSON     = "application/json"
+	ApplicationXML      = "application/xml"
 	ApplicationProtobuf = "application/protobuf"
 	ApplicationMsgpack  = "application/msgpack"
 	TextPlain           = "text/plain"

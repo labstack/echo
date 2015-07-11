@@ -2,6 +2,7 @@ package echo
 
 import (
 	"encoding/json"
+	"encoding/xml"
 	"net/http"
 
 	"fmt"
@@ -133,6 +134,17 @@ func (c *Context) JSON(code int, i interface{}) (err error) {
 	c.response.Header().Set(ContentType, ApplicationJSON)
 	c.response.WriteHeader(code)
 	if err = json.NewEncoder(c.response).Encode(i); err != nil {
+		c.response.clear()
+	}
+	return
+}
+
+// XML sends an application/xml response with status code.
+func (c *Context) XML(code int, i interface{}) (err error) {
+	c.response.Header().Set(ContentType, ApplicationXML)
+	c.response.WriteHeader(code)
+	c.response.Write([]byte(xml.Header))
+	if err = xml.NewEncoder(c.response).Encode(i); err != nil {
 		c.response.clear()
 	}
 	return
