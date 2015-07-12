@@ -90,13 +90,13 @@ const (
 	// Media types
 	//-------------
 
-	ApplicationJSON     = "application/json"
-	ApplicationXML      = "application/xml"
+	ApplicationJSON     = "application/json; charset=utf-8"
+	ApplicationXML      = "application/xml; charset=utf-8"
 	ApplicationForm     = "application/x-www-form-urlencoded"
 	ApplicationProtobuf = "application/protobuf"
 	ApplicationMsgpack  = "application/msgpack"
-	TextPlain           = "text/plain"
-	TextHTML            = "text/html"
+	TextHTML            = "text/html ;charset=utf-8"
+	TextPlain           = "text/plain ;charset=utf-8"
 	MultipartForm       = "multipart/form-data"
 
 	//---------
