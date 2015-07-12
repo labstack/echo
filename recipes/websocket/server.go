@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/labstack/echo"
 	mw "github.com/labstack/echo/middleware"
 	"golang.org/x/net/websocket"
@@ -24,7 +26,7 @@ func main() {
 			if err = websocket.Message.Receive(ws, &msg); err != nil {
 				return
 			}
-			println(msg)
+			fmt.Println(msg)
 		}
 		return
 	})
