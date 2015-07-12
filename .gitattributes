@@ -17,4 +17,5 @@ LICENSE text eol=lf
 # Exclude `website` and `examples` from Github's language statistics
 # https://github.com/github/linguist#using-gitattributes
 examples/* linguist-documentation
+recipes/* linguist-documentation
 website/* linguist-documentation
