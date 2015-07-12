@@ -95,8 +95,8 @@ const (
 	ApplicationForm     = "application/x-www-form-urlencoded"
 	ApplicationProtobuf = "application/protobuf"
 	ApplicationMsgpack  = "application/msgpack"
-	TextHTML            = "text/html ;charset=utf-8"
-	TextPlain           = "text/plain ;charset=utf-8"
+	TextHTML            = "text/html; charset=utf-8"
+	TextPlain           = "text/plain; charset=utf-8"
 	MultipartForm       = "multipart/form-data"
 
 	//---------
