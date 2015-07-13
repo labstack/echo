@@ -15,8 +15,9 @@ import (
 	"sync"
 
 	"encoding/xml"
+
 	"github.com/bradfitz/http2"
-	"github.com/mattn/go-colorable"
+	"github.com/labstack/gommon/color"
 	"golang.org/x/net/websocket"
 )
 
@@ -156,6 +157,9 @@ func New() (e *Echo) {
 	// Defaults
 	//----------
 
+	if runtime.GOOS == "windows" {
+		color.Disable()
+	}
 	e.HTTP2(false)
 	e.notFoundHandler = func(c *Context) error {
 		return NewHTTPError(http.StatusNotFound)
@@ -189,6 +193,11 @@ func New() (e *Echo) {
 // Router returns router.
 func (e *Echo) Router() *Router {
 	return e.router
+}
+
+// DisableColoredLog disables colored log.
+func (e *Echo) DisableColoredLog() {
+	color.Disable()
 }
 
 // HTTP2 enables HTTP2 support.
@@ -568,8 +577,4 @@ func wrapHandler(h Handler) HandlerFunc {
 	default:
 		panic("echo => unknown handler")
 	}
-}
-
-func init() {
-	log.SetOutput(colorable.NewColorableStdout())
 }
