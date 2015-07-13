@@ -1,0 +1,31 @@
+application: my-application-id
+module: default
+version: alpha
+runtime: go
+api_version: go1
+
+handlers:
+- url: /
+  mime_type: text/html
+  static_files: public/index.html
+  upload: public/index.html
+
+- url: /favicon.ico
+  mime_type: image/x-icon
+  static_files: public/favicon.ico
+  upload: public/favicon.ico
+
+- url: /scripts
+  mime_type: text/javascript
+  static_dir: public/scripts
+
+- url: /public
+  static_dir: public
+
+# server-side template file needs to be read by app
+- url: /public/views
+  static_dir: /public/views
+  application_readable: true
+
+- url: /.*
+  script: _go_app
