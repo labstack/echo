@@ -158,7 +158,7 @@ func New() (e *Echo) {
 	//----------
 
 	if runtime.GOOS == "windows" {
-		color.Disable()
+		e.DisableColoredLog()
 	}
 	e.HTTP2(false)
 	e.notFoundHandler = func(c *Context) error {

@@ -179,5 +179,6 @@ func (c *Context) Error(err error) {
 func (c *Context) reset(r *http.Request, w http.ResponseWriter, e *Echo) {
 	c.request = r
 	c.response.reset(w)
+	c.query = nil
 	c.echo = e
 }
