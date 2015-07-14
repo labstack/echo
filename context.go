@@ -94,6 +94,9 @@ func (c *Context) Get(key string) interface{} {
 
 // Set saves data in the context.
 func (c *Context) Set(key string, val interface{}) {
+	if c.store == nil {
+		c.store = make(store)
+	}
 	c.store[key] = val
 }
 
@@ -180,5 +183,6 @@ func (c *Context) reset(r *http.Request, w http.ResponseWriter, e *Echo) {
 	c.request = r
 	c.response.reset(w)
 	c.query = nil
+	c.store = nil
 	c.echo = e
 }
