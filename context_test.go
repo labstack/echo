@@ -139,7 +139,7 @@ func TestContext(t *testing.T) {
 	// Redirect
 	rec = httptest.NewRecorder()
 	c = NewContext(req, NewResponse(rec), New())
-	c.Redirect(http.StatusMovedPermanently, "http://labstack.github.io/echo")
+	assert.Equal(t, nil, c.Redirect(http.StatusMovedPermanently, "http://labstack.github.io/echo"))
 
 	// Error
 	rec = httptest.NewRecorder()

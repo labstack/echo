@@ -170,8 +170,9 @@ func (c *Context) NoContent(code int) error {
 }
 
 // Redirect redirects the request using http.Redirect with status code.
-func (c *Context) Redirect(code int, url string) {
+func (c *Context) Redirect(code int, url string) error {
 	http.Redirect(c.response, c.request, url, code)
+  return nil
 }
 
 // Error invokes the registered HTTP error handler. Generally used by middleware.
