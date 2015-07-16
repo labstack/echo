@@ -59,7 +59,7 @@ func TestContext(t *testing.T) {
 	//------
 
 	// JSON
-	testBind(t, c, ApplicationJSON)
+	testBind(t, c, "application/json")
 
 	// XML
 	c.request, _ = http.NewRequest(POST, "/", strings.NewReader(userXML))

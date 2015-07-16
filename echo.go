@@ -180,9 +180,9 @@ func New() (e *Echo) {
 	e.SetBinder(func(r *http.Request, v interface{}) error {
 		ct := r.Header.Get(ContentType)
 		err := UnsupportedMediaType
-		if strings.HasPrefix(ct, ApplicationJSON) {
+		if strings.HasPrefix(ApplicationJSON, ct) {
 			err = json.NewDecoder(r.Body).Decode(v)
-		} else if strings.HasPrefix(ct, ApplicationXML) {
+		} else if strings.HasPrefix(ApplicationXML, ct) {
 			err = xml.NewDecoder(r.Body).Decode(v)
 		}
 		return err
