@@ -92,7 +92,7 @@ $ go get github.com/labstack/echo
 - [Streaming Response](http://echo.labstack.com/recipes/streaming-response)
 - [WebSocket](http://echo.labstack.com/recipes/websocket)
 - [Subdomains](http://echo.labstack.com/recipes/subdomains)
-- [JWT Authentication](http://echo.labstack.com/recipes/jwt-auth)
+- [JWT Authentication](http://echo.labstack.com/recipes/jwt-authentication/)
 - [Graceful Shutdown](http://echo.labstack.com/recipes/graceful-shutdown)
 
 ##[Guide](http://echo.labstack.com/guide)
