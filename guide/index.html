@@ -274,7 +274,7 @@ It's helpful to centralize all your URI patterns which ease in refactoring your
 application.</p>
 <p><code>echo.URI(h, 1)</code> will generate <code>/users/1</code> for the route registered below</p>
 <pre><code class="go">// Handler
-h := func(*echo.Context) error {
+h := func(c *echo.Context) error {
     return c.String(http.StatusOK, &quot;OK&quot;)
 }
 
