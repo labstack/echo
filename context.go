@@ -106,8 +106,8 @@ func (c *Context) Bind(i interface{}) error {
 	return c.echo.binder(c.request, i)
 }
 
-// Render invokes the registered HTML template renderer and sends a text/html
-// response with status code.
+// Render renders a template with data and sends a text/html response with status
+// code. Templates can be registered using `Echo.SetRenderer()`.
 func (c *Context) Render(code int, name string, data interface{}) (err error) {
 	if c.echo.renderer == nil {
 		return RendererNotRegistered

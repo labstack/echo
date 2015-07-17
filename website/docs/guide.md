@@ -46,6 +46,10 @@ and message `HTTPError.Message`.
 
 Enables debug mode.
 
+### Disable colored log 
+
+`Echo.DisableColoredLog()` 
+
 ## Routing
 
 Echo's router is [fast, optimized](https://github.com/labstack/echo#benchmark) and
@@ -299,29 +303,89 @@ $ curl -d "name=joe" http://localhost:1323/users
 
 ## Response
 
+### Template
+
+```go
+Context.Render(code int, name string, data interface{}) error
+```
+Renders a template with data and sends a text/html response with status code. Templates
+can be registered using `Echo.SetRenderer()`, allowing us to use any templating engine.
+Below is an example using Go `html/template`
+
+Implement `echo.Render`
+
+```go
+Template struct {
+    templates *template.Template
+}
+
+func (t *Template) Render(w io.Writer, name string, data interface{}) error {
+	return t.templates.ExecuteTemplate(w, name, data)
+}
+```
+
+Pre-compile templates
+
+```go
+t := &Template{
+    templates: template.Must(template.ParseGlob("public/views/*.html")),
+}
+```
+
+Register templates
+
+```go
+e := echo.New()
+e.SetRenderer(t)
+e.Get("/hello", Hello)
+```
+
+Template `public/views/hello.html`
+
+```html
+{{define "hello"}}Hello, {{.}}!{{end}}
+
+```
+
+Handler
+
+```go
+func Hello(c *echo.Context) error {
+	return c.Render(http.StatusOK, "hello", "World")
+}
+```
+
 ### JSON
 
 ```go
-context.JSON(code int, v interface{}) error
+Context.JSON(code int, v interface{}) error
 ```
 
 Sends a JSON HTTP response with status code.
 
-### String
+### XML
 
 ```go
-context.String(code int, s string) error
+Context.XML(code int, v interface{}) error
 ```
 
-Sends a text/plain HTTP response with status code.
+Sends an XML HTTP response with status code.
 
 ### HTML
 
 ```go
-func (c *Context) HTML(code int, html string) error
+Context.HTML(code int, html string) error
 ```
 
 Sends an HTML HTTP response with status code.
+
+### String
+
+```go
+Context.String(code int, s string) error
+```
+
+Sends a text/plain HTTP response with status code.
 
 ### Static files
 
