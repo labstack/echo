@@ -195,6 +195,8 @@ and message <code>HTTPError.Message</code>.</li>
 <h3 id="debug">Debug</h3>
 <p><code>Echo.SetDebug(on bool)</code></p>
 <p>Enables debug mode.</p>
+<h3 id="disable-colored-log">Disable colored log</h3>
+<p><code>Echo.DisableColoredLog()</code> </p>
 <h2 id="routing">Routing</h2>
 <p>Echo's router is <a href="https://github.com/labstack/echo#benchmark">fast, optimized</a> and
 flexible. It's based on <a href="http://en.wikipedia.org/wiki/Radix_tree">radix tree</a> data
@@ -390,21 +392,66 @@ better performance.</p>
 </code></pre>
 
 <h2 id="response">Response</h2>
+<h3 id="template">Template</h3>
+<pre><code class="go">Context.Render(code int, name string, data interface{}) error
+</code></pre>
+
+<p>Renders a template with data and sends a text/html response with status code. Templates
+can be registered using <code>Echo.SetRenderer()</code>, allowing us to use any templating engine.
+Below is an example using Go <code>html/template</code></p>
+<p>Implement <code>echo.Render</code></p>
+<pre><code class="go">Template struct {
+    templates *template.Template
+}
+
+func (t *Template) Render(w io.Writer, name string, data interface{}) error {
+    return t.templates.ExecuteTemplate(w, name, data)
+}
+</code></pre>
+
+<p>Pre-compile templates</p>
+<pre><code class="go">t := &amp;Template{
+    templates: template.Must(template.ParseGlob(&quot;public/views/*.html&quot;)),
+}
+</code></pre>
+
+<p>Register templates</p>
+<pre><code class="go">e := echo.New()
+e.SetRenderer(t)
+e.Get(&quot;/hello&quot;, Hello)
+</code></pre>
+
+<p>Template <code>public/views/hello.html</code></p>
+<pre><code class="html">{{define &quot;hello&quot;}}Hello, {{.}}!{{end}}
+
+</code></pre>
+
+<p>Handler</p>
+<pre><code class="go">func Hello(c *echo.Context) error {
+    return c.Render(http.StatusOK, &quot;hello&quot;, &quot;World&quot;)
+}
+</code></pre>
+
 <h3 id="json">JSON</h3>
-<pre><code class="go">context.JSON(code int, v interface{}) error
+<pre><code class="go">Context.JSON(code int, v interface{}) error
 </code></pre>
 
 <p>Sends a JSON HTTP response with status code.</p>
-<h3 id="string">String</h3>
-<pre><code class="go">context.String(code int, s string) error
+<h3 id="xml">XML</h3>
+<pre><code class="go">Context.XML(code int, v interface{}) error
 </code></pre>
 
-<p>Sends a text/plain HTTP response with status code.</p>
+<p>Sends an XML HTTP response with status code.</p>
 <h3 id="html">HTML</h3>
-<pre><code class="go">func (c *Context) HTML(code int, html string) error
+<pre><code class="go">Context.HTML(code int, html string) error
 </code></pre>
 
 <p>Sends an HTML HTTP response with status code.</p>
+<h3 id="string">String</h3>
+<pre><code class="go">Context.String(code int, s string) error
+</code></pre>
+
+<p>Sends a text/plain HTTP response with status code.</p>
 <h3 id="static-files">Static files</h3>
 <p><code>Echo.Static(path, root string)</code> serves static files. For example, code below serves
 files from directory <code>public/scripts</code> for any request path starting with <code>/scripts/</code>.</p>

@@ -167,6 +167,8 @@
 <pre><code class="go">package main
 
 import (
+    &quot;fmt&quot;
+
     &quot;github.com/labstack/echo&quot;
     mw &quot;github.com/labstack/echo/middleware&quot;
     &quot;golang.org/x/net/websocket&quot;
@@ -190,7 +192,7 @@ func main() {
             if err = websocket.Message.Receive(ws, &amp;msg); err != nil {
                 return
             }
-            println(msg)
+            fmt.Println(msg)
         }
         return
     })
