@@ -46,9 +46,9 @@ and message `HTTPError.Message`.
 
 Enables debug mode.
 
-### Disable colored log 
+### Enable/Disable colored log 
 
-`Echo.DisableColoredLog()` 
+`Echo.ColoredLog(on bool)` 
 
 ## Routing
 

@@ -158,7 +158,7 @@ func New() (e *Echo) {
 	//----------
 
 	if runtime.GOOS == "windows" {
-		e.DisableColoredLog()
+		e.ColoredLog(false)
 	}
 	e.HTTP2(false)
 	e.notFoundHandler = func(c *Context) error {
@@ -195,12 +195,12 @@ func (e *Echo) Router() *Router {
 	return e.router
 }
 
-// DisableColoredLog disables colored log.
-func (e *Echo) DisableColoredLog() {
+// ColoredLog enable/disable colored log.
+func (e *Echo) ColoredLog(on bool) {
 	color.Disable()
 }
 
-// HTTP2 enables HTTP2 support.
+// HTTP2 enable/disable HTTP2 support.
 func (e *Echo) HTTP2(on bool) {
 	e.http2 = on
 }
