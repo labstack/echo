@@ -62,7 +62,7 @@ code below registers a route for method `GET`, path `/hello` and a handler which
 `Hello!` HTTP response.
 
 ```go
-echo.Get("/hello", func(c *echo.Context) error {
+e.Get("/hello", func(c *echo.Context) error {
 	return c.String(http.StatusOK, "Hello!")
 })
 ```
@@ -139,11 +139,11 @@ e.Use(mw.BasicAuth(func(usr, pwd string) bool {
 It's helpful to centralize all your URI patterns which ease in refactoring your
 application.
 
-`echo.URI(h, 1)` will generate `/users/1` for the route registered below
+`e.URI(h, 1)` will generate `/users/1` for the route registered below
 
 ```go
 // Handler
-h := func(*echo.Context) error {
+h := func(c *echo.Context) error {
 	return c.String(http.StatusOK, "OK")
 }
 
@@ -180,7 +180,7 @@ BasicAuth middleware provides an HTTP basic authentication.
 *Example*
 
 ```go
-echo.Group("/admin")
+e.Group("/admin")
 e.Use(mw.BasicAuth(func(usr, pwd string) bool {
 	if usr == "joe" && pwd == "secret" {
 		return true
@@ -245,14 +245,14 @@ e.Use(mw.RedirectToSlash())
 
 ### Path parameter
 
-Path parameter can be retrieved either by name `echo.Context.Param(name string) string`
-or by index `echo.Context.P(i int) string`. Getting parameter by index gives a slightly
+Path parameter can be retrieved either by name `Context.Param(name string) string`
+or by index `Context.P(i int) string`. Getting parameter by index gives a slightly
 better performance.
 
 *Example*
 
 ```go
-echo.Get("/users/:name", func(c *echo.Context) error {
+e.Get("/users/:name", func(c *echo.Context) error {
 	// By name
 	name := c.Param("name")
 
@@ -269,12 +269,12 @@ $ curl http://localhost:1323/users/joe
 
 ### Query parameter
 
-Query parameter can be retrieved by name using `echo.Context.Query(name string)`.
+Query parameter can be retrieved by name using `Context.Query(name string)`.
 
 *Example*
 
 ```go
-echo.Get("/users", func(c *echo.Context) error {
+e.Get("/users", func(c *echo.Context) error {
 	name := c.Query("name")
 	return c.String(http.StatusOK, name)
 })
@@ -286,12 +286,12 @@ $ curl -G -d "name=joe" http://localhost:1323/users
 
 ### Form parameter
 
-Form parameter can be retrieved by name using `echo.Context.Form(name string)`. 
+Form parameter can be retrieved by name using `Context.Form(name string)`. 
 
 *Example*
 
 ```go
-echo.Post("/users", func(c *echo.Context) error {
+e.Post("/users", func(c *echo.Context) error {
 	name := c.Form("name")
 	return c.String(http.StatusOK, name)
 })
