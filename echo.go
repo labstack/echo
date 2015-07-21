@@ -91,7 +91,9 @@ const (
 	// Media types
 	//-------------
 
+	applicationJSON     = "application/json"
 	ApplicationJSON     = "application/json; charset=utf-8"
+	applicationXML      = "application/xml"
 	ApplicationXML      = "application/xml; charset=utf-8"
 	ApplicationForm     = "application/x-www-form-urlencoded"
 	ApplicationProtobuf = "application/protobuf"
@@ -180,9 +182,9 @@ func New() (e *Echo) {
 	e.SetBinder(func(r *http.Request, v interface{}) error {
 		ct := r.Header.Get(ContentType)
 		err := UnsupportedMediaType
-		if strings.HasPrefix(ApplicationJSON, ct) {
+		if strings.HasPrefix(ct, applicationJSON) {
 			err = json.NewDecoder(r.Body).Decode(v)
-		} else if strings.HasPrefix(ApplicationXML, ct) {
+		} else if strings.HasPrefix(ct, applicationXML) {
 			err = xml.NewDecoder(r.Body).Decode(v)
 		}
 		return err
