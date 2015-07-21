@@ -209,7 +209,11 @@ func (r *Router) treeIndex(method string) uint8 {
 }
 
 func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo) {
-	cn := r.trees[r.treeIndex(method)] // Current node as root
+	i := r.treeIndex(method)
+	if i > 20 {
+		return
+	}
+	cn := r.trees[i] // Current node as root
 	search := path
 
 	var (
