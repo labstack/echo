@@ -112,7 +112,7 @@ func (c *Context) Render(code int, name string, data interface{}) (err error) {
 	if c.echo.renderer == nil {
 		return RendererNotRegistered
 	}
-	c.response.Header().Set(ContentType, TextHTML)
+	c.response.Header().Set(ContentType, TextHTMLUTF8)
 	c.response.WriteHeader(code)
 	if err = c.echo.renderer.Render(c.response, name, data); err != nil {
 		c.response.clear()
@@ -123,7 +123,7 @@ func (c *Context) Render(code int, name string, data interface{}) (err error) {
 // HTML formats according to a format specifier and sends text/html response with
 // status code.
 func (c *Context) HTML(code int, format string, a ...interface{}) (err error) {
-	c.response.Header().Set(ContentType, TextHTML)
+	c.response.Header().Set(ContentType, TextHTMLUTF8)
 	c.response.WriteHeader(code)
 	if _, err = fmt.Fprintf(c.response, format, a...); err != nil {
 		c.response.clear()
@@ -144,7 +144,7 @@ func (c *Context) String(code int, format string, a ...interface{}) (err error) 
 
 // JSON sends an application/json response with status code.
 func (c *Context) JSON(code int, i interface{}) (err error) {
-	c.response.Header().Set(ContentType, ApplicationJSON)
+	c.response.Header().Set(ContentType, ApplicationJSONUTF8)
 	c.response.WriteHeader(code)
 	if err = json.NewEncoder(c.response).Encode(i); err != nil {
 		c.response.clear()
@@ -154,7 +154,7 @@ func (c *Context) JSON(code int, i interface{}) (err error) {
 
 // XML sends an application/xml response with status code.
 func (c *Context) XML(code int, i interface{}) (err error) {
-	c.response.Header().Set(ContentType, ApplicationXML)
+	c.response.Header().Set(ContentType, ApplicationXMLUTF8)
 	c.response.WriteHeader(code)
 	c.response.Write([]byte(xml.Header))
 	if err = xml.NewEncoder(c.response).Encode(i); err != nil {
@@ -172,7 +172,7 @@ func (c *Context) NoContent(code int) error {
 // Redirect redirects the request using http.Redirect with status code.
 func (c *Context) Redirect(code int, url string) error {
 	http.Redirect(c.response, c.request, url, code)
-  return nil
+	return nil
 }
 
 // Error invokes the registered HTTP error handler. Generally used by middleware.
