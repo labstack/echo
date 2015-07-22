@@ -93,7 +93,7 @@ func TestContext(t *testing.T) {
 	err = c.JSON(http.StatusOK, user{"1", "Joe"})
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, ApplicationJSONUTF8, rec.Header().Get(ContentType))
+		assert.Equal(t, ApplicationJSONCharsetUTF8, rec.Header().Get(ContentType))
 		assert.Equal(t, userJSON, strings.TrimSpace(rec.Body.String()))
 	}
 
@@ -104,7 +104,7 @@ func TestContext(t *testing.T) {
 	err = c.XML(http.StatusOK, user{"1", "Joe"})
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, ApplicationXMLUTF8, rec.Header().Get(ContentType))
+		assert.Equal(t, ApplicationXMLCharsetUTF8, rec.Header().Get(ContentType))
 		assert.Equal(t, xml.Header, xml.Header, rec.Body.String())
 	}
 
@@ -126,7 +126,7 @@ func TestContext(t *testing.T) {
 	err = c.HTML(http.StatusOK, "Hello, <strong>World!</strong>")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, TextHTMLUTF8, rec.Header().Get(ContentType))
+		assert.Equal(t, TextHTMLCharsetUTF8, rec.Header().Get(ContentType))
 		assert.Equal(t, "Hello, <strong>World!</strong>", rec.Body.String())
 	}
 

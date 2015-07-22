@@ -91,21 +91,21 @@ const (
 	// Media types
 	//-------------
 
-	ApplicationJSON     = "application/json"
-	ApplicationJSONUTF8 = "application/json; " + UTF8
-	ApplicationXML      = "application/xml"
-	ApplicationXMLUTF8  = "application/xml; " + UTF8
-	ApplicationForm     = "application/x-www-form-urlencoded"
-	ApplicationProtobuf = "application/protobuf"
-	ApplicationMsgpack  = "application/msgpack"
-	TextHTML            = "text/html"
-	TextHTMLUTF8        = "text/html; " + UTF8
-	TextPlain           = "text/plain"
-	TextPlainUTF8       = "text/plain; " + UTF8
-	MultipartForm       = "multipart/form-data"
+	ApplicationJSON            = "application/json"
+	ApplicationJSONCharsetUTF8 = ApplicationJSON + "; " + CharsetUTF8
+	ApplicationXML             = "application/xml"
+	ApplicationXMLCharsetUTF8  = ApplicationXML + "; " + CharsetUTF8
+	ApplicationForm            = "application/x-www-form-urlencoded"
+	ApplicationProtobuf        = "application/protobuf"
+	ApplicationMsgpack         = "application/msgpack"
+	TextHTML                   = "text/html"
+	TextHTMLCharsetUTF8        = TextHTML + "; " + CharsetUTF8
+	TextPlain                  = "text/plain"
+	TextPlainCharsetUTF8       = TextPlain + "; " + CharsetUTF8
+	MultipartForm              = "multipart/form-data"
 
 	// Charset
-	UTF8 = "charset=utf-8"
+	CharsetUTF8 = "charset=utf-8"
 
 	//---------
 	// Headers
