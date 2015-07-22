@@ -184,15 +184,15 @@ func New() (e *Echo) {
 		http.Error(c.response, msg, code)
 	}
 	e.SetHTTPErrorHandler(e.defaultHTTPErrorHandler)
-	e.SetBinder(func(r *http.Request, v interface{}) error {
+	e.SetBinder(func(r *http.Request, v interface{}) (err error) {
 		ct := r.Header.Get(ContentType)
-		err := UnsupportedMediaType
+		err = UnsupportedMediaType
 		if strings.HasPrefix(ct, ApplicationJSON) {
 			err = json.NewDecoder(r.Body).Decode(v)
 		} else if strings.HasPrefix(ct, ApplicationXML) {
 			err = xml.NewDecoder(r.Body).Decode(v)
 		}
-		return err
+		return
 	})
 	return
 }

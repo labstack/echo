@@ -3,6 +3,7 @@ package echo
 import (
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"net/http"
 
 	"fmt"
@@ -26,6 +27,8 @@ type (
 	}
 	store map[string]interface{}
 )
+
+var InvalidRedirectCode  = errors.New("echo ⇒ invalid redirect status code")
 
 // NewContext creates a Context object.
 func NewContext(req *http.Request, res *Response, e *Echo) *Context {
@@ -170,7 +173,12 @@ func (c *Context) NoContent(code int) error {
 }
 
 // Redirect redirects the request using http.Redirect with status code.
-func (c *Context) Redirect(code int, url string) error {
+func (c *Context) Redirect(code int, url string) (err error) {
+	if code < http.StatusMultipleChoices || code > http.StatusTemporaryRedirect {
+		err = InvalidRedirectCode
+		c.response.clear()
+		return
+	}
 	http.Redirect(c.response, c.request, url, code)
 	return nil
 }
