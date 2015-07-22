@@ -7,8 +7,9 @@ import (
 
 	"fmt"
 
-	"golang.org/x/net/websocket"
 	"net/url"
+
+	"golang.org/x/net/websocket"
 )
 
 type (
@@ -171,6 +172,9 @@ func (c *Context) NoContent(code int) error {
 
 // Redirect redirects the request using http.Redirect with status code.
 func (c *Context) Redirect(code int, url string) error {
+	if code < http.StatusMultipleChoices || code > http.StatusTemporaryRedirect {
+		return InvalidRedirectCode
+	}
 	http.Redirect(c.response, c.request, url, code)
 	return nil
 }
