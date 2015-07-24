@@ -7,8 +7,9 @@ import (
 
 	"fmt"
 
-	"golang.org/x/net/websocket"
 	"net/url"
+
+	"golang.org/x/net/websocket"
 )
 
 type (
@@ -148,6 +149,20 @@ func (c *Context) JSON(code int, i interface{}) (err error) {
 	c.response.WriteHeader(code)
 	if err = json.NewEncoder(c.response).Encode(i); err != nil {
 		c.response.clear()
+	}
+	return
+}
+
+// Javascript sends an application/json response with status code.
+func (c *Context) Javascript(code int, callbackName string, i interface{}) (err error) {
+	c.response.Header().Set(ContentType, ApplicationJavascriptCharsetUTF8)
+	c.response.WriteHeader(code)
+	c.response.Write([]byte(callbackName + "("))
+	err = json.NewEncoder(c.response).Encode(i)
+	if err != nil {
+		c.response.clear()
+	} else {
+		c.response.Write([]byte(");"))
 	}
 	return
 }
