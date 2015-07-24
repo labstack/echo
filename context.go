@@ -153,9 +153,9 @@ func (c *Context) JSON(code int, i interface{}) (err error) {
 	return
 }
 
-// Javascript sends an application/json response with status code.
-func (c *Context) Javascript(code int, callbackName string, i interface{}) (err error) {
-	c.response.Header().Set(ContentType, ApplicationJavascriptCharsetUTF8)
+// JSONP sends an application/javascript (JSONP) response with status code.
+func (c *Context) JSONP(code int, callbackName string, i interface{}) (err error) {
+	c.response.Header().Set(ContentType, ApplicationJSONPCharsetUTF8)
 	c.response.WriteHeader(code)
 	c.response.Write([]byte(callbackName + "("))
 	err = json.NewEncoder(c.response).Encode(i)
