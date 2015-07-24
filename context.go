@@ -153,6 +153,20 @@ func (c *Context) JSON(code int, i interface{}) (err error) {
 	return
 }
 
+// JSONP sends an application/javascript (JSONP) response with status code.
+func (c *Context) JSONP(code int, callbackName string, i interface{}) (err error) {
+	c.response.Header().Set(ContentType, ApplicationJSONPCharsetUTF8)
+	c.response.WriteHeader(code)
+	c.response.Write([]byte(callbackName + "("))
+	err = json.NewEncoder(c.response).Encode(i)
+	if err != nil {
+		c.response.clear()
+	} else {
+		c.response.Write([]byte(");"))
+	}
+	return
+}
+
 // XML sends an application/xml response with status code.
 func (c *Context) XML(code int, i interface{}) (err error) {
 	c.response.Header().Set(ContentType, ApplicationXMLCharsetUTF8)
