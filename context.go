@@ -101,8 +101,8 @@ func (c *Context) Set(key string, val interface{}) {
 	c.store[key] = val
 }
 
-// Bind binds the request body into specified type v. Default binder does it
-// based on Content-Type header.
+// Bind binds the request body into specified type v. Default binder does it based
+// on Content-Type header.
 func (c *Context) Bind(i interface{}) error {
 	return c.echo.binder(c.request, i)
 }
@@ -121,7 +121,7 @@ func (c *Context) Render(code int, name string, data interface{}) (err error) {
 	return
 }
 
-// HTML formats according to a format specifier and sends text/html response with
+// HTML formats according to a format specifier and sends HTML response with
 // status code.
 func (c *Context) HTML(code int, format string, a ...interface{}) (err error) {
 	c.response.Header().Set(ContentType, TextHTMLCharsetUTF8)
@@ -132,8 +132,8 @@ func (c *Context) HTML(code int, format string, a ...interface{}) (err error) {
 	return
 }
 
-// String formats according to a format specifier and sends text/plain response
-// with status code.
+// String formats according to a format specifier and sends text response with status
+// code.
 func (c *Context) String(code int, format string, a ...interface{}) (err error) {
 	c.response.Header().Set(ContentType, TextPlain)
 	c.response.WriteHeader(code)
@@ -143,7 +143,7 @@ func (c *Context) String(code int, format string, a ...interface{}) (err error) 
 	return
 }
 
-// JSON sends an application/json response with status code.
+// JSON sends a JSON response with status code.
 func (c *Context) JSON(code int, i interface{}) (err error) {
 	c.response.Header().Set(ContentType, ApplicationJSONCharsetUTF8)
 	c.response.WriteHeader(code)
@@ -153,7 +153,21 @@ func (c *Context) JSON(code int, i interface{}) (err error) {
 	return
 }
 
-// XML sends an application/xml response with status code.
+// JSONP sends a JSONP response with status code. It uses `callback` to construct
+// the JSONP payload.
+func (c *Context) JSONP(code int, callback string, i interface{}) (err error) {
+	c.response.Header().Set(ContentType, ApplicationJavaScriptCharsetUTF8)
+	c.response.WriteHeader(code)
+	c.response.Write([]byte(callback + "("))
+	if err = json.NewEncoder(c.response).Encode(i); err != nil {
+		c.response.clear()
+	} else {
+		c.response.Write([]byte(");"))
+	}
+	return
+}
+
+// XML sends an XML response with status code.
 func (c *Context) XML(code int, i interface{}) (err error) {
 	c.response.Header().Set(ContentType, ApplicationXMLCharsetUTF8)
 	c.response.WriteHeader(code)

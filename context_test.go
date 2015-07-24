@@ -11,8 +11,9 @@ import (
 	"strings"
 
 	"encoding/xml"
-	"github.com/stretchr/testify/assert"
 	"net/url"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type (
@@ -94,7 +95,19 @@ func TestContext(t *testing.T) {
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, ApplicationJSONCharsetUTF8, rec.Header().Get(ContentType))
-		assert.Equal(t, userJSON, strings.TrimSpace(rec.Body.String()))
+		assert.Equal(t, userJSON+"\n", rec.Body.String())
+	}
+
+	// JSONP
+	req.Header.Set(Accept, ApplicationJavaScript)
+	rec = httptest.NewRecorder()
+	c = NewContext(req, NewResponse(rec), New())
+	callback := "callback"
+	err = c.JSONP(http.StatusOK, callback, user{"1", "Joe"})
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, ApplicationJavaScriptCharsetUTF8, rec.Header().Get(ContentType))
+		assert.Equal(t, callback+"("+userJSON+"\n);", rec.Body.String())
 	}
 
 	// XML
