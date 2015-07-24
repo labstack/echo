@@ -1,12 +1,23 @@
 package echo
 
-import "net/http"
+import (
+	"encoding/binary"
+	"net/http"
+)
 
 type (
 	Router struct {
-		trees  [21]*node
-		routes []Route
-		echo   *Echo
+		connectTree *node
+		deleteTree  *node
+		getTree     *node
+		headTree    *node
+		optionsTree *node
+		patchTree   *node
+		postTree    *node
+		putTree     *node
+		traceTree   *node
+		routes      []Route
+		echo        *Echo
 	}
 	node struct {
 		typ      ntype
@@ -30,15 +41,17 @@ const (
 
 func NewRouter(e *Echo) (r *Router) {
 	r = &Router{
-		//		trees:  make(map[string]*node),
-		routes: []Route{},
-		echo:   e,
-	}
-	for _, m := range methods {
-		r.trees[r.treeIndex(m)] = &node{
-			prefix:   "",
-			children: children{},
-		}
+		routes:      []Route{},
+		echo:        e,
+		connectTree: new(node),
+		deleteTree:  new(node),
+		getTree:     new(node),
+		headTree:    new(node),
+		optionsTree: new(node),
+		patchTree:   new(node),
+		postTree:    new(node),
+		putTree:     new(node),
+		traceTree:   new(node),
 	}
 	return
 }
@@ -81,7 +94,10 @@ func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 		*e.maxParam = l
 	}
 
-	cn := r.trees[r.treeIndex(method)] // Current node as root
+	cn := r.findTree(method) // Current node as root
+	if cn == nil {
+		panic("echo => invalid method")
+	}
 	search := path
 
 	for {
@@ -208,12 +224,74 @@ func (r *Router) treeIndex(method string) uint8 {
 	}
 }
 
+func (r *Router) findTree(method string) (n *node) {
+	switch method[0] {
+	case 'G': // GET
+		m := uint32(method[2])<<8 | uint32(method[1])<<16 | uint32(method[0])<<24
+		if m == 0x47455400 {
+			n = r.getTree
+		}
+	case 'P':
+		switch method[1] {
+		case 'O': // POST
+			m := binary.BigEndian.Uint32([]byte(method))
+			if m == 0x504f5354 {
+				n = r.postTree
+			}
+		case 'U': // PUT
+			m := uint32(method[2])<<8 | uint32(method[1])<<16 | uint32(method[0])<<24
+			if m == 0x50555400 {
+				n = r.putTree
+			}
+		case 'A': // PATCH
+			m := uint64(method[4])<<24 | uint64(method[3])<<32 | uint64(method[2])<<40 |
+				uint64(method[1])<<48 | uint64(method[0])<<56
+			if m == 0x5041544348000000 {
+				n = r.patchTree
+			}
+		}
+	case 'D':
+		m := uint64(method[5])<<16 | uint64(method[4])<<24 | uint64(method[3])<<32 |
+			uint64(method[2])<<40 | uint64(method[1])<<48 | uint64(method[0])<<56
+		if m == 0x44454c4554450000 {
+			n = r.deleteTree
+		}
+	case 'C':
+		m := uint64(method[6])<<8 | uint64(method[5])<<16 | uint64(method[4])<<24 |
+			uint64(method[3])<<32 | uint64(method[2])<<40 | uint64(method[1])<<48 |
+			uint64(method[0])<<56
+		if m == 0x434f4e4e45435400 {
+			n = r.connectTree
+		}
+	case 'H':
+		m := binary.BigEndian.Uint32([]byte(method))
+		if m == 0x48454144 {
+			n = r.headTree
+		}
+	case 'O':
+		m := uint64(method[6])<<8 | uint64(method[5])<<16 | uint64(method[4])<<24 |
+			uint64(method[3])<<32 | uint64(method[2])<<40 | uint64(method[1])<<48 |
+			uint64(method[0])<<56
+		if m == 0x4f5054494f4e5300 {
+			n = r.connectTree
+		}
+	case 'T':
+		m := uint64(method[4])<<24 | uint64(method[3])<<32 | uint64(method[2])<<40 |
+			uint64(method[1])<<48 | uint64(method[0])<<56
+		if m == 0x5452414345000000 {
+			n = r.traceTree
+		}
+	}
+	return
+}
+
 func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo) {
-	i := r.treeIndex(method)
-	if i > 20 {
+	h = notFoundHandler
+	cn := r.findTree(method) // Current node as root
+	if cn == nil {
+		h = badRequestHandler
 		return
 	}
-	cn := r.trees[i] // Current node as root
 	search := path
 
 	var (
@@ -330,10 +408,8 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	c := r.echo.pool.Get().(*Context)
 	h, _ := r.Find(req.Method, req.URL.Path, c)
 	c.reset(req, w, r.echo)
-	if h == nil {
-		c.Error(NewHTTPError(http.StatusNotFound))
-	} else {
-		h(c)
+	if err := h(c); err != nil {
+		r.echo.httpErrorHandler(err, c)
 	}
 	r.echo.pool.Put(c)
 }

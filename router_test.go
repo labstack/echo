@@ -384,7 +384,10 @@ func TestRouterMultiRoute(t *testing.T) {
 
 	// Route > /user
 	h, _ = r.Find(GET, "/user", c)
-	assert.Nil(t, h)
+	if assert.IsType(t, new(HTTPError), h(c)) {
+		he := h(c).(*HTTPError)
+		assert.Equal(t, http.StatusNotFound, he.code)
+	}
 }
 
 func TestRouterPriority(t *testing.T) {
@@ -535,6 +538,16 @@ func TestRouterAPI(t *testing.T) {
 			h(c)
 		}
 	}
+}
+
+func TestRouterAddInvalidMethod(t *testing.T) {
+	e := New()
+	r := e.router
+	assert.Panics(t, func() {
+		r.Add("INVALID", "/", func(*Context) error {
+			return nil
+		}, e)
+	})
 }
 
 func TestRouterServeHTTP(t *testing.T) {

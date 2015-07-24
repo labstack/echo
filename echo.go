@@ -104,7 +104,10 @@ const (
 	TextPlainCharsetUTF8       = TextPlain + "; " + CharsetUTF8
 	MultipartForm              = "multipart/form-data"
 
+	//---------
 	// Charset
+	//---------
+
 	CharsetUTF8 = "charset=utf-8"
 
 	//---------
@@ -150,6 +153,18 @@ var (
 
 	UnsupportedMediaType  = errors.New("echo ⇒ unsupported media type")
 	RendererNotRegistered = errors.New("echo ⇒ renderer not registered")
+
+	//----------------
+	// Error handlers
+	//----------------
+
+	notFoundHandler = func(c *Context) error {
+		return NewHTTPError(http.StatusNotFound)
+	}
+
+	badRequestHandler = func(c *Context) error {
+		return NewHTTPError(http.StatusBadRequest)
+	}
 )
 
 // New creates an instance of Echo.
@@ -168,9 +183,6 @@ func New() (e *Echo) {
 		e.ColoredLog(false)
 	}
 	e.HTTP2(false)
-	e.notFoundHandler = func(c *Context) error {
-		return NewHTTPError(http.StatusNotFound)
-	}
 	e.defaultHTTPErrorHandler = func(err error, c *Context) {
 		code := http.StatusInternalServerError
 		msg := http.StatusText(code)
@@ -426,9 +438,6 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		e = echo
 	}
 	c.reset(r, w, e)
-	if h == nil {
-		h = e.notFoundHandler
-	}
 
 	// Chain middleware with handler in the end
 	for i := len(e.middleware) - 1; i >= 0; i-- {

@@ -368,6 +368,14 @@ func TestEchoNotFound(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
+func TestEchoBadRequest(t *testing.T) {
+	e := New()
+	r, _ := http.NewRequest("INVALID", "/files", nil)
+	w := httptest.NewRecorder()
+	e.ServeHTTP(w, r)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
 func TestEchoHTTPError(t *testing.T) {
 	m := http.StatusText(http.StatusBadRequest)
 	he := NewHTTPError(http.StatusBadRequest, m)
@@ -385,8 +393,7 @@ func testMethod(t *testing.T, method, path string, e *Echo) {
 	m := fmt.Sprintf("%c%s", method[0], strings.ToLower(method[1:]))
 	p := reflect.ValueOf(path)
 	h := reflect.ValueOf(func(c *Context) error {
-		c.String(http.StatusOK, method)
-		return nil
+		return c.String(http.StatusOK, method)
 	})
 	i := interface{}(e)
 	reflect.ValueOf(i).MethodByName(m).Call([]reflect.Value{p, h})
