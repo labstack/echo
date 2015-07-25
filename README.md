@@ -26,6 +26,7 @@ A fast and unfancy micro web framework for Golang.
     - HTML via templates
     - String 
     - JSON
+    - JSONP
     - XML
     - NoContent
     - Redirect

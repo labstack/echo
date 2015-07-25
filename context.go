@@ -115,10 +115,7 @@ func (c *Context) Render(code int, name string, data interface{}) (err error) {
 	}
 	c.response.Header().Set(ContentType, TextHTMLCharsetUTF8)
 	c.response.WriteHeader(code)
-	if err = c.echo.renderer.Render(c.response, name, data); err != nil {
-		c.response.clear()
-	}
-	return
+	return c.echo.renderer.Render(c.response, name, data)
 }
 
 // HTML formats according to a format specifier and sends HTML response with
@@ -126,9 +123,7 @@ func (c *Context) Render(code int, name string, data interface{}) (err error) {
 func (c *Context) HTML(code int, format string, a ...interface{}) (err error) {
 	c.response.Header().Set(ContentType, TextHTMLCharsetUTF8)
 	c.response.WriteHeader(code)
-	if _, err = fmt.Fprintf(c.response, format, a...); err != nil {
-		c.response.clear()
-	}
+	 _, err = fmt.Fprintf(c.response, format, a...)
 	return
 }
 
@@ -137,9 +132,7 @@ func (c *Context) HTML(code int, format string, a ...interface{}) (err error) {
 func (c *Context) String(code int, format string, a ...interface{}) (err error) {
 	c.response.Header().Set(ContentType, TextPlain)
 	c.response.WriteHeader(code)
-	if _, err = fmt.Fprintf(c.response, format, a...); err != nil {
-		c.response.clear()
-	}
+	_, err = fmt.Fprintf(c.response, format, a...)
 	return
 }
 
@@ -147,10 +140,7 @@ func (c *Context) String(code int, format string, a ...interface{}) (err error) 
 func (c *Context) JSON(code int, i interface{}) (err error) {
 	c.response.Header().Set(ContentType, ApplicationJSONCharsetUTF8)
 	c.response.WriteHeader(code)
-	if err = json.NewEncoder(c.response).Encode(i); err != nil {
-		c.response.clear()
-	}
-	return
+	return json.NewEncoder(c.response).Encode(i)
 }
 
 // JSONP sends a JSONP response with status code. It uses `callback` to construct
@@ -159,9 +149,7 @@ func (c *Context) JSONP(code int, callback string, i interface{}) (err error) {
 	c.response.Header().Set(ContentType, ApplicationJavaScriptCharsetUTF8)
 	c.response.WriteHeader(code)
 	c.response.Write([]byte(callback + "("))
-	if err = json.NewEncoder(c.response).Encode(i); err != nil {
-		c.response.clear()
-	} else {
+	if err = json.NewEncoder(c.response).Encode(i); err == nil {
 		c.response.Write([]byte(");"))
 	}
 	return
@@ -172,10 +160,7 @@ func (c *Context) XML(code int, i interface{}) (err error) {
 	c.response.Header().Set(ContentType, ApplicationXMLCharsetUTF8)
 	c.response.WriteHeader(code)
 	c.response.Write([]byte(xml.Header))
-	if err = xml.NewEncoder(c.response).Encode(i); err != nil {
-		c.response.clear()
-	}
-	return
+	return xml.NewEncoder(c.response).Encode(i)
 }
 
 // NoContent sends a response with no body and a status code.

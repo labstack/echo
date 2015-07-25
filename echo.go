@@ -195,7 +195,11 @@ func New() (e *Echo) {
 		if e.debug {
 			msg = err.Error()
 		}
-		http.Error(c.response, msg, code)
+		if !c.response.committed {
+			http.Error(c.response, msg, code)
+		}
+		// TODO:
+		// else just send the message? log?
 	}
 	e.SetHTTPErrorHandler(e.defaultHTTPErrorHandler)
 	e.SetBinder(func(r *http.Request, v interface{}) (err error) {
