@@ -39,10 +39,8 @@ const (
 	mtype
 )
 
-func NewRouter(e *Echo) (r *Router) {
-	r = &Router{
-		routes:      []Route{},
-		echo:        e,
+func NewRouter(e *Echo) *Router {
+	return &Router{
 		connectTree: new(node),
 		deleteTree:  new(node),
 		getTree:     new(node),
@@ -52,8 +50,9 @@ func NewRouter(e *Echo) (r *Router) {
 		postTree:    new(node),
 		putTree:     new(node),
 		traceTree:   new(node),
+		routes:      []Route{},
+		echo:        e,
 	}
-	return
 }
 
 func (r *Router) Add(method, path string, h HandlerFunc, e *Echo) {
@@ -307,10 +306,12 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 	// Search order static > param > match-any
 	for {
 		if search == "" {
-			// Found
-			ctx.pnames = cn.pnames
-			h = cn.handler
-			e = cn.echo
+			if cn.handler != nil {
+				// Found
+				ctx.pnames = cn.pnames
+				h = cn.handler
+				e = cn.echo
+			}
 			return
 		}
 

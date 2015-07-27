@@ -109,7 +109,7 @@ func (c *Context) Bind(i interface{}) error {
 
 // Render renders a template with data and sends a text/html response with status
 // code. Templates can be registered using `Echo.SetRenderer()`.
-func (c *Context) Render(code int, name string, data interface{}) (err error) {
+func (c *Context) Render(code int, name string, data interface{}) error {
 	if c.echo.renderer == nil {
 		return RendererNotRegistered
 	}
@@ -123,7 +123,7 @@ func (c *Context) Render(code int, name string, data interface{}) (err error) {
 func (c *Context) HTML(code int, format string, a ...interface{}) (err error) {
 	c.response.Header().Set(ContentType, TextHTMLCharsetUTF8)
 	c.response.WriteHeader(code)
-	 _, err = fmt.Fprintf(c.response, format, a...)
+	_, err = fmt.Fprintf(c.response, format, a...)
 	return
 }
 
@@ -137,7 +137,7 @@ func (c *Context) String(code int, format string, a ...interface{}) (err error) 
 }
 
 // JSON sends a JSON response with status code.
-func (c *Context) JSON(code int, i interface{}) (err error) {
+func (c *Context) JSON(code int, i interface{}) error {
 	c.response.Header().Set(ContentType, ApplicationJSONCharsetUTF8)
 	c.response.WriteHeader(code)
 	return json.NewEncoder(c.response).Encode(i)
@@ -156,7 +156,7 @@ func (c *Context) JSONP(code int, callback string, i interface{}) (err error) {
 }
 
 // XML sends an XML response with status code.
-func (c *Context) XML(code int, i interface{}) (err error) {
+func (c *Context) XML(code int, i interface{}) error {
 	c.response.Header().Set(ContentType, ApplicationXMLCharsetUTF8)
 	c.response.WriteHeader(code)
 	c.response.Write([]byte(xml.Header))

@@ -137,18 +137,6 @@ const (
 )
 
 var (
-	methods = [...]string{
-		CONNECT,
-		DELETE,
-		GET,
-		HEAD,
-		OPTIONS,
-		PATCH,
-		POST,
-		PUT,
-		TRACE,
-	}
-
 	//--------
 	// Errors
 	//--------
@@ -156,6 +144,7 @@ var (
 	UnsupportedMediaType  = errors.New("echo ⇒ unsupported media type")
 	RendererNotRegistered = errors.New("echo ⇒ renderer not registered")
 	InvalidRedirectCode   = errors.New("echo ⇒ invalid redirect status code")
+
 	//----------------
 	// Error handlers
 	//----------------
@@ -222,7 +211,11 @@ func (e *Echo) Router() *Router {
 
 // ColoredLog enable/disable colored log.
 func (e *Echo) ColoredLog(on bool) {
-	color.Disable()
+	if on {
+		color.Enable()
+	} else {
+		color.Disable()
+	}
 }
 
 // HTTP2 enable/disable HTTP2 support.

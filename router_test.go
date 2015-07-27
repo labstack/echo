@@ -316,9 +316,6 @@ func TestRouterTwoParam(t *testing.T) {
 		assert.Equal(t, "1", c.P(0))
 		assert.Equal(t, "1", c.P(1))
 	}
-
-	h, _ = r.Find(GET, "/users/1", c)
-	assert.Nil(t, h)
 }
 
 func TestRouterMatchAny(t *testing.T) {
