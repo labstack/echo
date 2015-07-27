@@ -222,7 +222,11 @@ func (e *Echo) Router() *Router {
 
 // ColoredLog enable/disable colored log.
 func (e *Echo) ColoredLog(on bool) {
-	color.Disable()
+	if on {
+		color.Enable()
+	} else {
+		color.Disable()
+	}
 }
 
 // HTTP2 enable/disable HTTP2 support.
