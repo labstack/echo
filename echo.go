@@ -181,9 +181,6 @@ func New() (e *Echo) {
 	// Defaults
 	//----------
 
-	if runtime.GOOS == "windows" {
-		e.ColoredLog(false)
-	}
 	e.HTTP2(false)
 	e.defaultHTTPErrorHandler = func(err error, c *Context) {
 		code := http.StatusInternalServerError
