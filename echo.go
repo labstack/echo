@@ -187,8 +187,7 @@ func New() (e *Echo) {
 		if !c.response.committed {
 			http.Error(c.response, msg, code)
 		}
-		// TODO:
-		// else just send the message? log?
+		log.Println(err)
 	}
 	e.SetHTTPErrorHandler(e.defaultHTTPErrorHandler)
 	e.SetBinder(func(r *http.Request, v interface{}) (err error) {
