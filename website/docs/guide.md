@@ -220,25 +220,6 @@ StripTrailingSlash middleware removes the trailing slash from request path.
 e.Use(mw.StripTrailingSlash())
 ```
 
-### RedirectToSlash
-RedirectToSlash middleware redirects requests without trailing slash path to trailing
-slash path.
-
-*Options*
-```go
-RedirectToSlashOptions struct {
-    Code int
-}
-```
-
-*Example*
-
-```go
-e.Use(mw.RedirectToSlash())
-```
-
-> StripTrailingSlash and RedirectToSlash middleware should not be used together.
-
 [Examples](https://github.com/labstack/echo/tree/master/examples/middleware)
 
 ## Request
