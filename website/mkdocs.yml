@@ -15,5 +15,6 @@ pages:
     - Subdomains: recipes/subdomains.md
     - JWT Authentication: recipes/jwt-authentication.md
     - Graceful Shutdown: recipes/graceful-shutdown.md
+    - AppEngine: recipes/appengine.md
 extra:
   site_title: Echo, a fast and unfancy micro web framework for Golang.

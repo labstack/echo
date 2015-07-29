@@ -95,6 +95,7 @@ $ go get github.com/labstack/echo
 - [Subdomains](http://echo.labstack.com/recipes/subdomains)
 - [JWT Authentication](http://echo.labstack.com/recipes/jwt-authentication)
 - [Graceful Shutdown](http://echo.labstack.com/recipes/graceful-shutdown)
+- [AppEngine](http://echo.labstack.com/recipes/appengine)
 
 ##[Guide](http://echo.labstack.com/guide)
 
