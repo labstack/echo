@@ -163,6 +163,14 @@ func (c *Context) XML(code int, i interface{}) error {
 	return xml.NewEncoder(c.response).Encode(i)
 }
 
+// Image sends given type of image. Type (t) can aby anything correct
+// to http (png, jpeg, ...)
+func (c *Context) Image(t string, bytes []byte) error {
+	c.response.Write(bytes)
+	c.response.Header().Set(ContentType, "image/"+t)
+	return nil
+}
+
 // NoContent sends a response with no body and a status code.
 func (c *Context) NoContent(code int) error {
 	c.response.WriteHeader(code)
