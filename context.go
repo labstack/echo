@@ -101,10 +101,10 @@ func (c *Context) Set(key string, val interface{}) {
 	c.store[key] = val
 }
 
-// Bind binds the request body into specified type v. Default binder does it based
-// on Content-Type header.
+// Bind binds the request body into specified type `i`. The default binder does
+// it based on Content-Type header.
 func (c *Context) Bind(i interface{}) error {
-	return c.echo.binder(c.request, i)
+	return c.echo.binder.Bind(c.request, i)
 }
 
 // Render renders a template with data and sends a text/html response with status

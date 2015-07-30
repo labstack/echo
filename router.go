@@ -1,9 +1,6 @@
 package echo
 
-import (
-	"encoding/binary"
-	"net/http"
-)
+import "net/http"
 
 type (
 	Router struct {
@@ -215,14 +212,6 @@ func (n *node) findChildWithType(t ntype) *node {
 	return nil
 }
 
-func (r *Router) treeIndex(method string) uint8 {
-	if method[0] == 'P' {
-		return method[0]%10 + method[1] - 65
-	} else {
-		return method[0] % 10
-	}
-}
-
 func (r *Router) findTree(method string) (n *node) {
 	switch method[0] {
 	case 'G': // GET
@@ -233,7 +222,8 @@ func (r *Router) findTree(method string) (n *node) {
 	case 'P': // POST, PUT or PATCH
 		switch method[1] {
 		case 'O': // POST
-			m := binary.BigEndian.Uint32([]byte(method))
+			m := uint32(method[3]) | uint32(method[2])<<8 | uint32(method[1])<<16 |
+				uint32(method[0])<<24
 			if m == 0x504f5354 {
 				n = r.postTree
 			}
@@ -263,7 +253,8 @@ func (r *Router) findTree(method string) (n *node) {
 			n = r.connectTree
 		}
 	case 'H': // HEAD
-		m := binary.BigEndian.Uint32([]byte(method))
+		m := uint32(method[3]) | uint32(method[2])<<8 | uint32(method[1])<<16 |
+			uint32(method[0])<<24
 		if m == 0x48454144 {
 			n = r.headTree
 		}

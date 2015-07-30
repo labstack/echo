@@ -30,7 +30,7 @@ type (
 		notFoundHandler         HandlerFunc
 		defaultHTTPErrorHandler HTTPErrorHandler
 		httpErrorHandler        HTTPErrorHandler
-		binder                  BindFunc
+		binder                  Binder
 		renderer                Renderer
 		pool                    sync.Pool
 		debug                   bool
@@ -56,12 +56,15 @@ type (
 	// HTTPErrorHandler is a centralized HTTP error handler.
 	HTTPErrorHandler func(error, *Context)
 
-	BindFunc func(*http.Request, interface{}) error
+	// Binder is the interface that wraps the Bind method.
+	Binder interface {
+		Bind(*http.Request, interface{}) error
+	}
+
+	binder struct {
+	}
 
 	// Renderer is the interface that wraps the Render method.
-	//
-	// Render renders the HTML template with given name and specified data.
-	// It writes the output to w.
 	Renderer interface {
 		Render(w io.Writer, name string, data interface{}) error
 	}
@@ -190,16 +193,7 @@ func New() (e *Echo) {
 		log.Println(err)
 	}
 	e.SetHTTPErrorHandler(e.defaultHTTPErrorHandler)
-	e.SetBinder(func(r *http.Request, v interface{}) (err error) {
-		ct := r.Header.Get(ContentType)
-		err = UnsupportedMediaType
-		if strings.HasPrefix(ct, ApplicationJSON) {
-			err = json.NewDecoder(r.Body).Decode(v)
-		} else if strings.HasPrefix(ct, ApplicationXML) {
-			err = xml.NewDecoder(r.Body).Decode(v)
-		}
-		return
-	})
+	e.SetBinder(&binder{})
 	return
 }
 
@@ -233,7 +227,7 @@ func (e *Echo) SetHTTPErrorHandler(h HTTPErrorHandler) {
 }
 
 // SetBinder registers a custom binder. It's invoked by Context.Bind().
-func (e *Echo) SetBinder(b BindFunc) {
+func (e *Echo) SetBinder(b Binder) {
 	e.binder = b
 }
 
@@ -591,4 +585,15 @@ func wrapHandler(h Handler) HandlerFunc {
 	default:
 		panic("echo => unknown handler")
 	}
+}
+
+func (*binder) Bind(r *http.Request, i interface{}) (err error) {
+	ct := r.Header.Get(ContentType)
+	err = UnsupportedMediaType
+	if strings.HasPrefix(ct, ApplicationJSON) {
+		err = json.NewDecoder(r.Body).Decode(i)
+	} else if strings.HasPrefix(ct, ApplicationXML) {
+		err = xml.NewDecoder(r.Body).Decode(i)
+	}
+	return
 }
