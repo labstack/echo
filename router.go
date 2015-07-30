@@ -230,7 +230,7 @@ func (r *Router) findTree(method string) (n *node) {
 		if m == 0x47455400 {
 			n = r.getTree
 		}
-	case 'P':
+	case 'P': // POST, PUT or PATCH
 		switch method[1] {
 		case 'O': // POST
 			m := binary.BigEndian.Uint32([]byte(method))
@@ -249,32 +249,32 @@ func (r *Router) findTree(method string) (n *node) {
 				n = r.patchTree
 			}
 		}
-	case 'D':
+	case 'D': // DELETE
 		m := uint64(method[5])<<16 | uint64(method[4])<<24 | uint64(method[3])<<32 |
 			uint64(method[2])<<40 | uint64(method[1])<<48 | uint64(method[0])<<56
 		if m == 0x44454c4554450000 {
 			n = r.deleteTree
 		}
-	case 'C':
+	case 'C': // CONNECT
 		m := uint64(method[6])<<8 | uint64(method[5])<<16 | uint64(method[4])<<24 |
 			uint64(method[3])<<32 | uint64(method[2])<<40 | uint64(method[1])<<48 |
 			uint64(method[0])<<56
 		if m == 0x434f4e4e45435400 {
 			n = r.connectTree
 		}
-	case 'H':
+	case 'H': // HEAD
 		m := binary.BigEndian.Uint32([]byte(method))
 		if m == 0x48454144 {
 			n = r.headTree
 		}
-	case 'O':
+	case 'O': // OPTIONS
 		m := uint64(method[6])<<8 | uint64(method[5])<<16 | uint64(method[4])<<24 |
 			uint64(method[3])<<32 | uint64(method[2])<<40 | uint64(method[1])<<48 |
 			uint64(method[0])<<56
 		if m == 0x4f5054494f4e5300 {
-			n = r.connectTree
+			n = r.optionsTree
 		}
-	case 'T':
+	case 'T': // TRACE
 		m := uint64(method[4])<<24 | uint64(method[3])<<32 | uint64(method[2])<<40 |
 			uint64(method[1])<<48 | uint64(method[0])<<56
 		if m == 0x5452414345000000 {
