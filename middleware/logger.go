@@ -10,7 +10,7 @@ import (
 
 func Logger() echo.MiddlewareFunc {
 	return func(h echo.HandlerFunc) echo.HandlerFunc {
-		return func(c *echo.Context) error {
+		return func(c echo.Context) error {
 			start := time.Now()
 			if err := h(c); err != nil {
 				c.Error(err)

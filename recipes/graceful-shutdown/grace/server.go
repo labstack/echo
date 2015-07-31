@@ -10,7 +10,7 @@ import (
 func main() {
 	// Setup
 	e := echo.New()
-	e.Get("/", func(c *echo.Context) error {
+	e.Get("/", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Six sick bricks tick")
 	})
 

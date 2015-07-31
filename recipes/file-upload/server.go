@@ -10,7 +10,7 @@ import (
 	mw "github.com/labstack/echo/middleware"
 )
 
-func upload(c *echo.Context) error {
+func upload(c echo.Context) error {
 	req := c.Request()
 
 	// req.ParseMultipartForm(16 << 20) // Max memory 16 MiB

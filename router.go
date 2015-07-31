@@ -275,7 +275,7 @@ func (r *Router) findTree(method string) (n *node) {
 	return
 }
 
-func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo) {
+func (r *Router) Find(method, path string, ctx Context) (h HandlerFunc, e *Echo) {
 	h = notFoundHandler
 	cn := r.findTree(method) // Current node as root
 	if cn == nil {
@@ -299,7 +299,7 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 		if search == "" {
 			if cn.handler != nil {
 				// Found
-				ctx.pnames = cn.pnames
+				ctx.SetPathParameters(cn.pnames)
 				h = cn.handler
 				e = cn.echo
 			}
@@ -374,7 +374,7 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 			i, l := 0, len(search)
 			for ; i < l && search[i] != '/'; i++ {
 			}
-			ctx.pvalues[n] = search[:i]
+			ctx.SetPathParameterValue(n, search[:i])
 			n++
 			search = search[i:]
 			continue
@@ -386,7 +386,7 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 		c = cn.findChildWithType(mtype)
 		if c != nil {
 			cn = c
-			ctx.pvalues[0] = search
+			ctx.SetPathParameterValue(0, search)
 			search = "" // End search
 			continue
 		}
@@ -397,9 +397,9 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 }
 
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	c := r.echo.pool.Get().(*Context)
+	c := r.echo.pool.Get().(Context)
 	h, _ := r.Find(req.Method, req.URL.Path, c)
-	c.reset(req, w, r.echo)
+	c.Reset(req, w, r.echo)
 	if err := h(c); err != nil {
 		r.echo.httpErrorHandler(err, c)
 	}

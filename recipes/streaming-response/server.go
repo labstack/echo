@@ -29,7 +29,7 @@ var (
 
 func main() {
 	e := echo.New()
-	e.Get("/", func(c *echo.Context) error {
+	e.Get("/", func(c echo.Context) error {
 		c.Response().Header().Set(echo.ContentType, echo.ApplicationJSON)
 		c.Response().WriteHeader(http.StatusOK)
 		for _, l := range locations {

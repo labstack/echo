@@ -36,7 +36,7 @@ func TestGzip(t *testing.T) {
 	req, _ := http.NewRequest(echo.GET, "/", nil)
 	rec := httptest.NewRecorder()
 	c := echo.NewContext(req, echo.NewResponse(rec), echo.New())
-	h := func(c *echo.Context) error {
+	h := func(c echo.Context) error {
 		c.Response().Write([]byte("test")) // For Content-Type sniffing
 		return nil
 	}
