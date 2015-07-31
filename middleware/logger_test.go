@@ -15,7 +15,7 @@ func TestLogger(t *testing.T) {
 	c := echo.NewContext(req, echo.NewResponse(rec), e)
 
 	// Status 2xx
-	h := func(c *echo.Context) error {
+	h := func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}
 	Logger()(h)(c)
@@ -23,7 +23,7 @@ func TestLogger(t *testing.T) {
 	// Status 3xx
 	rec = httptest.NewRecorder()
 	c = echo.NewContext(req, echo.NewResponse(rec), e)
-	h = func(c *echo.Context) error {
+	h = func(c echo.Context) error {
 		return c.String(http.StatusTemporaryRedirect, "test")
 	}
 	Logger()(h)(c)
@@ -31,7 +31,7 @@ func TestLogger(t *testing.T) {
 	// Status 4xx
 	rec = httptest.NewRecorder()
 	c = echo.NewContext(req, echo.NewResponse(rec), e)
-	h = func(c *echo.Context) error {
+	h = func(c echo.Context) error {
 		return c.String(http.StatusNotFound, "test")
 	}
 	Logger()(h)(c)
@@ -40,7 +40,7 @@ func TestLogger(t *testing.T) {
 	req, _ = http.NewRequest(echo.GET, "", nil)
 	rec = httptest.NewRecorder()
 	c = echo.NewContext(req, echo.NewResponse(rec), e)
-	h = func(c *echo.Context) error {
+	h = func(c echo.Context) error {
 		return errors.New("error")
 	}
 	Logger()(h)(c)

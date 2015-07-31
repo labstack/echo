@@ -147,7 +147,7 @@ func TestContext(t *testing.T) {
 	rec = httptest.NewRecorder()
 	c = NewContext(req, NewResponse(rec), New())
 	c.NoContent(http.StatusOK)
-	assert.Equal(t, http.StatusOK, c.response.status)
+	assert.Equal(t, http.StatusOK, c.Response().status)
 
 	// Redirect
 	rec = httptest.NewRecorder()
@@ -161,7 +161,7 @@ func TestContext(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, c.response.status)
 
 	// reset
-	c.reset(req, NewResponse(httptest.NewRecorder()), New())
+	c.Reset(req, NewResponse(httptest.NewRecorder()), New())
 }
 
 func TestContextQuery(t *testing.T) {
@@ -193,8 +193,8 @@ func TestContextForm(t *testing.T) {
 	assert.Equal(t, "joe@labstack.com", c.Form("email"))
 }
 
-func testBind(t *testing.T, c *Context, ct string) {
-	c.request.Header.Set(ContentType, ct)
+func testBind(t *testing.T, c Context, ct string) {
+	c.Request().Header.Set(ContentType, ct)
 	u := new(user)
 	err := c.Bind(u)
 	if ct == "" {

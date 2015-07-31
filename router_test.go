@@ -278,7 +278,7 @@ func TestRouterStatic(t *testing.T) {
 	e := New()
 	r := e.router
 	path := "/folders/a/files/echo.gif"
-	r.Add(GET, path, func(c *Context) error {
+	r.Add(GET, path, func(c Context) error {
 		c.Set("path", path)
 		return nil
 	}, e)
@@ -293,7 +293,7 @@ func TestRouterStatic(t *testing.T) {
 func TestRouterParam(t *testing.T) {
 	e := New()
 	r := e.router
-	r.Add(GET, "/users/:id", func(c *Context) error {
+	r.Add(GET, "/users/:id", func(c Context) error {
 		return nil
 	}, e)
 	c := NewContext(nil, nil, e)
@@ -306,7 +306,7 @@ func TestRouterParam(t *testing.T) {
 func TestRouterTwoParam(t *testing.T) {
 	e := New()
 	r := e.router
-	r.Add(GET, "/users/:uid/files/:fid", func(*Context) error {
+	r.Add(GET, "/users/:uid/files/:fid", func(Context) error {
 		return nil
 	}, e)
 	c := NewContext(nil, nil, e)
@@ -321,7 +321,7 @@ func TestRouterTwoParam(t *testing.T) {
 func TestRouterMatchAny(t *testing.T) {
 	e := New()
 	r := e.router
-	r.Add(GET, "/users/*", func(*Context) error {
+	r.Add(GET, "/users/*", func(Context) error {
 		return nil
 	}, e)
 	c := NewContext(nil, nil, e)
@@ -340,7 +340,7 @@ func TestRouterMatchAny(t *testing.T) {
 func TestRouterMicroParam(t *testing.T) {
 	e := New()
 	r := e.router
-	r.Add(GET, "/:a/:b/:c", func(c *Context) error {
+	r.Add(GET, "/:a/:b/:c", func(c Context) error {
 		return nil
 	}, e)
 	c := NewContext(nil, nil, e)
@@ -357,11 +357,11 @@ func TestRouterMultiRoute(t *testing.T) {
 	r := e.router
 
 	// Routes
-	r.Add(GET, "/users", func(c *Context) error {
+	r.Add(GET, "/users", func(c Context) error {
 		c.Set("path", "/users")
 		return nil
 	}, e)
-	r.Add(GET, "/users/:id", func(c *Context) error {
+	r.Add(GET, "/users/:id", func(c Context) error {
 		return nil
 	}, e)
 	c := NewContext(nil, nil, e)
@@ -392,31 +392,31 @@ func TestRouterPriority(t *testing.T) {
 	r := e.router
 
 	// Routes
-	r.Add(GET, "/users", func(c *Context) error {
+	r.Add(GET, "/users", func(c Context) error {
 		c.Set("a", 1)
 		return nil
 	}, e)
-	r.Add(GET, "/users/new", func(c *Context) error {
+	r.Add(GET, "/users/new", func(c Context) error {
 		c.Set("b", 2)
 		return nil
 	}, e)
-	r.Add(GET, "/users/:id", func(c *Context) error {
+	r.Add(GET, "/users/:id", func(c Context) error {
 		c.Set("c", 3)
 		return nil
 	}, e)
-	r.Add(GET, "/users/dew", func(c *Context) error {
+	r.Add(GET, "/users/dew", func(c Context) error {
 		c.Set("d", 4)
 		return nil
 	}, e)
-	r.Add(GET, "/users/:id/files", func(c *Context) error {
+	r.Add(GET, "/users/:id/files", func(c Context) error {
 		c.Set("e", 5)
 		return nil
 	}, e)
-	r.Add(GET, "/users/newsee", func(c *Context) error {
+	r.Add(GET, "/users/newsee", func(c Context) error {
 		c.Set("f", 6)
 		return nil
 	}, e)
-	r.Add(GET, "/users/*", func(c *Context) error {
+	r.Add(GET, "/users/*", func(c Context) error {
 		c.Set("g", 7)
 		return nil
 	}, e)
@@ -478,14 +478,14 @@ func TestRouterParamNames(t *testing.T) {
 	r := e.router
 
 	// Routes
-	r.Add(GET, "/users", func(c *Context) error {
+	r.Add(GET, "/users", func(c Context) error {
 		c.Set("path", "/users")
 		return nil
 	}, e)
-	r.Add(GET, "/users/:id", func(c *Context) error {
+	r.Add(GET, "/users/:id", func(c Context) error {
 		return nil
 	}, e)
-	r.Add(GET, "/users/:uid/files/:fid", func(c *Context) error {
+	r.Add(GET, "/users/:uid/files/:fid", func(c Context) error {
 		return nil
 	}, e)
 	c := NewContext(nil, nil, e)
@@ -519,7 +519,7 @@ func TestRouterAPI(t *testing.T) {
 	r := e.router
 
 	for _, route := range api {
-		r.Add(route.Method, route.Path, func(c *Context) error {
+		r.Add(route.Method, route.Path, func(c Context) error {
 			return nil
 		}, e)
 	}
@@ -541,7 +541,7 @@ func TestRouterAddInvalidMethod(t *testing.T) {
 	e := New()
 	r := e.router
 	assert.Panics(t, func() {
-		r.Add("INVALID", "/", func(*Context) error {
+		r.Add("INVALID", "/", func(Context) error {
 			return nil
 		}, e)
 	})
@@ -551,7 +551,7 @@ func TestRouterServeHTTP(t *testing.T) {
 	e := New()
 	r := e.router
 
-	r.Add(GET, "/users", func(*Context) error {
+	r.Add(GET, "/users", func(Context) error {
 		return nil
 	}, e)
 

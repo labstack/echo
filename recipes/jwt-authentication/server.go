@@ -16,7 +16,7 @@ const (
 
 // A JSON Web Token middleware
 func JWTAuth(key string) echo.HandlerFunc {
-	return func(c *echo.Context) error {
+	return func(c echo.Context) error {
 
 		// Skip WebSocket
 		if (c.Request().Header.Get(echo.Upgrade)) == echo.WebSocket {
@@ -48,11 +48,11 @@ func JWTAuth(key string) echo.HandlerFunc {
 	}
 }
 
-func accessible(c *echo.Context) error {
+func accessible(c echo.Context) error {
 	return c.String(http.StatusOK, "No auth required for this route.\n")
 }
 
-func restricted(c *echo.Context) error {
+func restricted(c echo.Context) error {
 	return c.String(http.StatusOK, "Access granted with JWT.\n")
 }
 
