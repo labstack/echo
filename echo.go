@@ -64,6 +64,11 @@ type (
 	binder struct {
 	}
 
+	// Validator is the interface that wraps the Validate method.
+	Validator interface {
+		Validate() error
+	}
+
 	// Renderer is the interface that wraps the Render method.
 	Renderer interface {
 		Render(w io.Writer, name string, data interface{}) error
@@ -119,7 +124,6 @@ const (
 	// Headers
 	//---------
 
-	Accept             = "Accept"
 	AcceptEncoding     = "Accept-Encoding"
 	Authorization      = "Authorization"
 	ContentDisposition = "Content-Disposition"
@@ -587,7 +591,7 @@ func wrapHandler(h Handler) HandlerFunc {
 	}
 }
 
-func (*binder) Bind(r *http.Request, i interface{}) (err error) {
+func (binder) Bind(r *http.Request, i interface{}) (err error) {
 	ct := r.Header.Get(ContentType)
 	err = UnsupportedMediaType
 	if strings.HasPrefix(ct, ApplicationJSON) {

@@ -88,7 +88,6 @@ func TestContext(t *testing.T) {
 	assert.Error(t, err)
 
 	// JSON
-	req.Header.Set(Accept, ApplicationJSON)
 	rec = httptest.NewRecorder()
 	c = NewContext(req, NewResponse(rec), New())
 	err = c.JSON(http.StatusOK, user{"1", "Joe"})
@@ -99,7 +98,6 @@ func TestContext(t *testing.T) {
 	}
 
 	// JSONP
-	req.Header.Set(Accept, ApplicationJavaScript)
 	rec = httptest.NewRecorder()
 	c = NewContext(req, NewResponse(rec), New())
 	callback := "callback"
@@ -111,7 +109,6 @@ func TestContext(t *testing.T) {
 	}
 
 	// XML
-	req.Header.Set(Accept, ApplicationXML)
 	rec = httptest.NewRecorder()
 	c = NewContext(req, NewResponse(rec), New())
 	err = c.XML(http.StatusOK, user{"1", "Joe"})
@@ -122,7 +119,6 @@ func TestContext(t *testing.T) {
 	}
 
 	// String
-	req.Header.Set(Accept, TextPlain)
 	rec = httptest.NewRecorder()
 	c = NewContext(req, NewResponse(rec), New())
 	err = c.String(http.StatusOK, "Hello, World!")
@@ -133,7 +129,6 @@ func TestContext(t *testing.T) {
 	}
 
 	// HTML
-	req.Header.Set(Accept, TextHTML)
 	rec = httptest.NewRecorder()
 	c = NewContext(req, NewResponse(rec), New())
 	err = c.HTML(http.StatusOK, "Hello, <strong>World!</strong>")
@@ -141,6 +136,15 @@ func TestContext(t *testing.T) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, TextHTMLCharsetUTF8, rec.Header().Get(ContentType))
 		assert.Equal(t, "Hello, <strong>World!</strong>", rec.Body.String())
+	}
+
+	// File
+	rec = httptest.NewRecorder()
+	c = NewContext(req, NewResponse(rec), New())
+	err = c.File("test/fixture/walle.png")
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, 219885, rec.Body.Len())
 	}
 
 	// NoContent
