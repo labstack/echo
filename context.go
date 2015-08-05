@@ -172,10 +172,7 @@ func (c *Context) File(name string) error {
 	if err != nil {
 		return err
 	}
-	fi, err := file.Stat()
-	if err != nil {
-		return err
-	}
+	fi, _ := file.Stat()
 	c.response.Header().Set(ContentDisposition, "attachment; filename="+fi.Name())
 	_, err = io.Copy(c.response, file)
 	return err

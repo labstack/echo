@@ -28,6 +28,7 @@ A fast and unfancy micro web framework for Golang.
     - JSON
     - JSONP
     - XML
+    - File
     - NoContent
     - Redirect
     - Error

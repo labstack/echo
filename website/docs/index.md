@@ -1,4 +1,4 @@
-# Echo <iframe src="https://ghbtns.com/github-btn.html?user=labstack&repo=echo&type=star&count=true&size=large" frameborder="0" scrolling="0" width="160px" height="30px"></iframe>
+# Echo
 
 A fast and unfancy micro web framework for Golang. 
 
@@ -30,6 +30,7 @@ A fast and unfancy micro web framework for Golang.
     - JSON
     - JSONP
     - XML
+    - File
     - NoContent
     - Redirect
     - Error
