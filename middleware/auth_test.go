@@ -46,7 +46,7 @@ func TestBasicAuth(t *testing.T) {
 	auth = base64.StdEncoding.EncodeToString([]byte("invalid"))
 	req.Header.Set(echo.Authorization, auth)
 	he = ba(c).(*echo.HTTPError)
-	assert.Equal(t, http.StatusBadRequest, he.Code())
+	assert.Equal(t, http.StatusUnauthorized, he.Code())
 
 	// WebSocket
 	c.Request().Header.Set(echo.Upgrade, echo.WebSocket)
