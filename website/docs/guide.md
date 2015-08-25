@@ -368,6 +368,15 @@ Context.String(code int, s string) error
 
 Sends a text/plain HTTP response with status code.
 
+### File 
+
+```go
+Context.File(name string, attachment bool) error
+```
+
+File sends a response with the content of the file. If attachment is true, the client
+is prompted to save the file.
+
 ### Static files
 
 `Echo.Static(path, root string)` serves static files. For example, code below serves
