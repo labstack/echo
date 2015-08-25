@@ -3,14 +3,12 @@ package echo
 import (
 	"encoding/json"
 	"encoding/xml"
-	"io"
 	"net/http"
+	"path"
 
 	"fmt"
 
 	"net/url"
-
-	"os"
 
 	"golang.org/x/net/websocket"
 )
@@ -166,16 +164,14 @@ func (c *Context) XML(code int, i interface{}) error {
 	return xml.NewEncoder(c.response).Encode(i)
 }
 
-// File sends a file as attachment.
-func (c *Context) File(name string) error {
-	file, err := os.Open(name)
-	if err != nil {
-		return err
+// File sends a response with the content of the file. If attachment is true, the
+// client is prompted to save the file.
+func (c *Context) File(name string, attachment bool) error {
+	dir, file := path.Split(name)
+	if attachment {
+		c.response.Header().Set(ContentDisposition, "attachment; filename="+file)
 	}
-	fi, _ := file.Stat()
-	c.response.Header().Set(ContentDisposition, "attachment; filename="+fi.Name())
-	_, err = io.Copy(c.response, file)
-	return err
+	return serveFile(dir, file, c)
 }
 
 // NoContent sends a response with no body and a status code.
