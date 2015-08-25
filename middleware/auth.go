@@ -12,7 +12,8 @@ type (
 )
 
 const (
-	Basic = "Basic"
+	Basic           = "Basic"
+	WWWAuthenticate = "WWW-Authenticate"
 )
 
 // BasicAuth returns an HTTP basic authentication middleware.
@@ -44,8 +45,8 @@ func BasicAuth(fn BasicValidateFunc) echo.HandlerFunc {
 				}
 			}
 		}
-		
-		c.Response().Header().Add("WWW-Authenticate", "Basic")
+
+		c.Response().Header().Add(WWWAuthenticate, Basic)
 		return he
 	}
 }
