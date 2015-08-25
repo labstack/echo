@@ -178,9 +178,9 @@ func New() (e *Echo) {
 	//----------
 
 	if runtime.GOOS == "windows" {
-		e.ColoredLog(false)
+		e.DisableColoredLog()
 	}
-	e.HTTP2(false)
+	e.HTTP2()
 	e.defaultHTTPErrorHandler = func(err error, c *Context) {
 		code := http.StatusInternalServerError
 		msg := http.StatusText(code)
@@ -206,18 +206,14 @@ func (e *Echo) Router() *Router {
 	return e.router
 }
 
-// ColoredLog enable/disable colored log.
-func (e *Echo) ColoredLog(on bool) {
-	if on {
-		color.Enable()
-	} else {
-		color.Disable()
-	}
+// DisableColoredLog disables colored log.
+func (e *Echo) DisableColoredLog() {
+	color.Disable()
 }
 
-// HTTP2 enable/disable HTTP2 support.
-func (e *Echo) HTTP2(on bool) {
-	e.http2 = on
+// HTTP2 enables HTTP2 support.
+func (e *Echo) HTTP2() {
+	e.http2 = true
 }
 
 // DefaultHTTPErrorHandler invokes the default HTTP error handler.
