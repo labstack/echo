@@ -144,6 +144,18 @@ const (
 )
 
 var (
+	methods = [...]string{
+		CONNECT,
+		DELETE,
+		GET,
+		HEAD,
+		OPTIONS,
+		PATCH,
+		POST,
+		PUT,
+		TRACE,
+	}
+
 	//--------
 	// Errors
 	//--------
@@ -296,6 +308,20 @@ func (e *Echo) Put(path string, h Handler) {
 // Trace adds a TRACE route > handler to the router.
 func (e *Echo) Trace(path string, h Handler) {
 	e.add(TRACE, path, h)
+}
+
+// Any adds a route > handler to the router for all HTTP methods.
+func (e *Echo) Any(path string, h Handler) {
+	for _, m := range methods {
+		e.add(m, path, h)
+	}
+}
+
+// Match adds a route > handler to the router for multiple HTTP methods provided.
+func (e *Echo) Match(methods []string, path string, h Handler) {
+	for _, m := range methods {
+		e.add(m, path, h)
+	}
 }
 
 // WebSocket adds a WebSocket route > handler to the router.

@@ -246,6 +246,20 @@ func TestEchoTrace(t *testing.T) {
 	testMethod(t, TRACE, "/", e)
 }
 
+func TestEchoAny(t *testing.T) { // JFC
+	e := New()
+	e.Any("/", func(c *Context) error {
+		return c.String(http.StatusOK, "Any")
+	})
+}
+
+func TestEchoMatch(t *testing.T) { // JFC
+	e := New()
+	e.Match([]string{GET, POST}, "/", func(c *Context) error {
+		return c.String(http.StatusOK, "Match")
+	})
+}
+
 func TestEchoWebSocket(t *testing.T) {
 	e := New()
 	e.WebSocket("/ws", func(c *Context) error {
