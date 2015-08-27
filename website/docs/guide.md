@@ -46,9 +46,9 @@ and message `HTTPError.Message`.
 
 Enables debug mode.
 
-### Enable/Disable colored log 
+### Enable/Disable colored log
 
-`Echo.ColoredLog(on bool)` 
+`Echo.ColoredLog(on bool)`
 
 ## Routing
 
@@ -135,7 +135,7 @@ e.Use(mw.BasicAuth(func(usr, pwd string) bool {
 
 ### URI building
 
-`Echo.URI` can be used generate URI for any handler with specified path parameters.
+`Echo.URI` can be used to generate URI for any handler with specified path parameters.
 It's helpful to centralize all your URI patterns which ease in refactoring your
 application.
 
@@ -267,7 +267,7 @@ $ curl -G -d "name=joe" http://localhost:1323/users
 
 ### Form parameter
 
-Form parameter can be retrieved by name using `Context.Form(name string)`. 
+Form parameter can be retrieved by name using `Context.Form(name string)`.
 
 *Example*
 
@@ -290,10 +290,10 @@ $ curl -d "name=joe" http://localhost:1323/users
 Context.Render(code int, name string, data interface{}) error
 ```
 Renders a template with data and sends a text/html response with status code. Templates
-can be registered using `Echo.SetRenderer()`, allowing us to use any templating engine.
+can be registered using `Echo.SetRenderer()`, allowing us to use any template engine.
 Below is an example using Go `html/template`
 
-Implement `echo.Render`
+Implementing `echo.Render` interface
 
 ```go
 Template struct {
@@ -368,13 +368,13 @@ Context.String(code int, s string) error
 
 Sends a text/plain HTTP response with status code.
 
-### File 
+### File
 
 ```go
 Context.File(name string, attachment bool) error
 ```
 
-File sends a response with the content of the file. If attachment is true, the client
+File sends a response with the content of the file. If attachment is `true`, the client
 is prompted to save the file.
 
 ### Static files
