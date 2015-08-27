@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	spath "path"
 	"reflect"
@@ -509,6 +510,31 @@ func (e *Echo) run(s *http.Server, files ...string) {
 		log.Fatal(s.ListenAndServeTLS(files[0], files[1]))
 	} else {
 		log.Fatal("echo => invalid TLS configuration")
+	}
+}
+
+// RunDomainSocket runs a server on a unix domain socket.
+func (e *Echo) RunDomainSocket(path string) {
+	s := &http.Server{}
+	s.Handler = e
+	if e.http2 {
+		http2.ConfigureServer(s, nil)
+	}
+	e.RunDomainSocketServer(s, path)
+}
+
+// RunDomainSocketServer runs a custom server on a unix domain socket.
+func (e *Echo) RunDomainSocketServer(s *http.Server, path string) {
+	var ln net.Listener
+	var err error
+
+	if ln, err = net.Listen("unix", path); err != nil {
+		panic(err)
+	}
+	defer ln.Close()
+
+	if err := s.Serve(ln); err != nil {
+		ln.Close()
 	}
 }
 
