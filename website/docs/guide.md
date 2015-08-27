@@ -46,9 +46,9 @@ and message `HTTPError.Message`.
 
 Enables debug mode.
 
-### Enable/Disable colored log
+### Disable colored log
 
-`Echo.ColoredLog(on bool)`
+`Echo.DisableColoredLog()`
 
 ## Routing
 
@@ -291,9 +291,10 @@ Context.Render(code int, name string, data interface{}) error
 ```
 Renders a template with data and sends a text/html response with status code. Templates
 can be registered using `Echo.SetRenderer()`, allowing us to use any template engine.
+
 Below is an example using Go `html/template`
 
-Implementing `echo.Render` interface
+- Implement `echo.Render` interface
 
 ```go
 Template struct {
@@ -305,7 +306,13 @@ func (t *Template) Render(w io.Writer, name string, data interface{}) error {
 }
 ```
 
-Pre-compile templates
+- Pre-compile templates
+
+`public/views/hello.html`
+
+```html
+{{define "hello"}}Hello, {{.}}!{{end}}
+```
 
 ```go
 t := &Template{
@@ -313,7 +320,7 @@ t := &Template{
 }
 ```
 
-Register templates
+- Register templates
 
 ```go
 e := echo.New()
@@ -321,14 +328,7 @@ e.SetRenderer(t)
 e.Get("/hello", Hello)
 ```
 
-Template `public/views/hello.html`
-
-```html
-{{define "hello"}}Hello, {{.}}!{{end}}
-
-```
-
-Handler
+- Render template
 
 ```go
 func Hello(c *echo.Context) error {
@@ -455,4 +455,3 @@ func welcome(c *echo.Context) error {
 ```
 
 See how [HTTPErrorHandler](#customization) handles it.
-
