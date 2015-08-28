@@ -1,6 +1,6 @@
 # [Echo](http://echo.labstack.com) [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/labstack/echo) [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/labstack/echo/master/LICENSE) [![Build Status](http://img.shields.io/travis/labstack/echo.svg?style=flat-square)](https://travis-ci.org/labstack/echo) [![Coverage Status](http://img.shields.io/coveralls/labstack/echo.svg?style=flat-square)](https://coveralls.io/r/labstack/echo) [![Join the chat at https://gitter.im/labstack/echo](https://img.shields.io/badge/gitter-join%20chat-brightgreen.svg?style=flat-square)](https://gitter.im/labstack/echo)
 
-A fast and unfancy micro web framework for Golang.
+A fast and unfancy micro web framework for Go.
 
 ## Features
 
@@ -24,7 +24,7 @@ A fast and unfancy micro web framework for Golang.
 - Handy functions to send variety of HTTP response:
     - HTML
     - HTML via templates
-    - String 
+    - String
     - JSON
     - JSONP
     - XML
@@ -41,7 +41,7 @@ A fast and unfancy micro web framework for Golang.
 - Customizable HTTP request binding function.
 - Customizable HTTP response rendering function, allowing you to use any HTML template engine.
 
-## Performance 
+## Performance
 
 Based on [vishr/go-http-routing-benchmark] (https://github.com/vishr/go-http-routing-benchmark), June 5, 2015.
 

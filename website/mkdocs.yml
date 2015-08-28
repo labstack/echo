@@ -1,5 +1,5 @@
 site_name: Echo
-theme: journal
+theme: flatly
 theme_dir: echo
 copyright: '&copy; 2015 LabStack'
 repo_url: https://github.com/labstack/echo
@@ -16,4 +16,4 @@ pages:
     - JWT Authentication: recipes/jwt-authentication.md
     - Graceful Shutdown: recipes/graceful-shutdown.md
 extra:
-  site_title: Echo, a fast and unfancy micro web framework for Golang.
+  site_title: Echo, a fast and unfancy micro web framework for Go.
