@@ -1,10 +1,10 @@
 # Website
-site/
-.publish/
+site
+.publish
 
 # Node.js
-node_modules/
+node_modules
 
 # IntelliJ
-.idea/
+.idea
 *.iml
