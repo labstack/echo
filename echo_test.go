@@ -33,8 +33,8 @@ func TestEcho(t *testing.T) {
 	assert.NotNil(t, e.Router())
 
 	// Debug
-	e.SetDebug(true)
-	assert.True(t, e.Debug())
+	e.Debug()
+	assert.True(t, e.debug)
 
 	// DefaultHTTPErrorHandler
 	e.DefaultHTTPErrorHandler(errors.New("error"), c)
@@ -401,6 +401,15 @@ func TestEchoServer(t *testing.T) {
 	e := New()
 	s := e.Server(":1323")
 	assert.IsType(t, &http.Server{}, s)
+}
+
+func TestStripTrailingSlash(t *testing.T) {
+	e := New()
+	e.StripTrailingSlash()
+	r, _ := http.NewRequest(GET, "/users/", nil)
+	w := httptest.NewRecorder()
+	e.ServeHTTP(w, r)
+	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
 func testMethod(t *testing.T, method, path string, e *Echo) {

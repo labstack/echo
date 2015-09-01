@@ -75,7 +75,7 @@ func (r *Router) Add(method, path string, h HandlerFunc, e *Echo) {
 		} else if path[i] == '*' {
 			r.insert(method, path[:i], nil, stype, nil, e)
 			pnames = append(pnames, "_name")
-			r.insert(method, path[:i+1], h, mtype, pnames, e)
+			r.insert(method, path[:i + 1], h, mtype, pnames, e)
 			return
 		}
 	}
@@ -215,59 +215,59 @@ func (n *node) findChildWithType(t ntype) *node {
 func (r *Router) findTree(method string) (n *node) {
 	switch method[0] {
 	case 'G': // GET
-		m := uint32(method[2])<<8 | uint32(method[1])<<16 | uint32(method[0])<<24
+		m := uint32(method[2]) << 8 | uint32(method[1]) << 16 | uint32(method[0]) << 24
 		if m == 0x47455400 {
 			n = r.getTree
 		}
 	case 'P': // POST, PUT or PATCH
 		switch method[1] {
 		case 'O': // POST
-			m := uint32(method[3]) | uint32(method[2])<<8 | uint32(method[1])<<16 |
-				uint32(method[0])<<24
+			m := uint32(method[3]) | uint32(method[2]) << 8 | uint32(method[1]) << 16 |
+			uint32(method[0]) << 24
 			if m == 0x504f5354 {
 				n = r.postTree
 			}
 		case 'U': // PUT
-			m := uint32(method[2])<<8 | uint32(method[1])<<16 | uint32(method[0])<<24
+			m := uint32(method[2]) << 8 | uint32(method[1]) << 16 | uint32(method[0]) << 24
 			if m == 0x50555400 {
 				n = r.putTree
 			}
 		case 'A': // PATCH
-			m := uint64(method[4])<<24 | uint64(method[3])<<32 | uint64(method[2])<<40 |
-				uint64(method[1])<<48 | uint64(method[0])<<56
+			m := uint64(method[4]) << 24 | uint64(method[3]) << 32 | uint64(method[2]) << 40 |
+			uint64(method[1]) << 48 | uint64(method[0]) << 56
 			if m == 0x5041544348000000 {
 				n = r.patchTree
 			}
 		}
 	case 'D': // DELETE
-		m := uint64(method[5])<<16 | uint64(method[4])<<24 | uint64(method[3])<<32 |
-			uint64(method[2])<<40 | uint64(method[1])<<48 | uint64(method[0])<<56
+		m := uint64(method[5]) << 16 | uint64(method[4]) << 24 | uint64(method[3]) << 32 |
+		uint64(method[2]) << 40 | uint64(method[1]) << 48 | uint64(method[0]) << 56
 		if m == 0x44454c4554450000 {
 			n = r.deleteTree
 		}
 	case 'C': // CONNECT
-		m := uint64(method[6])<<8 | uint64(method[5])<<16 | uint64(method[4])<<24 |
-			uint64(method[3])<<32 | uint64(method[2])<<40 | uint64(method[1])<<48 |
-			uint64(method[0])<<56
+		m := uint64(method[6]) << 8 | uint64(method[5]) << 16 | uint64(method[4]) << 24 |
+		uint64(method[3]) << 32 | uint64(method[2]) << 40 | uint64(method[1]) << 48 |
+		uint64(method[0]) << 56
 		if m == 0x434f4e4e45435400 {
 			n = r.connectTree
 		}
 	case 'H': // HEAD
-		m := uint32(method[3]) | uint32(method[2])<<8 | uint32(method[1])<<16 |
-			uint32(method[0])<<24
+		m := uint32(method[3]) | uint32(method[2]) << 8 | uint32(method[1]) << 16 |
+		uint32(method[0]) << 24
 		if m == 0x48454144 {
 			n = r.headTree
 		}
 	case 'O': // OPTIONS
-		m := uint64(method[6])<<8 | uint64(method[5])<<16 | uint64(method[4])<<24 |
-			uint64(method[3])<<32 | uint64(method[2])<<40 | uint64(method[1])<<48 |
-			uint64(method[0])<<56
+		m := uint64(method[6]) << 8 | uint64(method[5]) << 16 | uint64(method[4]) << 24 |
+		uint64(method[3]) << 32 | uint64(method[2]) << 40 | uint64(method[1]) << 48 |
+		uint64(method[0]) << 56
 		if m == 0x4f5054494f4e5300 {
 			n = r.optionsTree
 		}
 	case 'T': // TRACE
-		m := uint64(method[4])<<24 | uint64(method[3])<<32 | uint64(method[2])<<40 |
-			uint64(method[1])<<48 | uint64(method[0])<<56
+		m := uint64(method[4]) << 24 | uint64(method[3]) << 32 | uint64(method[2]) << 40 |
+		uint64(method[1]) << 48 | uint64(method[0]) << 56
 		if m == 0x5452414345000000 {
 			n = r.traceTree
 		}
@@ -282,11 +282,19 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 		h = badRequestHandler
 		return
 	}
-	search := path
+
+	// Strip trailing slash
+	if r.echo.stripTrailingSlash {
+		l := len(path)
+		if path[l - 1] == '/' {
+			path = path[:l - 1]
+		}
+	}
 
 	var (
+		search = path
 		c  *node  // Child node
-		n  int    // Param counter
+		n int    // Param counter
 		nt ntype  // Next type
 		nn *node  // Next node
 		ns string // Next search
@@ -361,7 +369,7 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 		}
 
 		// Param node
-	Param:
+		Param:
 		c = cn.findChildWithType(ptype)
 		if c != nil {
 			// Save next
@@ -381,7 +389,7 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 		}
 
 		// Match-any node
-	MatchAny:
+		MatchAny:
 		//		c = cn.getChild()
 		c = cn.findChildWithType(mtype)
 		if c != nil {
