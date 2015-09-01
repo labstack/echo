@@ -133,7 +133,8 @@ const (
 	Location           = "Location"
 	Upgrade            = "Upgrade"
 	Vary               = "Vary"
-
+	Basic              = "Basic"
+	WWWAuthenticate    = "WWW-Authenticate"
 	//-----------
 	// Protocols
 	//-----------

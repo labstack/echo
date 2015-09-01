@@ -11,11 +11,6 @@ type (
 	BasicValidateFunc func(string, string) bool
 )
 
-const (
-	Basic           = "Basic"
-	WWWAuthenticate = "WWW-Authenticate"
-)
-
 // BasicAuth returns an HTTP basic authentication middleware.
 //
 // For valid credentials it calls the next handler.
@@ -28,10 +23,10 @@ func BasicAuth(fn BasicValidateFunc) echo.HandlerFunc {
 		}
 
 		auth := c.Request().Header.Get(echo.Authorization)
-		l := len(Basic)
+		l := len(echo.Basic)
 		he := echo.NewHTTPError(http.StatusUnauthorized)
 
-		if len(auth) > l+1 && auth[:l] == Basic {
+		if len(auth) > l+1 && auth[:l] == echo.Basic {
 			b, err := base64.StdEncoding.DecodeString(auth[l+1:])
 			if err == nil {
 				cred := string(b)
@@ -46,7 +41,7 @@ func BasicAuth(fn BasicValidateFunc) echo.HandlerFunc {
 			}
 		}
 
-		c.Response().Header().Add(WWWAuthenticate, Basic)
+		c.Response().Header().Add(echo.WWWAuthenticate, echo.Basic)
 		return he
 	}
 }
