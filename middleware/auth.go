@@ -39,11 +39,11 @@ func BasicAuth(fn BasicValidateFunc) echo.HandlerFunc {
 						if fn(cred[:i], cred[i+1:]) {
 							return nil
 						}
-						c.Response().Header().Set(echo.WWWAuthenticate, Basic + " realm=Restricted")
 					}
 				}
 			}
 		}
+		c.Response().Header().Set(echo.WWWAuthenticate, Basic + " realm=Restricted")
 		return echo.NewHTTPError(http.StatusUnauthorized)
 	}
 }
