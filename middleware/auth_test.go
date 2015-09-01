@@ -23,7 +23,7 @@ func TestBasicAuth(t *testing.T) {
 	ba := BasicAuth(fn)
 
 	// Valid credentials
-	auth := Basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:secret"))
+	auth := echo.Basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:secret"))
 	req.Header.Set(echo.Authorization, auth)
 	assert.NoError(t, ba(c))
 
@@ -32,7 +32,7 @@ func TestBasicAuth(t *testing.T) {
 	//---------------------
 
 	// Incorrect password
-	auth = Basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:password"))
+	auth = echo.Basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:password"))
 	req.Header.Set(echo.Authorization, auth)
 	he := ba(c).(*echo.HTTPError)
 	assert.Equal(t, http.StatusUnauthorized, he.Code())
@@ -40,13 +40,13 @@ func TestBasicAuth(t *testing.T) {
 	// Empty Authorization header
 	req.Header.Set(echo.Authorization, "")
 	he = ba(c).(*echo.HTTPError)
-	assert.Equal(t, http.StatusBadRequest, he.Code())
+	assert.Equal(t, http.StatusUnauthorized, he.Code())
 
 	// Invalid Authorization header
 	auth = base64.StdEncoding.EncodeToString([]byte("invalid"))
 	req.Header.Set(echo.Authorization, auth)
 	he = ba(c).(*echo.HTTPError)
-	assert.Equal(t, http.StatusBadRequest, he.Code())
+	assert.Equal(t, http.StatusUnauthorized, he.Code())
 
 	// WebSocket
 	c.Request().Header.Set(echo.Upgrade, echo.WebSocket)
