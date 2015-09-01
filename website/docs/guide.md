@@ -50,6 +50,12 @@ Enables debug mode.
 
 `Echo.DisableColoredLog()`
 
+### StripTrailingSlash
+
+StripTrailingSlash enables removing trailing slash from the request path.
+
+`e.StripTrailingSlash()`
+
 ## Routing
 
 Echo's router is [fast, optimized](https://github.com/labstack/echo#benchmark) and
@@ -208,16 +214,6 @@ to the centralized [HTTPErrorHandler](#error-handling).
 
 ```go
 e.Use(mw.Recover())
-```
-
-### StripTrailingSlash
-
-StripTrailingSlash middleware removes the trailing slash from request path.
-
-*Example*
-
-```go
-e.Use(mw.StripTrailingSlash())
 ```
 
 [Examples](https://github.com/labstack/echo/tree/master/examples/middleware)

@@ -34,6 +34,7 @@ type (
 		renderer                Renderer
 		pool                    sync.Pool
 		debug                   bool
+		stripTrailingSlash      bool
 		router                  *Router
 	}
 
@@ -248,14 +249,14 @@ func (e *Echo) SetRenderer(r Renderer) {
 	e.renderer = r
 }
 
-// SetDebug sets debug mode.
-func (e *Echo) SetDebug(on bool) {
-	e.debug = on
+// Debug enables debug mode.
+func (e *Echo) Debug() {
+	e.debug = true
 }
 
-// Debug returns debug mode.
-func (e *Echo) Debug() bool {
-	return e.debug
+// StripTrailingSlash enables removing trailing slash from the request path.
+func (e *Echo) StripTrailingSlash() {
+	e.stripTrailingSlash = true
 }
 
 // Use adds handler to the middleware chain.
