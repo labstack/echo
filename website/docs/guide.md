@@ -42,7 +42,7 @@ and message `HTTPError.Message`.
 
 ### Debug
 
-`Echo.SetDebug(on bool)`
+`Echo.Debug()`
 
 Enables debug mode.
 
