@@ -4,9 +4,17 @@ import "net/http"
 
 type (
 	Router struct {
-		trees  [21]*node
-		routes []Route
-		echo   *Echo
+		connectTree *node
+		deleteTree  *node
+		getTree     *node
+		headTree    *node
+		optionsTree *node
+		patchTree   *node
+		postTree    *node
+		putTree     *node
+		traceTree   *node
+		routes      []Route
+		echo        *Echo
 	}
 	node struct {
 		typ      ntype
@@ -28,19 +36,20 @@ const (
 	mtype
 )
 
-func NewRouter(e *Echo) (r *Router) {
-	r = &Router{
-		//		trees:  make(map[string]*node),
-		routes: []Route{},
-		echo:   e,
+func NewRouter(e *Echo) *Router {
+	return &Router{
+		connectTree: new(node),
+		deleteTree:  new(node),
+		getTree:     new(node),
+		headTree:    new(node),
+		optionsTree: new(node),
+		patchTree:   new(node),
+		postTree:    new(node),
+		putTree:     new(node),
+		traceTree:   new(node),
+		routes:      []Route{},
+		echo:        e,
 	}
-	for _, m := range methods {
-		r.trees[r.treeIndex(m)] = &node{
-			prefix:   "",
-			children: children{},
-		}
-	}
-	return
 }
 
 func (r *Router) Add(method, path string, h HandlerFunc, e *Echo) {
@@ -66,7 +75,7 @@ func (r *Router) Add(method, path string, h HandlerFunc, e *Echo) {
 		} else if path[i] == '*' {
 			r.insert(method, path[:i], nil, stype, nil, e)
 			pnames = append(pnames, "_name")
-			r.insert(method, path[:i+1], h, mtype, pnames, e)
+			r.insert(method, path[:i + 1], h, mtype, pnames, e)
 			return
 		}
 	}
@@ -81,7 +90,10 @@ func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 		*e.maxParam = l
 	}
 
-	cn := r.trees[r.treeIndex(method)] // Current node as root
+	cn := r.findTree(method) // Current node as root
+	if cn == nil {
+		panic("echo => invalid method")
+	}
 	search := path
 
 	for {
@@ -200,21 +212,89 @@ func (n *node) findChildWithType(t ntype) *node {
 	return nil
 }
 
-func (r *Router) treeIndex(method string) uint8 {
-	if method[0] == 'P' {
-		return method[0]%10 + method[1] - 65
-	} else {
-		return method[0] % 10
+func (r *Router) findTree(method string) (n *node) {
+	switch method[0] {
+	case 'G': // GET
+		m := uint32(method[2]) << 8 | uint32(method[1]) << 16 | uint32(method[0]) << 24
+		if m == 0x47455400 {
+			n = r.getTree
+		}
+	case 'P': // POST, PUT or PATCH
+		switch method[1] {
+		case 'O': // POST
+			m := uint32(method[3]) | uint32(method[2]) << 8 | uint32(method[1]) << 16 |
+			uint32(method[0]) << 24
+			if m == 0x504f5354 {
+				n = r.postTree
+			}
+		case 'U': // PUT
+			m := uint32(method[2]) << 8 | uint32(method[1]) << 16 | uint32(method[0]) << 24
+			if m == 0x50555400 {
+				n = r.putTree
+			}
+		case 'A': // PATCH
+			m := uint64(method[4]) << 24 | uint64(method[3]) << 32 | uint64(method[2]) << 40 |
+			uint64(method[1]) << 48 | uint64(method[0]) << 56
+			if m == 0x5041544348000000 {
+				n = r.patchTree
+			}
+		}
+	case 'D': // DELETE
+		m := uint64(method[5]) << 16 | uint64(method[4]) << 24 | uint64(method[3]) << 32 |
+		uint64(method[2]) << 40 | uint64(method[1]) << 48 | uint64(method[0]) << 56
+		if m == 0x44454c4554450000 {
+			n = r.deleteTree
+		}
+	case 'C': // CONNECT
+		m := uint64(method[6]) << 8 | uint64(method[5]) << 16 | uint64(method[4]) << 24 |
+		uint64(method[3]) << 32 | uint64(method[2]) << 40 | uint64(method[1]) << 48 |
+		uint64(method[0]) << 56
+		if m == 0x434f4e4e45435400 {
+			n = r.connectTree
+		}
+	case 'H': // HEAD
+		m := uint32(method[3]) | uint32(method[2]) << 8 | uint32(method[1]) << 16 |
+		uint32(method[0]) << 24
+		if m == 0x48454144 {
+			n = r.headTree
+		}
+	case 'O': // OPTIONS
+		m := uint64(method[6]) << 8 | uint64(method[5]) << 16 | uint64(method[4]) << 24 |
+		uint64(method[3]) << 32 | uint64(method[2]) << 40 | uint64(method[1]) << 48 |
+		uint64(method[0]) << 56
+		if m == 0x4f5054494f4e5300 {
+			n = r.optionsTree
+		}
+	case 'T': // TRACE
+		m := uint64(method[4]) << 24 | uint64(method[3]) << 32 | uint64(method[2]) << 40 |
+		uint64(method[1]) << 48 | uint64(method[0]) << 56
+		if m == 0x5452414345000000 {
+			n = r.traceTree
+		}
 	}
+	return
 }
 
 func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo) {
-	cn := r.trees[r.treeIndex(method)] // Current node as root
-	search := path
+	h = notFoundHandler
+	cn := r.findTree(method) // Current node as root
+	if cn == nil {
+		h = badRequestHandler
+		return
+	}
+
+	// Strip trailing slash
+	if r.echo.stripTrailingSlash {
+		l := len(path)
+		if path[l - 1] == '/' {
+			path = path[:l - 1]
+		}
+	}
 
 	var (
+		search = path
 		c  *node  // Child node
-		n  int    // Param counter
+		n int    // Param counter
 		nt ntype  // Next type
 		nn *node  // Next node
 		ns string // Next search
@@ -225,10 +305,12 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 	// Search order static > param > match-any
 	for {
 		if search == "" {
-			// Found
-			ctx.pnames = cn.pnames
-			h = cn.handler
-			e = cn.echo
+			if cn.handler != nil {
+				// Found
+				ctx.pnames = cn.pnames
+				h = cn.handler
+				e = cn.echo
+			}
 			return
 		}
 
@@ -287,7 +369,7 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 		}
 
 		// Param node
-	Param:
+		Param:
 		c = cn.findChildWithType(ptype)
 		if c != nil {
 			// Save next
@@ -307,7 +389,7 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 		}
 
 		// Match-any node
-	MatchAny:
+		MatchAny:
 		//		c = cn.getChild()
 		c = cn.findChildWithType(mtype)
 		if c != nil {
@@ -326,10 +408,8 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	c := r.echo.pool.Get().(*Context)
 	h, _ := r.Find(req.Method, req.URL.Path, c)
 	c.reset(req, w, r.echo)
-	if h == nil {
-		c.Error(NewHTTPError(http.StatusNotFound))
-	} else {
-		h(c)
+	if err := h(c); err != nil {
+		r.echo.httpErrorHandler(err, c)
 	}
 	r.echo.pool.Put(c)
 }

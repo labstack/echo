@@ -17,7 +17,7 @@ func main() {
 	e := echo.New()
 
 	// Debug mode
-	e.SetDebug(true)
+	e.Debug()
 
 	//------------
 	// Middleware
@@ -36,16 +36,6 @@ func main() {
 		}
 		return false
 	}))
-
-	//-------
-	// Slash
-	//-------
-
-	e.Use(mw.StripTrailingSlash())
-
-	// or
-
-	//	e.Use(mw.RedirectToSlash())
 
 	// Gzip
 	e.Use(mw.Gzip())

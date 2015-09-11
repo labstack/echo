@@ -18,8 +18,8 @@ import (
 
 type (
 	user struct {
-		ID   string `json:"id"`
-		Name string `json:"name"`
+		ID   string `json:"id" xml:"id"`
+		Name string `json:"name" xml:"name"`
 	}
 )
 
@@ -33,8 +33,8 @@ func TestEcho(t *testing.T) {
 	assert.NotNil(t, e.Router())
 
 	// Debug
-	e.SetDebug(true)
-	assert.True(t, e.Debug())
+	e.Debug()
+	assert.True(t, e.debug)
 
 	// DefaultHTTPErrorHandler
 	e.DefaultHTTPErrorHandler(errors.New("error"), c)
@@ -246,6 +246,20 @@ func TestEchoTrace(t *testing.T) {
 	testMethod(t, TRACE, "/", e)
 }
 
+func TestEchoAny(t *testing.T) { // JFC
+	e := New()
+	e.Any("/", func(c *Context) error {
+		return c.String(http.StatusOK, "Any")
+	})
+}
+
+func TestEchoMatch(t *testing.T) { // JFC
+	e := New()
+	e.Match([]string{GET, POST}, "/", func(c *Context) error {
+		return c.String(http.StatusOK, "Match")
+	})
+}
+
 func TestEchoWebSocket(t *testing.T) {
 	e := New()
 	e.WebSocket("/ws", func(c *Context) error {
@@ -368,6 +382,14 @@ func TestEchoNotFound(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
+func TestEchoBadRequest(t *testing.T) {
+	e := New()
+	r, _ := http.NewRequest("INVALID", "/files", nil)
+	w := httptest.NewRecorder()
+	e.ServeHTTP(w, r)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
 func TestEchoHTTPError(t *testing.T) {
 	m := http.StatusText(http.StatusBadRequest)
 	he := NewHTTPError(http.StatusBadRequest, m)
@@ -381,12 +403,20 @@ func TestEchoServer(t *testing.T) {
 	assert.IsType(t, &http.Server{}, s)
 }
 
+func TestStripTrailingSlash(t *testing.T) {
+	e := New()
+	e.StripTrailingSlash()
+	r, _ := http.NewRequest(GET, "/users/", nil)
+	w := httptest.NewRecorder()
+	e.ServeHTTP(w, r)
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
 func testMethod(t *testing.T, method, path string, e *Echo) {
 	m := fmt.Sprintf("%c%s", method[0], strings.ToLower(method[1:]))
 	p := reflect.ValueOf(path)
 	h := reflect.ValueOf(func(c *Context) error {
-		c.String(http.StatusOK, method)
-		return nil
+		return c.String(http.StatusOK, method)
 	})
 	i := interface{}(e)
 	reflect.ValueOf(i).MethodByName(m).Call([]reflect.Value{p, h})

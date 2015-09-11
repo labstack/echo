@@ -14,8 +14,10 @@ import (
 	"strings"
 	"sync"
 
+	"encoding/xml"
+
 	"github.com/bradfitz/http2"
-	"github.com/mattn/go-colorable"
+	"github.com/labstack/gommon/color"
 	"golang.org/x/net/websocket"
 )
 
@@ -28,10 +30,11 @@ type (
 		notFoundHandler         HandlerFunc
 		defaultHTTPErrorHandler HTTPErrorHandler
 		httpErrorHandler        HTTPErrorHandler
-		binder                  BindFunc
+		binder                  Binder
 		renderer                Renderer
 		pool                    sync.Pool
 		debug                   bool
+		stripTrailingSlash      bool
 		router                  *Router
 	}
 
@@ -54,12 +57,20 @@ type (
 	// HTTPErrorHandler is a centralized HTTP error handler.
 	HTTPErrorHandler func(error, *Context)
 
-	BindFunc func(*http.Request, interface{}) error
+	// Binder is the interface that wraps the Bind method.
+	Binder interface {
+		Bind(*http.Request, interface{}) error
+	}
+
+	binder struct {
+	}
+
+	// Validator is the interface that wraps the Validate method.
+	Validator interface {
+		Validate() error
+	}
 
 	// Renderer is the interface that wraps the Render method.
-	//
-	// Render renders the HTML template with given name and specified data.
-	// It writes the output to w.
 	Renderer interface {
 		Render(w io.Writer, name string, data interface{}) error
 	}
@@ -89,27 +100,41 @@ const (
 	// Media types
 	//-------------
 
-	ApplicationJSON     = "application/json"
-	ApplicationProtobuf = "application/protobuf"
-	ApplicationMsgpack  = "application/msgpack"
-	TextPlain           = "text/plain"
-	TextHTML            = "text/html"
-	ApplicationForm     = "application/x-www-form-urlencoded"
-	MultipartForm       = "multipart/form-data"
+	ApplicationJSON                  = "application/json"
+	ApplicationJSONCharsetUTF8       = ApplicationJSON + "; " + CharsetUTF8
+	ApplicationJavaScript            = "application/javascript"
+	ApplicationJavaScriptCharsetUTF8 = ApplicationJavaScript + "; " + CharsetUTF8
+	ApplicationXML                   = "application/xml"
+	ApplicationXMLCharsetUTF8        = ApplicationXML + "; " + CharsetUTF8
+	ApplicationForm                  = "application/x-www-form-urlencoded"
+	ApplicationProtobuf              = "application/protobuf"
+	ApplicationMsgpack               = "application/msgpack"
+	TextHTML                         = "text/html"
+	TextHTMLCharsetUTF8              = TextHTML + "; " + CharsetUTF8
+	TextPlain                        = "text/plain"
+	TextPlainCharsetUTF8             = TextPlain + "; " + CharsetUTF8
+	MultipartForm                    = "multipart/form-data"
+
+	//---------
+	// Charset
+	//---------
+
+	CharsetUTF8 = "charset=utf-8"
 
 	//---------
 	// Headers
 	//---------
 
-	Accept             = "Accept"
 	AcceptEncoding     = "Accept-Encoding"
+	Authorization      = "Authorization"
 	ContentDisposition = "Content-Disposition"
 	ContentEncoding    = "Content-Encoding"
 	ContentLength      = "Content-Length"
 	ContentType        = "Content-Type"
-	Authorization      = "Authorization"
+	Location           = "Location"
 	Upgrade            = "Upgrade"
 	Vary               = "Vary"
+	WWWAuthenticate = "WWW-Authenticate"
 
 	//-----------
 	// Protocols
@@ -139,9 +164,22 @@ var (
 
 	UnsupportedMediaType  = errors.New("echo ⇒ unsupported media type")
 	RendererNotRegistered = errors.New("echo ⇒ renderer not registered")
+	InvalidRedirectCode   = errors.New("echo ⇒ invalid redirect status code")
+
+	//----------------
+	// Error handlers
+	//----------------
+
+	notFoundHandler = func(c *Context) error {
+		return NewHTTPError(http.StatusNotFound)
+	}
+
+	badRequestHandler = func(c *Context) error {
+		return NewHTTPError(http.StatusBadRequest)
+	}
 )
 
-// New creates an Echo instance.
+// New creates an instance of Echo.
 func New() (e *Echo) {
 	e = &Echo{maxParam: new(int)}
 	e.pool.New = func() interface{} {
@@ -153,10 +191,10 @@ func New() (e *Echo) {
 	// Defaults
 	//----------
 
-	e.HTTP2(false)
-	e.notFoundHandler = func(c *Context) error {
-		return NewHTTPError(http.StatusNotFound)
+	if runtime.GOOS == "windows" {
+		e.DisableColoredLog()
 	}
+	e.HTTP2()
 	e.defaultHTTPErrorHandler = func(err error, c *Context) {
 		code := http.StatusInternalServerError
 		msg := http.StatusText(code)
@@ -167,19 +205,13 @@ func New() (e *Echo) {
 		if e.debug {
 			msg = err.Error()
 		}
-		http.Error(c.response, msg, code)
+		if !c.response.committed {
+			http.Error(c.response, msg, code)
+		}
+		log.Println(err)
 	}
 	e.SetHTTPErrorHandler(e.defaultHTTPErrorHandler)
-	e.SetBinder(func(r *http.Request, v interface{}) error {
-		ct := r.Header.Get(ContentType)
-		err := UnsupportedMediaType
-		if strings.HasPrefix(ct, ApplicationJSON) {
-			err = json.NewDecoder(r.Body).Decode(v)
-		} else if strings.HasPrefix(ct, ApplicationForm) {
-			err = nil
-		}
-		return err
-	})
+	e.SetBinder(&binder{})
 	return
 }
 
@@ -188,9 +220,14 @@ func (e *Echo) Router() *Router {
 	return e.router
 }
 
+// DisableColoredLog disables colored log.
+func (e *Echo) DisableColoredLog() {
+	color.Disable()
+}
+
 // HTTP2 enables HTTP2 support.
-func (e *Echo) HTTP2(on bool) {
-	e.http2 = on
+func (e *Echo) HTTP2() {
+	e.http2 = true
 }
 
 // DefaultHTTPErrorHandler invokes the default HTTP error handler.
@@ -204,7 +241,7 @@ func (e *Echo) SetHTTPErrorHandler(h HTTPErrorHandler) {
 }
 
 // SetBinder registers a custom binder. It's invoked by Context.Bind().
-func (e *Echo) SetBinder(b BindFunc) {
+func (e *Echo) SetBinder(b Binder) {
 	e.binder = b
 }
 
@@ -213,14 +250,14 @@ func (e *Echo) SetRenderer(r Renderer) {
 	e.renderer = r
 }
 
-// SetDebug sets debug mode.
-func (e *Echo) SetDebug(on bool) {
-	e.debug = on
+// Debug enables debug mode.
+func (e *Echo) Debug() {
+	e.debug = true
 }
 
-// Debug returns debug mode.
-func (e *Echo) Debug() bool {
-	return e.debug
+// StripTrailingSlash enables removing trailing slash from the request path.
+func (e *Echo) StripTrailingSlash() {
+	e.stripTrailingSlash = true
 }
 
 // Use adds handler to the middleware chain.
@@ -273,6 +310,20 @@ func (e *Echo) Put(path string, h Handler) {
 // Trace adds a TRACE route > handler to the router.
 func (e *Echo) Trace(path string, h Handler) {
 	e.add(TRACE, path, h)
+}
+
+// Any adds a route > handler to the router for all HTTP methods.
+func (e *Echo) Any(path string, h Handler) {
+	for _, m := range methods {
+		e.add(m, path, h)
+	}
+}
+
+// Match adds a route > handler to the router for multiple HTTP methods provided.
+func (e *Echo) Match(methods []string, path string, h Handler) {
+	for _, m := range methods {
+		e.add(m, path, h)
+	}
 }
 
 // WebSocket adds a WebSocket route > handler to the router.
@@ -389,7 +440,7 @@ func (e *Echo) URI(h Handler, params ...interface{}) string {
 	return uri.String()
 }
 
-// URL is an alias for URI.
+// URL is an alias for `URI` function.
 func (e *Echo) URL(h Handler, params ...interface{}) string {
 	return e.URI(h, params...)
 }
@@ -399,6 +450,7 @@ func (e *Echo) Routes() []Route {
 	return e.router.routes
 }
 
+// ServeHTTP implements `http.Handler` interface, which serves HTTP requests.
 func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c := e.pool.Get().(*Context)
 	h, echo := e.router.Find(r.Method, r.URL.Path, c)
@@ -406,9 +458,6 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		e = echo
 	}
 	c.reset(r, w, e)
-	if h == nil {
-		h = e.notFoundHandler
-	}
 
 	// Chain middleware with handler in the end
 	for i := len(e.middleware) - 1; i >= 0; i-- {
@@ -423,7 +472,7 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	e.pool.Put(c)
 }
 
-// Server returns the internal *http.Server
+// Server returns the internal *http.Server.
 func (e *Echo) Server(addr string) *http.Server {
 	s := &http.Server{Addr: addr}
 	s.Handler = e
@@ -446,13 +495,13 @@ func (e *Echo) RunTLS(addr, certFile, keyFile string) {
 }
 
 // RunServer runs a custom server.
-func (e *Echo) RunServer(srv *http.Server) {
-	e.run(srv)
+func (e *Echo) RunServer(s *http.Server) {
+	e.run(s)
 }
 
 // RunTLSServer runs a custom server with TLS configuration.
-func (e *Echo) RunTLSServer(srv *http.Server, certFile, keyFile string) {
-	e.run(srv, certFile, keyFile)
+func (e *Echo) RunTLSServer(s *http.Server, certFile, keyFile string) {
+	e.run(s, certFile, keyFile)
 }
 
 func (e *Echo) run(s *http.Server, files ...string) {
@@ -489,7 +538,7 @@ func (e *HTTPError) Error() string {
 	return e.message
 }
 
-// wraps middleware
+// wrapMiddleware wraps middleware.
 func wrapMiddleware(m Middleware) MiddlewareFunc {
 	switch m := m.(type) {
 	case MiddlewareFunc:
@@ -520,7 +569,7 @@ func wrapMiddleware(m Middleware) MiddlewareFunc {
 	}
 }
 
-// Wraps HandlerFunc middleware
+// wrapHandlerFuncMW wraps HandlerFunc middleware.
 func wrapHandlerFuncMW(m HandlerFunc) MiddlewareFunc {
 	return func(h HandlerFunc) HandlerFunc {
 		return func(c *Context) error {
@@ -532,7 +581,7 @@ func wrapHandlerFuncMW(m HandlerFunc) MiddlewareFunc {
 	}
 }
 
-// Wraps http.HandlerFunc middleware
+// wrapHTTPHandlerFuncMW wraps http.HandlerFunc middleware.
 func wrapHTTPHandlerFuncMW(m http.HandlerFunc) MiddlewareFunc {
 	return func(h HandlerFunc) HandlerFunc {
 		return func(c *Context) error {
@@ -544,7 +593,7 @@ func wrapHTTPHandlerFuncMW(m http.HandlerFunc) MiddlewareFunc {
 	}
 }
 
-// wraps handler
+// wrapHandler wraps handler.
 func wrapHandler(h Handler) HandlerFunc {
 	switch h := h.(type) {
 	case HandlerFunc:
@@ -566,6 +615,13 @@ func wrapHandler(h Handler) HandlerFunc {
 	}
 }
 
-func init() {
-	log.SetOutput(colorable.NewColorableStdout())
+func (binder) Bind(r *http.Request, i interface{}) (err error) {
+	ct := r.Header.Get(ContentType)
+	err = UnsupportedMediaType
+	if strings.HasPrefix(ct, ApplicationJSON) {
+		err = json.NewDecoder(r.Body).Decode(i)
+	} else if strings.HasPrefix(ct, ApplicationXML) {
+		err = xml.NewDecoder(r.Body).Decode(i)
+	}
+	return
 }

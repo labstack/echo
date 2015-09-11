@@ -2,7 +2,13 @@ package echo
 
 import (
 	"encoding/json"
+	"encoding/xml"
 	"net/http"
+	"path"
+
+	"fmt"
+
+	"net/url"
 
 	"golang.org/x/net/websocket"
 )
@@ -16,6 +22,7 @@ type (
 		socket   *websocket.Conn
 		pnames   []string
 		pvalues  []string
+		query    url.Values
 		store    store
 		echo     *Echo
 	}
@@ -69,6 +76,19 @@ func (c *Context) Param(name string) (value string) {
 	return
 }
 
+// Query returns query parameter by name.
+func (c *Context) Query(name string) string {
+	if c.query == nil {
+		c.query = c.request.URL.Query()
+	}
+	return c.query.Get(name)
+}
+
+// Form returns form parameter by name.
+func (c *Context) Form(name string) string {
+	return c.request.FormValue(name)
+}
+
 // Get retrieves data from the context.
 func (c *Context) Get(key string) interface{} {
 	return c.store[key]
@@ -76,47 +96,82 @@ func (c *Context) Get(key string) interface{} {
 
 // Set saves data in the context.
 func (c *Context) Set(key string, val interface{}) {
+	if c.store == nil {
+		c.store = make(store)
+	}
 	c.store[key] = val
 }
 
-// Bind binds the request body into specified type v. Default binder does it
-// based on Content-Type header.
+// Bind binds the request body into specified type `i`. The default binder does
+// it based on Content-Type header.
 func (c *Context) Bind(i interface{}) error {
-	return c.echo.binder(c.request, i)
+	return c.echo.binder.Bind(c.request, i)
 }
 
-// Render invokes the registered HTML template renderer and sends a text/html
-// response with status code.
+// Render renders a template with data and sends a text/html response with status
+// code. Templates can be registered using `Echo.SetRenderer()`.
 func (c *Context) Render(code int, name string, data interface{}) error {
 	if c.echo.renderer == nil {
 		return RendererNotRegistered
 	}
-	c.response.Header().Set(ContentType, TextHTML)
+	c.response.Header().Set(ContentType, TextHTMLCharsetUTF8)
 	c.response.WriteHeader(code)
 	return c.echo.renderer.Render(c.response, name, data)
 }
 
-// JSON sends an application/json response with status code.
+// HTML formats according to a format specifier and sends HTML response with
+// status code.
+func (c *Context) HTML(code int, format string, a ...interface{}) (err error) {
+	c.response.Header().Set(ContentType, TextHTMLCharsetUTF8)
+	c.response.WriteHeader(code)
+	_, err = fmt.Fprintf(c.response, format, a...)
+	return
+}
+
+// String formats according to a format specifier and sends text response with status
+// code.
+func (c *Context) String(code int, format string, a ...interface{}) (err error) {
+	c.response.Header().Set(ContentType, TextPlain)
+	c.response.WriteHeader(code)
+	_, err = fmt.Fprintf(c.response, format, a...)
+	return
+}
+
+// JSON sends a JSON response with status code.
 func (c *Context) JSON(code int, i interface{}) error {
-	c.response.Header().Set(ContentType, ApplicationJSON)
+	c.response.Header().Set(ContentType, ApplicationJSONCharsetUTF8)
 	c.response.WriteHeader(code)
 	return json.NewEncoder(c.response).Encode(i)
 }
 
-// String sends a text/plain response with status code.
-func (c *Context) String(code int, s string) error {
-	c.response.Header().Set(ContentType, TextPlain)
+// JSONP sends a JSONP response with status code. It uses `callback` to construct
+// the JSONP payload.
+func (c *Context) JSONP(code int, callback string, i interface{}) (err error) {
+	c.response.Header().Set(ContentType, ApplicationJavaScriptCharsetUTF8)
 	c.response.WriteHeader(code)
-	_, err := c.response.Write([]byte(s))
-	return err
+	c.response.Write([]byte(callback + "("))
+	if err = json.NewEncoder(c.response).Encode(i); err == nil {
+		c.response.Write([]byte(");"))
+	}
+	return
 }
 
-// HTML sends a text/html response with status code.
-func (c *Context) HTML(code int, html string) error {
-	c.response.Header().Set(ContentType, TextHTML)
+// XML sends an XML response with status code.
+func (c *Context) XML(code int, i interface{}) error {
+	c.response.Header().Set(ContentType, ApplicationXMLCharsetUTF8)
 	c.response.WriteHeader(code)
-	_, err := c.response.Write([]byte(html))
-	return err
+	c.response.Write([]byte(xml.Header))
+	return xml.NewEncoder(c.response).Encode(i)
+}
+
+// File sends a response with the content of the file. If attachment is true, the
+// client is prompted to save the file.
+func (c *Context) File(name string, attachment bool) error {
+	dir, file := path.Split(name)
+	if attachment {
+		c.response.Header().Set(ContentDisposition, "attachment; filename="+file)
+	}
+	return serveFile(dir, file, c)
 }
 
 // NoContent sends a response with no body and a status code.
@@ -126,11 +181,15 @@ func (c *Context) NoContent(code int) error {
 }
 
 // Redirect redirects the request using http.Redirect with status code.
-func (c *Context) Redirect(code int, url string) {
+func (c *Context) Redirect(code int, url string) error {
+	if code < http.StatusMultipleChoices || code > http.StatusTemporaryRedirect {
+		return InvalidRedirectCode
+	}
 	http.Redirect(c.response, c.request, url, code)
+	return nil
 }
 
-// Error invokes the registered HTTP error handler. Usually used by middleware.
+// Error invokes the registered HTTP error handler. Generally used by middleware.
 func (c *Context) Error(err error) {
 	c.echo.httpErrorHandler(err, c)
 }
@@ -138,5 +197,7 @@ func (c *Context) Error(err error) {
 func (c *Context) reset(r *http.Request, w http.ResponseWriter, e *Echo) {
 	c.request = r
 	c.response.reset(w)
+	c.query = nil
+	c.store = nil
 	c.echo = e
 }
