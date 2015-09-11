@@ -119,3 +119,25 @@ func TestGzipCloseNotify(t *testing.T) {
 
 	assert.Equal(t, closed, true)
 }
+
+func BenchmarkGzip(b *testing.B) {
+
+	b.StopTimer()
+	b.ReportAllocs()
+
+	h := func(c *echo.Context) error {
+		c.Response().Write([]byte("test")) // For Content-Type sniffing
+		return nil
+	}
+	req, _ := http.NewRequest(echo.GET, "/", nil)
+	req.Header.Set(echo.AcceptEncoding, "gzip")
+
+	b.StartTimer()
+
+	for i := 0; i < b.N; i++ {
+		rec := httptest.NewRecorder()
+		c := echo.NewContext(req, echo.NewResponse(rec), echo.New())
+		Gzip()(h)(c)
+	}
+
+}

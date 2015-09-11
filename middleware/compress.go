@@ -4,9 +4,11 @@ import (
 	"bufio"
 	"compress/gzip"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/labstack/echo"
 )
@@ -37,6 +39,12 @@ func (w *gzipWriter) CloseNotify() <-chan bool {
 	return w.ResponseWriter.(http.CloseNotifier).CloseNotify()
 }
 
+var writerPool = sync.Pool{
+	New: func() interface{} {
+		return gzip.NewWriter(ioutil.Discard)
+	},
+}
+
 // Gzip returns a middleware which compresses HTTP response using gzip compression
 // scheme.
 func Gzip() echo.MiddlewareFunc {
@@ -46,8 +54,12 @@ func Gzip() echo.MiddlewareFunc {
 		return func(c *echo.Context) error {
 			c.Response().Header().Add(echo.Vary, echo.AcceptEncoding)
 			if strings.Contains(c.Request().Header.Get(echo.AcceptEncoding), scheme) {
-				w := gzip.NewWriter(c.Response().Writer())
-				defer w.Close()
+				w := writerPool.Get().(*gzip.Writer)
+				w.Reset(c.Response().Writer())
+				defer func() {
+					w.Close()
+					writerPool.Put(w)
+				}()
 				gw := gzipWriter{Writer: w, ResponseWriter: c.Response().Writer()}
 				c.Response().Header().Set(echo.ContentEncoding, scheme)
 				c.Response().SetWriter(gw)
