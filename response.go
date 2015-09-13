@@ -74,6 +74,10 @@ func (r *Response) Size() int64 {
 	return r.size
 }
 
+func (r *Response) Committed() bool {
+	return r.committed
+}
+
 func (r *Response) reset(w http.ResponseWriter) {
 	r.writer = w
 	r.size = 0
