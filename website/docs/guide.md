@@ -42,9 +42,9 @@ and message `HTTPError.Message`.
 
 ### Debug
 
-`Echo.Debug()`
+`Echo.SetDebug(on bool)`
 
-Enables debug mode.
+Enables/disables debug mode.
 
 ### Disable colored log
 
