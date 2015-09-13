@@ -33,7 +33,7 @@ func TestEcho(t *testing.T) {
 	assert.NotNil(t, e.Router())
 
 	// Debug
-	e.Debug()
+	e.SetDebug(true)
 	assert.True(t, e.debug)
 
 	// DefaultHTTPErrorHandler

@@ -250,9 +250,14 @@ func (e *Echo) SetRenderer(r Renderer) {
 	e.renderer = r
 }
 
-// Debug enables debug mode.
-func (e *Echo) Debug() {
-	e.debug = true
+// SetDebug enables/disables debug mode.
+func (e *Echo) SetDebug(on bool) {
+	e.debug = on
+}
+
+// Debug returns debug mode (enabled or disabled).
+func (e *Echo) Debug() bool {
+	return e.debug
 }
 
 // StripTrailingSlash enables removing trailing slash from the request path.
