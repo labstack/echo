@@ -188,6 +188,8 @@ var (
 	}
 )
 
+var runtimeGOOS = runtime.GOOS
+
 // New creates an instance of Echo.
 func New() (e *Echo) {
 	e = &Echo{maxParam: new(int)}
@@ -200,7 +202,7 @@ func New() (e *Echo) {
 	// Defaults
 	//----------
 
-	if runtime.GOOS == "windows" {
+	if runtimeGOOS == "windows" {
 		e.DisableColoredLog()
 	}
 	e.HTTP2()
@@ -229,9 +231,12 @@ func (e *Echo) Router() *Router {
 	return e.router
 }
 
+var colorDisable = color.Disable
+
 // DisableColoredLog disables colored log.
 func (e *Echo) DisableColoredLog() {
-	color.Disable()
+	colorDisable()
+
 }
 
 // HTTP2 enables HTTP2 support.

@@ -364,7 +364,7 @@ func TestRouterMultiRoute(t *testing.T) {
 	r.Add(GET, "/users/:id", func(c *Context) error {
 		return nil
 	}, e)
-	c := NewContext(nil, nil, e)
+	c := NewContext(nil, new(Response), e)
 
 	// Route > /users
 	h, _ := r.Find(GET, "/users", c)
@@ -384,6 +384,14 @@ func TestRouterMultiRoute(t *testing.T) {
 	if assert.IsType(t, new(HTTPError), h(c)) {
 		he := h(c).(*HTTPError)
 		assert.Equal(t, http.StatusNotFound, he.code)
+	}
+
+	// Invalid Method for Resource
+	c.response.writer = httptest.NewRecorder()
+	h, _ = r.Find("INVALID", "/users", c)
+	if assert.IsType(t, new(HTTPError), h(c)) {
+		he := h(c).(*HTTPError)
+		assert.Equal(t, http.StatusMethodNotAllowed, he.code)
 	}
 }
 

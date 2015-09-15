@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"testing"
 
 	"reflect"
@@ -12,6 +13,7 @@ import (
 
 	"errors"
 
+	"github.com/labstack/gommon/color"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/websocket"
 )
@@ -22,6 +24,20 @@ type (
 		Name string `json:"name" xml:"name"`
 	}
 )
+
+func TestNewRuntimeGOOS(t *testing.T) {
+	changedColor := make(chan bool)
+	colorDisable = func() { changedColor <- true }
+	runtimeGOOS = "windows"
+	defer func() {
+		colorDisable = color.Disable
+		runtimeGOOS = runtime.GOOS
+	}()
+	go func() {
+		New()
+	}()
+	assert.True(t, <-changedColor)
+}
 
 func TestEcho(t *testing.T) {
 	e := New()
