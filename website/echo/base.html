@@ -4,17 +4,28 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    {% if page_description %}<meta name="description" content="{{ page_description }}">{% endif %}
-    {% if site_author %}<meta name="author" content="{{ site_author }}">{% endif %}
-    {% if canonical_url %}<link rel="canonical" href="{{ canonical_url }}">{% endif %}
-    {% if favicon %}<link rel="shortcut icon" href="{{ favicon }}">
-    {% else %}<link rel="shortcut icon" href="{{ base_url }}/img/favicon.ico">{% endif %}
+    {% if page_description %}
+    <meta name="description" content="{{ page_description }}">
+    {% endif %}
+    {% if site_author %}
+    <meta name="author" content="{{ site_author }}">
+    {% endif %}
+    {% if canonical_url %}
+    <link rel="canonical" href="{{ canonical_url }}">
+    {% endif %}
+    {% if favicon %}
+    <link rel="shortcut icon" href="{{ favicon }}">
+    {% else %}
+    <link rel="shortcut icon" href="{{ base_url }}/img/favicon.ico">
+    {% endif %}
 
-    <title>{% if page_title %}{{ page_title }} - {% endif %}{{ config.extra.site_title }}</title>
+    <title>{% if page_title %}{{ page_title }} - {% endif %}{{
+        config.extra.site_title }}</title>
 
     <link href="{{ base_url }}/css/bootstrap-custom.min.css" rel="stylesheet">
     <link href="{{ base_url }}/css/font-awesome-4.0.3.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.6/styles/tomorrow-night.min.css">
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.6/styles/tomorrow-night.min.css">
     <link href="{{ base_url }}/css/base.css" rel="stylesheet">
     <link href="{{ base_url }}/css/echo.css" rel="stylesheet">
     {%- for path in extra_css %}
@@ -23,8 +34,10 @@
 
     <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
     <!--[if lt IE 9]>
-    <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
-    <script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+    <script
+        src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+    <script
+        src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
     <![endif]-->
 
     {% if google_analytics %}
@@ -36,7 +49,8 @@
 
             ga('create', '{{ google_analytics[0] }}', '{{ google_analytics[1] }}');
             ga('send', 'pageview');
-        </script>
+
+    </script>
     {% endif %}
 </head>
 
