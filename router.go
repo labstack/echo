@@ -394,7 +394,7 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 		c = cn.findChildWithType(mtype)
 		if c != nil {
 			cn = c
-			ctx.pvalues[0] = search
+			ctx.pvalues[len(ctx.pvalues) - 1] = search
 			search = "" // End search
 			continue
 		}
