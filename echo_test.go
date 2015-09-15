@@ -387,7 +387,7 @@ func TestEchoBadRequest(t *testing.T) {
 	r, _ := http.NewRequest("INVALID", "/files", nil)
 	w := httptest.NewRecorder()
 	e.ServeHTTP(w, r)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
 }
 
 func TestEchoHTTPError(t *testing.T) {

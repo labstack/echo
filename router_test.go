@@ -523,7 +523,10 @@ func TestRouterAPI(t *testing.T) {
 			return nil
 		}, e)
 	}
-	c := NewContext(nil, nil, e)
+
+	response := NewResponse(httptest.NewRecorder())
+
+	c := NewContext(nil, response, e)
 	for _, route := range api {
 		h, _ := r.Find(route.Method, route.Path, c)
 		if assert.NotNil(t, h) {

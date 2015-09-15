@@ -134,7 +134,7 @@ const (
 	Location           = "Location"
 	Upgrade            = "Upgrade"
 	Vary               = "Vary"
-	WWWAuthenticate = "WWW-Authenticate"
+	WWWAuthenticate    = "WWW-Authenticate"
 
 	//-----------
 	// Protocols
@@ -169,6 +169,15 @@ var (
 	//----------------
 	// Error handlers
 	//----------------
+	// methodNotAllowedHandler - handler to respond with a http.StatusMethodNotAllowed status
+	// which is applicable when the route is correct, but the method for the route isn't allowed
+	// for the route
+	methodNotAllowedHandler = func(c *Context, allowedMethods ...string) func(c *Context) error {
+		return func(c *Context) error {
+			c.response.Header().Add("Allow", strings.Join(allowedMethods, ", "))
+			return NewHTTPError(http.StatusMethodNotAllowed)
+		}
+	}
 
 	notFoundHandler = func(c *Context) error {
 		return NewHTTPError(http.StatusNotFound)

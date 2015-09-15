@@ -4,17 +4,9 @@ import "net/http"
 
 type (
 	Router struct {
-		connectTree *node
-		deleteTree  *node
-		getTree     *node
-		headTree    *node
-		optionsTree *node
-		patchTree   *node
-		postTree    *node
-		putTree     *node
-		traceTree   *node
-		routes      []Route
-		echo        *Echo
+		tree   *node
+		routes []Route
+		echo   *Echo
 	}
 	node struct {
 		typ      ntype
@@ -22,7 +14,7 @@ type (
 		prefix   string
 		parent   *node
 		children children
-		handler  HandlerFunc
+		handler  map[string]HandlerFunc
 		pnames   []string
 		echo     *Echo
 	}
@@ -38,17 +30,16 @@ const (
 
 func NewRouter(e *Echo) *Router {
 	return &Router{
-		connectTree: new(node),
-		deleteTree:  new(node),
-		getTree:     new(node),
-		headTree:    new(node),
-		optionsTree: new(node),
-		patchTree:   new(node),
-		postTree:    new(node),
-		putTree:     new(node),
-		traceTree:   new(node),
-		routes:      []Route{},
-		echo:        e,
+		// tree is base node for the search tree for all routes, each node
+		// therein contains a handler string->HandlerFunc map.  This allows
+		// us to include the method applicable within the tree, allowing us to
+		// detect if routes should not allow particular methods, and making the
+		// router more clear
+		tree: &node{
+			handler: make(map[string]HandlerFunc),
+		},
+		routes: []Route{},
+		echo:   e,
 	}
 }
 
@@ -75,7 +66,7 @@ func (r *Router) Add(method, path string, h HandlerFunc, e *Echo) {
 		} else if path[i] == '*' {
 			r.insert(method, path[:i], nil, stype, nil, e)
 			pnames = append(pnames, "_name")
-			r.insert(method, path[:i + 1], h, mtype, pnames, e)
+			r.insert(method, path[:i+1], h, mtype, pnames, e)
 			return
 		}
 	}
@@ -90,8 +81,8 @@ func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 		*e.maxParam = l
 	}
 
-	cn := r.findTree(method) // Current node as root
-	if cn == nil {
+	cn := r.tree
+	if !validMethod(method) {
 		panic("echo => invalid method")
 	}
 	search := path
@@ -115,20 +106,22 @@ func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 			cn.prefix = search
 			if h != nil {
 				cn.typ = t
-				cn.handler = h
+				// handler is a map of methods to applicable handlers, map the inserted method to the
+				// handler
+				cn.handler = map[string]HandlerFunc{method: h}
 				cn.pnames = pnames
 				cn.echo = e
 			}
 		} else if l < pl {
 			// Split node
-			n := newNode(cn.typ, cn.prefix[l:], cn, cn.children, cn.handler, cn.pnames, cn.echo)
+			n := newNode(cn.typ, cn.prefix[l:], cn, cn.children, cn.handler[method], cn.pnames, cn.echo, method)
 
 			// Reset parent node
 			cn.typ = stype
 			cn.label = cn.prefix[0]
 			cn.prefix = cn.prefix[:l]
 			cn.children = nil
-			cn.handler = nil
+			cn.handler = map[string]HandlerFunc{}
 			cn.pnames = nil
 			cn.echo = nil
 
@@ -137,12 +130,13 @@ func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 			if l == sl {
 				// At parent node
 				cn.typ = t
-				cn.handler = h
+				// add the handler to the node's map of methods to handlers
+				cn.handler[method] = h
 				cn.pnames = pnames
 				cn.echo = e
 			} else {
 				// Create child node
-				n = newNode(t, search[l:], cn, nil, h, pnames, e)
+				n = newNode(t, search[l:], cn, nil, h, pnames, e, method)
 				cn.addChild(n)
 			}
 		} else if l < sl {
@@ -154,12 +148,13 @@ func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 				continue
 			}
 			// Create child node
-			n := newNode(t, search, cn, nil, h, pnames, e)
+			n := newNode(t, search, cn, nil, h, pnames, e, method)
 			cn.addChild(n)
 		} else {
 			// Node already exists
 			if h != nil {
-				cn.handler = h
+				// add the handler to the node's map of methods to handlers
+				cn.handler[method] = h
 				cn.pnames = pnames
 				cn.echo = e
 			}
@@ -168,16 +163,18 @@ func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 	}
 }
 
-func newNode(t ntype, pre string, p *node, c children, h HandlerFunc, pnames []string, e *Echo) *node {
+// newNode - create a new router tree node
+func newNode(t ntype, pre string, p *node, c children, h HandlerFunc, pnames []string, e *Echo, m string) *node {
 	return &node{
 		typ:      t,
 		label:    pre[0],
 		prefix:   pre,
 		parent:   p,
 		children: c,
-		handler:  h,
-		pnames:   pnames,
-		echo:     e,
+		// create a handler method to handler map for this node
+		handler: map[string]HandlerFunc{m: h},
+		pnames:  pnames,
+		echo:    e,
 	}
 }
 
@@ -212,92 +209,49 @@ func (n *node) findChildWithType(t ntype) *node {
 	return nil
 }
 
-func (r *Router) findTree(method string) (n *node) {
-	switch method[0] {
-	case 'G': // GET
-		m := uint32(method[2]) << 8 | uint32(method[1]) << 16 | uint32(method[0]) << 24
-		if m == 0x47455400 {
-			n = r.getTree
-		}
-	case 'P': // POST, PUT or PATCH
-		switch method[1] {
-		case 'O': // POST
-			m := uint32(method[3]) | uint32(method[2]) << 8 | uint32(method[1]) << 16 |
-			uint32(method[0]) << 24
-			if m == 0x504f5354 {
-				n = r.postTree
-			}
-		case 'U': // PUT
-			m := uint32(method[2]) << 8 | uint32(method[1]) << 16 | uint32(method[0]) << 24
-			if m == 0x50555400 {
-				n = r.putTree
-			}
-		case 'A': // PATCH
-			m := uint64(method[4]) << 24 | uint64(method[3]) << 32 | uint64(method[2]) << 40 |
-			uint64(method[1]) << 48 | uint64(method[0]) << 56
-			if m == 0x5041544348000000 {
-				n = r.patchTree
-			}
-		}
-	case 'D': // DELETE
-		m := uint64(method[5]) << 16 | uint64(method[4]) << 24 | uint64(method[3]) << 32 |
-		uint64(method[2]) << 40 | uint64(method[1]) << 48 | uint64(method[0]) << 56
-		if m == 0x44454c4554450000 {
-			n = r.deleteTree
-		}
-	case 'C': // CONNECT
-		m := uint64(method[6]) << 8 | uint64(method[5]) << 16 | uint64(method[4]) << 24 |
-		uint64(method[3]) << 32 | uint64(method[2]) << 40 | uint64(method[1]) << 48 |
-		uint64(method[0]) << 56
-		if m == 0x434f4e4e45435400 {
-			n = r.connectTree
-		}
-	case 'H': // HEAD
-		m := uint32(method[3]) | uint32(method[2]) << 8 | uint32(method[1]) << 16 |
-		uint32(method[0]) << 24
-		if m == 0x48454144 {
-			n = r.headTree
-		}
-	case 'O': // OPTIONS
-		m := uint64(method[6]) << 8 | uint64(method[5]) << 16 | uint64(method[4]) << 24 |
-		uint64(method[3]) << 32 | uint64(method[2]) << 40 | uint64(method[1]) << 48 |
-		uint64(method[0]) << 56
-		if m == 0x4f5054494f4e5300 {
-			n = r.optionsTree
-		}
-	case 'T': // TRACE
-		m := uint64(method[4]) << 24 | uint64(method[3]) << 32 | uint64(method[2]) << 40 |
-		uint64(method[1]) << 48 | uint64(method[0]) << 56
-		if m == 0x5452414345000000 {
-			n = r.traceTree
+//validMethod - validate that the http method is valid.
+func validMethod(method string) bool {
+	var ok = false
+	for _, v := range methods {
+		if v == method {
+			ok = true
+			break
 		}
 	}
-	return
+	return ok
 }
 
 func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo) {
+	// get tree base node from the router
+	cn := r.tree
+	e = cn.echo
 	h = notFoundHandler
-	cn := r.findTree(method) // Current node as root
-	if cn == nil {
-		h = badRequestHandler
+
+	if !validMethod(method) {
+		// if the method is completely invalid
+		allowedMethods := []string{}
+		for m, _ := range cn.handler {
+			allowedMethods = append(allowedMethods, m)
+		}
+		h = methodNotAllowedHandler(ctx, allowedMethods...)
 		return
 	}
 
 	// Strip trailing slash
 	if r.echo.stripTrailingSlash {
 		l := len(path)
-		if path[l - 1] == '/' {
-			path = path[:l - 1]
+		if path[l-1] == '/' {
+			path = path[:l-1]
 		}
 	}
 
 	var (
 		search = path
-		c  *node  // Child node
-		n int    // Param counter
-		nt ntype  // Next type
-		nn *node  // Next node
-		ns string // Next search
+		c      *node  // Child node
+		n      int    // Param counter
+		nt     ntype  // Next type
+		nn     *node  // Next node
+		ns     string // Next search
 	)
 
 	// TODO: Check empty path???
@@ -306,10 +260,21 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 	for {
 		if search == "" {
 			if cn.handler != nil {
-				// Found
-				ctx.pnames = cn.pnames
-				h = cn.handler
+				// Found route, check if method is applicable
+				var ok = false
+				h, ok = cn.handler[method]
 				e = cn.echo
+				if !ok {
+					// route is valid, but method is not allowed, 405
+					allowedMethods := []string{}
+					for m, _ := range cn.handler {
+						allowedMethods = append(allowedMethods, m)
+					}
+					h = methodNotAllowedHandler(ctx, allowedMethods...)
+					return
+				}
+				ctx.pnames = cn.pnames
+				h = cn.handler[method]
 			}
 			return
 		}
@@ -369,7 +334,7 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 		}
 
 		// Param node
-		Param:
+	Param:
 		c = cn.findChildWithType(ptype)
 		if c != nil {
 			// Save next
@@ -389,7 +354,7 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 		}
 
 		// Match-any node
-		MatchAny:
+	MatchAny:
 		//		c = cn.getChild()
 		c = cn.findChildWithType(mtype)
 		if c != nil {
