@@ -36,20 +36,20 @@ func TestBasicAuth(t *testing.T) {
 	req.Header.Set(echo.Authorization, auth)
 	he := ba(c).(*echo.HTTPError)
 	assert.Equal(t, http.StatusUnauthorized, he.Code())
-	assert.Equal(t, Basic + " realm=Restricted", rec.Header().Get(echo.WWWAuthenticate))
+	assert.Equal(t, Basic+" realm=Restricted", rec.Header().Get(echo.WWWAuthenticate))
 
 	// Empty Authorization header
 	req.Header.Set(echo.Authorization, "")
 	he = ba(c).(*echo.HTTPError)
 	assert.Equal(t, http.StatusUnauthorized, he.Code())
-	assert.Equal(t, Basic + " realm=Restricted", rec.Header().Get(echo.WWWAuthenticate))
+	assert.Equal(t, Basic+" realm=Restricted", rec.Header().Get(echo.WWWAuthenticate))
 
 	// Invalid Authorization header
 	auth = base64.StdEncoding.EncodeToString([]byte("invalid"))
 	req.Header.Set(echo.Authorization, auth)
 	he = ba(c).(*echo.HTTPError)
 	assert.Equal(t, http.StatusUnauthorized, he.Code())
-	assert.Equal(t, Basic + " realm=Restricted", rec.Header().Get(echo.WWWAuthenticate))
+	assert.Equal(t, Basic+" realm=Restricted", rec.Header().Get(echo.WWWAuthenticate))
 
 	// WebSocket
 	c.Request().Header.Set(echo.Upgrade, echo.WebSocket)

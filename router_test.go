@@ -352,6 +352,23 @@ func TestRouterMicroParam(t *testing.T) {
 	}
 }
 
+func TestRouterMixParamMatchAny(t *testing.T) {
+	e := New()
+	r := e.router
+
+	// Route
+	r.Add(GET, "/users/:id/*", func(c *Context) error {
+		return nil
+	}, e)
+	c := NewContext(nil, nil, e)
+
+	h, _ := r.Find(GET, "/users/joe/comments", c)
+	if assert.NotNil(t, h) {
+		h(c)
+		assert.Equal(t, "joe", c.P(0))
+	}
+}
+
 func TestRouterMultiRoute(t *testing.T) {
 	e := New()
 	r := e.router
