@@ -347,12 +347,13 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 		}
 
 		if search == "" {
-			// TODO: Needs improvement
-			if cn.findChildWithType(mtype) == nil {
-				continue
+			if cn.handler == nil {
+				// Look up for match-any, might have an empty value for *, e.g.
+				// serving a directory. Issue #207
+				cn = cn.findChildWithType(mtype)
+				ctx.pvalues[len(ctx.pvalues)-1] = ""
 			}
-			// Empty value
-			goto MatchAny
+			continue
 		}
 
 		// Static node
@@ -390,7 +391,7 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 
 		// Match-any node
 	MatchAny:
-		//		c = cn.getChild()
+		// c = cn.getChild()
 		c = cn.findChildWithType(mtype)
 		if c != nil {
 			cn = c
