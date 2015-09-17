@@ -135,7 +135,8 @@ const (
 	Upgrade            = "Upgrade"
 	Vary               = "Vary"
 	WWWAuthenticate    = "WWW-Authenticate"
-
+	XForwardedFor      = "X-Forwarded-For"
+	XRealIP            = "X-Real-IP"
 	//-----------
 	// Protocols
 	//-----------
