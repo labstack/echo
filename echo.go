@@ -375,7 +375,7 @@ func (e *Echo) Static(path, dir string) {
 // ServeDir serves files from a directory.
 func (e *Echo) ServeDir(path, dir string) {
 	e.Get(path+"*", func(c *Context) error {
-		return serveFile(dir, c.P(0), c) // Param `_name`
+		return serveFile(dir, c.P(0), c) // Param `_*`
 	})
 }
 
