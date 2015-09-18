@@ -321,19 +321,32 @@ func TestRouterTwoParam(t *testing.T) {
 func TestRouterMatchAny(t *testing.T) {
 	e := New()
 	r := e.router
+
+	// Routes
+	r.Add(GET, "/", func(*Context) error {
+		return nil
+	}, e)
+	r.Add(GET, "/*", func(*Context) error {
+		return nil
+	}, e)
 	r.Add(GET, "/users/*", func(*Context) error {
 		return nil
 	}, e)
 	c := NewContext(nil, nil, e)
 
-	h, _ := r.Find(GET, "/users/", c)
+	h, _ := r.Find(GET, "/", c)
 	if assert.NotNil(t, h) {
 		assert.Equal(t, "", c.P(0))
 	}
 
-	h, _ = r.Find(GET, "/users/1", c)
+	h, _ = r.Find(GET, "/download", c)
 	if assert.NotNil(t, h) {
-		assert.Equal(t, "1", c.P(0))
+		assert.Equal(t, "download", c.P(0))
+	}
+
+	h, _ = r.Find(GET, "/users/joe", c)
+	if assert.NotNil(t, h) {
+		assert.Equal(t, "joe", c.P(0))
 	}
 }
 
@@ -494,7 +507,7 @@ func TestRouterPriority(t *testing.T) {
 	if assert.NotNil(t, h) {
 		h(c)
 		assert.Equal(t, 7, c.Get("g"))
-		assert.Equal(t, "joe/books", c.Param("_name"))
+		assert.Equal(t, "joe/books", c.Param("_*"))
 	}
 }
 

@@ -165,7 +165,7 @@ func (r *Router) Add(method, path string, h HandlerFunc, e *Echo) {
 			r.insert(method, path[:i], nil, ptype, pnames, e)
 		} else if path[i] == '*' {
 			r.insert(method, path[:i], nil, stype, nil, e)
-			pnames = append(pnames, "_name")
+			pnames = append(pnames, "_*")
 			r.insert(method, path[:i+1], h, mtype, pnames, e)
 			return
 		}
@@ -441,12 +441,13 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 		}
 
 		if search == "" {
-			// TODO: Needs improvement
-			if cn.findChildWithType(mtype) == nil {
-				continue
+			if cn.handler == nil {
+				// Look up for match-any, might have an empty value for *, e.g.
+				// serving a directory. Issue #207
+				cn = cn.findChildWithType(mtype)
+				ctx.pvalues[len(cn.pnames)-1] = ""
 			}
-			// Empty value
-			goto MatchAny
+			continue
 		}
 
 		// Static node
@@ -484,11 +485,11 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 
 		// Match-any node
 	MatchAny:
-		//		c = cn.getChild()
+		// c = cn.getChild()
 		c = cn.findChildWithType(mtype)
 		if c != nil {
 			cn = c
-			ctx.pvalues[len(ctx.pvalues)-1] = search
+			ctx.pvalues[len(cn.pnames)-1] = search
 			search = "" // End search
 			continue
 		}

@@ -8,7 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
-	spath "path"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"strings"
@@ -135,7 +135,8 @@ const (
 	Upgrade            = "Upgrade"
 	Vary               = "Vary"
 	WWWAuthenticate    = "WWW-Authenticate"
-
+	XForwardedFor      = "X-Forwarded-For"
+	XRealIP            = "X-Real-IP"
 	//-----------
 	// Protocols
 	//-----------
@@ -389,14 +390,14 @@ func (e *Echo) Static(path, dir string) {
 // ServeDir serves files from a directory.
 func (e *Echo) ServeDir(path, dir string) {
 	e.Get(path+"*", func(c *Context) error {
-		return serveFile(dir, c.P(0), c) // Param `_name`
+		return serveFile(dir, c.P(0), c) // Param `_*`
 	})
 }
 
 // ServeFile serves a file.
 func (e *Echo) ServeFile(path, file string) {
 	e.Get(path, func(c *Context) error {
-		dir, file := spath.Split(file)
+		dir, file := filepath.Split(file)
 		return serveFile(dir, file, c)
 	})
 }
@@ -410,7 +411,7 @@ func serveFile(dir, file string, c *Context) error {
 
 	fi, _ := f.Stat()
 	if fi.IsDir() {
-		file = spath.Join(file, indexFile)
+		file = filepath.Join(file, indexFile)
 		f, err = fs.Open(file)
 		if err != nil {
 			return NewHTTPError(http.StatusForbidden)
