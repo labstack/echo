@@ -441,13 +441,10 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 		}
 
 		if search == "" {
-			if cn.handler == nil {
-				// Look up for match-any, might have an empty value for *, e.g.
-				// serving a directory. Issue #207
-				cn = cn.findChildWithType(mtype)
-				ctx.pvalues[len(cn.pnames)-1] = ""
+			if cn.findChildWithType(mtype) == nil {
+				continue
 			}
-			continue
+			goto MatchAny
 		}
 
 		// Static node
