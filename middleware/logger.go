@@ -44,7 +44,7 @@ func Logger() echo.MiddlewareFunc {
 				code = color.Cyan(n)
 			}
 
-			remoteAddr, _, _ := net.SplitHostPort(remoteAddr)
+			remoteAddr, _, _ = net.SplitHostPort(remoteAddr)
 
 			log.Printf("%s %s %s %s %s %d", remoteAddr, method, path, code, stop.Sub(start), size)
 			return nil
