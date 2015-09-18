@@ -13,6 +13,14 @@ func Logger() echo.MiddlewareFunc {
 	return func(h echo.HandlerFunc) echo.HandlerFunc {
 		return func(c *echo.Context) error {
 
+			remoteAddr := c.Request().RemoteAddr
+			if realIP := c.Request().Header.Get("X-Real-IP"); realIP != "" {
+				remoteAddr = realIP
+			}
+			if realIP := c.Request().Header.Get("X-Forwarded-For"); realIP != "" {
+				remoteAddr = realIP
+			}
+
 			start := time.Now()
 			if err := h(c); err != nil {
 				c.Error(err)
@@ -36,7 +44,7 @@ func Logger() echo.MiddlewareFunc {
 				code = color.Cyan(n)
 			}
 
-			remoteAddr, _, _ := net.SplitHostPort(c.Request().RemoteAddr)
+			remoteAddr, _, _ := net.SplitHostPort(remoteAddr)
 
 			log.Printf("%s %s %s %s %s %d", remoteAddr, method, path, code, stop.Sub(start), size)
 			return nil
