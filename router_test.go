@@ -598,7 +598,7 @@ func TestRouterServeHTTP(t *testing.T) {
 
 func (n *node) printTree(pfx string, tail bool) {
 	p := prefix(tail, pfx, "└── ", "├── ")
-	fmt.Printf("%s%s, %p: type=%d, parent=%p, handler=%v\n", p, n.prefix, n, n.typ, n.parent, n.handler)
+	fmt.Printf("%s%s, %p: type=%d, parent=%p\n", p, n.prefix, n, n.typ, n.parent)
 
 	children := n.children
 	l := len(children)
