@@ -114,7 +114,11 @@ func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 			}
 		} else if l < pl {
 			// Split node
-			n := newNode(cn.typ, cn.prefix[l:], cn, cn.children, cn.handler[method], cn.pnames, cn.echo, method)
+			newHandler := map[string]HandlerFunc{}
+			for k, v := range cn.handler {
+				newHandler[k] = v
+			}
+			n := newNode(cn.typ, cn.prefix[l:], cn, cn.children, newHandler, cn.pnames, cn.echo)
 
 			// Reset parent node
 			cn.typ = stype
@@ -136,7 +140,7 @@ func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 				cn.echo = e
 			} else {
 				// Create child node
-				n = newNode(t, search[l:], cn, nil, h, pnames, e, method)
+				n = newNode(t, search[l:], cn, nil, map[string]HandlerFunc{method: h}, pnames, e)
 				cn.addChild(n)
 			}
 		} else if l < sl {
@@ -148,7 +152,7 @@ func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 				continue
 			}
 			// Create child node
-			n := newNode(t, search, cn, nil, h, pnames, e, method)
+			n := newNode(t, search, cn, nil, map[string]HandlerFunc{method: h}, pnames, e)
 			cn.addChild(n)
 		} else {
 			// Node already exists
@@ -164,7 +168,7 @@ func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 }
 
 // newNode - create a new router tree node
-func newNode(t ntype, pre string, p *node, c children, h HandlerFunc, pnames []string, e *Echo, m string) *node {
+func newNode(t ntype, pre string, p *node, c children, h map[string]HandlerFunc, pnames []string, e *Echo) *node {
 	return &node{
 		typ:      t,
 		label:    pre[0],
@@ -172,7 +176,7 @@ func newNode(t ntype, pre string, p *node, c children, h HandlerFunc, pnames []s
 		parent:   p,
 		children: c,
 		// create a handler method to handler map for this node
-		handler: map[string]HandlerFunc{m: h},
+		handler: h,
 		pnames:  pnames,
 		echo:    e,
 	}
@@ -224,6 +228,7 @@ func validMethod(method string) bool {
 func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo) {
 	// get tree base node from the router
 	cn := r.tree
+
 	e = cn.echo
 	h = notFoundHandler
 
