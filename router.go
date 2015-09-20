@@ -14,13 +14,130 @@ type (
 		prefix   string
 		parent   *node
 		children children
-		handler  map[string]HandlerFunc
-		pnames   []string
-		echo     *Echo
+		//handler  map[string]HandlerFunc
+		handler *handler
+		pnames  []string
+		echo    *Echo
 	}
 	ntype    uint8
 	children []*node
 )
+
+type handler struct {
+	Connect        HandlerFunc
+	Delete         HandlerFunc
+	Get            HandlerFunc
+	Head           HandlerFunc
+	Options        HandlerFunc
+	Patch          HandlerFunc
+	Post           HandlerFunc
+	Put            HandlerFunc
+	Trace          HandlerFunc
+	allowedMethods string
+}
+
+func (h *handler) CopyTo(v *handler) {
+	v.Get = h.Get
+	v.Connect = h.Connect
+	v.Delete = h.Delete
+	v.Get = h.Get
+	v.Head = h.Head
+	v.Options = h.Options
+	v.Patch = h.Patch
+	v.Post = h.Post
+	v.Put = h.Put
+	v.Trace = h.Trace
+	v.allowedMethods = h.allowedMethods
+}
+
+func (h *handler) addToAllowedMethods(method string) {
+	if h.allowedMethods == "" {
+		h.allowedMethods = method
+	} else {
+		h.allowedMethods = h.allowedMethods + ", " + method
+	}
+}
+
+func (h *handler) AddMethodHandler(method string, handler HandlerFunc) {
+	if h != nil {
+		if method == GET {
+			h.addToAllowedMethods(method)
+			h.Get = handler
+		}
+		if method == HEAD {
+			h.addToAllowedMethods(method)
+			h.Head = handler
+		}
+		if method == POST {
+			h.addToAllowedMethods(method)
+			h.Post = handler
+		}
+		if method == OPTIONS {
+			h.addToAllowedMethods(method)
+			h.Options = handler
+		}
+		if method == PUT {
+			h.addToAllowedMethods(method)
+			h.Put = handler
+		}
+		if method == DELETE {
+			h.addToAllowedMethods(method)
+			h.Delete = handler
+		}
+		if method == PATCH {
+			h.addToAllowedMethods(method)
+			h.Patch = handler
+		}
+		if method == CONNECT {
+			h.addToAllowedMethods(method)
+			h.Connect = handler
+		}
+		if method == TRACE {
+			h.addToAllowedMethods(method)
+			h.Trace = handler
+		}
+	}
+}
+
+func (h *handler) GetMethodHandler(method string) (HandlerFunc, string) {
+	l := len(method)
+	firstChar := method[0]
+	secondChar := method[1]
+	if l == 3 {
+		if uint16(firstChar)<<8|uint16(secondChar) == 0x4745 {
+			return h.Get, ""
+		}
+		if uint16(firstChar)<<8|uint16(secondChar) == 0x5055 {
+			return h.Put, ""
+		}
+	} else if l == 4 {
+		if uint16(firstChar)<<8|uint16(secondChar) == 0x504f {
+			return h.Post, ""
+		}
+		if uint16(firstChar)<<8|uint16(secondChar) == 0x4845 {
+			return h.Head, ""
+		}
+	} else if l == 5 {
+		if uint16(firstChar)<<8|uint16(secondChar) == 0x5452 {
+			return h.Trace, ""
+		}
+		if uint16(firstChar)<<8|uint16(secondChar) == 0x5041 {
+			return h.Patch, ""
+		}
+	} else if l == 6 {
+		if uint16(firstChar)<<8|uint16(secondChar) == 0x4445 {
+			return h.Delete, ""
+		}
+	} else if l == 7 {
+		if uint16(firstChar)<<8|uint16(secondChar) == 0x4f50 {
+			return h.Options, ""
+		}
+		if uint16(firstChar)<<8|uint16(secondChar) == 0x434f {
+			return h.Connect, ""
+		}
+	}
+	return nil, h.allowedMethods
+}
 
 const (
 	stype ntype = iota
@@ -36,7 +153,8 @@ func NewRouter(e *Echo) *Router {
 		// detect if routes should not allow particular methods, and making the
 		// router more clear
 		tree: &node{
-			handler: make(map[string]HandlerFunc),
+			//handler: make(map[string]HandlerFunc),
+			handler: new(handler),
 		},
 		routes: []Route{},
 		echo:   e,
@@ -108,16 +226,20 @@ func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 				cn.typ = t
 				// handler is a map of methods to applicable handlers, map the inserted method to the
 				// handler
-				cn.handler = map[string]HandlerFunc{method: h}
+				//cn.handler = map[string]HandlerFunc{method: h}
+				cn.handler = new(handler)
+				cn.handler.AddMethodHandler(method, h)
 				cn.pnames = pnames
 				cn.echo = e
 			}
 		} else if l < pl {
 			// Split node
-			newHandler := map[string]HandlerFunc{}
-			for k, v := range cn.handler {
-				newHandler[k] = v
-			}
+			//newHandler := map[string]HandlerFunc{}
+			newHandler := new(handler)
+			//for k, v := range cn.handler {
+			//newHandler[k] = v
+			//}
+			cn.handler.CopyTo(newHandler)
 			n := newNode(cn.typ, cn.prefix[l:], cn, cn.children, newHandler, cn.pnames, cn.echo)
 
 			// Reset parent node
@@ -125,7 +247,8 @@ func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 			cn.label = cn.prefix[0]
 			cn.prefix = cn.prefix[:l]
 			cn.children = nil
-			cn.handler = map[string]HandlerFunc{}
+			//cn.handler = map[string]HandlerFunc{}
+			cn.handler = new(handler)
 			cn.pnames = nil
 			cn.echo = nil
 
@@ -135,12 +258,15 @@ func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 				// At parent node
 				cn.typ = t
 				// add the handler to the node's map of methods to handlers
-				cn.handler[method] = h
+				//cn.handler[method] = h
+				cn.handler.AddMethodHandler(method, h)
 				cn.pnames = pnames
 				cn.echo = e
 			} else {
 				// Create child node
-				n = newNode(t, search[l:], cn, nil, map[string]HandlerFunc{method: h}, pnames, e)
+				newHandler := new(handler)
+				newHandler.AddMethodHandler(method, h)
+				n = newNode(t, search[l:], cn, nil, newHandler, pnames, e)
 				cn.addChild(n)
 			}
 		} else if l < sl {
@@ -152,13 +278,16 @@ func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 				continue
 			}
 			// Create child node
-			n := newNode(t, search, cn, nil, map[string]HandlerFunc{method: h}, pnames, e)
+			newHandler := new(handler)
+			newHandler.AddMethodHandler(method, h)
+			n := newNode(t, search, cn, nil, newHandler, pnames, e)
 			cn.addChild(n)
 		} else {
 			// Node already exists
 			if h != nil {
 				// add the handler to the node's map of methods to handlers
-				cn.handler[method] = h
+				//cn.handler[method] = h
+				cn.handler.AddMethodHandler(method, h)
 				cn.pnames = pnames
 				cn.echo = e
 			}
@@ -168,7 +297,7 @@ func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 }
 
 // newNode - create a new router tree node
-func newNode(t ntype, pre string, p *node, c children, h map[string]HandlerFunc, pnames []string, e *Echo) *node {
+func newNode(t ntype, pre string, p *node, c children, h *handler, pnames []string, e *Echo) *node {
 	return &node{
 		typ:      t,
 		label:    pre[0],
@@ -234,11 +363,7 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 
 	if !validMethod(method) {
 		// if the method is completely invalid
-		allowedMethods := []string{}
-		for m, _ := range cn.handler {
-			allowedMethods = append(allowedMethods, m)
-		}
-		h = methodNotAllowedHandler(ctx, allowedMethods...)
+		h = methodNotAllowedHandler(ctx, cn.handler.allowedMethods)
 		return
 	}
 
@@ -266,20 +391,18 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 		if search == "" {
 			if cn.handler != nil {
 				// Found route, check if method is applicable
-				var ok = false
-				h, ok = cn.handler[method]
+				//var ok = false
+				//h, ok = cn.handler[method]
 				e = cn.echo
-				if !ok {
+				//if !ok {
+				theHandler, allowedMethods := cn.handler.GetMethodHandler(method)
+				if theHandler == nil {
 					// route is valid, but method is not allowed, 405
-					allowedMethods := []string{}
-					for m, _ := range cn.handler {
-						allowedMethods = append(allowedMethods, m)
-					}
-					h = methodNotAllowedHandler(ctx, allowedMethods...)
+					h = methodNotAllowedHandler(ctx, allowedMethods)
 					return
 				}
 				ctx.pnames = cn.pnames
-				h = cn.handler[method]
+				h = theHandler
 			}
 			return
 		}
