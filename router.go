@@ -286,7 +286,7 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 	// Strip trailing slash
 	if r.echo.stripTrailingSlash {
 		l := len(path)
-		if path != "" && path[l-1] == '/'  { // Issue #218
+		if path != "/" && path[l-1] == '/'  { // Issue #218
 			path = path[:l-1]
 		}
 	}
