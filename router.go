@@ -286,7 +286,7 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 	// Strip trailing slash
 	if r.echo.stripTrailingSlash {
 		l := len(path)
-		if path[l-1] == '/' {
+		if path != "" && path[l-1] == '/'  { // Issue #218
 			path = path[:l-1]
 		}
 	}
@@ -299,8 +299,6 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 		nn     *node  // Next node
 		ns     string // Next search
 	)
-
-	// TODO: Check empty path???
 
 	// Search order static > param > match-any
 	for {
