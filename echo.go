@@ -421,6 +421,10 @@ func (e *Echo) Group(prefix string, m ...Middleware) *Group {
 	} else {
 		g.echo.middleware = nil
 		g.Use(m...)
+	} else {
+		mw := make([]MiddlewareFunc, len(g.echo.middleware))
+		copy(mw, g.echo.middleware)
+		g.echo.middleware = mw
 	}
 	return g
 }
