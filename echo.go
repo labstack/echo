@@ -414,7 +414,11 @@ func serveFile(dir, file string, c *Context) error {
 func (e *Echo) Group(prefix string, m ...Middleware) *Group {
 	g := &Group{*e}
 	g.echo.prefix += prefix
-	if len(m) > 0 {
+	if len(m) == 0 {
+		mw := make([]MiddlewareFunc, len(g.echo.middleware))
+		copy(mw, g.echo.middleware)
+		g.echo.middleware = mw
+	} else {
 		g.echo.middleware = nil
 		g.Use(m...)
 	}
