@@ -321,32 +321,19 @@ func TestRouterTwoParam(t *testing.T) {
 func TestRouterMatchAny(t *testing.T) {
 	e := New()
 	r := e.router
-
-	// Routes
-	r.Add(GET, "/", func(*Context) error {
-		return nil
-	}, e)
-	r.Add(GET, "/*", func(*Context) error {
-		return nil
-	}, e)
 	r.Add(GET, "/users/*", func(*Context) error {
 		return nil
 	}, e)
 	c := NewContext(nil, nil, e)
 
-	h, _ := r.Find(GET, "/", c)
+	h, _ := r.Find(GET, "/users/", c)
 	if assert.NotNil(t, h) {
 		assert.Equal(t, "", c.P(0))
 	}
 
-	h, _ = r.Find(GET, "/download", c)
+	h, _ = r.Find(GET, "/users/1", c)
 	if assert.NotNil(t, h) {
-		assert.Equal(t, "download", c.P(0))
-	}
-
-	h, _ = r.Find(GET, "/users/joe", c)
-	if assert.NotNil(t, h) {
-		assert.Equal(t, "joe", c.P(0))
+		assert.Equal(t, "1", c.P(0))
 	}
 }
 
@@ -394,7 +381,7 @@ func TestRouterMultiRoute(t *testing.T) {
 	r.Add(GET, "/users/:id", func(c *Context) error {
 		return nil
 	}, e)
-	c := NewContext(nil, nil, e)
+	c := NewContext(nil, new(Response), e)
 
 	// Route > /users
 	h, _ := r.Find(GET, "/users", c)
@@ -414,6 +401,14 @@ func TestRouterMultiRoute(t *testing.T) {
 	if assert.IsType(t, new(HTTPError), h(c)) {
 		he := h(c).(*HTTPError)
 		assert.Equal(t, http.StatusNotFound, he.code)
+	}
+
+	// Invalid Method for Resource
+	c.response.writer = httptest.NewRecorder()
+	h, _ = r.Find("INVALID", "/users", c)
+	if assert.IsType(t, new(HTTPError), h(c)) {
+		he := h(c).(*HTTPError)
+		assert.Equal(t, http.StatusMethodNotAllowed, he.code)
 	}
 }
 
@@ -499,7 +494,7 @@ func TestRouterPriority(t *testing.T) {
 	if assert.NotNil(t, h) {
 		h(c)
 		assert.Equal(t, 7, c.Get("g"))
-		assert.Equal(t, "joe/books", c.Param("_*"))
+		assert.Equal(t, "joe/books", c.Param("_name"))
 	}
 }
 
@@ -553,7 +548,10 @@ func TestRouterAPI(t *testing.T) {
 			return nil
 		}, e)
 	}
-	c := NewContext(nil, nil, e)
+
+	response := NewResponse(httptest.NewRecorder())
+
+	c := NewContext(nil, response, e)
 	for _, route := range api {
 		h, _ := r.Find(route.Method, route.Path, c)
 		if assert.NotNil(t, h) {

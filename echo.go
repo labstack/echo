@@ -8,7 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"path/filepath"
+	spath "path"
 	"reflect"
 	"runtime"
 	"strings"
@@ -135,8 +135,7 @@ const (
 	Upgrade            = "Upgrade"
 	Vary               = "Vary"
 	WWWAuthenticate    = "WWW-Authenticate"
-	XForwardedFor      = "X-Forwarded-For"
-	XRealIP            = "X-Real-IP"
+
 	//-----------
 	// Protocols
 	//-----------
@@ -170,6 +169,15 @@ var (
 	//----------------
 	// Error handlers
 	//----------------
+	// methodNotAllowedHandler - handler to respond with a http.StatusMethodNotAllowed status
+	// which is applicable when the route is correct, but the method for the route isn't allowed
+	// for the route
+	methodNotAllowedHandler = func(c *Context, allowedMethods ...string) func(c *Context) error {
+		return func(c *Context) error {
+			c.response.Header().Add("Allow", strings.Join(allowedMethods, ", "))
+			return NewHTTPError(http.StatusMethodNotAllowed)
+		}
+	}
 
 	notFoundHandler = func(c *Context) error {
 		return NewHTTPError(http.StatusNotFound)
@@ -179,6 +187,8 @@ var (
 		return NewHTTPError(http.StatusBadRequest)
 	}
 )
+
+var runtimeGOOS = runtime.GOOS
 
 // New creates an instance of Echo.
 func New() (e *Echo) {
@@ -192,7 +202,7 @@ func New() (e *Echo) {
 	// Defaults
 	//----------
 
-	if runtime.GOOS == "windows" {
+	if runtimeGOOS == "windows" {
 		e.DisableColoredLog()
 	}
 	e.HTTP2()
@@ -221,9 +231,12 @@ func (e *Echo) Router() *Router {
 	return e.router
 }
 
+var colorDisable = color.Disable
+
 // DisableColoredLog disables colored log.
 func (e *Echo) DisableColoredLog() {
-	color.Disable()
+	colorDisable()
+
 }
 
 // HTTP2 enables HTTP2 support.
@@ -376,14 +389,14 @@ func (e *Echo) Static(path, dir string) {
 // ServeDir serves files from a directory.
 func (e *Echo) ServeDir(path, dir string) {
 	e.Get(path+"*", func(c *Context) error {
-		return serveFile(dir, c.P(0), c) // Param `_*`
+		return serveFile(dir, c.P(0), c) // Param `_name`
 	})
 }
 
 // ServeFile serves a file.
 func (e *Echo) ServeFile(path, file string) {
 	e.Get(path, func(c *Context) error {
-		dir, file := filepath.Split(file)
+		dir, file := spath.Split(file)
 		return serveFile(dir, file, c)
 	})
 }
@@ -397,7 +410,7 @@ func serveFile(dir, file string, c *Context) error {
 
 	fi, _ := f.Stat()
 	if fi.IsDir() {
-		file = filepath.Join(file, indexFile)
+		file = spath.Join(file, indexFile)
 		f, err = fs.Open(file)
 		if err != nil {
 			return NewHTTPError(http.StatusForbidden)
