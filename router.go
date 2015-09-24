@@ -285,9 +285,9 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 
 	// Strip trailing slash
 	if r.echo.stripTrailingSlash {
-		l := len(path)
-		if path != "/" && path[l-1] == '/'  { // Issue #218
-			path = path[:l-1]
+		l := len(path)-1
+		if path != "/" && path[l] == '/' { // Issue #218
+			path = path[:l]
 		}
 	}
 
@@ -303,13 +303,7 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 	// Search order static > param > match-any
 	for {
 		if search == "" {
-			if cn.handler != nil {
-				// Found
-				ctx.pnames = cn.pnames
-				h = cn.handler
-				e = cn.echo
-			}
-			return
+			goto Found
 		}
 
 		pl := 0 // Prefix length
@@ -348,10 +342,12 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 			if cn.handler == nil {
 				// Look up for match-any, might have an empty value for *, e.g.
 				// serving a directory. Issue #207
-				cn = cn.findChildWithType(mtype)
+				if cn = cn.findChildWithType(mtype); cn == nil {
+					return
+				}
 				ctx.pvalues[len(cn.pnames)-1] = ""
 			}
-			continue
+			goto Found
 		}
 
 		// Static node
@@ -394,13 +390,18 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 		if c != nil {
 			cn = c
 			ctx.pvalues[len(cn.pnames)-1] = search
-			search = "" // End search
-			continue
+			goto Found
 		}
 
 		// Not found
 		return
 	}
+
+Found:
+	ctx.pnames = cn.pnames
+	h = cn.handler
+	e = cn.echo
+	return
 }
 
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
