@@ -285,7 +285,7 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 
 	// Strip trailing slash
 	if r.echo.stripTrailingSlash {
-		l := len(path)-1
+		l := len(path) - 1
 		if path != "/" && path[l] == '/' { // Issue #218
 			path = path[:l]
 		}
@@ -386,15 +386,12 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 		// Match-any node
 	MatchAny:
 		// c = cn.getChild()
-		c = cn.findChildWithType(mtype)
-		if c != nil {
-			cn = c
-			ctx.pvalues[len(cn.pnames)-1] = search
-			goto Found
+		if cn = cn.findChildWithType(mtype); cn == nil {
+			// Not found
+			return
 		}
-
-		// Not found
-		return
+		ctx.pvalues[len(cn.pnames)-1] = search
+		goto Found
 	}
 
 Found:
