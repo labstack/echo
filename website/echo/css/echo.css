@@ -1,7 +1,0 @@
-.social a {
-    text-decoration: none;
-}
-
-.social a:not(:first-child) {
-    margin-left: 20px;
-}

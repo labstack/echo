@@ -1,4 +1,9 @@
-## WebSocket
+---
+title: WebSocket
+menu:
+  main:
+    parent: recipes
+---
 
 ## Server
 
@@ -108,4 +113,3 @@ Hello, Server!
 ```
 
 ## [Source Code](https://github.com/labstack/echo/blob/master/recipes/websocket)
-

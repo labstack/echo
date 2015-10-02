@@ -1,0 +1,25 @@
+{
+    "baseurl": "http://labstack.com/echo",
+    "languageCode": "en-us",
+    "title": "Echo",
+
+    "menu": {
+        "main": [{
+            "Name": "Guide",
+            "Pre": "<i class='fa fa-heart'></i>",
+            "Weight": -110,
+            "Identifier": "guide",
+            "URL": "guide"
+        }, {
+            "Name": "Recipes",
+            "Pre": "<i class='fa fa-road'></i>",
+            "Weight": -100,
+            "Identifier": "recipes",
+            "URL": "recipes"
+        }]
+    },
+
+    "params": {
+        "googleAnayticsId": "UA-51208124-3"
+    }
+}

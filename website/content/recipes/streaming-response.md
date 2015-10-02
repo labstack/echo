@@ -1,4 +1,9 @@
-## Streaming Response
+---
+title: Streaming Response
+menu:
+  main:
+    parent: recipes
+---
 
 - Send data as it is produced
 - Streaming JSON response with chunked transfer encoding
@@ -72,4 +77,3 @@ $ curl localhost:1323
 ```
 
 ## [Source Code](https://github.com/labstack/echo/blob/master/recipes/streaming-response)
-

@@ -1,6 +1,10 @@
+---
+title: Index
+---
+
 # Echo
 
-A fast and unfancy micro web framework for Go. 
+A fast and unfancy micro web framework for Go.
 
 ---
 

@@ -1,4 +1,9 @@
-## Subdomains
+---
+title: Subdomains
+menu:
+  main:
+    parent: recipes
+---
 
 `server.go`
 

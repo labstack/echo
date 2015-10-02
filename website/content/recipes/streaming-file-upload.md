@@ -1,10 +1,12 @@
-## File Upload
+---
+title: Streaming File Upload
+menu:
+  main:
+    parent: recipes
+---
 
-- Multipart/form-data file upload
+- Streaming multipart/form-data file upload
 - Multiple form fields and files
-
-Use `req.ParseMultipartForm(16 << 20)` for manually parsing multipart form. It gives
-us an option to specify the maximum memory used while parsing the request body. 
 
 ## Server
 
@@ -14,46 +16,70 @@ us an option to specify the maximum memory used while parsing the request body.
 package main
 
 import (
-	"io"
-	"os"
-
-	"net/http"
+	"io/ioutil"
 
 	"github.com/labstack/echo"
 	mw "github.com/labstack/echo/middleware"
+	"io"
+	"net/http"
+	"os"
 )
 
 func upload(c *echo.Context) error {
-	req := c.Request()
-	req.ParseMultipartForm(16 << 20) // Max memory 16 MiB
+	mr, err := c.Request().MultipartReader()
+	if err != nil {
+		return err
+	}
 
-	// Read form fields
-	name := c.Form("name")
-	email := c.Form("email")
+	// Read form field `name`
+	part, err := mr.NextPart()
+	if err != nil {
+		return err
+	}
+	defer part.Close()
+	b, err := ioutil.ReadAll(part)
+	if err != nil {
+		return err
+	}
+	name := string(b)
+
+	// Read form field `email`
+	part, err = mr.NextPart()
+	if err != nil {
+		return err
+	}
+	defer part.Close()
+	b, err = ioutil.ReadAll(part)
+	if err != nil {
+		return err
+	}
+	email := string(b)
 
 	// Read files
-	files := req.MultipartForm.File["files"]
-	for _, f := range files {
-		// Source file
-		src, err := f.Open()
+	i := 0
+	for {
+		part, err := mr.NextPart()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+		defer part.Close()
+
+		file, err := os.Create(part.FileName())
 		if err != nil {
 			return err
 		}
-		defer src.Close()
+		defer file.Close()
 
-		// Destination file
-		dst, err := os.Create(f.Filename)
-		if err != nil {
+		if _, err := io.Copy(file, part); err != nil {
 			return err
 		}
-		defer dst.Close()
-
-		if _, err = io.Copy(dst, src); err != nil {
-			return err
-		}
+		i++
 	}
 	return c.String(http.StatusOK, "Thank You! %s <%s>, %d files uploaded successfully.",
-		name, email, len(files))
+		name, email, i)
 }
 
 func main() {
@@ -92,4 +118,4 @@ func main() {
 
 ```
 
-## [Source Code](https://github.com/labstack/echo/blob/master/recipes/file-upload)
+## [Source Code](https://github.com/labstack/echo/blob/master/recipes/streaming-file-upload)

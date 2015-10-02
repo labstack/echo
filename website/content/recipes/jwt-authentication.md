@@ -1,9 +1,14 @@
-## JWT Authentication
+---
+title: JWT Authentication
+menu:
+  main:
+    parent: recipes
+---
 
 Most applications dealing with client authentication will require a more secure
 mechanism than that provided by [basic authentication](https://github.com/labstack/echo/blob/master/middleware/auth.go). [JSON Web Tokens](http://jwt.io/)
 are one such mechanism - JWTs are a compact means of transferring cryptographically
-signed claims between the client and server. 
+signed claims between the client and server.
 
 This recipe demonstrates the use of a simple JWT authentication Echo middleware
 using Dave Grijalva's [jwt-go](https://github.com/dgrijalva/jwt-go). This middleware
@@ -149,8 +154,3 @@ $  curl localhost:1323/restricted -H "Authorization: Bearer <token>" => Access g
 ```
 
 ## [Source Code](https://github.com/labstack/echo/blob/master/recipes/jwt-authentication)
-
-
-
-
-

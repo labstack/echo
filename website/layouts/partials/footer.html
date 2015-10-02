@@ -1,0 +1,54 @@
+<footer class="mdl-mini-footer">
+    <div class="mdl-mini-footer__left-section">
+        <span class="mdl-typography__font-light">© 2015 LabStack</span>
+        <!-- <ul class="mdl-mini-footer__link-list">
+            <li><a href="#">Help</a></li>
+            <li><a href="#">Privacy & Terms</a></li>
+        </ul> -->
+    </div>
+    <div class="mdl-mini-footer__right-section">
+        <ul class="mdl-mini-footer__link-list">
+            <li>
+                <a href="http://facebook.com/chilimushroom">
+                    <i class="fa fa-facebook-square fa-2x"></i>
+                </a>
+            </li>
+            <li>
+                <a href="http://twitter.com/chilimushroom">
+                    <i class="fa fa-twitter-square fa-2x"></i>
+                </a>
+            </li>
+            <li>
+                <a href="http://plus.google.com/+chilimushroom">
+                    <i class="fa fa-google-plus-square fa-2x"></i>
+                </a>
+            </li>
+        </ul>
+        <!-- <a href="https://twitter.com/chilimushroom" class="social-btn social-btn__twitter" role="button" title="Twitter">
+            <i class="fa fa-facebook-square"></i>
+        </a>
+        <button class="mdl-mini-footer__social-btn"><i class="fa fa-facebook-square"></i></button>
+        &nbsp;
+        <button class="mdl-mini-footer__social-btn"></button>
+        &nbsp;
+        <button class="mdl-mini-footer__social-btn social-btn__twitter"></button> -->
+    </div>
+</footer>
+<script src="{{ .Site.BaseURL }}/scripts/highlight.pack.min.js"></script>
+<script>hljs.initHighlightingOnLoad();</script>
+<script>
+    (function(i, s, o, g, r, a, m) {
+        i['GoogleAnalyticsObject'] = r;
+        i[r] = i[r] || function() {
+            (i[r].q = i[r].q || []).push(arguments)
+        }, i[r].l = 1 * new Date();
+        a = s.createElement(o),
+            m = s.getElementsByTagName(o)[0];
+        a.async = 1;
+        a.src = g;
+        m.parentNode.insertBefore(a, m)
+    })(window, document, 'script', '//www.google-analytics.com/analytics.js', 'ga');
+
+    ga('create', '{{ .Site.Params.googleAnayticsId }}', 'auto');
+    ga('send', 'pageview');
+</script>

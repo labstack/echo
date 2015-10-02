@@ -1,4 +1,9 @@
-## Graceful Shutdown
+---
+title: Graceful Shutdown
+menu:
+  main:
+    parent: recipes
+---
 
 ### With [graceful](https://github.com/tylerb/graceful)
 

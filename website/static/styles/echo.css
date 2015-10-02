@@ -1,0 +1,26 @@
+body {
+    background-color: #efefef;
+}
+
+footer {
+    padding: 40px 80px !important;
+}
+
+a:link {
+    text-decoration: none;
+}
+
+.page-content {
+    padding: 20px 0;
+    max-width: 960px;
+    margin: auto;
+}
+
+.page-content header {
+    padding-bottom: 16px;
+}
+
+.menu a {
+    display: block;
+    padding: 2px 0
+}
