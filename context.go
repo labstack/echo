@@ -174,6 +174,14 @@ func (c *Context) File(name string, attachment bool) error {
 	return serveFile(dir, file, c)
 }
 
+// Binary writes bytes to the response with specified t (type: e.g. image/png)
+func (c *Context) Binary(code int, t string, bytes []byte) error {
+	c.response.Header().Set(ContentType, t)
+	c.response.WriteHeader(code)
+	_, err := c.response.Write(bytes)
+	return err
+}
+
 // NoContent sends a response with no body and a status code.
 func (c *Context) NoContent(code int) error {
 	c.response.WriteHeader(code)
