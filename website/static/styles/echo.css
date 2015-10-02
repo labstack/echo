@@ -5,7 +5,7 @@ code {
     font-size: .95em;
     padding: 2px 4px;
     background: #eee;
-    color: #4d4d4c;
+    color: #424242;
     font-family: Source Code Pro, Monaco, Menlo, Consolas, monospace;
 }
 a:link {
@@ -21,5 +21,6 @@ a:link {
 }
 .menu a {
     display: block;
+    color: #757575;
     padding: 2px 0
 }
