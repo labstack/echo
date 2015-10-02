@@ -19,7 +19,7 @@ Below is an example using Go `html/template`
 - Implement `echo.Render` interface
 
 ```go
-Template struct {
+type Template struct {
     templates *template.Template
 }
 
