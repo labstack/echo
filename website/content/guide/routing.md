@@ -3,6 +3,7 @@ title: Routing
 menu:
   main:
     parent: guide
+    weight: 30
 ---
 
 Echo's router is [fast, optimized](https://github.com/labstack/echo#benchmark) and

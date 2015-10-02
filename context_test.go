@@ -94,7 +94,7 @@ func TestContext(t *testing.T) {
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, ApplicationJSONCharsetUTF8, rec.Header().Get(ContentType))
-		assert.Equal(t, userJSON+"\n", rec.Body.String())
+		assert.Equal(t, userJSON, rec.Body.String())
 	}
 
 	// JSONP
@@ -105,7 +105,7 @@ func TestContext(t *testing.T) {
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, ApplicationJavaScriptCharsetUTF8, rec.Header().Get(ContentType))
-		assert.Equal(t, callback+"("+userJSON+"\n);", rec.Body.String())
+		assert.Equal(t, callback+"("+userJSON+");", rec.Body.String())
 	}
 
 	// XML

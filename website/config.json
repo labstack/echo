@@ -6,13 +6,13 @@
     "menu": {
         "main": [{
             "Name": "Guide",
-            "Pre": "<i class='fa fa-heart'></i>",
+            "Pre": "<i class='fa fa-book'></i>",
             "Weight": -110,
             "Identifier": "guide",
             "URL": "guide"
         }, {
             "Name": "Recipes",
-            "Pre": "<i class='fa fa-road'></i>",
+            "Pre": "<i class='fa fa-code'></i>",
             "Weight": -100,
             "Identifier": "recipes",
             "URL": "recipes"

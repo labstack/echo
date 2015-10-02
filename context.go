@@ -11,6 +11,7 @@ import (
 	"net/url"
 
 	"golang.org/x/net/websocket"
+	"bytes"
 )
 
 type (
@@ -110,68 +111,99 @@ func (c *Context) Bind(i interface{}) error {
 
 // Render renders a template with data and sends a text/html response with status
 // code. Templates can be registered using `Echo.SetRenderer()`.
-func (c *Context) Render(code int, name string, data interface{}) error {
+func (c *Context) Render(code int, name string, data interface{}) (err error) {
 	if c.echo.renderer == nil {
 		return RendererNotRegistered
 	}
+	buf := new (bytes.Buffer)
+	if err = c.echo.renderer.Render(buf, name, data); err != nil {
+		return
+	}
 	c.response.Header().Set(ContentType, TextHTMLCharsetUTF8)
 	c.response.WriteHeader(code)
-	return c.echo.renderer.Render(c.response, name, data)
+	c.response.Write(buf.Bytes())
+	return
 }
 
 // HTML formats according to a format specifier and sends HTML response with
 // status code.
 func (c *Context) HTML(code int, format string, a ...interface{}) (err error) {
+	buf := new(bytes.Buffer)
+	_, err = fmt.Fprintf(buf, format, a...)
+	if err != nil {
+		return err
+	}
 	c.response.Header().Set(ContentType, TextHTMLCharsetUTF8)
 	c.response.WriteHeader(code)
-	_, err = fmt.Fprintf(c.response, format, a...)
+	c.response.Write(buf.Bytes())
 	return
 }
 
 // String formats according to a format specifier and sends text response with status
 // code.
 func (c *Context) String(code int, format string, a ...interface{}) (err error) {
+	buf := new(bytes.Buffer)
+	_, err = fmt.Fprintf(buf, format, a...)
+	if err != nil {
+		return err
+	}
 	c.response.Header().Set(ContentType, TextPlain)
 	c.response.WriteHeader(code)
-	_, err = fmt.Fprintf(c.response, format, a...)
+	c.response.Write(buf.Bytes())
 	return
 }
 
 // JSON sends a JSON response with status code.
-func (c *Context) JSON(code int, i interface{}) error {
+func (c *Context) JSON(code int, i interface{}) (err error) {
+	b, err := json.Marshal(i)
+	if err != nil {
+		return err
+	}
 	c.response.Header().Set(ContentType, ApplicationJSONCharsetUTF8)
 	c.response.WriteHeader(code)
-	return json.NewEncoder(c.response).Encode(i)
+	c.response.Write(b)
+	return
 }
 
 // JSONP sends a JSONP response with status code. It uses `callback` to construct
 // the JSONP payload.
 func (c *Context) JSONP(code int, callback string, i interface{}) (err error) {
+	b, err := json.Marshal(i)
+	if err != nil {
+		return err
+	}
 	c.response.Header().Set(ContentType, ApplicationJavaScriptCharsetUTF8)
 	c.response.WriteHeader(code)
 	c.response.Write([]byte(callback + "("))
-	if err = json.NewEncoder(c.response).Encode(i); err == nil {
-		c.response.Write([]byte(");"))
-	}
+	c.response.Write(b)
+	c.response.Write([]byte(");"))
 	return
 }
 
 // XML sends an XML response with status code.
-func (c *Context) XML(code int, i interface{}) error {
+func (c *Context) XML(code int, i interface{}) (err error) {
+	b, err := xml.Marshal(i)
+	if err != nil {
+		return err
+	}
 	c.response.Header().Set(ContentType, ApplicationXMLCharsetUTF8)
 	c.response.WriteHeader(code)
 	c.response.Write([]byte(xml.Header))
-	return xml.NewEncoder(c.response).Encode(i)
+	c.response.Write(b)
+	return
 }
 
 // File sends a response with the content of the file. If attachment is true, the
 // client is prompted to save the file.
-func (c *Context) File(name string, attachment bool) error {
+func (c *Context) File(name string, attachment bool) (err error) {
 	dir, file := path.Split(name)
 	if attachment {
 		c.response.Header().Set(ContentDisposition, "attachment; filename="+file)
 	}
-	return serveFile(dir, file, c)
+	if err = serveFile(dir, file, c); err != nil {
+		c.response.Header().Del(ContentDisposition)
+	}
+	return
 }
 
 // NoContent sends a response with no body and a status code.

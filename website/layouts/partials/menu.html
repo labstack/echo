@@ -2,9 +2,14 @@
     <div>
         {{ range .Site.Menus.main }}
             {{ if .HasChildren }}
-                <h4>{{ .Name }}</h4>
+                <h4>
+                    {{ .Pre }}
+                    {{ .Name }}
+                </h4>
                 {{ range .Children }}
-                    <a href="{{ .URL }}">{{ .Name }}</a>
+                    <a href="{{ .URL }}">
+                        {{ .Name }}
+                    </a>
                 {{ end }}
             {{ end }}
         {{ end }}

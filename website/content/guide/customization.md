@@ -3,6 +3,7 @@ title: Customization
 menu:
   main:
     parent: guide
+    weight: 20
 ---
 
 ### HTTP error handler

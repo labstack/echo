@@ -3,6 +3,7 @@ title: Middleware
 menu:
   main:
     parent: guide
+    weight: 40
 ---
 
 Middleware is a function which is chained in the HTTP request-response cycle. Middleware
