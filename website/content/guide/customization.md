@@ -12,7 +12,7 @@ menu:
 
 Registers a custom `Echo.HTTPErrorHandler`.
 
-Default handler rules
+Default handler rules:
 
 - If error is of type `Echo.HTTPError` it sends HTTP response with status code `HTTPError.Code`
 and message `HTTPError.Message`.

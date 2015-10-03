@@ -2,18 +2,19 @@
     "baseurl": "http://labstack.com/echo",
     "languageCode": "en-us",
     "title": "Echo",
+    "canonifyurls": true,
 
     "menu": {
         "main": [{
             "Name": "Guide",
             "Pre": "<i class='fa fa-book'></i>",
-            "Weight": -110,
+            "Weight": 10,
             "Identifier": "guide",
             "URL": "guide"
         }, {
             "Name": "Recipes",
             "Pre": "<i class='fa fa-code'></i>",
-            "Weight": -100,
+            "Weight": 20,
             "Identifier": "recipes",
             "URL": "recipes"
         }]

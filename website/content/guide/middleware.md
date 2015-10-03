@@ -54,8 +54,9 @@ e.Use(mw.Gzip())
 
 ### Recover
 
-Recover middleware recovers from panics anywhere in the chain and handles the control
-to the centralized [HTTPErrorHandler](#error-handling).
+Recover middleware recovers from panics anywhere in the chain and handles the
+control to the centralized
+[HTTPErrorHandler]({{< relref "guide/customization.md#http-error-handler">}}).
 
 *Example*
 

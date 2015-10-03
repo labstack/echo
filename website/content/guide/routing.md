@@ -6,7 +6,7 @@ menu:
     weight: 30
 ---
 
-Echo's router is [fast, optimized](https://github.com/labstack/echo#benchmark) and
+Echo's router is [fast, optimized]({{< relref "index.md#performance">}}) and
 flexible. It's based on [radix tree](http://en.wikipedia.org/wiki/Radix_tree) data
 structure which makes route lookup really fast. Router leverages [sync pool](https://golang.org/pkg/sync/#Pool)
 to reuse memory and achieve zero dynamic memory allocation with no GC overhead.

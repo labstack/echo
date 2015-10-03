@@ -105,7 +105,7 @@ Hello, World! on the page.
 
 ### Next?
 - Browse [recipes](https://github.com/labstack/echo/tree/master/recipes)
-- Head over to [Guide](guide.md)
+- Head over to [Guide]({{< relref "guide/installation.md" >}})
 
 ## Contribute
 

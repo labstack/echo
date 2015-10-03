@@ -9,7 +9,7 @@ menu:
 Echo advocates centralized HTTP error handling by returning `error` from middleware
 and handlers.
 
-It allows you to
+It allows you to:
 
 - Debug by writing stack trace to the HTTP response.
 - Customize HTTP responses.
@@ -45,4 +45,4 @@ func welcome(c *echo.Context) error {
 }
 ```
 
-See how [HTTPErrorHandler](#customization) handles it.
+See how [HTTPErrorHandler](/guide/customization#http-error-handler) handles it.
