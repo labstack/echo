@@ -3,7 +3,7 @@ title: Request
 menu:
   main:
     parent: guide
-    weight: 50
+    weight: 5
 ---
 
 ### Path parameter

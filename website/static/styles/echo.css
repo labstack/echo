@@ -1,5 +1,4 @@
 footer {
-    padding: 40px 80px !important;
     background-color: inherit !important;
     border-top: 2px solid #E0E0E0;
 }
@@ -16,11 +15,13 @@ footer {
     color: #333;
 }
 code {
-    font-size: .95em;
     padding: 2px 4px;
-    background: #eee;
+    background: #EEE;
     color: #424242;
+    font-size: .95em;
     font-family: Source Code Pro, Monaco, Menlo, Consolas, monospace;
+    border: 1px solid #BDBDBD;
+    border-radius: 4px;
 }
 a:link {
     text-decoration: none;
@@ -36,5 +37,13 @@ a:link {
 .menu a {
     display: block;
     color: #757575;
-    padding: 2px 0
+    padding: 5px;
+    border-left:2px #F06292 solid;
+}
+.menu a:hover {
+    background-color: #E0E0E0;
+}
+.menu .active {
+    color: #FFF;
+    background-color: #F06292;
 }
