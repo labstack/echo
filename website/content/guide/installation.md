@@ -3,7 +3,7 @@ title: Installation
 menu:
   main:
     parent: guide
-    weight: 10
+    weight: 1
 ---
 
 Echo has been developed and tested using Go `1.4.x`
