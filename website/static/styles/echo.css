@@ -20,8 +20,8 @@ code {
     color: #424242;
     font-size: .95em;
     font-family: Source Code Pro, Monaco, Menlo, Consolas, monospace;
-    border: 1px solid #BDBDBD;
-    border-radius: 4px;
+    border: 1px solid #E0E0E0;
+    border-radius: 2px;
 }
 a:link {
     text-decoration: none;

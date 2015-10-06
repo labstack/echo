@@ -261,6 +261,7 @@ func (n *node) findHandler(method string) HandlerFunc {
 
 func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo) {
 	h = notFoundHandler
+	e = r.echo
 	cn := r.tree // Current node as root
 
 	// Strip trailing slash
@@ -369,17 +370,23 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 Found:
 	ctx.pnames = cn.pnames
 	h = cn.findHandler(method)
+	if cn.echo != nil {
+		e = cn.echo
+	}
 	if h == nil {
 		h = methodNotAllowedHandler
-		// Look up for match-any, might have an empty value for *, e.g.
+		// Dig further for match-any, might have an empty value for *, e.g.
 		// serving a directory. Issue #207
 		if cn = cn.findChildWithType(mtype); cn == nil {
 			return
 		}
+//		println("here...")
+//		if cn.echo != nil {
+//			e = cn.echo
+//		}
 		h = cn.findHandler(method)
 		ctx.pvalues[len(cn.pnames)-1] = ""
 	}
-	e = cn.echo
 	return
 }
 
