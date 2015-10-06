@@ -284,7 +284,7 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 	// Search order static > param > match-any
 	for {
 		if search == "" {
-			goto Found
+			goto End
 		}
 
 		pl := 0 // Prefix length
@@ -320,7 +320,7 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 		}
 
 		if search == "" {
-			goto Found
+			goto End
 		}
 
 		// Static node
@@ -364,26 +364,22 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 			return
 		}
 		ctx.pvalues[len(cn.pnames)-1] = search
-		goto Found
+		goto End
 	}
 
-Found:
+End:
 	ctx.pnames = cn.pnames
 	h = cn.findHandler(method)
 	if cn.echo != nil {
 		e = cn.echo
 	}
 	if h == nil {
-		h = methodNotAllowedHandler
 		// Dig further for match-any, might have an empty value for *, e.g.
-		// serving a directory. Issue #207
+		// serving a directory. Issue #207.
 		if cn = cn.findChildWithType(mtype); cn == nil {
+			h = notFoundHandler
 			return
 		}
-//		println("here...")
-//		if cn.echo != nil {
-//			e = cn.echo
-//		}
 		h = cn.findHandler(method)
 		ctx.pvalues[len(cn.pnames)-1] = ""
 	}
