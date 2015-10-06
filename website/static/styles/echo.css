@@ -34,13 +34,16 @@ a:link {
 .page-content header {
     padding-bottom: 16px;
 }
+.menu {
+    margin-right: 40px;
+}
 .menu a {
     display: block;
     color: #757575;
     padding: 5px;
-    border-left:2px #F06292 solid;
+    border-left:4px #F06292 solid;
 }
-.menu a:hover {
+.menu a:hover:not(.active) {
     background-color: #E0E0E0;
 }
 .menu .active {

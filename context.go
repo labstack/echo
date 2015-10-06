@@ -10,8 +10,8 @@ import (
 
 	"net/url"
 
-	"golang.org/x/net/websocket"
 	"bytes"
+	"golang.org/x/net/websocket"
 )
 
 type (
@@ -115,7 +115,7 @@ func (c *Context) Render(code int, name string, data interface{}) (err error) {
 	if c.echo.renderer == nil {
 		return RendererNotRegistered
 	}
-	buf := new (bytes.Buffer)
+	buf := new(bytes.Buffer)
 	if err = c.echo.renderer.Render(buf, name, data); err != nil {
 		return
 	}
