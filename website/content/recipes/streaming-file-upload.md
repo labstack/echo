@@ -118,4 +118,8 @@ func main() {
 
 ```
 
+## Maintainers
+
+- [vishr](http://github.com/vishr)
+
 ## [Source Code](https://github.com/labstack/echo/blob/master/recipes/streaming-file-upload)
