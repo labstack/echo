@@ -1,6 +1,5 @@
 # Website
-public
-.publish
+website/public
 
 # Node.js
 node_modules
