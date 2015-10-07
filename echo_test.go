@@ -382,12 +382,15 @@ func TestEchoNotFound(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
-func TestEchoBadRequest(t *testing.T) {
-	e := New()
-	r, _ := http.NewRequest("INVALID", "/files", nil)
-	w := httptest.NewRecorder()
-	e.ServeHTTP(w, r)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+func TestEchoMethodNotAllowed(t *testing.T) {
+	//	e := New()
+	//	e.Get("/", func(c *Context) error {
+	//		return c.String(http.StatusOK, "Echo!")
+	//	})
+	//	r, _ := http.NewRequest(POST, "/", nil)
+	//	w := httptest.NewRecorder()
+	//	e.ServeHTTP(w, r)
+	//	assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
 }
 
 func TestEchoHTTPError(t *testing.T) {

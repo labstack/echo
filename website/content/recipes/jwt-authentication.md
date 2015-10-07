@@ -153,4 +153,8 @@ func main() {
 $  curl localhost:1323/restricted -H "Authorization: Bearer <token>" => Access granted with JWT.
 ```
 
+## Maintainers
+
+- [axdg](http://github.com/axdg)
+
 ## [Source Code](https://github.com/labstack/echo/blob/master/recipes/jwt-authentication)

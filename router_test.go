@@ -567,16 +567,6 @@ func TestRouterAPI(t *testing.T) {
 	}
 }
 
-func TestRouterAddInvalidMethod(t *testing.T) {
-	e := New()
-	r := e.router
-	assert.Panics(t, func() {
-		r.Add("INVALID", "/", func(*Context) error {
-			return nil
-		}, e)
-	})
-}
-
 func TestRouterServeHTTP(t *testing.T) {
 	e := New()
 	r := e.router
@@ -600,7 +590,7 @@ func TestRouterServeHTTP(t *testing.T) {
 
 func (n *node) printTree(pfx string, tail bool) {
 	p := prefix(tail, pfx, "└── ", "├── ")
-	fmt.Printf("%s%s, %p: type=%d, parent=%p, handler=%v\n", p, n.prefix, n, n.typ, n.parent, n.handler)
+	fmt.Printf("%s%s, %p: type=%d, parent=%p, handler=%v\n", p, n.prefix, n, n.kind, n.parent, n.methodHandler)
 
 	children := n.children
 	l := len(children)

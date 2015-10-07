@@ -2,7 +2,7 @@
 title: File Upload
 menu:
   main:
-    parent: recipes 
+    parent: recipes
 ---
 
 - Multipart/form-data file upload
@@ -94,7 +94,10 @@ func main() {
     </form>
 </body>
 </html>
-
 ```
+
+## Maintainers
+
+- [vishr](http://github.com/vishr)
 
 ## [Source Code](https://github.com/labstack/echo/blob/master/recipes/file-upload)

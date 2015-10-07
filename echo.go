@@ -175,8 +175,8 @@ var (
 		return NewHTTPError(http.StatusNotFound)
 	}
 
-	badRequestHandler = func(c *Context) error {
-		return NewHTTPError(http.StatusBadRequest)
+	methodNotAllowedHandler = func(c *Context) error {
+		return NewHTTPError(http.StatusMethodNotAllowed)
 	}
 )
 
@@ -463,10 +463,7 @@ func (e *Echo) Routes() []Route {
 // ServeHTTP implements `http.Handler` interface, which serves HTTP requests.
 func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c := e.pool.Get().(*Context)
-	h, echo := e.router.Find(r.Method, r.URL.Path, c)
-	if echo != nil {
-		e = echo
-	}
+	h, e := e.router.Find(r.Method, r.URL.Path, c)
 	c.reset(r, w, e)
 
 	// Chain middleware with handler in the end

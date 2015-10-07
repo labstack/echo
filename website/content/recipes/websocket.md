@@ -112,4 +112,8 @@ Hello, Server!
 Hello, Server!
 ```
 
+## Maintainers
+
+- [vishr](http://github.com/vishr)
+
 ## [Source Code](https://github.com/labstack/echo/blob/master/recipes/websocket)
