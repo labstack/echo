@@ -11,7 +11,7 @@ menu:
 Use `req.ParseMultipartForm(16 << 20)` for manually parsing multipart form. It gives
 us an option to specify the maximum memory used while parsing the request body.
 
-## Server
+### Server
 
 `server.go`
 
@@ -73,7 +73,7 @@ func main() {
 }
 ```
 
-## Client
+### Client
 
 `index.html`
 
@@ -96,8 +96,8 @@ func main() {
 </html>
 ```
 
-## Maintainers
+### Maintainers
 
 - [vishr](http://github.com/vishr)
 
-## [Source Code](https://github.com/labstack/echo/blob/master/recipes/file-upload)
+### [Source Code](https://github.com/labstack/echo/blob/master/recipes/file-upload)

@@ -8,7 +8,7 @@ menu:
 - Streaming multipart/form-data file upload
 - Multiple form fields and files
 
-## Server
+### Server
 
 `server.go`
 
@@ -94,7 +94,7 @@ func main() {
 }
 ```
 
-## Client
+### Client
 
 `index.html`
 
@@ -118,8 +118,8 @@ func main() {
 
 ```
 
-## Maintainers
+### Maintainers
 
 - [vishr](http://github.com/vishr)
 
-## [Source Code](https://github.com/labstack/echo/blob/master/recipes/streaming-file-upload)
+### [Source Code](https://github.com/labstack/echo/blob/master/recipes/streaming-file-upload)

@@ -7,7 +7,7 @@ menu:
 
 JSONP is a method that allows cross-domain server calls. You can read more about it at the JSON versus JSONP Tutorial.
 
-## Server
+### Server
 
 `server.go`
 
@@ -45,7 +45,7 @@ func main() {
 }
 ```
 
-## Client
+### Client
 
 `index.html`
 
@@ -88,8 +88,8 @@ func main() {
 </html>
 ```
 
-## Maintainers
+### Maintainers
 
 - [willf](http://github.com/willf)
 
-## [Source Code](https://github.com/labstack/echo/blob/master/recipes/jsonp)
+### [Source Code](https://github.com/labstack/echo/blob/master/recipes/jsonp)
