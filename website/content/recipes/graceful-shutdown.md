@@ -58,10 +58,10 @@ func main() {
 
 ### Maintainers
 
-- [mertenvg[(https://github.com/mertenvg)
+- [mertenvg](https://github.com/mertenvg)
 
 ### Source Code
 
-[`graceful`](https://github.com/labstack/echo/blob/master/recipes/graceful-shutdown/graceful)
+[graceful](https://github.com/labstack/echo/blob/master/recipes/graceful-shutdown/graceful)
 
-[`grace`](https://github.com/labstack/echo/blob/master/recipes/graceful-shutdown/grace)
+[grace](https://github.com/labstack/echo/blob/master/recipes/graceful-shutdown/grace)
