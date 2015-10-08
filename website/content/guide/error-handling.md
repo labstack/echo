@@ -1,7 +1,7 @@
 ---
 title: Error Handling
 menu:
-  main:
+  side:
     parent: guide
     weight: 7
 ---

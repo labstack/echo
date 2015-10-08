@@ -1,9 +1,9 @@
 ---
 title: Google App Engine
-draft: false
 menu:
-  main:
+  side:
     parent: recipes
+    weight: 12
 ---
 
 Google App Engine (GAE) provides a range of hosting options from pure PaaS (App Engine Classic)
@@ -30,12 +30,8 @@ and because it is a `var` this will happen _before_ any `init()` functions run -
 use to connect our handlers later.
 
 `app.go`
-```go
-package main
 
-// referecnce our echo instance and create it early
-var e = createMux()
-```  
+{{< embed "google-app-engine/app.go" >}}
 
 A separate source file contains the function to create the Echo instance and add the static
 file handlers and middleware. Note the build tag on the first line which says to use this when _not_
@@ -43,33 +39,8 @@ bulding with appengine or appenginevm tags (which thoese platforms automatically
 have the `main()` function to start serving our app as normal. This should all be very familiar.
 
 `app-standalone.go`
-```go
-// +build !appengine,!appenginevm
 
-package main
-
-import (
-    "github.com/labstack/echo"
-    "github.com/labstack/echo/middleware"
-)
-
-func createMux() *echo.Echo {
-    e := echo.New()
-
-    e.Use(middleware.Recover())
-    e.Use(middleware.Logger())
-    e.Use(middleware.Gzip())
-
-    e.Index("public/index.html")
-    e.Static("/public", "public")
-
-    return e
-}
-
-func main() {
-    e.Run(":8080")
-}
-```
+{{< embed "google-app-engine/app-standalone.go" >}}
 
 The handler-wireup that would normally also be a part of this Echo setup moves to separate files which
 take advantage of the ability to have multiple `init()` functions which run _after_ the `e` Echo var is
@@ -79,26 +50,8 @@ per REST endpoint, often with a higher-level `api` group created that they attac
 Echo instance directly (so things like CORS middleware can be added at this higher common-level).
 
 `some-endpoint.go`
-```go
-package main
 
-import "github.com/labstack/echo"
-
-func init() {
-	// our endpoint registers itself with the echo instance
-	// and could add it's own middleware if it needed
-	g := e.Group("/some-endpoint")
-	g.Get("", listHandler)
-	g.Get("/:id", getHandler)
-	g.Patch("/:id", updateHandler)
-	g.Post("/:id", addHandler)
-	g.Put("/:id", replaceHandler)
-	g.Delete("/:id", deleteHandler)
-}
-
-func listHandler(c *echo.Context) error {
-	// actual handler implementations ...
-```
+{{< embed "google-app-engine/some-endpoint.go" >}}
 
 If we run our app it should execute as it did before when everything was in one file although we have
 at least gained the ability to organize our handlers a little more cleanly.
@@ -125,45 +78,9 @@ The yaml file also contains other options to control instance size and auto-scal
 deployment freedom you would likely have separate `app-classic.yaml` and `app-vm.yaml` files and
 this can help when making the transition from AppEngine Classic to Managed VMs.
 
-`app.yaml`
-```yaml
-application: my-application-id  # defined when you create your app using google dev console
-module: default                 # see https://cloud.google.com/appengine/docs/go/
-version: alpha                  # you can run multiple versions of an app and A/B test
-runtime: go                     # see https://cloud.google.com/appengine/docs/go/
-api_version: go1                # used when appengine supports different go versions
+`app-engine.yaml`
 
-default_expiration: "1d"        # for CDN serving of static files (use url versioning if long!)
-
-handlers:
-# all the static files that we normally serve ourselves are defined here and Google will handle
-# serving them for us from it's own CDN / edge locations. For all the configuration options see:
-# https://cloud.google.com/appengine/docs/go/config/appconfig#Go_app_yaml_Static_file_handlers
-- url: /
-  mime_type: text/html
-  static_files: public/index.html
-  upload: public/index.html
-
-- url: /favicon.ico
-  mime_type: image/x-icon
-  static_files: public/favicon.ico
-  upload: public/favicon.ico
-
-- url: /scripts
-  mime_type: text/javascript
-  static_dir: public/scripts
-
-# static files normally don't touch the server that the app runs on but server-side template files
-# needs to be readable by the app. The application_readable option makes sure they are available as
-# part of the app deployment onto the instance.
-- url: /templates
-  static_dir: /templates
-  application_readable: true
-
-# finally, we route all other requests to our application. The script name just means "the go app"
-- url: /.*
-  script: _go_app
-```
+{{< embed "google-app-engine/app-engine.yaml" >}}
 
 #### Router configuration
 
@@ -177,26 +94,8 @@ that GAE classic provides a wrapper to handle serving the app so instead of a `m
 we run the server, we instead wire up the router to the default `http.Handler` instead.
 
 `app-engine.go`
-```go
-// +build appengine
 
-package main
-
-import (
-    "net/http"
-    "github.com/labstack/echo"
-)
-
-func createMux() *echo.Echo {
-    e := echo.New()
-
-    // note: we don't need to provide the middleware or static handlers, that's taken care of by the platform
-    // app engine has it's own "main" wrapper - we just need to hook echo into the default handler
-    http.Handle("/", e)
-
-    return e
-}
-```
+{{< embed "google-app-engine/app-engine.go" >}}
 
 Managed VMs are slightly different. They are expected to respond to requests on port 8080 as well
 as special health-check requests used by the service to detect if an instance is still running in
@@ -204,37 +103,8 @@ order to provide automated failover and instance replacement. The `google.golang
 package provides this for us so we have a slightly different version for Managed VMs:
 
 `app-managed.go`
-```go
-// +build appenginevm
 
-package main
-
-import (
-    "runtime"
-    "net/http"
-    "github.com/labstack/echo"
-    "google.golang.org/appengine"
-)
-
-func createMux() *echo.Echo {
-    // we're in a container on a Google Compute Engine instance so are not sandboxed anymore ...
-    runtime.GOMAXPROCS(runtime.NumCPU())
-
-    e := echo.New()
-
-    // note: we don't need to provide the middleware or static handlers
-    // for the appengine vm version - that's taken care of by the platform
-
-    return e
-}
-
-func main() {
-    // the appengine package provides a convenient method to handle the health-check requests
-    // and also run the app on the correct port. We just need to add Echo to the default handler
-    http.Handle("/", e)
-    appengine.Main()
-}
-```
+{{< embed "google-app-engine/app-managed.go" >}}
 
 So now we have three different configurations. We can build and run our app as normal so it can
 be executed locally, on a full Compute Engine instance or any other traditional hosting provider

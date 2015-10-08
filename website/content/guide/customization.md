@@ -1,7 +1,7 @@
 ---
 title: Customization
 menu:
-  main:
+  side:
     parent: guide
     weight: 2
 ---

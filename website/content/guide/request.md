@@ -1,7 +1,7 @@
 ---
 title: Request
 menu:
-  main:
+  side:
     parent: guide
     weight: 5
 ---

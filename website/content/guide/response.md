@@ -1,7 +1,7 @@
 ---
 title: Response
 menu:
-  main:
+  side:
     parent: guide
     weight: 6
 ---

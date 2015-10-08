@@ -1,7 +1,7 @@
 ---
 title: Middleware
 menu:
-  main:
+  side:
     parent: guide
     weight: 4
 ---
@@ -64,4 +64,4 @@ control to the centralized
 e.Use(mw.Recover())
 ```
 
-[Examples](https://github.com/labstack/echo/tree/master/examples/middleware)
+### [Recipes](https://github.com/labstack/echo/tree/master/recipes/middleware)

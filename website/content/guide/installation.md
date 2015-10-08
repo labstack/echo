@@ -1,7 +1,7 @@
 ---
 title: Installation
 menu:
-  main:
+  side:
     parent: guide
     weight: 1
 ---

@@ -5,16 +5,16 @@
     "canonifyurls": true,
 
     "menu": {
-        "main": [{
-            "Name": "Guide",
-            "Pre": "<i class='fa fa-book'></i>",
-            "Weight": 10,
-            "Identifier": "guide",
-            "URL": "guide"
+        "side": [{
+            "name": "Guide",
+            "pre": "<i class='fa fa-book'></i>",
+            "weight": 1,
+            "identifier": "guide",
+            "url": "guide"
         }, {
             "Name": "Recipes",
             "Pre": "<i class='fa fa-code'></i>",
-            "Weight": 20,
+            "Weight": 2,
             "Identifier": "recipes",
             "URL": "recipes"
         }]

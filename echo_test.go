@@ -43,7 +43,7 @@ func TestEcho(t *testing.T) {
 
 func TestEchoIndex(t *testing.T) {
 	e := New()
-	e.Index("examples/website/public/index.html")
+	e.Index("recipes/website/public/index.html")
 	c, b := request(GET, "/", e)
 	assert.Equal(t, http.StatusOK, c)
 	assert.NotEmpty(t, b)
@@ -51,7 +51,7 @@ func TestEchoIndex(t *testing.T) {
 
 func TestEchoFavicon(t *testing.T) {
 	e := New()
-	e.Favicon("examples/website/public/favicon.ico")
+	e.Favicon("recipes/website/public/favicon.ico")
 	c, b := request(GET, "/favicon.ico", e)
 	assert.Equal(t, http.StatusOK, c)
 	assert.NotEmpty(t, b)
@@ -61,23 +61,23 @@ func TestEchoStatic(t *testing.T) {
 	e := New()
 
 	// OK
-	e.Static("/scripts", "examples/website/public/scripts")
+	e.Static("/scripts", "recipes/website/public/scripts")
 	c, b := request(GET, "/scripts/main.js", e)
 	assert.Equal(t, http.StatusOK, c)
 	assert.NotEmpty(t, b)
 
 	// No file
-	e.Static("/scripts", "examples/website/public/scripts")
+	e.Static("/scripts", "recipes/website/public/scripts")
 	c, _ = request(GET, "/scripts/index.js", e)
 	assert.Equal(t, http.StatusNotFound, c)
 
 	// Directory
-	e.Static("/scripts", "examples/website/public/scripts")
+	e.Static("/scripts", "recipes/website/public/scripts")
 	c, _ = request(GET, "/scripts", e)
 	assert.Equal(t, http.StatusForbidden, c)
 
 	// Directory with index.html
-	e.Static("/", "examples/website/public")
+	e.Static("/", "recipes/website/public")
 	c, r := request(GET, "/", e)
 	assert.Equal(t, http.StatusOK, c)
 	assert.Equal(t, true, strings.HasPrefix(r, "<!doctype html>"))

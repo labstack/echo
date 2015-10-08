@@ -14,7 +14,7 @@ footer {
 .github a:hover {
     color: #333;
 }
-code {
+:not(pre) > code {
     padding: 2px 4px;
     background: #EEE;
     color: #424242;

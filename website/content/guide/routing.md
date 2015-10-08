@@ -1,7 +1,7 @@
 ---
 title: Routing
 menu:
-  main:
+  side:
     parent: guide
     weight: 3
 ---

@@ -1,4 +1,4 @@
-# [Echo](http://echo.labstack.com) [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/labstack/echo) [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/labstack/echo/master/LICENSE) [![Build Status](http://img.shields.io/travis/labstack/echo.svg?style=flat-square)](https://travis-ci.org/labstack/echo) [![Coverage Status](http://img.shields.io/coveralls/labstack/echo.svg?style=flat-square)](https://coveralls.io/r/labstack/echo) [![Join the chat at https://gitter.im/labstack/echo](https://img.shields.io/badge/gitter-join%20chat-brightgreen.svg?style=flat-square)](https://gitter.im/labstack/echo)
+# [Echo](http://labstack.com/echo) [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/labstack/echo) [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/labstack/echo/master/LICENSE) [![Build Status](http://img.shields.io/travis/labstack/echo.svg?style=flat-square)](https://travis-ci.org/labstack/echo) [![Coverage Status](http://img.shields.io/coveralls/labstack/echo.svg?style=flat-square)](https://coveralls.io/r/labstack/echo) [![Join the chat at https://gitter.im/labstack/echo](https://img.shields.io/badge/gitter-join%20chat-brightgreen.svg?style=flat-square)](https://gitter.im/labstack/echo)
 
 A fast and unfancy micro web framework for Go.
 
@@ -87,17 +87,9 @@ BenchmarkZeus_GithubAll              2000            748827 ns/op          30068
 $ go get github.com/labstack/echo
 ```
 
-## [Recipes](https://github.com/labstack/echo/tree/master/recipes)
+## [Recipes](http://labstack.com/echo/recipes/hello-world)
 
-- [File Upload](http://echo.labstack.com/recipes/file-upload)
-- [Streaming File Upload](http://echo.labstack.com/recipes/streaming-file-upload)
-- [Streaming Response](http://echo.labstack.com/recipes/streaming-response)
-- [WebSocket](http://echo.labstack.com/recipes/websocket)
-- [Subdomains](http://echo.labstack.com/recipes/subdomains)
-- [JWT Authentication](http://echo.labstack.com/recipes/jwt-authentication)
-- [Graceful Shutdown](http://echo.labstack.com/recipes/graceful-shutdown)
-
-##[Guide](http://echo.labstack.com/guide)
+## [Guide](http://labstack.com/echo/guide)
 
 ## Echo System
 
