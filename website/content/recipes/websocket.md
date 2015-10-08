@@ -5,7 +5,7 @@ menu:
     parent: recipes
 ---
 
-## Server
+### Server
 
 `server.go`
 
@@ -47,7 +47,7 @@ func main() {
 }
 ```
 
-## Client
+### Client
 
 `index.html`
 
@@ -90,7 +90,7 @@ func main() {
 </html>
 ```
 
-## Output
+### Output
 
 `Client`
 
@@ -112,8 +112,8 @@ Hello, Server!
 Hello, Server!
 ```
 
-## Maintainers
+### Maintainers
 
 - [vishr](http://github.com/vishr)
 
-## [Source Code](https://github.com/labstack/echo/blob/master/recipes/websocket)
+### [Source Code](https://github.com/labstack/echo/blob/master/recipes/websocket)

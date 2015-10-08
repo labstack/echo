@@ -77,9 +77,9 @@ func main() {
 }
 ```
 
-## Maintainers
+### Maintainers
 
 - [axdg](http://github.com/axdg)
 - [vishr](http://github.com/axdg)
 
-## [Source Code](https://github.com/labstack/echo/blob/master/recipes/subdomains)
+### [Source Code](https://github.com/labstack/echo/blob/master/recipes/subdomains)

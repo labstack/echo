@@ -56,11 +56,11 @@ func main() {
 }
 ```
 
-## Maintainers
+### Maintainers
 
-- (mertenvg)[https://github.com/mertenvg]
+- [mertenvg[(https://github.com/mertenvg)
 
-## Source Code
+### Source Code
 
 [`graceful`](https://github.com/labstack/echo/blob/master/recipes/graceful-shutdown/graceful)
 

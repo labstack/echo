@@ -241,7 +241,7 @@ be executed locally, on a full Compute Engine instance or any other traditional 
 (including EC2, Docker etc...). This build will ignore the code in appengine and appenginevm tagged
 files and the `app.yaml` file is meaningless to anything other than the AppEngine platform.
 
-We can also run locally using the [Google AppEngine SDK for GO](https://cloud.google.com/appengine/downloads)
+We can also run locally using the [Google AppEngine SDK for Go](https://cloud.google.com/appengine/downloads)
 either emulating [AppEngine Classic](https://cloud.google.com/appengine/docs/go/tools/devserver):
 
     goapp serve
@@ -258,4 +258,4 @@ switching between AppEngine provided service such as Datastore and alternative s
 such as MongoDB. A combination of go interfaces and build constraints can make this fairly straightforward
 but is outside the scope of this recipe.  
 
-## [Source Code](https://github.com/labstack/echo/blob/master/recipes/google-app-engine)
+### [Source Code](https://github.com/labstack/echo/blob/master/recipes/google-app-engine)
