@@ -66,6 +66,15 @@ Context.JSON(code int, v interface{}) error
 
 Sends a JSON HTTP response with status code.
 
+### JSONP
+
+```go
+Context.JSONP(code int, callback string, i interface{}) error
+```
+
+Sends a JSONP HTTP response with status code. It uses `callback` to construct the
+JSONP payload.
+
 ### XML
 
 ```go
@@ -93,11 +102,12 @@ Sends a text/plain HTTP response with status code.
 ### File
 
 ```go
-Context.File(name string, attachment bool) error
+Context.File(name, path string, attachment bool) error
 ```
 
-File sends a response with the content of the file. If attachment is `true`, the client
-is prompted to save the file.
+File sends a response with the content of the file. If `attachment` is set
+to `true`, the client is prompted to save the file with provided `name`,
+name can be empty, in that case name of the file is used.
 
 ### Static files
 

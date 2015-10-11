@@ -21,6 +21,10 @@ e.Get("/hello", func(c *echo.Context) error {
 })
 ```
 
+You can use `Echo.Any(path string, h Handler)` to register a handler for all HTTP methods.
+To register it for some methods, use `Echo.Match(methods []string, path string, h Handler)`.
+
+
 Echo's default handler is `func(*echo.Context) error` where `echo.Context` primarily
 holds HTTP request and response objects. Echo also has a support for other types
 of handlers.
