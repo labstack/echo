@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"net/http"
-	"path"
+	spath "path"
 
 	"fmt"
 
@@ -193,12 +193,13 @@ func (c *Context) XML(code int, i interface{}) (err error) {
 	return
 }
 
-// File sends a response with the content of the file. If attachment is true, the
-// client is prompted to save the file.
-func (c *Context) File(name string, attachment bool) (err error) {
-	dir, file := path.Split(name)
+// File sends a response with the content of the file. If `attachment` is set
+// to true, the client is prompted to save the file with provided `name`,
+// name can be empty, in that case name of the file is used.
+func (c *Context) File(name, path string, attachment bool) (err error) {
+	dir, file := spath.Split(path)
 	if attachment {
-		c.response.Header().Set(ContentDisposition, "attachment; filename="+file)
+		c.response.Header().Set(ContentDisposition, "attachment; filename="+name)
 	}
 	if err = serveFile(dir, file, c); err != nil {
 		c.response.Header().Del(ContentDisposition)
