@@ -175,7 +175,7 @@ func TestContext(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, c.response.status)
 
 	// reset
-	c.reset(req, NewResponse(httptest.NewRecorder()), New())
+	c.reset(req, NewResponse(httptest.NewRecorder()), New(), "")
 }
 
 func TestContextQuery(t *testing.T) {

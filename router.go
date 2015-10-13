@@ -17,6 +17,7 @@ type (
 		methodHandler *methodHandler
 		pnames        []string
 		echo          *Echo
+		fullPath      string
 	}
 	kind          uint8
 	children      []*node
@@ -43,6 +44,7 @@ func NewRouter(e *Echo) *Router {
 	return &Router{
 		tree: &node{
 			methodHandler: new(methodHandler),
+			fullPath:      "/",
 		},
 		routes: []Route{},
 		echo:   e,
@@ -52,11 +54,14 @@ func NewRouter(e *Echo) *Router {
 func (r *Router) Add(method, path string, h HandlerFunc, e *Echo) {
 	pnames := []string{} // Param names
 
+	// pristine path without interpolated params for logging
+	pristPath := path[:]
+
 	for i, l := 0, len(path); i < l; i++ {
 		if path[i] == ':' {
 			j := i + 1
 
-			r.insert(method, path[:i], nil, skind, nil, e)
+			r.insert(method, path[:i], nil, skind, nil, e, pristPath)
 			for ; i < l && path[i] != '/'; i++ {
 			}
 
@@ -65,22 +70,22 @@ func (r *Router) Add(method, path string, h HandlerFunc, e *Echo) {
 			i, l = j, len(path)
 
 			if i == l {
-				r.insert(method, path[:i], h, pkind, pnames, e)
+				r.insert(method, path[:i], h, pkind, pnames, e, pristPath)
 				return
 			}
-			r.insert(method, path[:i], nil, pkind, pnames, e)
+			r.insert(method, path[:i], nil, pkind, pnames, e, pristPath)
 		} else if path[i] == '*' {
-			r.insert(method, path[:i], nil, skind, nil, e)
+			r.insert(method, path[:i], nil, skind, nil, e, pristPath)
 			pnames = append(pnames, "_*")
-			r.insert(method, path[:i+1], h, mkind, pnames, e)
+			r.insert(method, path[:i+1], h, mkind, pnames, e, pristPath)
 			return
 		}
 	}
 
-	r.insert(method, path, h, skind, pnames, e)
+	r.insert(method, path, h, skind, pnames, e, pristPath)
 }
 
-func (r *Router) insert(method, path string, h HandlerFunc, t kind, pnames []string, e *Echo) {
+func (r *Router) insert(method, path string, h HandlerFunc, t kind, pnames []string, e *Echo, pristPath string) {
 	// Adjust max param
 	l := len(pnames)
 	if *e.maxParam < l {
@@ -110,6 +115,7 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, pnames []str
 			// At root node
 			cn.label = search[0]
 			cn.prefix = search
+			cn.fullPath = pristPath
 			if h != nil {
 				cn.kind = t
 				cn.addHandler(method, h)
@@ -118,7 +124,7 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, pnames []str
 			}
 		} else if l < pl {
 			// Split node
-			n := newNode(cn.kind, cn.prefix[l:], cn, cn.children, cn.methodHandler, cn.pnames, cn.echo)
+			n := newNode(cn.kind, cn.prefix[l:], cn, cn.children, cn.methodHandler, cn.pnames, cn.echo, cn.fullPath)
 
 			// Reset parent node
 			cn.kind = skind
@@ -128,6 +134,7 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, pnames []str
 			cn.methodHandler = new(methodHandler)
 			cn.pnames = nil
 			cn.echo = nil
+			cn.fullPath = pristPath
 
 			cn.addChild(n)
 
@@ -139,7 +146,7 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, pnames []str
 				cn.echo = e
 			} else {
 				// Create child node
-				n = newNode(t, search[l:], cn, nil, new(methodHandler), pnames, e)
+				n = newNode(t, search[l:], cn, nil, new(methodHandler), pnames, e, pristPath)
 				n.addHandler(method, h)
 				cn.addChild(n)
 			}
@@ -152,7 +159,7 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, pnames []str
 				continue
 			}
 			// Create child node
-			n := newNode(t, search, cn, nil, new(methodHandler), pnames, e)
+			n := newNode(t, search, cn, nil, new(methodHandler), pnames, e, pristPath)
 			n.addHandler(method, h)
 			cn.addChild(n)
 		} else {
@@ -161,13 +168,14 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, pnames []str
 				cn.addHandler(method, h)
 				cn.pnames = pnames
 				cn.echo = e
+				cn.fullPath = pristPath
 			}
 		}
 		return
 	}
 }
 
-func newNode(t kind, pre string, p *node, c children, mh *methodHandler, pnames []string, e *Echo) *node {
+func newNode(t kind, pre string, p *node, c children, mh *methodHandler, pnames []string, e *Echo, fp string) *node {
 	return &node{
 		kind:          t,
 		label:         pre[0],
@@ -177,6 +185,7 @@ func newNode(t kind, pre string, p *node, c children, mh *methodHandler, pnames 
 		methodHandler: mh,
 		pnames:        pnames,
 		echo:          e,
+		fullPath:      fp,
 	}
 }
 
@@ -259,7 +268,7 @@ func (n *node) findHandler(method string) HandlerFunc {
 	}
 }
 
-func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo) {
+func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo, routerPath string) {
 	h = notFoundHandler
 	e = r.echo
 	cn := r.tree // Current node as root
@@ -383,13 +392,14 @@ End:
 		h = cn.findHandler(method)
 		ctx.pvalues[len(cn.pnames)-1] = ""
 	}
+	routerPath = cn.fullPath
 	return
 }
 
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	c := r.echo.pool.Get().(*Context)
-	h, _ := r.Find(req.Method, req.URL.Path, c)
-	c.reset(req, w, r.echo)
+	h, _, rp := r.Find(req.Method, req.URL.Path, c)
+	c.reset(req, w, r.echo, rp)
 	if err := h(c); err != nil {
 		r.echo.httpErrorHandler(err, c)
 	}
