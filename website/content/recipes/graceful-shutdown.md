@@ -6,13 +6,13 @@ menu:
     weight: 13
 ---
 
-### With [graceful](https://github.com/tylerb/graceful)
+### With [grace](https://github.com/facebookgo/grace)
 
 `server.go`
 
 {{< embed "graceful-shutdown/grace/server.go" >}}
 
-### With [grace](https://github.com/facebookgo/grace)
+### With [graceful](https://github.com/tylerb/graceful)
 
 `server.go`
 
