@@ -102,7 +102,7 @@ Sends a text/plain HTTP response with status code.
 ### File
 
 ```go
-Context.File(name, path string, attachment bool) error
+Context.File(path, name string, attachment bool) error
 ```
 
 File sends a response with the content of the file. If `attachment` is set

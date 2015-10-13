@@ -11,6 +11,7 @@ import (
 	"net/url"
 
 	"bytes"
+
 	"golang.org/x/net/websocket"
 )
 
@@ -196,7 +197,7 @@ func (c *Context) XML(code int, i interface{}) (err error) {
 // File sends a response with the content of the file. If `attachment` is set
 // to true, the client is prompted to save the file with provided `name`,
 // name can be empty, in that case name of the file is used.
-func (c *Context) File(name, path string, attachment bool) (err error) {
+func (c *Context) File(path, name string, attachment bool) (err error) {
 	dir, file := spath.Split(path)
 	if attachment {
 		c.response.Header().Set(ContentDisposition, "attachment; filename="+name)
