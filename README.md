@@ -89,7 +89,7 @@ $ go get github.com/labstack/echo
 
 ## [Recipes](http://labstack.com/echo/recipes/hello-world)
 
-## [Guide](http://labstack.com/echo/guide)
+## [Guide](http://labstack.com/echo/guide/installation)
 
 ## Echo System
 
