@@ -394,6 +394,7 @@ func serveFile(dir, file string, c *Context) error {
 	if err != nil {
 		return NewHTTPError(http.StatusNotFound)
 	}
+	defer f.Close()
 
 	fi, _ := f.Stat()
 	if fi.IsDir() {
