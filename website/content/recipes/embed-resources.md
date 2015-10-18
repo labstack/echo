@@ -15,6 +15,6 @@ menu:
 
 ### Maintainers
 
-- [vishr](https://github.com/caarlos0)
+- [caarlos0](https://github.com/caarlos0)
 
 ### [Source Code](https://github.com/labstack/echo/blob/master/recipes/rice)
