@@ -15,13 +15,15 @@ func Logger() echo.MiddlewareFunc {
 			req := c.Request()
 			res := c.Response()
 
-			remoteAddr := req.RemoteAddr
+			var remoteAddr string
 			if ip := req.Header.Get(echo.XRealIP); ip != "" {
 				remoteAddr = ip
 			} else if ip = req.Header.Get(echo.XForwardedFor); ip != "" {
 				remoteAddr = ip
+			} else {
+				remoteAddr = req.RemoteAddr
+				remoteAddr, _, _ = net.SplitHostPort(remoteAddr)
 			}
-			remoteAddr, _, _ = net.SplitHostPort(remoteAddr)
 
 			start := time.Now()
 			if err := h(c); err != nil {

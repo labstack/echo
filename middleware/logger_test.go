@@ -1,12 +1,15 @@
 package middleware
 
 import (
+	"bytes"
 	"errors"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/labstack/echo"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestLogger(t *testing.T) {
@@ -16,23 +19,8 @@ func TestLogger(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := echo.NewContext(req, echo.NewResponse(rec), e)
 
-	// With X-Real-IP
-	req.Header.Add(echo.XRealIP, "127.0.0.1")
-	h := func(c *echo.Context) error {
-		return c.String(http.StatusOK, "test")
-	}
-	Logger()(h)(c)
-
-	// With X-Forwarded-For
-	req.Header.Del(echo.XRealIP)
-	req.Header.Add(echo.XForwardedFor, "127.0.0.1")
-	h = func(c *echo.Context) error {
-		return c.String(http.StatusOK, "test")
-	}
-	Logger()(h)(c)
-
 	// Status 2xx
-	h = func(c *echo.Context) error {
+	h := func(c *echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}
 	Logger()(h)(c)
@@ -61,4 +49,38 @@ func TestLogger(t *testing.T) {
 		return errors.New("error")
 	}
 	Logger()(h)(c)
+}
+
+func TestLogger_IPAddress(t *testing.T) {
+	buf := &bytes.Buffer{}
+	log.SetOutput(buf)
+
+	ip := "127.0.0.1"
+
+	e := echo.New()
+	req, _ := http.NewRequest(echo.GET, "/", nil)
+	rec := httptest.NewRecorder()
+	c := echo.NewContext(req, echo.NewResponse(rec), e)
+	h := func(c *echo.Context) error {
+		return c.String(http.StatusOK, "test")
+	}
+
+	mw := Logger()
+
+	// With X-Real-IP
+	req.Header.Add(echo.XRealIP, ip)
+	mw(h)(c)
+	assert.Contains(t, buf.String(), ip)
+
+	// With X-Forwarded-For
+	buf.Reset()
+	req.Header.Del(echo.XRealIP)
+	req.Header.Add(echo.XForwardedFor, ip)
+	mw(h)(c)
+	assert.Contains(t, buf.String(), ip)
+
+	// with req.RemoteAddr
+	buf.Reset()
+	mw(h)(c)
+	assert.Contains(t, buf.String(), ip)
 }
