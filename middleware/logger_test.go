@@ -51,7 +51,7 @@ func TestLogger(t *testing.T) {
 	Logger()(h)(c)
 }
 
-func TestLogger_IPAddress(t *testing.T) {
+func TestLoggerIPAddress(t *testing.T) {
 	buf := &bytes.Buffer{}
 	log.SetOutput(buf)
 
