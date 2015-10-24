@@ -33,8 +33,8 @@ BasicAuth middleware provides an HTTP basic authentication.
 *Example*
 
 ```go
-e.Group("/admin")
-e.Use(mw.BasicAuth(func(usr, pwd string) bool {
+g := e.Group("/admin")
+g.Use(mw.BasicAuth(func(usr, pwd string) bool {
 	if usr == "joe" && pwd == "secret" {
 		return true
 	}
