@@ -224,7 +224,7 @@ func (n *node) addHandler(method string, h HandlerFunc) {
 	case PATCH:
 		n.methodHandler.patch = h
 	case OPTIONS:
-		n.methodHandler.delete = h
+		n.methodHandler.options = h
 	case HEAD:
 		n.methodHandler.head = h
 	case CONNECT:
@@ -247,7 +247,7 @@ func (n *node) findHandler(method string) HandlerFunc {
 	case PATCH:
 		return n.methodHandler.patch
 	case OPTIONS:
-		return n.methodHandler.delete
+		return n.methodHandler.options
 	case HEAD:
 		return n.methodHandler.head
 	case CONNECT:
