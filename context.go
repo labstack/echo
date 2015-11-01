@@ -156,7 +156,19 @@ func (c *Context) String(code int, format string, a ...interface{}) (err error) 
 
 // JSON sends a JSON response with status code.
 func (c *Context) JSON(code int, i interface{}) (err error) {
-	b, err := json.Marshal(i)
+	return c.JSONPrettyPrint(code, i, false)
+}
+
+// JSON sends a pretty printed JSON response with status code.
+func (c *Context) JSONPrettyPrint(code int, i interface{}, prettyPrint bool) (err error) {
+	var b []byte
+
+	if prettyPrint {
+		b, err = json.MarshalIndent(i, " ", " ")
+	} else {
+		b, err = json.Marshal(i)
+	}
+
 	if err != nil {
 		return err
 	}

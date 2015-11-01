@@ -28,6 +28,7 @@ func (t *Template) Render(w io.Writer, name string, data interface{}) error {
 
 func TestContext(t *testing.T) {
 	userJSON := `{"id":"1","name":"Joe"}`
+	userJSONPrettyPrint := "{\n  \"id\": \"1\",\n  \"name\": \"Joe\"\n }"
 	userXML := `<user><id>1</id><name>Joe</name></user>`
 
 	req, _ := http.NewRequest(POST, "/", strings.NewReader(userJSON))
@@ -91,6 +92,26 @@ func TestContext(t *testing.T) {
 	rec = httptest.NewRecorder()
 	c = NewContext(req, NewResponse(rec), New())
 	err = c.JSON(http.StatusOK, user{"1", "Joe"})
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, ApplicationJSONCharsetUTF8, rec.Header().Get(ContentType))
+		assert.Equal(t, userJSON, rec.Body.String())
+	}
+
+	// JSONPrettyPrint (pretty)
+	rec = httptest.NewRecorder()
+	c = NewContext(req, NewResponse(rec), New())
+	err = c.JSONPrettyPrint(http.StatusOK, user{"1", "Joe"}, true)
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, ApplicationJSONCharsetUTF8, rec.Header().Get(ContentType))
+		assert.Equal(t, userJSONPrettyPrint, rec.Body.String())
+	}
+
+	// JSONPrettyPrint (not pretty)
+	rec = httptest.NewRecorder()
+	c = NewContext(req, NewResponse(rec), New())
+	err = c.JSONPrettyPrint(http.StatusOK, user{"1", "Joe"}, false)
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, ApplicationJSONCharsetUTF8, rec.Header().Get(ContentType))
