@@ -13,5 +13,5 @@ func main() {
 
 	e.Static("/", "public")
 
-	e.Run(":5091")
+	e.Run(":80")
 }
