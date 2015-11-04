@@ -374,14 +374,16 @@ End:
 		e = cn.echo
 	}
 	if h == nil {
+		h = methodNotAllowedHandler
 		// Dig further for match-any, might have an empty value for *, e.g.
 		// serving a directory. Issue #207.
 		if cn = cn.findChildByKind(mkind); cn == nil {
-			h = notFoundHandler
 			return
 		}
-		h = cn.findHandler(method)
 		ctx.pvalues[len(cn.pnames)-1] = ""
+		if h = cn.findHandler(method); h == nil {
+			h = methodNotAllowedHandler
+		}
 	}
 	return
 }
