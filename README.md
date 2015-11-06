@@ -100,6 +100,7 @@ Community created packages for Echo
 - [permissions2](https://github.com/xyproto/permissions2)
 - [permissionbolt](https://github.com/xyproto/permissionbolt)
 - [echo-middleware](https://github.com/syntaqx/echo-middleware)
+- [dpecho](https://github.com/deferpanic/dpecho)
 
 ## Contribute
 
