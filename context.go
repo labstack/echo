@@ -156,19 +156,19 @@ func (c *Context) String(code int, format string, a ...interface{}) (err error) 
 
 // JSON sends a JSON response with status code.
 func (c *Context) JSON(code int, i interface{}) (err error) {
-	return c.JSONPrettyPrint(code, i, false)
+	b, err := json.Marshal(i)
+	if err != nil {
+		return err
+	}
+	c.response.Header().Set(ContentType, ApplicationJSONCharsetUTF8)
+	c.response.WriteHeader(code)
+	c.response.Write(b)
+	return
 }
 
-// JSON sends a pretty printed JSON response with status code.
-func (c *Context) JSONPrettyPrint(code int, i interface{}, prettyPrint bool) (err error) {
-	var b []byte
-
-	if prettyPrint {
-		b, err = json.MarshalIndent(i, " ", " ")
-	} else {
-		b, err = json.Marshal(i)
-	}
-
+// JSON sends a JSON response with status code, but it applies prefix and indent to format the output.
+func (c *Context) JSONIndent(code int, i interface{}, prefix string, indent string) (err error) {
+	b, err := json.MarshalIndent(i, prefix, indent)
 	if err != nil {
 		return err
 	}
@@ -196,6 +196,19 @@ func (c *Context) JSONP(code int, callback string, i interface{}) (err error) {
 // XML sends an XML response with status code.
 func (c *Context) XML(code int, i interface{}) (err error) {
 	b, err := xml.Marshal(i)
+	if err != nil {
+		return err
+	}
+	c.response.Header().Set(ContentType, ApplicationXMLCharsetUTF8)
+	c.response.WriteHeader(code)
+	c.response.Write([]byte(xml.Header))
+	c.response.Write(b)
+	return
+}
+
+// XML sends an XML response with status code, but it applies prefix and indent to format the output.
+func (c *Context) XMLIndent(code int, i interface{}, prefix string, indent string) (err error) {
+	b, err := xml.MarshalIndent(i, prefix, indent)
 	if err != nil {
 		return err
 	}

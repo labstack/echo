@@ -10,9 +10,9 @@ import (
 
 	"strings"
 
-	"encoding/xml"
 	"net/url"
 
+	"encoding/xml"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -28,8 +28,9 @@ func (t *Template) Render(w io.Writer, name string, data interface{}) error {
 
 func TestContext(t *testing.T) {
 	userJSON := `{"id":"1","name":"Joe"}`
-	userJSONPrettyPrint := "{\n  \"id\": \"1\",\n  \"name\": \"Joe\"\n }"
+	userJSONIndent := "{\n_?\"id\": \"1\",\n_?\"name\": \"Joe\"\n_}"
 	userXML := `<user><id>1</id><name>Joe</name></user>`
+	userXMLIndent := "_<user>\n_?<id>1</id>\n_?<name>Joe</name>\n_</user>"
 
 	req, _ := http.NewRequest(POST, "/", strings.NewReader(userJSON))
 	rec := httptest.NewRecorder()
@@ -98,24 +99,14 @@ func TestContext(t *testing.T) {
 		assert.Equal(t, userJSON, rec.Body.String())
 	}
 
-	// JSONPrettyPrint (pretty)
+	// JSONIndent
 	rec = httptest.NewRecorder()
 	c = NewContext(req, NewResponse(rec), New())
-	err = c.JSONPrettyPrint(http.StatusOK, user{"1", "Joe"}, true)
+	err = c.JSONIndent(http.StatusOK, user{"1", "Joe"}, "_", "?")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, ApplicationJSONCharsetUTF8, rec.Header().Get(ContentType))
-		assert.Equal(t, userJSONPrettyPrint, rec.Body.String())
-	}
-
-	// JSONPrettyPrint (not pretty)
-	rec = httptest.NewRecorder()
-	c = NewContext(req, NewResponse(rec), New())
-	err = c.JSONPrettyPrint(http.StatusOK, user{"1", "Joe"}, false)
-	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, ApplicationJSONCharsetUTF8, rec.Header().Get(ContentType))
-		assert.Equal(t, userJSON, rec.Body.String())
+		assert.Equal(t, userJSONIndent, rec.Body.String())
 	}
 
 	// JSONP
@@ -136,7 +127,17 @@ func TestContext(t *testing.T) {
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, ApplicationXMLCharsetUTF8, rec.Header().Get(ContentType))
-		assert.Equal(t, xml.Header, xml.Header, rec.Body.String())
+		assert.Equal(t, xml.Header+userXML, rec.Body.String())
+	}
+
+	// XMLIndent
+	rec = httptest.NewRecorder()
+	c = NewContext(req, NewResponse(rec), New())
+	err = c.XMLIndent(http.StatusOK, user{"1", "Joe"}, "_", "?")
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, ApplicationXMLCharsetUTF8, rec.Header().Get(ContentType))
+		assert.Equal(t, xml.Header+userXMLIndent, rec.Body.String())
 	}
 
 	// String
