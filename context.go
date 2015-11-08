@@ -166,16 +166,20 @@ func (c *Context) JSON(code int, i interface{}) (err error) {
 	return
 }
 
-// JSON sends a JSON response with status code, but it applies prefix and indent to format the output.
+// JSONIndent sends a JSON response with status code, but it applies prefix and indent to format the output.
 func (c *Context) JSONIndent(code int, i interface{}, prefix string, indent string) (err error) {
 	b, err := json.MarshalIndent(i, prefix, indent)
 	if err != nil {
 		return err
 	}
+	c.json(code, b)
+	return
+}
+
+func (c *Context) json(code int, b []byte) {
 	c.response.Header().Set(ContentType, ApplicationJSONCharsetUTF8)
 	c.response.WriteHeader(code)
 	c.response.Write(b)
-	return
 }
 
 // JSONP sends a JSONP response with status code. It uses `callback` to construct
@@ -206,17 +210,21 @@ func (c *Context) XML(code int, i interface{}) (err error) {
 	return
 }
 
-// XML sends an XML response with status code, but it applies prefix and indent to format the output.
+// XMLIndent sends an XML response with status code, but it applies prefix and indent to format the output.
 func (c *Context) XMLIndent(code int, i interface{}, prefix string, indent string) (err error) {
 	b, err := xml.MarshalIndent(i, prefix, indent)
 	if err != nil {
 		return err
 	}
+	c.xml(code, b)
+	return
+}
+
+func (c *Context) xml(code int, b []byte) {
 	c.response.Header().Set(ContentType, ApplicationXMLCharsetUTF8)
 	c.response.WriteHeader(code)
 	c.response.Write([]byte(xml.Header))
 	c.response.Write(b)
-	return
 }
 
 // File sends a response with the content of the file. If `attachment` is set
