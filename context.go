@@ -19,14 +19,15 @@ type (
 	// Context represents context for the current request. It holds request and
 	// response objects, path parameters, data and registered handler.
 	Context struct {
-		request  *http.Request
-		response *Response
-		socket   *websocket.Conn
-		pnames   []string
-		pvalues  []string
-		query    url.Values
-		store    store
-		echo     *Echo
+		request      *http.Request
+		response     *Response
+		socket       *websocket.Conn
+		matchedRoute string
+		pnames       []string
+		pvalues      []string
+		query        url.Values
+		store        store
+		echo         *Echo
 	}
 	store map[string]interface{}
 )
@@ -40,6 +41,10 @@ func NewContext(req *http.Request, res *Response, e *Echo) *Context {
 		pvalues:  make([]string, *e.maxParam),
 		store:    make(store),
 	}
+}
+
+func (c *Context) MatchedRoute() string {
+	return c.matchedRoute
 }
 
 // Request returns *http.Request.
@@ -261,7 +266,8 @@ func (c *Context) Error(err error) {
 	c.echo.httpErrorHandler(err, c)
 }
 
-func (c *Context) reset(r *http.Request, w http.ResponseWriter, e *Echo) {
+func (c *Context) reset(r *http.Request, w http.ResponseWriter, e *Echo, rp string) {
+	c.matchedRoute = rp
 	c.request = r
 	c.response.reset(w)
 	c.query = nil
