@@ -107,8 +107,8 @@ Community created packages for Echo
 **Use issues for everything**
 
 - Report problems
-- Discuss before sending pull request
-- Suggest new features
+- Discuss before sending a pull request
+- Suggest new features/recipes
 - Improve/fix documentation
 
 ## Credits
