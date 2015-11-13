@@ -272,6 +272,5 @@ func (c *Context) reset(r *http.Request, w http.ResponseWriter, e *Echo) {
 	c.response.reset(w)
 	c.query = nil
 	c.store = nil
-	c.path = ""
 	c.echo = e
 }
