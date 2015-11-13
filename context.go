@@ -22,6 +22,7 @@ type (
 		request  *http.Request
 		response *Response
 		socket   *websocket.Conn
+		path     string
 		pnames   []string
 		pvalues  []string
 		query    url.Values
@@ -55,6 +56,11 @@ func (c *Context) Response() *Response {
 // Socket returns *websocket.Conn.
 func (c *Context) Socket() *websocket.Conn {
 	return c.socket
+}
+
+// Path returns the registered path for a handler.
+func (c *Context) Path() string {
+	return c.path
 }
 
 // P returns path parameter by index.
@@ -266,5 +272,6 @@ func (c *Context) reset(r *http.Request, w http.ResponseWriter, e *Echo) {
 	c.response.reset(w)
 	c.query = nil
 	c.store = nil
+	c.path = ""
 	c.echo = e
 }
