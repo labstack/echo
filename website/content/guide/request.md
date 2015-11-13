@@ -6,6 +6,22 @@ menu:
     weight: 5
 ---
 
+### Handler path
+
+`Context#Path()` returns the registered path for a handler, it can be used in the middleware for logging purpose.
+
+*Example*
+
+```go
+e.Use(func(c *echo.Context) error {
+    log.Println(c.Path()) // Prints `/users/:name`
+    return nil
+})
+e.Get("/users/:name", func(c *echo.Context) error) {
+    return c.String(http.StatusOK, name)
+})
+```
+
 ### Path parameter
 
 Path parameter can be retrieved either by name `Context.Param(name string) string`

@@ -13,6 +13,7 @@ import (
 	"net/url"
 
 	"encoding/xml"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -227,6 +228,21 @@ func TestContext(t *testing.T) {
 	c.reset(req, NewResponse(httptest.NewRecorder()), New())
 }
 
+func TestContextPath(t *testing.T) {
+	e := New()
+	r := e.Router()
+
+	r.Add(GET, "/users/:id", nil, e)
+	c := NewContext(nil, nil, e)
+	r.Find(GET, "/users/1", c)
+	assert.Equal(t, c.Path(), "/users/:id")
+
+	r.Add(GET, "/users/:uid/files/:fid", nil, e)
+	c = NewContext(nil, nil, e)
+	r.Find(GET, "/users/1/files/1", c)
+	assert.Equal(t, c.Path(), "/users/:uid/files/:fid")
+}
+
 func TestContextQuery(t *testing.T) {
 	q := make(url.Values)
 	q.Set("name", "joe")
@@ -239,7 +255,6 @@ func TestContextQuery(t *testing.T) {
 	c := NewContext(req, nil, New())
 	assert.Equal(t, "joe", c.Query("name"))
 	assert.Equal(t, "joe@labstack.com", c.Query("email"))
-
 }
 
 func TestContextForm(t *testing.T) {
