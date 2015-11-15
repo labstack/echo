@@ -28,9 +28,3 @@ Enables/disables debug mode.
 ### Disable colored log
 
 `Echo.DisableColoredLog()`
-
-### StripTrailingSlash
-
-StripTrailingSlash enables removing trailing slash from the request path.
-
-`e.StripTrailingSlash()`

@@ -406,14 +406,14 @@ func TestEchoServer(t *testing.T) {
 	assert.IsType(t, &http.Server{}, s)
 }
 
-func TestStripTrailingSlash(t *testing.T) {
-	e := New()
-	e.StripTrailingSlash()
-	r, _ := http.NewRequest(GET, "/users/", nil)
-	w := httptest.NewRecorder()
-	e.ServeHTTP(w, r)
-	assert.Equal(t, http.StatusNotFound, w.Code)
-}
+// func TestStripTrailingSlash(t *testing.T) {
+// 	e := New()
+// 	e.StripTrailingSlash()
+// 	r, _ := http.NewRequest(GET, "/users/", nil)
+// 	w := httptest.NewRecorder()
+// 	e.ServeHTTP(w, r)
+// 	assert.Equal(t, http.StatusNotFound, w.Code)
+// }
 
 func testMethod(t *testing.T, method, path string, e *Echo) {
 	m := fmt.Sprintf("%c%s", method[0], strings.ToLower(method[1:]))

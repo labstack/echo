@@ -34,8 +34,8 @@ type (
 		renderer                Renderer
 		pool                    sync.Pool
 		debug                   bool
-		stripTrailingSlash      bool
-		router                  *Router
+		// stripTrailingSlash      bool
+		router *Router
 	}
 
 	Route struct {
@@ -262,9 +262,9 @@ func (e *Echo) Debug() bool {
 }
 
 // StripTrailingSlash enables removing trailing slash from the request path.
-func (e *Echo) StripTrailingSlash() {
-	e.stripTrailingSlash = true
-}
+// func (e *Echo) StripTrailingSlash() {
+// 	e.stripTrailingSlash = true
+// }
 
 // Use adds handler to the middleware chain.
 func (e *Echo) Use(m ...Middleware) {
@@ -463,27 +463,12 @@ func (e *Echo) Routes() []Route {
 
 // ServeHTTP implements `http.Handler` interface, which serves HTTP requests.
 func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	c := e.pool.Get().(*Context)
-	h, e := e.router.Find(r.Method, r.URL.Path, c)
-	c.reset(r, w, e)
-
-	// Chain middleware with handler in the end
-	for i := len(e.middleware) - 1; i >= 0; i-- {
-		h = e.middleware[i](h)
-	}
-
-	// Execute chain
-	if err := h(c); err != nil {
-		e.httpErrorHandler(err, c)
-	}
-
-	e.pool.Put(c)
+	e.router.ServeHTTP(w, r)
 }
 
 // Server returns the internal *http.Server.
 func (e *Echo) Server(addr string) *http.Server {
-	s := &http.Server{Addr: addr}
-	s.Handler = e
+	s := &http.Server{Addr: addr, Handler: e}
 	if e.http2 {
 		http2.ConfigureServer(s, nil)
 	}
@@ -497,9 +482,9 @@ func (e *Echo) Run(addr string) {
 }
 
 // RunTLS runs a server with TLS configuration.
-func (e *Echo) RunTLS(addr, certFile, keyFile string) {
+func (e *Echo) RunTLS(addr, crtFile, keyFile string) {
 	s := e.Server(addr)
-	e.run(s, certFile, keyFile)
+	e.run(s, crtFile, keyFile)
 }
 
 // RunServer runs a custom server.
@@ -508,8 +493,8 @@ func (e *Echo) RunServer(s *http.Server) {
 }
 
 // RunTLSServer runs a custom server with TLS configuration.
-func (e *Echo) RunTLSServer(s *http.Server, certFile, keyFile string) {
-	e.run(s, certFile, keyFile)
+func (e *Echo) RunTLSServer(s *http.Server, crtFile, keyFile string) {
+	e.run(s, crtFile, keyFile)
 }
 
 func (e *Echo) run(s *http.Server, files ...string) {

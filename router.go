@@ -272,12 +272,12 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 	cn := r.tree // Current node as root
 
 	// Strip trailing slash
-	if r.echo.stripTrailingSlash {
-		l := len(path) - 1
-		if path != "/" && path[l] == '/' { // Issue #218
-			path = path[:l]
-		}
-	}
+	// if r.echo.stripTrailingSlash {
+	// 	l := len(path) - 1
+	// 	if path != "/" && path[l] == '/' { // Issue #218
+	// 		path = path[:l]
+	// 	}
+	// }
 
 	var (
 		search = path
@@ -398,10 +398,18 @@ End:
 
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	c := r.echo.pool.Get().(*Context)
-	h, _ := r.Find(req.Method, req.URL.Path, c)
-	c.reset(req, w, r.echo)
-	if err := h(c); err != nil {
-		r.echo.httpErrorHandler(err, c)
+	h, e := r.Find(req.Method, req.URL.Path, c)
+	c.reset(req, w, e)
+
+	// Chain middleware with handler in the end
+	for i := len(e.middleware) - 1; i >= 0; i-- {
+		h = e.middleware[i](h)
 	}
-	r.echo.pool.Put(c)
+
+	// Execute chain
+	if err := h(c); err != nil {
+		e.httpErrorHandler(err, c)
+	}
+
+	e.pool.Put(c)
 }
