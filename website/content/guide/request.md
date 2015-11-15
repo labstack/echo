@@ -8,7 +8,7 @@ menu:
 
 ### Handler path
 
-`Context#Path()` returns the registered path for a handler, it can be used in the middleware for logging purpose.
+`Context.Path()` returns the registered path for a handler, it can be used in the middleware for logging purpose.
 
 *Example*
 

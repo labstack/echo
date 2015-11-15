@@ -400,11 +400,11 @@ func TestEchoHTTPError(t *testing.T) {
 	assert.Equal(t, m, he.Error())
 }
 
-func TestEchoServer(t *testing.T) {
-	e := New()
-	s := e.Server(":1323")
-	assert.IsType(t, &http.Server{}, s)
-}
+// func TestEchoServer(t *testing.T) {
+// 	e := New()
+// 	s := e.Server(":1323")
+// 	assert.IsType(t, &http.Server{}, s)
+// }
 
 // func TestStripTrailingSlash(t *testing.T) {
 // 	e := New()
