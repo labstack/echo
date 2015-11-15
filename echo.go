@@ -467,22 +467,23 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // Server returns the internal *http.Server.
-// func (e *Echo) Server(addr string) *http.Server {
-// 	s := &http.Server{Addr: addr, Handler: e}
-// 	if e.http2 {
-// 		http2.ConfigureServer(s, nil)
-// 	}
-// 	return s
-// }
+func (e *Echo) Server(addr string) *http.Server {
+	s := &http.Server{Addr: addr, Handler: e}
+	// TODO: Remove in Go 1.6+
+	if e.http2 {
+		http2.ConfigureServer(s, nil)
+	}
+	return s
+}
 
 // Run runs a server.
 func (e *Echo) Run(addr string) {
-	e.run(&http.Server{Addr: addr})
+	e.run(e.Server(addr))
 }
 
 // RunTLS runs a server with TLS configuration.
 func (e *Echo) RunTLS(addr, crtFile, keyFile string) {
-	e.run(&http.Server{Addr: addr}, crtFile, keyFile)
+	e.run(e.Server(addr), crtFile, keyFile)
 }
 
 // RunServer runs a custom server.
@@ -497,6 +498,7 @@ func (e *Echo) RunTLSServer(s *http.Server, crtFile, keyFile string) {
 
 func (e *Echo) run(s *http.Server, files ...string) {
 	s.Handler = e
+	// TODO: Remove in Go 1.6+
 	if e.http2 {
 		http2.ConfigureServer(s, nil)
 	}

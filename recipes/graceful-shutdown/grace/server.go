@@ -18,7 +18,7 @@ func main() {
 	s := e.Server(":1323")
 
 	// HTTP2 is currently enabled by default in echo.New(). To override TLS handshake errors
-	// you will need to override the TLSConfig for the server so it does not attempt to valudate
+	// you will need to override the TLSConfig for the server so it does not attempt to validate
 	// the connection using TLS as required by HTTP2
 	s.TLSConfig = nil
 
