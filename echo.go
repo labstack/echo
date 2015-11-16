@@ -463,7 +463,21 @@ func (e *Echo) Routes() []Route {
 
 // ServeHTTP implements `http.Handler` interface, which serves HTTP requests.
 func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	e.router.ServeHTTP(w, r)
+	c := e.pool.Get().(*Context)
+	h, e := e.router.Find(r.Method, r.URL.Path, c)
+	c.reset(r, w, e)
+
+	// Chain middleware with handler in the end
+	for i := len(e.middleware) - 1; i >= 0; i-- {
+		h = e.middleware[i](h)
+	}
+
+	// Execute chain
+	if err := h(c); err != nil {
+		e.httpErrorHandler(err, c)
+	}
+
+	e.pool.Put(c)
 }
 
 // Server returns the internal *http.Server.

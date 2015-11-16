@@ -398,18 +398,10 @@ End:
 
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	c := r.echo.pool.Get().(*Context)
-	h, e := r.Find(req.Method, req.URL.Path, c)
-	c.reset(req, w, e)
-
-	// Chain middleware with handler in the end
-	for i := len(e.middleware) - 1; i >= 0; i-- {
-		h = e.middleware[i](h)
-	}
-
-	// Execute chain
+	h, _ := r.Find(req.Method, req.URL.Path, c)
+	c.reset(req, w, r.echo)
 	if err := h(c); err != nil {
-		e.httpErrorHandler(err, c)
+		r.echo.httpErrorHandler(err, c)
 	}
-
-	e.pool.Put(c)
+	r.echo.pool.Put(c)
 }
