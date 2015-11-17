@@ -82,7 +82,7 @@ In the code below, we create an admin group which requires basic HTTP authentica
 for routes `/admin/*`.
 
 ```go
-echo.Group("/admin")
+e.Group("/admin")
 e.Use(mw.BasicAuth(func(usr, pwd string) bool {
 	if usr == "joe" && pwd == "secret" {
 		return true
