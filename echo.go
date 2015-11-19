@@ -34,6 +34,7 @@ type (
 		renderer                Renderer
 		pool                    sync.Pool
 		debug                   bool
+		hook                    http.HandlerFunc
 		// stripTrailingSlash      bool
 		router *Router
 	}
@@ -261,6 +262,13 @@ func (e *Echo) Debug() bool {
 	return e.debug
 }
 
+// Hook registers a callback which is invoked from `Echo#ServerHTTP` as the first
+// statement. Hook is useful if you want to modify response/response objects even
+// before it hits the router or any middleware.
+func (e *Echo) Hook(h http.HandlerFunc) {
+	e.hook = h
+}
+
 // StripTrailingSlash enables removing trailing slash from the request path.
 // func (e *Echo) StripTrailingSlash() {
 // 	e.stripTrailingSlash = true
@@ -463,6 +471,10 @@ func (e *Echo) Routes() []Route {
 
 // ServeHTTP implements `http.Handler` interface, which serves HTTP requests.
 func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if e.hook != nil {
+		e.hook(w, r)
+	}
+
 	c := e.pool.Get().(*Context)
 	h, e := e.router.Find(r.Method, r.URL.Path, c)
 	c.reset(r, w, e)

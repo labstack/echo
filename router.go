@@ -271,14 +271,6 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 	e = r.echo
 	cn := r.tree // Current node as root
 
-	// Strip trailing slash
-	// if r.echo.stripTrailingSlash {
-	// 	l := len(path) - 1
-	// 	if path != "/" && path[l] == '/' { // Issue #218
-	// 		path = path[:l]
-	// 	}
-	// }
-
 	var (
 		search = path
 		c      *node  // Child node
