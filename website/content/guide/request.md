@@ -14,7 +14,7 @@ menu:
 
 ```go
 e.Use(func(c *echo.Context) error {
-    log.Println(c.Path()) // Prints `/users/:name`
+    println(c.Path()) // Prints `/users/:name`
     return nil
 })
 e.Get("/users/:name", func(c *echo.Context) error) {

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"path/filepath"
 	"reflect"
@@ -16,7 +15,7 @@ import (
 
 	"encoding/xml"
 
-	"github.com/labstack/gommon/color"
+	"github.com/labstack/gommon/log"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/websocket"
 )
@@ -35,8 +34,7 @@ type (
 		pool                    sync.Pool
 		debug                   bool
 		hook                    http.HandlerFunc
-		// stripTrailingSlash      bool
-		router *Router
+		router                  *Router
 	}
 
 	Route struct {
@@ -179,6 +177,8 @@ var (
 	methodNotAllowedHandler = func(c *Context) error {
 		return NewHTTPError(http.StatusMethodNotAllowed)
 	}
+
+	logger = log.New("echo")
 )
 
 // New creates an instance of Echo.
@@ -193,9 +193,6 @@ func New() (e *Echo) {
 	// Defaults
 	//----------
 
-	if runtime.GOOS == "windows" {
-		e.DisableColoredLog()
-	}
 	e.HTTP2()
 	e.defaultHTTPErrorHandler = func(err error, c *Context) {
 		code := http.StatusInternalServerError
@@ -210,10 +207,15 @@ func New() (e *Echo) {
 		if !c.response.committed {
 			http.Error(c.response, msg, code)
 		}
-		log.Println(err)
+		log.Error(err)
 	}
 	e.SetHTTPErrorHandler(e.defaultHTTPErrorHandler)
 	e.SetBinder(&binder{})
+
+	// Logger
+	log.SetPrefix("echo")
+	log.SetLevel(log.INFO)
+
 	return
 }
 
@@ -222,9 +224,14 @@ func (e *Echo) Router() *Router {
 	return e.router
 }
 
-// DisableColoredLog disables colored log.
-func (e *Echo) DisableColoredLog() {
-	color.Disable()
+// SetOutput sets the output destination for the logger.
+func SetOutput(w io.Writer) {
+	log.SetOutput(w)
+}
+
+// SetLogLevel sets the log level for global logger. The default value is `log.INFO`.
+func SetLogLevel(l log.Level) {
+	log.SetLevel(l)
 }
 
 // HTTP2 enables HTTP2 support.
@@ -268,11 +275,6 @@ func (e *Echo) Debug() bool {
 func (e *Echo) Hook(h http.HandlerFunc) {
 	e.hook = h
 }
-
-// StripTrailingSlash enables removing trailing slash from the request path.
-// func (e *Echo) StripTrailingSlash() {
-// 	e.stripTrailingSlash = true
-// }
 
 // Use adds handler to the middleware chain.
 func (e *Echo) Use(m ...Middleware) {
@@ -533,7 +535,7 @@ func (e *Echo) run(s *http.Server, files ...string) {
 	} else if len(files) == 2 {
 		log.Fatal(s.ListenAndServeTLS(files[0], files[1]))
 	} else {
-		log.Fatal("echo => invalid TLS configuration")
+		log.Fatal("invalid TLS configuration")
 	}
 }
 
@@ -588,7 +590,7 @@ func wrapMiddleware(m Middleware) MiddlewareFunc {
 	case func(http.ResponseWriter, *http.Request):
 		return wrapHTTPHandlerFuncMW(m)
 	default:
-		panic("echo => unknown middleware")
+		panic("unknown middleware")
 	}
 }
 
@@ -634,7 +636,7 @@ func wrapHandler(h Handler) HandlerFunc {
 			return nil
 		}
 	default:
-		panic("echo => unknown handler")
+		panic("unknown handler")
 	}
 }
 
