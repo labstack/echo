@@ -3,12 +3,12 @@ package middleware
 import (
 	"bytes"
 	"errors"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/labstack/echo"
+	"github.com/labstack/gommon/log"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -54,7 +54,6 @@ func TestLogger(t *testing.T) {
 func TestLoggerIPAddress(t *testing.T) {
 	buf := &bytes.Buffer{}
 	log.SetOutput(buf)
-
 	ip := "127.0.0.1"
 
 	e := echo.New()

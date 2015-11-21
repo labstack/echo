@@ -25,9 +25,17 @@ and message `HTTPError.Message`.
 
 Enables/disables debug mode.
 
-### Disable colored log
+### Log output
 
-`Echo#DisableColoredLog()`
+`echo#SetOutput(w io.Writer)`
+
+SetOutput sets the output destination for the global logger.
+
+### Log level
+
+`echo#SetLogLevel(l log.Level)`
+
+SetLogLevel sets the log level for global logger. The default value is `log.INFO`.
 
 ### Hook
 

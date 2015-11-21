@@ -2,11 +2,10 @@ package echo
 
 import (
 	"bufio"
-	"log"
 	"net"
 	"net/http"
 
-	"github.com/labstack/gommon/color"
+	"github.com/labstack/gommon/log"
 )
 
 type (
@@ -36,8 +35,7 @@ func (r *Response) Writer() http.ResponseWriter {
 
 func (r *Response) WriteHeader(code int) {
 	if r.committed {
-		// TODO: Warning
-		log.Printf("echo => %s", color.Yellow("response already committed"))
+		log.Warn("response already committed")
 		return
 	}
 	r.status = code
