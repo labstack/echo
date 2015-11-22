@@ -162,9 +162,9 @@ var (
 	// Errors
 	//--------
 
-	UnsupportedMediaType  = errors.New("echo ⇒ unsupported media type")
-	RendererNotRegistered = errors.New("echo ⇒ renderer not registered")
-	InvalidRedirectCode   = errors.New("echo ⇒ invalid redirect status code")
+	UnsupportedMediaType  = errors.New("unsupported media type")
+	RendererNotRegistered = errors.New("renderer not registered")
+	InvalidRedirectCode   = errors.New("invalid redirect status code")
 
 	//----------------
 	// Error handlers

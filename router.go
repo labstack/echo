@@ -266,6 +266,15 @@ func (n *node) findHandler(method string) HandlerFunc {
 	}
 }
 
+func (n *node) check405() HandlerFunc {
+	for _, m := range methods {
+		if h := n.findHandler(m); h != nil {
+			return methodNotAllowedHandler
+		}
+	}
+	return notFoundHandler
+}
+
 func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo) {
 	h = notFoundHandler
 	e = r.echo
@@ -373,8 +382,11 @@ End:
 	if cn.echo != nil {
 		e = cn.echo
 	}
+
+	// NOTE: Slow zone...
 	if h == nil {
-		h = methodNotAllowedHandler
+		h = cn.check405()
+
 		// Dig further for match-any, might have an empty value for *, e.g.
 		// serving a directory. Issue #207.
 		if cn = cn.findChildByKind(mkind); cn == nil {
@@ -382,7 +394,7 @@ End:
 		}
 		ctx.pvalues[len(cn.pnames)-1] = ""
 		if h = cn.findHandler(method); h == nil {
-			h = methodNotAllowedHandler
+			h = cn.check405()
 		}
 	}
 	return
