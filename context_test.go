@@ -10,6 +10,8 @@ import (
 
 	"strings"
 
+	"golang.org/x/net/context"
+
 	"net/url"
 
 	"encoding/xml"
@@ -269,6 +271,12 @@ func TestContextForm(t *testing.T) {
 	c := NewContext(req, nil, New())
 	assert.Equal(t, "joe", c.Form("name"))
 	assert.Equal(t, "joe@labstack.com", c.Form("email"))
+}
+
+func TestContextNetContext(t *testing.T) {
+	c := new(Context)
+	c.Context = context.WithValue(nil, "key", "val")
+	assert.Equal(t, "val", c.Value("key"))
 }
 
 func testBind(t *testing.T, c *Context, ct string) {

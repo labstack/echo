@@ -12,6 +12,7 @@ import (
 
 	"bytes"
 
+	"golang.org/x/net/context"
 	"golang.org/x/net/websocket"
 )
 
@@ -19,6 +20,7 @@ type (
 	// Context represents context for the current request. It holds request and
 	// response objects, path parameters, data and registered handler.
 	Context struct {
+		context.Context
 		request  *http.Request
 		response *Response
 		socket   *websocket.Conn
