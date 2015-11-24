@@ -243,7 +243,7 @@ func (c *Context) File(path, name string, attachment bool) (err error) {
 	if attachment {
 		c.response.Header().Set(ContentDisposition, "attachment; filename="+name)
 	}
-	if err = serveFile(dir, file, c); err != nil {
+	if err = c.echo.serveFile(dir, file, c); err != nil {
 		c.response.Header().Del(ContentDisposition)
 	}
 	return

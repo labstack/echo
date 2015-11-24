@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 
 	"encoding/xml"
 
@@ -34,6 +35,7 @@ type (
 		pool                    sync.Pool
 		debug                   bool
 		hook                    http.HandlerFunc
+		autoIndex               bool
 		router                  *Router
 	}
 
@@ -142,7 +144,7 @@ const (
 
 	WebSocket = "websocket"
 
-	indexFile = "index.html"
+	indexPage = "index.html"
 )
 
 var (
@@ -177,6 +179,8 @@ var (
 	methodNotAllowedHandler = func(c *Context) error {
 		return NewHTTPError(http.StatusMethodNotAllowed)
 	}
+
+	unixEpochTime = time.Unix(0, 0)
 
 	logger = log.New("echo")
 )
@@ -267,6 +271,12 @@ func (e *Echo) SetDebug(on bool) {
 // Debug returns debug mode (enabled or disabled).
 func (e *Echo) Debug() bool {
 	return e.debug
+}
+
+// AutoIndex enables automatically creates a directory listing if the directory
+// doesn't contain an index page.
+func (e *Echo) AutoIndex(on bool) {
+	e.autoIndex = on
 }
 
 // Hook registers a callback which is invoked from `Echo#ServerHTTP` as the first
@@ -386,7 +396,7 @@ func (e *Echo) Static(path, dir string) {
 // ServeDir serves files from a directory.
 func (e *Echo) ServeDir(path, dir string) {
 	e.Get(path+"*", func(c *Context) error {
-		return serveFile(dir, c.P(0), c) // Param `_*`
+		return e.serveFile(dir, c.P(0), c) // Param `_*`
 	})
 }
 
@@ -394,11 +404,11 @@ func (e *Echo) ServeDir(path, dir string) {
 func (e *Echo) ServeFile(path, file string) {
 	e.Get(path, func(c *Context) error {
 		dir, file := filepath.Split(file)
-		return serveFile(dir, file, c)
+		return e.serveFile(dir, file, c)
 	})
 }
 
-func serveFile(dir, file string, c *Context) error {
+func (e *Echo) serveFile(dir, file string, c *Context) (err error) {
 	fs := http.Dir(dir)
 	f, err := fs.Open(file)
 	if err != nil {
@@ -408,16 +418,49 @@ func serveFile(dir, file string, c *Context) error {
 
 	fi, _ := f.Stat()
 	if fi.IsDir() {
-		file = filepath.Join(file, indexFile)
+		if checkLastModified(c.response, c.request, fi.ModTime()) {
+			return
+		}
+		d := f
+
+		// Index file
+		file = filepath.Join(file, indexPage)
 		f, err = fs.Open(file)
 		if err != nil {
+			if e.autoIndex {
+				// Auto index
+				return listDir(d, c)
+			}
 			return NewHTTPError(http.StatusForbidden)
 		}
-		fi, _ = f.Stat()
+		fi, _ = f.Stat() // Index file stat
 	}
 
 	http.ServeContent(c.response, c.request, fi.Name(), fi.ModTime(), f)
-	return nil
+	return
+}
+
+func listDir(d http.File, c *Context) (err error) {
+	dirs, err := d.Readdir(-1)
+	if err != nil {
+		return err
+	}
+
+	// Create directory index
+	w := c.Response()
+	w.Header().Set(ContentType, TextHTMLCharsetUTF8)
+	fmt.Fprintf(w, "<pre>\n")
+	for _, d := range dirs {
+		name := d.Name()
+		color := "#212121"
+		if d.IsDir() {
+			color = "#e91e63"
+			name += "/"
+		}
+		fmt.Fprintf(w, "<a href=\"%s\" style=\"color: %s;\">%s</a>\n", name, color, name)
+	}
+	fmt.Fprintf(w, "</pre>\n")
+	return
 }
 
 // Group creates a new sub router with prefix. It inherits all properties from
@@ -649,4 +692,26 @@ func (binder) Bind(r *http.Request, i interface{}) (err error) {
 		err = xml.NewDecoder(r.Body).Decode(i)
 	}
 	return
+}
+
+// Source: net/http/fs.go
+func checkLastModified(w http.ResponseWriter, r *http.Request, modtime time.Time) bool {
+	if modtime.IsZero() || modtime.Equal(unixEpochTime) {
+		// If the file doesn't have a modtime (IsZero), or the modtime
+		// is obviously garbage (Unix time == 0), then ignore modtimes
+		// and don't process the If-Modified-Since header.
+		return false
+	}
+
+	// The Date-Modified header truncates sub-second precision, so
+	// use mtime < t+1s instead of mtime <= t to check for unmodified.
+	if t, err := time.Parse(http.TimeFormat, r.Header.Get("If-Modified-Since")); err == nil && modtime.Before(t.Add(1*time.Second)) {
+		h := w.Header()
+		delete(h, "Content-Type")
+		delete(h, "Content-Length")
+		w.WriteHeader(http.StatusNotModified)
+		return true
+	}
+	w.Header().Set("Last-Modified", modtime.UTC().Format(http.TimeFormat))
+	return false
 }

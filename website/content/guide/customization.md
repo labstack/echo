@@ -37,6 +37,24 @@ SetOutput sets the output destination for the global logger.
 
 SetLogLevel sets the log level for global logger. The default value is `log.INFO`.
 
+### Auto index
+
+`Echo#AutoIndex(on bool)`
+
+AutoIndex enables automatically creates a directory listing if the directory doesn't
+contain an index page.
+
+*Example*
+
+```go
+e := echo.New()
+e.AutoIndex(true)
+e.ServerDir("/", "/Users/vr/Projects/echo")
+e.Run(":1323")
+```
+
+Browse to `http://localhost:1323/` to see the directory listing.
+
 ### Hook
 
 `Echo#Hook(http.HandlerFunc)`
