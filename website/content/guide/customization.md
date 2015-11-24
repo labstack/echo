@@ -37,11 +37,17 @@ SetOutput sets the output destination for the global logger.
 
 SetLogLevel sets the log level for global logger. The default value is `log.INFO`.
 
+### HTTP2
+
+`echo#HTTP(on bool)`
+
+HTTP2 enables/disables HTTP2 support.
+
 ### Auto index
 
 `Echo#AutoIndex(on bool)`
 
-AutoIndex enables automatically creates a directory listing if the directory doesn't
+AutoIndex enables/disables automatically creates a directory listing if the directory doesn't
 contain an index page.
 
 *Example*

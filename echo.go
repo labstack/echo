@@ -197,7 +197,7 @@ func New() (e *Echo) {
 	// Defaults
 	//----------
 
-	e.HTTP2()
+	e.HTTP2(true)
 	e.defaultHTTPErrorHandler = func(err error, c *Context) {
 		code := http.StatusInternalServerError
 		msg := http.StatusText(code)
@@ -238,9 +238,9 @@ func SetLogLevel(l log.Level) {
 	log.SetLevel(l)
 }
 
-// HTTP2 enables HTTP2 support.
-func (e *Echo) HTTP2() {
-	e.http2 = true
+// HTTP2 enables/disables HTTP2 support.
+func (e *Echo) HTTP2(on bool) {
+	e.http2 = on
 }
 
 // DefaultHTTPErrorHandler invokes the default HTTP error handler.
@@ -273,7 +273,7 @@ func (e *Echo) Debug() bool {
 	return e.debug
 }
 
-// AutoIndex enables automatically creates a directory listing if the directory
+// AutoIndex enables/disables automatically creates a directory listing if the directory
 // doesn't contain an index page.
 func (e *Echo) AutoIndex(on bool) {
 	e.autoIndex = on
