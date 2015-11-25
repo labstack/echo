@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"path/filepath"
 
-	"fmt"
-
 	"net/url"
 
 	"bytes"
@@ -60,7 +58,7 @@ func (c *Context) Socket() *websocket.Conn {
 	return c.socket
 }
 
-// Path returns the registered path for a handler.
+// Path returns the registered path for the handler.
 func (c *Context) Path() string {
 	return c.path
 }
@@ -134,31 +132,19 @@ func (c *Context) Render(code int, name string, data interface{}) (err error) {
 	return
 }
 
-// HTML formats according to a format specifier and sends HTML response with
-// status code.
-func (c *Context) HTML(code int, format string, a ...interface{}) (err error) {
-	buf := new(bytes.Buffer)
-	_, err = fmt.Fprintf(buf, format, a...)
-	if err != nil {
-		return err
-	}
+// HTML sends an HTTP response with status code.
+func (c *Context) HTML(code int, html string) (err error) {
 	c.response.Header().Set(ContentType, TextHTMLCharsetUTF8)
 	c.response.WriteHeader(code)
-	c.response.Write(buf.Bytes())
+	c.response.Write([]byte(html))
 	return
 }
 
-// String formats according to a format specifier and sends text response with status
-// code.
-func (c *Context) String(code int, format string, a ...interface{}) (err error) {
-	buf := new(bytes.Buffer)
-	_, err = fmt.Fprintf(buf, format, a...)
-	if err != nil {
-		return err
-	}
+// String sends a string response with status code.
+func (c *Context) String(code int, s string) (err error) {
 	c.response.Header().Set(ContentType, TextPlain)
 	c.response.WriteHeader(code)
-	c.response.Write(buf.Bytes())
+	c.response.Write([]byte(s))
 	return
 }
 

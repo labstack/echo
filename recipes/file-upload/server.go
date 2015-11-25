@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"os"
 
@@ -39,8 +40,8 @@ func upload(c *echo.Context) error {
 			return err
 		}
 	}
-	return c.String(http.StatusOK, "Thank You! %s <%s>, %d files uploaded successfully.",
-		name, email, len(files))
+	return c.String(http.StatusOK, fmt.Sprintf("Thank You! %s <%s>, %d files uploaded successfully.",
+		name, email, len(files)))
 }
 
 func main() {

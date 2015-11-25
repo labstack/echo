@@ -1,13 +1,15 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 
-	"github.com/labstack/echo"
-	mw "github.com/labstack/echo/middleware"
 	"io"
 	"net/http"
 	"os"
+
+	"github.com/labstack/echo"
+	mw "github.com/labstack/echo/middleware"
 )
 
 func upload(c *echo.Context) error {
@@ -63,8 +65,8 @@ func upload(c *echo.Context) error {
 		}
 		i++
 	}
-	return c.String(http.StatusOK, "Thank You! %s <%s>, %d files uploaded successfully.",
-		name, email, i)
+	return c.String(http.StatusOK, fmt.Sprintf("Thank You! %s <%s>, %d files uploaded successfully.",
+		name, email, i))
 }
 
 func main() {
