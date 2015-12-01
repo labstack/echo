@@ -4,8 +4,6 @@ import (
 	"bufio"
 	"net"
 	"net/http"
-
-	"github.com/labstack/gommon/log"
 )
 
 type (
@@ -14,11 +12,12 @@ type (
 		status    int
 		size      int64
 		committed bool
+		echo      *Echo
 	}
 )
 
-func NewResponse(w http.ResponseWriter) *Response {
-	return &Response{writer: w}
+func NewResponse(w http.ResponseWriter, e *Echo) *Response {
+	return &Response{writer: w, echo: e}
 }
 
 func (r *Response) SetWriter(w http.ResponseWriter) {
@@ -35,7 +34,7 @@ func (r *Response) Writer() http.ResponseWriter {
 
 func (r *Response) WriteHeader(code int) {
 	if r.committed {
-		log.Warn("response already committed")
+		r.echo.Logger().Warn("response already committed")
 		return
 	}
 	r.status = code

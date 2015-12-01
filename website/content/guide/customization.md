@@ -25,17 +25,23 @@ and message `HTTPError.Message`.
 
 Enables/disables debug mode.
 
+## Log prefix
+
+`echo#SetLogPrefix(prefix string)`
+
+SetLogPrefix sets the prefix for the logger. Default value is `echo`.
+
 ### Log output
 
-`echo#SetOutput(w io.Writer)`
+`echo#SetLogOutput(w io.Writer)`
 
-SetOutput sets the output destination for the global logger.
+SetLogOutput sets the output destination for the logger. Default value is `os.Std*`
 
 ### Log level
 
 `echo#SetLogLevel(l log.Level)`
 
-SetLogLevel sets the log level for global logger. The default value is `log.INFO`.
+SetLogLevel sets the log level for the logger. Default value is `log.INFO`.
 
 ### HTTP2
 
@@ -47,8 +53,7 @@ HTTP2 enables/disables HTTP2 support.
 
 `Echo#AutoIndex(on bool)`
 
-AutoIndex enables/disables automatically creating a directory listing if the directory doesn't
-contain an index page.
+AutoIndex enables/disables automatically creating an index page for the directory.
 
 *Example*
 
