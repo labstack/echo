@@ -25,7 +25,7 @@ and message `HTTPError.Message`.
 
 Enables/disables debug mode.
 
-## Log prefix
+### Log prefix
 
 `echo#SetLogPrefix(prefix string)`
 
