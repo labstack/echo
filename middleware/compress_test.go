@@ -33,9 +33,10 @@ func (c *closeNotifyingRecorder) CloseNotify() <-chan bool {
 }
 
 func TestGzip(t *testing.T) {
+	e := echo.New()
 	req, _ := http.NewRequest(echo.GET, "/", nil)
 	rec := httptest.NewRecorder()
-	c := echo.NewContext(req, echo.NewResponse(rec), echo.New())
+	c := echo.NewContext(req, echo.NewResponse(rec, e), e)
 	h := func(c *echo.Context) error {
 		c.Response().Write([]byte("test")) // For Content-Type sniffing
 		return nil
@@ -49,7 +50,7 @@ func TestGzip(t *testing.T) {
 	req, _ = http.NewRequest(echo.GET, "/", nil)
 	req.Header.Set(echo.AcceptEncoding, "gzip")
 	rec = httptest.NewRecorder()
-	c = echo.NewContext(req, echo.NewResponse(rec), echo.New())
+	c = echo.NewContext(req, echo.NewResponse(rec, e), e)
 
 	// Gzip
 	Gzip()(h)(c)
@@ -121,7 +122,6 @@ func TestGzipCloseNotify(t *testing.T) {
 }
 
 func BenchmarkGzip(b *testing.B) {
-
 	b.StopTimer()
 	b.ReportAllocs()
 
@@ -135,8 +135,9 @@ func BenchmarkGzip(b *testing.B) {
 	b.StartTimer()
 
 	for i := 0; i < b.N; i++ {
+		e := echo.New()
 		rec := httptest.NewRecorder()
-		c := echo.NewContext(req, echo.NewResponse(rec), echo.New())
+		c := echo.NewContext(req, echo.NewResponse(rec, e), e)
 		Gzip()(h)(c)
 	}
 

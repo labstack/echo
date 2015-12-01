@@ -36,6 +36,7 @@ type (
 		debug                   bool
 		hook                    http.HandlerFunc
 		autoIndex               bool
+		logger                  *log.Logger
 		router                  *Router
 	}
 
@@ -181,8 +182,6 @@ var (
 	}
 
 	unixEpochTime = time.Unix(0, 0)
-
-	logger = log.New("echo")
 )
 
 // New creates an instance of Echo.
@@ -211,14 +210,14 @@ func New() (e *Echo) {
 		if !c.response.committed {
 			http.Error(c.response, msg, code)
 		}
-		log.Error(err)
+		e.logger.Error(err)
 	}
 	e.SetHTTPErrorHandler(e.defaultHTTPErrorHandler)
 	e.SetBinder(&binder{})
 
 	// Logger
-	log.SetPrefix("echo")
-	log.SetLevel(log.INFO)
+	e.logger = log.New("echo")
+	e.logger.SetLevel(log.INFO)
 
 	return
 }
@@ -228,14 +227,24 @@ func (e *Echo) Router() *Router {
 	return e.router
 }
 
-// SetOutput sets the output destination for the logger.
-func SetOutput(w io.Writer) {
-	log.SetOutput(w)
+// SetLogPrefix sets the prefix for the logger. Default value is `echo`.
+func (e *Echo) SetLogPrefix(prefix string) {
+	e.logger.SetPrefix(prefix)
 }
 
-// SetLogLevel sets the log level for global logger. The default value is `log.INFO`.
-func SetLogLevel(l log.Level) {
-	log.SetLevel(l)
+// SetLogOutput sets the output destination for the logger. Default value is `os.Std*`
+func (e *Echo) SetLogOutput(w io.Writer) {
+	e.logger.SetOutput(w)
+}
+
+// SetLogLevel sets the log level for the logger. Default value is `log.INFO`.
+func (e *Echo) SetLogLevel(l log.Level) {
+	e.logger.SetLevel(l)
+}
+
+// Logger returns the logger instance.
+func (e *Echo) Logger() *log.Logger {
+	return e.logger
 }
 
 // HTTP2 enables/disables HTTP2 support.
@@ -273,8 +282,7 @@ func (e *Echo) Debug() bool {
 	return e.debug
 }
 
-// AutoIndex enables/disables automatically creates a directory listing if the directory
-// doesn't contain an index page.
+// AutoIndex enables/disables automatically creating an index page for the directory.
 func (e *Echo) AutoIndex(on bool) {
 	e.autoIndex = on
 }
@@ -575,11 +583,11 @@ func (e *Echo) run(s *http.Server, files ...string) {
 		http2.ConfigureServer(s, nil)
 	}
 	if len(files) == 0 {
-		log.Fatal(s.ListenAndServe())
+		e.logger.Fatal(s.ListenAndServe())
 	} else if len(files) == 2 {
-		log.Fatal(s.ListenAndServeTLS(files[0], files[1]))
+		e.logger.Fatal(s.ListenAndServeTLS(files[0], files[1]))
 	} else {
-		log.Fatal("invalid TLS configuration")
+		e.logger.Fatal("invalid TLS configuration")
 	}
 }
 

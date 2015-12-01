@@ -9,8 +9,9 @@ import (
 )
 
 func TestResponse(t *testing.T) {
+	e := New()
 	w := httptest.NewRecorder()
-	r := NewResponse(w)
+	r := NewResponse(w, e)
 
 	// SetWriter
 	r.SetWriter(w)

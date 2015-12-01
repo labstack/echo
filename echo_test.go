@@ -27,7 +27,7 @@ func TestEcho(t *testing.T) {
 	e := New()
 	req, _ := http.NewRequest(GET, "/", nil)
 	rec := httptest.NewRecorder()
-	c := NewContext(req, NewResponse(rec), e)
+	c := NewContext(req, NewResponse(rec, e), e)
 
 	// Router
 	assert.NotNil(t, e.Router())

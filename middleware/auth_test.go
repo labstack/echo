@@ -11,9 +11,10 @@ import (
 )
 
 func TestBasicAuth(t *testing.T) {
+	e := echo.New()
 	req, _ := http.NewRequest(echo.GET, "/", nil)
 	rec := httptest.NewRecorder()
-	c := echo.NewContext(req, echo.NewResponse(rec), echo.New())
+	c := echo.NewContext(req, echo.NewResponse(rec, e), e)
 	fn := func(u, p string) bool {
 		if u == "joe" && p == "secret" {
 			return true

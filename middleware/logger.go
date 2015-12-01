@@ -6,7 +6,6 @@ import (
 
 	"github.com/labstack/echo"
 	"github.com/labstack/gommon/color"
-	"github.com/labstack/gommon/log"
 )
 
 func Logger() echo.MiddlewareFunc {
@@ -14,6 +13,7 @@ func Logger() echo.MiddlewareFunc {
 		return func(c *echo.Context) error {
 			req := c.Request()
 			res := c.Response()
+			logger := c.Echo().Logger()
 
 			remoteAddr := req.RemoteAddr
 			if ip := req.Header.Get(echo.XRealIP); ip != "" {
@@ -47,7 +47,7 @@ func Logger() echo.MiddlewareFunc {
 				code = color.Cyan(n)
 			}
 
-			log.Info("%s %s %s %s %s %d", remoteAddr, method, path, code, stop.Sub(start), size)
+			logger.Info("%s %s %s %s %s %d", remoteAddr, method, path, code, stop.Sub(start), size)
 			return nil
 		}
 	}
