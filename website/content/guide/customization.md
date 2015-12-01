@@ -47,7 +47,7 @@ HTTP2 enables/disables HTTP2 support.
 
 `Echo#AutoIndex(on bool)`
 
-AutoIndex enables/disables automatically creates a directory listing if the directory doesn't
+AutoIndex enables/disables automatically creating a directory listing if the directory doesn't
 contain an index page.
 
 *Example*
@@ -63,7 +63,7 @@ Browse to `http://localhost:1323/` to see the directory listing.
 
 ### Hook
 
-`Echo#Hook(http.HandlerFunc)`
+`Echo#Hook(h http.HandlerFunc)`
 
 Hook registers a callback which is invoked from `Echo#ServerHTTP` as the first
 statement. Hook is useful if you want to modify response/response objects even

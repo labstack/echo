@@ -28,7 +28,6 @@ func main() {
 			}
 			fmt.Println(msg)
 		}
-		return
 	})
 
 	e.Run(":1323")
