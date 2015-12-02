@@ -75,9 +75,10 @@ func (r *Response) Committed() bool {
 	return r.committed
 }
 
-func (r *Response) reset(w http.ResponseWriter) {
+func (r *Response) reset(w http.ResponseWriter, e *Echo) {
 	r.writer = w
 	r.size = 0
 	r.status = http.StatusOK
 	r.committed = false
+	r.echo = e
 }

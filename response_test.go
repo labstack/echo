@@ -62,5 +62,5 @@ func TestResponse(t *testing.T) {
 	})
 
 	// reset
-	r.reset(httptest.NewRecorder())
+	r.reset(httptest.NewRecorder(), New())
 }

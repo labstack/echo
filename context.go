@@ -262,7 +262,7 @@ func (c *Context) Echo() *Echo {
 
 func (c *Context) reset(r *http.Request, w http.ResponseWriter, e *Echo) {
 	c.request = r
-	c.response.reset(w)
+	c.response.reset(w, e)
 	c.query = nil
 	c.store = nil
 	c.echo = e
