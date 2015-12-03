@@ -23,7 +23,7 @@ and message `HTTPError.Message`.
 
 `Echo#SetDebug(on bool)`
 
-Enables/disables debug mode.
+Enable/disable debug mode.
 
 ### Log prefix
 
@@ -47,13 +47,13 @@ SetLogLevel sets the log level for the logger. Default value is `log.INFO`.
 
 `echo#HTTP(on bool)`
 
-HTTP2 enables/disables HTTP2 support.
+Enable/disable HTTP2 support.
 
 ### Auto index
 
 `Echo#AutoIndex(on bool)`
 
-AutoIndex enables/disables automatically creating an index page for the directory.
+Enable/disable automatically creating an index page for the directory.
 
 *Example*
 

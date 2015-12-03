@@ -247,7 +247,7 @@ func (e *Echo) Logger() *log.Logger {
 	return e.logger
 }
 
-// HTTP2 enables/disables HTTP2 support.
+// HTTP2 enable/disable HTTP2 support.
 func (e *Echo) HTTP2(on bool) {
 	e.http2 = on
 }
@@ -272,7 +272,7 @@ func (e *Echo) SetRenderer(r Renderer) {
 	e.renderer = r
 }
 
-// SetDebug enables/disables debug mode.
+// SetDebug enable/disable debug mode.
 func (e *Echo) SetDebug(on bool) {
 	e.debug = on
 }
@@ -282,7 +282,7 @@ func (e *Echo) Debug() bool {
 	return e.debug
 }
 
-// AutoIndex enables/disables automatically creating an index page for the directory.
+// AutoIndex enable/disable automatically creating an index page for the directory.
 func (e *Echo) AutoIndex(on bool) {
 	e.autoIndex = on
 }
