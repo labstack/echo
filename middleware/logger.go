@@ -10,7 +10,7 @@ import (
 
 func Logger() echo.MiddlewareFunc {
 	return func(h echo.HandlerFunc) echo.HandlerFunc {
-		return func(c *echo.Context) error {
+		return func(c echo.Context) error {
 			req := c.Request()
 			res := c.Response()
 			logger := c.Echo().Logger()

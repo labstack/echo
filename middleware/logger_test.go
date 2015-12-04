@@ -19,7 +19,7 @@ func TestLogger(t *testing.T) {
 	c := echo.NewContext(req, echo.NewResponse(rec, e), e)
 
 	// Status 2xx
-	h := func(c *echo.Context) error {
+	h := func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}
 	Logger()(h)(c)
@@ -27,7 +27,7 @@ func TestLogger(t *testing.T) {
 	// Status 3xx
 	rec = httptest.NewRecorder()
 	c = echo.NewContext(req, echo.NewResponse(rec, e), e)
-	h = func(c *echo.Context) error {
+	h = func(c echo.Context) error {
 		return c.String(http.StatusTemporaryRedirect, "test")
 	}
 	Logger()(h)(c)
@@ -35,7 +35,7 @@ func TestLogger(t *testing.T) {
 	// Status 4xx
 	rec = httptest.NewRecorder()
 	c = echo.NewContext(req, echo.NewResponse(rec, e), e)
-	h = func(c *echo.Context) error {
+	h = func(c echo.Context) error {
 		return c.String(http.StatusNotFound, "test")
 	}
 	Logger()(h)(c)
@@ -44,7 +44,7 @@ func TestLogger(t *testing.T) {
 	req, _ = http.NewRequest(echo.GET, "", nil)
 	rec = httptest.NewRecorder()
 	c = echo.NewContext(req, echo.NewResponse(rec, e), e)
-	h = func(c *echo.Context) error {
+	h = func(c echo.Context) error {
 		return errors.New("error")
 	}
 	Logger()(h)(c)
@@ -58,7 +58,7 @@ func TestLoggerIPAddress(t *testing.T) {
 	buf := new(bytes.Buffer)
 	e.Logger().SetOutput(buf)
 	ip := "127.0.0.1"
-	h := func(c *echo.Context) error {
+	h := func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}
 

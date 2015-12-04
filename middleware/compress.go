@@ -51,7 +51,7 @@ func Gzip() echo.MiddlewareFunc {
 	scheme := "gzip"
 
 	return func(h echo.HandlerFunc) echo.HandlerFunc {
-		return func(c *echo.Context) error {
+		return func(c echo.Context) error {
 			c.Response().Header().Add(echo.Vary, echo.AcceptEncoding)
 			if strings.Contains(c.Request().Header.Get(echo.AcceptEncoding), scheme) {
 				w := writerPool.Get().(*gzip.Writer)

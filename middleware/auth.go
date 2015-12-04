@@ -20,7 +20,7 @@ const (
 // For valid credentials it calls the next handler.
 // For invalid credentials, it sends "401 - Unauthorized" response.
 func BasicAuth(fn BasicValidateFunc) echo.HandlerFunc {
-	return func(c *echo.Context) error {
+	return func(c echo.Context) error {
 		// Skip WebSocket
 		if (c.Request().Header.Get(echo.Upgrade)) == echo.WebSocket {
 			return nil
