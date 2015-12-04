@@ -384,6 +384,10 @@ func (e *Echo) add(method, path string, h Handler) {
 		Handler: runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name(),
 	}
 	e.router.routes = append(e.router.routes, r)
+
+	if e.Debug() {
+		debugPrintRoute(r)
+	}
 }
 
 // Index serves index file.
@@ -701,4 +705,16 @@ func (binder) Bind(r *http.Request, i interface{}) (err error) {
 		err = xml.NewDecoder(r.Body).Decode(i)
 	}
 	return
+}
+
+func debugPrintRoute(route Route) {
+	log.Printf("%-5s %-35s --> %s", route.Method, route.Path, stripPackage(route.Handler.(string)))
+}
+
+func stripPackage(n string) string {
+	slashI := strings.LastIndex(n, "/")
+	if slashI == -1 {
+		slashI = 0
+	}
+	return n[slashI+1:]
 }
