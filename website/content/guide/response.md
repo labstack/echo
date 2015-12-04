@@ -53,7 +53,7 @@ e.Get("/hello", Hello)
 - Render template
 
 ```go
-func Hello(c *echo.Context) error {
+func Hello(c echo.Context) error {
 	return c.Render(http.StatusOK, "hello", "World")
 }
 ```

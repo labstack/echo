@@ -12,7 +12,7 @@ import (
 	mw "github.com/labstack/echo/middleware"
 )
 
-func upload(c *echo.Context) error {
+func upload(c echo.Context) error {
 	mr, err := c.Request().MultipartReader()
 	if err != nil {
 		return err

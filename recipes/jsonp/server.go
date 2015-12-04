@@ -13,7 +13,7 @@ func main() {
 	e := echo.New()
 	e.ServeDir("/", "public")
 
-	e.Get("/jsonp", func(c *echo.Context) error {
+	e.Get("/jsonp", func(c echo.Context) error {
 		callback := c.Query("callback")
 		var content struct {
 			Response  string    `json:"response"`

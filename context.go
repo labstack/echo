@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/labstack/gommon/log"
+
 	"net/url"
 
 	"bytes"
@@ -43,7 +45,8 @@ type (
 		NoContent(int) error
 		Redirect(int, string) error
 		Error(err error)
-		Echo() *Echo
+		Logger() *log.Logger
+		X() *context
 	}
 
 	context struct {
@@ -300,9 +303,14 @@ func (c *context) Error(err error) {
 	c.echo.httpErrorHandler(err, c)
 }
 
-// Echo returns the `Echo` instance.
-func (c *context) Echo() *Echo {
-	return c.echo
+// Logger returns the `Logger` instance.
+func (c *context) Logger() *log.Logger {
+	return c.echo.logger
+}
+
+// X returns the `context` instance.
+func (c *context) X() *context {
+	return c
 }
 
 func (c *context) reset(r *http.Request, w http.ResponseWriter, e *Echo) {

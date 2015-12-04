@@ -15,7 +15,7 @@ func main() {
 	e.Use(mw.Recover())
 
 	e.Static("/", "public")
-	e.WebSocket("/ws", func(c *echo.Context) (err error) {
+	e.WebSocket("/ws", func(c echo.Context) (err error) {
 		ws := c.Socket()
 		msg := ""
 

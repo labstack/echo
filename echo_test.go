@@ -263,7 +263,7 @@ func TestEchoMatch(t *testing.T) { // JFC
 func TestEchoWebSocket(t *testing.T) {
 	e := New()
 	e.WebSocket("/ws", func(c Context) error {
-		x := c.(*context)
+		x := c.X()
 		x.socket.Write([]byte("test"))
 		return nil
 	})
@@ -285,9 +285,9 @@ func TestEchoWebSocket(t *testing.T) {
 func TestEchoURL(t *testing.T) {
 	e := New()
 
-	static := func(*Context) error { return nil }
-	getUser := func(*Context) error { return nil }
-	getFile := func(*Context) error { return nil }
+	static := func(Context) error { return nil }
+	getUser := func(Context) error { return nil }
+	getFile := func(Context) error { return nil }
 
 	e.Get("/static/file", static)
 	e.Get("/users/:id", getUser)
@@ -327,7 +327,7 @@ func TestEchoGroup(t *testing.T) {
 		buf.WriteString("0")
 		return nil
 	})
-	h := func(*Context) error { return nil }
+	h := func(Context) error { return nil }
 
 	//--------
 	// Routes
@@ -344,7 +344,7 @@ func TestEchoGroup(t *testing.T) {
 	g1.Get("/", h)
 
 	// Group with no parent middleware
-	g2 := e.Group("/group2", func(*Context) error {
+	g2 := e.Group("/group2", func(Context) error {
 		buf.WriteString("2")
 		return nil
 	})

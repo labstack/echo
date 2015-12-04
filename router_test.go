@@ -283,7 +283,7 @@ func TestRouterStatic(t *testing.T) {
 		return nil
 	}, e)
 	c := NewContext(nil, nil, e)
-	h, _ := r.Find(GET, path, c.(*context))
+	h, _ := r.Find(GET, path, c.X())
 	if assert.NotNil(t, h) {
 		h(c)
 		assert.Equal(t, path, c.Get("path"))
@@ -296,7 +296,7 @@ func TestRouterParam(t *testing.T) {
 	r.Add(GET, "/users/:id", func(c Context) error {
 		return nil
 	}, e)
-	c := NewContext(nil, nil, e).(*context)
+	c := NewContext(nil, nil, e).X()
 	h, _ := r.Find(GET, "/users/1", c)
 	if assert.NotNil(t, h) {
 		assert.Equal(t, "1", c.P(0))
@@ -309,7 +309,7 @@ func TestRouterTwoParam(t *testing.T) {
 	r.Add(GET, "/users/:uid/files/:fid", func(Context) error {
 		return nil
 	}, e)
-	c := NewContext(nil, nil, e).(*context)
+	c := NewContext(nil, nil, e).X()
 
 	h, _ := r.Find(GET, "/users/1/files/1", c)
 	if assert.NotNil(t, h) {
@@ -332,7 +332,7 @@ func TestRouterMatchAny(t *testing.T) {
 	r.Add(GET, "/users/*", func(Context) error {
 		return nil
 	}, e)
-	c := NewContext(nil, nil, e).(*context)
+	c := NewContext(nil, nil, e).X()
 
 	h, _ := r.Find(GET, "/", c)
 	if assert.NotNil(t, h) {
@@ -356,7 +356,7 @@ func TestRouterMicroParam(t *testing.T) {
 	r.Add(GET, "/:a/:b/:c", func(c Context) error {
 		return nil
 	}, e)
-	c := NewContext(nil, nil, e).(*context)
+	c := NewContext(nil, nil, e).X()
 	h, _ := r.Find(GET, "/1/2/3", c)
 	if assert.NotNil(t, h) {
 		assert.Equal(t, "1", c.P(0))
@@ -373,7 +373,7 @@ func TestRouterMixParamMatchAny(t *testing.T) {
 	r.Add(GET, "/users/:id/*", func(c Context) error {
 		return nil
 	}, e)
-	c := NewContext(nil, nil, e).(*context)
+	c := NewContext(nil, nil, e).X()
 
 	h, _ := r.Find(GET, "/users/joe/comments", c)
 	if assert.NotNil(t, h) {
@@ -394,7 +394,7 @@ func TestRouterMultiRoute(t *testing.T) {
 	r.Add(GET, "/users/:id", func(c Context) error {
 		return nil
 	}, e)
-	c := NewContext(nil, nil, e).(*context)
+	c := NewContext(nil, nil, e).X()
 
 	// Route > /users
 	h, _ := r.Find(GET, "/users", c)
@@ -450,7 +450,7 @@ func TestRouterPriority(t *testing.T) {
 		c.Set("g", 7)
 		return nil
 	}, e)
-	c := NewContext(nil, nil, e).(*context)
+	c := NewContext(nil, nil, e).X()
 
 	// Route > /users
 	h, _ := r.Find(GET, "/users", c)
@@ -518,7 +518,7 @@ func TestRouterParamNames(t *testing.T) {
 	r.Add(GET, "/users/:uid/files/:fid", func(c Context) error {
 		return nil
 	}, e)
-	c := NewContext(nil, nil, e).(*context)
+	c := NewContext(nil, nil, e).X()
 
 	// Route > /users
 	h, _ := r.Find(GET, "/users", c)
@@ -553,7 +553,7 @@ func TestRouterAPI(t *testing.T) {
 			return nil
 		}, e)
 	}
-	c := NewContext(nil, nil, e).(*context)
+	c := NewContext(nil, nil, e).X()
 	for _, route := range api {
 		h, _ := r.Find(route.Method, route.Path, c)
 		if assert.NotNil(t, h) {

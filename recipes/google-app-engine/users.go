@@ -36,7 +36,7 @@ func init() {
 	g.Get("/:id", getUser)
 }
 
-func createUser(c *echo.Context) error {
+func createUser(c echo.Context) error {
 	u := new(user)
 	if err := c.Bind(u); err != nil {
 		return err
@@ -45,10 +45,10 @@ func createUser(c *echo.Context) error {
 	return c.JSON(http.StatusCreated, u)
 }
 
-func getUsers(c *echo.Context) error {
+func getUsers(c echo.Context) error {
 	return c.JSON(http.StatusOK, users)
 }
 
-func getUser(c *echo.Context) error {
+func getUser(c echo.Context) error {
 	return c.JSON(http.StatusOK, users[c.P(0)])
 }

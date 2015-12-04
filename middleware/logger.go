@@ -13,7 +13,7 @@ func Logger() echo.MiddlewareFunc {
 		return func(c echo.Context) error {
 			req := c.Request()
 			res := c.Response()
-			logger := c.Echo().Logger()
+			logger := c.Logger()
 
 			remoteAddr := req.RemoteAddr
 			if ip := req.Header.Get(echo.XRealIP); ip != "" {

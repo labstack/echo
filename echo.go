@@ -36,8 +36,8 @@ type (
 		debug                   bool
 		hook                    http.HandlerFunc
 		autoIndex               bool
-		logger                  *log.Logger
 		router                  *Router
+		logger                  *log.Logger
 	}
 
 	Route struct {
@@ -198,7 +198,7 @@ func New() (e *Echo) {
 
 	e.HTTP2(true)
 	e.defaultHTTPErrorHandler = func(err error, c Context) {
-		x := c.(*context)
+		x := c.X()
 		code := http.StatusInternalServerError
 		msg := http.StatusText(code)
 		if he, ok := err.(*HTTPError); ok {
@@ -364,7 +364,7 @@ func (e *Echo) Match(methods []string, path string, h Handler) {
 // WebSocket adds a WebSocket route > handler to the router.
 func (e *Echo) WebSocket(path string, h HandlerFunc) {
 	e.Get(path, func(c Context) (err error) {
-		x, _ := c.(*context)
+		x := c.X()
 		wss := websocket.Server{
 			Handler: func(ws *websocket.Conn) {
 				x.socket = ws
@@ -419,7 +419,7 @@ func (e *Echo) ServeFile(path, file string) {
 }
 
 func (e *Echo) serveFile(dir, file string, c Context) (err error) {
-	x := c.(*context)
+	x := c.X()
 	fs := http.Dir(dir)
 	f, err := fs.Open(file)
 	if err != nil {
@@ -632,7 +632,7 @@ func wrapMiddleware(m Middleware) MiddlewareFunc {
 	case func(http.Handler) http.Handler:
 		return func(h HandlerFunc) HandlerFunc {
 			return func(c Context) (err error) {
-				x := c.(*context)
+				x := c.X()
 				m(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					x.response.writer = w
 					x.request = r
@@ -666,7 +666,7 @@ func wrapHandlerFuncMW(m HandlerFunc) MiddlewareFunc {
 func wrapHTTPHandlerFuncMW(m http.HandlerFunc) MiddlewareFunc {
 	return func(h HandlerFunc) HandlerFunc {
 		return func(c Context) error {
-			x := c.(*context)
+			x := c.X()
 			if !x.response.committed {
 				m.ServeHTTP(x.response.writer, x.request)
 			}
@@ -684,13 +684,13 @@ func wrapHandler(h Handler) HandlerFunc {
 		return h
 	case http.Handler, http.HandlerFunc:
 		return func(c Context) error {
-			x := c.(*context)
+			x := c.X()
 			h.(http.Handler).ServeHTTP(x.response, x.request)
 			return nil
 		}
 	case func(http.ResponseWriter, *http.Request):
 		return func(c Context) error {
-			x := c.(*context)
+			x := c.X()
 			h(x.response, x.request)
 			return nil
 		}

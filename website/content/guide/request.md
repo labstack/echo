@@ -14,11 +14,11 @@ middleware for logging purpose.
 *Example*
 
 ```go
-e.Use(func(c *echo.Context) error {
+e.Use(func(c echo.Context) error {
     println(c.Path()) // Prints `/users/:name`
     return nil
 })
-e.Get("/users/:name", func(c *echo.Context) error) {
+e.Get("/users/:name", func(c echo.Context) error) {
     return c.String(http.StatusOK, name)
 })
 ```
@@ -31,7 +31,7 @@ are available right from `echo.Context`.
 *Example*
 
 ```go
-e.Get("/users/:name", func(c *echo.Context) error) {
+e.Get("/users/:name", func(c echo.Context) error) {
     c.Context = context.WithValue(nil, "key", "val")
     // Pass it down...
     // Use it...
@@ -49,7 +49,7 @@ better performance.
 *Example*
 
 ```go
-e.Get("/users/:name", func(c *echo.Context) error {
+e.Get("/users/:name", func(c echo.Context) error {
 	// By name
 	name := c.Param("name")
 
@@ -71,7 +71,7 @@ Query parameter can be retrieved by name using `Context#Query(name string)`.
 *Example*
 
 ```go
-e.Get("/users", func(c *echo.Context) error {
+e.Get("/users", func(c echo.Context) error {
 	name := c.Query("name")
 	return c.String(http.StatusOK, name)
 })
@@ -88,7 +88,7 @@ Form parameter can be retrieved by name using `Context#Form(name string)`.
 *Example*
 
 ```go
-e.Post("/users", func(c *echo.Context) error {
+e.Post("/users", func(c echo.Context) error {
 	name := c.Form("name")
 	return c.String(http.StatusOK, name)
 })

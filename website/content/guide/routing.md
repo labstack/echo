@@ -16,7 +16,7 @@ code below registers a route for method `GET`, path `/hello` and a handler which
 `Hello!` HTTP response.
 
 ```go
-e.Get("/hello", func(c *echo.Context) error {
+e.Get("/hello", func(c echo.Context) error {
 	return c.String(http.StatusOK, "Hello!")
 })
 ```
@@ -48,15 +48,15 @@ match:
 #### Example
 
 ```go
-e.Get("/users/:id", func(c *echo.Context) error {
+e.Get("/users/:id", func(c echo.Context) error {
 	return c.String(http.StatusOK, "/users/:id")
 })
 
-e.Get("/users/new", func(c *echo.Context) error {
+e.Get("/users/new", func(c echo.Context) error {
 	return c.String(http.StatusOK, "/users/new")
 })
 
-e.Get("/users/1/files/*", func(c *echo.Context) error {
+e.Get("/users/1/files/*", func(c echo.Context) error {
 	return c.String(http.StatusOK, "/users/1/files/*")
 })
 ```
@@ -101,7 +101,7 @@ application.
 
 ```go
 // Handler
-h := func(c *echo.Context) error {
+h := func(c echo.Context) error {
 	return c.String(http.StatusOK, "OK")
 }
 

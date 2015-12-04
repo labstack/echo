@@ -29,7 +29,7 @@ import (
 
 func main() {
 	e := echo.New()
-	e.Use(func(c *echo.Context) error {
+	e.Use(func(c echo.Context) error {
 		// Extract the credentials from HTTP request header and perform a security
 		// check
 
@@ -40,7 +40,7 @@ func main() {
 	e.Run(":1323")
 }
 
-func welcome(c *echo.Context) error {
+func welcome(c echo.Context) error {
 	return c.String(http.StatusOK, "Welcome!")
 }
 ```

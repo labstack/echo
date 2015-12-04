@@ -38,7 +38,7 @@ func TestContext(t *testing.T) {
 	e := New()
 	req, _ := http.NewRequest(POST, "/", strings.NewReader(userJSON))
 	rec := httptest.NewRecorder()
-	c := NewContext(req, NewResponse(rec, e), e).(*context)
+	c := NewContext(req, NewResponse(rec, e), e).X()
 
 	// Request
 	assert.NotNil(t, c.Request())
@@ -95,7 +95,7 @@ func TestContext(t *testing.T) {
 
 	// JSON
 	rec = httptest.NewRecorder()
-	c = NewContext(req, NewResponse(rec, e), e).(*context)
+	c = NewContext(req, NewResponse(rec, e), e).X()
 	err = c.JSON(http.StatusOK, user{"1", "Joe"})
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -105,14 +105,14 @@ func TestContext(t *testing.T) {
 
 	// JSON (error)
 	rec = httptest.NewRecorder()
-	c = NewContext(req, NewResponse(rec, e), e).(*context)
+	c = NewContext(req, NewResponse(rec, e), e).X()
 	val := make(chan bool)
 	err = c.JSON(http.StatusOK, val)
 	assert.Error(t, err)
 
 	// JSONIndent
 	rec = httptest.NewRecorder()
-	c = NewContext(req, NewResponse(rec, e), e).(*context)
+	c = NewContext(req, NewResponse(rec, e), e).X()
 	err = c.JSONIndent(http.StatusOK, user{"1", "Joe"}, "_", "?")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -122,13 +122,13 @@ func TestContext(t *testing.T) {
 
 	// JSONIndent (error)
 	rec = httptest.NewRecorder()
-	c = NewContext(req, NewResponse(rec, e), e).(*context)
+	c = NewContext(req, NewResponse(rec, e), e).X()
 	err = c.JSONIndent(http.StatusOK, nonMarshallableChannel, "_", "?")
 	assert.Error(t, err)
 
 	// JSONP
 	rec = httptest.NewRecorder()
-	c = NewContext(req, NewResponse(rec, e), e).(*context)
+	c = NewContext(req, NewResponse(rec, e), e).X()
 	callback := "callback"
 	err = c.JSONP(http.StatusOK, callback, user{"1", "Joe"})
 	if assert.NoError(t, err) {
@@ -139,7 +139,7 @@ func TestContext(t *testing.T) {
 
 	// XML
 	rec = httptest.NewRecorder()
-	c = NewContext(req, NewResponse(rec, e), e).(*context)
+	c = NewContext(req, NewResponse(rec, e), e).X()
 	err = c.XML(http.StatusOK, user{"1", "Joe"})
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -149,13 +149,13 @@ func TestContext(t *testing.T) {
 
 	// XML (error)
 	rec = httptest.NewRecorder()
-	c = NewContext(req, NewResponse(rec, e), e).(*context)
+	c = NewContext(req, NewResponse(rec, e), e).X()
 	err = c.XML(http.StatusOK, nonMarshallableChannel)
 	assert.Error(t, err)
 
 	// XMLIndent
 	rec = httptest.NewRecorder()
-	c = NewContext(req, NewResponse(rec, e), e).(*context)
+	c = NewContext(req, NewResponse(rec, e), e).X()
 	err = c.XMLIndent(http.StatusOK, user{"1", "Joe"}, "_", "?")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -165,13 +165,13 @@ func TestContext(t *testing.T) {
 
 	// XMLIndent (error)
 	rec = httptest.NewRecorder()
-	c = NewContext(req, NewResponse(rec, e), e).(*context)
+	c = NewContext(req, NewResponse(rec, e), e).X()
 	err = c.XMLIndent(http.StatusOK, nonMarshallableChannel, "_", "?")
 	assert.Error(t, err)
 
 	// String
 	rec = httptest.NewRecorder()
-	c = NewContext(req, NewResponse(rec, e), e).(*context)
+	c = NewContext(req, NewResponse(rec, e), e).X()
 	err = c.String(http.StatusOK, "Hello, World!")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -181,7 +181,7 @@ func TestContext(t *testing.T) {
 
 	// HTML
 	rec = httptest.NewRecorder()
-	c = NewContext(req, NewResponse(rec, e), e).(*context)
+	c = NewContext(req, NewResponse(rec, e), e).X()
 	err = c.HTML(http.StatusOK, "Hello, <strong>World!</strong>")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -191,7 +191,7 @@ func TestContext(t *testing.T) {
 
 	// File
 	rec = httptest.NewRecorder()
-	c = NewContext(req, NewResponse(rec, e), e).(*context)
+	c = NewContext(req, NewResponse(rec, e), e).X()
 	err = c.File("test/fixture/walle.png", "", false)
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -200,7 +200,7 @@ func TestContext(t *testing.T) {
 
 	// File as attachment
 	rec = httptest.NewRecorder()
-	c = NewContext(req, NewResponse(rec, e), e).(*context)
+	c = NewContext(req, NewResponse(rec, e), e).X()
 	err = c.File("test/fixture/walle.png", "WALLE.PNG", true)
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -210,18 +210,18 @@ func TestContext(t *testing.T) {
 
 	// NoContent
 	rec = httptest.NewRecorder()
-	c = NewContext(req, NewResponse(rec, e), e).(*context)
+	c = NewContext(req, NewResponse(rec, e), e).X()
 	c.NoContent(http.StatusOK)
 	assert.Equal(t, http.StatusOK, c.response.status)
 
 	// Redirect
 	rec = httptest.NewRecorder()
-	c = NewContext(req, NewResponse(rec, e), e).(*context)
+	c = NewContext(req, NewResponse(rec, e), e).X()
 	assert.Equal(t, nil, c.Redirect(http.StatusMovedPermanently, "http://labstack.github.io/echo"))
 
 	// Error
 	rec = httptest.NewRecorder()
-	c = NewContext(req, NewResponse(rec, e), e).(*context)
+	c = NewContext(req, NewResponse(rec, e), e).X()
 	c.Error(errors.New("error"))
 	assert.Equal(t, http.StatusInternalServerError, c.response.status)
 
@@ -234,12 +234,12 @@ func TestContextPath(t *testing.T) {
 	r := e.Router()
 
 	r.Add(GET, "/users/:id", nil, e)
-	c := NewContext(nil, nil, e).(*context)
+	c := NewContext(nil, nil, e).X()
 	r.Find(GET, "/users/1", c)
 	assert.Equal(t, c.Path(), "/users/:id")
 
 	r.Add(GET, "/users/:uid/files/:fid", nil, e)
-	c = NewContext(nil, nil, e).(*context)
+	c = NewContext(nil, nil, e).X()
 	r.Find(GET, "/users/1/files/1", c)
 	assert.Equal(t, c.Path(), "/users/:uid/files/:fid")
 }

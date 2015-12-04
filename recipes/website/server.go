@@ -37,11 +37,11 @@ func (t *Template) Render(w io.Writer, name string, data interface{}) error {
 // Handlers
 //----------
 
-func welcome(c *echo.Context) error {
+func welcome(c echo.Context) error {
 	return c.Render(http.StatusOK, "welcome", "Joe")
 }
 
-func createUser(c *echo.Context) error {
+func createUser(c echo.Context) error {
 	u := new(user)
 	if err := c.Bind(u); err != nil {
 		return err
@@ -50,11 +50,11 @@ func createUser(c *echo.Context) error {
 	return c.JSON(http.StatusCreated, u)
 }
 
-func getUsers(c *echo.Context) error {
+func getUsers(c echo.Context) error {
 	return c.JSON(http.StatusOK, users)
 }
 
-func getUser(c *echo.Context) error {
+func getUser(c echo.Context) error {
 	return c.JSON(http.StatusOK, users[c.P(0)])
 }
 
@@ -77,7 +77,7 @@ func main() {
 	s := stats.New()
 	e.Use(s.Handler)
 	// Route
-	e.Get("/stats", func(c *echo.Context) error {
+	e.Get("/stats", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, s.Data())
 	})
 
@@ -115,20 +115,20 @@ func main() {
 
 	// Group with parent middleware
 	a := e.Group("/admin")
-	a.Use(func(c *echo.Context) error {
+	a.Use(func(c echo.Context) error {
 		// Security middleware
 		return nil
 	})
-	a.Get("", func(c *echo.Context) error {
+	a.Get("", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Welcome admin!")
 	})
 
 	// Group with no parent middleware
-	g := e.Group("/files", func(c *echo.Context) error {
+	g := e.Group("/files", func(c echo.Context) error {
 		// Security middleware
 		return nil
 	})
-	g.Get("", func(c *echo.Context) error {
+	g.Get("", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Your files!")
 	})
 

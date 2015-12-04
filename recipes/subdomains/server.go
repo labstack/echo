@@ -31,7 +31,7 @@ func main() {
 
 	hosts["api.localhost:1323"] = api
 
-	api.Get("/", func(c *echo.Context) error {
+	api.Get("/", func(c echo.Context) error {
 		return c.String(http.StatusOK, "API")
 	})
 
@@ -45,7 +45,7 @@ func main() {
 
 	hosts["blog.localhost:1323"] = blog
 
-	blog.Get("/", func(c *echo.Context) error {
+	blog.Get("/", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Blog")
 	})
 
@@ -59,7 +59,7 @@ func main() {
 
 	hosts["localhost:1323"] = site
 
-	site.Get("/", func(c *echo.Context) error {
+	site.Get("/", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Welcome!")
 	})
 
