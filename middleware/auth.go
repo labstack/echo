@@ -22,11 +22,11 @@ const (
 func BasicAuth(fn BasicValidateFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		// Skip WebSocket
-		if (c.Request().Header().Get(echo.Upgrade)) == echo.WebSocket {
+		if (c.Request().Header.Get(echo.Upgrade)) == echo.WebSocket {
 			return nil
 		}
 
-		auth := c.Request().Header().Get(echo.Authorization)
+		auth := c.Request().Header.Get(echo.Authorization)
 		l := len(Basic)
 
 		if len(auth) > l+1 && auth[:l] == Basic {

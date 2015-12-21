@@ -6,46 +6,50 @@ type (
 	}
 )
 
-func (g *Group) Use(m ...MiddlewareFunc) {
+func (g *Group) Use(m ...Middleware) {
 	for _, h := range m {
-		g.echo.middleware = append(g.echo.middleware, h)
+		g.echo.middleware = append(g.echo.middleware, wrapMiddleware(h))
 	}
 }
 
-func (g *Group) Connect(path string, h HandlerFunc) {
+func (g *Group) Connect(path string, h Handler) {
 	g.echo.Connect(path, h)
 }
 
-func (g *Group) Delete(path string, h HandlerFunc) {
+func (g *Group) Delete(path string, h Handler) {
 	g.echo.Delete(path, h)
 }
 
-func (g *Group) Get(path string, h HandlerFunc) {
+func (g *Group) Get(path string, h Handler) {
 	g.echo.Get(path, h)
 }
 
-func (g *Group) Head(path string, h HandlerFunc) {
+func (g *Group) Head(path string, h Handler) {
 	g.echo.Head(path, h)
 }
 
-func (g *Group) Options(path string, h HandlerFunc) {
+func (g *Group) Options(path string, h Handler) {
 	g.echo.Options(path, h)
 }
 
-func (g *Group) Patch(path string, h HandlerFunc) {
+func (g *Group) Patch(path string, h Handler) {
 	g.echo.Patch(path, h)
 }
 
-func (g *Group) Post(path string, h HandlerFunc) {
+func (g *Group) Post(path string, h Handler) {
 	g.echo.Post(path, h)
 }
 
-func (g *Group) Put(path string, h HandlerFunc) {
+func (g *Group) Put(path string, h Handler) {
 	g.echo.Put(path, h)
 }
 
-func (g *Group) Trace(path string, h HandlerFunc) {
+func (g *Group) Trace(path string, h Handler) {
 	g.echo.Trace(path, h)
+}
+
+func (g *Group) WebSocket(path string, h HandlerFunc) {
+	g.echo.WebSocket(path, h)
 }
 
 func (g *Group) Static(path, root string) {
@@ -60,6 +64,6 @@ func (g *Group) ServeFile(path, file string) {
 	g.echo.ServeFile(path, file)
 }
 
-func (g *Group) Group(prefix string, m ...MiddlewareFunc) *Group {
+func (g *Group) Group(prefix string, m ...Middleware) *Group {
 	return g.echo.Group(prefix, m...)
 }
