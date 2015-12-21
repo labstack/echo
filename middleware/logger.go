@@ -16,9 +16,9 @@ func Logger() echo.MiddlewareFunc {
 			logger := c.Logger()
 
 			remoteAddr := req.RemoteAddr
-			if ip := req.Header.Get(echo.XRealIP); ip != "" {
+			if ip := req.Header().Get(echo.XRealIP); ip != "" {
 				remoteAddr = ip
-			} else if ip = req.Header.Get(echo.XForwardedFor); ip != "" {
+			} else if ip = req.Header().Get(echo.XForwardedFor); ip != "" {
 				remoteAddr = ip
 			} else {
 				remoteAddr, _, _ = net.SplitHostPort(remoteAddr)

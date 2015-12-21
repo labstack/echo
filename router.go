@@ -275,7 +275,8 @@ func (n *node) check405() HandlerFunc {
 	return notFoundHandler
 }
 
-func (r *Router) Find(method, path string, x *context) (h HandlerFunc, e *Echo) {
+func (r *Router) Find(method, path string, context Context) (h HandlerFunc, e *Echo) {
+	x := context.X()
 	h = notFoundHandler
 	e = r.echo
 	cn := r.tree // Current node as root
@@ -401,11 +402,12 @@ End:
 }
 
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	c := r.echo.pool.Get().(*context)
-	h, _ := r.Find(req.Method, req.URL.Path, c)
-	c.reset(req, w, r.echo)
-	if err := h(c); err != nil {
-		r.echo.httpErrorHandler(err, c)
-	}
-	r.echo.pool.Put(c)
+	// TODO: v2
+	// c := r.echo.pool.Get().(*context)
+	// h, _ := r.Find(req.Method, req.URL.Path, c)
+	// c.reset(req, w, r.echo)
+	// if err := h(c); err != nil {
+	// 	r.echo.httpErrorHandler(err, c)
+	// }
+	// r.echo.pool.Put(c)
 }

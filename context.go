@@ -7,13 +7,14 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/labstack/echo/engine"
 	"github.com/labstack/gommon/log"
 
 	"net/url"
 
 	"bytes"
 
-	xcontext "golang.org/x/net/context"
+	netContext "golang.org/x/net/context"
 	"golang.org/x/net/websocket"
 )
 
@@ -21,9 +22,9 @@ type (
 	// Context represents context for the current request. It holds request and
 	// response objects, path parameters, data and registered handler.
 	Context interface {
-		xcontext.Context
-		Request() *http.Request
-		Response() *Response
+		netContext.Context
+		Request() engine.Request
+		Response() engine.Response
 		Socket() *websocket.Conn
 		Path() string
 		P(int) string
@@ -50,8 +51,8 @@ type (
 	}
 
 	context struct {
-		request  *http.Request
-		response *Response
+		request  engine.Request
+		response engine.Response
 		socket   *websocket.Conn
 		path     string
 		pnames   []string
@@ -65,7 +66,7 @@ type (
 )
 
 // NewContext creates a Context object.
-func NewContext(req *http.Request, res *Response, e *Echo) Context {
+func NewContext(req engine.Request, res engine.Response, e *Echo) Context {
 	return &context{
 		request:  req,
 		response: res,
@@ -92,12 +93,12 @@ func (c *context) Value(key interface{}) interface{} {
 }
 
 // Request returns *http.Request.
-func (c *context) Request() *http.Request {
+func (c *context) Request() engine.Request {
 	return c.request
 }
 
 // Response returns *Response.
-func (c *context) Response() *Response {
+func (c *context) Response() engine.Response {
 	return c.response
 }
 
@@ -135,14 +136,17 @@ func (c *context) Param(name string) (value string) {
 // Query returns query parameter by name.
 func (c *context) Query(name string) string {
 	if c.query == nil {
-		c.query = c.request.URL.Query()
+		// TODO: v2
+		// c.query = c.request.URL.Query()
 	}
 	return c.query.Get(name)
 }
 
 // Form returns form parameter by name.
 func (c *context) Form(name string) string {
-	return c.request.FormValue(name)
+	// TODO: v2
+	// return c.request.FormValue(name)
+	return ""
 }
 
 // Get retrieves data from the context.
@@ -294,7 +298,8 @@ func (c *context) Redirect(code int, url string) error {
 	if code < http.StatusMultipleChoices || code > http.StatusTemporaryRedirect {
 		return InvalidRedirectCode
 	}
-	http.Redirect(c.response, c.request, url, code)
+	// TODO: v2
+	// http.Redirect(c.response, c.request, url, code)
 	return nil
 }
 
@@ -313,9 +318,11 @@ func (c *context) X() *context {
 	return c
 }
 
-func (c *context) reset(r *http.Request, w http.ResponseWriter, e *Echo) {
-	c.request = r
-	c.response.reset(w, e)
+func (c *context) reset(req engine.Request, res engine.Response, e *Echo) {
+	c.request = req
+	// TODO: v2
+	// c.response.reset(res, e)
+	c.response = res
 	c.query = nil
 	c.store = nil
 	c.echo = e
