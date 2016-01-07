@@ -1,4 +1,4 @@
 package main
 
-// referecnce our echo instance and create it early
+// reference our echo instance and create it early
 var e = createMux()
