@@ -35,6 +35,9 @@ type (
 )
 
 const (
+	// Used to retrieve params captured by a wildcard (`*`)
+	WildcardParam = "_*"
+	
 	skind kind = iota
 	pkind
 	mkind
@@ -73,7 +76,7 @@ func (r *Router) Add(method, path string, h HandlerFunc, e *Echo) {
 			r.insert(method, path[:i], nil, pkind, ppath, pnames, e)
 		} else if path[i] == '*' {
 			r.insert(method, path[:i], nil, skind, "", nil, e)
-			pnames = append(pnames, "_*")
+			pnames = append(pnames, WildcardParam)
 			r.insert(method, path[:i+1], h, mkind, ppath, pnames, e)
 			return
 		}

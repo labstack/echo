@@ -499,7 +499,7 @@ func TestRouterPriority(t *testing.T) {
 	if assert.NotNil(t, h) {
 		h(c)
 		assert.Equal(t, 7, c.Get("g"))
-		assert.Equal(t, "joe/books", c.Param("_*"))
+		assert.Equal(t, "joe/books", c.Param(WildcardParam))
 	}
 }
 
