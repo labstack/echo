@@ -194,7 +194,7 @@ func TestContext(t *testing.T) {
 	// File
 	rec = httptest.NewRecorder()
 	c = NewContext(req, NewResponse(rec, e), e)
-	err = c.File("test/fixture/walle.png", "", false)
+	err = c.File("_fixture/images/walle.png", "", false)
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, 219885, rec.Body.Len())
@@ -203,7 +203,7 @@ func TestContext(t *testing.T) {
 	// File as attachment
 	rec = httptest.NewRecorder()
 	c = NewContext(req, NewResponse(rec, e), e)
-	err = c.File("test/fixture/walle.png", "WALLE.PNG", true)
+	err = c.File("_fixture/images/walle.png", "WALLE.PNG", true)
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, rec.Header().Get(ContentDisposition), "attachment; filename=WALLE.PNG")

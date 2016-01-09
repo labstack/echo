@@ -43,7 +43,7 @@ func TestEcho(t *testing.T) {
 
 func TestEchoIndex(t *testing.T) {
 	e := New()
-	e.Index("recipes/website/public/index.html")
+	e.Index("_fixture/index.html")
 	c, b := request(GET, "/", e)
 	assert.Equal(t, http.StatusOK, c)
 	assert.NotEmpty(t, b)
@@ -51,7 +51,7 @@ func TestEchoIndex(t *testing.T) {
 
 func TestEchoFavicon(t *testing.T) {
 	e := New()
-	e.Favicon("recipes/website/public/favicon.ico")
+	e.Favicon("_fixture/favicon.ico")
 	c, b := request(GET, "/favicon.ico", e)
 	assert.Equal(t, http.StatusOK, c)
 	assert.NotEmpty(t, b)
@@ -61,23 +61,23 @@ func TestEchoStatic(t *testing.T) {
 	e := New()
 
 	// OK
-	e.Static("/scripts", "recipes/website/public/scripts")
-	c, b := request(GET, "/scripts/main.js", e)
+	e.Static("/images", "_fixture/images")
+	c, b := request(GET, "/images/walle.png", e)
 	assert.Equal(t, http.StatusOK, c)
 	assert.NotEmpty(t, b)
 
 	// No file
-	e.Static("/scripts", "recipes/website/public/scripts")
-	c, _ = request(GET, "/scripts/index.js", e)
+	e.Static("/images", "_fixture/scripts")
+	c, _ = request(GET, "/images/bolt.png", e)
 	assert.Equal(t, http.StatusNotFound, c)
 
 	// Directory
-	e.Static("/scripts", "recipes/website/public/scripts")
-	c, _ = request(GET, "/scripts", e)
+	e.Static("/images", "_fixture/images")
+	c, _ = request(GET, "/images", e)
 	assert.Equal(t, http.StatusForbidden, c)
 
 	// Directory with index.html
-	e.Static("/", "recipes/website/public")
+	e.Static("/", "_fixture")
 	c, r := request(GET, "/", e)
 	assert.Equal(t, http.StatusOK, c)
 	assert.Equal(t, true, strings.HasPrefix(r, "<!doctype html>"))
@@ -85,7 +85,8 @@ func TestEchoStatic(t *testing.T) {
 	// Sub-directory with index.html
 	c, r = request(GET, "/folder", e)
 	assert.Equal(t, http.StatusOK, c)
-	assert.Equal(t, "sub directory", r)
+	assert.Equal(t, true, strings.HasPrefix(r, "<!doctype html>"))
+	// assert.Equal(t, "sub directory", r)
 }
 
 func TestEchoMiddleware(t *testing.T) {
