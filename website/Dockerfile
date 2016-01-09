@@ -1,7 +1,7 @@
-FROM busybox
+FROM reg.lab.st/argo
 MAINTAINER Vishal Rana <vr@labstack.com>
 
-COPY server /server
-COPY public /public
+ADD argo.json /etc
+ADD public /www
 
-CMD ["/server"]
+CMD ["-c", "/etc/argo.json"]

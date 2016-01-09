@@ -14,7 +14,6 @@ func TestGroup(t *testing.T) {
 	g.Post("/", h)
 	g.Put("/", h)
 	g.Trace("/", h)
-	g.WebSocket("/ws", h)
 	g.Static("/scripts", "scripts")
 	g.ServeDir("/scripts", "scripts")
 	g.ServeFile("/scripts/main.js", "scripts/main.js")

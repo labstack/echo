@@ -44,4 +44,4 @@ Hello, Server!
 
 - [vishr](https://github.com/vishr)
 
-### [Source Code](https://github.com/labstack/echo/blob/master/recipes/websocket)
+### [Source Code](https://github.com/vishr/recipes/blob/master/echo/recipes/websocket)

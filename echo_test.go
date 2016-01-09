@@ -12,8 +12,9 @@ import (
 
 	"errors"
 
+	"github.com/labstack/echo/engine"
+	"github.com/labstack/echo/test"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/websocket"
 )
 
 type (
@@ -25,9 +26,9 @@ type (
 
 func TestEcho(t *testing.T) {
 	e := New()
-	req, _ := http.NewRequest(GET, "/", nil)
-	rec := httptest.NewRecorder()
-	c := NewContext(req, NewResponse(rec, e), e)
+	req := test.NewRequest(GET, "/", nil)
+	rec := test.NewResponseRecorder()
+	c := NewContext(req, rec, e)
 
 	// Router
 	assert.NotNil(t, e.Router())
@@ -38,7 +39,7 @@ func TestEcho(t *testing.T) {
 
 	// DefaultHTTPErrorHandler
 	e.DefaultHTTPErrorHandler(errors.New("error"), c)
-	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Equal(t, http.StatusInternalServerError, rec.Status())
 }
 
 func TestEchoIndex(t *testing.T) {
@@ -92,15 +93,13 @@ func TestEchoMiddleware(t *testing.T) {
 	e := New()
 	buf := new(bytes.Buffer)
 
-	// echo.MiddlewareFunc
-	e.Use(MiddlewareFunc(func(h HandlerFunc) HandlerFunc {
+	e.Use(func(h HandlerFunc) HandlerFunc {
 		return func(c Context) error {
 			buf.WriteString("a")
 			return h(c)
 		}
-	}))
+	})
 
-	// func(echo.HandlerFunc) echo.HandlerFunc
 	e.Use(func(h HandlerFunc) HandlerFunc {
 		return func(c Context) error {
 			buf.WriteString("b")
@@ -108,59 +107,28 @@ func TestEchoMiddleware(t *testing.T) {
 		}
 	})
 
-	// echo.HandlerFunc
-	e.Use(HandlerFunc(func(c Context) error {
-		buf.WriteString("c")
-		return nil
-	}))
-
-	// func(*echo.Context) error
-	e.Use(func(c Context) error {
-		buf.WriteString("d")
-		return nil
-	})
-
-	// func(http.Handler) http.Handler
-	e.Use(func(h http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			buf.WriteString("e")
-			h.ServeHTTP(w, r)
-		})
-	})
-
-	// http.Handler
-	e.Use(http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		buf.WriteString("f")
-	})))
-
-	// http.HandlerFunc
-	e.Use(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		buf.WriteString("g")
-	}))
-
-	// func(http.ResponseWriter, *http.Request)
-	e.Use(func(w http.ResponseWriter, r *http.Request) {
-		buf.WriteString("h")
-	})
-
-	// Unknown
-	assert.Panics(t, func() {
-		e.Use(nil)
+	e.Use(func(h HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			buf.WriteString("c")
+			return h(c)
+		}
 	})
 
 	// Route
 	e.Get("/", func(c Context) error {
-		return c.String(http.StatusOK, "Hello!")
+		return c.String(http.StatusOK, "OK")
 	})
 
 	c, b := request(GET, "/", e)
-	assert.Equal(t, "abcdefgh", buf.String())
+	assert.Equal(t, "abc", buf.String())
 	assert.Equal(t, http.StatusOK, c)
-	assert.Equal(t, "Hello!", b)
+	assert.Equal(t, "OK", b)
 
 	// Error
-	e.Use(func(Context) error {
-		return errors.New("error")
+	e.Use(func(h HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			return errors.New("error")
+		}
 	})
 	c, b = request(GET, "/", e)
 	assert.Equal(t, http.StatusInternalServerError, c)
@@ -170,35 +138,13 @@ func TestEchoHandler(t *testing.T) {
 	e := New()
 
 	// HandlerFunc
-	e.Get("/1", HandlerFunc(func(c Context) error {
-		return c.String(http.StatusOK, "1")
+	e.Get("/ok", HandlerFunc(func(c Context) error {
+		return c.String(http.StatusOK, "OK")
 	}))
 
-	// func(*echo.Context) error
-	e.Get("/2", func(c Context) error {
-		return c.String(http.StatusOK, "2")
-	})
-
-	// http.Handler/http.HandlerFunc
-	e.Get("/3", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("3"))
-	}))
-
-	// func(http.ResponseWriter, *http.Request)
-	e.Get("/4", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("4"))
-	})
-
-	for _, p := range []string{"1", "2", "3", "4"} {
-		c, b := request(GET, "/"+p, e)
-		assert.Equal(t, http.StatusOK, c)
-		assert.Equal(t, p, b)
-	}
-
-	// Unknown
-	assert.Panics(t, func() {
-		e.Get("/5", nil)
-	})
+	c, b := request(GET, "/ok", e)
+	assert.Equal(t, http.StatusOK, c)
+	assert.Equal(t, "OK", b)
 }
 
 func TestEchoConnect(t *testing.T) {
@@ -260,28 +206,6 @@ func TestEchoMatch(t *testing.T) { // JFC
 	})
 }
 
-func TestEchoWebSocket(t *testing.T) {
-	e := New()
-	e.WebSocket("/ws", func(c Context) error {
-		x := c.X()
-		x.socket.Write([]byte("test"))
-		return nil
-	})
-	srv := httptest.NewServer(e)
-	defer srv.Close()
-	addr := srv.Listener.Addr().String()
-	origin := "http://localhost"
-	url := fmt.Sprintf("ws://%s/ws", addr)
-	ws, err := websocket.Dial(url, "", origin)
-	if assert.NoError(t, err) {
-		ws.Write([]byte("test"))
-		defer ws.Close()
-		buf := new(bytes.Buffer)
-		buf.ReadFrom(ws)
-		assert.Equal(t, "test", buf.String())
-	}
-}
-
 func TestEchoURL(t *testing.T) {
 	e := New()
 
@@ -303,15 +227,16 @@ func TestEchoURL(t *testing.T) {
 
 func TestEchoRoutes(t *testing.T) {
 	e := New()
-	h := func(Context) error { return nil }
 	routes := []Route{
-		{GET, "/users/:user/events", h},
-		{GET, "/users/:user/events/public", h},
-		{POST, "/repos/:owner/:repo/git/refs", h},
-		{POST, "/repos/:owner/:repo/git/tags", h},
+		{GET, "/users/:user/events", ""},
+		{GET, "/users/:user/events/public", ""},
+		{POST, "/repos/:owner/:repo/git/refs", ""},
+		{POST, "/repos/:owner/:repo/git/tags", ""},
 	}
 	for _, r := range routes {
-		e.add(r.Method, r.Path, h)
+		e.add(r.Method, r.Path, func(c Context) error {
+			return c.String(http.StatusOK, "OK")
+		})
 	}
 
 	for i, r := range e.Routes() {
@@ -323,9 +248,11 @@ func TestEchoRoutes(t *testing.T) {
 func TestEchoGroup(t *testing.T) {
 	e := New()
 	buf := new(bytes.Buffer)
-	e.Use(func(Context) error {
-		buf.WriteString("0")
-		return nil
+	e.Use(func(h HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			buf.WriteString("a")
+			return h(c)
+		}
 	})
 	h := func(Context) error { return nil }
 
@@ -337,28 +264,33 @@ func TestEchoGroup(t *testing.T) {
 
 	// Group
 	g1 := e.Group("/group1")
-	g1.Use(func(Context) error {
-		buf.WriteString("1")
-		return nil
+	g1.Use(func(h HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			buf.WriteString("1")
+			return h(c)
+		}
 	})
 	g1.Get("/", h)
 
 	// Group with no parent middleware
-	g2 := e.Group("/group2", func(Context) error {
-		buf.WriteString("2")
-		return nil
+	g2 := e.Group("/group2", func(h HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			buf.WriteString("2")
+			return h(c)
+		}
 	})
 	g2.Get("/", h)
 
 	// Nested groups
 	g3 := e.Group("/group3")
 	g4 := g3.Group("/group4")
-	g4.Get("/", func(c Context) error {
-		return c.NoContent(http.StatusOK)
+	g4.Use(func(h HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			return c.NoContent(http.StatusOK)
+		}
 	})
 
 	request(GET, "/users", e)
-	// println(len(e.middleware))
 	assert.Equal(t, "0", buf.String())
 
 	buf.Reset()
@@ -412,11 +344,11 @@ func TestEchoHook(t *testing.T) {
 	e.Get("/test", func(c Context) error {
 		return c.NoContent(http.StatusNoContent)
 	})
-	e.Hook(func(w http.ResponseWriter, r *http.Request) {
-		path := r.URL.Path
+	e.Hook(func(req engine.Request, res engine.Response) {
+		path := req.URL().Path()
 		l := len(path) - 1
 		if path != "/" && path[l] == '/' {
-			r.URL.Path = path[:l]
+			// req.URL().Path() = path[:l]
 		}
 	})
 	r, _ := http.NewRequest(GET, "/test/", nil)

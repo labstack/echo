@@ -15,7 +15,7 @@ func Logger() echo.MiddlewareFunc {
 			res := c.Response()
 			logger := c.Logger()
 
-			remoteAddr := req.RemoteAddr
+			remoteAddr := req.RemoteAddress()
 			if ip := req.Header().Get(echo.XRealIP); ip != "" {
 				remoteAddr = ip
 			} else if ip = req.Header().Get(echo.XForwardedFor); ip != "" {
@@ -30,7 +30,7 @@ func Logger() echo.MiddlewareFunc {
 			}
 			stop := time.Now()
 			method := req.Method
-			path := req.URL.Path
+			path := req.URL().Path()
 			if path == "" {
 				path = "/"
 			}

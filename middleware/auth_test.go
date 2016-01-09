@@ -25,7 +25,7 @@ func TestBasicAuth(t *testing.T) {
 
 	// Valid credentials
 	auth := Basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:secret"))
-	req.Header.Set(echo.Authorization, auth)
+	req.Header().Set(echo.Authorization, auth)
 	assert.NoError(t, ba(c))
 
 	//---------------------
@@ -34,7 +34,7 @@ func TestBasicAuth(t *testing.T) {
 
 	// Incorrect password
 	auth = Basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:password"))
-	req.Header.Set(echo.Authorization, auth)
+	req.Header().Set(echo.Authorization, auth)
 	he := ba(c).(*echo.HTTPError)
 	assert.Equal(t, http.StatusUnauthorized, he.Code())
 	assert.Equal(t, Basic+" realm=Restricted", rec.Header().Get(echo.WWWAuthenticate))

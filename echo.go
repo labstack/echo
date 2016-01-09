@@ -203,21 +203,19 @@ func New() (e *Echo) {
 
 	e.HTTP2(true)
 	e.defaultHTTPErrorHandler = func(err error, c Context) {
-		// TODO: v2
-		// x := c.X()
-		// code := http.StatusInternalServerError
-		// msg := http.StatusText(code)
-		// if he, ok := err.(*HTTPError); ok {
-		// 	code = he.code
-		// 	msg = he.message
-		// }
-		// if e.debug {
-		// 	msg = err.Error()
-		// }
-		// if !x.response.Committed() {
-		// 	http.Error(x.response, msg, code)
-		// }
-		// e.logger.Error(err)
+		code := http.StatusInternalServerError
+		msg := http.StatusText(code)
+		if he, ok := err.(*HTTPError); ok {
+			code = he.code
+			msg = he.message
+		}
+		if e.debug {
+			msg = err.Error()
+		}
+		if !c.Response().Committed() {
+			c.String(code, msg)
+		}
+		e.logger.Error(err)
 	}
 	e.SetHTTPErrorHandler(e.defaultHTTPErrorHandler)
 	e.SetBinder(&binder{})
@@ -410,15 +408,13 @@ func (e *Echo) ServeFile(path, file string) {
 }
 
 func (e *Echo) serveFile(dir, file string, c Context) (err error) {
-	// TODO: v2
-	// x := c.X()
 	// fs := http.Dir(dir)
 	// f, err := fs.Open(file)
 	// if err != nil {
 	// 	return NewHTTPError(http.StatusNotFound)
 	// }
 	// defer f.Close()
-	//
+
 	// fi, _ := f.Stat()
 	// if fi.IsDir() {
 	// 	/* NOTE:
@@ -426,7 +422,7 @@ func (e *Echo) serveFile(dir, file string, c Context) (err error) {
 	// 	changing differnt directories for the same path.
 	// 	*/
 	// 	d := f
-	//
+
 	// 	// Index file
 	// 	file = filepath.Join(file, indexPage)
 	// 	f, err = fs.Open(file)
@@ -439,7 +435,7 @@ func (e *Echo) serveFile(dir, file string, c Context) (err error) {
 	// 	}
 	// 	fi, _ = f.Stat() // Index file stat
 	// }
-	// http.ServeContent(x.response, x.request, fi.Name(), fi.ModTime(), f)
+	// http.ServeContent(c.Response(), c.Request(), fi.Name(), fi.ModTime(), f)
 	return
 }
 

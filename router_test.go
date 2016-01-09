@@ -3,7 +3,6 @@ package echo
 import (
 	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,265 +11,265 @@ import (
 var (
 	api = []Route{
 		// OAuth Authorizations
-		{"GET", "/authorizations", nil},
-		{"GET", "/authorizations/:id", nil},
-		{"POST", "/authorizations", nil},
-		//{"PUT", "/authorizations/clients/:client_id", nil},
-		//{"PATCH", "/authorizations/:id", nil},
-		{"DELETE", "/authorizations/:id", nil},
-		{"GET", "/applications/:client_id/tokens/:access_token", nil},
-		{"DELETE", "/applications/:client_id/tokens", nil},
-		{"DELETE", "/applications/:client_id/tokens/:access_token", nil},
+		{"GET", "/authorizations", ""},
+		{"GET", "/authorizations/:id", ""},
+		{"POST", "/authorizations", ""},
+		//{"PUT", "/authorizations/clients/:client_id", ""},
+		//{"PATCH", "/authorizations/:id", ""},
+		{"DELETE", "/authorizations/:id", ""},
+		{"GET", "/applications/:client_id/tokens/:access_token", ""},
+		{"DELETE", "/applications/:client_id/tokens", ""},
+		{"DELETE", "/applications/:client_id/tokens/:access_token", ""},
 
 		// Activity
-		{"GET", "/events", nil},
-		{"GET", "/repos/:owner/:repo/events", nil},
-		{"GET", "/networks/:owner/:repo/events", nil},
-		{"GET", "/orgs/:org/events", nil},
-		{"GET", "/users/:user/received_events", nil},
-		{"GET", "/users/:user/received_events/public", nil},
-		{"GET", "/users/:user/events", nil},
-		{"GET", "/users/:user/events/public", nil},
-		{"GET", "/users/:user/events/orgs/:org", nil},
-		{"GET", "/feeds", nil},
-		{"GET", "/notifications", nil},
-		{"GET", "/repos/:owner/:repo/notifications", nil},
-		{"PUT", "/notifications", nil},
-		{"PUT", "/repos/:owner/:repo/notifications", nil},
-		{"GET", "/notifications/threads/:id", nil},
-		//{"PATCH", "/notifications/threads/:id", nil},
-		{"GET", "/notifications/threads/:id/subscription", nil},
-		{"PUT", "/notifications/threads/:id/subscription", nil},
-		{"DELETE", "/notifications/threads/:id/subscription", nil},
-		{"GET", "/repos/:owner/:repo/stargazers", nil},
-		{"GET", "/users/:user/starred", nil},
-		{"GET", "/user/starred", nil},
-		{"GET", "/user/starred/:owner/:repo", nil},
-		{"PUT", "/user/starred/:owner/:repo", nil},
-		{"DELETE", "/user/starred/:owner/:repo", nil},
-		{"GET", "/repos/:owner/:repo/subscribers", nil},
-		{"GET", "/users/:user/subscriptions", nil},
-		{"GET", "/user/subscriptions", nil},
-		{"GET", "/repos/:owner/:repo/subscription", nil},
-		{"PUT", "/repos/:owner/:repo/subscription", nil},
-		{"DELETE", "/repos/:owner/:repo/subscription", nil},
-		{"GET", "/user/subscriptions/:owner/:repo", nil},
-		{"PUT", "/user/subscriptions/:owner/:repo", nil},
-		{"DELETE", "/user/subscriptions/:owner/:repo", nil},
+		{"GET", "/events", ""},
+		{"GET", "/repos/:owner/:repo/events", ""},
+		{"GET", "/networks/:owner/:repo/events", ""},
+		{"GET", "/orgs/:org/events", ""},
+		{"GET", "/users/:user/received_events", ""},
+		{"GET", "/users/:user/received_events/public", ""},
+		{"GET", "/users/:user/events", ""},
+		{"GET", "/users/:user/events/public", ""},
+		{"GET", "/users/:user/events/orgs/:org", ""},
+		{"GET", "/feeds", ""},
+		{"GET", "/notifications", ""},
+		{"GET", "/repos/:owner/:repo/notifications", ""},
+		{"PUT", "/notifications", ""},
+		{"PUT", "/repos/:owner/:repo/notifications", ""},
+		{"GET", "/notifications/threads/:id", ""},
+		//{"PATCH", "/notifications/threads/:id", ""},
+		{"GET", "/notifications/threads/:id/subscription", ""},
+		{"PUT", "/notifications/threads/:id/subscription", ""},
+		{"DELETE", "/notifications/threads/:id/subscription", ""},
+		{"GET", "/repos/:owner/:repo/stargazers", ""},
+		{"GET", "/users/:user/starred", ""},
+		{"GET", "/user/starred", ""},
+		{"GET", "/user/starred/:owner/:repo", ""},
+		{"PUT", "/user/starred/:owner/:repo", ""},
+		{"DELETE", "/user/starred/:owner/:repo", ""},
+		{"GET", "/repos/:owner/:repo/subscribers", ""},
+		{"GET", "/users/:user/subscriptions", ""},
+		{"GET", "/user/subscriptions", ""},
+		{"GET", "/repos/:owner/:repo/subscription", ""},
+		{"PUT", "/repos/:owner/:repo/subscription", ""},
+		{"DELETE", "/repos/:owner/:repo/subscription", ""},
+		{"GET", "/user/subscriptions/:owner/:repo", ""},
+		{"PUT", "/user/subscriptions/:owner/:repo", ""},
+		{"DELETE", "/user/subscriptions/:owner/:repo", ""},
 
 		// Gists
-		{"GET", "/users/:user/gists", nil},
-		{"GET", "/gists", nil},
-		//{"GET", "/gists/public", nil},
-		//{"GET", "/gists/starred", nil},
-		{"GET", "/gists/:id", nil},
-		{"POST", "/gists", nil},
-		//{"PATCH", "/gists/:id", nil},
-		{"PUT", "/gists/:id/star", nil},
-		{"DELETE", "/gists/:id/star", nil},
-		{"GET", "/gists/:id/star", nil},
-		{"POST", "/gists/:id/forks", nil},
-		{"DELETE", "/gists/:id", nil},
+		{"GET", "/users/:user/gists", ""},
+		{"GET", "/gists", ""},
+		//{"GET", "/gists/public", ""},
+		//{"GET", "/gists/starred", ""},
+		{"GET", "/gists/:id", ""},
+		{"POST", "/gists", ""},
+		//{"PATCH", "/gists/:id", ""},
+		{"PUT", "/gists/:id/star", ""},
+		{"DELETE", "/gists/:id/star", ""},
+		{"GET", "/gists/:id/star", ""},
+		{"POST", "/gists/:id/forks", ""},
+		{"DELETE", "/gists/:id", ""},
 
 		// Git Data
-		{"GET", "/repos/:owner/:repo/git/blobs/:sha", nil},
-		{"POST", "/repos/:owner/:repo/git/blobs", nil},
-		{"GET", "/repos/:owner/:repo/git/commits/:sha", nil},
-		{"POST", "/repos/:owner/:repo/git/commits", nil},
-		//{"GET", "/repos/:owner/:repo/git/refs/*ref", nil},
-		{"GET", "/repos/:owner/:repo/git/refs", nil},
-		{"POST", "/repos/:owner/:repo/git/refs", nil},
-		//{"PATCH", "/repos/:owner/:repo/git/refs/*ref", nil},
-		//{"DELETE", "/repos/:owner/:repo/git/refs/*ref", nil},
-		{"GET", "/repos/:owner/:repo/git/tags/:sha", nil},
-		{"POST", "/repos/:owner/:repo/git/tags", nil},
-		{"GET", "/repos/:owner/:repo/git/trees/:sha", nil},
-		{"POST", "/repos/:owner/:repo/git/trees", nil},
+		{"GET", "/repos/:owner/:repo/git/blobs/:sha", ""},
+		{"POST", "/repos/:owner/:repo/git/blobs", ""},
+		{"GET", "/repos/:owner/:repo/git/commits/:sha", ""},
+		{"POST", "/repos/:owner/:repo/git/commits", ""},
+		//{"GET", "/repos/:owner/:repo/git/refs/*ref", ""},
+		{"GET", "/repos/:owner/:repo/git/refs", ""},
+		{"POST", "/repos/:owner/:repo/git/refs", ""},
+		//{"PATCH", "/repos/:owner/:repo/git/refs/*ref", ""},
+		//{"DELETE", "/repos/:owner/:repo/git/refs/*ref", ""},
+		{"GET", "/repos/:owner/:repo/git/tags/:sha", ""},
+		{"POST", "/repos/:owner/:repo/git/tags", ""},
+		{"GET", "/repos/:owner/:repo/git/trees/:sha", ""},
+		{"POST", "/repos/:owner/:repo/git/trees", ""},
 
 		// Issues
-		{"GET", "/issues", nil},
-		{"GET", "/user/issues", nil},
-		{"GET", "/orgs/:org/issues", nil},
-		{"GET", "/repos/:owner/:repo/issues", nil},
-		{"GET", "/repos/:owner/:repo/issues/:number", nil},
-		{"POST", "/repos/:owner/:repo/issues", nil},
-		//{"PATCH", "/repos/:owner/:repo/issues/:number", nil},
-		{"GET", "/repos/:owner/:repo/assignees", nil},
-		{"GET", "/repos/:owner/:repo/assignees/:assignee", nil},
-		{"GET", "/repos/:owner/:repo/issues/:number/comments", nil},
-		//{"GET", "/repos/:owner/:repo/issues/comments", nil},
-		//{"GET", "/repos/:owner/:repo/issues/comments/:id", nil},
-		{"POST", "/repos/:owner/:repo/issues/:number/comments", nil},
-		//{"PATCH", "/repos/:owner/:repo/issues/comments/:id", nil},
-		//{"DELETE", "/repos/:owner/:repo/issues/comments/:id", nil},
-		{"GET", "/repos/:owner/:repo/issues/:number/events", nil},
-		//{"GET", "/repos/:owner/:repo/issues/events", nil},
-		//{"GET", "/repos/:owner/:repo/issues/events/:id", nil},
-		{"GET", "/repos/:owner/:repo/labels", nil},
-		{"GET", "/repos/:owner/:repo/labels/:name", nil},
-		{"POST", "/repos/:owner/:repo/labels", nil},
-		//{"PATCH", "/repos/:owner/:repo/labels/:name", nil},
-		{"DELETE", "/repos/:owner/:repo/labels/:name", nil},
-		{"GET", "/repos/:owner/:repo/issues/:number/labels", nil},
-		{"POST", "/repos/:owner/:repo/issues/:number/labels", nil},
-		{"DELETE", "/repos/:owner/:repo/issues/:number/labels/:name", nil},
-		{"PUT", "/repos/:owner/:repo/issues/:number/labels", nil},
-		{"DELETE", "/repos/:owner/:repo/issues/:number/labels", nil},
-		{"GET", "/repos/:owner/:repo/milestones/:number/labels", nil},
-		{"GET", "/repos/:owner/:repo/milestones", nil},
-		{"GET", "/repos/:owner/:repo/milestones/:number", nil},
-		{"POST", "/repos/:owner/:repo/milestones", nil},
-		//{"PATCH", "/repos/:owner/:repo/milestones/:number", nil},
-		{"DELETE", "/repos/:owner/:repo/milestones/:number", nil},
+		{"GET", "/issues", ""},
+		{"GET", "/user/issues", ""},
+		{"GET", "/orgs/:org/issues", ""},
+		{"GET", "/repos/:owner/:repo/issues", ""},
+		{"GET", "/repos/:owner/:repo/issues/:number", ""},
+		{"POST", "/repos/:owner/:repo/issues", ""},
+		//{"PATCH", "/repos/:owner/:repo/issues/:number", ""},
+		{"GET", "/repos/:owner/:repo/assignees", ""},
+		{"GET", "/repos/:owner/:repo/assignees/:assignee", ""},
+		{"GET", "/repos/:owner/:repo/issues/:number/comments", ""},
+		//{"GET", "/repos/:owner/:repo/issues/comments", ""},
+		//{"GET", "/repos/:owner/:repo/issues/comments/:id", ""},
+		{"POST", "/repos/:owner/:repo/issues/:number/comments", ""},
+		//{"PATCH", "/repos/:owner/:repo/issues/comments/:id", ""},
+		//{"DELETE", "/repos/:owner/:repo/issues/comments/:id", ""},
+		{"GET", "/repos/:owner/:repo/issues/:number/events", ""},
+		//{"GET", "/repos/:owner/:repo/issues/events", ""},
+		//{"GET", "/repos/:owner/:repo/issues/events/:id", ""},
+		{"GET", "/repos/:owner/:repo/labels", ""},
+		{"GET", "/repos/:owner/:repo/labels/:name", ""},
+		{"POST", "/repos/:owner/:repo/labels", ""},
+		//{"PATCH", "/repos/:owner/:repo/labels/:name", ""},
+		{"DELETE", "/repos/:owner/:repo/labels/:name", ""},
+		{"GET", "/repos/:owner/:repo/issues/:number/labels", ""},
+		{"POST", "/repos/:owner/:repo/issues/:number/labels", ""},
+		{"DELETE", "/repos/:owner/:repo/issues/:number/labels/:name", ""},
+		{"PUT", "/repos/:owner/:repo/issues/:number/labels", ""},
+		{"DELETE", "/repos/:owner/:repo/issues/:number/labels", ""},
+		{"GET", "/repos/:owner/:repo/milestones/:number/labels", ""},
+		{"GET", "/repos/:owner/:repo/milestones", ""},
+		{"GET", "/repos/:owner/:repo/milestones/:number", ""},
+		{"POST", "/repos/:owner/:repo/milestones", ""},
+		//{"PATCH", "/repos/:owner/:repo/milestones/:number", ""},
+		{"DELETE", "/repos/:owner/:repo/milestones/:number", ""},
 
 		// Miscellaneous
-		{"GET", "/emojis", nil},
-		{"GET", "/gitignore/templates", nil},
-		{"GET", "/gitignore/templates/:name", nil},
-		{"POST", "/markdown", nil},
-		{"POST", "/markdown/raw", nil},
-		{"GET", "/meta", nil},
-		{"GET", "/rate_limit", nil},
+		{"GET", "/emojis", ""},
+		{"GET", "/gitignore/templates", ""},
+		{"GET", "/gitignore/templates/:name", ""},
+		{"POST", "/markdown", ""},
+		{"POST", "/markdown/raw", ""},
+		{"GET", "/meta", ""},
+		{"GET", "/rate_limit", ""},
 
 		// Organizations
-		{"GET", "/users/:user/orgs", nil},
-		{"GET", "/user/orgs", nil},
-		{"GET", "/orgs/:org", nil},
-		//{"PATCH", "/orgs/:org", nil},
-		{"GET", "/orgs/:org/members", nil},
-		{"GET", "/orgs/:org/members/:user", nil},
-		{"DELETE", "/orgs/:org/members/:user", nil},
-		{"GET", "/orgs/:org/public_members", nil},
-		{"GET", "/orgs/:org/public_members/:user", nil},
-		{"PUT", "/orgs/:org/public_members/:user", nil},
-		{"DELETE", "/orgs/:org/public_members/:user", nil},
-		{"GET", "/orgs/:org/teams", nil},
-		{"GET", "/teams/:id", nil},
-		{"POST", "/orgs/:org/teams", nil},
-		//{"PATCH", "/teams/:id", nil},
-		{"DELETE", "/teams/:id", nil},
-		{"GET", "/teams/:id/members", nil},
-		{"GET", "/teams/:id/members/:user", nil},
-		{"PUT", "/teams/:id/members/:user", nil},
-		{"DELETE", "/teams/:id/members/:user", nil},
-		{"GET", "/teams/:id/repos", nil},
-		{"GET", "/teams/:id/repos/:owner/:repo", nil},
-		{"PUT", "/teams/:id/repos/:owner/:repo", nil},
-		{"DELETE", "/teams/:id/repos/:owner/:repo", nil},
-		{"GET", "/user/teams", nil},
+		{"GET", "/users/:user/orgs", ""},
+		{"GET", "/user/orgs", ""},
+		{"GET", "/orgs/:org", ""},
+		//{"PATCH", "/orgs/:org", ""},
+		{"GET", "/orgs/:org/members", ""},
+		{"GET", "/orgs/:org/members/:user", ""},
+		{"DELETE", "/orgs/:org/members/:user", ""},
+		{"GET", "/orgs/:org/public_members", ""},
+		{"GET", "/orgs/:org/public_members/:user", ""},
+		{"PUT", "/orgs/:org/public_members/:user", ""},
+		{"DELETE", "/orgs/:org/public_members/:user", ""},
+		{"GET", "/orgs/:org/teams", ""},
+		{"GET", "/teams/:id", ""},
+		{"POST", "/orgs/:org/teams", ""},
+		//{"PATCH", "/teams/:id", ""},
+		{"DELETE", "/teams/:id", ""},
+		{"GET", "/teams/:id/members", ""},
+		{"GET", "/teams/:id/members/:user", ""},
+		{"PUT", "/teams/:id/members/:user", ""},
+		{"DELETE", "/teams/:id/members/:user", ""},
+		{"GET", "/teams/:id/repos", ""},
+		{"GET", "/teams/:id/repos/:owner/:repo", ""},
+		{"PUT", "/teams/:id/repos/:owner/:repo", ""},
+		{"DELETE", "/teams/:id/repos/:owner/:repo", ""},
+		{"GET", "/user/teams", ""},
 
 		// Pull Requests
-		{"GET", "/repos/:owner/:repo/pulls", nil},
-		{"GET", "/repos/:owner/:repo/pulls/:number", nil},
-		{"POST", "/repos/:owner/:repo/pulls", nil},
-		//{"PATCH", "/repos/:owner/:repo/pulls/:number", nil},
-		{"GET", "/repos/:owner/:repo/pulls/:number/commits", nil},
-		{"GET", "/repos/:owner/:repo/pulls/:number/files", nil},
-		{"GET", "/repos/:owner/:repo/pulls/:number/merge", nil},
-		{"PUT", "/repos/:owner/:repo/pulls/:number/merge", nil},
-		{"GET", "/repos/:owner/:repo/pulls/:number/comments", nil},
-		//{"GET", "/repos/:owner/:repo/pulls/comments", nil},
-		//{"GET", "/repos/:owner/:repo/pulls/comments/:number", nil},
-		{"PUT", "/repos/:owner/:repo/pulls/:number/comments", nil},
-		//{"PATCH", "/repos/:owner/:repo/pulls/comments/:number", nil},
-		//{"DELETE", "/repos/:owner/:repo/pulls/comments/:number", nil},
+		{"GET", "/repos/:owner/:repo/pulls", ""},
+		{"GET", "/repos/:owner/:repo/pulls/:number", ""},
+		{"POST", "/repos/:owner/:repo/pulls", ""},
+		//{"PATCH", "/repos/:owner/:repo/pulls/:number", ""},
+		{"GET", "/repos/:owner/:repo/pulls/:number/commits", ""},
+		{"GET", "/repos/:owner/:repo/pulls/:number/files", ""},
+		{"GET", "/repos/:owner/:repo/pulls/:number/merge", ""},
+		{"PUT", "/repos/:owner/:repo/pulls/:number/merge", ""},
+		{"GET", "/repos/:owner/:repo/pulls/:number/comments", ""},
+		//{"GET", "/repos/:owner/:repo/pulls/comments", ""},
+		//{"GET", "/repos/:owner/:repo/pulls/comments/:number", ""},
+		{"PUT", "/repos/:owner/:repo/pulls/:number/comments", ""},
+		//{"PATCH", "/repos/:owner/:repo/pulls/comments/:number", ""},
+		//{"DELETE", "/repos/:owner/:repo/pulls/comments/:number", ""},
 
 		// Repositories
-		{"GET", "/user/repos", nil},
-		{"GET", "/users/:user/repos", nil},
-		{"GET", "/orgs/:org/repos", nil},
-		{"GET", "/repositories", nil},
-		{"POST", "/user/repos", nil},
-		{"POST", "/orgs/:org/repos", nil},
-		{"GET", "/repos/:owner/:repo", nil},
-		//{"PATCH", "/repos/:owner/:repo", nil},
-		{"GET", "/repos/:owner/:repo/contributors", nil},
-		{"GET", "/repos/:owner/:repo/languages", nil},
-		{"GET", "/repos/:owner/:repo/teams", nil},
-		{"GET", "/repos/:owner/:repo/tags", nil},
-		{"GET", "/repos/:owner/:repo/branches", nil},
-		{"GET", "/repos/:owner/:repo/branches/:branch", nil},
-		{"DELETE", "/repos/:owner/:repo", nil},
-		{"GET", "/repos/:owner/:repo/collaborators", nil},
-		{"GET", "/repos/:owner/:repo/collaborators/:user", nil},
-		{"PUT", "/repos/:owner/:repo/collaborators/:user", nil},
-		{"DELETE", "/repos/:owner/:repo/collaborators/:user", nil},
-		{"GET", "/repos/:owner/:repo/comments", nil},
-		{"GET", "/repos/:owner/:repo/commits/:sha/comments", nil},
-		{"POST", "/repos/:owner/:repo/commits/:sha/comments", nil},
-		{"GET", "/repos/:owner/:repo/comments/:id", nil},
-		//{"PATCH", "/repos/:owner/:repo/comments/:id", nil},
-		{"DELETE", "/repos/:owner/:repo/comments/:id", nil},
-		{"GET", "/repos/:owner/:repo/commits", nil},
-		{"GET", "/repos/:owner/:repo/commits/:sha", nil},
-		{"GET", "/repos/:owner/:repo/readme", nil},
-		//{"GET", "/repos/:owner/:repo/contents/*path", nil},
-		//{"PUT", "/repos/:owner/:repo/contents/*path", nil},
-		//{"DELETE", "/repos/:owner/:repo/contents/*path", nil},
-		//{"GET", "/repos/:owner/:repo/:archive_format/:ref", nil},
-		{"GET", "/repos/:owner/:repo/keys", nil},
-		{"GET", "/repos/:owner/:repo/keys/:id", nil},
-		{"POST", "/repos/:owner/:repo/keys", nil},
-		//{"PATCH", "/repos/:owner/:repo/keys/:id", nil},
-		{"DELETE", "/repos/:owner/:repo/keys/:id", nil},
-		{"GET", "/repos/:owner/:repo/downloads", nil},
-		{"GET", "/repos/:owner/:repo/downloads/:id", nil},
-		{"DELETE", "/repos/:owner/:repo/downloads/:id", nil},
-		{"GET", "/repos/:owner/:repo/forks", nil},
-		{"POST", "/repos/:owner/:repo/forks", nil},
-		{"GET", "/repos/:owner/:repo/hooks", nil},
-		{"GET", "/repos/:owner/:repo/hooks/:id", nil},
-		{"POST", "/repos/:owner/:repo/hooks", nil},
-		//{"PATCH", "/repos/:owner/:repo/hooks/:id", nil},
-		{"POST", "/repos/:owner/:repo/hooks/:id/tests", nil},
-		{"DELETE", "/repos/:owner/:repo/hooks/:id", nil},
-		{"POST", "/repos/:owner/:repo/merges", nil},
-		{"GET", "/repos/:owner/:repo/releases", nil},
-		{"GET", "/repos/:owner/:repo/releases/:id", nil},
-		{"POST", "/repos/:owner/:repo/releases", nil},
-		//{"PATCH", "/repos/:owner/:repo/releases/:id", nil},
-		{"DELETE", "/repos/:owner/:repo/releases/:id", nil},
-		{"GET", "/repos/:owner/:repo/releases/:id/assets", nil},
-		{"GET", "/repos/:owner/:repo/stats/contributors", nil},
-		{"GET", "/repos/:owner/:repo/stats/commit_activity", nil},
-		{"GET", "/repos/:owner/:repo/stats/code_frequency", nil},
-		{"GET", "/repos/:owner/:repo/stats/participation", nil},
-		{"GET", "/repos/:owner/:repo/stats/punch_card", nil},
-		{"GET", "/repos/:owner/:repo/statuses/:ref", nil},
-		{"POST", "/repos/:owner/:repo/statuses/:ref", nil},
+		{"GET", "/user/repos", ""},
+		{"GET", "/users/:user/repos", ""},
+		{"GET", "/orgs/:org/repos", ""},
+		{"GET", "/repositories", ""},
+		{"POST", "/user/repos", ""},
+		{"POST", "/orgs/:org/repos", ""},
+		{"GET", "/repos/:owner/:repo", ""},
+		//{"PATCH", "/repos/:owner/:repo", ""},
+		{"GET", "/repos/:owner/:repo/contributors", ""},
+		{"GET", "/repos/:owner/:repo/languages", ""},
+		{"GET", "/repos/:owner/:repo/teams", ""},
+		{"GET", "/repos/:owner/:repo/tags", ""},
+		{"GET", "/repos/:owner/:repo/branches", ""},
+		{"GET", "/repos/:owner/:repo/branches/:branch", ""},
+		{"DELETE", "/repos/:owner/:repo", ""},
+		{"GET", "/repos/:owner/:repo/collaborators", ""},
+		{"GET", "/repos/:owner/:repo/collaborators/:user", ""},
+		{"PUT", "/repos/:owner/:repo/collaborators/:user", ""},
+		{"DELETE", "/repos/:owner/:repo/collaborators/:user", ""},
+		{"GET", "/repos/:owner/:repo/comments", ""},
+		{"GET", "/repos/:owner/:repo/commits/:sha/comments", ""},
+		{"POST", "/repos/:owner/:repo/commits/:sha/comments", ""},
+		{"GET", "/repos/:owner/:repo/comments/:id", ""},
+		//{"PATCH", "/repos/:owner/:repo/comments/:id", ""},
+		{"DELETE", "/repos/:owner/:repo/comments/:id", ""},
+		{"GET", "/repos/:owner/:repo/commits", ""},
+		{"GET", "/repos/:owner/:repo/commits/:sha", ""},
+		{"GET", "/repos/:owner/:repo/readme", ""},
+		//{"GET", "/repos/:owner/:repo/contents/*path", ""},
+		//{"PUT", "/repos/:owner/:repo/contents/*path", ""},
+		//{"DELETE", "/repos/:owner/:repo/contents/*path", ""},
+		//{"GET", "/repos/:owner/:repo/:archive_format/:ref", ""},
+		{"GET", "/repos/:owner/:repo/keys", ""},
+		{"GET", "/repos/:owner/:repo/keys/:id", ""},
+		{"POST", "/repos/:owner/:repo/keys", ""},
+		//{"PATCH", "/repos/:owner/:repo/keys/:id", ""},
+		{"DELETE", "/repos/:owner/:repo/keys/:id", ""},
+		{"GET", "/repos/:owner/:repo/downloads", ""},
+		{"GET", "/repos/:owner/:repo/downloads/:id", ""},
+		{"DELETE", "/repos/:owner/:repo/downloads/:id", ""},
+		{"GET", "/repos/:owner/:repo/forks", ""},
+		{"POST", "/repos/:owner/:repo/forks", ""},
+		{"GET", "/repos/:owner/:repo/hooks", ""},
+		{"GET", "/repos/:owner/:repo/hooks/:id", ""},
+		{"POST", "/repos/:owner/:repo/hooks", ""},
+		//{"PATCH", "/repos/:owner/:repo/hooks/:id", ""},
+		{"POST", "/repos/:owner/:repo/hooks/:id/tests", ""},
+		{"DELETE", "/repos/:owner/:repo/hooks/:id", ""},
+		{"POST", "/repos/:owner/:repo/merges", ""},
+		{"GET", "/repos/:owner/:repo/releases", ""},
+		{"GET", "/repos/:owner/:repo/releases/:id", ""},
+		{"POST", "/repos/:owner/:repo/releases", ""},
+		//{"PATCH", "/repos/:owner/:repo/releases/:id", ""},
+		{"DELETE", "/repos/:owner/:repo/releases/:id", ""},
+		{"GET", "/repos/:owner/:repo/releases/:id/assets", ""},
+		{"GET", "/repos/:owner/:repo/stats/contributors", ""},
+		{"GET", "/repos/:owner/:repo/stats/commit_activity", ""},
+		{"GET", "/repos/:owner/:repo/stats/code_frequency", ""},
+		{"GET", "/repos/:owner/:repo/stats/participation", ""},
+		{"GET", "/repos/:owner/:repo/stats/punch_card", ""},
+		{"GET", "/repos/:owner/:repo/statuses/:ref", ""},
+		{"POST", "/repos/:owner/:repo/statuses/:ref", ""},
 
 		// Search
-		{"GET", "/search/repositories", nil},
-		{"GET", "/search/code", nil},
-		{"GET", "/search/issues", nil},
-		{"GET", "/search/users", nil},
-		{"GET", "/legacy/issues/search/:owner/:repository/:state/:keyword", nil},
-		{"GET", "/legacy/repos/search/:keyword", nil},
-		{"GET", "/legacy/user/search/:keyword", nil},
-		{"GET", "/legacy/user/email/:email", nil},
+		{"GET", "/search/repositories", ""},
+		{"GET", "/search/code", ""},
+		{"GET", "/search/issues", ""},
+		{"GET", "/search/users", ""},
+		{"GET", "/legacy/issues/search/:owner/:repository/:state/:keyword", ""},
+		{"GET", "/legacy/repos/search/:keyword", ""},
+		{"GET", "/legacy/user/search/:keyword", ""},
+		{"GET", "/legacy/user/email/:email", ""},
 
 		// Users
-		{"GET", "/users/:user", nil},
-		{"GET", "/user", nil},
-		//{"PATCH", "/user", nil},
-		{"GET", "/users", nil},
-		{"GET", "/user/emails", nil},
-		{"POST", "/user/emails", nil},
-		{"DELETE", "/user/emails", nil},
-		{"GET", "/users/:user/followers", nil},
-		{"GET", "/user/followers", nil},
-		{"GET", "/users/:user/following", nil},
-		{"GET", "/user/following", nil},
-		{"GET", "/user/following/:user", nil},
-		{"GET", "/users/:user/following/:target_user", nil},
-		{"PUT", "/user/following/:user", nil},
-		{"DELETE", "/user/following/:user", nil},
-		{"GET", "/users/:user/keys", nil},
-		{"GET", "/user/keys", nil},
-		{"GET", "/user/keys/:id", nil},
-		{"POST", "/user/keys", nil},
-		//{"PATCH", "/user/keys/:id", nil},
-		{"DELETE", "/user/keys/:id", nil},
+		{"GET", "/users/:user", ""},
+		{"GET", "/user", ""},
+		//{"PATCH", "/user", ""},
+		{"GET", "/users", ""},
+		{"GET", "/user/emails", ""},
+		{"POST", "/user/emails", ""},
+		{"DELETE", "/user/emails", ""},
+		{"GET", "/users/:user/followers", ""},
+		{"GET", "/user/followers", ""},
+		{"GET", "/users/:user/following", ""},
+		{"GET", "/user/following", ""},
+		{"GET", "/user/following/:user", ""},
+		{"GET", "/users/:user/following/:target_user", ""},
+		{"PUT", "/user/following/:user", ""},
+		{"DELETE", "/user/following/:user", ""},
+		{"GET", "/users/:user/keys", ""},
+		{"GET", "/user/keys", ""},
+		{"GET", "/user/keys/:id", ""},
+		{"POST", "/user/keys", ""},
+		//{"PATCH", "/user/keys/:id", ""},
+		{"DELETE", "/user/keys/:id", ""},
 	}
 )
 
@@ -283,7 +282,7 @@ func TestRouterStatic(t *testing.T) {
 		return nil
 	}, e)
 	c := NewContext(nil, nil, e)
-	h, _ := r.Find(GET, path, c.X())
+	h, _ := r.Find(GET, path, c)
 	if assert.NotNil(t, h) {
 		h(c)
 		assert.Equal(t, path, c.Get("path"))
@@ -296,7 +295,7 @@ func TestRouterParam(t *testing.T) {
 	r.Add(GET, "/users/:id", func(c Context) error {
 		return nil
 	}, e)
-	c := NewContext(nil, nil, e).X()
+	c := NewContext(nil, nil, e)
 	h, _ := r.Find(GET, "/users/1", c)
 	if assert.NotNil(t, h) {
 		assert.Equal(t, "1", c.P(0))
@@ -309,7 +308,7 @@ func TestRouterTwoParam(t *testing.T) {
 	r.Add(GET, "/users/:uid/files/:fid", func(Context) error {
 		return nil
 	}, e)
-	c := NewContext(nil, nil, e).X()
+	c := NewContext(nil, nil, e)
 
 	h, _ := r.Find(GET, "/users/1/files/1", c)
 	if assert.NotNil(t, h) {
@@ -332,7 +331,7 @@ func TestRouterMatchAny(t *testing.T) {
 	r.Add(GET, "/users/*", func(Context) error {
 		return nil
 	}, e)
-	c := NewContext(nil, nil, e).X()
+	c := NewContext(nil, nil, e)
 
 	h, _ := r.Find(GET, "/", c)
 	if assert.NotNil(t, h) {
@@ -356,7 +355,7 @@ func TestRouterMicroParam(t *testing.T) {
 	r.Add(GET, "/:a/:b/:c", func(c Context) error {
 		return nil
 	}, e)
-	c := NewContext(nil, nil, e).X()
+	c := NewContext(nil, nil, e)
 	h, _ := r.Find(GET, "/1/2/3", c)
 	if assert.NotNil(t, h) {
 		assert.Equal(t, "1", c.P(0))
@@ -373,7 +372,7 @@ func TestRouterMixParamMatchAny(t *testing.T) {
 	r.Add(GET, "/users/:id/*", func(c Context) error {
 		return nil
 	}, e)
-	c := NewContext(nil, nil, e).X()
+	c := NewContext(nil, nil, e)
 
 	h, _ := r.Find(GET, "/users/joe/comments", c)
 	if assert.NotNil(t, h) {
@@ -394,7 +393,7 @@ func TestRouterMultiRoute(t *testing.T) {
 	r.Add(GET, "/users/:id", func(c Context) error {
 		return nil
 	}, e)
-	c := NewContext(nil, nil, e).X()
+	c := NewContext(nil, nil, e)
 
 	// Route > /users
 	h, _ := r.Find(GET, "/users", c)
@@ -450,7 +449,7 @@ func TestRouterPriority(t *testing.T) {
 		c.Set("g", 7)
 		return nil
 	}, e)
-	c := NewContext(nil, nil, e).X()
+	c := NewContext(nil, nil, e)
 
 	// Route > /users
 	h, _ := r.Find(GET, "/users", c)
@@ -518,7 +517,7 @@ func TestRouterParamNames(t *testing.T) {
 	r.Add(GET, "/users/:uid/files/:fid", func(c Context) error {
 		return nil
 	}, e)
-	c := NewContext(nil, nil, e).X()
+	c := NewContext(nil, nil, e)
 
 	// Route > /users
 	h, _ := r.Find(GET, "/users", c)
@@ -530,16 +529,16 @@ func TestRouterParamNames(t *testing.T) {
 	// Route > /users/:id
 	h, _ = r.Find(GET, "/users/1", c)
 	if assert.NotNil(t, h) {
-		assert.Equal(t, "id", c.pnames[0])
+		assert.Equal(t, "id", c.X().pnames[0])
 		assert.Equal(t, "1", c.P(0))
 	}
 
 	// Route > /users/:uid/files/:fid
 	h, _ = r.Find(GET, "/users/1/files/1", c)
 	if assert.NotNil(t, h) {
-		assert.Equal(t, "uid", c.pnames[0])
+		assert.Equal(t, "uid", c.X().pnames[0])
 		assert.Equal(t, "1", c.P(0))
-		assert.Equal(t, "fid", c.pnames[1])
+		assert.Equal(t, "fid", c.X().pnames[1])
 		assert.Equal(t, "1", c.P(1))
 	}
 }
@@ -553,11 +552,11 @@ func TestRouterAPI(t *testing.T) {
 			return nil
 		}, e)
 	}
-	c := NewContext(nil, nil, e).X()
+	c := NewContext(nil, nil, e)
 	for _, route := range api {
 		h, _ := r.Find(route.Method, route.Path, c)
 		if assert.NotNil(t, h) {
-			for i, n := range c.pnames {
+			for i, n := range c.X().pnames {
 				if assert.NotEmpty(t, n) {
 					assert.Equal(t, ":"+n, c.P(i))
 				}
@@ -565,27 +564,6 @@ func TestRouterAPI(t *testing.T) {
 			h(c)
 		}
 	}
-}
-
-func TestRouterServeHTTP(t *testing.T) {
-	e := New()
-	r := e.router
-
-	r.Add(GET, "/users", func(Context) error {
-		return nil
-	}, e)
-
-	// OK
-	req, _ := http.NewRequest(GET, "/users", nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusOK, w.Code)
-
-	// Not found
-	req, _ = http.NewRequest(GET, "/files", nil)
-	w = httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
 func (n *node) printTree(pfx string, tail bool) {

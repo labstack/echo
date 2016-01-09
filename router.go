@@ -1,7 +1,5 @@
 package echo
 
-import "net/http"
-
 type (
 	Router struct {
 		tree   *node
@@ -399,15 +397,4 @@ End:
 		}
 	}
 	return
-}
-
-func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	// TODO: v2
-	// c := r.echo.pool.Get().(*context)
-	// h, _ := r.Find(req.Method, req.URL.Path, c)
-	// c.reset(req, w, r.echo)
-	// if err := h(c); err != nil {
-	// 	r.echo.httpErrorHandler(err, c)
-	// }
-	// r.echo.pool.Put(c)
 }
