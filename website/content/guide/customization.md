@@ -14,8 +14,8 @@ Registers a custom `Echo#HTTPErrorHandler`.
 
 Default handler rules:
 
-- If error is of type `Echo#HTTPError` it sends HTTP response with status code `HTTPError.Code`
-and message `HTTPError.Message`.
+- If error is of type `Echo#HTTPError` it sends HTTP response with status code `HTTPError.code`
+and message `HTTPError.message`.
 - Else it sends `500 - Internal Server Error`.
 - If debug mode is enabled, it uses `error.Error()` as status message.
 
