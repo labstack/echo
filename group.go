@@ -12,7 +12,7 @@ func (g *Group) Use(m ...Middleware) {
 	}
 }
 
-// Any adds a route > handler to the router for all HTTP methods.
+// Any adds a route > handler to the router for all HTTP methods
 func (g *Group) Any(path string, h Handler) {
 	for _, m := range methods {
 		g.echo.add(m, path, h)
