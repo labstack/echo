@@ -20,4 +20,5 @@ func TestGroup(t *testing.T) {
 	g.Static("/scripts", "scripts")
 	g.ServeDir("/scripts", "scripts")
 	g.ServeFile("/scripts/main.js", "scripts/main.js")
+	g.Any("/path-sub", h)
 }
