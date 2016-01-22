@@ -232,7 +232,7 @@ func (e *Echo) SetLogPrefix(prefix string) {
 	e.logger.SetPrefix(prefix)
 }
 
-// SetLogOutput sets the output destination for the logger. Default value is `os.Std*`
+// SetLogOutput sets the output destination for the logger. Default value is `os.Stdout`
 func (e *Echo) SetLogOutput(w io.Writer) {
 	e.logger.SetOutput(w)
 }
