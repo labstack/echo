@@ -272,12 +272,12 @@ func (n *node) check405() HandlerFunc {
 			return methodNotAllowedHandler
 		}
 	}
-	return notFoundHandler
+	return methodNotAllowedHandler
 }
 
 func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo) {
-	h = notFoundHandler
 	e = r.echo
+	h = e.notFoundHandler
 	cn := r.tree // Current node as root
 
 	var (

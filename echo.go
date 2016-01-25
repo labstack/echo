@@ -171,10 +171,6 @@ var (
 	// Error handlers
 	//----------------
 
-	notFoundHandler = func(c *Context) error {
-		return NewHTTPError(http.StatusNotFound)
-	}
-
 	methodNotAllowedHandler = func(c *Context) error {
 		return NewHTTPError(http.StatusMethodNotAllowed)
 	}
@@ -209,6 +205,9 @@ func New() (e *Echo) {
 		e.logger.Error(err)
 	}
 	e.SetHTTPErrorHandler(e.defaultHTTPErrorHandler)
+	e.SetNotFoundHandler(func(c *Context) error {
+		return NewHTTPError(http.StatusNotFound)
+	})
 	e.SetBinder(&binder{})
 
 	// Logger
@@ -281,6 +280,11 @@ func (e *Echo) Debug() bool {
 // AutoIndex enable/disable automatically creating an index page for the directory.
 func (e *Echo) AutoIndex(on bool) {
 	e.autoIndex = on
+}
+
+// SetNotFoundHandler registers a custom not found echo.HandlerFunc
+func (e *Echo) SetNotFoundHandler(h HandlerFunc) {
+	e.notFoundHandler = h
 }
 
 // Hook registers a callback which is invoked from `Echo#ServerHTTP` as the first
