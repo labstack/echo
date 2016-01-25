@@ -118,7 +118,7 @@ func TestGzipCloseNotify(t *testing.T) {
 	case <-time.After(time.Second):
 	}
 
-	assert.Equal(t, closed, true)
+	assert.Equal(t, true, closed)
 }
 
 func BenchmarkGzip(b *testing.B) {

@@ -204,7 +204,7 @@ func TestContext(t *testing.T) {
 	err = c.File("test/fixture/walle.png", "WALLE.PNG", true)
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, rec.Header().Get(ContentDisposition), "attachment; filename=WALLE.PNG")
+		assert.Equal(t, "attachment; filename=WALLE.PNG", rec.Header().Get(ContentDisposition))
 		assert.Equal(t, 219885, rec.Body.Len())
 	}
 
@@ -236,12 +236,12 @@ func TestContextPath(t *testing.T) {
 	r.Add(GET, "/users/:id", nil, e)
 	c := NewContext(nil, nil, e).X()
 	r.Find(GET, "/users/1", c)
-	assert.Equal(t, c.Path(), "/users/:id")
+	assert.Equal(t, "/users/:id", c.Path())
 
 	r.Add(GET, "/users/:uid/files/:fid", nil, e)
 	c = NewContext(nil, nil, e).X()
 	r.Find(GET, "/users/1/files/1", c)
-	assert.Equal(t, c.Path(), "/users/:uid/files/:fid")
+	assert.Equal(t, "/users/:uid/files/:fid", c.Path())
 }
 
 func TestContextQuery(t *testing.T) {
