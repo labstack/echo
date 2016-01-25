@@ -22,19 +22,20 @@ import (
 
 type (
 	Echo struct {
-		prefix           string
-		middleware       []MiddlewareFunc
-		http2            bool
-		maxParam         *int
-		httpErrorHandler HTTPErrorHandler
-		binder           Binder
-		renderer         Renderer
-		pool             sync.Pool
-		debug            bool
-		hook             http.HandlerFunc
-		autoIndex        bool
-		logger           *log.Logger
-		router           *Router
+		prefix                  string
+		middleware              []MiddlewareFunc
+		http2                   bool
+		maxParam                *int
+		defaultHTTPErrorHandler HTTPErrorHandler
+		httpErrorHandler        HTTPErrorHandler
+		binder                  Binder
+		renderer                Renderer
+		pool                    sync.Pool
+		debug                   bool
+		hook                    http.HandlerFunc
+		autoIndex               bool
+		logger                  *log.Logger
+		router                  *Router
 	}
 
 	Route struct {
@@ -192,7 +193,7 @@ func New() (e *Echo) {
 	//----------
 
 	e.HTTP2(true)
-	defaultHTTPErrorHandler := func(err error, c *Context) {
+	e.defaultHTTPErrorHandler = func(err error, c *Context) {
 		code := http.StatusInternalServerError
 		msg := http.StatusText(code)
 		if he, ok := err.(*HTTPError); ok {
@@ -207,7 +208,7 @@ func New() (e *Echo) {
 		}
 		e.logger.Error(err)
 	}
-	e.SetHTTPErrorHandler(defaultHTTPErrorHandler)
+	e.SetHTTPErrorHandler(e.defaultHTTPErrorHandler)
 	e.SetBinder(&binder{})
 
 	// Logger
@@ -245,6 +246,11 @@ func (e *Echo) Logger() *log.Logger {
 // HTTP2 enable/disable HTTP2 support.
 func (e *Echo) HTTP2(on bool) {
 	e.http2 = on
+}
+
+// DefaultHTTPErrorHandler invokes the default HTTP error handler.
+func (e *Echo) DefaultHTTPErrorHandler(err error, c *Context) {
+	e.defaultHTTPErrorHandler(err, c)
 }
 
 // SetHTTPErrorHandler registers a custom Echo.HTTPErrorHandler.
