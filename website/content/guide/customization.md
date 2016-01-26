@@ -45,7 +45,7 @@ SetLogLevel sets the log level for the logger. Default value is `log.INFO`.
 
 ### HTTP2
 
-`echo#HTTP(on bool)`
+`echo#HTTP2(on bool)`
 
 Enable/disable HTTP2 support.
 
