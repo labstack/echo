@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -429,7 +430,7 @@ func (e *Echo) serveFile(dir, file string, c *Context) (err error) {
 		d := f
 
 		// Index file
-		file = filepath.Join(file, indexPage)
+		file = path.Join(file, indexPage)
 		f, err = fs.Open(file)
 		if err != nil {
 			if e.autoIndex {
