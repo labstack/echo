@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/labstack/echo"
+	"fmt"
 )
 
 type (
@@ -39,17 +40,28 @@ func (w *gzipWriter) CloseNotify() <-chan bool {
 	return w.ResponseWriter.(http.CloseNotifier).CloseNotify()
 }
 
-var writerPool = sync.Pool{
-	New: func() interface{} {
-		return gzip.NewWriter(ioutil.Discard)
-	},
+// Gzip returns a middleware which compresses HTTP response using gzip compression
+// scheme with gzip.BestSpeed level.
+func Gzip() echo.MiddlewareFunc {
+	return GzipLevel(gzip.BestSpeed)
 }
 
-// Gzip returns a middleware which compresses HTTP response using gzip compression
-// scheme.
-func Gzip() echo.MiddlewareFunc {
+// GzipLevel returns a middleware which compresses HTTP response using gzip compression
+// scheme with specified level.
+// The compression level can be gzip.DefaultCompression, gzip.NoCompression, or any
+// integer value between gzip.BestSpeed and gzip.BestCompression inclusive.
+// Otherwise panic will be thrown
+func GzipLevel(level int) echo.MiddlewareFunc {
+	if level < gzip.DefaultCompression || level > gzip.BestCompression {
+		panic(fmt.Sprintf("gzip: invalid compression level: %d", level))
+	}
 	scheme := "gzip"
-
+	var writerPool = sync.Pool{
+		New: func() interface{} {
+			w, _ := gzip.NewWriterLevel(ioutil.Discard, level)
+			return w
+		},
+	}
 	return func(h echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			c.Response().Header().Add(echo.Vary, echo.AcceptEncoding)

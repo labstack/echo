@@ -121,6 +121,47 @@ func TestGzipCloseNotify(t *testing.T) {
 	assert.Equal(t, closed, true)
 }
 
+func TestGzipLevel(t *testing.T) {
+	e := echo.New()
+	req, _ := http.NewRequest(echo.GET, "/", nil)
+	rec := httptest.NewRecorder()
+	c := echo.NewContext(req, echo.NewResponse(rec, e), e)
+	h := func(c echo.Context) error {
+		c.Response().Write([]byte("test")) // For Content-Type sniffing
+		return nil
+	}
+
+	req, _ = http.NewRequest(echo.GET, "/", nil)
+	req.Header.Set(echo.AcceptEncoding, "gzip")
+	rec = httptest.NewRecorder()
+	c = echo.NewContext(req, echo.NewResponse(rec, e), e)
+
+	// GzipLevel
+	GzipLevel(gzip.BestSpeed)(h)(c)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "gzip", rec.Header().Get(echo.ContentEncoding))
+	assert.Contains(t, rec.Header().Get(echo.ContentType), echo.TextPlain)
+	r, err := gzip.NewReader(rec.Body)
+	defer r.Close()
+	if assert.NoError(t, err) {
+		buf := new(bytes.Buffer)
+		buf.ReadFrom(r)
+		assert.Equal(t, "test", buf.String())
+	}
+
+	// GzipLevel panic
+	var gzipErr interface{}
+	defer func() {
+		if gzipErr == nil {
+			t.Error("Panic on incorrect compression level didn't occur")
+		}
+	}()
+	defer func() {
+		gzipErr = recover()
+	}()
+	GzipLevel(10)(h)(c)
+}
+
 func BenchmarkGzip(b *testing.B) {
 	b.StopTimer()
 	b.ReportAllocs()
