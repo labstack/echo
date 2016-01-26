@@ -15,6 +15,7 @@ import (
 	"encoding/xml"
 
 	"github.com/stretchr/testify/assert"
+	"bytes"
 )
 
 type (
@@ -208,6 +209,52 @@ func TestContext(t *testing.T) {
 		assert.Equal(t, 219885, rec.Body.Len())
 	}
 
+	// Stream
+	rec = httptest.NewRecorder()
+	c = NewContext(req, NewResponse(rec, e), e).X()
+	buf := bytes.NewBuffer([]byte("Lorem ipsum"))
+	err = c.Stream(buf, "", false)
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, OctetStream, rec.Header().Get(ContentType))
+		assert.Equal(t, "Lorem ipsum", rec.Body.String())
+	}
+
+	// Stream as attachment
+	rec = httptest.NewRecorder()
+	c = NewContext(req, NewResponse(rec, e), e).X()
+	buf = bytes.NewBuffer([]byte("Lorem ipsum"))
+	err = c.Stream(buf, "test.txt", true)
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, TextPlainCharsetUTF8, rec.Header().Get(ContentType))
+		assert.Equal(t, "attachment; filename=test.txt", rec.Header().Get(ContentDisposition))
+		assert.Equal(t, "Lorem ipsum", rec.Body.String())
+	}
+
+	// Bytes
+	rec = httptest.NewRecorder()
+	c = NewContext(req, NewResponse(rec, e), e).X()
+	err = c.Bytes([]byte("Lorem ipsum"), "", false)
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, OctetStream, rec.Header().Get(ContentType))
+		assert.Equal(t, "11", rec.Header().Get(ContentLength))
+		assert.Equal(t, "Lorem ipsum", rec.Body.String())
+	}
+
+	// Bytes as attachment
+	rec = httptest.NewRecorder()
+	c = NewContext(req, NewResponse(rec, e), e).X()
+	err = c.Bytes([]byte("Lorem ipsum"), "test.txt", true)
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, TextPlainCharsetUTF8, rec.Header().Get(ContentType))
+		assert.Equal(t, "attachment; filename=test.txt", rec.Header().Get(ContentDisposition))
+		assert.Equal(t, "11", rec.Header().Get(ContentLength))
+		assert.Equal(t, "Lorem ipsum", rec.Body.String())
+	}
+
 	// NoContent
 	rec = httptest.NewRecorder()
 	c = NewContext(req, NewResponse(rec, e), e).X()
@@ -224,6 +271,10 @@ func TestContext(t *testing.T) {
 	c = NewContext(req, NewResponse(rec, e), e).X()
 	c.Error(errors.New("error"))
 	assert.Equal(t, http.StatusInternalServerError, c.response.status)
+
+	// setContentTypeByName
+	c.setContentTypeByName("awesome.txt")
+	assert.Equal(t, TextPlainCharsetUTF8, c.Response().Header().Get(ContentType))
 
 	// reset
 	c.reset(req, NewResponse(httptest.NewRecorder(), e), e)

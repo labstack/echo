@@ -116,6 +116,7 @@ const (
 	TextPlain                        = "text/plain"
 	TextPlainCharsetUTF8             = TextPlain + "; " + CharsetUTF8
 	MultipartForm                    = "multipart/form-data"
+	OctetStream                      = "application/octet-stream"
 
 	//---------
 	// Charset

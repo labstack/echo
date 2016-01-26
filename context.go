@@ -15,6 +15,9 @@ import (
 
 	xcontext "golang.org/x/net/context"
 	"golang.org/x/net/websocket"
+	"io"
+	"mime"
+	"strconv"
 )
 
 type (
@@ -42,6 +45,8 @@ type (
 		XML(int, interface{}) error
 		XMLIndent(int, interface{}, string, string) error
 		File(string, string, bool) error
+		Stream(io.Reader, string, bool) error
+		Bytes([]byte, string, bool) error
 		NoContent(int) error
 		Redirect(int, string) error
 		Error(err error)
@@ -283,6 +288,34 @@ func (c *context) File(path, name string, attachment bool) (err error) {
 	return
 }
 
+// Stream sends a response with the content of the `data`. If `attachment` is set
+// to true, the client is prompted to save the file with provided `filename`.
+func (c *context) Stream(data io.Reader, filename string, attachment bool) (err error) {
+	c.setContentTypeByName(filename)
+	if attachment {
+		c.response.Header().Set(ContentDisposition, "attachment; filename="+filename)
+	}
+	if _, err = io.Copy(c.response.writer, data); err != nil {
+		c.response.Header().Del(ContentDisposition)
+	}
+	return
+}
+
+// Bytes sends a response with the content of the `data`. If `attachment` is set
+// to true, the client is prompted to save the file with provided `filename`.
+func (c *context) Bytes(data []byte, filename string, attachment bool) (err error) {
+	c.setContentTypeByName(filename)
+	c.response.Header().Set(ContentLength, strconv.Itoa(len(data)))
+	if attachment {
+		c.response.Header().Set(ContentDisposition, "attachment; filename="+filename)
+	}
+	if _, err = c.response.Write(data); err != nil {
+		c.response.Header().Del(ContentLength)
+		c.response.Header().Del(ContentDisposition)
+	}
+	return
+}
+
 // NoContent sends a response with no body and a status code.
 func (c *context) NoContent(code int) error {
 	c.response.WriteHeader(code)
@@ -311,6 +344,14 @@ func (c *context) Logger() *log.Logger {
 // X returns the `context` instance.
 func (c *context) X() *context {
 	return c
+}
+
+func (c *context) setContentTypeByName(name string) {
+	if t := mime.TypeByExtension(filepath.Ext(name)); t != "" {
+		c.response.Header().Set(ContentType, t)
+	} else {
+		c.response.Header().Set(ContentType, OctetStream)
+	}
 }
 
 func (c *context) reset(r *http.Request, w http.ResponseWriter, e *Echo) {
