@@ -274,7 +274,7 @@ func TestEchoWebSocket(t *testing.T) {
 	url := fmt.Sprintf("ws://%s/ws", addr)
 	ws, err := websocket.Dial(url, "", origin)
 	if assert.NoError(t, err) {
-		ws.Write([]byte("test"))
+		ws.Write([]byte("test\n"))
 		defer ws.Close()
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(ws)
