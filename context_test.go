@@ -285,7 +285,7 @@ func testBind(t *testing.T, c *Context, ct string) {
 	u := new(user)
 	err := c.Bind(u)
 	if ct == "" {
-		assert.Error(t, UnsupportedMediaType)
+		assert.Error(t, ErrUnsupportedMediaType)
 	} else if assert.NoError(t, err) {
 		assert.Equal(t, "1", u.ID)
 		assert.Equal(t, "Joe", u.Name)
