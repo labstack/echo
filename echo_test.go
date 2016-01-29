@@ -44,16 +44,21 @@ func TestEcho(t *testing.T) {
 
 func TestLogger(t *testing.T) {
 	prefix := "extremely-long-prefix-string-that-wont-exist"
+	logmsg := "test-log-message"
+
 	e := New()
 
 	var b bytes.Buffer
-	out := bufio.NewWriter(&b)
+	writer := bufio.NewWriter(&b)
 
 	e.logger.SetPrefix(prefix)
-	e.logger.SetOutput(out)
-	e.logger.Print("test")
+	e.logger.SetOutput(writer)
+	e.logger.Print(logmsg)
 
-	assert.Contains(t, "extremely-long-prefix-string", b.String())
+	output := b.String()
+
+	assert.Contains(t, prefix, output)
+	assert.Contains(t, logmsg, output)
 }
 
 func TestEchoIndex(t *testing.T) {
