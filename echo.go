@@ -3,6 +3,7 @@ package echo
 import (
 	"bytes"
 	"encoding/json"
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
@@ -14,14 +15,13 @@ import (
 	"strings"
 	"sync"
 
-	"encoding/xml"
-
 	"github.com/labstack/gommon/log"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/websocket"
 )
 
 type (
+	// Echo is the top-level framework instance.
 	Echo struct {
 		prefix                  string
 		middleware              []MiddlewareFunc
@@ -39,21 +39,30 @@ type (
 		router                  *Router
 	}
 
+	// Route contains a handler and information for matching against requests.
 	Route struct {
 		Method  string
 		Path    string
 		Handler Handler
 	}
 
+	// HTTPError represents an error that occured while handling a request.
 	HTTPError struct {
 		code    int
 		message string
 	}
 
-	Middleware     interface{}
+	// Middleware ...
+	Middleware interface{}
+
+	// MiddlewareFunc ...
 	MiddlewareFunc func(HandlerFunc) HandlerFunc
-	Handler        interface{}
-	HandlerFunc    func(*Context) error
+
+	// Handler ...
+	Handler interface{}
+
+	// HandlerFunc ...
+	HandlerFunc func(*Context) error
 
 	// HTTPErrorHandler is a centralized HTTP error handler.
 	HTTPErrorHandler func(error, *Context)
@@ -164,9 +173,9 @@ var (
 	// Errors
 	//--------
 
-	UnsupportedMediaType  = errors.New("unsupported media type")
-	RendererNotRegistered = errors.New("renderer not registered")
-	InvalidRedirectCode   = errors.New("invalid redirect status code")
+	ErrUnsupportedMediaType  = errors.New("unsupported media type")
+	ErrRendererNotRegistered = errors.New("renderer not registered")
+	ErrInvalidRedirectCode   = errors.New("invalid redirect status code")
 
 	//----------------
 	// Error handlers
@@ -588,6 +597,7 @@ func (e *Echo) run(s *http.Server, files ...string) {
 	}
 }
 
+// NewHTTPError creates a new HTTPError instance.
 func NewHTTPError(code int, msg ...string) *HTTPError {
 	he := &HTTPError{code: code, message: http.StatusText(code)}
 	if len(msg) > 0 {
@@ -691,7 +701,7 @@ func wrapHandler(h Handler) HandlerFunc {
 
 func (binder) Bind(r *http.Request, i interface{}) (err error) {
 	ct := r.Header.Get(ContentType)
-	err = UnsupportedMediaType
+	err = ErrUnsupportedMediaType
 	if strings.HasPrefix(ct, ApplicationJSON) {
 		err = json.NewDecoder(r.Body).Decode(i)
 	} else if strings.HasPrefix(ct, ApplicationXML) {

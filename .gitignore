@@ -1,13 +1,42 @@
-# Website
+# gitignore - Specifies intentionally untracked files to ignore
+# http://git-scm.com/docs/gitignore
+
+# Compiled Object files, Static and Dynamic libs (Shared Objects)
+*.o
+*.a
+*.so
+
+# Folders
+_obj
+_test
+
+# Architecture specific extensions/prefixes
+*.[568vq]
+[568vq].out
+
+*.cgo1.go
+*.cgo2.c
+_cgo_defun.c
+_cgo_gotypes.go
+_cgo_export.*
+
+_testmain.go
+
+*.exe
+*.test
+*.prof
+
+# submodule properties
+.gitmodules
+
+# compiled web files
 website/public
 website/make
 website/Makefile
 website/marathon*
-.gitmodules
 
-# Node.js
+# node.js web dependencies
 node_modules
 
-# IntelliJ
-.idea
-*.iml
+# code coverage output files
+*.coverprofile

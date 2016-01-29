@@ -8,17 +8,19 @@ import (
 )
 
 type (
+	// BasicValidateFunc is the expected format a BasicAuth fn argument is
+	// expected to implement.
 	BasicValidateFunc func(string, string) bool
 )
 
 const (
+	// Basic is the authentication scheme implemented by the middleware.
 	Basic = "Basic"
 )
 
-// BasicAuth returns an HTTP basic authentication middleware.
-//
-// For valid credentials it calls the next handler.
-// For invalid credentials, it sends "401 - Unauthorized" response.
+// BasicAuth returns a HTTP basic authentication middleware.
+// For valid credentials, it calls the next handler.
+// For invalid credentials, it returns a "401 Unauthorized" HTTP error.
 func BasicAuth(fn BasicValidateFunc) echo.HandlerFunc {
 	return func(c *echo.Context) error {
 		// Skip WebSocket
