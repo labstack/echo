@@ -4,7 +4,7 @@
 
 # For the following file types, normalize line endings to LF on checkin and
 # prevent conversion to CRLF when they are checked out (this is required in
-# order) to prevent newline related issues)
+# order to prevent newline related issues)
 .*      text eol=lf
 *.css   text eol=lf
 *.go    text eol=lf
