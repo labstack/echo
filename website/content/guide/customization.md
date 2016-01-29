@@ -35,7 +35,7 @@ SetLogPrefix sets the prefix for the logger. Default value is `echo`.
 
 `echo#SetLogOutput(w io.Writer)`
 
-SetLogOutput sets the output destination for the logger. Default value is `os.Std*`
+SetLogOutput sets the output destination for the logger. Default value is `os.Stdout`
 
 ### Log level
 
@@ -45,7 +45,7 @@ SetLogLevel sets the log level for the logger. Default value is `log.INFO`.
 
 ### HTTP2
 
-`echo#HTTP(on bool)`
+`echo#HTTP2(on bool)`
 
 Enable/disable HTTP2 support.
 
@@ -60,7 +60,7 @@ Enable/disable automatically creating an index page for the directory.
 ```go
 e := echo.New()
 e.AutoIndex(true)
-e.ServerDir("/", "/Users/vr/Projects/echo")
+e.ServeDir("/", "/Users/vr/Projects/echo")
 e.Run(":1323")
 ```
 

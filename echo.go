@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path"
 	"path/filepath"
 	"reflect"
 	"runtime"
 	"strings"
 	"sync"
-	"time"
 
 	"encoding/xml"
 
@@ -27,7 +27,6 @@ type (
 		middleware              []MiddlewareFunc
 		http2                   bool
 		maxParam                *int
-		notFoundHandler         HandlerFunc
 		defaultHTTPErrorHandler HTTPErrorHandler
 		httpErrorHandler        HTTPErrorHandler
 		binder                  Binder
@@ -180,8 +179,6 @@ var (
 	methodNotAllowedHandler = func(c *Context) error {
 		return NewHTTPError(http.StatusMethodNotAllowed)
 	}
-
-	unixEpochTime = time.Unix(0, 0)
 )
 
 // New creates an instance of Echo.
@@ -232,7 +229,7 @@ func (e *Echo) SetLogPrefix(prefix string) {
 	e.logger.SetPrefix(prefix)
 }
 
-// SetLogOutput sets the output destination for the logger. Default value is `os.Std*`
+// SetLogOutput sets the output destination for the logger. Default value is `os.Stdout`
 func (e *Echo) SetLogOutput(w io.Writer) {
 	e.logger.SetOutput(w)
 }
@@ -433,7 +430,7 @@ func (e *Echo) serveFile(dir, file string, c *Context) (err error) {
 		d := f
 
 		// Index file
-		file = filepath.Join(file, indexPage)
+		file = path.Join(file, indexPage)
 		f, err = fs.Open(file)
 		if err != nil {
 			if e.autoIndex {

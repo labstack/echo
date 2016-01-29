@@ -48,6 +48,18 @@ func (g *Group) Trace(path string, h Handler) {
 	g.echo.Trace(path, h)
 }
 
+func (g *Group) Any(path string, h Handler) {
+	for _, m := range methods {
+		g.echo.add(m, path, h)
+	}
+}
+
+func (g *Group) Match(methods []string, path string, h Handler) {
+	for _, m := range methods {
+		g.echo.add(m, path, h)
+	}
+}
+
 func (g *Group) WebSocket(path string, h HandlerFunc) {
 	g.echo.WebSocket(path, h)
 }
