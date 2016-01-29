@@ -16,7 +16,6 @@ import (
 
 	"encoding/xml"
 
-	"github.com/labstack/gommon/log"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/websocket"
 )
@@ -37,7 +36,7 @@ type (
 		hook                    http.HandlerFunc
 		autoIndex               bool
 		router                  *Router
-		logger                  *log.Logger
+		logger                  Logger
 	}
 
 	Route struct {
@@ -217,9 +216,7 @@ func New() (e *Echo) {
 	e.SetBinder(&binder{})
 
 	// Logger
-	e.logger = log.New("echo")
-	e.logger.SetLevel(log.INFO)
-
+	e.logger = DefaultLogger()
 	return
 }
 
@@ -228,24 +225,14 @@ func (e *Echo) Router() *Router {
 	return e.router
 }
 
-// SetLogPrefix sets the prefix for the logger. Default value is `echo`.
-func (e *Echo) SetLogPrefix(prefix string) {
-	e.logger.SetPrefix(prefix)
-}
-
-// SetLogOutput sets the output destination for the logger. Default value is `os.Std*`
-func (e *Echo) SetLogOutput(w io.Writer) {
-	e.logger.SetOutput(w)
-}
-
-// SetLogLevel sets the log level for the logger. Default value is `log.INFO`.
-func (e *Echo) SetLogLevel(l log.Level) {
-	e.logger.SetLevel(l)
-}
-
 // Logger returns the logger instance.
-func (e *Echo) Logger() *log.Logger {
+func (e *Echo) Logger() Logger {
 	return e.logger
+}
+
+// SetLogger logger instance.
+func (e *Echo) SetLogger(logger Logger) {
+	e.logger = logger
 }
 
 // HTTP2 enable/disable HTTP2 support.
