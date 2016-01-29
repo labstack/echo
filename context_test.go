@@ -284,6 +284,13 @@ func TestContextNetContext(t *testing.T) {
 	assert.Equal(t, "val", c.Value("key"))
 }
 
+func TestContextEcho(t *testing.T) {
+	c := new(Context)
+
+	// Should be null when initialized without one
+	assert.Nil(t, c.Echo())
+}
+
 func testBind(t *testing.T, c *Context, ct string) {
 	c.request.Header.Set(ContentType, ct)
 	u := new(user)
