@@ -11,7 +11,7 @@ env:
     - GO15VENDOREXPERIMENT=1
 
 before_install:
-  - export $PATH = $PATH:$GOPATH/bin
+  - export PATH=$PATH:$GOPATH/bin
   - go get golang.org/x/tools/cmd/vet
   - go get golang.org/x/tools/cmd/cover
   - go get github.com/modocache/gover
