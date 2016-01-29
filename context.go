@@ -135,18 +135,12 @@ func (c *context) Param(name string) (value string) {
 
 // Query returns query parameter by name.
 func (c *context) Query(name string) string {
-	if c.query == nil {
-		// TODO: v2
-		// c.query = c.request.URL.Query()
-	}
-	return c.query.Get(name)
+	return c.request.URL().QueryValue(name)
 }
 
 // Form returns form parameter by name.
 func (c *context) Form(name string) string {
-	// TODO: v2
-	// return c.request.FormValue(name)
-	return ""
+	return c.request.FormValue(name)
 }
 
 // Get retrieves data from the context.

@@ -35,7 +35,7 @@ SetLogPrefix sets the prefix for the logger. Default value is `echo`.
 
 `echo#SetLogOutput(w io.Writer)`
 
-SetLogOutput sets the output destination for the logger. Default value is `os.Std*`
+SetLogOutput sets the output destination for the logger. Default value is `os.Stdout`
 
 ### Log level
 

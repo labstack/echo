@@ -20,7 +20,6 @@ import (
 	"github.com/labstack/echo/engine/fasthttp"
 	"github.com/labstack/echo/engine/standard"
 	"github.com/labstack/gommon/log"
-	"golang.org/x/net/http2"
 )
 
 type (
@@ -237,7 +236,7 @@ func (e *Echo) SetLogPrefix(prefix string) {
 	e.logger.SetPrefix(prefix)
 }
 
-// SetLogOutput sets the output destination for the logger. Default value is `os.Std*`
+// SetLogOutput sets the output destination for the logger. Default value is `os.Stdout`
 func (e *Echo) SetLogOutput(w io.Writer) {
 	e.logger.SetOutput(w)
 }
@@ -408,33 +407,36 @@ func (e *Echo) ServeFile(path, file string) {
 }
 
 func (e *Echo) serveFile(dir, file string, c Context) (err error) {
-	// fs := http.Dir(dir)
-	// f, err := fs.Open(file)
-	// if err != nil {
-	// 	return NewHTTPError(http.StatusNotFound)
-	// }
-	// defer f.Close()
+	fs := http.Dir(dir)
+	f, err := fs.Open(file)
+	if err != nil {
+		return NewHTTPError(http.StatusNotFound)
+	}
+	defer f.Close()
 
-	// fi, _ := f.Stat()
-	// if fi.IsDir() {
-	// 	/* NOTE:
-	// 	Not checking the Last-Modified header as it caches the response `304` when
-	// 	changing differnt directories for the same path.
-	// 	*/
-	// 	d := f
+	fi, _ := f.Stat()
+	if fi.IsDir() {
+		/* NOTE:
+		Not checking the Last-Modified header as it caches the response `304` when
+		changing differnt directories for the same path.
+		*/
+		d := f
 
-	// 	// Index file
-	// 	file = filepath.Join(file, indexPage)
-	// 	f, err = fs.Open(file)
-	// 	if err != nil {
-	// 		if e.autoIndex {
-	// 			// Auto index
-	// 			return listDir(d, c)
-	// 		}
-	// 		return NewHTTPError(http.StatusForbidden)
-	// 	}
-	// 	fi, _ = f.Stat() // Index file stat
-	// }
+		// Index file
+		file = filepath.Join(file, indexPage)
+		f, err = fs.Open(file)
+		if err != nil {
+			if e.autoIndex {
+				// Auto index
+				return listDir(d, c)
+			}
+			return NewHTTPError(http.StatusForbidden)
+		}
+		fi, _ = f.Stat() // Index file stat
+	}
+	c.Response().WriteHeader(http.StatusOK)
+	io.Copy(c.Response(), f)
+	// TODO:
 	// http.ServeContent(c.Response(), c.Request(), fi.Name(), fi.ModTime(), f)
 	return
 }
@@ -513,39 +515,38 @@ func (e *Echo) Routes() []Route {
 	return e.router.routes
 }
 
-// ServeHTTP implements `http.Handler` interface, which serves HTTP requests.
-func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// TODO: v2
-	// if e.hook != nil {
-	// 	e.hook(w, r)
-	// }
-	//
-	// c := e.pool.Get().(*context)
-	// h, e := e.router.Find(r.Method, r.URL.Path, c)
-	// c.reset(r, w, e)
-	//
-	// // Chain middleware with handler in the end
-	// for i := len(e.middleware) - 1; i >= 0; i-- {
-	// 	h = e.middleware[i](h)
-	// }
-	//
-	// // Execute chain
-	// if err := h(c); err != nil {
-	// 	e.httpErrorHandler(err, c)
-	// }
-	//
-	// e.pool.Put(c)
+// ServeHTTP serves HTTP requests.
+func (e *Echo) ServeHTTP(req engine.Request, res engine.Response) {
+	if e.hook != nil {
+		e.hook(req, res)
+	}
+
+	c := e.pool.Get().(*context)
+	h, e := e.router.Find(req.Method(), req.URL().Path(), c)
+	c.reset(req, res, e)
+
+	// Chain middleware with handler in the end
+	for i := len(e.middleware) - 1; i >= 0; i-- {
+		h = e.middleware[i](h)
+	}
+
+	// Execute chain
+	if err := h(c); err != nil {
+		e.httpErrorHandler(err, c)
+	}
+
+	e.pool.Put(c)
 }
 
 // Server returns the internal *http.Server.
-func (e *Echo) Server(addr string) *http.Server {
-	s := &http.Server{Addr: addr, Handler: e}
-	// TODO: Remove in Go 1.6+
-	if e.http2 {
-		http2.ConfigureServer(s, nil)
-	}
-	return s
-}
+// func (e *Echo) Server(addr string) *http.Server {
+// 	s := &http.Server{Addr: addr, Handler: e}
+// 	// TODO: Remove in Go 1.6+
+// 	if e.http2 {
+// 		http2.ConfigureServer(s, nil)
+// 	}
+// 	return s
+// }
 
 func (e *Echo) SetEngine(t engine.Type) {
 	e.engineType = t
@@ -589,32 +590,32 @@ func (e *Echo) Run(address string) {
 
 // RunTLS runs a server with TLS configuration.
 func (e *Echo) RunTLS(addr, crtFile, keyFile string) {
-	e.run(e.Server(addr), crtFile, keyFile)
+	// e.run(e.Server(addr), crtFile, keyFile)
 }
 
 // RunServer runs a custom server.
 func (e *Echo) RunServer(s *http.Server) {
-	e.run(s)
+	// e.run(s)
 }
 
 // RunTLSServer runs a custom server with TLS configuration.
 func (e *Echo) RunTLSServer(s *http.Server, crtFile, keyFile string) {
-	e.run(s, crtFile, keyFile)
+	// e.run(s, crtFile, keyFile)
 }
 
 func (e *Echo) run(s *http.Server, files ...string) {
-	s.Handler = e
-	// TODO: Remove in Go 1.6+
-	if e.http2 {
-		http2.ConfigureServer(s, nil)
-	}
-	if len(files) == 0 {
-		e.logger.Fatal(s.ListenAndServe())
-	} else if len(files) == 2 {
-		e.logger.Fatal(s.ListenAndServeTLS(files[0], files[1]))
-	} else {
-		e.logger.Fatal("invalid TLS configuration")
-	}
+	// s.Handler = e
+	// // TODO: Remove in Go 1.6+
+	// if e.http2 {
+	// 	http2.ConfigureServer(s, nil)
+	// }
+	// if len(files) == 0 {
+	// 	e.logger.Fatal(s.ListenAndServe())
+	// } else if len(files) == 2 {
+	// 	e.logger.Fatal(s.ListenAndServeTLS(files[0], files[1]))
+	// } else {
+	// 	e.logger.Fatal("invalid TLS configuration")
+	// }
 }
 
 func NewHTTPError(code int, msg ...string) *HTTPError {
