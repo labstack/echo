@@ -120,7 +120,7 @@ func (c *Context) Bind(i interface{}) error {
 // code. Templates can be registered using `Echo.SetRenderer()`.
 func (c *Context) Render(code int, name string, data interface{}) (err error) {
 	if c.echo.renderer == nil {
-		return RendererNotRegistered
+		return ErrRendererNotRegistered
 	}
 	buf := new(bytes.Buffer)
 	if err = c.echo.renderer.Render(buf, name, data); err != nil {
@@ -244,7 +244,7 @@ func (c *Context) NoContent(code int) error {
 // Redirect redirects the request using http.Redirect with status code.
 func (c *Context) Redirect(code int, url string) error {
 	if code < http.StatusMultipleChoices || code > http.StatusTemporaryRedirect {
-		return InvalidRedirectCode
+		return ErrInvalidRedirectCode
 	}
 	http.Redirect(c.response, c.request, url, code)
 	return nil
