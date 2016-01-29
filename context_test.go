@@ -229,6 +229,10 @@ func TestContext(t *testing.T) {
 
 	// reset
 	c.reset(req, NewResponse(httptest.NewRecorder(), e), e)
+
+	// after reset (nil store) set test
+	c.Set("user", "Joe")
+	assert.Equal(t, "Joe", c.Get("user"))
 }
 
 func TestContextPath(t *testing.T) {
