@@ -1,7 +1,6 @@
 package echo
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"net/http"
@@ -40,25 +39,6 @@ func TestEcho(t *testing.T) {
 	// DefaultHTTPErrorHandler
 	e.DefaultHTTPErrorHandler(errors.New("error"), c)
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
-}
-
-func TestLogger(t *testing.T) {
-	prefix := "extremely-long-prefix-string-that-wont-exist"
-	logmsg := "test-log-message"
-
-	e := New()
-
-	var b bytes.Buffer
-	writer := bufio.NewWriter(&b)
-
-	e.logger.SetPrefix(prefix)
-	e.logger.SetOutput(writer)
-	e.logger.Print(logmsg)
-
-	output := b.String()
-
-	assert.Contains(t, prefix, output)
-	assert.Contains(t, logmsg, output)
 }
 
 func TestEchoIndex(t *testing.T) {
