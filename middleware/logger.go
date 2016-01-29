@@ -47,7 +47,7 @@ func Logger() echo.MiddlewareFunc {
 				code = color.Cyan(n)
 			}
 
-			logger.Info("%s %s %s %s %s %d", remoteAddr, method, path, code, stop.Sub(start), size)
+			logger.Infof("%s %s %s %s %s %d", remoteAddr, method, path, code, stop.Sub(start), size)
 			return nil
 		}
 	}
