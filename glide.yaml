@@ -1,0 +1,12 @@
+package: github.com/labstack/echo
+import:
+- package: github.com/labstack/gommon
+  subpackages:
+  - /color
+  - log
+- package: github.com/valyala/fasthttp
+- package: golang.org/x/net
+  subpackages:
+  - /context
+  - http2
+  - websocket
