@@ -164,7 +164,7 @@ var (
 	// Errors
 	//--------
 
-	UnsupportedMediaType  = errors.New("unsupported media type")
+	UnsupportedMediaType  = NewHTTPError(http.StatusUnsupportedMediaType)
 	RendererNotRegistered = errors.New("renderer not registered")
 	InvalidRedirectCode   = errors.New("invalid redirect status code")
 
@@ -693,9 +693,14 @@ func (binder) Bind(r *http.Request, i interface{}) (err error) {
 	ct := r.Header.Get(ContentType)
 	err = UnsupportedMediaType
 	if strings.HasPrefix(ct, ApplicationJSON) {
-		err = json.NewDecoder(r.Body).Decode(i)
+		if err = json.NewDecoder(r.Body).Decode(i); err != nil {
+			err = NewHTTPError(http.StatusBadRequest, err.Error())
+		}
 	} else if strings.HasPrefix(ct, ApplicationXML) {
-		err = xml.NewDecoder(r.Body).Decode(i)
+		if err = xml.NewDecoder(r.Body).Decode(i); err != nil {
+			err = NewHTTPError(http.StatusBadRequest, err.Error())
+		}
+
 	}
 	return
 }
