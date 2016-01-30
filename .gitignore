@@ -33,10 +33,12 @@ _testmain.go
 website/public
 website/make
 website/Makefile
-website/marathon*
 
 # node.js web dependencies
 node_modules
 
 # code coverage output files
 *.coverprofile
+
+# glide
+vendor

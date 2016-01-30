@@ -1,5 +1,5 @@
 {
-    "baseurl": "http://labstack.com/echo",
+    "baseurl": "https://labstack.com/echo",
     "languageCode": "en-us",
     "title": "Echo",
     "canonifyurls": true,

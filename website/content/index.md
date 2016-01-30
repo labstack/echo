@@ -2,7 +2,7 @@
 title: Index
 ---
 
-# Echo
+# ![Echo](/images/echo.svg) Echo
 
 A fast and unfancy micro web framework for Go.
 

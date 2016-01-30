@@ -8,7 +8,9 @@ import (
 	"github.com/labstack/gommon/color"
 )
 
-const loggerFormat = "%s %s %s %s %s %d"
+const (
+	format = "%s %s %s %s %s %d"
+)
 
 // Logger returns a Middleware that logs requests.
 func Logger() echo.MiddlewareFunc {
@@ -50,7 +52,7 @@ func Logger() echo.MiddlewareFunc {
 				code = color.Cyan(n)
 			}
 
-			logger.Info(loggerFormat, remoteAddr, method, path, code, stop.Sub(start), size)
+			logger.Infof(format, remoteAddr, method, path, code, stop.Sub(start), size)
 			return nil
 		}
 	}
