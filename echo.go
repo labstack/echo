@@ -1,8 +1,40 @@
+/*
+Package echo implements a fast and unfancy micro web framework for Go.
+
+Example:
+
+    package main
+
+    import (
+        "net/http"
+
+        "github.com/labstack/echo"
+        mw "github.com/labstack/echo/middleware"
+    )
+
+    func hello(c *echo.Context) error {
+        return c.String(http.StatusOK, "Hello, World!\n")
+    }
+
+    func main() {
+        e := echo.New()
+
+        e.Use(mw.Logger())
+        e.Use(mw.Recover())
+
+        e.Get("/", hello)
+
+        e.Run(":1323")
+    }
+
+Learn more at https://labstack.com/echo
+*/
 package echo
 
 import (
 	"bytes"
 	"encoding/json"
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
@@ -14,14 +46,13 @@ import (
 	"strings"
 	"sync"
 
-	"encoding/xml"
-
 	"github.com/labstack/gommon/log"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/websocket"
 )
 
 type (
+	// Echo is the top-level framework instance.
 	Echo struct {
 		prefix                  string
 		middleware              []MiddlewareFunc
@@ -39,21 +70,30 @@ type (
 		router                  *Router
 	}
 
+	// Route contains a handler and information for matching against requests.
 	Route struct {
 		Method  string
 		Path    string
 		Handler Handler
 	}
 
+	// HTTPError represents an error that occured while handling a request.
 	HTTPError struct {
 		code    int
 		message string
 	}
 
-	Middleware     interface{}
+	// Middleware ...
+	Middleware interface{}
+
+	// MiddlewareFunc ...
 	MiddlewareFunc func(HandlerFunc) HandlerFunc
-	Handler        interface{}
-	HandlerFunc    func(*Context) error
+
+	// Handler ...
+	Handler interface{}
+
+	// HandlerFunc ...
+	HandlerFunc func(*Context) error
 
 	// HTTPErrorHandler is a centralized HTTP error handler.
 	HTTPErrorHandler func(error, *Context)
@@ -164,9 +204,9 @@ var (
 	// Errors
 	//--------
 
-	UnsupportedMediaType  = NewHTTPError(http.StatusUnsupportedMediaType)
-	RendererNotRegistered = errors.New("renderer not registered")
-	InvalidRedirectCode   = errors.New("invalid redirect status code")
+	ErrUnsupportedMediaType  = NewHTTPError(http.StatusUnsupportedMediaType)
+	ErrRendererNotRegistered = errors.New("renderer not registered")
+	ErrInvalidRedirectCode   = errors.New("invalid redirect status code")
 
 	//----------------
 	// Error handlers
@@ -588,6 +628,7 @@ func (e *Echo) run(s *http.Server, files ...string) {
 	}
 }
 
+// NewHTTPError creates a new HTTPError instance.
 func NewHTTPError(code int, msg ...string) *HTTPError {
 	he := &HTTPError{code: code, message: http.StatusText(code)}
 	if len(msg) > 0 {
@@ -691,7 +732,7 @@ func wrapHandler(h Handler) HandlerFunc {
 
 func (binder) Bind(r *http.Request, i interface{}) (err error) {
 	ct := r.Header.Get(ContentType)
-	err = UnsupportedMediaType
+	err = ErrUnsupportedMediaType
 	if strings.HasPrefix(ct, ApplicationJSON) {
 		if err = json.NewDecoder(r.Body).Decode(i); err != nil {
 			err = NewHTTPError(http.StatusBadRequest, err.Error())

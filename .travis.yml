@@ -1,13 +1,39 @@
 language: go
+sudo: false
+
 go:
-    - 1.4
-    - tip
+  - 1.4
+  - 1.5
+  - 1.6rc1
+  - tip
+env:
+  global:
+    - GO15VENDOREXPERIMENT=1
+
 before_install:
-    - go get github.com/modocache/gover
-    - go get github.com/mattn/goveralls
-    - go get golang.org/x/tools/cmd/cover
+  - export PATH=$PATH:$GOPATH/bin
+  - go get golang.org/x/tools/cmd/vet
+  - go get golang.org/x/tools/cmd/cover
+  - go get github.com/modocache/gover
+  - go get github.com/mattn/goveralls
+
+install:
+  - go get -t -v ./...
+
 script:
-    - go test -coverprofile=echo.coverprofile
-    - go test -coverprofile=middleware.coverprofile ./middleware
-    - $HOME/gopath/bin/gover
-    - $HOME/gopath/bin/goveralls -coverprofile=gover.coverprofile -service=travis-ci
+  - go vet ./...
+  - go test -v -race ./...
+  - diff -u <(echo -n) <(gofmt -d -s .)
+  - go test -v -coverprofile=echo.coverprofile
+  - go test -v -coverprofile=middleware.coverprofile ./middleware
+  - gover
+  - goveralls -coverprofile=gover.coverprofile -service=travis-ci
+
+notifications:
+  email:
+    on_success: change
+    on_failure: always
+
+matrix:
+  allow_failures:
+    - go: tip

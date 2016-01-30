@@ -3,6 +3,12 @@ package echo
 import "net/http"
 
 type (
+
+	// Router is the registry of all registered routes for an Echo instance for
+	// request matching and handler dispatching.
+	//
+	// Router implements the http.Handler specification and can be registered
+	// to serve requests.
 	Router struct {
 		tree   *node
 		routes []Route
@@ -40,6 +46,7 @@ const (
 	mkind
 )
 
+// NewRouter returns a new Router instance.
 func NewRouter(e *Echo) *Router {
 	return &Router{
 		tree: &node{
@@ -50,6 +57,7 @@ func NewRouter(e *Echo) *Router {
 	}
 }
 
+// Add registers a new route with a matcher for the URL path.
 func (r *Router) Add(method, path string, h HandlerFunc, e *Echo) {
 	ppath := path        // Pristine path
 	pnames := []string{} // Param names
@@ -275,6 +283,8 @@ func (n *node) check405() HandlerFunc {
 	return notFoundHandler
 }
 
+// Find dispatches the request to the handler whos route is matched with the
+// specified request path.
 func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo) {
 	h = notFoundHandler
 	e = r.echo
@@ -400,6 +410,9 @@ End:
 	return
 }
 
+// ServeHTTP implements the Handler interface and can be registered to serve a
+// particular path or subtree in an HTTP server.
+// See Router.Find()
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	c := r.echo.pool.Get().(*Context)
 	h, _ := r.Find(req.Method, req.URL.Path, c)

@@ -234,6 +234,10 @@ func TestContext(t *testing.T) {
 
 	// reset
 	c.reset(req, NewResponse(httptest.NewRecorder(), e), e)
+
+	// after reset (nil store) set test
+	c.Set("user", "Joe")
+	assert.Equal(t, "Joe", c.Get("user"))
 }
 
 func TestContextPath(t *testing.T) {
@@ -285,6 +289,13 @@ func TestContextNetContext(t *testing.T) {
 	assert.Equal(t, "val", c.Value("key"))
 }
 
+func TestContextEcho(t *testing.T) {
+	c := new(Context)
+
+	// Should be null when initialized without one
+	assert.Nil(t, c.Echo())
+}
+
 func testBindOk(t *testing.T, c *Context, ct string) {
 	c.request.Header.Set(ContentType, ct)
 	u := new(user)
@@ -307,7 +318,7 @@ func testBindError(t *testing.T, c *Context, ct string) {
 		}
 	default:
 		if assert.IsType(t, new(HTTPError), err) {
-			assert.Equal(t, UnsupportedMediaType, err)
+			assert.Equal(t, ErrUnsupportedMediaType, err)
 		}
 
 	}
