@@ -81,16 +81,6 @@ BenchmarkVulcan_GithubAll            5000            271682 ns/op           1989
 BenchmarkZeus_GithubAll              2000            748827 ns/op          300688 B/op     2648 allocs/op
 ```
 
-## Installation
-
-```sh
-$ go get github.com/labstack/echo
-```
-
-## [Recipes](http://labstack.com/echo/recipes/hello-world)
-
-## [Guide](http://labstack.com/echo/guide/installation)
-
 ## Echo System
 
 ### Who's using Echo?
@@ -121,6 +111,16 @@ $ go get github.com/labstack/echo
 - [go-starter-kit](https://github.com/olebedev/go-starter-kit)
 
 [Want to get listed?](https://github.com/labstack/echo/issues/295)
+
+## Installation
+
+```sh
+$ go get github.com/labstack/echo
+```
+
+## [Recipes](http://labstack.com/echo/recipes/hello-world)
+
+## [Guide](http://labstack.com/echo/guide/installation)
 
 ## Contribute
 
