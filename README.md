@@ -98,6 +98,7 @@ BenchmarkZeus_GithubAll              2000            748827 ns/op          30068
 - [Gomoku](http://gomoku.thoughtsfromplac.es)
 - [DrinkIn](https://drinkin.com)
 - [PodBaby](https://podbaby.me)
+- [gifs](https://gifs.com)
 
 ### Community created packages around Echo
 
