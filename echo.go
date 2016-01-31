@@ -66,8 +66,26 @@ type (
 		debug                   bool
 		hook                    http.HandlerFunc
 		autoIndex               bool
-		logger                  *log.Logger
+		logger                  Logger
 		router                  *Router
+	}
+
+	// Logger is the interface that declares echo's logging system.
+	Logger interface {
+		Debug(...interface{})
+		Debugf(string, ...interface{})
+
+		Info(...interface{})
+		Infof(string, ...interface{})
+
+		Warn(...interface{})
+		Warnf(string, ...interface{})
+
+		Error(...interface{})
+		Errorf(string, ...interface{})
+
+		Fatal(...interface{})
+		Fatalf(string, ...interface{})
 	}
 
 	// Route contains a handler and information for matching against requests.
@@ -254,7 +272,6 @@ func New() (e *Echo) {
 
 	// Logger
 	e.logger = log.New("echo")
-	e.logger.SetLevel(log.INFO)
 
 	return
 }
@@ -264,23 +281,13 @@ func (e *Echo) Router() *Router {
 	return e.router
 }
 
-// SetLogPrefix sets the prefix for the logger. Default value is `echo`.
-func (e *Echo) SetLogPrefix(prefix string) {
-	e.logger.SetPrefix(prefix)
-}
-
-// SetLogOutput sets the output destination for the logger. Default value is `os.Stdout`
-func (e *Echo) SetLogOutput(w io.Writer) {
-	e.logger.SetOutput(w)
-}
-
-// SetLogLevel sets the log level for the logger. Default value is `log.INFO`.
-func (e *Echo) SetLogLevel(l log.Level) {
-	e.logger.SetLevel(l)
+// SetLogger sets the logger instance.
+func (e *Echo) SetLogger(logger Logger) {
+	e.logger = logger
 }
 
 // Logger returns the logger instance.
-func (e *Echo) Logger() *log.Logger {
+func (e *Echo) Logger() Logger {
 	return e.logger
 }
 
