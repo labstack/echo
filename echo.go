@@ -265,7 +265,16 @@ func New() (e *Echo) {
 		if !c.response.committed {
 			http.Error(c.response, msg, code)
 		}
-		e.logger.Error(err)
+
+		req := c.Request()
+		method := req.Method
+		path := req.URL.Path
+
+		if path == "" {
+			path = "/"
+		}
+
+		e.logger.Error("%s %s - returned an error: %s", method, path, err)
 	}
 	e.SetHTTPErrorHandler(e.defaultHTTPErrorHandler)
 	e.SetBinder(&binder{})
