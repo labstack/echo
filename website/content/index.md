@@ -55,6 +55,7 @@ A fast and unfancy micro web framework for Go.
 
 ### Who's using Echo?
 
+- [LabStack](https://labstack.com)
 - [ShowChampions](https://showchampions.photoserve.co)
 - [deferpanic](https://deferpanic.com)
 - [Center for Open Science](https://cos.io)
