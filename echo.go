@@ -33,8 +33,6 @@ package echo
 
 import (
 	"bytes"
-	"encoding/json"
-	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
@@ -43,7 +41,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
-	"strings"
 	"sync"
 
 	"github.com/labstack/gommon/log"
@@ -115,14 +112,6 @@ type (
 
 	// HTTPErrorHandler is a centralized HTTP error handler.
 	HTTPErrorHandler func(error, *Context)
-
-	// Binder is the interface that wraps the Bind method.
-	Binder interface {
-		Bind(*http.Request, interface{}) error
-	}
-
-	binder struct {
-	}
 
 	// Validator is the interface that wraps the Validate method.
 	Validator interface {
@@ -735,20 +724,4 @@ func wrapHandler(h Handler) HandlerFunc {
 	default:
 		panic("unknown handler")
 	}
-}
-
-func (binder) Bind(r *http.Request, i interface{}) (err error) {
-	ct := r.Header.Get(ContentType)
-	err = ErrUnsupportedMediaType
-	if strings.HasPrefix(ct, ApplicationJSON) {
-		if err = json.NewDecoder(r.Body).Decode(i); err != nil {
-			err = NewHTTPError(http.StatusBadRequest, err.Error())
-		}
-	} else if strings.HasPrefix(ct, ApplicationXML) {
-		if err = xml.NewDecoder(r.Body).Decode(i); err != nil {
-			err = NewHTTPError(http.StatusBadRequest, err.Error())
-		}
-
-	}
-	return
 }
