@@ -85,6 +85,7 @@ BenchmarkZeus_GithubAll              2000            748827 ns/op          30068
 
 ### Who's using Echo?
 
+- [LabStack](https://labstack.com)
 - [ShowChampions](https://showchampions.photoserve.co)
 - [deferpanic](https://deferpanic.com)
 - [Center for Open Science](https://cos.io)
