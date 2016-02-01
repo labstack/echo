@@ -12,6 +12,7 @@ import (
 
 	"errors"
 
+	"github.com/labstack/gommon/log"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/websocket"
 )
@@ -39,6 +40,29 @@ func TestEcho(t *testing.T) {
 	// DefaultHTTPErrorHandler
 	e.DefaultHTTPErrorHandler(errors.New("error"), c)
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+
+	// Logger
+	l := log.New("test")
+	e.SetLogger(l)
+	assert.Equal(t, l, e.Logger())
+
+	// Autoindex
+	e.AutoIndex(true)
+	assert.True(t, e.autoIndex)
+}
+
+func TestListDir(t *testing.T) {
+	e := New()
+	req, _ := http.NewRequest(GET, "/", nil)
+	rec := httptest.NewRecorder()
+	c := NewContext(req, NewResponse(rec, e), e)
+	fs := http.Dir("_fixture")
+	f, err := fs.Open("images")
+	assert.NoError(t, err)
+	if assert.NoError(t, listDir(f, c)) {
+		assert.Equal(t, TextHTMLCharsetUTF8, rec.Header().Get(ContentType))
+		assert.Equal(t, "<pre>\n<a href=\"walle.png\" style=\"color: #212121;\">walle.png</a>\n</pre>\n", rec.Body.String())
+	}
 }
 
 func TestEchoIndex(t *testing.T) {
@@ -399,6 +423,8 @@ func TestEchoHTTPError(t *testing.T) {
 	he := NewHTTPError(http.StatusBadRequest, m)
 	assert.Equal(t, http.StatusBadRequest, he.Code())
 	assert.Equal(t, m, he.Error())
+	he.SetCode(http.StatusOK)
+	assert.Equal(t, http.StatusOK, he.Code())
 }
 
 func TestEchoServer(t *testing.T) {

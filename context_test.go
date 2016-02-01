@@ -63,6 +63,16 @@ func TestContext(t *testing.T) {
 	c.Set("user", "Joe")
 	assert.Equal(t, "Joe", c.Get("user"))
 
+	// Bind
+	c.request, _ = http.NewRequest(POST, "/", strings.NewReader(userJSON))
+	c.request.Header.Set(ContentType, ApplicationJSON)
+	u := new(user)
+	err := c.Bind(u)
+	if assert.NoError(t, err) {
+		assert.Equal(t, "1", u.ID)
+		assert.Equal(t, "Joe", u.Name)
+	}
+
 	//--------
 	// Render
 	//--------
@@ -71,7 +81,7 @@ func TestContext(t *testing.T) {
 		templates: template.Must(template.New("hello").Parse("Hello, {{.}}!")),
 	}
 	c.echo.SetRenderer(tpl)
-	err := c.Render(http.StatusOK, "hello", "Joe")
+	err = c.Render(http.StatusOK, "hello", "Joe")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, "Hello, Joe!", rec.Body.String())
