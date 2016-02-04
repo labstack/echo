@@ -58,6 +58,11 @@ func (c *Context) Socket() *websocket.Conn {
 	return c.socket
 }
 
+// ParamNames returns path parameter names.
+func (c *Context) ParamNames() []string {
+	return c.pnames
+}
+
 // Path returns the registered path for the handler.
 func (c *Context) Path() string {
 	return c.path
