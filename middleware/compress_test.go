@@ -1,73 +1,69 @@
 package middleware
 
-//
-// import (
-// 	"bytes"
-// 	"compress/gzip"
-// 	"net/http"
-// 	"net/http/httptest"
-// 	"testing"
-// 	"time"
-//
-// 	"github.com/labstack/echo"
-// 	"github.com/labstack/echo/test"
-// 	"github.com/stretchr/testify/assert"
-// )
-//
-// type closeNotifyingRecorder struct {
-// 	*httptest.ResponseRecorder
-// 	closed chan bool
-// }
-//
-// func newCloseNotifyingRecorder() *closeNotifyingRecorder {
-// 	return &closeNotifyingRecorder{
-// 		test.NewResponseRecorder(),
-// 		make(chan bool, 1),
-// 	}
-// }
-//
-// func (c *closeNotifyingRecorder) close() {
-// 	c.closed <- true
-// }
-//
-// func (c *closeNotifyingRecorder) CloseNotify() <-chan bool {
-// 	return c.closed
-// }
-//
-// func TestGzip(t *testing.T) {
-// 	e := echo.New()
-// 	req := test.NewRequest(echo.GET, "/", nil)
-// 	res := test.NewResponseRecorder()
-// 	c := echo.NewContext(req, res, e)
-// 	h := func(c echo.Context) error {
-// 		c.Response().Write([]byte("test")) // For Content-Type sniffing
-// 		return nil
-// 	}
-//
-// 	// Skip if no Accept-Encoding header
-// 	Gzip()(h)(c)
-// 	assert.Equal(t, http.StatusOK, res.Status())
-// 	assert.Equal(t, "test", res.Body().String())
-//
-// 	req = test.NewRequest(echo.GET, "/", nil)
-// 	req.Header.Set(echo.AcceptEncoding, "gzip")
-// 	res = test.NewResponseRecorder()
-// 	c = echo.NewContext(req, res, e)
-//
-// 	// Gzip
-// 	Gzip()(h)(c)
-// 	assert.Equal(t, http.StatusOK, res.Status())
-// 	assert.Equal(t, "gzip", res.Header().Get(echo.ContentEncoding))
-// 	assert.Contains(t, res.Header().Get(echo.ContentType), echo.TextPlain)
-// 	r, err := gzip.NewReader(res.Body())
-// 	defer r.Close()
-// 	if assert.NoError(t, err) {
-// 		buf := new(bytes.Buffer)
-// 		buf.ReadFrom(r)
-// 		assert.Equal(t, "test", buf.String())
-// 	}
-// }
-//
+import (
+	"bytes"
+	"compress/gzip"
+	"testing"
+
+	"github.com/labstack/echo"
+	"github.com/labstack/echo/test"
+	"github.com/stretchr/testify/assert"
+)
+
+type closeNotifyingRecorder struct {
+	*test.ResponseRecorder
+	closed chan bool
+}
+
+func newCloseNotifyingRecorder() *closeNotifyingRecorder {
+	return &closeNotifyingRecorder{
+		test.NewResponseRecorder(),
+		make(chan bool, 1),
+	}
+}
+
+func (c *closeNotifyingRecorder) close() {
+	c.closed <- true
+}
+
+func (c *closeNotifyingRecorder) CloseNotify() <-chan bool {
+	return c.closed
+}
+
+func TestGzip(t *testing.T) {
+	e := echo.New()
+	req := test.NewRequest(echo.GET, "/", nil)
+	rec := test.NewResponseRecorder()
+	c := echo.NewContext(req, rec, e)
+	h := func(c echo.Context) error {
+		c.Response().Write([]byte("test")) // For Content-Type sniffing
+		return nil
+	}
+
+	// Skip if no Accept-Encoding header
+	Gzip()(h)(c)
+	// assert.Equal(t, http.StatusOK, rec.Status())
+	assert.Equal(t, "test", rec.Body.String())
+
+	req = test.NewRequest(echo.GET, "/", nil)
+	req.Header().Set(echo.AcceptEncoding, "gzip")
+	rec = test.NewResponseRecorder()
+	c = echo.NewContext(req, rec, e)
+
+	// Gzip
+	Gzip()(h)(c)
+	// assert.Equal(t, http.StatusOK, rec.Status())
+	assert.Equal(t, "gzip", rec.Header().Get(echo.ContentEncoding))
+	assert.Contains(t, rec.Header().Get(echo.ContentType), echo.TextPlain)
+	r, err := gzip.NewReader(rec.Body)
+	defer r.Close()
+	if assert.NoError(t, err) {
+		buf := new(bytes.Buffer)
+		buf.ReadFrom(r)
+		assert.Equal(t, "test", buf.String())
+	}
+}
+
 // func TestGzipFlush(t *testing.T) {
 // 	res := test.NewResponseRecorder()
 // 	buf := new(bytes.Buffer)
@@ -104,7 +100,7 @@ package middleware
 // 		t.Fatal("Flush didn't flush any data")
 // 	}
 // }
-//
+
 // func TestGzipCloseNotify(t *testing.T) {
 // 	rec := newCloseNotifyingRecorder()
 // 	buf := new(bytes.Buffer)

@@ -1,6 +1,9 @@
 package engine
 
-import "io"
+import (
+	"io"
+	"time"
+)
 
 type (
 	Type uint8
@@ -31,6 +34,8 @@ type (
 		Status() int
 		Size() int64
 		Committed() bool
+		SetWriter(io.Writer)
+		Writer() io.Writer
 	}
 
 	Header interface {
@@ -49,7 +54,11 @@ type (
 	}
 
 	Config struct {
-		Address string
+		Address      string
+		ReadTimeout  time.Duration
+		WriteTimeout time.Duration
+		TLSCertfile  string
+		TLSKeyfile   string
 	}
 )
 

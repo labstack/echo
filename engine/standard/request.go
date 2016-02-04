@@ -18,7 +18,7 @@ type (
 func NewRequest(r *http.Request) *Request {
 	return &Request{
 		request: r,
-		url:     NewURL(r.URL),
+		url:     &URL{url: r.URL},
 		header:  &Header{r.Header},
 	}
 }
@@ -53,4 +53,10 @@ func (r *Request) Body() io.ReadCloser {
 
 func (r *Request) FormValue(name string) string {
 	return r.request.FormValue(name)
+}
+
+func (r *Request) reset(req *http.Request, h engine.Header, u engine.URL) {
+	r.request = req
+	r.header = h
+	r.url = u
 }

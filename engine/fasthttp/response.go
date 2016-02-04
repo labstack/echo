@@ -1,6 +1,8 @@
 package fasthttp
 
 import (
+	"io"
+
 	"github.com/labstack/echo/engine"
 	"github.com/valyala/fasthttp"
 )
@@ -12,6 +14,7 @@ type (
 		status    int
 		size      int64
 		committed bool
+		writer    io.Writer
 	}
 )
 
@@ -37,4 +40,12 @@ func (r *Response) Size() int64 {
 
 func (r *Response) Committed() bool {
 	return r.committed
+}
+
+func (r *Response) SetWriter(w io.Writer) {
+	r.writer = w
+}
+
+func (r *Response) Writer() io.Writer {
+	return r.writer
 }

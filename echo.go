@@ -554,8 +554,23 @@ func (e *Echo) SetEngine(t engine.Type) {
 }
 
 // Run runs a server.
-func (e *Echo) Run(address string) {
-	config := &engine.Config{Address: address}
+func (e *Echo) Run(addr string) {
+	c := &engine.Config{Address: addr}
+	e.RunWithConfig(c)
+}
+
+// RunTLS runs a server with TLS configuration.
+func (e *Echo) RunTLS(addr, certfile, keyfile string) {
+	c := &engine.Config{
+		Address:     addr,
+		TLSCertfile: certfile,
+		TLSKeyfile:  keyfile,
+	}
+	e.RunWithConfig(c)
+}
+
+// RunWithConfig runs a server with engine configuration.
+func (e *Echo) RunWithConfig(config *engine.Config) {
 	handler := func(req engine.Request, res engine.Response) {
 		if e.hook != nil {
 			e.hook(req, res)
@@ -585,38 +600,6 @@ func (e *Echo) Run(address string) {
 	}
 
 	e.engine.Start()
-
-	// e.run(e.Server(addr))
-}
-
-// RunTLS runs a server with TLS configuration.
-func (e *Echo) RunTLS(addr, crtFile, keyFile string) {
-	// e.run(e.Server(addr), crtFile, keyFile)
-}
-
-// RunServer runs a custom server.
-func (e *Echo) RunServer(s *http.Server) {
-	// e.run(s)
-}
-
-// RunTLSServer runs a custom server with TLS configuration.
-func (e *Echo) RunTLSServer(s *http.Server, crtFile, keyFile string) {
-	// e.run(s, crtFile, keyFile)
-}
-
-func (e *Echo) run(s *http.Server, files ...string) {
-	// s.Handler = e
-	// // TODO: Remove in Go 1.6+
-	// if e.http2 {
-	// 	http2.ConfigureServer(s, nil)
-	// }
-	// if len(files) == 0 {
-	// 	e.logger.Fatal(s.ListenAndServe())
-	// } else if len(files) == 2 {
-	// 	e.logger.Fatal(s.ListenAndServeTLS(files[0], files[1]))
-	// } else {
-	// 	e.logger.Fatal("invalid TLS configuration")
-	// }
 }
 
 func NewHTTPError(code int, msg ...string) *HTTPError {

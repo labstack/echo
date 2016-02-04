@@ -13,12 +13,12 @@ func TestRecover(t *testing.T) {
 	e := echo.New()
 	e.SetDebug(true)
 	req := test.NewRequest(echo.GET, "/", nil)
-	res := test.NewResponseRecorder()
-	c := echo.NewContext(req, res, e)
+	rec := test.NewResponseRecorder()
+	c := echo.NewContext(req, rec, e)
 	h := func(c echo.Context) error {
 		panic("test")
 	}
 	Recover()(h)(c)
-	assert.Equal(t, http.StatusInternalServerError, res.Status())
-	assert.Contains(t, res.Body.String(), "panic recover")
+	assert.Equal(t, http.StatusInternalServerError, rec.Status())
+	assert.Contains(t, rec.Body.String(), "panic recover")
 }

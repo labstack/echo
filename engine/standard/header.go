@@ -4,22 +4,26 @@ import "net/http"
 
 type (
 	Header struct {
-		http.Header
+		header http.Header
 	}
 )
 
 func (h *Header) Add(key, val string) {
-	h.Header.Add(key, val)
+	h.header.Add(key, val)
 }
 
 func (h *Header) Del(key string) {
-	h.Header.Del(key)
+	h.header.Del(key)
 }
 
 func (h *Header) Get(key string) string {
-	return h.Header.Get(key)
+	return h.header.Get(key)
 }
 
 func (h *Header) Set(key, val string) {
-	h.Header.Set(key, val)
+	h.header.Set(key, val)
+}
+
+func (h *Header) reset(hdr http.Header) {
+	h.header = hdr
 }

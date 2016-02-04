@@ -15,8 +15,8 @@ func TestLogger(t *testing.T) {
 	// Note: Just for the test coverage, not a real test.
 	e := echo.New()
 	req := test.NewRequest(echo.GET, "/", nil)
-	res := test.NewResponseRecorder()
-	c := echo.NewContext(req, res, e)
+	rec := test.NewResponseRecorder()
+	c := echo.NewContext(req, rec, e)
 
 	// Status 2xx
 	h := func(c echo.Context) error {
@@ -25,16 +25,16 @@ func TestLogger(t *testing.T) {
 	Logger()(h)(c)
 
 	// Status 3xx
-	res = test.NewResponseRecorder()
-	c = echo.NewContext(req, res, e)
+	rec = test.NewResponseRecorder()
+	c = echo.NewContext(req, rec, e)
 	h = func(c echo.Context) error {
 		return c.String(http.StatusTemporaryRedirect, "test")
 	}
 	Logger()(h)(c)
 
 	// Status 4xx
-	res = test.NewResponseRecorder()
-	c = echo.NewContext(req, res, e)
+	rec = test.NewResponseRecorder()
+	c = echo.NewContext(req, rec, e)
 	h = func(c echo.Context) error {
 		return c.String(http.StatusNotFound, "test")
 	}
@@ -42,8 +42,8 @@ func TestLogger(t *testing.T) {
 
 	// Status 5xx with empty path
 	req = test.NewRequest(echo.GET, "", nil)
-	res = test.NewResponseRecorder()
-	c = echo.NewContext(req, res, e)
+	rec = test.NewResponseRecorder()
+	c = echo.NewContext(req, rec, e)
 	h = func(c echo.Context) error {
 		return errors.New("error")
 	}
@@ -53,8 +53,8 @@ func TestLogger(t *testing.T) {
 func TestLoggerIPAddress(t *testing.T) {
 	e := echo.New()
 	req := test.NewRequest(echo.GET, "/", nil)
-	res := test.NewResponseRecorder()
-	c := echo.NewContext(req, res, e)
+	rec := test.NewResponseRecorder()
+	c := echo.NewContext(req, rec, e)
 	buf := new(bytes.Buffer)
 	e.Logger().SetOutput(buf)
 	ip := "127.0.0.1"

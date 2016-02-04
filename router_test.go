@@ -529,16 +529,16 @@ func TestRouterParamNames(t *testing.T) {
 	// Route > /users/:id
 	h, _ = r.Find(GET, "/users/1", c)
 	if assert.NotNil(t, h) {
-		assert.Equal(t, "id", c.X().pnames[0])
+		assert.Equal(t, "id", c.Context().pnames[0])
 		assert.Equal(t, "1", c.P(0))
 	}
 
 	// Route > /users/:uid/files/:fid
 	h, _ = r.Find(GET, "/users/1/files/1", c)
 	if assert.NotNil(t, h) {
-		assert.Equal(t, "uid", c.X().pnames[0])
+		assert.Equal(t, "uid", c.Context().pnames[0])
 		assert.Equal(t, "1", c.P(0))
-		assert.Equal(t, "fid", c.X().pnames[1])
+		assert.Equal(t, "fid", c.Context().pnames[1])
 		assert.Equal(t, "1", c.P(1))
 	}
 }
@@ -556,7 +556,7 @@ func TestRouterAPI(t *testing.T) {
 	for _, route := range api {
 		h, _ := r.Find(route.Method, route.Path, c)
 		if assert.NotNil(t, h) {
-			for i, n := range c.X().pnames {
+			for i, n := range c.Context().pnames {
 				if assert.NotEmpty(t, n) {
 					assert.Equal(t, ":"+n, c.P(i))
 				}

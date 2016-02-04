@@ -1,8 +1,9 @@
 package fasthttp
 
 import (
-	"log"
 	"net/http"
+
+	"github.com/labstack/gommon/log"
 )
 import (
 	"github.com/labstack/echo/engine"
@@ -27,7 +28,6 @@ func NewServer(config *engine.Config, handler engine.HandlerFunc) *Server {
 
 func (s *Server) Start() {
 	fasthttp.ListenAndServe(s.config.Address, func(ctx *fasthttp.RequestCtx) {
-		println("FastHTTP")
 		req := &Request{
 			context: ctx,
 			url:     &URL{ctx.URI()},

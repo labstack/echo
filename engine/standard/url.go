@@ -9,10 +9,6 @@ type (
 	}
 )
 
-func NewURL(u *url.URL) *URL {
-	return &URL{url: u}
-}
-
 func (u *URL) URL() *url.URL {
 	return u.url
 }
@@ -38,4 +34,8 @@ func (u *URL) QueryValue(name string) string {
 		u.query = u.url.Query()
 	}
 	return u.query.Get(name)
+}
+
+func (u *URL) reset(url *url.URL) {
+	u.url = url
 }

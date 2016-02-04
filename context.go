@@ -47,7 +47,7 @@ type (
 		Redirect(int, string) error
 		Error(err error)
 		Logger() *log.Logger
-		X() *context
+		Context() *context
 	}
 
 	context struct {
@@ -307,8 +307,8 @@ func (c *context) Logger() *log.Logger {
 	return c.echo.logger
 }
 
-// X returns the `context` instance.
-func (c *context) X() *context {
+// Context returns the `context` instance.
+func (c *context) Context() *context {
 	return c
 }
 

@@ -1,7 +1,11 @@
 package standard
 
-import "net/http"
-import "github.com/labstack/echo/engine"
+import (
+	"io"
+	"net/http"
+
+	"github.com/labstack/echo/engine"
+)
 
 type (
 	Response struct {
@@ -10,6 +14,7 @@ type (
 		status    int
 		size      int64
 		committed bool
+		writer    io.Writer
 	}
 )
 
@@ -17,6 +22,7 @@ func NewResponse(w http.ResponseWriter) *Response {
 	return &Response{
 		response: w,
 		header:   &Header{w.Header()},
+		writer:   w,
 	}
 }
 
@@ -35,7 +41,7 @@ func (r *Response) WriteHeader(code int) {
 }
 
 func (r *Response) Write(b []byte) (n int, err error) {
-	n, err = r.response.Write(b)
+	n, err = r.writer.Write(b)
 	r.size += int64(n)
 	return
 }
@@ -50,4 +56,21 @@ func (r *Response) Size() int64 {
 
 func (r *Response) Committed() bool {
 	return r.committed
+}
+
+func (r *Response) SetWriter(w io.Writer) {
+	r.writer = w
+}
+
+func (r *Response) Writer() io.Writer {
+	return r.writer
+}
+
+func (r *Response) reset(w http.ResponseWriter, h engine.Header) {
+	r.response = w
+	r.header = h
+	r.status = http.StatusOK
+	r.size = 0
+	r.committed = false
+	r.writer = w
 }
