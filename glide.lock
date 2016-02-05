@@ -1,8 +1,8 @@
 hash: 57f60c6f58e40de3ea10123144095336abe2a4024e256feea9721e4e89ad38be
-updated: 2016-01-28T19:14:46.587206305-08:00
+updated: 2016-02-04T19:09:01.247772095-08:00
 imports:
 - name: github.com/labstack/gommon
-  version: 25c3ce2d2abe76d8dd935305f1a8c1063dd3aac3
+  version: 28bf9248c3e81039c18bff6a1cf2a7f0841caf35
   subpackages:
   - /color
   - log
@@ -11,17 +11,15 @@ imports:
 - name: github.com/mattn/go-isatty
   version: 56b76bdf51f7708750eac80fa38b952bb9f32639
 - name: github.com/valyala/fasthttp
-  version: 359b3a1dd826fd4f7a4375f7072e7314ddad2400
+  version: df213349e25e909911691ffe752149440d969641
 - name: golang.org/x/crypto
   version: 1f22c0103821b9390939b6776727195525381532
-  repo: https://golang.org/x/crypto
 - name: golang.org/x/net
-  version: 04b9de9b512f58addf28c9853d50ebef61c3953e
+  version: 493a26246902f2887349f625a5f846bf0286af49
   subpackages:
   - /context
   - http2
   - websocket
 - name: golang.org/x/text
-  version: 6d3c22c4525a4da167968fa2479be5524d2e8bd0
-  repo: https://golang.org/x/text
+  version: cd1d59e467ef512633026c0f15282e108e41d453
 devImports: []

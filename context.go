@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/labstack/echo/engine"
-	"github.com/labstack/gommon/log"
+	"github.com/labstack/echo/logger"
 
 	"net/url"
 
@@ -46,7 +46,7 @@ type (
 		NoContent(int) error
 		Redirect(int, string) error
 		Error(err error)
-		Logger() *log.Logger
+		Logger() logger.Logger
 		Context() *context
 	}
 
@@ -303,7 +303,7 @@ func (c *context) Error(err error) {
 }
 
 // Logger returns the `Logger` instance.
-func (c *context) Logger() *log.Logger {
+func (c *context) Logger() logger.Logger {
 	return c.echo.logger
 }
 
@@ -314,8 +314,6 @@ func (c *context) Context() *context {
 
 func (c *context) reset(req engine.Request, res engine.Response, e *Echo) {
 	c.request = req
-	// TODO: v2
-	// c.response.reset(res, e)
 	c.response = res
 	c.query = nil
 	c.store = nil

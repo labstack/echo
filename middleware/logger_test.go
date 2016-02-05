@@ -8,6 +8,7 @@ import (
 
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/test"
+	"github.com/labstack/gommon/log"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -56,7 +57,7 @@ func TestLoggerIPAddress(t *testing.T) {
 	rec := test.NewResponseRecorder()
 	c := echo.NewContext(req, rec, e)
 	buf := new(bytes.Buffer)
-	e.Logger().SetOutput(buf)
+	e.Logger().(*log.Logger).SetOutput(buf)
 	ip := "127.0.0.1"
 	h := func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")

@@ -1,11 +1,11 @@
 package standard
 
 import (
-	"log"
 	"net/http"
 	"sync"
 
 	"github.com/labstack/echo/engine"
+	"github.com/labstack/echo/logger"
 )
 
 type (
@@ -14,6 +14,7 @@ type (
 		config  *engine.Config
 		handler engine.HandlerFunc
 		pool    *Pool
+		logger  logger.Logger
 	}
 
 	Pool struct {
@@ -24,11 +25,11 @@ type (
 	}
 )
 
-func NewServer(config *engine.Config, handler engine.HandlerFunc) *Server {
+func NewServer(c *engine.Config, h engine.HandlerFunc, l logger.Logger) *Server {
 	return &Server{
 		Server:  new(http.Server),
-		config:  config,
-		handler: handler,
+		config:  c,
+		handler: h,
 		pool: &Pool{
 			request: sync.Pool{
 				New: func() interface{} {
@@ -37,7 +38,7 @@ func NewServer(config *engine.Config, handler engine.HandlerFunc) *Server {
 			},
 			response: sync.Pool{
 				New: func() interface{} {
-					return &Response{}
+					return &Response{logger: l}
 				},
 			},
 			header: sync.Pool{
@@ -51,6 +52,7 @@ func NewServer(config *engine.Config, handler engine.HandlerFunc) *Server {
 				},
 			},
 		},
+		logger: l,
 	}
 }
 
@@ -78,5 +80,5 @@ func (s *Server) Start() {
 		s.pool.response.Put(res)
 		s.pool.header.Put(resHdr)
 	})
-	log.Fatal(s.ListenAndServe())
+	s.logger.Fatal(s.ListenAndServe())
 }

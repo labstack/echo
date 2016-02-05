@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/engine"
+	"github.com/labstack/echo/logger"
 )
 
 type (
@@ -15,14 +16,16 @@ type (
 		size      int64
 		committed bool
 		writer    io.Writer
+		logger    logger.Logger
 	}
 )
 
-func NewResponse(w http.ResponseWriter) *Response {
+func NewResponse(w http.ResponseWriter, l logger.Logger) *Response {
 	return &Response{
 		response: w,
 		header:   &Header{w.Header()},
 		writer:   w,
+		logger:   l,
 	}
 }
 
@@ -32,7 +35,7 @@ func (r *Response) Header() engine.Header {
 
 func (r *Response) WriteHeader(code int) {
 	if r.committed {
-		// r.echo.Logger().Warn("response already committed")
+		r.logger.Warn("response already committed")
 		return
 	}
 	r.status = code

@@ -3,10 +3,8 @@ package fasthttp
 import (
 	"net/http"
 
-	"github.com/labstack/gommon/log"
-)
-import (
 	"github.com/labstack/echo/engine"
+	"github.com/labstack/echo/logger"
 	"github.com/valyala/fasthttp"
 )
 
@@ -15,14 +13,16 @@ type (
 		*http.Server
 		config  *engine.Config
 		handler engine.HandlerFunc
+		logger  logger.Logger
 	}
 )
 
-func NewServer(config *engine.Config, handler engine.HandlerFunc) *Server {
+func NewServer(c *engine.Config, h engine.HandlerFunc, l logger.Logger) *Server {
 	return &Server{
 		Server:  new(http.Server),
-		config:  config,
-		handler: handler,
+		config:  c,
+		handler: h,
+		logger:  l,
 	}
 }
 
@@ -39,5 +39,5 @@ func (s *Server) Start() {
 		}
 		s.handler(req, res)
 	})
-	log.Fatal(s.ListenAndServe())
+	s.logger.Fatal(s.ListenAndServe())
 }

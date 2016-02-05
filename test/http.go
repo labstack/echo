@@ -8,6 +8,7 @@ import (
 
 	"github.com/labstack/echo/engine"
 	"github.com/labstack/echo/engine/standard"
+	"github.com/labstack/gommon/log"
 )
 
 type (
@@ -25,7 +26,7 @@ func NewRequest(method, url string, body io.Reader) engine.Request {
 func NewResponseRecorder() *ResponseRecorder {
 	r := httptest.NewRecorder()
 	return &ResponseRecorder{
-		Response: standard.NewResponse(r),
+		Response: standard.NewResponse(r, log.New("test")),
 		Body:     r.Body,
 	}
 }

@@ -13,13 +13,13 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-	"time"
 
 	"encoding/xml"
 
 	"github.com/labstack/echo/engine"
 	"github.com/labstack/echo/engine/fasthttp"
 	"github.com/labstack/echo/engine/standard"
+	"github.com/labstack/echo/logger"
 	"github.com/labstack/gommon/log"
 )
 
@@ -41,7 +41,7 @@ type (
 		engineType              engine.Type
 		engine                  engine.Engine
 		router                  *Router
-		logger                  *log.Logger
+		logger                  logger.Logger
 	}
 
 	Route struct {
@@ -184,8 +184,6 @@ var (
 	methodNotAllowedHandler = func(c Context) error {
 		return NewHTTPError(http.StatusMethodNotAllowed)
 	}
-
-	unixEpochTime = time.Unix(0, 0)
 )
 
 // New creates an instance of Echo.
@@ -222,7 +220,6 @@ func New() (e *Echo) {
 
 	// Logger
 	e.logger = log.New("echo")
-	e.logger.SetLevel(log.INFO)
 
 	return
 }
@@ -232,23 +229,13 @@ func (e *Echo) Router() *Router {
 	return e.router
 }
 
-// SetLogPrefix sets the prefix for the logger. Default value is `echo`.
-func (e *Echo) SetLogPrefix(prefix string) {
-	e.logger.SetPrefix(prefix)
-}
-
-// SetLogOutput sets the output destination for the logger. Default value is `os.Stdout`
-func (e *Echo) SetLogOutput(w io.Writer) {
-	e.logger.SetOutput(w)
-}
-
-// SetLogLevel sets the log level for the logger. Default value is `log.INFO`.
-func (e *Echo) SetLogLevel(l log.Level) {
-	e.logger.SetLevel(l)
+// SetLogger sets the logger instance.
+func (e *Echo) SetLogger(logger logger.Logger) {
+	e.logger = logger
 }
 
 // Logger returns the logger instance.
-func (e *Echo) Logger() *log.Logger {
+func (e *Echo) Logger() logger.Logger {
 	return e.logger
 }
 
@@ -592,13 +579,13 @@ func (e *Echo) RunWithConfig(config *engine.Config) {
 
 		e.pool.Put(c)
 	}
-	e.engine = standard.NewServer(config, handler)
 
 	switch e.engineType {
 	case engine.FastHTTP:
-		e.engine = fasthttp.NewServer(config, handler)
+		e.engine = fasthttp.NewServer(config, handler, e.logger)
+	default:
+		e.engine = standard.NewServer(config, handler, e.logger)
 	}
-
 	e.engine.Start()
 }
 
