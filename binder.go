@@ -37,7 +37,7 @@ func (b *binder) MaxMemory() int64 {
 
 func (b *binder) Bind(r *http.Request, i interface{}) (err error) {
 	if r.Body == nil {
-		err = NewHTTPError(http.StatusBadRequest, "Requesr body can't be nil")
+		err = NewHTTPError(http.StatusBadRequest, "Request body can't be nil")
 		return
 	}
 	defer r.Body.Close()
