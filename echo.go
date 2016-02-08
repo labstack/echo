@@ -543,7 +543,7 @@ func (e *Echo) SetEngine(t engine.Type) {
 // Run runs a server.
 func (e *Echo) Run(addr string) {
 	c := &engine.Config{Address: addr}
-	e.RunWithConfig(c)
+	e.RunConfig(c)
 }
 
 // RunTLS runs a server with TLS configuration.
@@ -553,11 +553,11 @@ func (e *Echo) RunTLS(addr, certfile, keyfile string) {
 		TLSCertfile: certfile,
 		TLSKeyfile:  keyfile,
 	}
-	e.RunWithConfig(c)
+	e.RunConfig(c)
 }
 
-// RunWithConfig runs a server with engine configuration.
-func (e *Echo) RunWithConfig(config *engine.Config) {
+// RunConfig runs a server with engine configuration.
+func (e *Echo) RunConfig(config *engine.Config) {
 	handler := func(req engine.Request, res engine.Response) {
 		if e.hook != nil {
 			e.hook(req, res)
