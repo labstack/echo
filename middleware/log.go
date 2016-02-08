@@ -8,7 +8,7 @@ import (
 	"github.com/labstack/gommon/color"
 )
 
-func Logger() echo.MiddlewareFunc {
+func Log() MiddlewareFunc {
 	return func(h echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			req := c.Request()

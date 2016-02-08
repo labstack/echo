@@ -48,10 +48,10 @@ var writerPool = sync.Pool{
 
 // Gzip returns a middleware which compresses HTTP response using gzip compression
 // scheme.
-func Gzip() echo.MiddlewareFunc {
-	scheme := "gzip"
-
+func Gzip() MiddlewareFunc {
 	return func(h echo.HandlerFunc) echo.HandlerFunc {
+		scheme := "gzip"
+
 		return func(c echo.Context) error {
 			c.Response().Header().Add(echo.Vary, echo.AcceptEncoding)
 			if strings.Contains(c.Request().Header().Get(echo.AcceptEncoding), scheme) {

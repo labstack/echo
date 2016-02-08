@@ -12,18 +12,19 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestLogger(t *testing.T) {
+func TestLog(t *testing.T) {
 	// Note: Just for the test coverage, not a real test.
 	e := echo.New()
 	req := test.NewRequest(echo.GET, "/", nil)
 	rec := test.NewResponseRecorder()
 	c := echo.NewContext(req, rec, e)
-
-	// Status 2xx
 	h := func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}
-	Logger()(h)(c)
+	mw := Log()(h)
+
+	// Status 2xx
+	mw(c)
 
 	// Status 3xx
 	rec = test.NewResponseRecorder()
@@ -31,7 +32,7 @@ func TestLogger(t *testing.T) {
 	h = func(c echo.Context) error {
 		return c.String(http.StatusTemporaryRedirect, "test")
 	}
-	Logger()(h)(c)
+	mw(c)
 
 	// Status 4xx
 	rec = test.NewResponseRecorder()
@@ -39,7 +40,7 @@ func TestLogger(t *testing.T) {
 	h = func(c echo.Context) error {
 		return c.String(http.StatusNotFound, "test")
 	}
-	Logger()(h)(c)
+	mw(c)
 
 	// Status 5xx with empty path
 	req = test.NewRequest(echo.GET, "", nil)
@@ -48,10 +49,10 @@ func TestLogger(t *testing.T) {
 	h = func(c echo.Context) error {
 		return errors.New("error")
 	}
-	Logger()(h)(c)
+	mw(c)
 }
 
-func TestLoggerIPAddress(t *testing.T) {
+func TestLogIPAddress(t *testing.T) {
 	e := echo.New()
 	req := test.NewRequest(echo.GET, "/", nil)
 	rec := test.NewResponseRecorder()
@@ -62,23 +63,22 @@ func TestLoggerIPAddress(t *testing.T) {
 	h := func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}
-
-	mw := Logger()
+	mw := Log()(h)
 
 	// With X-Real-IP
 	req.Header().Add(echo.XRealIP, ip)
-	mw(h)(c)
+	mw(c)
 	assert.Contains(t, buf.String(), ip)
 
 	// With X-Forwarded-For
 	buf.Reset()
 	req.Header().Del(echo.XRealIP)
 	req.Header().Add(echo.XForwardedFor, ip)
-	mw(h)(c)
+	mw(c)
 	assert.Contains(t, buf.String(), ip)
 
 	// with req.RemoteAddr
 	buf.Reset()
-	mw(h)(c)
+	mw(c)
 	assert.Contains(t, buf.String(), ip)
 }

@@ -21,38 +21,41 @@ func TestBasicAuth(t *testing.T) {
 		}
 		return false
 	}
-	ba := BasicAuth(fn)
+	h := func(c echo.Context) error {
+		return c.String(http.StatusOK, "test")
+	}
+	mw := BasicAuth(fn)(h)
 
 	// Valid credentials
-	auth := Basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:secret"))
+	auth := basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:secret"))
 	req.Header().Set(echo.Authorization, auth)
-	assert.NoError(t, ba(c))
+	assert.NoError(t, mw(c))
 
 	//---------------------
 	// Invalid credentials
 	//---------------------
 
 	// Incorrect password
-	auth = Basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:password"))
+	auth = basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:password"))
 	req.Header().Set(echo.Authorization, auth)
-	he := ba(c).(*echo.HTTPError)
+	he := mw(c).(*echo.HTTPError)
 	assert.Equal(t, http.StatusUnauthorized, he.Code())
-	assert.Equal(t, Basic+" realm=Restricted", res.Header().Get(echo.WWWAuthenticate))
+	assert.Equal(t, basic+" realm=Restricted", res.Header().Get(echo.WWWAuthenticate))
 
 	// Empty Authorization header
 	req.Header().Set(echo.Authorization, "")
-	he = ba(c).(*echo.HTTPError)
+	he = mw(c).(*echo.HTTPError)
 	assert.Equal(t, http.StatusUnauthorized, he.Code())
-	assert.Equal(t, Basic+" realm=Restricted", res.Header().Get(echo.WWWAuthenticate))
+	assert.Equal(t, basic+" realm=Restricted", res.Header().Get(echo.WWWAuthenticate))
 
 	// Invalid Authorization header
 	auth = base64.StdEncoding.EncodeToString([]byte("invalid"))
 	req.Header().Set(echo.Authorization, auth)
-	he = ba(c).(*echo.HTTPError)
+	he = mw(c).(*echo.HTTPError)
 	assert.Equal(t, http.StatusUnauthorized, he.Code())
-	assert.Equal(t, Basic+" realm=Restricted", res.Header().Get(echo.WWWAuthenticate))
+	assert.Equal(t, basic+" realm=Restricted", res.Header().Get(echo.WWWAuthenticate))
 
 	// WebSocket
 	c.Request().Header().Set(echo.Upgrade, echo.WebSocket)
-	assert.NoError(t, ba(c))
+	assert.NoError(t, mw(c))
 }
