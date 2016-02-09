@@ -61,15 +61,15 @@ func (s *Server) Start() {
 	s.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Request
 		req := s.pool.request.Get().(*Request)
-		reqHdr := s.pool.request.Get().(*Header)
-		reqURL := s.pool.request.Get().(*URL)
+		reqHdr := s.pool.header.Get().(*Header)
+		reqURL := s.pool.url.Get().(*URL)
 		reqHdr.reset(r.Header)
 		reqURL.reset(r.URL)
 		req.reset(r, reqHdr, reqURL)
 
 		// Response
-		res := s.pool.request.Get().(*Response)
-		resHdr := s.pool.request.Get().(*Header)
+		res := s.pool.response.Get().(*Response)
+		resHdr := s.pool.header.Get().(*Header)
 		res.reset(w, reqHdr)
 
 		s.handler(req, res)

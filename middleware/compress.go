@@ -48,7 +48,7 @@ var writerPool = sync.Pool{
 
 // Gzip returns a middleware which compresses HTTP response using gzip compression
 // scheme.
-func Gzip() MiddlewareFunc {
+func Gzip() echo.MiddlewareFunc {
 	return func(h echo.HandlerFunc) echo.HandlerFunc {
 		scheme := "gzip"
 

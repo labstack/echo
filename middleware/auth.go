@@ -19,7 +19,7 @@ const (
 //
 // For valid credentials it calls the next handler.
 // For invalid credentials, it sends "401 - Unauthorized" response.
-func BasicAuth(fn BasicValidateFunc) MiddlewareFunc {
+func BasicAuth(fn BasicValidateFunc) echo.MiddlewareFunc {
 	return func(h echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			// Skip WebSocket

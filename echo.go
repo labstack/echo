@@ -55,8 +55,12 @@ type (
 		message string
 	}
 
-	// Middleware     interface{}
+	Middleware interface {
+		Process(HandlerFunc) HandlerFunc
+	}
+
 	MiddlewareFunc func(HandlerFunc) HandlerFunc
+
 	// Handler        interface{}
 	HandlerFunc func(Context) error
 
@@ -222,6 +226,10 @@ func New() (e *Echo) {
 	e.logger = log.New("echo")
 
 	return
+}
+
+func (f MiddlewareFunc) Process(h HandlerFunc) HandlerFunc {
+	return f(h)
 }
 
 // Router returns router.
