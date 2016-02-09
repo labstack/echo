@@ -51,20 +51,19 @@ import (
 type (
 	// Echo is the top-level framework instance.
 	Echo struct {
-		prefix                  string
-		middleware              []MiddlewareFunc
-		http2                   bool
-		maxParam                *int
-		defaultHTTPErrorHandler HTTPErrorHandler
-		httpErrorHandler        HTTPErrorHandler
-		binder                  Binder
-		renderer                Renderer
-		pool                    sync.Pool
-		debug                   bool
-		hook                    http.HandlerFunc
-		autoIndex               bool
-		logger                  Logger
-		router                  *Router
+		prefix           string
+		middleware       []MiddlewareFunc
+		http2            bool
+		maxParam         *int
+		httpErrorHandler HTTPErrorHandler
+		binder           Binder
+		renderer         Renderer
+		pool             sync.Pool
+		debug            bool
+		hook             http.HandlerFunc
+		autoIndex        bool
+		logger           Logger
+		router           *Router
 	}
 
 	// Logger is the interface that declares echo's logging system.
@@ -241,22 +240,7 @@ func New() (e *Echo) {
 	//----------
 
 	e.HTTP2(true)
-	e.defaultHTTPErrorHandler = func(err error, c *Context) {
-		code := http.StatusInternalServerError
-		msg := http.StatusText(code)
-		if he, ok := err.(*HTTPError); ok {
-			code = he.code
-			msg = he.message
-		}
-		if e.debug {
-			msg = err.Error()
-		}
-		if !c.response.committed {
-			http.Error(c.response, msg, code)
-		}
-		e.logger.Error(err)
-	}
-	e.SetHTTPErrorHandler(e.defaultHTTPErrorHandler)
+	e.SetHTTPErrorHandler(e.DefaultHTTPErrorHandler)
 	e.SetBinder(&binder{})
 
 	// Logger
@@ -287,7 +271,19 @@ func (e *Echo) HTTP2(on bool) {
 
 // DefaultHTTPErrorHandler invokes the default HTTP error handler.
 func (e *Echo) DefaultHTTPErrorHandler(err error, c *Context) {
-	e.defaultHTTPErrorHandler(err, c)
+	code := http.StatusInternalServerError
+	msg := http.StatusText(code)
+	if he, ok := err.(*HTTPError); ok {
+		code = he.code
+		msg = he.message
+	}
+	if e.debug {
+		msg = err.Error()
+	}
+	if !c.response.committed {
+		http.Error(c.response, msg, code)
+	}
+	e.logger.Error(err)
 }
 
 // SetHTTPErrorHandler registers a custom Echo.HTTPErrorHandler.
@@ -595,8 +591,8 @@ func (e *Echo) Run(addr string) {
 }
 
 // RunTLS runs a server with TLS configuration.
-func (e *Echo) RunTLS(addr, crtFile, keyFile string) {
-	e.run(e.Server(addr), crtFile, keyFile)
+func (e *Echo) RunTLS(addr, certfile, keyfile string) {
+	e.run(e.Server(addr), certfile, keyfile)
 }
 
 // RunServer runs a custom server.
