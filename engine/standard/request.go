@@ -23,8 +23,8 @@ func NewRequest(r *http.Request) *Request {
 	}
 }
 
-func (r *Request) Object() interface{} {
-	return r.request
+func (r *Request) Host() string {
+	return r.Host()
 }
 
 func (r *Request) URL() engine.URL {
@@ -53,6 +53,10 @@ func (r *Request) Body() io.ReadCloser {
 
 func (r *Request) FormValue(name string) string {
 	return r.request.FormValue(name)
+}
+
+func (r *Request) Object() interface{} {
+	return r.request
 }
 
 func (r *Request) reset(req *http.Request, h engine.Header, u engine.URL) {

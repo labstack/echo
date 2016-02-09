@@ -29,10 +29,6 @@ func NewResponse(w http.ResponseWriter, l logger.Logger) *Response {
 	}
 }
 
-func (r *Response) Object() interface{} {
-	return r.response
-}
-
 func (r *Response) Header() engine.Header {
 	return r.header
 }
@@ -71,6 +67,10 @@ func (r *Response) SetWriter(w io.Writer) {
 
 func (r *Response) Writer() io.Writer {
 	return r.writer
+}
+
+func (r *Response) Object() interface{} {
+	return r.response
 }
 
 func (r *Response) reset(w http.ResponseWriter, h engine.Header) {

@@ -1,6 +1,10 @@
 package fasthttp
 
-import "io"
+import (
+	"bytes"
+	"io"
+	"io/ioutil"
+)
 
 import (
 	"github.com/labstack/echo/engine"
@@ -23,8 +27,8 @@ func NewRequest(c *fasthttp.RequestCtx) *Request {
 	}
 }
 
-func (r *Request) Object() interface{} {
-	return r.context
+func (r *Request) Host() string {
+	return string(r.context.Host())
 }
 
 func (r *Request) URI() string {
@@ -48,10 +52,13 @@ func (r *Request) Method() string {
 }
 
 func (r *Request) Body() io.ReadCloser {
-	// return r.context.PostBody()
-	return nil
+	return ioutil.NopCloser(bytes.NewBuffer(r.context.PostBody()))
 }
 
 func (r *Request) FormValue(name string) string {
 	return ""
+}
+
+func (r *Request) Object() interface{} {
+	return r.context
 }

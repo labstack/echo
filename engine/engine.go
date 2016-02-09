@@ -15,6 +15,7 @@ type (
 	}
 
 	Request interface {
+		Host() string
 		URI() string
 		URL() URL
 		Header() Header

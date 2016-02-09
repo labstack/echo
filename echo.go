@@ -25,23 +25,22 @@ import (
 
 type (
 	Echo struct {
-		prefix                  string
-		middleware              []MiddlewareFunc
-		http2                   bool
-		maxParam                *int
-		notFoundHandler         HandlerFunc
-		defaultHTTPErrorHandler HTTPErrorHandler
-		httpErrorHandler        HTTPErrorHandler
-		binder                  Binder
-		renderer                Renderer
-		pool                    sync.Pool
-		debug                   bool
-		hook                    engine.HandlerFunc
-		autoIndex               bool
-		engineType              engine.Type
-		engine                  engine.Engine
-		router                  *Router
-		logger                  logger.Logger
+		prefix           string
+		middleware       []MiddlewareFunc
+		http2            bool
+		maxParam         *int
+		notFoundHandler  HandlerFunc
+		httpErrorHandler HTTPErrorHandler
+		binder           Binder
+		renderer         Renderer
+		pool             sync.Pool
+		debug            bool
+		hook             engine.HandlerFunc
+		autoIndex        bool
+		engineType       engine.Type
+		engine           engine.Engine
+		router           *Router
+		logger           logger.Logger
 	}
 
 	Route struct {
