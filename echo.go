@@ -61,7 +61,10 @@ type (
 
 	MiddlewareFunc func(HandlerFunc) HandlerFunc
 
-	// Handler        interface{}
+	Handler interface {
+		Handle(Context) error
+	}
+
 	HandlerFunc func(Context) error
 
 	// HTTPErrorHandler is a centralized HTTP error handler.
@@ -181,13 +184,13 @@ var (
 	// Error handlers
 	//----------------
 
-	notFoundHandler = func(c Context) error {
+	notFoundHandler = HandlerFunc(func(c Context) error {
 		return NewHTTPError(http.StatusNotFound)
-	}
+	})
 
-	methodNotAllowedHandler = func(c Context) error {
+	methodNotAllowedHandler = HandlerFunc(func(c Context) error {
 		return NewHTTPError(http.StatusMethodNotAllowed)
-	}
+	})
 )
 
 // New creates an instance of Echo.
@@ -204,22 +207,7 @@ func New() (e *Echo) {
 	//----------
 
 	e.HTTP2(true)
-	e.defaultHTTPErrorHandler = func(err error, c Context) {
-		code := http.StatusInternalServerError
-		msg := http.StatusText(code)
-		if he, ok := err.(*HTTPError); ok {
-			code = he.code
-			msg = he.message
-		}
-		if e.debug {
-			msg = err.Error()
-		}
-		if !c.Response().Committed() {
-			c.String(code, msg)
-		}
-		e.logger.Error(err)
-	}
-	e.SetHTTPErrorHandler(e.defaultHTTPErrorHandler)
+	e.SetHTTPErrorHandler(e.DefaultHTTPErrorHandler)
 	e.SetBinder(&binder{})
 
 	// Logger
@@ -230,6 +218,10 @@ func New() (e *Echo) {
 
 func (f MiddlewareFunc) Process(h HandlerFunc) HandlerFunc {
 	return f(h)
+}
+
+func (f HandlerFunc) Handle(c Context) error {
+	return f(c)
 }
 
 // Router returns router.
@@ -254,7 +246,19 @@ func (e *Echo) HTTP2(on bool) {
 
 // DefaultHTTPErrorHandler invokes the default HTTP error handler.
 func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
-	e.defaultHTTPErrorHandler(err, c)
+	code := http.StatusInternalServerError
+	msg := http.StatusText(code)
+	if he, ok := err.(*HTTPError); ok {
+		code = he.code
+		msg = he.message
+	}
+	if e.debug {
+		msg = err.Error()
+	}
+	if !c.Response().Committed() {
+		c.String(code, msg)
+	}
+	e.logger.Error(err)
 }
 
 // SetHTTPErrorHandler registers a custom Echo.HTTPErrorHandler.
@@ -295,75 +299,75 @@ func (e *Echo) Hook(h engine.HandlerFunc) {
 }
 
 // Use adds handler to the middleware chain.
-func (e *Echo) Use(m ...MiddlewareFunc) {
-	for _, h := range m {
-		e.middleware = append(e.middleware, h)
+func (e *Echo) Use(middleware ...interface{}) {
+	for _, m := range middleware {
+		e.middleware = append(e.middleware, wrapMiddleware(m))
 	}
 }
 
 // Connect adds a CONNECT route > handler to the router.
-func (e *Echo) Connect(path string, h HandlerFunc) {
-	e.add(CONNECT, path, h)
+func (e *Echo) Connect(path string, handler interface{}) {
+	e.add(CONNECT, path, handler)
 }
 
 // Delete adds a DELETE route > handler to the router.
-func (e *Echo) Delete(path string, h HandlerFunc) {
-	e.add(DELETE, path, h)
+func (e *Echo) Delete(path string, handler interface{}) {
+	e.add(DELETE, path, handler)
 }
 
 // Get adds a GET route > handler to the router.
-func (e *Echo) Get(path string, h HandlerFunc) {
-	e.add(GET, path, h)
+func (e *Echo) Get(path string, handler interface{}) {
+	e.add(GET, path, handler)
 }
 
 // Head adds a HEAD route > handler to the router.
-func (e *Echo) Head(path string, h HandlerFunc) {
-	e.add(HEAD, path, h)
+func (e *Echo) Head(path string, handler interface{}) {
+	e.add(HEAD, path, handler)
 }
 
 // Options adds an OPTIONS route > handler to the router.
-func (e *Echo) Options(path string, h HandlerFunc) {
-	e.add(OPTIONS, path, h)
+func (e *Echo) Options(path string, handler interface{}) {
+	e.add(OPTIONS, path, handler)
 }
 
 // Patch adds a PATCH route > handler to the router.
-func (e *Echo) Patch(path string, h HandlerFunc) {
-	e.add(PATCH, path, h)
+func (e *Echo) Patch(path string, handler interface{}) {
+	e.add(PATCH, path, handler)
 }
 
 // Post adds a POST route > handler to the router.
-func (e *Echo) Post(path string, h HandlerFunc) {
-	e.add(POST, path, h)
+func (e *Echo) Post(path string, handler interface{}) {
+	e.add(POST, path, handler)
 }
 
 // Put adds a PUT route > handler to the router.
-func (e *Echo) Put(path string, h HandlerFunc) {
-	e.add(PUT, path, h)
+func (e *Echo) Put(path string, handler interface{}) {
+	e.add(PUT, path, handler)
 }
 
 // Trace adds a TRACE route > handler to the router.
-func (e *Echo) Trace(path string, h HandlerFunc) {
-	e.add(TRACE, path, h)
+func (e *Echo) Trace(path string, handler interface{}) {
+	e.add(TRACE, path, handler)
 }
 
 // Any adds a route > handler to the router for all HTTP methods.
-func (e *Echo) Any(path string, h HandlerFunc) {
+func (e *Echo) Any(path string, handler interface{}) {
 	for _, m := range methods {
-		e.add(m, path, h)
+		e.add(m, path, handler)
 	}
 }
 
 // Match adds a route > handler to the router for multiple HTTP methods provided.
-func (e *Echo) Match(methods []string, path string, h HandlerFunc) {
+func (e *Echo) Match(methods []string, path string, handler interface{}) {
 	for _, m := range methods {
-		e.add(m, path, h)
+		e.add(m, path, handler)
 	}
 }
 
 // NOTE: v2
-func (e *Echo) add(method, path string, h HandlerFunc) {
+func (e *Echo) add(method, path string, h interface{}) {
 	path = e.prefix + path
-	e.router.Add(method, path, h, e)
+	e.router.Add(method, path, wrapHandler(h), e)
 	r := Route{
 		Method:  method,
 		Path:    path,
@@ -511,8 +515,7 @@ func (e *Echo) Routes() []Route {
 	return e.router.routes
 }
 
-// ServeHTTP serves HTTP requests.
-func (e *Echo) ServeHTTP(req engine.Request, res engine.Response) {
+func (e *Echo) handle(req engine.Request, res engine.Response) {
 	if e.hook != nil {
 		e.hook(req, res)
 	}
@@ -566,33 +569,11 @@ func (e *Echo) RunTLS(addr, certfile, keyfile string) {
 
 // RunConfig runs a server with engine configuration.
 func (e *Echo) RunConfig(config *engine.Config) {
-	handler := func(req engine.Request, res engine.Response) {
-		if e.hook != nil {
-			e.hook(req, res)
-		}
-
-		c := e.pool.Get().(*context)
-		h, e := e.router.Find(req.Method(), req.URL().Path(), c)
-		c.reset(req, res, e)
-
-		// Chain middleware with handler in the end
-		for i := len(e.middleware) - 1; i >= 0; i-- {
-			h = e.middleware[i](h)
-		}
-
-		// Execute chain
-		if err := h(c); err != nil {
-			e.httpErrorHandler(err, c)
-		}
-
-		e.pool.Put(c)
-	}
-
 	switch e.engineType {
 	case engine.FastHTTP:
-		e.engine = fasthttp.NewServer(config, handler, e.logger)
+		e.engine = fasthttp.NewServer(config, e.handle, e.logger)
 	default:
-		e.engine = standard.NewServer(config, handler, e.logger)
+		e.engine = standard.NewServer(config, e.handle, e.logger)
 	}
 	e.engine.Start()
 }
@@ -634,4 +615,30 @@ func (binder) Bind(r engine.Request, i interface{}) (err error) {
 		}
 	}
 	return
+}
+
+func wrapMiddleware(m interface{}) MiddlewareFunc {
+	switch m := m.(type) {
+	case Middleware:
+		return m.Process
+	case MiddlewareFunc:
+		return m
+	case func(HandlerFunc) HandlerFunc:
+		return m
+	default:
+		panic("invalid middleware")
+	}
+}
+
+func wrapHandler(h interface{}) HandlerFunc {
+	switch h := h.(type) {
+	case Handler:
+		return h.Handle
+	case HandlerFunc:
+		return h
+	case func(Context) error:
+		return h
+	default:
+		panic("invalid handler")
+	}
 }

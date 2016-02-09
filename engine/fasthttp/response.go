@@ -4,22 +4,33 @@ import (
 	"io"
 
 	"github.com/labstack/echo/engine"
+	"github.com/labstack/echo/logger"
 	"github.com/valyala/fasthttp"
 )
 
 type (
 	Response struct {
-		response  *fasthttp.RequestCtx
+		context   *fasthttp.RequestCtx
 		header    engine.Header
 		status    int
 		size      int64
 		committed bool
 		writer    io.Writer
+		logger    logger.Logger
 	}
 )
 
+func NewResponse(c *fasthttp.RequestCtx, l logger.Logger) *Response {
+	return &Response{
+		context: c,
+		header:  &ResponseHeader{c.Response.Header},
+		writer:  c,
+		logger:  l,
+	}
+}
+
 func (r *Response) Object() interface{} {
-	return r.response
+	return r.context
 }
 
 func (r *Response) Header() engine.Header {
@@ -27,11 +38,17 @@ func (r *Response) Header() engine.Header {
 }
 
 func (r *Response) WriteHeader(code int) {
-	r.response.SetStatusCode(code)
+	if r.committed {
+		r.logger.Warn("response already committed")
+		return
+	}
+	r.status = code
+	r.context.SetStatusCode(code)
+	r.committed = true
 }
 
 func (r *Response) Write(b []byte) (int, error) {
-	return r.response.Write(b)
+	return r.context.Write(b)
 }
 
 func (r *Response) Status() int {

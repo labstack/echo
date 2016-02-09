@@ -65,7 +65,7 @@ func Gzip() echo.MiddlewareFunc {
 				c.Response().Header().Set(echo.ContentEncoding, scheme)
 				c.Response().SetWriter(gw)
 			}
-			if err := h(c); err != nil {
+			if err := h.Handle(c); err != nil {
 				c.Error(err)
 			}
 			return nil

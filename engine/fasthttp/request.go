@@ -9,18 +9,26 @@ import (
 
 type (
 	Request struct {
-		request *fasthttp.RequestCtx
+		context *fasthttp.RequestCtx
 		url     engine.URL
 		header  engine.Header
 	}
 )
 
+func NewRequest(c *fasthttp.RequestCtx) *Request {
+	return &Request{
+		context: c,
+		url:     &URL{url: c.URI()},
+		header:  &RequestHeader{c.Request.Header},
+	}
+}
+
 func (r *Request) Object() interface{} {
-	return r.request
+	return r.context
 }
 
 func (r *Request) URI() string {
-	return string(r.request.RequestURI())
+	return string(r.context.RequestURI())
 }
 
 func (r *Request) URL() engine.URL {
@@ -32,11 +40,11 @@ func (r *Request) Header() engine.Header {
 }
 
 func (r *Request) RemoteAddress() string {
-	return r.request.RemoteAddr().String()
+	return r.context.RemoteAddr().String()
 }
 
 func (r *Request) Method() string {
-	return string(r.request.Method())
+	return string(r.context.Method())
 }
 
 func (r *Request) Body() io.ReadCloser {

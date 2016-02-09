@@ -25,7 +25,7 @@ func Log() echo.MiddlewareFunc {
 			}
 
 			start := time.Now()
-			if err := h(c); err != nil {
+			if err := h.Handle(c); err != nil {
 				c.Error(err)
 			}
 			stop := time.Now()

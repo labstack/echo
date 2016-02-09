@@ -4,16 +4,16 @@ import "github.com/valyala/fasthttp"
 
 type (
 	URL struct {
-		*fasthttp.URI
+		url *fasthttp.URI
 	}
 )
 
 func (u *URL) Scheme() string {
-	return string(u.URI.Scheme())
+	return string(u.url.Scheme())
 }
 
 func (u *URL) Host() string {
-	return string(u.URI.Host())
+	return string(u.url.Host())
 }
 
 func (u *URL) SetPath(path string) {
@@ -21,7 +21,7 @@ func (u *URL) SetPath(path string) {
 }
 
 func (u *URL) Path() string {
-	return string(u.URI.Path())
+	return string(u.url.Path())
 }
 
 func (u *URL) QueryValue(name string) string {

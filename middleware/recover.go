@@ -22,7 +22,7 @@ func Recover() echo.MiddlewareFunc {
 						err, n, trace[:n]))
 				}
 			}()
-			return h(c)
+			return h.Handle(c)
 		}
 	}
 }
