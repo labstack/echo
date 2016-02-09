@@ -3,46 +3,38 @@
 
 # [Echo](http://labstack.com/echo) [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/labstack/echo) [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/labstack/echo/master/LICENSE) [![Build Status](http://img.shields.io/travis/labstack/echo.svg?style=flat-square)](https://travis-ci.org/labstack/echo) [![Coverage Status](http://img.shields.io/coveralls/labstack/echo.svg?style=flat-square)](https://coveralls.io/r/labstack/echo) [![Join the chat at https://gitter.im/labstack/echo](https://img.shields.io/badge/gitter-join%20chat-brightgreen.svg?style=flat-square)](https://gitter.im/labstack/echo)
 
-A fast and unfancy micro web framework for Go.
+## A fast and unfancy micro web framework for Go.
 
-## Features
+```go
+package main
 
-- Fast HTTP router which smartly prioritize routes.
-- Extensible middleware, supports:
-	- `echo.MiddlewareFunc`
-	- `func(echo.HandlerFunc) echo.HandlerFunc`
-	- `echo.HandlerFunc`
-	- `func(*echo.Context) error`
-	- `func(http.Handler) http.Handler`
-	- `http.Handler`
-	- `http.HandlerFunc`
-	- `func(http.ResponseWriter, *http.Request)`
-- Extensible handler, supports:
-    - `echo.HandlerFunc`
-    - `func(*echo.Context) error`
-    - `http.Handler`
-    - `http.HandlerFunc`
-    - `func(http.ResponseWriter, *http.Request)`
-- Sub-router/Groups
-- Handy functions to send variety of HTTP response:
-    - HTML
-    - HTML via templates
-    - String
-    - JSON
-    - JSONP
-    - XML
-    - File
-    - NoContent
-    - Redirect
-    - Error
-- Build-in support for:
-	- Favicon
-	- Index file
-	- Static files
-	- WebSocket
-- Centralized HTTP error handling.
-- Customizable HTTP request binding function.
-- Customizable HTTP response rendering function, allowing you to use any HTML template engine.
+import (
+	"github.com/labstack/echo"
+	"github.com/labstack/echo/engine"
+	"github.com/labstack/echo/engine/fasthttp"
+	mw "github.com/labstack/echo/middleware"
+)
+
+func main() {
+	e := echo.New()
+	e.Use(mw.Log())
+	e.Get("/", func(c echo.Context) error {
+		return c.String(200, "Hello, World!")
+	})
+	e.Get("/v2", func(c echo.Context) error {
+		return c.String(200, "Echo v2")
+	})
+
+	// FastHTTP
+	e.RunEngine(fasthttp.NewServer(&engine.Config{
+		Address: ":4444",
+	}, e.Handle, e.Logger()))
+
+	// Standard
+	// e.Run(":4444")
+}
+
+```
 
 ## Performance
 
@@ -83,28 +75,6 @@ BenchmarkTraffic_GithubAll            200           7292170 ns/op         266477
 BenchmarkVulcan_GithubAll            5000            271682 ns/op           19894 B/op       609 allocs/op
 BenchmarkZeus_GithubAll              2000            748827 ns/op          300688 B/op     2648 allocs/op
 ```
-
-## Installation
-
-```sh
-$ go get github.com/labstack/echo
-```
-
-## [Recipes](http://labstack.com/echo/recipes/hello-world)
-
-## [Guide](http://labstack.com/echo/guide/installation)
-
-## Echo System
-
-Community created packages for Echo
-
-- [echo-logrus](https://github.com/deoxxa/echo-logrus)
-- [go_middleware](https://github.com/rightscale/go_middleware)
-- [permissions2](https://github.com/xyproto/permissions2)
-- [permissionbolt](https://github.com/xyproto/permissionbolt)
-- [echo-middleware](https://github.com/syntaqx/echo-middleware)
-- [dpecho](https://github.com/deferpanic/dpecho)
-- [echosentry](https://github.com/01walid/echosentry)
 
 ## Contribute
 
