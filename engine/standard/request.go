@@ -23,16 +23,16 @@ func NewRequest(r *http.Request) *Request {
 	}
 }
 
-func (r *Request) Request() *http.Request {
+func (r *Request) Object() interface{} {
 	return r.request
-}
-
-func (r *Request) Header() engine.Header {
-	return r.header
 }
 
 func (r *Request) URL() engine.URL {
 	return r.url
+}
+
+func (r *Request) Header() engine.Header {
+	return r.header
 }
 
 func (r *Request) RemoteAddress() string {

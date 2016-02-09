@@ -9,7 +9,7 @@ import (
 
 type (
 	Response struct {
-		context   *fasthttp.RequestCtx
+		response  *fasthttp.RequestCtx
 		header    engine.Header
 		status    int
 		size      int64
@@ -18,16 +18,20 @@ type (
 	}
 )
 
+func (r *Response) Object() interface{} {
+	return r.response
+}
+
 func (r *Response) Header() engine.Header {
 	return r.header
 }
 
 func (r *Response) WriteHeader(code int) {
-	r.context.SetStatusCode(code)
+	r.response.SetStatusCode(code)
 }
 
 func (r *Response) Write(b []byte) (int, error) {
-	return r.context.Write(b)
+	return r.response.Write(b)
 }
 
 func (r *Response) Status() int {

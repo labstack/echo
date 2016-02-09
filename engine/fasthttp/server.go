@@ -29,13 +29,13 @@ func NewServer(c *engine.Config, h engine.HandlerFunc, l logger.Logger) *Server 
 func (s *Server) Start() {
 	fasthttp.ListenAndServe(s.config.Address, func(ctx *fasthttp.RequestCtx) {
 		req := &Request{
-			context: ctx,
+			request: ctx,
 			url:     &URL{ctx.URI()},
 			header:  &RequestHeader{ctx.Request.Header},
 		}
 		res := &Response{
-			context: ctx,
-			header:  &ResponseHeader{ctx.Response.Header},
+			response: ctx,
+			header:   &ResponseHeader{ctx.Response.Header},
 		}
 		s.handler(req, res)
 	})

@@ -29,6 +29,10 @@ func NewResponse(w http.ResponseWriter, l logger.Logger) *Response {
 	}
 }
 
+func (r *Response) Object() interface{} {
+	return r.response
+}
+
 func (r *Response) Header() engine.Header {
 	return r.header
 }

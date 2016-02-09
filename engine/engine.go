@@ -15,16 +15,17 @@ type (
 	}
 
 	Request interface {
+		URI() string
+		URL() URL
 		Header() Header
 		// Proto() string
 		// ProtoMajor() int
 		// ProtoMinor() int
 		RemoteAddress() string
 		Method() string
-		URI() string
-		URL() URL
 		Body() io.ReadCloser
 		FormValue(string) string
+		Object() interface{}
 	}
 
 	Response interface {
@@ -36,6 +37,7 @@ type (
 		Committed() bool
 		SetWriter(io.Writer)
 		Writer() io.Writer
+		Object() interface{}
 	}
 
 	Header interface {

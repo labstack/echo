@@ -51,8 +51,8 @@ func TestContext(t *testing.T) {
 	assert.Nil(t, c.Socket())
 
 	// Param by id
-	c.Context().pnames = []string{"id"}
-	c.Context().pvalues = []string{"1"}
+	c.Object().pnames = []string{"id"}
+	c.Object().pvalues = []string{"1"}
 	assert.Equal(t, "1", c.P(0))
 
 	// Param by name
@@ -68,13 +68,13 @@ func TestContext(t *testing.T) {
 
 	// JSON
 	testBindOk(t, c, ApplicationJSON)
-	c.Context().request = test.NewRequest(POST, "/", strings.NewReader(incorrectContent))
+	c.Object().request = test.NewRequest(POST, "/", strings.NewReader(incorrectContent))
 	testBindError(t, c, ApplicationJSON)
 
 	// XML
-	c.Context().request = test.NewRequest(POST, "/", strings.NewReader(userXML))
+	c.Object().request = test.NewRequest(POST, "/", strings.NewReader(userXML))
 	testBindOk(t, c, ApplicationXML)
-	c.Context().request = test.NewRequest(POST, "/", strings.NewReader(incorrectContent))
+	c.Object().request = test.NewRequest(POST, "/", strings.NewReader(incorrectContent))
 	testBindError(t, c, ApplicationXML)
 
 	// Unsupported
@@ -87,14 +87,14 @@ func TestContext(t *testing.T) {
 	tpl := &Template{
 		templates: template.Must(template.New("hello").Parse("Hello, {{.}}!")),
 	}
-	c.Context().echo.SetRenderer(tpl)
+	c.Object().echo.SetRenderer(tpl)
 	err := c.Render(http.StatusOK, "hello", "Joe")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Status())
 		assert.Equal(t, "Hello, Joe!", rec.Body.String())
 	}
 
-	c.Context().echo.renderer = nil
+	c.Object().echo.renderer = nil
 	err = c.Render(http.StatusOK, "hello", "Joe")
 	assert.Error(t, err)
 
@@ -226,12 +226,12 @@ func TestContext(t *testing.T) {
 
 	// Error
 	rec = test.NewResponseRecorder()
-	c = NewContext(req, rec, e).Context()
+	c = NewContext(req, rec, e).Object()
 	c.Error(errors.New("error"))
 	assert.Equal(t, http.StatusInternalServerError, c.Response().Status())
 
 	// reset
-	c.Context().reset(req, test.NewResponseRecorder(), e)
+	c.Object().reset(req, test.NewResponseRecorder(), e)
 }
 
 func TestContextPath(t *testing.T) {
