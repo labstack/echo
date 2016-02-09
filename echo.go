@@ -17,7 +17,6 @@ import (
 	"encoding/xml"
 
 	"github.com/labstack/echo/engine"
-	"github.com/labstack/echo/engine/fasthttp"
 	"github.com/labstack/echo/engine/standard"
 	"github.com/labstack/echo/logger"
 	"github.com/labstack/gommon/log"
@@ -37,8 +36,6 @@ type (
 		debug            bool
 		hook             engine.HandlerFunc
 		autoIndex        bool
-		engineType       engine.Type
-		engine           engine.Engine
 		router           *Router
 		logger           logger.Logger
 	}
@@ -514,7 +511,7 @@ func (e *Echo) Routes() []Route {
 	return e.router.routes
 }
 
-func (e *Echo) handle(req engine.Request, res engine.Response) {
+func (e *Echo) Handle(req engine.Request, res engine.Response) {
 	if e.hook != nil {
 		e.hook(req, res)
 	}
@@ -546,14 +543,10 @@ func (e *Echo) handle(req engine.Request, res engine.Response) {
 // 	return s
 // }
 
-func (e *Echo) SetEngine(t engine.Type) {
-	e.engineType = t
-}
-
 // Run runs a server.
 func (e *Echo) Run(addr string) {
 	c := &engine.Config{Address: addr}
-	e.RunConfig(c)
+	e.RunEngine(standard.NewServer(c, e.Handle, e.logger))
 }
 
 // RunTLS runs a server with TLS configuration.
@@ -563,18 +556,12 @@ func (e *Echo) RunTLS(addr, certfile, keyfile string) {
 		TLSCertfile: certfile,
 		TLSKeyfile:  keyfile,
 	}
-	e.RunConfig(c)
+	e.RunEngine(standard.NewServer(c, e.Handle, e.logger))
 }
 
-// RunConfig runs a server with engine configuration.
-func (e *Echo) RunConfig(config *engine.Config) {
-	switch e.engineType {
-	case engine.FastHTTP:
-		e.engine = fasthttp.NewServer(config, e.handle, e.logger)
-	default:
-		e.engine = standard.NewServer(config, e.handle, e.logger)
-	}
-	e.engine.Start()
+// RunEngine runs a custom engine.
+func (*Echo) RunEngine(e engine.Engine) {
+	e.Start()
 }
 
 func NewHTTPError(code int, msg ...string) *HTTPError {

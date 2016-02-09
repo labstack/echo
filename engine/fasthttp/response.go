@@ -1,3 +1,5 @@
+// +build !appengine
+
 package fasthttp
 
 import (

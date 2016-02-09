@@ -6,8 +6,6 @@ import (
 )
 
 type (
-	Type uint8
-
 	HandlerFunc func(Request, Response)
 
 	Engine interface {
@@ -63,9 +61,4 @@ type (
 		TLSCertfile  string
 		TLSKeyfile   string
 	}
-)
-
-const (
-	Standard Type = iota
-	FastHTTP
 )
