@@ -3,14 +3,13 @@
 
 # [Echo](http://labstack.com/echo) [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/labstack/echo) [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/labstack/echo/master/LICENSE) [![Build Status](http://img.shields.io/travis/labstack/echo.svg?style=flat-square)](https://travis-ci.org/labstack/echo) [![Coverage Status](http://img.shields.io/coveralls/labstack/echo.svg?style=flat-square)](https://coveralls.io/r/labstack/echo) [![Join the chat at https://gitter.im/labstack/echo](https://img.shields.io/badge/gitter-join%20chat-brightgreen.svg?style=flat-square)](https://gitter.im/labstack/echo)
 
-## A fast and unfancy micro web framework for Go.
+A fast and unfancy micro web framework for Go.
 
 ```go
 package main
 
 import (
 	"github.com/labstack/echo"
-	"github.com/labstack/echo/engine"
 	"github.com/labstack/echo/engine/fasthttp"
 	mw "github.com/labstack/echo/middleware"
 )
@@ -26,14 +25,11 @@ func main() {
 	})
 
 	// FastHTTP
-	e.RunEngine(fasthttp.NewServer(&engine.Config{
-		Address: ":4444",
-	}, e.Handle, e.Logger()))
+	e.Run(fasthttp.New(":4444", e))
 
 	// Standard
-	// e.Run(":4444")
+	// e.Run(standard.New(":4444"))
 }
-
 ```
 
 ## Performance

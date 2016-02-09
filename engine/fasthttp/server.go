@@ -5,8 +5,8 @@ package fasthttp
 import (
 	"net/http"
 
+	"github.com/labstack/echo"
 	"github.com/labstack/echo/engine"
-	"github.com/labstack/echo/logger"
 	"github.com/valyala/fasthttp"
 )
 
@@ -15,16 +15,30 @@ type (
 		*http.Server
 		config  *engine.Config
 		handler engine.HandlerFunc
-		logger  logger.Logger
+		logger  echo.Logger
 	}
 )
 
-func NewServer(c *engine.Config, h engine.HandlerFunc, l logger.Logger) *Server {
+func New(addr string, e *echo.Echo) *Server {
+	c := &engine.Config{Address: addr}
+	return NewConfig(c, e)
+}
+
+func NewTLS(addr, certfile, keyfile string, e *echo.Echo) *Server {
+	c := &engine.Config{
+		Address:     addr,
+		TLSCertfile: certfile,
+		TLSKeyfile:  keyfile,
+	}
+	return NewConfig(c, e)
+}
+
+func NewConfig(c *engine.Config, e *echo.Echo) *Server {
 	return &Server{
 		Server:  new(http.Server),
 		config:  c,
-		handler: h,
-		logger:  l,
+		handler: e.ServeHTTP,
+		logger:  e.Logger(),
 	}
 }
 

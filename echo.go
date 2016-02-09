@@ -17,8 +17,6 @@ import (
 	"encoding/xml"
 
 	"github.com/labstack/echo/engine"
-	"github.com/labstack/echo/engine/standard"
-	"github.com/labstack/echo/logger"
 	"github.com/labstack/gommon/log"
 )
 
@@ -37,7 +35,7 @@ type (
 		hook             engine.HandlerFunc
 		autoIndex        bool
 		router           *Router
-		logger           logger.Logger
+		logger           Logger
 	}
 
 	Route struct {
@@ -82,6 +80,24 @@ type (
 	// Renderer is the interface that wraps the Render method.
 	Renderer interface {
 		Render(w io.Writer, name string, data interface{}) error
+	}
+
+	// Logger is the interface that declares Echo's logging system.
+	Logger interface {
+		Debug(...interface{})
+		Debugf(string, ...interface{})
+
+		Info(...interface{})
+		Infof(string, ...interface{})
+
+		Warn(...interface{})
+		Warnf(string, ...interface{})
+
+		Error(...interface{})
+		Errorf(string, ...interface{})
+
+		Fatal(...interface{})
+		Fatalf(string, ...interface{})
 	}
 )
 
@@ -226,12 +242,12 @@ func (e *Echo) Router() *Router {
 }
 
 // SetLogger sets the logger instance.
-func (e *Echo) SetLogger(logger logger.Logger) {
-	e.logger = logger
+func (e *Echo) SetLogger(l Logger) {
+	e.logger = l
 }
 
 // Logger returns the logger instance.
-func (e *Echo) Logger() logger.Logger {
+func (e *Echo) Logger() Logger {
 	return e.logger
 }
 
@@ -511,7 +527,7 @@ func (e *Echo) Routes() []Route {
 	return e.router.routes
 }
 
-func (e *Echo) Handle(req engine.Request, res engine.Response) {
+func (e *Echo) ServeHTTP(req engine.Request, res engine.Response) {
 	if e.hook != nil {
 		e.hook(req, res)
 	}
@@ -543,24 +559,8 @@ func (e *Echo) Handle(req engine.Request, res engine.Response) {
 // 	return s
 // }
 
-// Run runs a server.
-func (e *Echo) Run(addr string) {
-	c := &engine.Config{Address: addr}
-	e.RunEngine(standard.NewServer(c, e.Handle, e.logger))
-}
-
-// RunTLS runs a server with TLS configuration.
-func (e *Echo) RunTLS(addr, certfile, keyfile string) {
-	c := &engine.Config{
-		Address:     addr,
-		TLSCertfile: certfile,
-		TLSKeyfile:  keyfile,
-	}
-	e.RunEngine(standard.NewServer(c, e.Handle, e.logger))
-}
-
-// RunEngine runs a custom engine.
-func (*Echo) RunEngine(e engine.Engine) {
+// Run starts the HTTP engine.
+func (*Echo) Run(e engine.Engine) {
 	e.Start()
 }
 

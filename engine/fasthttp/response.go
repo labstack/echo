@@ -5,8 +5,8 @@ package fasthttp
 import (
 	"io"
 
+	"github.com/labstack/echo"
 	"github.com/labstack/echo/engine"
-	"github.com/labstack/echo/logger"
 	"github.com/valyala/fasthttp"
 )
 
@@ -18,11 +18,11 @@ type (
 		size      int64
 		committed bool
 		writer    io.Writer
-		logger    logger.Logger
+		logger    echo.Logger
 	}
 )
 
-func NewResponse(c *fasthttp.RequestCtx, l logger.Logger) *Response {
+func NewResponse(c *fasthttp.RequestCtx, l echo.Logger) *Response {
 	return &Response{
 		context: c,
 		header:  &ResponseHeader{c.Response.Header},
