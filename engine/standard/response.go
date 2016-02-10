@@ -4,8 +4,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/labstack/echo"
 	"github.com/labstack/echo/engine"
+	"github.com/labstack/echo/logger"
 )
 
 type (
@@ -16,11 +16,11 @@ type (
 		size      int64
 		committed bool
 		writer    io.Writer
-		logger    echo.Logger
+		logger    logger.Logger
 	}
 )
 
-func NewResponse(w http.ResponseWriter, l echo.Logger) *Response {
+func NewResponse(w http.ResponseWriter, l logger.Logger) *Response {
 	return &Response{
 		response: w,
 		header:   &Header{w.Header()},

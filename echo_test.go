@@ -308,7 +308,7 @@ func TestEchoNotFound(t *testing.T) {
 	e := New()
 	req := test.NewRequest(GET, "/files", nil)
 	rec := test.NewResponseRecorder()
-	e.Handle(req, rec)
+	e.ServeHTTP(req, rec)
 	assert.Equal(t, http.StatusNotFound, rec.Status())
 }
 
@@ -319,7 +319,7 @@ func TestEchoMethodNotAllowed(t *testing.T) {
 	})
 	req := test.NewRequest(POST, "/", nil)
 	rec := test.NewResponseRecorder()
-	e.Handle(req, rec)
+	e.ServeHTTP(req, rec)
 	assert.Equal(t, http.StatusMethodNotAllowed, rec.Status())
 }
 
@@ -350,7 +350,7 @@ func TestEchoHook(t *testing.T) {
 	})
 	req := test.NewRequest(GET, "/test/", nil)
 	rec := test.NewResponseRecorder()
-	e.Handle(req, rec)
+	e.ServeHTTP(req, rec)
 	assert.Equal(t, req.URL().Path(), "/test")
 }
 
@@ -371,6 +371,6 @@ func testMethod(t *testing.T, method, path string, e *Echo) {
 func request(method, path string, e *Echo) (int, string) {
 	req := test.NewRequest(method, path, nil)
 	rec := test.NewResponseRecorder()
-	e.Handle(req, rec)
+	e.ServeHTTP(req, rec)
 	return rec.Status(), rec.Body.String()
 }

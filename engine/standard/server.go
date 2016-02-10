@@ -4,8 +4,9 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/labstack/echo"
 	"github.com/labstack/echo/engine"
+	"github.com/labstack/echo/logger"
+	"github.com/labstack/gommon/log"
 )
 
 type (
@@ -14,7 +15,7 @@ type (
 		config  *engine.Config
 		handler engine.HandlerFunc
 		pool    *Pool
-		logger  echo.Logger
+		logger  logger.Logger
 	}
 
 	Pool struct {
@@ -25,25 +26,24 @@ type (
 	}
 )
 
-func New(addr string, e *echo.Echo) *Server {
+func New(addr string) *Server {
 	c := &engine.Config{Address: addr}
-	return NewConfig(c, e)
+	return NewConfig(c)
 }
 
-func NewTLS(addr, certfile, keyfile string, e *echo.Echo) *Server {
+func NewTLS(addr, certfile, keyfile string) *Server {
 	c := &engine.Config{
 		Address:     addr,
 		TLSCertfile: certfile,
 		TLSKeyfile:  keyfile,
 	}
-	return NewConfig(c, e)
+	return NewConfig(c)
 }
 
-func NewConfig(c *engine.Config, e *echo.Echo) *Server {
-	return &Server{
-		Server:  new(http.Server),
-		config:  c,
-		handler: e.ServeHTTP,
+func NewConfig(c *engine.Config) (s *Server) {
+	s = &Server{
+		Server: new(http.Server),
+		config: c,
 		pool: &Pool{
 			request: sync.Pool{
 				New: func() interface{} {
@@ -52,7 +52,7 @@ func NewConfig(c *engine.Config, e *echo.Echo) *Server {
 			},
 			response: sync.Pool{
 				New: func() interface{} {
-					return &Response{logger: e.Logger()}
+					return &Response{logger: s.logger}
 				},
 			},
 			header: sync.Pool{
@@ -66,8 +66,20 @@ func NewConfig(c *engine.Config, e *echo.Echo) *Server {
 				},
 			},
 		},
-		logger: e.Logger(),
+		handler: func(req engine.Request, res engine.Response) {
+			s.logger.Info("handler not set")
+		},
+		logger: log.New("echo"),
 	}
+	return
+}
+
+func (s *Server) SetHandler(h engine.HandlerFunc) {
+	s.handler = h
+}
+
+func (s *Server) SetLogger(l logger.Logger) {
+	s.logger = l
 }
 
 func (s *Server) Start() {

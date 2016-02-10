@@ -17,6 +17,7 @@ import (
 	"encoding/xml"
 
 	"github.com/labstack/echo/engine"
+	"github.com/labstack/echo/logger"
 	"github.com/labstack/gommon/log"
 )
 
@@ -35,7 +36,7 @@ type (
 		hook             engine.HandlerFunc
 		autoIndex        bool
 		router           *Router
-		logger           Logger
+		logger           logger.Logger
 	}
 
 	Route struct {
@@ -80,24 +81,6 @@ type (
 	// Renderer is the interface that wraps the Render method.
 	Renderer interface {
 		Render(w io.Writer, name string, data interface{}) error
-	}
-
-	// Logger is the interface that declares Echo's logging system.
-	Logger interface {
-		Debug(...interface{})
-		Debugf(string, ...interface{})
-
-		Info(...interface{})
-		Infof(string, ...interface{})
-
-		Warn(...interface{})
-		Warnf(string, ...interface{})
-
-		Error(...interface{})
-		Errorf(string, ...interface{})
-
-		Fatal(...interface{})
-		Fatalf(string, ...interface{})
 	}
 )
 
@@ -242,12 +225,12 @@ func (e *Echo) Router() *Router {
 }
 
 // SetLogger sets the logger instance.
-func (e *Echo) SetLogger(l Logger) {
+func (e *Echo) SetLogger(l logger.Logger) {
 	e.logger = l
 }
 
 // Logger returns the logger instance.
-func (e *Echo) Logger() Logger {
+func (e *Echo) Logger() logger.Logger {
 	return e.logger
 }
 
@@ -560,8 +543,10 @@ func (e *Echo) ServeHTTP(req engine.Request, res engine.Response) {
 // }
 
 // Run starts the HTTP engine.
-func (*Echo) Run(e engine.Engine) {
-	e.Start()
+func (e *Echo) Run(eng engine.Engine) {
+	eng.SetHandler(e.ServeHTTP)
+	eng.SetLogger(e.logger)
+	eng.Start()
 }
 
 func NewHTTPError(code int, msg ...string) *HTTPError {

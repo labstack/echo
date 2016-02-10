@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/labstack/echo/engine"
+	"github.com/labstack/echo/logger"
 
 	"net/url"
 
@@ -45,7 +46,7 @@ type (
 		NoContent(int) error
 		Redirect(int, string) error
 		Error(err error)
-		Logger() Logger
+		Logger() logger.Logger
 		Object() *context
 	}
 
@@ -302,7 +303,7 @@ func (c *context) Error(err error) {
 }
 
 // Logger returns the `Logger` instance.
-func (c *context) Logger() Logger {
+func (c *context) Logger() logger.Logger {
 	return c.echo.logger
 }
 

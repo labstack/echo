@@ -19,13 +19,8 @@ type (
 )
 
 func NewRequest(method, url string, body io.Reader) engine.Request {
-	// switch t {
-	// case engine.Standard:
 	r, _ := http.NewRequest(method, url, body)
 	return standard.NewRequest(r)
-	// default:
-	// 	panic("invalid engine")
-	// }
 }
 
 func NewResponseRecorder() *ResponseRecorder {

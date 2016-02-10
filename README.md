@@ -10,7 +10,8 @@ package main
 
 import (
 	"github.com/labstack/echo"
-	"github.com/labstack/echo/engine/fasthttp"
+	// "github.com/labstack/echo/engine/fasthttp"
+	"github.com/labstack/echo/engine/standard"
 	mw "github.com/labstack/echo/middleware"
 )
 
@@ -25,10 +26,10 @@ func main() {
 	})
 
 	// FastHTTP
-	e.Run(fasthttp.New(":4444", e))
+	// e.Run(fasthttp.New(":4444"))
 
 	// Standard
-	// e.Run(standard.New(":4444"))
+	e.Run(standard.New(":4444"))
 }
 ```
 

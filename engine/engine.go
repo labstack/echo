@@ -3,12 +3,16 @@ package engine
 import (
 	"io"
 	"time"
+
+	"github.com/labstack/echo/logger"
 )
 
 type (
 	HandlerFunc func(Request, Response)
 
 	Engine interface {
+		SetHandler(HandlerFunc)
+		SetLogger(logger.Logger)
 		Start()
 	}
 
