@@ -159,10 +159,7 @@ func (c *Context) JSON(code int, i interface{}) (err error) {
 	if err != nil {
 		return err
 	}
-	c.response.Header().Set(ContentType, ApplicationJSONCharsetUTF8)
-	c.response.WriteHeader(code)
-	c.response.Write(b)
-	return
+	return c.JSONBlob(code, b)
 }
 
 // JSONIndent sends a JSON response with status code, but it applies prefix and indent to format the output.
@@ -171,14 +168,15 @@ func (c *Context) JSONIndent(code int, i interface{}, prefix string, indent stri
 	if err != nil {
 		return err
 	}
-	c.json(code, b)
-	return
+	return c.JSONBlob(code, b)
 }
 
-func (c *Context) json(code int, b []byte) {
+// JSONBlob sends a JSON blob response with status code.
+func (c *Context) JSONBlob(code int, b []byte) (err error) {
 	c.response.Header().Set(ContentType, ApplicationJSONCharsetUTF8)
 	c.response.WriteHeader(code)
 	c.response.Write(b)
+	return
 }
 
 // JSONP sends a JSONP response with status code. It uses `callback` to construct
