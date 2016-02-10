@@ -2,6 +2,8 @@
 
 A fast and unfancy micro web framework for Go.
 
+[![Donate](https://www.paypalobjects.com/webstatic/en_US/btn/btn_donate_92x26.png)](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=JD5R56K84A8G4&lc=US&item_name=LabStack&item_number=echo&currency_code=USD&bn=PP%2dDonationsBF%3abtn_donate_LG%2egif%3aNonHosted)
+
 ## Features
 
 - Fast HTTP router which smartly prioritize routes.
