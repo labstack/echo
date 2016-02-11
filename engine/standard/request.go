@@ -35,6 +35,18 @@ func (r *Request) Header() engine.Header {
 	return r.header
 }
 
+// func Proto() string {
+// 	return r.request.Proto()
+// }
+//
+// func ProtoMajor() int {
+// 	return r.request.ProtoMajor()
+// }
+//
+// func ProtoMinor() int {
+// 	return r.request.ProtoMinor()
+// }
+
 func (r *Request) RemoteAddress() string {
 	return r.request.RemoteAddr
 }

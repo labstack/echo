@@ -23,8 +23,7 @@ func (h *RequestHeader) Del(key string) {
 }
 
 func (h *RequestHeader) Get(key string) string {
-	// return h.header.Peek(key)
-	return ""
+	return string(h.header.Peek(key))
 }
 
 func (h *RequestHeader) Set(key, val string) {
@@ -40,8 +39,7 @@ func (h *ResponseHeader) Del(key string) {
 }
 
 func (h *ResponseHeader) Get(key string) string {
-	// return h.ResponseHeader.Get(key)
-	return ""
+	return string(h.header.Peek(key))
 }
 
 func (h *ResponseHeader) Set(key, val string) {

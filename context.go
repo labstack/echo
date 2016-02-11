@@ -38,10 +38,10 @@ type (
 		HTML(int, string) error
 		String(int, string) error
 		JSON(int, interface{}) error
-		JSONIndent(int, interface{}, string, string) error
+		JSONBlob(int, []byte) error
 		JSONP(int, string, interface{}) error
 		XML(int, interface{}) error
-		XMLIndent(int, interface{}, string, string) error
+		XMLBlob(int, []byte) error
 		File(string, string, bool) error
 		NoContent(int) error
 		Redirect(int, string) error
@@ -197,29 +197,21 @@ func (c *context) String(code int, s string) (err error) {
 // JSON sends a JSON response with status code.
 func (c *context) JSON(code int, i interface{}) (err error) {
 	b, err := json.Marshal(i)
+	if c.echo.Debug() {
+		b, err = json.MarshalIndent(i, "", "  ")
+	}
 	if err != nil {
 		return err
 	}
+	return c.JSONBlob(code, b)
+}
+
+// JSONBlob sends a JSON blob response with status code.
+func (c *context) JSONBlob(code int, b []byte) (err error) {
 	c.response.Header().Set(ContentType, ApplicationJSONCharsetUTF8)
 	c.response.WriteHeader(code)
 	c.response.Write(b)
 	return
-}
-
-// JSONIndent sends a JSON response with status code, but it applies prefix and indent to format the output.
-func (c *context) JSONIndent(code int, i interface{}, prefix string, indent string) (err error) {
-	b, err := json.MarshalIndent(i, prefix, indent)
-	if err != nil {
-		return err
-	}
-	c.json(code, b)
-	return
-}
-
-func (c *context) json(code int, b []byte) {
-	c.response.Header().Set(ContentType, ApplicationJSONCharsetUTF8)
-	c.response.WriteHeader(code)
-	c.response.Write(b)
 }
 
 // JSONP sends a JSONP response with status code. It uses `callback` to construct
@@ -240,31 +232,22 @@ func (c *context) JSONP(code int, callback string, i interface{}) (err error) {
 // XML sends an XML response with status code.
 func (c *context) XML(code int, i interface{}) (err error) {
 	b, err := xml.Marshal(i)
+	if c.echo.Debug() {
+		b, err = xml.MarshalIndent(i, "", "  ")
+	}
 	if err != nil {
 		return err
 	}
+	return c.XMLBlob(code, b)
+}
+
+// XMLBlob sends a XML blob response with status code.
+func (c *context) XMLBlob(code int, b []byte) (err error) {
 	c.response.Header().Set(ContentType, ApplicationXMLCharsetUTF8)
 	c.response.WriteHeader(code)
 	c.response.Write([]byte(xml.Header))
 	c.response.Write(b)
 	return
-}
-
-// XMLIndent sends an XML response with status code, but it applies prefix and indent to format the output.
-func (c *context) XMLIndent(code int, i interface{}, prefix string, indent string) (err error) {
-	b, err := xml.MarshalIndent(i, prefix, indent)
-	if err != nil {
-		return err
-	}
-	c.xml(code, b)
-	return
-}
-
-func (c *context) xml(code int, b []byte) {
-	c.response.Header().Set(ContentType, ApplicationXMLCharsetUTF8)
-	c.response.WriteHeader(code)
-	c.response.Write([]byte(xml.Header))
-	c.response.Write(b)
 }
 
 // File sends a response with the content of the file. If `attachment` is set

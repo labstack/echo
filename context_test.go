@@ -29,12 +29,8 @@ func (t *Template) Render(w io.Writer, name string, data interface{}) error {
 
 func TestContext(t *testing.T) {
 	userJSON := `{"id":"1","name":"Joe"}`
-	userJSONIndent := "{\n_?\"id\": \"1\",\n_?\"name\": \"Joe\"\n_}"
 	userXML := `<user><id>1</id><name>Joe</name></user>`
-	userXMLIndent := "_<user>\n_?<id>1</id>\n_?<name>Joe</name>\n_</user>"
-	incorrectContent := "this is incorrect content"
-
-	var nonMarshallableChannel chan bool
+	invalidContent := "invalid content"
 
 	e := New()
 	req := test.NewRequest(POST, "/", strings.NewReader(userJSON))
@@ -68,13 +64,13 @@ func TestContext(t *testing.T) {
 
 	// JSON
 	testBindOk(t, c, ApplicationJSON)
-	c.Object().request = test.NewRequest(POST, "/", strings.NewReader(incorrectContent))
+	c.Object().request = test.NewRequest(POST, "/", strings.NewReader(invalidContent))
 	testBindError(t, c, ApplicationJSON)
 
 	// XML
 	c.Object().request = test.NewRequest(POST, "/", strings.NewReader(userXML))
 	testBindOk(t, c, ApplicationXML)
-	c.Object().request = test.NewRequest(POST, "/", strings.NewReader(incorrectContent))
+	c.Object().request = test.NewRequest(POST, "/", strings.NewReader(invalidContent))
 	testBindError(t, c, ApplicationXML)
 
 	// Unsupported
@@ -111,24 +107,7 @@ func TestContext(t *testing.T) {
 	// JSON (error)
 	rec = test.NewResponseRecorder()
 	c = NewContext(req, rec, e)
-	val := make(chan bool)
-	err = c.JSON(http.StatusOK, val)
-	assert.Error(t, err)
-
-	// JSONIndent
-	rec = test.NewResponseRecorder()
-	c = NewContext(req, rec, e)
-	err = c.JSONIndent(http.StatusOK, user{"1", "Joe"}, "_", "?")
-	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rec.Status())
-		assert.Equal(t, ApplicationJSONCharsetUTF8, rec.Header().Get(ContentType))
-		assert.Equal(t, userJSONIndent, rec.Body.String())
-	}
-
-	// JSONIndent (error)
-	rec = test.NewResponseRecorder()
-	c = NewContext(req, rec, e)
-	err = c.JSONIndent(http.StatusOK, nonMarshallableChannel, "_", "?")
+	err = c.JSON(http.StatusOK, make(chan bool))
 	assert.Error(t, err)
 
 	// JSONP
@@ -155,23 +134,7 @@ func TestContext(t *testing.T) {
 	// XML (error)
 	rec = test.NewResponseRecorder()
 	c = NewContext(req, rec, e)
-	err = c.XML(http.StatusOK, nonMarshallableChannel)
-	assert.Error(t, err)
-
-	// XMLIndent
-	rec = test.NewResponseRecorder()
-	c = NewContext(req, rec, e)
-	err = c.XMLIndent(http.StatusOK, user{"1", "Joe"}, "_", "?")
-	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rec.Status())
-		assert.Equal(t, ApplicationXMLCharsetUTF8, rec.Header().Get(ContentType))
-		assert.Equal(t, xml.Header+userXMLIndent, rec.Body.String())
-	}
-
-	// XMLIndent (error)
-	rec = test.NewResponseRecorder()
-	c = NewContext(req, rec, e)
-	err = c.XMLIndent(http.StatusOK, nonMarshallableChannel, "_", "?")
+	err = c.XML(http.StatusOK, make(chan bool))
 	assert.Error(t, err)
 
 	// String

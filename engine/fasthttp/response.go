@@ -23,7 +23,7 @@ type (
 	}
 )
 
-func _NewResponse(c *fasthttp.RequestCtx) *Response {
+func NewResponse(c *fasthttp.RequestCtx) *Response {
 	return &Response{
 		context: c,
 		header:  &ResponseHeader{c.Response.Header},
