@@ -451,6 +451,31 @@ func TestEchoHook(t *testing.T) {
 	assert.Equal(t, r.URL.Path, "/test")
 }
 
+func TestEchoUse(t *testing.T) {
+	e := New()
+	buf := new(bytes.Buffer)
+	mw1 := MiddlewareFunc(func(h HandlerFunc) HandlerFunc {
+		return func(c *Context) error {
+			buf.WriteString("mw1")
+			return h(c)
+		}
+	})
+	mw2 := MiddlewareFunc(func(h HandlerFunc) HandlerFunc {
+		return func(c *Context) error {
+			buf.WriteString("mw2")
+			return h(c)
+		}
+	})
+	e.Get("/", Use(func(c *Context) error {
+		return c.String(http.StatusOK, "Okay")
+	}, mw1, mw2))
+
+	r, _ := http.NewRequest(GET, "/", nil)
+	w := httptest.NewRecorder()
+	e.ServeHTTP(w, r)
+	assert.Equal(t, "mw1mw2", buf.String())
+}
+
 func testMethod(t *testing.T, method, path string, e *Echo) {
 	m := fmt.Sprintf("%c%s", method[0], strings.ToLower(method[1:]))
 	p := reflect.ValueOf(path)

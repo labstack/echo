@@ -645,6 +645,17 @@ func (e *HTTPError) Error() string {
 	return e.message
 }
 
+// Use chains all middleware with handler in the end and returns head of the chain.
+// The head can be used as handler in any route.
+func Use(handler Handler, middleware ...Middleware) (h HandlerFunc) {
+	h = wrapHandler(handler)
+	for i := len(middleware) - 1; i >= 0; i-- {
+		m := wrapMiddleware(middleware[i])
+		h = m(h)
+	}
+	return
+}
+
 // wrapMiddleware wraps middleware.
 func wrapMiddleware(m Middleware) MiddlewareFunc {
 	switch m := m.(type) {
