@@ -49,12 +49,14 @@ better performance.
 *Example*
 
 ```go
-e.Get("/users/:name", func(c *echo.Context) error {
+e.Get("/users/:name/*", func(c *echo.Context) error {
 	// By name
 	name := c.Param("name")
+    rest := c.Param(echo.WildcardParam)
 
 	// By index
 	name := c.P(0)
+	rest := c.P(1)
 
 	return c.String(http.StatusOK, name)
 })
