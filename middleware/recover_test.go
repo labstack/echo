@@ -15,10 +15,10 @@ func TestRecover(t *testing.T) {
 	req := test.NewRequest(echo.GET, "/", nil)
 	rec := test.NewResponseRecorder()
 	c := echo.NewContext(req, rec, e)
-	h := func(c echo.Context) error {
+	h := Recover()(echo.HandlerFunc(func(c echo.Context) error {
 		panic("test")
-	}
-	Recover()(h)(c)
+	}))
+	h.Handle(c)
 	assert.Equal(t, http.StatusInternalServerError, rec.Status())
 	assert.Contains(t, rec.Body.String(), "panic recover")
 }

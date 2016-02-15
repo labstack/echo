@@ -11,7 +11,6 @@ import (
 
 	"errors"
 
-	"github.com/labstack/echo/engine"
 	"github.com/labstack/echo/test"
 	"github.com/stretchr/testify/assert"
 )
@@ -41,77 +40,29 @@ func TestEcho(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, rec.Status())
 }
 
-func TestEchoIndex(t *testing.T) {
-	e := New()
-	e.Index("_fixture/index.html")
-	c, b := request(GET, "/", e)
-	assert.Equal(t, http.StatusOK, c)
-	assert.NotEmpty(t, b)
-}
-
-func TestEchoFavicon(t *testing.T) {
-	e := New()
-	e.Favicon("_fixture/favicon.ico")
-	c, b := request(GET, "/favicon.ico", e)
-	assert.Equal(t, http.StatusOK, c)
-	assert.NotEmpty(t, b)
-}
-
-func TestEchoStatic(t *testing.T) {
-	e := New()
-
-	// OK
-	e.Static("/images", "_fixture/images")
-	c, b := request(GET, "/images/walle.png", e)
-	assert.Equal(t, http.StatusOK, c)
-	assert.NotEmpty(t, b)
-
-	// No file
-	e.Static("/images", "_fixture/scripts")
-	c, _ = request(GET, "/images/bolt.png", e)
-	assert.Equal(t, http.StatusNotFound, c)
-
-	// Directory
-	e.Static("/images", "_fixture/images")
-	c, _ = request(GET, "/images", e)
-	assert.Equal(t, http.StatusForbidden, c)
-
-	// Directory with index.html
-	e.Static("/", "_fixture")
-	c, r := request(GET, "/", e)
-	assert.Equal(t, http.StatusOK, c)
-	assert.Equal(t, true, strings.HasPrefix(r, "<!doctype html>"))
-
-	// Sub-directory with index.html
-	c, r = request(GET, "/folder", e)
-	assert.Equal(t, http.StatusOK, c)
-	assert.Equal(t, true, strings.HasPrefix(r, "<!doctype html>"))
-	// assert.Equal(t, "sub directory", r)
-}
-
 func TestEchoMiddleware(t *testing.T) {
 	e := New()
 	buf := new(bytes.Buffer)
 
-	e.Use(func(h HandlerFunc) HandlerFunc {
-		return func(c Context) error {
+	e.Use(func(h Handler) Handler {
+		return HandlerFunc(func(c Context) error {
 			buf.WriteString("a")
-			return h(c)
-		}
+			return h.Handle(c)
+		})
 	})
 
-	e.Use(func(h HandlerFunc) HandlerFunc {
-		return func(c Context) error {
+	e.Use(func(h Handler) Handler {
+		return HandlerFunc(func(c Context) error {
 			buf.WriteString("b")
-			return h(c)
-		}
+			return h.Handle(c)
+		})
 	})
 
-	e.Use(func(h HandlerFunc) HandlerFunc {
-		return func(c Context) error {
+	e.Use(func(h Handler) Handler {
+		return HandlerFunc(func(c Context) error {
 			buf.WriteString("c")
-			return h(c)
-		}
+			return h.Handle(c)
+		})
 	})
 
 	// Route
@@ -125,10 +76,10 @@ func TestEchoMiddleware(t *testing.T) {
 	assert.Equal(t, "OK", b)
 
 	// Error
-	e.Use(func(h HandlerFunc) HandlerFunc {
-		return func(c Context) error {
+	e.Use(func(Handler) Handler {
+		return HandlerFunc(func(c Context) error {
 			return errors.New("error")
-		}
+		})
 	})
 	c, b = request(GET, "/", e)
 	assert.Equal(t, http.StatusInternalServerError, c)
@@ -138,9 +89,9 @@ func TestEchoHandler(t *testing.T) {
 	e := New()
 
 	// HandlerFunc
-	e.Get("/ok", HandlerFunc(func(c Context) error {
+	e.Get("/ok", func(c Context) error {
 		return c.String(http.StatusOK, "OK")
-	}))
+	})
 
 	c, b := request(GET, "/ok", e)
 	assert.Equal(t, http.StatusOK, c)
@@ -208,7 +159,6 @@ func TestEchoMatch(t *testing.T) { // JFC
 
 func TestEchoURL(t *testing.T) {
 	e := New()
-
 	static := func(Context) error { return nil }
 	getUser := func(Context) error { return nil }
 	getFile := func(Context) error { return nil }
@@ -248,11 +198,11 @@ func TestEchoRoutes(t *testing.T) {
 func TestEchoGroup(t *testing.T) {
 	e := New()
 	buf := new(bytes.Buffer)
-	e.Use(func(h HandlerFunc) HandlerFunc {
-		return func(c Context) error {
+	e.Use(func(h Handler) Handler {
+		return HandlerFunc(func(c Context) error {
 			buf.WriteString("0")
-			return h(c)
-		}
+			return h.Handle(c)
+		})
 	})
 	h := func(c Context) error {
 		return c.NoContent(http.StatusOK)
@@ -266,27 +216,18 @@ func TestEchoGroup(t *testing.T) {
 
 	// Group
 	g1 := e.Group("/group1")
-	g1.Use(func(h HandlerFunc) HandlerFunc {
-		return func(c Context) error {
+	g1.Use(func(h Handler) Handler {
+		return HandlerFunc(func(c Context) error {
 			buf.WriteString("1")
-			return h(c)
-		}
+			return h.Handle(c)
+		})
 	})
 	g1.Get("/", h)
 
-	// Group with no parent middleware
-	g2 := e.Group("/group2", func(h HandlerFunc) HandlerFunc {
-		return func(c Context) error {
-			buf.WriteString("2")
-			return h(c)
-		}
-	})
-	g2.Get("/", h)
-
 	// Nested groups
-	g3 := e.Group("/group3")
-	g4 := g3.Group("/group4")
-	g4.Get("/", h)
+	g2 := e.Group("/group2")
+	g3 := g2.Group("/group3")
+	g3.Get("/", h)
 
 	request(GET, "/users", e)
 	assert.Equal(t, "0", buf.String())
@@ -296,11 +237,7 @@ func TestEchoGroup(t *testing.T) {
 	assert.Equal(t, "01", buf.String())
 
 	buf.Reset()
-	request(GET, "/group2/", e)
-	assert.Equal(t, "2", buf.String())
-
-	buf.Reset()
-	c, _ := request(GET, "/group3/group4/", e)
+	c, _ := request(GET, "/group2/group3/", e)
 	assert.Equal(t, http.StatusOK, c)
 }
 
@@ -328,30 +265,6 @@ func TestEchoHTTPError(t *testing.T) {
 	he := NewHTTPError(http.StatusBadRequest, m)
 	assert.Equal(t, http.StatusBadRequest, he.Code())
 	assert.Equal(t, m, he.Error())
-}
-
-func TestEchoServer(t *testing.T) {
-	// e := New()
-	// s := e.Server(":1323")
-	// assert.IsType(t, &http.Server{}, s)
-}
-
-func TestEchoHook(t *testing.T) {
-	e := New()
-	e.Get("/test", func(c Context) error {
-		return c.NoContent(http.StatusNoContent)
-	})
-	e.Hook(func(req engine.Request, res engine.Response) {
-		path := req.URL().Path()
-		l := len(path) - 1
-		if path != "/" && path[l] == '/' {
-			req.URL().SetPath(path[:l])
-		}
-	})
-	req := test.NewRequest(GET, "/test/", nil)
-	rec := test.NewResponseRecorder()
-	e.ServeHTTP(req, rec)
-	assert.Equal(t, req.URL().Path(), "/test")
 }
 
 func testMethod(t *testing.T, method, path string, e *Echo) {

@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"path"
-	"path/filepath"
 	"reflect"
 	"runtime"
 	"strings"
@@ -24,7 +22,7 @@ import (
 type (
 	Echo struct {
 		prefix           string
-		middleware       []MiddlewareFunc
+		middleware       []Middleware
 		http2            bool
 		maxParam         *int
 		notFoundHandler  HandlerFunc
@@ -33,8 +31,6 @@ type (
 		renderer         Renderer
 		pool             sync.Pool
 		debug            bool
-		hook             engine.HandlerFunc
-		autoIndex        bool
 		router           *Router
 		logger           logger.Logger
 	}
@@ -51,10 +47,11 @@ type (
 	}
 
 	Middleware interface {
-		Process(HandlerFunc) HandlerFunc
+		Handle(Handler) Handler
+		Priority() int
 	}
 
-	MiddlewareFunc func(HandlerFunc) HandlerFunc
+	MiddlewareFunc func(Handler) Handler
 
 	Handler interface {
 		Handle(Context) error
@@ -122,6 +119,7 @@ const (
 	TextPlain                        = "text/plain"
 	TextPlainCharsetUTF8             = TextPlain + "; " + CharsetUTF8
 	MultipartForm                    = "multipart/form-data"
+	OctetStream                      = "application/octet-stream"
 
 	//---------
 	// Charset
@@ -150,8 +148,6 @@ const (
 	//-----------
 
 	WebSocket = "websocket"
-
-	indexPage = "index.html"
 )
 
 var (
@@ -171,9 +167,10 @@ var (
 	// Errors
 	//--------
 
-	UnsupportedMediaType  = NewHTTPError(http.StatusUnsupportedMediaType)
-	RendererNotRegistered = errors.New("renderer not registered")
-	InvalidRedirectCode   = errors.New("invalid redirect status code")
+	ErrUnsupportedMediaType  = NewHTTPError(http.StatusUnsupportedMediaType)
+	ErrNotFound              = NewHTTPError(http.StatusNotFound)
+	ErrRendererNotRegistered = errors.New("renderer not registered")
+	ErrInvalidRedirectCode   = errors.New("invalid redirect status code")
 
 	//----------------
 	// Error handlers
@@ -196,6 +193,7 @@ func New() (e *Echo) {
 		return NewContext(nil, nil, e)
 	}
 	e.router = NewRouter(e)
+	e.middleware = []Middleware{e.router}
 
 	//----------
 	// Defaults
@@ -211,8 +209,12 @@ func New() (e *Echo) {
 	return
 }
 
-func (f MiddlewareFunc) Process(h HandlerFunc) HandlerFunc {
+func (f MiddlewareFunc) Handle(h Handler) Handler {
 	return f(h)
+}
+
+func (f MiddlewareFunc) Priority() int {
+	return 1
 }
 
 func (f HandlerFunc) Handle(c Context) error {
@@ -281,18 +283,6 @@ func (e *Echo) Debug() bool {
 	return e.debug
 }
 
-// AutoIndex enable/disable automatically creating an index page for the directory.
-func (e *Echo) AutoIndex(on bool) {
-	e.autoIndex = on
-}
-
-// Hook registers a callback which is invoked from `Echo#ServerHTTP` as the first
-// statement. Hook is useful if you want to modify response/response objects even
-// before it hits the router or any middleware.
-func (e *Echo) Hook(h engine.HandlerFunc) {
-	e.hook = h
-}
-
 // Use adds handler to the middleware chain.
 func (e *Echo) Use(middleware ...interface{}) {
 	for _, m := range middleware {
@@ -301,190 +291,99 @@ func (e *Echo) Use(middleware ...interface{}) {
 }
 
 // Connect adds a CONNECT route > handler to the router.
-func (e *Echo) Connect(path string, handler interface{}) {
-	e.add(CONNECT, path, handler)
+func (e *Echo) Connect(path string, handler interface{}, middleware ...interface{}) {
+	e.add(CONNECT, path, handler, middleware...)
 }
 
 // Delete adds a DELETE route > handler to the router.
-func (e *Echo) Delete(path string, handler interface{}) {
-	e.add(DELETE, path, handler)
+func (e *Echo) Delete(path string, handler interface{}, middleware ...interface{}) {
+	e.add(DELETE, path, handler, middleware...)
 }
 
 // Get adds a GET route > handler to the router.
-func (e *Echo) Get(path string, handler interface{}) {
-	e.add(GET, path, handler)
+func (e *Echo) Get(path string, handler interface{}, middleware ...interface{}) {
+	e.add(GET, path, handler, middleware...)
 }
 
 // Head adds a HEAD route > handler to the router.
-func (e *Echo) Head(path string, handler interface{}) {
-	e.add(HEAD, path, handler)
+func (e *Echo) Head(path string, handler interface{}, middleware ...interface{}) {
+	e.add(HEAD, path, handler, middleware...)
 }
 
 // Options adds an OPTIONS route > handler to the router.
-func (e *Echo) Options(path string, handler interface{}) {
-	e.add(OPTIONS, path, handler)
+func (e *Echo) Options(path string, handler interface{}, middleware ...interface{}) {
+	e.add(OPTIONS, path, handler, middleware...)
 }
 
 // Patch adds a PATCH route > handler to the router.
-func (e *Echo) Patch(path string, handler interface{}) {
-	e.add(PATCH, path, handler)
+func (e *Echo) Patch(path string, handler interface{}, middleware ...interface{}) {
+	e.add(PATCH, path, handler, middleware...)
 }
 
 // Post adds a POST route > handler to the router.
-func (e *Echo) Post(path string, handler interface{}) {
-	e.add(POST, path, handler)
+func (e *Echo) Post(path string, handler interface{}, middleware ...interface{}) {
+	e.add(POST, path, handler, middleware...)
 }
 
 // Put adds a PUT route > handler to the router.
-func (e *Echo) Put(path string, handler interface{}) {
-	e.add(PUT, path, handler)
+func (e *Echo) Put(path string, handler interface{}, middleware ...interface{}) {
+	e.add(PUT, path, handler, middleware...)
 }
 
 // Trace adds a TRACE route > handler to the router.
-func (e *Echo) Trace(path string, handler interface{}) {
-	e.add(TRACE, path, handler)
+func (e *Echo) Trace(path string, handler interface{}, middleware ...interface{}) {
+	e.add(TRACE, path, handler, middleware...)
 }
 
 // Any adds a route > handler to the router for all HTTP methods.
-func (e *Echo) Any(path string, handler interface{}) {
+func (e *Echo) Any(path string, handler interface{}, middleware ...interface{}) {
 	for _, m := range methods {
-		e.add(m, path, handler)
+		e.add(m, path, handler, middleware...)
 	}
 }
 
 // Match adds a route > handler to the router for multiple HTTP methods provided.
-func (e *Echo) Match(methods []string, path string, handler interface{}) {
+func (e *Echo) Match(methods []string, path string, handler interface{}, middleware ...interface{}) {
 	for _, m := range methods {
-		e.add(m, path, handler)
+		e.add(m, path, handler, middleware...)
 	}
 }
 
 // NOTE: v2
-func (e *Echo) add(method, path string, h interface{}) {
-	path = e.prefix + path
-	e.router.Add(method, path, wrapHandler(h), e)
+func (e *Echo) add(method, path string, handler interface{}, middleware ...interface{}) {
+	h := wrapHandler(handler)
+	name := handlerName(handler)
+	e.router.Add(method, path, HandlerFunc(func(c Context) error {
+		for _, m := range middleware {
+			h = wrapMiddleware(m).Handle(h)
+		}
+		return h.Handle(c)
+	}), e)
 	r := Route{
 		Method:  method,
 		Path:    path,
-		Handler: runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name(),
+		Handler: name,
 	}
 	e.router.routes = append(e.router.routes, r)
 }
 
-// Index serves index file.
-func (e *Echo) Index(file string) {
-	e.ServeFile("/", file)
-}
-
-// Favicon serves the default favicon - GET /favicon.ico.
-func (e *Echo) Favicon(file string) {
-	e.ServeFile("/favicon.ico", file)
-}
-
-// Static serves static files from a directory. It's an alias for `Echo.ServeDir`
-func (e *Echo) Static(path, dir string) {
-	e.ServeDir(path, dir)
-}
-
-// ServeDir serves files from a directory.
-func (e *Echo) ServeDir(path, dir string) {
-	e.Get(path+"*", func(c Context) error {
-		return e.serveFile(dir, c.P(0), c) // Param `_*`
-	})
-}
-
-// ServeFile serves a file.
-func (e *Echo) ServeFile(path, file string) {
-	e.Get(path, func(c Context) error {
-		dir, file := filepath.Split(file)
-		return e.serveFile(dir, file, c)
-	})
-}
-
-func (e *Echo) serveFile(dir, file string, c Context) (err error) {
-	fs := http.Dir(dir)
-	f, err := fs.Open(file)
-	if err != nil {
-		return NewHTTPError(http.StatusNotFound)
-	}
-	defer f.Close()
-
-	fi, _ := f.Stat()
-	if fi.IsDir() {
-		/* NOTE:
-		Not checking the Last-Modified header as it caches the response `304` when
-		changing differnt directories for the same path.
-		*/
-		d := f
-
-		// Index file
-		file = path.Join(file, indexPage)
-		f, err = fs.Open(file)
-		if err != nil {
-			if e.autoIndex {
-				// Auto index
-				return listDir(d, c)
-			}
-			return NewHTTPError(http.StatusForbidden)
-		}
-		fi, _ = f.Stat() // Index file stat
-	}
-	c.Response().WriteHeader(http.StatusOK)
-	io.Copy(c.Response(), f)
-	// TODO:
-	// http.ServeContent(c.Response(), c.Request(), fi.Name(), fi.ModTime(), f)
+// Group creates a new sub-router with prefix.
+func (e *Echo) Group(prefix string, middleware ...interface{}) (g *Group) {
+	g = &Group{prefix: prefix, echo: e}
+	g.Use(middleware...)
 	return
-}
-
-func listDir(d http.File, c Context) (err error) {
-	dirs, err := d.Readdir(-1)
-	if err != nil {
-		return err
-	}
-
-	// Create directory index
-	w := c.Response()
-	w.Header().Set(ContentType, TextHTMLCharsetUTF8)
-	fmt.Fprintf(w, "<pre>\n")
-	for _, d := range dirs {
-		name := d.Name()
-		color := "#212121"
-		if d.IsDir() {
-			color = "#e91e63"
-			name += "/"
-		}
-		fmt.Fprintf(w, "<a href=\"%s\" style=\"color: %s;\">%s</a>\n", name, color, name)
-	}
-	fmt.Fprintf(w, "</pre>\n")
-	return
-}
-
-// Group creates a new sub router with prefix. It inherits all properties from
-// the parent. Passing middleware overrides parent middleware.
-func (e *Echo) Group(prefix string, m ...MiddlewareFunc) *Group {
-	g := &Group{*e}
-	g.echo.prefix += prefix
-	if len(m) == 0 {
-		mw := make([]MiddlewareFunc, len(g.echo.middleware))
-		copy(mw, g.echo.middleware)
-		g.echo.middleware = mw
-	} else {
-		g.echo.middleware = nil
-		g.Use(m...)
-	}
-	return g
 }
 
 // URI generates a URI from handler.
-func (e *Echo) URI(h HandlerFunc, params ...interface{}) string {
+func (e *Echo) URI(handler interface{}, params ...interface{}) string {
 	uri := new(bytes.Buffer)
-	pl := len(params)
+	ln := len(params)
 	n := 0
-	hn := runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name()
+	name := handlerName(handler)
 	for _, r := range e.router.routes {
-		if r.Handler == hn {
+		if r.Handler == name {
 			for i, l := 0, len(r.Path); i < l; i++ {
-				if r.Path[i] == ':' && n < pl {
+				if r.Path[i] == ':' && n < ln {
 					for ; i < l && r.Path[i] != '/'; i++ {
 					}
 					uri.WriteString(fmt.Sprintf("%v", params[n]))
@@ -501,8 +400,8 @@ func (e *Echo) URI(h HandlerFunc, params ...interface{}) string {
 }
 
 // URL is an alias for `URI` function.
-func (e *Echo) URL(h HandlerFunc, params ...interface{}) string {
-	return e.URI(h, params...)
+func (e *Echo) URL(handler interface{}, params ...interface{}) string {
+	return e.URI(handler, params...)
 }
 
 // Routes returns the registered routes.
@@ -511,36 +410,22 @@ func (e *Echo) Routes() []Route {
 }
 
 func (e *Echo) ServeHTTP(req engine.Request, res engine.Response) {
-	if e.hook != nil {
-		e.hook(req, res)
-	}
-
 	c := e.pool.Get().(*context)
-	h, e := e.router.Find(req.Method(), req.URL().Path(), c)
-	c.reset(req, res, e)
+	c.reset(req, res)
+	h := Handler(c)
 
 	// Chain middleware with handler in the end
 	for i := len(e.middleware) - 1; i >= 0; i-- {
-		h = e.middleware[i](h)
+		h = e.middleware[i].Handle(h)
 	}
 
 	// Execute chain
-	if err := h(c); err != nil {
+	if err := h.Handle(c); err != nil {
 		e.httpErrorHandler(err, c)
 	}
 
 	e.pool.Put(c)
 }
-
-// Server returns the internal *http.Server.
-// func (e *Echo) Server(addr string) *http.Server {
-// 	s := &http.Server{Addr: addr, Handler: e}
-// 	// TODO: Remove in Go 1.6+
-// 	if e.http2 {
-// 		http2.ConfigureServer(s, nil)
-// 	}
-// 	return s
-// }
 
 // Run starts the HTTP engine.
 func (e *Echo) Run(eng engine.Engine) {
@@ -575,7 +460,7 @@ func (e *HTTPError) Error() string {
 
 func (binder) Bind(r engine.Request, i interface{}) (err error) {
 	ct := r.Header().Get(ContentType)
-	err = UnsupportedMediaType
+	err = ErrUnsupportedMediaType
 	if strings.HasPrefix(ct, ApplicationJSON) {
 		if err = json.NewDecoder(r.Body()).Decode(i); err != nil {
 			err = NewHTTPError(http.StatusBadRequest, err.Error())
@@ -588,28 +473,40 @@ func (binder) Bind(r engine.Request, i interface{}) (err error) {
 	return
 }
 
-func wrapMiddleware(m interface{}) MiddlewareFunc {
+func wrapMiddleware(m interface{}) Middleware {
 	switch m := m.(type) {
 	case Middleware:
-		return m.Process
+		return m
 	case MiddlewareFunc:
 		return m
-	case func(HandlerFunc) HandlerFunc:
-		return m
+	case func(Handler) Handler:
+		return MiddlewareFunc(m)
 	default:
 		panic("invalid middleware")
 	}
 }
 
-func wrapHandler(h interface{}) HandlerFunc {
+func wrapHandler(h interface{}) Handler {
 	switch h := h.(type) {
 	case Handler:
-		return h.Handle
+		return h
 	case HandlerFunc:
 		return h
 	case func(Context) error:
-		return h
+		return HandlerFunc(h)
 	default:
-		panic("invalid handler")
+		panic("echo => invalid handler")
+	}
+}
+
+func handlerName(h interface{}) string {
+	switch h := h.(type) {
+	case Handler:
+		t := reflect.TypeOf(h)
+		return fmt.Sprintf("%s » %s", t.PkgPath(), t.Name())
+	case HandlerFunc, func(Context) error:
+		return runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name()
+	default:
+		panic("echo => invalid handler")
 	}
 }

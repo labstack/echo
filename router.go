@@ -15,20 +15,19 @@ type (
 		ppath         string
 		pnames        []string
 		methodHandler *methodHandler
-		echo          *Echo
 	}
 	kind          uint8
 	children      []*node
 	methodHandler struct {
-		connect HandlerFunc
-		delete  HandlerFunc
-		get     HandlerFunc
-		head    HandlerFunc
-		options HandlerFunc
-		patch   HandlerFunc
-		post    HandlerFunc
-		put     HandlerFunc
-		trace   HandlerFunc
+		connect Handler
+		delete  Handler
+		get     Handler
+		head    Handler
+		options Handler
+		patch   Handler
+		post    Handler
+		put     Handler
+		trace   Handler
 	}
 )
 
@@ -48,7 +47,20 @@ func NewRouter(e *Echo) *Router {
 	}
 }
 
-func (r *Router) Add(method, path string, h HandlerFunc, e *Echo) {
+func (r *Router) Handle(h Handler) Handler {
+	return HandlerFunc(func(c Context) error {
+		method := c.Request().Method()
+		path := c.Request().URL().Path()
+		r.Find(method, path, c)
+		return h.Handle(c)
+	})
+}
+
+func (r *Router) Priority() int {
+	return 0
+}
+
+func (r *Router) Add(method, path string, h Handler, e *Echo) {
 	ppath := path        // Pristine path
 	pnames := []string{} // Param names
 
@@ -80,7 +92,7 @@ func (r *Router) Add(method, path string, h HandlerFunc, e *Echo) {
 	r.insert(method, path, h, skind, ppath, pnames, e)
 }
 
-func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string, pnames []string, e *Echo) {
+func (r *Router) insert(method, path string, h Handler, t kind, ppath string, pnames []string, e *Echo) {
 	// Adjust max param
 	l := len(pnames)
 	if *e.maxParam < l {
@@ -89,7 +101,7 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 
 	cn := r.tree // Current node as root
 	if cn == nil {
-		panic("echo => invalid method")
+		panic("echo ⇛ invalid method")
 	}
 	search := path
 
@@ -115,11 +127,10 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 				cn.addHandler(method, h)
 				cn.ppath = ppath
 				cn.pnames = pnames
-				cn.echo = e
 			}
 		} else if l < pl {
 			// Split node
-			n := newNode(cn.kind, cn.prefix[l:], cn, cn.children, cn.methodHandler, cn.ppath, cn.pnames, cn.echo)
+			n := newNode(cn.kind, cn.prefix[l:], cn, cn.children, cn.methodHandler, cn.ppath, cn.pnames)
 
 			// Reset parent node
 			cn.kind = skind
@@ -129,7 +140,6 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 			cn.methodHandler = new(methodHandler)
 			cn.ppath = ""
 			cn.pnames = nil
-			cn.echo = nil
 
 			cn.addChild(n)
 
@@ -139,10 +149,9 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 				cn.addHandler(method, h)
 				cn.ppath = ppath
 				cn.pnames = pnames
-				cn.echo = e
 			} else {
 				// Create child node
-				n = newNode(t, search[l:], cn, nil, new(methodHandler), ppath, pnames, e)
+				n = newNode(t, search[l:], cn, nil, new(methodHandler), ppath, pnames)
 				n.addHandler(method, h)
 				cn.addChild(n)
 			}
@@ -155,7 +164,7 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 				continue
 			}
 			// Create child node
-			n := newNode(t, search, cn, nil, new(methodHandler), ppath, pnames, e)
+			n := newNode(t, search, cn, nil, new(methodHandler), ppath, pnames)
 			n.addHandler(method, h)
 			cn.addChild(n)
 		} else {
@@ -164,14 +173,13 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 				cn.addHandler(method, h)
 				cn.ppath = path
 				cn.pnames = pnames
-				cn.echo = e
 			}
 		}
 		return
 	}
 }
 
-func newNode(t kind, pre string, p *node, c children, mh *methodHandler, ppath string, pnames []string, e *Echo) *node {
+func newNode(t kind, pre string, p *node, c children, mh *methodHandler, ppath string, pnames []string) *node {
 	return &node{
 		kind:          t,
 		label:         pre[0],
@@ -181,7 +189,6 @@ func newNode(t kind, pre string, p *node, c children, mh *methodHandler, ppath s
 		ppath:         ppath,
 		pnames:        pnames,
 		methodHandler: mh,
-		echo:          e,
 	}
 }
 
@@ -216,7 +223,7 @@ func (n *node) findChildByKind(t kind) *node {
 	return nil
 }
 
-func (n *node) addHandler(method string, h HandlerFunc) {
+func (n *node) addHandler(method string, h Handler) {
 	switch method {
 	case GET:
 		n.methodHandler.get = h
@@ -239,7 +246,7 @@ func (n *node) addHandler(method string, h HandlerFunc) {
 	}
 }
 
-func (n *node) findHandler(method string) HandlerFunc {
+func (n *node) findHandler(method string) Handler {
 	switch method {
 	case GET:
 		return n.methodHandler.get
@@ -273,10 +280,10 @@ func (n *node) check405() HandlerFunc {
 	return notFoundHandler
 }
 
-func (r *Router) Find(method, path string, context Context) (h HandlerFunc, e *Echo) {
-	x := context.Object()
-	h = notFoundHandler
-	e = r.echo
+func (r *Router) Find(method, path string, context Context) {
+	ctx := context.Object()
+	// h = notFoundHandler
+	// e = r.echo
 	cn := r.tree // Current node as root
 
 	var (
@@ -357,7 +364,7 @@ func (r *Router) Find(method, path string, context Context) (h HandlerFunc, e *E
 			i, l := 0, len(search)
 			for ; i < l && search[i] != '/'; i++ {
 			}
-			x.pvalues[n] = search[:i]
+			ctx.pvalues[n] = search[:i]
 			n++
 			search = search[i:]
 			continue
@@ -370,30 +377,27 @@ func (r *Router) Find(method, path string, context Context) (h HandlerFunc, e *E
 			// Not found
 			return
 		}
-		x.pvalues[len(cn.pnames)-1] = search
+		ctx.pvalues[len(cn.pnames)-1] = search
 		goto End
 	}
 
 End:
-	x.path = cn.ppath
-	x.pnames = cn.pnames
-	h = cn.findHandler(method)
-	if cn.echo != nil {
-		e = cn.echo
-	}
+	ctx.path = cn.ppath
+	ctx.pnames = cn.pnames
+	ctx.handler = cn.findHandler(method)
 
 	// NOTE: Slow zone...
-	if h == nil {
-		h = cn.check405()
+	if ctx.handler == nil {
+		ctx.handler = cn.check405()
 
 		// Dig further for match-any, might have an empty value for *, e.g.
 		// serving a directory. Issue #207.
 		if cn = cn.findChildByKind(mkind); cn == nil {
 			return
 		}
-		x.pvalues[len(cn.pnames)-1] = ""
-		if h = cn.findHandler(method); h == nil {
-			h = cn.check405()
+		ctx.pvalues[len(cn.pnames)-1] = ""
+		if ctx.handler = cn.findHandler(method); ctx.handler == nil {
+			ctx.handler = cn.check405()
 		}
 	}
 	return

@@ -157,22 +157,13 @@ func TestContext(t *testing.T) {
 		assert.Equal(t, "Hello, <strong>World!</strong>", rec.Body.String())
 	}
 
-	// File
+	// Attachment
 	rec = test.NewResponseRecorder()
 	c = NewContext(req, rec, e)
-	err = c.File("_fixture/images/walle.png", "", false)
+	err = c.Attachment("_fixture/images/walle.png")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Status())
-		assert.Equal(t, 219885, rec.Body.Len())
-	}
-
-	// File as attachment
-	rec = test.NewResponseRecorder()
-	c = NewContext(req, rec, e)
-	err = c.File("_fixture/images/walle.png", "WALLE.PNG", true)
-	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rec.Status())
-		assert.Equal(t, rec.Header().Get(ContentDisposition), "attachment; filename=WALLE.PNG")
+		assert.Equal(t, rec.Header().Get(ContentDisposition), "attachment; filename=walle.png")
 		assert.Equal(t, 219885, rec.Body.Len())
 	}
 
@@ -194,7 +185,7 @@ func TestContext(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, c.Response().Status())
 
 	// reset
-	c.Object().reset(req, test.NewResponseRecorder(), e)
+	c.Object().reset(req, test.NewResponseRecorder())
 }
 
 func TestContextPath(t *testing.T) {
@@ -263,7 +254,7 @@ func testBindError(t *testing.T, c Context, ct string) {
 		}
 	default:
 		if assert.IsType(t, new(HTTPError), err) {
-			assert.Equal(t, UnsupportedMediaType, err)
+			assert.Equal(t, ErrUnsupportedMediaType, err)
 		}
 
 	}

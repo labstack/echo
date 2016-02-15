@@ -3,7 +3,10 @@ package echo
 import (
 	"encoding/json"
 	"encoding/xml"
+	"io"
+	"mime"
 	"net/http"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -42,10 +45,11 @@ type (
 		JSONP(int, string, interface{}) error
 		XML(int, interface{}) error
 		XMLBlob(int, []byte) error
-		File(string, string, bool) error
+		Attachment(string) error
 		NoContent(int) error
 		Redirect(int, string) error
 		Error(err error)
+		Handle(Context) error
 		Logger() logger.Logger
 		Object() *context
 	}
@@ -59,10 +63,15 @@ type (
 		pvalues  []string
 		query    url.Values
 		store    store
+		handler  Handler
 		echo     *Echo
 	}
 
 	store map[string]interface{}
+)
+
+const (
+	indexPage = "index.html"
 )
 
 // NewContext creates a Context object.
@@ -73,7 +82,12 @@ func NewContext(req engine.Request, res engine.Response, e *Echo) Context {
 		echo:     e,
 		pvalues:  make([]string, *e.maxParam),
 		store:    make(store),
+		handler:  notFoundHandler,
 	}
+}
+
+func (c *context) Handle(ctx Context) error {
+	return c.handler.Handle(ctx)
 }
 
 func (c *context) Deadline() (deadline time.Time, ok bool) {
@@ -166,7 +180,7 @@ func (c *context) Bind(i interface{}) error {
 // code. Templates can be registered using `Echo.SetRenderer()`.
 func (c *context) Render(code int, name string, data interface{}) (err error) {
 	if c.echo.renderer == nil {
-		return RendererNotRegistered
+		return ErrRendererNotRegistered
 	}
 	buf := new(bytes.Buffer)
 	if err = c.echo.renderer.Render(buf, name, data); err != nil {
@@ -250,17 +264,17 @@ func (c *context) XMLBlob(code int, b []byte) (err error) {
 	return
 }
 
-// File sends a response with the content of the file. If `attachment` is set
-// to true, the client is prompted to save the file with provided `name`,
-// name can be empty, in that case name of the file is used.
-func (c *context) File(path, name string, attachment bool) (err error) {
-	dir, file := filepath.Split(path)
-	if attachment {
-		c.response.Header().Set(ContentDisposition, "attachment; filename="+name)
+// Attachment sends specified file as an attachment to the client.
+func (c *context) Attachment(file string) (err error) {
+	f, err := os.Open(file)
+	if err != nil {
+		return
 	}
-	if err = c.echo.serveFile(dir, file, c); err != nil {
-		c.response.Header().Del(ContentDisposition)
-	}
+	_, name := filepath.Split(file)
+	c.response.Header().Set(ContentDisposition, "attachment; filename="+name)
+	c.response.Header().Set(ContentType, c.detectContentType(file))
+	c.response.WriteHeader(http.StatusOK)
+	_, err = io.Copy(c.response, f)
 	return
 }
 
@@ -273,7 +287,7 @@ func (c *context) NoContent(code int) error {
 // Redirect redirects the request using http.Redirect with status code.
 func (c *context) Redirect(code int, url string) error {
 	if code < http.StatusMultipleChoices || code > http.StatusTemporaryRedirect {
-		return InvalidRedirectCode
+		return ErrInvalidRedirectCode
 	}
 	// TODO: v2
 	// http.Redirect(c.response, c.request, url, code)
@@ -295,10 +309,16 @@ func (c *context) Object() *context {
 	return c
 }
 
-func (c *context) reset(req engine.Request, res engine.Response, e *Echo) {
+func (c *context) detectContentType(name string) (t string) {
+	if t = mime.TypeByExtension(filepath.Ext(name)); t == "" {
+		t = OctetStream
+	}
+	return
+}
+
+func (c *context) reset(req engine.Request, res engine.Response) {
 	c.request = req
 	c.response = res
 	c.query = nil
 	c.store = nil
-	c.echo = e
 }

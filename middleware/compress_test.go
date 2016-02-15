@@ -35,13 +35,12 @@ func TestGzip(t *testing.T) {
 	req := test.NewRequest(echo.GET, "/", nil)
 	rec := test.NewResponseRecorder()
 	c := echo.NewContext(req, rec, e)
-	h := func(c echo.Context) error {
+	// Skip if no Accept-Encoding header
+	h := Gzip()(echo.HandlerFunc(func(c echo.Context) error {
 		c.Response().Write([]byte("test")) // For Content-Type sniffing
 		return nil
-	}
-
-	// Skip if no Accept-Encoding header
-	Gzip()(h)(c)
+	}))
+	h.Handle(c)
 	// assert.Equal(t, http.StatusOK, rec.Status())
 	assert.Equal(t, "test", rec.Body.String())
 
@@ -51,7 +50,7 @@ func TestGzip(t *testing.T) {
 	c = echo.NewContext(req, rec, e)
 
 	// Gzip
-	Gzip()(h)(c)
+	h.Handle(c)
 	// assert.Equal(t, http.StatusOK, rec.Status())
 	assert.Equal(t, "gzip", rec.Header().Get(echo.ContentEncoding))
 	assert.Contains(t, rec.Header().Get(echo.ContentType), echo.TextPlain)
