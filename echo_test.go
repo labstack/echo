@@ -44,31 +44,31 @@ func TestEchoMiddleware(t *testing.T) {
 	e := New()
 	buf := new(bytes.Buffer)
 
-	e.Use(func(h Handler) Handler {
+	e.Use(MiddlewareFunc(func(h Handler) Handler {
 		return HandlerFunc(func(c Context) error {
 			buf.WriteString("a")
 			return h.Handle(c)
 		})
-	})
+	}))
 
-	e.Use(func(h Handler) Handler {
+	e.Use(MiddlewareFunc(func(h Handler) Handler {
 		return HandlerFunc(func(c Context) error {
 			buf.WriteString("b")
 			return h.Handle(c)
 		})
-	})
+	}))
 
-	e.Use(func(h Handler) Handler {
+	e.Use(MiddlewareFunc(func(h Handler) Handler {
 		return HandlerFunc(func(c Context) error {
 			buf.WriteString("c")
 			return h.Handle(c)
 		})
-	})
+	}))
 
 	// Route
-	e.Get("/", func(c Context) error {
+	e.Get("/", HandlerFunc(func(c Context) error {
 		return c.String(http.StatusOK, "OK")
-	})
+	}))
 
 	c, b := request(GET, "/", e)
 	assert.Equal(t, "abc", buf.String())
@@ -76,11 +76,11 @@ func TestEchoMiddleware(t *testing.T) {
 	assert.Equal(t, "OK", b)
 
 	// Error
-	e.Use(func(Handler) Handler {
+	e.Use(MiddlewareFunc(func(Handler) Handler {
 		return HandlerFunc(func(c Context) error {
 			return errors.New("error")
 		})
-	})
+	}))
 	c, b = request(GET, "/", e)
 	assert.Equal(t, http.StatusInternalServerError, c)
 }
@@ -89,9 +89,9 @@ func TestEchoHandler(t *testing.T) {
 	e := New()
 
 	// HandlerFunc
-	e.Get("/ok", func(c Context) error {
+	e.Get("/ok", HandlerFunc(func(c Context) error {
 		return c.String(http.StatusOK, "OK")
-	})
+	}))
 
 	c, b := request(GET, "/ok", e)
 	assert.Equal(t, http.StatusOK, c)
@@ -145,23 +145,23 @@ func TestEchoTrace(t *testing.T) {
 
 func TestEchoAny(t *testing.T) { // JFC
 	e := New()
-	e.Any("/", func(c Context) error {
+	e.Any("/", HandlerFunc(func(c Context) error {
 		return c.String(http.StatusOK, "Any")
-	})
+	}))
 }
 
 func TestEchoMatch(t *testing.T) { // JFC
 	e := New()
-	e.Match([]string{GET, POST}, "/", func(c Context) error {
+	e.Match([]string{GET, POST}, "/", HandlerFunc(func(c Context) error {
 		return c.String(http.StatusOK, "Match")
-	})
+	}))
 }
 
 func TestEchoURL(t *testing.T) {
 	e := New()
-	static := func(Context) error { return nil }
-	getUser := func(Context) error { return nil }
-	getFile := func(Context) error { return nil }
+	static := HandlerFunc(func(Context) error { return nil })
+	getUser := HandlerFunc(func(Context) error { return nil })
+	getFile := HandlerFunc(func(Context) error { return nil })
 
 	e.Get("/static/file", static)
 	e.Get("/users/:id", getUser)
@@ -184,9 +184,9 @@ func TestEchoRoutes(t *testing.T) {
 		{POST, "/repos/:owner/:repo/git/tags", ""},
 	}
 	for _, r := range routes {
-		e.add(r.Method, r.Path, func(c Context) error {
+		e.add(r.Method, r.Path, HandlerFunc(func(c Context) error {
 			return c.String(http.StatusOK, "OK")
-		})
+		}))
 	}
 
 	for i, r := range e.Routes() {
@@ -198,15 +198,15 @@ func TestEchoRoutes(t *testing.T) {
 func TestEchoGroup(t *testing.T) {
 	e := New()
 	buf := new(bytes.Buffer)
-	e.Use(func(h Handler) Handler {
+	e.Use(MiddlewareFunc(func(h Handler) Handler {
 		return HandlerFunc(func(c Context) error {
 			buf.WriteString("0")
 			return h.Handle(c)
 		})
-	})
-	h := func(c Context) error {
+	}))
+	h := HandlerFunc(func(c Context) error {
 		return c.NoContent(http.StatusOK)
-	}
+	})
 
 	//--------
 	// Routes
@@ -216,12 +216,12 @@ func TestEchoGroup(t *testing.T) {
 
 	// Group
 	g1 := e.Group("/group1")
-	g1.Use(func(h Handler) Handler {
+	g1.Use(MiddlewareFunc(func(h Handler) Handler {
 		return HandlerFunc(func(c Context) error {
 			buf.WriteString("1")
 			return h.Handle(c)
 		})
-	})
+	}))
 	g1.Get("/", h)
 
 	// Nested groups
@@ -251,9 +251,9 @@ func TestEchoNotFound(t *testing.T) {
 
 func TestEchoMethodNotAllowed(t *testing.T) {
 	e := New()
-	e.Get("/", func(c Context) error {
+	e.Get("/", HandlerFunc(func(c Context) error {
 		return c.String(http.StatusOK, "Echo!")
-	})
+	}))
 	req := test.NewRequest(POST, "/", nil)
 	rec := test.NewResponseRecorder()
 	e.ServeHTTP(req, rec)
@@ -270,9 +270,9 @@ func TestEchoHTTPError(t *testing.T) {
 func testMethod(t *testing.T, method, path string, e *Echo) {
 	m := fmt.Sprintf("%c%s", method[0], strings.ToLower(method[1:]))
 	p := reflect.ValueOf(path)
-	h := reflect.ValueOf(func(c Context) error {
+	h := reflect.ValueOf(HandlerFunc(func(c Context) error {
 		return c.String(http.StatusOK, method)
-	})
+	}))
 	i := interface{}(e)
 	reflect.ValueOf(i).MethodByName(m).Call([]reflect.Value{p, h})
 	_, body := request(method, path, e)

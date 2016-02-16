@@ -52,7 +52,7 @@ func (r *Router) Handle(h Handler) Handler {
 		method := c.Request().Method()
 		path := c.Request().URL().Path()
 		r.Find(method, path, c)
-		return h.Handle(c)
+		return c.Handle(c)
 	})
 }
 
