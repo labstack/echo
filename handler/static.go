@@ -15,9 +15,6 @@ type (
 		Browse bool
 		Index  string
 	}
-
-	FaviconOptions struct {
-	}
 )
 
 func (s Static) Handle(c echo.Context) error {
@@ -83,10 +80,8 @@ func (s Static) Handle(c echo.Context) error {
 }
 
 // Favicon serves the default favicon - GET /favicon.ico.
-func Favicon(root string, options ...FaviconOptions) echo.MiddlewareFunc {
-	return func(h echo.Handler) echo.Handler {
-		return echo.HandlerFunc(func(c echo.Context) error {
-			return nil
-		})
+func Favicon() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		return nil
 	}
 }

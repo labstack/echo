@@ -24,7 +24,7 @@ func NewRequest(r *http.Request) *Request {
 }
 
 func (r *Request) Host() string {
-	return r.Host()
+	return r.request.Host
 }
 
 func (r *Request) URL() engine.URL {
