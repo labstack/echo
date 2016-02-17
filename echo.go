@@ -474,5 +474,9 @@ func (binder) Bind(r engine.Request, i interface{}) (err error) {
 }
 
 func handlerName(h Handler) string {
-	return runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name()
+	t := reflect.ValueOf(h).Type()
+	if t.Kind() == reflect.Func {
+		return runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name()
+	}
+	return t.String()
 }

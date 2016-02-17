@@ -12,10 +12,17 @@ import (
 type (
 	Static struct {
 		Root   string
-		Browse bool
 		Index  string
+		Browse bool
 	}
 )
+
+func NewStatic(root string) *Static {
+	return &Static{
+		Root:  root,
+		Index: "index.html",
+	}
+}
 
 func (s Static) Handle(c echo.Context) error {
 	fs := http.Dir(s.Root)
@@ -49,9 +56,9 @@ func (s Static) Handle(c echo.Context) error {
 				}
 
 				// Create a directory index
-				w := c.Response()
-				w.Header().Set(echo.ContentType, echo.TextHTMLCharsetUTF8)
-				if _, err = fmt.Fprintf(w, "<pre>\n"); err != nil {
+				res := c.Response()
+				res.Header().Set(echo.ContentType, echo.TextHTMLCharsetUTF8)
+				if _, err = fmt.Fprintf(res, "<pre>\n"); err != nil {
 					return err
 				}
 				for _, d := range dirs {
@@ -61,11 +68,11 @@ func (s Static) Handle(c echo.Context) error {
 						color = "#e91e63"
 						name += "/"
 					}
-					if _, err = fmt.Fprintf(w, "<a href=\"%s\" style=\"color: %s;\">%s</a>\n", name, color, name); err != nil {
+					if _, err = fmt.Fprintf(res, "<a href=\"%s\" style=\"color: %s;\">%s</a>\n", name, color, name); err != nil {
 						return err
 					}
 				}
-				_, err = fmt.Fprintf(w, "</pre>\n")
+				_, err = fmt.Fprintf(res, "</pre>\n")
 				return err
 			}
 			return echo.ErrNotFound

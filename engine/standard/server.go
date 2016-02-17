@@ -96,7 +96,8 @@ func (s *Server) Start() {
 		// Response
 		res := s.pool.response.Get().(*Response)
 		resHdr := s.pool.header.Get().(*Header)
-		res.reset(w, reqHdr)
+		resHdr.reset(w.Header())
+		res.reset(w, resHdr)
 
 		s.handler(req, res)
 
