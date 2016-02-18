@@ -36,7 +36,7 @@ func TestGzip(t *testing.T) {
 	rec := test.NewResponseRecorder()
 	c := echo.NewContext(req, rec, e)
 	// Skip if no Accept-Encoding header
-	h := NewGzip().Handle(echo.HandlerFunc(func(c echo.Context) error {
+	h := Gzip()(echo.HandlerFunc(func(c echo.Context) error {
 		c.Response().Write([]byte("test")) // For Content-Type sniffing
 		return nil
 	}))
