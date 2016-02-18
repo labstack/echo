@@ -44,7 +44,6 @@ import (
 	"sync"
 
 	"github.com/labstack/gommon/log"
-	"golang.org/x/net/http2"
 	"golang.org/x/net/websocket"
 )
 
@@ -53,7 +52,6 @@ type (
 	Echo struct {
 		prefix           string
 		middleware       []MiddlewareFunc
-		http2            bool
 		maxParam         *int
 		httpErrorHandler HTTPErrorHandler
 		binder           Binder
@@ -239,7 +237,6 @@ func New() (e *Echo) {
 	// Defaults
 	//----------
 
-	e.HTTP2(true)
 	e.SetHTTPErrorHandler(e.DefaultHTTPErrorHandler)
 	e.SetBinder(&binder{})
 
@@ -262,11 +259,6 @@ func (e *Echo) SetLogger(logger Logger) {
 // Logger returns the logger instance.
 func (e *Echo) Logger() Logger {
 	return e.logger
-}
-
-// HTTP2 enable/disable HTTP2 support.
-func (e *Echo) HTTP2(on bool) {
-	e.http2 = on
 }
 
 // DefaultHTTPErrorHandler invokes the default HTTP error handler.
@@ -578,10 +570,6 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // Server returns the internal *http.Server.
 func (e *Echo) Server(addr string) *http.Server {
 	s := &http.Server{Addr: addr, Handler: e}
-	// TODO: Remove in Go 1.6+
-	if e.http2 {
-		http2.ConfigureServer(s, nil)
-	}
 	return s
 }
 
@@ -607,10 +595,6 @@ func (e *Echo) RunTLSServer(s *http.Server, crtFile, keyFile string) {
 
 func (e *Echo) run(s *http.Server, files ...string) {
 	s.Handler = e
-	// TODO: Remove in Go 1.6+
-	if e.http2 {
-		http2.ConfigureServer(s, nil)
-	}
 	if len(files) == 0 {
 		e.logger.Fatal(s.ListenAndServe())
 	} else if len(files) == 2 {

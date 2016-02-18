@@ -8,5 +8,4 @@ import:
 - package: golang.org/x/net
   subpackages:
   - /context
-  - http2
   - websocket

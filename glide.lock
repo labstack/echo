@@ -19,7 +19,6 @@ imports:
   version: 04b9de9b512f58addf28c9853d50ebef61c3953e
   subpackages:
   - /context
-  - http2
   - websocket
 - name: golang.org/x/text
   version: 6fc2e00a0d64b1f7fc1212dae5b0c939cf6d9ac4
