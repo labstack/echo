@@ -11,9 +11,9 @@ import (
 
 type (
 	Static struct {
-		Root   string
-		Index  string
-		Browse bool
+		Root   string `json:"root"`
+		Index  string `json:"index"`
+		Browse bool   `json:"browse"`
 	}
 )
 

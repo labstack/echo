@@ -18,7 +18,8 @@ func TestLog(t *testing.T) {
 	req := test.NewRequest(echo.GET, "/", nil)
 	rec := test.NewResponseRecorder()
 	c := echo.NewContext(req, rec, e)
-	h := Log()(echo.HandlerFunc(func(c echo.Context) error {
+	l := NewLog()
+	h := l.Handle(echo.HandlerFunc(func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}))
 
@@ -28,7 +29,7 @@ func TestLog(t *testing.T) {
 	// Status 3xx
 	rec = test.NewResponseRecorder()
 	c = echo.NewContext(req, rec, e)
-	h = Log()(echo.HandlerFunc(func(c echo.Context) error {
+	h = l.Handle(echo.HandlerFunc(func(c echo.Context) error {
 		return c.String(http.StatusTemporaryRedirect, "test")
 	}))
 	h.Handle(c)
@@ -36,7 +37,7 @@ func TestLog(t *testing.T) {
 	// Status 4xx
 	rec = test.NewResponseRecorder()
 	c = echo.NewContext(req, rec, e)
-	h = Log()(echo.HandlerFunc(func(c echo.Context) error {
+	h = l.Handle(echo.HandlerFunc(func(c echo.Context) error {
 		return c.String(http.StatusNotFound, "test")
 	}))
 	h.Handle(c)
@@ -45,7 +46,7 @@ func TestLog(t *testing.T) {
 	req = test.NewRequest(echo.GET, "", nil)
 	rec = test.NewResponseRecorder()
 	c = echo.NewContext(req, rec, e)
-	h = Log()(echo.HandlerFunc(func(c echo.Context) error {
+	h = l.Handle(echo.HandlerFunc(func(c echo.Context) error {
 		return errors.New("error")
 	}))
 	h.Handle(c)
@@ -59,7 +60,7 @@ func TestLogIPAddress(t *testing.T) {
 	buf := new(bytes.Buffer)
 	e.Logger().(*log.Logger).SetOutput(buf)
 	ip := "127.0.0.1"
-	h := Log()(echo.HandlerFunc(func(c echo.Context) error {
+	h := NewLog().Handle(echo.HandlerFunc(func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}))
 

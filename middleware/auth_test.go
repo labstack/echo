@@ -21,7 +21,7 @@ func TestBasicAuth(t *testing.T) {
 		}
 		return false
 	}
-	h := BasicAuth(fn)(echo.HandlerFunc(func(c echo.Context) error {
+	h := NewBasicAuth(fn).Handle(echo.HandlerFunc(func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}))
 
