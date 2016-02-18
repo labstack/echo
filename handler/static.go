@@ -10,18 +10,18 @@ import (
 )
 
 type (
-	StaticOption struct {
+	StaticOptions struct {
 		Root   string `json:"root"`
 		Index  string `json:"index"`
 		Browse bool   `json:"browse"`
 	}
 )
 
-func Static(root string, option ...*StaticOption) echo.HandlerFunc {
+func Static(root string, options ...*StaticOptions) echo.HandlerFunc {
 	// Default options
-	opt := &StaticOption{Index: "index.html"}
-	if len(option) > 0 {
-		opt = option[0]
+	opts := &StaticOptions{Index: "index.html"}
+	if len(options) > 0 {
+		opts = options[0]
 	}
 
 	return func(c echo.Context) error {
@@ -46,10 +46,10 @@ func Static(root string, option ...*StaticOption) echo.HandlerFunc {
 			d := f
 
 			// Index file
-			file = path.Join(file, opt.Index)
+			file = path.Join(file, opts.Index)
 			f, err = fs.Open(file)
 			if err != nil {
-				if opt.Browse {
+				if opts.Browse {
 					dirs, err := d.Readdir(-1)
 					if err != nil {
 						return err

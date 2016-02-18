@@ -15,7 +15,7 @@ import (
 )
 
 type (
-	GzipOption struct {
+	GzipOptions struct {
 		level int
 	}
 
@@ -27,7 +27,7 @@ type (
 
 // Gzip returns a middleware which compresses HTTP response using gzip compression
 // scheme.
-func Gzip(option ...*GzipOption) echo.MiddlewareFunc {
+func Gzip(options ...*GzipOptions) echo.MiddlewareFunc {
 	return func(h echo.Handler) echo.Handler {
 		scheme := "gzip"
 		return echo.HandlerFunc(func(c echo.Context) error {

@@ -8,7 +8,7 @@ import (
 )
 
 type (
-	BasicAuthOption struct {
+	BasicAuthOptions struct {
 	}
 
 	BasicAuthFunc func(string, string) bool
@@ -22,7 +22,7 @@ const (
 //
 // For valid credentials it calls the next handler.
 // For invalid credentials, it sends "401 - Unauthorized" response.
-func BasicAuth(fn BasicAuthFunc, option ...*BasicAuthOption) echo.MiddlewareFunc {
+func BasicAuth(fn BasicAuthFunc, options ...*BasicAuthOptions) echo.MiddlewareFunc {
 	return func(h echo.Handler) echo.Handler {
 		return echo.HandlerFunc(func(c echo.Context) error {
 			// Skip WebSocket

@@ -9,11 +9,11 @@ import (
 )
 
 type (
-	LogOption struct {
+	LogOptions struct {
 	}
 )
 
-func Log(option ...*LogOption) echo.MiddlewareFunc {
+func Log(options ...*LogOptions) echo.MiddlewareFunc {
 	return func(h echo.Handler) echo.Handler {
 		return echo.HandlerFunc(func(c echo.Context) error {
 			req := c.Request()
