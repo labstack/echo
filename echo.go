@@ -24,7 +24,6 @@ type (
 		prefix           string
 		middleware       []Middleware
 		head             Handler
-		http2            bool
 		maxParam         *int
 		notFoundHandler  HandlerFunc
 		httpErrorHandler HTTPErrorHandler
@@ -200,7 +199,6 @@ func New() (e *Echo) {
 	// Defaults
 	//----------
 
-	e.HTTP2(true)
 	e.SetHTTPErrorHandler(e.DefaultHTTPErrorHandler)
 	e.SetBinder(&binder{})
 
@@ -235,11 +233,6 @@ func (e *Echo) SetLogger(l logger.Logger) {
 // Logger returns the logger instance.
 func (e *Echo) Logger() logger.Logger {
 	return e.logger
-}
-
-// HTTP2 enable/disable HTTP2 support.
-func (e *Echo) HTTP2(on bool) {
-	e.http2 = on
 }
 
 // DefaultHTTPErrorHandler invokes the default HTTP error handler.

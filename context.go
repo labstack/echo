@@ -51,6 +51,7 @@ type (
 		Error(err error)
 		Handle(Context) error
 		Logger() logger.Logger
+		Echo() *Echo
 		Object() *context
 	}
 
@@ -297,6 +298,10 @@ func (c *context) Redirect(code int, url string) error {
 // Error invokes the registered HTTP error handler. Generally used by middleware.
 func (c *context) Error(err error) {
 	c.echo.httpErrorHandler(err, c)
+}
+
+func (c *context) Echo() *Echo {
+	return c.echo
 }
 
 // Logger returns the `Logger` instance.
