@@ -28,7 +28,7 @@ type (
 // Gzip returns a middleware which compresses HTTP response using gzip compression
 // scheme.
 func Gzip(options ...*GzipOptions) echo.MiddlewareFunc {
-	return func(h echo.Handler) echo.Handler {
+	return func(next echo.Handler) echo.Handler {
 		scheme := "gzip"
 		return echo.HandlerFunc(func(c echo.Context) error {
 			c.Response().Header().Add(echo.Vary, echo.AcceptEncoding)
@@ -43,7 +43,7 @@ func Gzip(options ...*GzipOptions) echo.MiddlewareFunc {
 				c.Response().Header().Set(echo.ContentEncoding, scheme)
 				c.Response().SetWriter(gw)
 			}
-			if err := h.Handle(c); err != nil {
+			if err := next.Handle(c); err != nil {
 				c.Error(err)
 			}
 			return nil

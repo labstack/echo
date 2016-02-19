@@ -9,12 +9,12 @@ import (
 )
 
 type (
-	LogOptions struct {
+	LoggerOptions struct {
 	}
 )
 
-func Log(options ...*LogOptions) echo.MiddlewareFunc {
-	return func(h echo.Handler) echo.Handler {
+func Logger(options ...*LoggerOptions) echo.MiddlewareFunc {
+	return func(next echo.Handler) echo.Handler {
 		return echo.HandlerFunc(func(c echo.Context) error {
 			req := c.Request()
 			res := c.Response()
@@ -30,7 +30,7 @@ func Log(options ...*LogOptions) echo.MiddlewareFunc {
 			}
 
 			start := time.Now()
-			if err := h.Handle(c); err != nil {
+			if err := next.Handle(c); err != nil {
 				c.Error(err)
 			}
 			stop := time.Now()

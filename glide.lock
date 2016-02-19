@@ -1,18 +1,20 @@
-hash: c9f84c389c3133ad9adf26b374f5b7970f26f3d185ec13e1d6824254478beb76
-updated: 2016-02-18T14:02:34.556933487-08:00
+hash: f220137e9ccd9aaf3051be33c3c23ea8abd2c40df6cf96175c3994d482b5e007
+updated: 2016-02-18T22:26:06.777493855-08:00
 imports:
 - name: github.com/klauspost/compress
   version: 3dcfad3351d86b2c07406ac93e92f03edd98c707
-  repo: https://github.com/klauspost/compress
+  subpackages:
+  - flate
+  - gzip
+  - zlib
 - name: github.com/klauspost/cpuid
   version: 349c675778172472f5e8f3a3e0fe187e302e5a10
-  repo: https://github.com/klauspost/cpuid
 - name: github.com/klauspost/crc32
   version: 81ac41837f877bc6a7f81321c2c29d88d69c108a
 - name: github.com/labstack/gommon
   version: bfff5bf04688a4048a5cb4dd3b3f0697caaad19c
   subpackages:
-  - /color
+  - color
   - log
 - name: github.com/mattn/go-colorable
   version: 9fdad7c47650b7d2e1da50644c1f4ba7f172f252
@@ -20,13 +22,9 @@ imports:
   version: 56b76bdf51f7708750eac80fa38b952bb9f32639
 - name: github.com/valyala/fasthttp
   version: 14b2ff3d2b38a596b037541c94f43718d9da215f
-- name: golang.org/x/crypto
-  version: 1f22c0103821b9390939b6776727195525381532
 - name: golang.org/x/net
   version: b6d7b1396ec874c3b00f6c84cd4301a17c56c8ed
   subpackages:
-  - /context
+  - context
   - websocket
-- name: golang.org/x/text
-  version: 07b9a78963006a15c538ec5175243979025fa7a8
 devImports: []

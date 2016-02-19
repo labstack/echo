@@ -12,13 +12,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestLog(t *testing.T) {
+func TestLogger(t *testing.T) {
 	// Note: Just for the test coverage, not a real test.
 	e := echo.New()
 	req := test.NewRequest(echo.GET, "/", nil)
 	rec := test.NewResponseRecorder()
 	c := echo.NewContext(req, rec, e)
-	h := Log()(echo.HandlerFunc(func(c echo.Context) error {
+	h := Logger()(echo.HandlerFunc(func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}))
 
@@ -28,7 +28,7 @@ func TestLog(t *testing.T) {
 	// Status 3xx
 	rec = test.NewResponseRecorder()
 	c = echo.NewContext(req, rec, e)
-	h = Log()(echo.HandlerFunc(func(c echo.Context) error {
+	h = Logger()(echo.HandlerFunc(func(c echo.Context) error {
 		return c.String(http.StatusTemporaryRedirect, "test")
 	}))
 	h.Handle(c)
@@ -36,7 +36,7 @@ func TestLog(t *testing.T) {
 	// Status 4xx
 	rec = test.NewResponseRecorder()
 	c = echo.NewContext(req, rec, e)
-	h = Log()(echo.HandlerFunc(func(c echo.Context) error {
+	h = Logger()(echo.HandlerFunc(func(c echo.Context) error {
 		return c.String(http.StatusNotFound, "test")
 	}))
 	h.Handle(c)
@@ -45,13 +45,13 @@ func TestLog(t *testing.T) {
 	req = test.NewRequest(echo.GET, "", nil)
 	rec = test.NewResponseRecorder()
 	c = echo.NewContext(req, rec, e)
-	h = Log()(echo.HandlerFunc(func(c echo.Context) error {
+	h = Logger()(echo.HandlerFunc(func(c echo.Context) error {
 		return errors.New("error")
 	}))
 	h.Handle(c)
 }
 
-func TestLogIPAddress(t *testing.T) {
+func TestLoggerIPAddress(t *testing.T) {
 	e := echo.New()
 	req := test.NewRequest(echo.GET, "/", nil)
 	rec := test.NewResponseRecorder()
@@ -59,7 +59,7 @@ func TestLogIPAddress(t *testing.T) {
 	buf := new(bytes.Buffer)
 	e.Logger().(*log.Logger).SetOutput(buf)
 	ip := "127.0.0.1"
-	h := Log()(echo.HandlerFunc(func(c echo.Context) error {
+	h := Logger()(echo.HandlerFunc(func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}))
 
