@@ -20,14 +20,17 @@ type (
 func Static(root string, options ...*StaticOptions) echo.MiddlewareFunc {
 	return func(next echo.Handler) echo.Handler {
 		// Default options
-		opts := &StaticOptions{Index: "index.html"}
+		opts := new(StaticOptions)
 		if len(options) > 0 {
 			opts = options[0]
+		}
+		if opts.Index == "" {
+			opts.Index = "index.html"
 		}
 
 		return echo.HandlerFunc(func(c echo.Context) error {
 			fs := http.Dir(root)
-			file := c.Request().URI()
+			file := path.Clean(c.Request().URL().Path())
 			f, err := fs.Open(file)
 			if err != nil {
 				return next.Handle(c)
