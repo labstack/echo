@@ -12,3 +12,6 @@ script:
     - go test -coverprofile=middleware.coverprofile ./middleware
     - $HOME/gopath/bin/gover
     - $HOME/gopath/bin/goveralls -coverprofile=gover.coverprofile -service=travis-ci
+matrix:
+  allow_failures:
+    - go: tip

@@ -349,9 +349,6 @@ func (e *Echo) Match(methods []string, path string, handler Handler, middleware 
 
 func (e *Echo) add(method, path string, handler Handler, middleware ...Middleware) {
 	name := handlerName(handler)
-	// middleware = append(e.middleware, middleware...)
-	// e.router.Add(method, path, handler, e)
-
 	e.router.Add(method, path, HandlerFunc(func(c Context) error {
 		for _, m := range middleware {
 			handler = m.Handle(handler)

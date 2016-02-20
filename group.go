@@ -12,54 +12,68 @@ func (g *Group) Use(m ...Middleware) {
 	g.middleware = append(g.middleware, m...)
 }
 
-func (g *Group) Connect(path string, h Handler) {
-	g.add(CONNECT, path, h)
+func (g *Group) Connect(path string, h Handler, m ...Middleware) {
+	g.add(CONNECT, path, h, m...)
 }
 
-func (g *Group) Delete(path string, h Handler) {
-	g.add(DELETE, path, h)
+func (g *Group) Delete(path string, h Handler, m ...Middleware) {
+	g.add(DELETE, path, h, m...)
 }
 
-func (g *Group) Get(path string, h Handler) {
-	g.add(GET, path, h)
+func (g *Group) Get(path string, h Handler, m ...Middleware) {
+	g.add(GET, path, h, m...)
 }
 
-func (g *Group) Head(path string, h Handler) {
-	g.add(HEAD, path, h)
+func (g *Group) Head(path string, h Handler, m ...Middleware) {
+	g.add(HEAD, path, h, m...)
 }
 
-func (g *Group) Options(path string, h Handler) {
-	g.add(OPTIONS, path, h)
+func (g *Group) Options(path string, h Handler, m ...Middleware) {
+	g.add(OPTIONS, path, h, m...)
 }
 
-func (g *Group) Patch(path string, h Handler) {
-	g.add(PATCH, path, h)
+func (g *Group) Patch(path string, h Handler, m ...Middleware) {
+	g.add(PATCH, path, h, m...)
 }
 
-func (g *Group) Post(path string, h Handler) {
-	g.add(POST, path, h)
+func (g *Group) Post(path string, h Handler, m ...Middleware) {
+	g.add(POST, path, h, m...)
 }
 
-func (g *Group) Put(path string, h Handler) {
-	g.add(PUT, path, h)
+func (g *Group) Put(path string, h Handler, m ...Middleware) {
+	g.add(PUT, path, h, m...)
 }
 
-func (g *Group) Trace(path string, h Handler) {
-	g.add(TRACE, path, h)
+func (g *Group) Trace(path string, h Handler, m ...Middleware) {
+	g.add(TRACE, path, h, m...)
+}
+
+func (g *Group) Any(path string, handler Handler, middleware ...Middleware) {
+	for _, m := range methods {
+		g.add(m, path, handler, middleware...)
+	}
+}
+
+func (g *Group) Match(methods []string, path string, handler Handler, middleware ...Middleware) {
+	for _, m := range methods {
+		g.add(m, path, handler, middleware...)
+	}
 }
 
 func (g *Group) Group(prefix string, m ...Middleware) *Group {
 	return g.echo.Group(prefix, m...)
 }
 
-func (g *Group) add(method, path string, h Handler) {
+func (g *Group) add(method, path string, handler Handler, middleware ...Middleware) {
 	path = g.prefix + path
-	name := handlerName(h)
+	name := handlerName(handler)
+	middleware = append(g.middleware, middleware...)
+
 	g.echo.router.Add(method, path, HandlerFunc(func(c Context) error {
-		for i := len(g.middleware) - 1; i >= 0; i-- {
-			h = g.middleware[i].Handle(h)
+		for _, m := range middleware {
+			handler = m.Handle(handler)
 		}
-		return h.Handle(c)
+		return handler.Handle(c)
 	}), g.echo)
 	r := Route{
 		Method:  method,
