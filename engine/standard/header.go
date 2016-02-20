@@ -24,6 +24,10 @@ func (h *Header) Set(key, val string) {
 	h.header.Set(key, val)
 }
 
+func (h *Header) Object() interface{} {
+	return h.header
+}
+
 func (h *Header) reset(hdr http.Header) {
 	h.header = hdr
 }

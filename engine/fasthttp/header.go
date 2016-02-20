@@ -30,6 +30,10 @@ func (h *RequestHeader) Set(key, val string) {
 	h.header.Set(key, val)
 }
 
+func (h *RequestHeader) Object() interface{} {
+	return h.header
+}
+
 func (h *ResponseHeader) Add(key, val string) {
 	// h.header.Add(key, val)
 }
@@ -44,4 +48,8 @@ func (h *ResponseHeader) Get(key string) string {
 
 func (h *ResponseHeader) Set(key, val string) {
 	h.header.Set(key, val)
+}
+
+func (h *ResponseHeader) Object() interface{} {
+	return h.header
 }

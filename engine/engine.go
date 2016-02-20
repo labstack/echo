@@ -48,6 +48,7 @@ type (
 		Del(string)
 		Get(string) string
 		Set(string, string)
+		Object() interface{}
 	}
 
 	URL interface {
@@ -56,6 +57,7 @@ type (
 		Path() string
 		Host() string
 		QueryValue(string) string
+		Object() interface{}
 	}
 
 	Config struct {

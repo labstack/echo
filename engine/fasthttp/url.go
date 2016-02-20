@@ -29,3 +29,7 @@ func (u *URL) Path() string {
 func (u *URL) QueryValue(name string) string {
 	return ""
 }
+
+func (u *URL) Object() interface{} {
+	return u.url
+}

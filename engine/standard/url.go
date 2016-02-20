@@ -36,6 +36,10 @@ func (u *URL) QueryValue(name string) string {
 	return u.query.Get(name)
 }
 
+func (u *URL) Object() interface{} {
+	return u.url
+}
+
 func (u *URL) reset(url *url.URL) {
 	u.url = url
 }
