@@ -171,18 +171,20 @@ func TestContext(t *testing.T) {
 	rec = test.NewResponseRecorder()
 	c = NewContext(req, rec, e)
 	c.NoContent(http.StatusOK)
-	assert.Equal(t, http.StatusOK, c.Response().Status())
+	assert.Equal(t, http.StatusOK, rec.Status())
 
 	// Redirect
 	rec = test.NewResponseRecorder()
 	c = NewContext(req, rec, e)
 	assert.Equal(t, nil, c.Redirect(http.StatusMovedPermanently, "http://labstack.github.io/echo"))
+	assert.Equal(t, "http://labstack.github.io/echo", rec.Header().Get(Location))
+	assert.Equal(t, http.StatusMovedPermanently, rec.Status())
 
 	// Error
 	rec = test.NewResponseRecorder()
-	c = NewContext(req, rec, e).Object()
+	c = NewContext(req, rec, e)
 	c.Error(errors.New("error"))
-	assert.Equal(t, http.StatusInternalServerError, c.Response().Status())
+	assert.Equal(t, http.StatusInternalServerError, rec.Status())
 
 	// reset
 	c.Object().reset(req, test.NewResponseRecorder())
