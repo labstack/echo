@@ -4,6 +4,7 @@ package fasthttp
 
 import (
 	"io"
+	"net/http"
 
 	"github.com/labstack/echo/engine"
 	"github.com/labstack/echo/logger"
@@ -72,4 +73,13 @@ func (r *Response) SetWriter(w io.Writer) {
 
 func (r *Response) Writer() io.Writer {
 	return r.writer
+}
+
+func (r *Response) reset(c *fasthttp.RequestCtx, h engine.Header) {
+	r.context = c
+	r.header = h
+	r.status = http.StatusOK
+	r.size = 0
+	r.committed = false
+	r.writer = c
 }

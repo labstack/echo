@@ -300,6 +300,7 @@ func (c *context) Error(err error) {
 	c.echo.httpErrorHandler(err, c)
 }
 
+// Echo returns the `Echo` instance.
 func (c *context) Echo() *Echo {
 	return c.echo
 }

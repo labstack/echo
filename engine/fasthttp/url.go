@@ -33,3 +33,7 @@ func (u *URL) QueryValue(name string) string {
 func (u *URL) Object() interface{} {
 	return u.url
 }
+
+func (u *URL) reset(url *fasthttp.URI) {
+	u.url = url
+}

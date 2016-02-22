@@ -34,6 +34,10 @@ func (h *RequestHeader) Object() interface{} {
 	return h.header
 }
 
+func (h *RequestHeader) reset(hdr fasthttp.RequestHeader) {
+	h.header = hdr
+}
+
 func (h *ResponseHeader) Add(key, val string) {
 	// h.header.Add(key, val)
 }
@@ -52,4 +56,8 @@ func (h *ResponseHeader) Set(key, val string) {
 
 func (h *ResponseHeader) Object() interface{} {
 	return h.header
+}
+
+func (h *ResponseHeader) reset(hdr fasthttp.ResponseHeader) {
+	h.header = hdr
 }

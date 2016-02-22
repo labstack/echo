@@ -64,3 +64,9 @@ func (r *Request) FormValue(name string) string {
 func (r *Request) Object() interface{} {
 	return r.context
 }
+
+func (r *Request) reset(c *fasthttp.RequestCtx, h engine.Header, u engine.URL) {
+	r.context = c
+	r.header = h
+	r.url = u
+}

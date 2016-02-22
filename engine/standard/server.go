@@ -67,7 +67,7 @@ func NewConfig(c *engine.Config) (s *Server) {
 			},
 		},
 		handler: func(req engine.Request, res engine.Response) {
-			s.logger.Info("handler not set")
+			s.logger.Warn("handler not set")
 		},
 		logger: log.New("echo"),
 	}
