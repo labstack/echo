@@ -503,6 +503,48 @@ func TestRouterPriority(t *testing.T) {
 	}
 }
 
+// Issue #217
+func TestRouterPriorityWithMatchAny(t *testing.T) {
+	e := New()
+	r := e.router
+
+	// Routes
+	r.Add(GET, "/aa", func(c *Context) error {
+		c.Set("a", 1)
+		return nil
+	}, e)
+	r.Add(GET, "/ab", func(c *Context) error {
+		c.Set("b", 2)
+		return nil
+	}, e)
+	r.Add(GET, "/*", func(c *Context) error {
+		c.Set("c", 3)
+		return nil
+	}, e)
+	c := NewContext(nil, nil, e)
+
+	// Route > /aa
+	h, _ := r.Find(GET, "/aa", c)
+	if assert.NotNil(t, h) {
+		h(c)
+		assert.Equal(t, 1, c.Get("a"))
+	}
+
+	// Route > /ab
+	h, _ = r.Find(GET, "/ab", c)
+	if assert.NotNil(t, h) {
+		h(c)
+		assert.Equal(t, 2, c.Get("b"))
+	}
+
+	// Route > /*
+	h, _ = r.Find(GET, "/abc", c)
+	if assert.NotNil(t, h) {
+		h(c)
+		assert.Equal(t, 3, c.Get("c"))
+	}
+}
+
 func TestRouterParamNames(t *testing.T) {
 	e := New()
 	r := e.router
