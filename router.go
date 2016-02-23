@@ -379,10 +379,6 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 		// c = cn.getChild()
 		if cn = cn.findChildByKind(mkind); cn == nil {
 			// Not found
-			if nn != nil { // Issue #217
-				cn = nn
-				continue
-			}
 			return
 		}
 		ctx.pvalues[len(cn.pnames)-1] = search
