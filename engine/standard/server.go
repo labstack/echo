@@ -107,5 +107,12 @@ func (s *Server) Start() {
 		s.pool.response.Put(res)
 		s.pool.header.Put(resHdr)
 	})
-	s.logger.Fatal(s.ListenAndServe())
+
+	certfile := s.config.TLSCertfile
+	keyfile := s.config.TLSKeyfile
+	if certfile != "" && keyfile != "" {
+		s.logger.Fatal(s.ListenAndServeTLS(certfile, keyfile))
+	} else {
+		s.logger.Fatal(s.ListenAndServe())
+	}
 }

@@ -62,9 +62,9 @@ type (
 
 	Config struct {
 		Address      string
-		ReadTimeout  time.Duration
-		WriteTimeout time.Duration
 		TLSCertfile  string
 		TLSKeyfile   string
+		ReadTimeout  time.Duration
+		WriteTimeout time.Duration
 	}
 )

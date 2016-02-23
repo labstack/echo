@@ -3,7 +3,6 @@
 package fasthttp
 
 import (
-	"net/http"
 	"sync"
 
 	"github.com/labstack/echo/engine"
@@ -14,7 +13,6 @@ import (
 
 type (
 	Server struct {
-		*http.Server
 		config  *engine.Config
 		handler engine.HandlerFunc
 		pool    *Pool
@@ -46,7 +44,6 @@ func NewTLS(addr, certfile, keyfile string) *Server {
 
 func NewConfig(c *engine.Config) (s *Server) {
 	s = &Server{
-		Server: new(http.Server),
 		config: c,
 		pool: &Pool{
 			request: sync.Pool{
@@ -92,7 +89,7 @@ func (s *Server) SetLogger(l logger.Logger) {
 }
 
 func (s *Server) Start() {
-	fasthttp.ListenAndServe(s.config.Address, func(c *fasthttp.RequestCtx) {
+	handler := func(c *fasthttp.RequestCtx) {
 		// Request
 		req := s.pool.request.Get().(*Request)
 		reqHdr := s.pool.requestHeader.Get().(*RequestHeader)
@@ -114,6 +111,14 @@ func (s *Server) Start() {
 		s.pool.url.Put(reqURL)
 		s.pool.response.Put(res)
 		s.pool.responseHeader.Put(resHdr)
-	})
-	s.logger.Fatal(s.ListenAndServe())
+	}
+
+	addr := s.config.Address
+	certfile := s.config.TLSCertfile
+	keyfile := s.config.TLSKeyfile
+	if certfile != "" && keyfile != "" {
+		s.logger.Fatal(fasthttp.ListenAndServeTLS(addr, certfile, keyfile, handler))
+	} else {
+		s.logger.Fatal(fasthttp.ListenAndServe(addr, handler))
+	}
 }
