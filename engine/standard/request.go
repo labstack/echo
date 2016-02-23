@@ -27,6 +27,13 @@ func (r *Request) TLS() bool {
 	return r.request.TLS != nil
 }
 
+func (r *Request) Scheme() string {
+	if r.TLS() {
+		return "https"
+	}
+	return "http"
+}
+
 func (r *Request) Host() string {
 	return r.request.Host
 }

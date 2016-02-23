@@ -33,6 +33,10 @@ func (r *Request) TLS() bool {
 	return r.context.IsTLS()
 }
 
+func (r *Request) Scheme() string {
+	return string(r.context.URI().Scheme())
+}
+
 func (r *Request) Host() string {
 	return string(r.context.Host())
 }

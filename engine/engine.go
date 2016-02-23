@@ -18,6 +18,7 @@ type (
 
 	Request interface {
 		TLS() bool
+		Scheme() string
 		Host() string
 		URI() string
 		URL() URL
