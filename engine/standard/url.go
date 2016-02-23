@@ -13,14 +13,6 @@ func (u *URL) URL() *url.URL {
 	return u.url
 }
 
-func (u *URL) Scheme() string {
-	return u.url.Scheme
-}
-
-func (u *URL) Host() string {
-	return u.url.Host
-}
-
 func (u *URL) SetPath(path string) {
 	u.url.Path = path
 }

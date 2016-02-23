@@ -17,6 +17,7 @@ type (
 	}
 
 	Request interface {
+		TLS() bool
 		Host() string
 		URI() string
 		URL() URL
@@ -52,10 +53,8 @@ type (
 	}
 
 	URL interface {
-		Scheme() string
 		SetPath(string)
 		Path() string
-		Host() string
 		QueryValue(string) string
 		Object() interface{}
 	}

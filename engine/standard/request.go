@@ -23,6 +23,10 @@ func NewRequest(r *http.Request) *Request {
 	}
 }
 
+func (r *Request) TLS() bool {
+	return r.request.TLS != nil
+}
+
 func (r *Request) Host() string {
 	return r.request.Host
 }

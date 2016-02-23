@@ -29,6 +29,10 @@ func NewRequest(c *fasthttp.RequestCtx) *Request {
 	}
 }
 
+func (r *Request) TLS() bool {
+	return r.context.IsTLS()
+}
+
 func (r *Request) Host() string {
 	return string(r.context.Host())
 }
