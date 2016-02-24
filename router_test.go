@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"time"
 )
 
 var (
@@ -627,6 +628,35 @@ func TestRouterServeHTTP(t *testing.T) {
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestRouterIssue372(t *testing.T) {
+	e := New()
+	r := e.router
+
+	done := make(chan struct{})
+
+	r.Add(GET, "/a/foo", func(*Context) error {
+		return nil
+	}, e)
+	r.Add(GET, "/b/bar", func(*Context) error {
+		return nil
+	}, e)
+
+	go func() {
+		// Wont terminate
+		req, _ := http.NewRequest(GET, "/abc/def", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusNotFound, w.Code)
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(100 * time.Millisecond):
+		assert.Fail(t, "TestRouterIssue372: /abc/def request not terminated")
+	}
 }
 
 func (n *node) printTree(pfx string, tail bool) {
