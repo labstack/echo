@@ -375,12 +375,15 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 		// Any node
 	Any:
 		if cn = cn.findChildByKind(akind); cn == nil {
-			cn = nn
-			search = ns
-			if nk == pkind {
-				goto Param
-			} else if nk == akind {
-				goto Any
+			if nn != nil {
+				cn = nn
+				nn = nil // Next
+				search = ns
+				if nk == pkind {
+					goto Param
+				} else if nk == akind {
+					goto Any
+				}
 			}
 			// Not found
 			return

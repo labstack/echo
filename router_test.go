@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -503,67 +504,43 @@ func TestRouterPriority(t *testing.T) {
 	}
 }
 
-// Issue #217
+// Issue #217, #372
 func TestRouterPriorityNext(t *testing.T) {
 	e := New()
 	r := e.router
 
-	// Routes
-	r.Add(GET, "/aa", func(c *Context) error {
-		c.Set("a", 1)
-		return nil
-	}, e)
-	r.Add(GET, "/ab", func(c *Context) error {
-		c.Set("b", 2)
-		return nil
-	}, e)
-	r.Add(GET, "/abc", func(c *Context) error {
-		c.Set("c", 3)
-		return nil
-	}, e)
-	r.Add(GET, "/abd", func(c *Context) error {
-		c.Set("d", 4)
-		return nil
-	}, e)
-	r.Add(GET, "/*", func(c *Context) error {
-		c.Set("e", 5)
-		return nil
-	}, e)
+	routes := []Route{
+		{"GET", "/aa", nil},
+		{"GET", "/ab", nil},
+		{"GET", "/abc", nil},
+		{"GET", "/abd", nil},
+		{"GET", "/a/foo", nil},
+		{"GET", "/a/bar", nil},
+		{"GET", "/*", nil},
+	}
+
+	for i, route := range routes {
+		a := strconv.Itoa(i)
+		r.Add(route.Method, route.Path, func(c *Context) error {
+			c.Set(a, a)
+			return nil
+		}, e)
+	}
 	c := NewContext(nil, nil, e)
-
-	// Route > /aa
-	h, _ := r.Find(GET, "/aa", c)
-	if assert.NotNil(t, h) {
-		h(c)
-		assert.Equal(t, 1, c.Get("a"))
-	}
-
-	// Route > /ab
-	h, _ = r.Find(GET, "/ab", c)
-	if assert.NotNil(t, h) {
-		h(c)
-		assert.Equal(t, 2, c.Get("b"))
-	}
-
-	// Route > /abc
-	h, _ = r.Find(GET, "/abc", c)
-	if assert.NotNil(t, h) {
-		h(c)
-		assert.Equal(t, 3, c.Get("c"))
-	}
-
-	// Route > /abd
-	h, _ = r.Find(GET, "/abd", c)
-	if assert.NotNil(t, h) {
-		h(c)
-		assert.Equal(t, 4, c.Get("d"))
+	for i, route := range routes {
+		a := strconv.Itoa(i)
+		h, _ := r.Find(route.Method, route.Path, c)
+		if assert.NotNil(t, h) {
+			h(c)
+			assert.Equal(t, a, c.Get(a))
+		}
 	}
 
 	// Route > /*
-	h, _ = r.Find(GET, "/abc.html", c)
+	h, _ := r.Find(GET, "/abc.html", c)
 	if assert.NotNil(t, h) {
 		h(c)
-		assert.Equal(t, 5, c.Get("e"))
+		assert.Equal(t, "abc.html", c.P(0))
 	}
 }
 
