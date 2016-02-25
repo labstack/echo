@@ -3,8 +3,10 @@ package middleware
 import (
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"path"
+	"path/filepath"
 
 	"github.com/labstack/echo"
 )
@@ -83,9 +85,14 @@ func Static(root string, options ...*StaticOptions) echo.MiddlewareFunc {
 				}
 				fi, _ = f.Stat() // Index file stat
 			}
+			ct := mime.TypeByExtension(filepath.Ext(fi.Name()))
+			if ct == "" {
+				ct = echo.OctetStream
+			}
+			c.Response().Header().Set(echo.ContentType, ct)
 			c.Response().WriteHeader(http.StatusOK)
-			io.Copy(c.Response(), f)
-			return nil
+			_, err = io.Copy(c.Response(), f)
+			return err
 			// TODO:
 			// http.ServeContent(c.Response(), c.Request(), fi.Name(), fi.ModTime(), f)
 		})
