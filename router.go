@@ -392,7 +392,7 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 			return
 		}
 
-		offset := len(cn.pnames)-1
+		offset := len(cn.pnames) - 1
 		if offset < len(ctx.pvalues) {
 			ctx.pvalues[offset] = search
 		}
