@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="46px" height="46px" viewBox="0 0 46 46" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:sketch="http://www.bohemiancoding.com/sketch/ns">
+    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" sketch:type="MSPage">
+        <g sketch:type="MSArtboardGroup" transform="translate(-639.000000, -1341.000000)">
+            <g sketch:type="MSLayerGroup" transform="translate(133.000000, 1155.000000)">
+                <g id="Aim" transform="translate(507.000000, 187.000000)" sketch:type="MSShapeGroup">
+                    <g id="Main">
+                        <circle id="Oval-88" stroke="#2196f3" stroke-width="2" cx="22" cy="22" r="22"></circle>
+                        <circle id="Oval-89" stroke="#2196f3" stroke-width="2" cx="22" cy="22" r="15.3043478"></circle>
+                        <circle id="Oval-90" stroke="#2196f3" stroke-width="2" cx="22" cy="22" r="8.60869565"></circle>
+                        <circle id="Oval-91" fill="#2196f3" cx="22" cy="22" r="1.91304348"></circle>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

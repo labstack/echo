@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"log"
 	"net"
 	"time"
 
@@ -9,11 +8,17 @@ import (
 	"github.com/labstack/gommon/color"
 )
 
+const (
+	format = "%s %s %s %s %s %d"
+)
+
+// Logger returns a Middleware that logs requests.
 func Logger() echo.MiddlewareFunc {
 	return func(h echo.HandlerFunc) echo.HandlerFunc {
 		return func(c *echo.Context) error {
 			req := c.Request()
 			res := c.Response()
+			logger := c.Echo().Logger()
 
 			remoteAddr := req.RemoteAddr
 			if ip := req.Header.Get(echo.XRealIP); ip != "" {
@@ -47,7 +52,7 @@ func Logger() echo.MiddlewareFunc {
 				code = color.Cyan(n)
 			}
 
-			log.Printf("%s %s %s %s %s %d", remoteAddr, method, path, code, stop.Sub(start), size)
+			logger.Infof(format, remoteAddr, method, path, code, stop.Sub(start), size)
 			return nil
 		}
 	}

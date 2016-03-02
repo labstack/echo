@@ -6,10 +6,44 @@ menu:
     weight: 5
 ---
 
+### Handler path
+
+`Context#Path()` returns the registered path for the handler, it can be used in the
+middleware for logging purpose.
+
+*Example*
+
+```go
+e.Use(func(c *echo.Context) error {
+    println(c.Path()) // Prints `/users/:name`
+    return nil
+})
+e.Get("/users/:name", func(c *echo.Context) error) {
+    return c.String(http.StatusOK, name)
+})
+```
+
+### golang.org/x/net/context
+
+`echo.Context` embeds `context.Context` interface, so all it's properties
+are available right from `echo.Context`.
+
+*Example*
+
+```go
+e.Get("/users/:name", func(c *echo.Context) error) {
+    c.Context = context.WithValue(nil, "key", "val")
+    // Pass it down...
+    // Use it...
+    println(c.Value("key"))
+    return c.String(http.StatusOK, name)
+})
+```
+
 ### Path parameter
 
-Path parameter can be retrieved either by name `Context.Param(name string) string`
-or by index `Context.P(i int) string`. Getting parameter by index gives a slightly
+Path parameter can be retrieved either by name `Context#Param(name string) string`
+or by index `Context#P(i int) string`. Getting parameter by index gives a slightly
 better performance.
 
 *Example*
@@ -32,7 +66,7 @@ $ curl http://localhost:1323/users/joe
 
 ### Query parameter
 
-Query parameter can be retrieved by name using `Context.Query(name string)`.
+Query parameter can be retrieved by name using `Context#Query(name string)`.
 
 *Example*
 
@@ -49,7 +83,7 @@ $ curl -G -d "name=joe" http://localhost:1323/users
 
 ### Form parameter
 
-Form parameter can be retrieved by name using `Context.Form(name string)`.
+Form parameter can be retrieved by name using `Context#Form(name string)`.
 
 *Example*
 

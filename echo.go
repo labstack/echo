@@ -1,69 +1,114 @@
+/*
+Package echo implements a fast and unfancy micro web framework for Go.
+
+Example:
+
+    package main
+
+    import (
+        "net/http"
+
+        "github.com/labstack/echo"
+        mw "github.com/labstack/echo/middleware"
+    )
+
+    func hello(c *echo.Context) error {
+        return c.String(http.StatusOK, "Hello, World!\n")
+    }
+
+    func main() {
+        e := echo.New()
+
+        e.Use(mw.Logger())
+        e.Use(mw.Recover())
+
+        e.Get("/", hello)
+
+        e.Run(":1323")
+    }
+
+Learn more at https://labstack.com/echo
+*/
 package echo
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
+	"path"
 	"path/filepath"
 	"reflect"
 	"runtime"
-	"strings"
 	"sync"
 
-	"encoding/xml"
-
-	"github.com/labstack/gommon/color"
-	"golang.org/x/net/http2"
+	"github.com/labstack/gommon/log"
 	"golang.org/x/net/websocket"
 )
 
 type (
+	// Echo is the top-level framework instance.
 	Echo struct {
-		prefix                  string
-		middleware              []MiddlewareFunc
-		http2                   bool
-		maxParam                *int
-		notFoundHandler         HandlerFunc
-		defaultHTTPErrorHandler HTTPErrorHandler
-		httpErrorHandler        HTTPErrorHandler
-		binder                  Binder
-		renderer                Renderer
-		pool                    sync.Pool
-		debug                   bool
-		stripTrailingSlash      bool
-		router                  *Router
+		prefix           string
+		middleware       []MiddlewareFunc
+		maxParam         *int
+		httpErrorHandler HTTPErrorHandler
+		binder           Binder
+		renderer         Renderer
+		pool             sync.Pool
+		debug            bool
+		hook             http.HandlerFunc
+		autoIndex        bool
+		logger           Logger
+		router           *Router
 	}
 
+	// Logger is the interface that declares echo's logging system.
+	Logger interface {
+		Debug(...interface{})
+		Debugf(string, ...interface{})
+
+		Info(...interface{})
+		Infof(string, ...interface{})
+
+		Warn(...interface{})
+		Warnf(string, ...interface{})
+
+		Error(...interface{})
+		Errorf(string, ...interface{})
+
+		Fatal(...interface{})
+		Fatalf(string, ...interface{})
+	}
+
+	// Route contains a handler and information for matching against requests.
 	Route struct {
 		Method  string
 		Path    string
 		Handler Handler
 	}
 
+	// HTTPError represents an error that occured while handling a request.
 	HTTPError struct {
 		code    int
 		message string
 	}
 
-	Middleware     interface{}
+	// Middleware ...
+	Middleware interface{}
+
+	// MiddlewareFunc ...
 	MiddlewareFunc func(HandlerFunc) HandlerFunc
-	Handler        interface{}
-	HandlerFunc    func(*Context) error
+
+	// Handler ...
+	Handler interface{}
+
+	// HandlerFunc ...
+	HandlerFunc func(*Context) error
 
 	// HTTPErrorHandler is a centralized HTTP error handler.
 	HTTPErrorHandler func(error, *Context)
-
-	// Binder is the interface that wraps the Bind method.
-	Binder interface {
-		Bind(*http.Request, interface{}) error
-	}
-
-	binder struct {
-	}
 
 	// Validator is the interface that wraps the Validate method.
 	Validator interface {
@@ -143,7 +188,7 @@ const (
 
 	WebSocket = "websocket"
 
-	indexFile = "index.html"
+	indexPage = "index.html"
 )
 
 var (
@@ -163,9 +208,9 @@ var (
 	// Errors
 	//--------
 
-	UnsupportedMediaType  = errors.New("echo ⇒ unsupported media type")
-	RendererNotRegistered = errors.New("echo ⇒ renderer not registered")
-	InvalidRedirectCode   = errors.New("echo ⇒ invalid redirect status code")
+	ErrUnsupportedMediaType  = NewHTTPError(http.StatusUnsupportedMediaType)
+	ErrRendererNotRegistered = errors.New("renderer not registered")
+	ErrInvalidRedirectCode   = errors.New("invalid redirect status code")
 
 	//----------------
 	// Error handlers
@@ -192,27 +237,12 @@ func New() (e *Echo) {
 	// Defaults
 	//----------
 
-	if runtime.GOOS == "windows" {
-		e.DisableColoredLog()
-	}
-	e.HTTP2()
-	e.defaultHTTPErrorHandler = func(err error, c *Context) {
-		code := http.StatusInternalServerError
-		msg := http.StatusText(code)
-		if he, ok := err.(*HTTPError); ok {
-			code = he.code
-			msg = he.message
-		}
-		if e.debug {
-			msg = err.Error()
-		}
-		if !c.response.committed {
-			http.Error(c.response, msg, code)
-		}
-		log.Println(err)
-	}
-	e.SetHTTPErrorHandler(e.defaultHTTPErrorHandler)
+	e.SetHTTPErrorHandler(e.DefaultHTTPErrorHandler)
 	e.SetBinder(&binder{})
+
+	// Logger
+	e.logger = log.New("echo")
+
 	return
 }
 
@@ -221,19 +251,31 @@ func (e *Echo) Router() *Router {
 	return e.router
 }
 
-// DisableColoredLog disables colored log.
-func (e *Echo) DisableColoredLog() {
-	color.Disable()
+// SetLogger sets the logger instance.
+func (e *Echo) SetLogger(logger Logger) {
+	e.logger = logger
 }
 
-// HTTP2 enables HTTP2 support.
-func (e *Echo) HTTP2() {
-	e.http2 = true
+// Logger returns the logger instance.
+func (e *Echo) Logger() Logger {
+	return e.logger
 }
 
 // DefaultHTTPErrorHandler invokes the default HTTP error handler.
 func (e *Echo) DefaultHTTPErrorHandler(err error, c *Context) {
-	e.defaultHTTPErrorHandler(err, c)
+	code := http.StatusInternalServerError
+	msg := http.StatusText(code)
+	if he, ok := err.(*HTTPError); ok {
+		code = he.code
+		msg = he.message
+	}
+	if e.debug {
+		msg = err.Error()
+	}
+	if !c.response.committed {
+		http.Error(c.response, msg, code)
+	}
+	e.logger.Error(err)
 }
 
 // SetHTTPErrorHandler registers a custom Echo.HTTPErrorHandler.
@@ -251,7 +293,7 @@ func (e *Echo) SetRenderer(r Renderer) {
 	e.renderer = r
 }
 
-// SetDebug enables/disables debug mode.
+// SetDebug enable/disable debug mode.
 func (e *Echo) SetDebug(on bool) {
 	e.debug = on
 }
@@ -261,9 +303,16 @@ func (e *Echo) Debug() bool {
 	return e.debug
 }
 
-// StripTrailingSlash enables removing trailing slash from the request path.
-func (e *Echo) StripTrailingSlash() {
-	e.stripTrailingSlash = true
+// AutoIndex enable/disable automatically creating an index page for the directory.
+func (e *Echo) AutoIndex(on bool) {
+	e.autoIndex = on
+}
+
+// Hook registers a callback which is invoked from `Echo#ServerHTTP` as the first
+// statement. Hook is useful if you want to modify response/response objects even
+// before it hits the router or any middleware.
+func (e *Echo) Hook(h http.HandlerFunc) {
+	e.hook = h
 }
 
 // Use adds handler to the middleware chain.
@@ -376,7 +425,7 @@ func (e *Echo) Static(path, dir string) {
 // ServeDir serves files from a directory.
 func (e *Echo) ServeDir(path, dir string) {
 	e.Get(path+"*", func(c *Context) error {
-		return serveFile(dir, c.P(0), c) // Param `_*`
+		return e.serveFile(dir, c.P(0), c) // Param `_*`
 	})
 }
 
@@ -384,11 +433,11 @@ func (e *Echo) ServeDir(path, dir string) {
 func (e *Echo) ServeFile(path, file string) {
 	e.Get(path, func(c *Context) error {
 		dir, file := filepath.Split(file)
-		return serveFile(dir, file, c)
+		return e.serveFile(dir, file, c)
 	})
 }
 
-func serveFile(dir, file string, c *Context) error {
+func (e *Echo) serveFile(dir, file string, c *Context) (err error) {
 	fs := http.Dir(dir)
 	f, err := fs.Open(file)
 	if err != nil {
@@ -398,16 +447,50 @@ func serveFile(dir, file string, c *Context) error {
 
 	fi, _ := f.Stat()
 	if fi.IsDir() {
-		file = filepath.Join(file, indexFile)
+		/* NOTE:
+		Not checking the Last-Modified header as it caches the response `304` when
+		changing differnt directories for the same path.
+		*/
+		d := f
+
+		// Index file
+		file = path.Join(file, indexPage)
 		f, err = fs.Open(file)
 		if err != nil {
+			if e.autoIndex {
+				// Auto index
+				return listDir(d, c)
+			}
 			return NewHTTPError(http.StatusForbidden)
 		}
-		fi, _ = f.Stat()
+		fi, _ = f.Stat() // Index file stat
 	}
 
 	http.ServeContent(c.response, c.request, fi.Name(), fi.ModTime(), f)
-	return nil
+	return
+}
+
+func listDir(d http.File, c *Context) (err error) {
+	dirs, err := d.Readdir(-1)
+	if err != nil {
+		return err
+	}
+
+	// Create directory index
+	w := c.Response()
+	w.Header().Set(ContentType, TextHTMLCharsetUTF8)
+	fmt.Fprintf(w, "<pre>\n")
+	for _, d := range dirs {
+		name := d.Name()
+		color := "#212121"
+		if d.IsDir() {
+			color = "#e91e63"
+			name += "/"
+		}
+		fmt.Fprintf(w, "<a href=\"%s\" style=\"color: %s;\">%s</a>\n", name, color, name)
+	}
+	fmt.Fprintf(w, "</pre>\n")
+	return
 }
 
 // Group creates a new sub router with prefix. It inherits all properties from
@@ -463,6 +546,10 @@ func (e *Echo) Routes() []Route {
 
 // ServeHTTP implements `http.Handler` interface, which serves HTTP requests.
 func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if e.hook != nil {
+		e.hook(w, r)
+	}
+
 	c := e.pool.Get().(*Context)
 	h, e := e.router.Find(r.Method, r.URL.Path, c)
 	c.reset(r, w, e)
@@ -482,24 +569,18 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // Server returns the internal *http.Server.
 func (e *Echo) Server(addr string) *http.Server {
-	s := &http.Server{Addr: addr}
-	s.Handler = e
-	if e.http2 {
-		http2.ConfigureServer(s, nil)
-	}
+	s := &http.Server{Addr: addr, Handler: e}
 	return s
 }
 
 // Run runs a server.
 func (e *Echo) Run(addr string) {
-	s := e.Server(addr)
-	e.run(s)
+	e.run(e.Server(addr))
 }
 
 // RunTLS runs a server with TLS configuration.
-func (e *Echo) RunTLS(addr, certFile, keyFile string) {
-	s := e.Server(addr)
-	e.run(s, certFile, keyFile)
+func (e *Echo) RunTLS(addr, certfile, keyfile string) {
+	e.run(e.Server(addr), certfile, keyfile)
 }
 
 // RunServer runs a custom server.
@@ -508,20 +589,22 @@ func (e *Echo) RunServer(s *http.Server) {
 }
 
 // RunTLSServer runs a custom server with TLS configuration.
-func (e *Echo) RunTLSServer(s *http.Server, certFile, keyFile string) {
-	e.run(s, certFile, keyFile)
+func (e *Echo) RunTLSServer(s *http.Server, crtFile, keyFile string) {
+	e.run(s, crtFile, keyFile)
 }
 
 func (e *Echo) run(s *http.Server, files ...string) {
+	s.Handler = e
 	if len(files) == 0 {
-		log.Fatal(s.ListenAndServe())
+		e.logger.Fatal(s.ListenAndServe())
 	} else if len(files) == 2 {
-		log.Fatal(s.ListenAndServeTLS(files[0], files[1]))
+		e.logger.Fatal(s.ListenAndServeTLS(files[0], files[1]))
 	} else {
-		log.Fatal("echo => invalid TLS configuration")
+		e.logger.Fatal("invalid TLS configuration")
 	}
 }
 
+// NewHTTPError creates a new HTTPError instance.
 func NewHTTPError(code int, msg ...string) *HTTPError {
 	he := &HTTPError{code: code, message: http.StatusText(code)}
 	if len(msg) > 0 {
@@ -544,6 +627,17 @@ func (e *HTTPError) Code() int {
 // Error returns message.
 func (e *HTTPError) Error() string {
 	return e.message
+}
+
+// Use chains all middleware with handler in the end and returns head of the chain.
+// The head can be used as handler in any route.
+func Use(handler Handler, middleware ...Middleware) (h HandlerFunc) {
+	h = wrapHandler(handler)
+	for i := len(middleware) - 1; i >= 0; i-- {
+		m := wrapMiddleware(middleware[i])
+		h = m(h)
+	}
+	return
 }
 
 // wrapMiddleware wraps middleware.
@@ -573,7 +667,7 @@ func wrapMiddleware(m Middleware) MiddlewareFunc {
 	case func(http.ResponseWriter, *http.Request):
 		return wrapHTTPHandlerFuncMW(m)
 	default:
-		panic("echo => unknown middleware")
+		panic("unknown middleware")
 	}
 }
 
@@ -619,17 +713,6 @@ func wrapHandler(h Handler) HandlerFunc {
 			return nil
 		}
 	default:
-		panic("echo => unknown handler")
+		panic("unknown handler")
 	}
-}
-
-func (binder) Bind(r *http.Request, i interface{}) (err error) {
-	ct := r.Header.Get(ContentType)
-	err = UnsupportedMediaType
-	if strings.HasPrefix(ct, ApplicationJSON) {
-		err = json.NewDecoder(r.Body).Decode(i)
-	} else if strings.HasPrefix(ct, ApplicationXML) {
-		err = xml.NewDecoder(r.Body).Decode(i)
-	}
-	return
 }

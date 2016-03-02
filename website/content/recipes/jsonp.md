@@ -24,4 +24,4 @@ JSONP is a method that allows cross-domain server calls. You can read more about
 
 - [willf](https://github.com/willf)
 
-### [Source Code](https://github.com/labstack/echo/blob/master/recipes/jsonp)
+### [Source Code](https://github.com/vishr/recipes/blob/master/echo/recipes/jsonp)

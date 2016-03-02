@@ -14,6 +14,8 @@ func TestGroup(t *testing.T) {
 	g.Post("/", h)
 	g.Put("/", h)
 	g.Trace("/", h)
+	g.Any("/", h)
+	g.Match([]string{GET, POST}, "/", h)
 	g.WebSocket("/ws", h)
 	g.Static("/scripts", "scripts")
 	g.ServeDir("/scripts", "scripts")

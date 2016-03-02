@@ -3,12 +3,12 @@ package middleware
 import (
 	"bytes"
 	"errors"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/labstack/echo"
+	"github.com/labstack/gommon/log"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,7 +17,7 @@ func TestLogger(t *testing.T) {
 	e := echo.New()
 	req, _ := http.NewRequest(echo.GET, "/", nil)
 	rec := httptest.NewRecorder()
-	c := echo.NewContext(req, echo.NewResponse(rec), e)
+	c := echo.NewContext(req, echo.NewResponse(rec, e), e)
 
 	// Status 2xx
 	h := func(c *echo.Context) error {
@@ -27,7 +27,7 @@ func TestLogger(t *testing.T) {
 
 	// Status 3xx
 	rec = httptest.NewRecorder()
-	c = echo.NewContext(req, echo.NewResponse(rec), e)
+	c = echo.NewContext(req, echo.NewResponse(rec, e), e)
 	h = func(c *echo.Context) error {
 		return c.String(http.StatusTemporaryRedirect, "test")
 	}
@@ -35,7 +35,7 @@ func TestLogger(t *testing.T) {
 
 	// Status 4xx
 	rec = httptest.NewRecorder()
-	c = echo.NewContext(req, echo.NewResponse(rec), e)
+	c = echo.NewContext(req, echo.NewResponse(rec, e), e)
 	h = func(c *echo.Context) error {
 		return c.String(http.StatusNotFound, "test")
 	}
@@ -44,7 +44,7 @@ func TestLogger(t *testing.T) {
 	// Status 5xx with empty path
 	req, _ = http.NewRequest(echo.GET, "", nil)
 	rec = httptest.NewRecorder()
-	c = echo.NewContext(req, echo.NewResponse(rec), e)
+	c = echo.NewContext(req, echo.NewResponse(rec, e), e)
 	h = func(c *echo.Context) error {
 		return errors.New("error")
 	}
@@ -52,15 +52,15 @@ func TestLogger(t *testing.T) {
 }
 
 func TestLoggerIPAddress(t *testing.T) {
-	buf := &bytes.Buffer{}
-	log.SetOutput(buf)
-
-	ip := "127.0.0.1"
-
 	e := echo.New()
+	l := log.New("echo")
+	buf := new(bytes.Buffer)
+	l.SetOutput(buf)
+	e.SetLogger(l)
 	req, _ := http.NewRequest(echo.GET, "/", nil)
 	rec := httptest.NewRecorder()
-	c := echo.NewContext(req, echo.NewResponse(rec), e)
+	c := echo.NewContext(req, echo.NewResponse(rec, e), e)
+	ip := "127.0.0.1"
 	h := func(c *echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}

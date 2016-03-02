@@ -12,6 +12,28 @@ menu:
 Use `req.ParseMultipartForm(16 << 20)` for manually parsing multipart form. It gives
 us an option to specify the maximum memory used while parsing the request body.
 
+If you just want to upload a single file:
+
+```go
+file, fh, err := req.FormFile("file")
+if err != nil {
+    return err
+}
+defer file.Close()
+
+// Destination
+dst, err := os.Create(fh.Filename)
+if err != nil {
+    return err
+}
+defer dst.Close()
+
+// Copy
+if _, err = io.Copy(dst, file); err != nil {
+    return err
+}
+```
+
 ### Server
 
 `server.go`
@@ -28,4 +50,4 @@ us an option to specify the maximum memory used while parsing the request body.
 
 - [vishr](https://github.com/vishr)
 
-### [Source Code](https://github.com/labstack/echo/blob/master/recipes/file-upload)
+### [Source Code](https://github.com/vishr/recipes/blob/master/echo/recipes/file-upload)

@@ -12,6 +12,7 @@ import (
 
 	"errors"
 
+	"github.com/labstack/gommon/log"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/websocket"
 )
@@ -27,7 +28,7 @@ func TestEcho(t *testing.T) {
 	e := New()
 	req, _ := http.NewRequest(GET, "/", nil)
 	rec := httptest.NewRecorder()
-	c := NewContext(req, NewResponse(rec), e)
+	c := NewContext(req, NewResponse(rec, e), e)
 
 	// Router
 	assert.NotNil(t, e.Router())
@@ -39,11 +40,34 @@ func TestEcho(t *testing.T) {
 	// DefaultHTTPErrorHandler
 	e.DefaultHTTPErrorHandler(errors.New("error"), c)
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+
+	// Logger
+	l := log.New("test")
+	e.SetLogger(l)
+	assert.Equal(t, l, e.Logger())
+
+	// Autoindex
+	e.AutoIndex(true)
+	assert.True(t, e.autoIndex)
+}
+
+func TestListDir(t *testing.T) {
+	e := New()
+	req, _ := http.NewRequest(GET, "/", nil)
+	rec := httptest.NewRecorder()
+	c := NewContext(req, NewResponse(rec, e), e)
+	fs := http.Dir("_fixture")
+	f, err := fs.Open("images")
+	assert.NoError(t, err)
+	if assert.NoError(t, listDir(f, c)) {
+		assert.Equal(t, TextHTMLCharsetUTF8, rec.Header().Get(ContentType))
+		assert.Equal(t, "<pre>\n<a href=\"walle.png\" style=\"color: #212121;\">walle.png</a>\n</pre>\n", rec.Body.String())
+	}
 }
 
 func TestEchoIndex(t *testing.T) {
 	e := New()
-	e.Index("recipes/website/public/index.html")
+	e.Index("_fixture/index.html")
 	c, b := request(GET, "/", e)
 	assert.Equal(t, http.StatusOK, c)
 	assert.NotEmpty(t, b)
@@ -51,7 +75,7 @@ func TestEchoIndex(t *testing.T) {
 
 func TestEchoFavicon(t *testing.T) {
 	e := New()
-	e.Favicon("recipes/website/public/favicon.ico")
+	e.Favicon("_fixture/favicon.ico")
 	c, b := request(GET, "/favicon.ico", e)
 	assert.Equal(t, http.StatusOK, c)
 	assert.NotEmpty(t, b)
@@ -61,23 +85,23 @@ func TestEchoStatic(t *testing.T) {
 	e := New()
 
 	// OK
-	e.Static("/scripts", "recipes/website/public/scripts")
-	c, b := request(GET, "/scripts/main.js", e)
+	e.Static("/images", "_fixture/images")
+	c, b := request(GET, "/images/walle.png", e)
 	assert.Equal(t, http.StatusOK, c)
 	assert.NotEmpty(t, b)
 
 	// No file
-	e.Static("/scripts", "recipes/website/public/scripts")
-	c, _ = request(GET, "/scripts/index.js", e)
+	e.Static("/images", "_fixture/scripts")
+	c, _ = request(GET, "/images/bolt.png", e)
 	assert.Equal(t, http.StatusNotFound, c)
 
 	// Directory
-	e.Static("/scripts", "recipes/website/public/scripts")
-	c, _ = request(GET, "/scripts", e)
+	e.Static("/images", "_fixture/images")
+	c, _ = request(GET, "/images", e)
 	assert.Equal(t, http.StatusForbidden, c)
 
 	// Directory with index.html
-	e.Static("/", "recipes/website/public")
+	e.Static("/", "_fixture")
 	c, r := request(GET, "/", e)
 	assert.Equal(t, http.StatusOK, c)
 	assert.Equal(t, true, strings.HasPrefix(r, "<!doctype html>"))
@@ -85,7 +109,8 @@ func TestEchoStatic(t *testing.T) {
 	// Sub-directory with index.html
 	c, r = request(GET, "/folder", e)
 	assert.Equal(t, http.StatusOK, c)
-	assert.Equal(t, "sub directory", r)
+	assert.Equal(t, true, strings.HasPrefix(r, "<!doctype html>"))
+	// assert.Equal(t, "sub directory", r)
 }
 
 func TestEchoMiddleware(t *testing.T) {
@@ -273,7 +298,7 @@ func TestEchoWebSocket(t *testing.T) {
 	url := fmt.Sprintf("ws://%s/ws", addr)
 	ws, err := websocket.Dial(url, "", origin)
 	if assert.NoError(t, err) {
-		ws.Write([]byte("test"))
+		ws.Write([]byte("test\n"))
 		defer ws.Close()
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(ws)
@@ -383,14 +408,14 @@ func TestEchoNotFound(t *testing.T) {
 }
 
 func TestEchoMethodNotAllowed(t *testing.T) {
-	//	e := New()
-	//	e.Get("/", func(c *Context) error {
-	//		return c.String(http.StatusOK, "Echo!")
-	//	})
-	//	r, _ := http.NewRequest(POST, "/", nil)
-	//	w := httptest.NewRecorder()
-	//	e.ServeHTTP(w, r)
-	//	assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
+	e := New()
+	e.Get("/", func(c *Context) error {
+		return c.String(http.StatusOK, "Echo!")
+	})
+	r, _ := http.NewRequest(POST, "/", nil)
+	w := httptest.NewRecorder()
+	e.ServeHTTP(w, r)
+	assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
 }
 
 func TestEchoHTTPError(t *testing.T) {
@@ -398,6 +423,8 @@ func TestEchoHTTPError(t *testing.T) {
 	he := NewHTTPError(http.StatusBadRequest, m)
 	assert.Equal(t, http.StatusBadRequest, he.Code())
 	assert.Equal(t, m, he.Error())
+	he.SetCode(http.StatusOK)
+	assert.Equal(t, http.StatusOK, he.Code())
 }
 
 func TestEchoServer(t *testing.T) {
@@ -406,13 +433,47 @@ func TestEchoServer(t *testing.T) {
 	assert.IsType(t, &http.Server{}, s)
 }
 
-func TestStripTrailingSlash(t *testing.T) {
+func TestEchoHook(t *testing.T) {
 	e := New()
-	e.StripTrailingSlash()
-	r, _ := http.NewRequest(GET, "/users/", nil)
+	e.Get("/test", func(c *Context) error {
+		return c.NoContent(http.StatusNoContent)
+	})
+	e.Hook(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+		l := len(path) - 1
+		if path != "/" && path[l] == '/' {
+			r.URL.Path = path[:l]
+		}
+	})
+	r, _ := http.NewRequest(GET, "/test/", nil)
 	w := httptest.NewRecorder()
 	e.ServeHTTP(w, r)
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	assert.Equal(t, r.URL.Path, "/test")
+}
+
+func TestEchoUse(t *testing.T) {
+	e := New()
+	buf := new(bytes.Buffer)
+	mw1 := MiddlewareFunc(func(h HandlerFunc) HandlerFunc {
+		return func(c *Context) error {
+			buf.WriteString("mw1")
+			return h(c)
+		}
+	})
+	mw2 := MiddlewareFunc(func(h HandlerFunc) HandlerFunc {
+		return func(c *Context) error {
+			buf.WriteString("mw2")
+			return h(c)
+		}
+	})
+	e.Get("/", Use(func(c *Context) error {
+		return c.String(http.StatusOK, "Okay")
+	}, mw1, mw2))
+
+	r, _ := http.NewRequest(GET, "/", nil)
+	w := httptest.NewRecorder()
+	e.ServeHTTP(w, r)
+	assert.Equal(t, "mw1mw2", buf.String())
 }
 
 func testMethod(t *testing.T, method, path string, e *Echo) {

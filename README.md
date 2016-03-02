@@ -2,6 +2,8 @@
 
 A fast and unfancy micro web framework for Go.
 
+[![Donate](https://www.paypalobjects.com/webstatic/en_US/btn/btn_donate_92x26.png)](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=JD5R56K84A8G4&lc=US&item_name=LabStack&item_number=echo&currency_code=USD&bn=PP%2dDonationsBF%3abtn_donate_LG%2egif%3aNonHosted)
+
 ## Features
 
 - Fast HTTP router which smartly prioritize routes.
@@ -81,6 +83,39 @@ BenchmarkVulcan_GithubAll            5000            271682 ns/op           1989
 BenchmarkZeus_GithubAll              2000            748827 ns/op          300688 B/op     2648 allocs/op
 ```
 
+## Echo System
+
+### Who's using Echo?
+
+- [LabStack](https://labstack.com)
+- [ShowChampions](https://showchampions.photoserve.co)
+- [deferpanic](https://deferpanic.com)
+- [Center for Open Science](https://cos.io)
+- [SeeSaw Labs](http://www.seesawlabs.com)
+- [Kyäni](http://www.kyani.net)
+- [Carrot Creative](http://carrot.is)
+- [EurekaMetrics](http://eurekametrics.com)
+- [Coursella](https://www.coursella.com)
+- [blue Vanilla](https://www.bleuvanille.fr)
+- [ImPlaces](http://www.implaces.com)
+- [Gomoku](http://gomoku.thoughtsfromplac.es)
+- [DrinkIn](https://drinkin.com)
+- [PodBaby](https://podbaby.me)
+- [gifs](https://gifs.com)
+
+### Community created packages around Echo
+
+- [echo-logrus](https://github.com/deoxxa/echo-logrus)
+- [go_middleware](https://github.com/rightscale/go_middleware)
+- [permissions2](https://github.com/xyproto/permissions2)
+- [permissionbolt](https://github.com/xyproto/permissionbolt)
+- [echo-middleware](https://github.com/syntaqx/echo-middleware)
+- [dpecho](https://github.com/deferpanic/dpecho)
+- [echosentry](https://github.com/01walid/echosentry)
+- [go-starter-kit](https://github.com/olebedev/go-starter-kit)
+
+[Want to get listed?](https://github.com/labstack/echo/issues/295)
+
 ## Installation
 
 ```sh
@@ -91,23 +126,13 @@ $ go get github.com/labstack/echo
 
 ## [Guide](http://labstack.com/echo/guide/installation)
 
-## Echo System
-
-Community created packages for Echo
-
-- [echo-logrus](https://github.com/deoxxa/echo-logrus)
-- [go_middleware](https://github.com/rightscale/go_middleware)
-- [permissions2](https://github.com/xyproto/permissions2)
-- [permissionbolt](https://github.com/xyproto/permissionbolt)
-- [echo-middleware](https://github.com/syntaqx/echo-middleware)
-
 ## Contribute
 
 **Use issues for everything**
 
 - Report problems
-- Discuss before sending pull request
-- Suggest new features
+- Discuss before sending a pull request
+- Suggest new features/recipes
 - Improve/fix documentation
 
 ## Credits

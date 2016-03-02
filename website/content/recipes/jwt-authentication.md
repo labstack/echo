@@ -55,4 +55,4 @@ $  curl localhost:1323/restricted -H "Authorization: Bearer <token>" => Access g
 
 - [axdg](https://github.com/axdg)
 
-### [Source Code](https://github.com/labstack/echo/blob/master/recipes/jwt-authentication)
+### [Source Code](https://github.com/vishr/recipes/blob/master/echo/recipes/jwt-authentication)

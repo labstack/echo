@@ -17,4 +17,4 @@ menu:
 
 - [caarlos0](https://github.com/caarlos0)
 
-### [Source Code](https://github.com/labstack/echo/blob/master/recipes/rice)
+### [Source Code](https://github.com/vishr/recipes/blob/master/echo/recipes/rice)
