@@ -366,7 +366,10 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 			i, l := 0, len(search)
 			for ; i < l && search[i] != '/'; i++ {
 			}
-			ctx.pvalues[n] = search[:i]
+
+			if n < len(ctx.pvalues) {
+				ctx.pvalues[n] = search[:i]
+			}
 			n++
 			search = search[i:]
 			continue
@@ -388,7 +391,11 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 			// Not found
 			return
 		}
-		ctx.pvalues[len(cn.pnames)-1] = search
+
+		offset := len(cn.pnames)-1
+		if offset < len(ctx.pvalues) {
+			ctx.pvalues[offset] = search
+		}
 		goto End
 	}
 
