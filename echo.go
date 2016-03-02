@@ -274,7 +274,9 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c *Context) {
 	}
 	if !c.response.committed {
 		http.Error(c.response, msg, code)
-	}
+	} else {
+        c.response.Write([]byte(msg))
+    }
 	e.logger.Error(err)
 }
 
