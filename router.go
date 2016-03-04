@@ -34,7 +34,7 @@ type (
 const (
 	skind kind = iota
 	pkind
-	mkind
+	akind
 )
 
 func NewRouter(e *Echo) *Router {
@@ -84,7 +84,7 @@ func (r *Router) Add(method, path string, h Handler, e *Echo) {
 		} else if path[i] == '*' {
 			r.insert(method, path[:i], nil, skind, "", nil, e)
 			pnames = append(pnames, "_*")
-			r.insert(method, path[:i+1], h, mkind, ppath, pnames, e)
+			r.insert(method, path[:i+1], h, akind, ppath, pnames, e)
 			return
 		}
 	}
@@ -295,7 +295,7 @@ func (r *Router) Find(method, path string, context Context) {
 		ns     string // Next search
 	)
 
-	// Search order static > param > match-any
+	// Search order static > param > any
 	for {
 		if search == "" {
 			goto End
@@ -325,12 +325,11 @@ func (r *Router) Find(method, path string, context Context) {
 			search = ns
 			if nk == pkind {
 				goto Param
-			} else if nk == mkind {
-				goto MatchAny
-			} else {
-				// Not found
-				return
+			} else if nk == akind {
+				goto Any
 			}
+			// Not found
+			return
 		}
 
 		if search == "" {
@@ -338,8 +337,7 @@ func (r *Router) Find(method, path string, context Context) {
 		}
 
 		// Static node
-		c = cn.findChild(search[0], skind)
-		if c != nil {
+		if c = cn.findChild(search[0], skind); c != nil {
 			// Save next
 			if cn.label == '/' {
 				nk = pkind
@@ -352,11 +350,10 @@ func (r *Router) Find(method, path string, context Context) {
 
 		// Param node
 	Param:
-		c = cn.findChildByKind(pkind)
-		if c != nil {
+		if c = cn.findChildByKind(pkind); c != nil {
 			// Save next
 			if cn.label == '/' {
-				nk = mkind
+				nk = akind
 				nn = cn
 				ns = search
 			}
@@ -370,10 +367,19 @@ func (r *Router) Find(method, path string, context Context) {
 			continue
 		}
 
-		// Match-any node
-	MatchAny:
-		// c = cn.getChild()
-		if cn = cn.findChildByKind(mkind); cn == nil {
+		// Any node
+	Any:
+		if cn = cn.findChildByKind(akind); cn == nil {
+			if nn != nil {
+				cn = nn
+				nn = nil // Next
+				search = ns
+				if nk == pkind {
+					goto Param
+				} else if nk == akind {
+					goto Any
+				}
+			}
 			// Not found
 			return
 		}
@@ -390,9 +396,9 @@ End:
 	if ctx.handler == nil {
 		ctx.handler = cn.check405()
 
-		// Dig further for match-any, might have an empty value for *, e.g.
+		// Dig further for any, might have an empty value for *, e.g.
 		// serving a directory. Issue #207.
-		if cn = cn.findChildByKind(mkind); cn == nil {
+		if cn = cn.findChildByKind(akind); cn == nil {
 			return
 		}
 		ctx.pvalues[len(cn.pnames)-1] = ""

@@ -391,10 +391,8 @@ func TestRouterMultiRoute(t *testing.T) {
 	// Route > /user
 	c = NewContext(nil, nil, e)
 	r.Find(GET, "/user", c)
-	if assert.IsType(t, new(HTTPError), c.Handle(c)) {
-		he := c.Handle(c).(*HTTPError)
-		assert.Equal(t, http.StatusNotFound, he.code)
-	}
+	he := c.Handle(c).(*HTTPError)
+	assert.Equal(t, http.StatusNotFound, he.code)
 }
 
 func TestRouterPriority(t *testing.T) {
@@ -469,6 +467,37 @@ func TestRouterPriority(t *testing.T) {
 	assert.Equal(t, "joe/books", c.Param("_*"))
 }
 
+// Issue #372
+func TestRouterPriorityNotFound(t *testing.T) {
+	e := New()
+	r := e.router
+	c := NewContext(nil, nil, e)
+
+	// Add
+	r.Add(GET, "/a/foo", HandlerFunc(func(c Context) error {
+		c.Set("a", 1)
+		return nil
+	}), e)
+	r.Add(GET, "/a/bar", HandlerFunc(func(c Context) error {
+		c.Set("b", 2)
+		return nil
+	}), e)
+
+	// Find
+	r.Find(GET, "/a/foo", c)
+	c.Handle(c)
+	assert.Equal(t, 1, c.Get("a"))
+
+	r.Find(GET, "/a/bar", c)
+	c.Handle(c)
+	assert.Equal(t, 2, c.Get("b"))
+
+	c = NewContext(nil, nil, e)
+	r.Find(GET, "/abc/def", c)
+	he := c.Handle(c).(*HTTPError)
+	assert.Equal(t, http.StatusNotFound, he.Code())
+}
+
 func TestRouterParamNames(t *testing.T) {
 	e := New()
 	r := e.router
@@ -521,7 +550,6 @@ func TestRouterAPI(t *testing.T) {
 				assert.Equal(t, ":"+n, c.P(i))
 			}
 		}
-		c.Handle(c)
 	}
 }
 
