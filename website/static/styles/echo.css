@@ -15,7 +15,7 @@ footer {
     color: #333;
 }
 :not(pre) > code {
-    padding: 2px 4px;
+    padding: 0 4px;
     background: #EEE;
     color: #424242;
     font-size: .95em;
