@@ -142,6 +142,7 @@ const (
 	WWWAuthenticate    = "WWW-Authenticate"
 	XForwardedFor      = "X-Forwarded-For"
 	XRealIP            = "X-Real-IP"
+
 	//-----------
 	// Protocols
 	//-----------
@@ -207,12 +208,12 @@ func New() (e *Echo) {
 	return
 }
 
-func (f MiddlewareFunc) Handle(h Handler) Handler {
-	return f(h)
+func (m MiddlewareFunc) Handle(h Handler) Handler {
+	return m(h)
 }
 
-func (f HandlerFunc) Handle(c Context) error {
-	return f(c)
+func (h HandlerFunc) Handle(c Context) error {
+	return h(c)
 }
 
 // Router returns router.

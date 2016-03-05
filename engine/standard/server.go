@@ -67,7 +67,7 @@ func NewConfig(c *engine.Config) (s *Server) {
 			},
 		},
 		handler: func(req engine.Request, res engine.Response) {
-			s.logger.Warn("handler not set")
+			s.logger.Fatal("handler not set")
 		},
 		logger: log.New("echo"),
 	}
@@ -84,30 +84,7 @@ func (s *Server) SetLogger(l logger.Logger) {
 
 func (s *Server) Start() {
 	s.Addr = s.config.Address
-	s.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Request
-		req := s.pool.request.Get().(*Request)
-		reqHdr := s.pool.header.Get().(*Header)
-		reqURL := s.pool.url.Get().(*URL)
-		reqHdr.reset(r.Header)
-		reqURL.reset(r.URL)
-		req.reset(r, reqHdr, reqURL)
-
-		// Response
-		res := s.pool.response.Get().(*Response)
-		resHdr := s.pool.header.Get().(*Header)
-		resHdr.reset(w.Header())
-		res.reset(w, resHdr)
-
-		s.handler(req, res)
-
-		s.pool.request.Put(req)
-		s.pool.header.Put(reqHdr)
-		s.pool.url.Put(reqURL)
-		s.pool.response.Put(res)
-		s.pool.header.Put(resHdr)
-	})
-
+	s.Handler = s
 	certfile := s.config.TLSCertfile
 	keyfile := s.config.TLSKeyfile
 	if certfile != "" && keyfile != "" {
@@ -115,4 +92,28 @@ func (s *Server) Start() {
 	} else {
 		s.logger.Fatal(s.ListenAndServe())
 	}
+}
+
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Request
+	req := s.pool.request.Get().(*Request)
+	reqHdr := s.pool.header.Get().(*Header)
+	reqURL := s.pool.url.Get().(*URL)
+	reqHdr.reset(r.Header)
+	reqURL.reset(r.URL)
+	req.reset(r, reqHdr, reqURL)
+
+	// Response
+	res := s.pool.response.Get().(*Response)
+	resHdr := s.pool.header.Get().(*Header)
+	resHdr.reset(w.Header())
+	res.reset(w, resHdr)
+
+	s.handler(req, res)
+
+	s.pool.request.Put(req)
+	s.pool.header.Put(reqHdr)
+	s.pool.url.Put(reqURL)
+	s.pool.response.Put(res)
+	s.pool.header.Put(resHdr)
 }
