@@ -25,4 +25,4 @@ menu:
 
 - [vishr](https://github.com/vishr)
 
-### [Source Code](https://github.com/vishr/recipes/blob/master/echo.v1/streaming-file-upload)
+### [Source Code](https://github.com/vishr/echo-recipes/blob/master/v1/streaming-file-upload)

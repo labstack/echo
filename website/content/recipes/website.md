@@ -22,4 +22,4 @@ menu:
 
 - [vishr](https://github.com/vishr)
 
-### [Source Code](https://github.com/vishr/recipes/blob/master/echo.v1/website)
+### [Source Code](https://github.com/vishr/echo-recipes/blob/master/v1/website)

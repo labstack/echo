@@ -15,4 +15,4 @@ menu:
 - [axdg](https://github.com/axdg)
 - [vishr](https://github.com/axdg)
 
-### [Source Code](https://github.com/vishr/recipes/blob/master/echo.v1/subdomains)
+### [Source Code](https://github.com/vishr/echo-recipes/blob/master/v1/subdomains)

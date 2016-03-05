@@ -24,6 +24,6 @@ menu:
 
 ### Source Code
 
-[graceful](https://github.com/vishr/recipes/blob/master/echo.v1/graceful-shutdown/graceful)
+[graceful](https://github.com/vishr/echo-recipes/blob/master/v1/graceful-shutdown/graceful)
 
-[grace](https://github.com/vishr/recipes/blob/master/echo.v1/graceful-shutdown/grace)
+[grace](https://github.com/vishr/echo-recipes/blob/master/v1/graceful-shutdown/grace)
