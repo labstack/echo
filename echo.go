@@ -574,7 +574,7 @@ func (e *Echo) Run(addr string) {
 	if strings.Contains(addr, ":") {
 		e.logger.Info("Starting TCP server!")
 		e.run(e.Server(addr))
-	} elif strings.Contains(addr, "/") {
+	} else if strings.Contains(addr, "/") {
 		e.logger.Info("Starting Unix-socket server!")
 		e.run_unix(e.Server(addr))
 	} else {
@@ -589,9 +589,9 @@ func (e *Echo) RunTLS(addr, certfile, keyfile string) {
 
 // RunServer runs a custom server.
 func (e *Echo) RunServer(s *http.Server) {
-	if strings.Contains(addr, ":") {
+	if strings.Contains(s.Addr, ":") {
 		e.run(s)
-	} elif strings.Contains(addr, "/") {
+	} else if strings.Contains(s.Addr, "/") {
                 e.run_unix(s)
 	} else {
 		e.logger.Fatal("invalid server address!")
@@ -619,9 +619,9 @@ func (e *Echo) run_unix(s *http.Server) {
 	if s.Addr != "" {
 		ln, err := net.Listen("unix", s.Addr)
 		if err != nil {
-			return err 
+                        e.logger.Fatal("Failed to listen on unix-socket!")
 		}
-		e.logger.Fatal(s.Serve(ln(*net.UnixListener)))
+		e.logger.Fatal(s.Serve(ln.(*net.UnixListener)))
 	} else {
 		e.logger.Fatal("invalid address paramater!")
 	}
