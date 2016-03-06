@@ -1,9 +1,6 @@
 # Website
 website/public
-website/make
 website/Makefile
-website/marathon*
-.gitmodules
 
 # Node.js
 node_modules
@@ -11,3 +8,6 @@ node_modules
 # IntelliJ
 .idea
 *.iml
+
+# Glide
+vendor

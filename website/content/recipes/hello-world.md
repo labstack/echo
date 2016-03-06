@@ -8,12 +8,12 @@ menu:
 
 ### Server
 
-`server.go`
+`main.go`
 
-{{< embed "hello-world/server.go" >}}
+{{< embed "hello-world/main.go" >}}
 
 ### Maintainers
 
 - [vishr](https://github.com/vishr)
 
-### [Source Code](https://github.com/vishr/recipes/blob/master/echo/recipes/hello-world)
+### [Source Code](https://github.com/vishr/echo-recipes/blob/master/v2/hello-world)

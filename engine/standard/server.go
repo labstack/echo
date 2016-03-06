@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/labstack/echo/engine"
-	"github.com/labstack/echo/logger"
 	"github.com/labstack/gommon/log"
 )
 
@@ -15,7 +14,7 @@ type (
 		config  *engine.Config
 		handler engine.HandlerFunc
 		pool    *Pool
-		logger  logger.Logger
+		logger  *log.Logger
 	}
 
 	Pool struct {
@@ -78,7 +77,7 @@ func (s *Server) SetHandler(h engine.HandlerFunc) {
 	s.handler = h
 }
 
-func (s *Server) SetLogger(l logger.Logger) {
+func (s *Server) SetLogger(l *log.Logger) {
 	s.logger = l
 }
 

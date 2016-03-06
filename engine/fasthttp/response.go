@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/engine"
-	"github.com/labstack/echo/logger"
 	"github.com/labstack/gommon/log"
 	"github.com/valyala/fasthttp"
 )
@@ -20,7 +19,7 @@ type (
 		size      int64
 		committed bool
 		writer    io.Writer
-		logger    logger.Logger
+		logger    *log.Logger
 	}
 )
 

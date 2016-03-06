@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/labstack/echo/engine"
-	"github.com/labstack/echo/logger"
 	"github.com/labstack/gommon/log"
 	"github.com/valyala/fasthttp"
 )
@@ -16,7 +15,7 @@ type (
 		config  *engine.Config
 		handler engine.HandlerFunc
 		pool    *Pool
-		logger  logger.Logger
+		logger  *log.Logger
 	}
 
 	Pool struct {
@@ -73,7 +72,7 @@ func NewConfig(c *engine.Config) (s *Server) {
 			},
 		},
 		handler: func(req engine.Request, res engine.Response) {
-			s.logger.Warn("handler not set")
+			s.logger.Fatal("handler not set")
 		},
 		logger: log.New("echo"),
 	}
@@ -84,7 +83,7 @@ func (s *Server) SetHandler(h engine.HandlerFunc) {
 	s.handler = h
 }
 
-func (s *Server) SetLogger(l logger.Logger) {
+func (s *Server) SetLogger(l *log.Logger) {
 	s.logger = l
 }
 

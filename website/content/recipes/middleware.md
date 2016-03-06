@@ -9,12 +9,12 @@ menu:
 
 ### Server
 
-`server.go`
+`main.go`
 
-{{< embed "middleware/server.go" >}}
+{{< embed "middleware/main.go" >}}
 
 ### Maintainers
 
 - [vishr](https://github.com/vishr)
 
-### [Source Code](https://github.com/vishr/recipes/blob/master/echo/recipes/middleware)
+### [Source Code](https://github.com/vishr/echo-recipes/blob/master/v2/middleware)

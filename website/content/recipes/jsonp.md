@@ -10,9 +10,9 @@ JSONP is a method that allows cross-domain server calls. You can read more about
 
 ### Server
 
-`server.go`
+`main.go`
 
-{{< embed "jsonp/server.go" >}}
+{{< embed "jsonp/main.go" >}}
 
 ### Client
 
@@ -24,4 +24,4 @@ JSONP is a method that allows cross-domain server calls. You can read more about
 
 - [willf](https://github.com/willf)
 
-### [Source Code](https://github.com/vishr/recipes/blob/master/echo/recipes/jsonp)
+### [Source Code](https://github.com/vishr/echo-recipes/blob/master/v2/jsonp)

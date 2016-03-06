@@ -4,7 +4,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/labstack/echo/logger"
+	"github.com/labstack/gommon/log"
 )
 
 type (
@@ -12,7 +12,7 @@ type (
 
 	Engine interface {
 		SetHandler(HandlerFunc)
-		SetLogger(logger.Logger)
+		SetLogger(*log.Logger)
 		Start()
 	}
 

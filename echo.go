@@ -15,7 +15,6 @@ import (
 	"encoding/xml"
 
 	"github.com/labstack/echo/engine"
-	"github.com/labstack/echo/logger"
 	"github.com/labstack/gommon/log"
 )
 
@@ -32,7 +31,7 @@ type (
 		pool             sync.Pool
 		debug            bool
 		router           *Router
-		logger           logger.Logger
+		logger           *log.Logger
 	}
 
 	Route struct {
@@ -204,6 +203,7 @@ func New() (e *Echo) {
 
 	// Logger
 	e.logger = log.New("echo")
+	e.logger.SetLevel(log.FATAL)
 
 	return
 }
@@ -221,13 +221,23 @@ func (e *Echo) Router() *Router {
 	return e.router
 }
 
-// SetLogger sets the logger instance.
-func (e *Echo) SetLogger(l logger.Logger) {
-	e.logger = l
+// SetLogPrefix sets the prefix for the logger. Default value is `echo`.
+func (e *Echo) SetLogPrefix(prefix string) {
+	e.logger.SetPrefix(prefix)
+}
+
+// SetLogOutput sets the output destination for the logger. Default value is `os.Std*`
+func (e *Echo) SetLogOutput(w io.Writer) {
+	e.logger.SetOutput(w)
+}
+
+// SetLogLevel sets the log level for the logger. Default value is `log.FATAL`.
+func (e *Echo) SetLogLevel(l log.Level) {
+	e.logger.SetLevel(l)
 }
 
 // Logger returns the logger instance.
-func (e *Echo) Logger() logger.Logger {
+func (e *Echo) Logger() *log.Logger {
 	return e.logger
 }
 
@@ -245,7 +255,7 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 	if !c.Response().Committed() {
 		c.String(code, msg)
 	}
-	e.logger.Error(err)
+	e.logger.Debug(err)
 }
 
 // SetHTTPErrorHandler registers a custom Echo.HTTPErrorHandler.
@@ -266,6 +276,7 @@ func (e *Echo) SetRenderer(r Renderer) {
 // SetDebug enable/disable debug mode.
 func (e *Echo) SetDebug(on bool) {
 	e.debug = on
+	e.SetLogLevel(log.DEBUG)
 }
 
 // Debug returns debug mode (enabled or disabled).
