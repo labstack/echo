@@ -571,7 +571,7 @@ func (e *Echo) Server(addr string) *http.Server {
 
 // Run runs a server.
 func (e *Echo) Run(addr string) {
-	if strings.HasPrefix(addr, "unix://") || strings.HasPrefix(addr, "/") {
+	if strings.HasPrefix(addr, "unix://") {
 		e.run_unix(e.Server(addr))
 	} else {
 		e.run(e.Server(addr))
@@ -585,7 +585,7 @@ func (e *Echo) RunTLS(addr, certfile, keyfile string) {
 
 // RunServer runs a custom server.
 func (e *Echo) RunServer(s *http.Server) {
-	if strings.HasPrefix(s.Addr, "unix://") || strings.HasPrefix(s.Addr, "/") {
+	if strings.HasPrefix(s.Addr, "unix://") {
                 e.run_unix(s)
 	} else { 
 		e.run(s)
@@ -597,6 +597,7 @@ func (e *Echo) RunTLSServer(s *http.Server, crtFile, keyFile string) {
 	e.run(s, crtFile, keyFile)
 }
 
+// run TCP based server.
 func (e *Echo) run(s *http.Server, files ...string) {
 	s.Handler = e
 	if len(files) == 0 {
@@ -608,13 +609,14 @@ func (e *Echo) run(s *http.Server, files ...string) {
 	}
 }
 
+// run Unix-socket based server.
 func (e *Echo) run_unix(s *http.Server) {
 	s.Handler = e
 	if s.Addr != "" {
                 addr := strings.TrimPrefix(s.Addr, "unix://")
 		ln, err := net.Listen("unix", addr)
 		if err != nil {
-                        e.logger.Fatal("Failed to listen on unix-socket!")
+                        e.logger.Fatal("Failed to listen on unix-socket: '" + s.Addr + "'")
 		}
 		e.logger.Fatal(s.Serve(ln.(*net.UnixListener)))
 	} else {
