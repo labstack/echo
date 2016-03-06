@@ -3,7 +3,7 @@ title: Error Handling
 menu:
   side:
     parent: guide
-    weight: 7
+    weight: 8
 ---
 
 Echo advocates centralized HTTP error handling by returning `error` from middleware

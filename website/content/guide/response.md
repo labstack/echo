@@ -3,7 +3,7 @@ title: Response
 menu:
   side:
     parent: guide
-    weight: 6
+    weight: 7
 ---
 
 ### Template

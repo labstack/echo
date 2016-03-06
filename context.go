@@ -32,6 +32,7 @@ type (
 		Path() string
 		P(int) string
 		Param(string) string
+		ParamNames() []string
 		Query(string) string
 		Form(string) string
 		Set(string, interface{})
@@ -148,6 +149,11 @@ func (c *context) Param(name string) (value string) {
 	return
 }
 
+// ParamNames returns path parameter names.
+func (c *context) ParamNames() []string {
+	return c.pnames
+}
+
 // Query returns query parameter by name.
 func (c *context) Query(name string) string {
 	return c.request.URL().QueryValue(name)
@@ -174,7 +180,7 @@ func (c *context) Set(key string, val interface{}) {
 // Bind binds the request body into specified type `i`. The default binder does
 // it based on Content-Type header.
 func (c *context) Bind(i interface{}) error {
-	return c.echo.binder.Bind(c.request, i)
+	return c.echo.binder.Bind(i, c)
 }
 
 // Render renders a template with data and sends a text/html response with status
@@ -184,7 +190,7 @@ func (c *context) Render(code int, name string, data interface{}) (err error) {
 		return ErrRendererNotRegistered
 	}
 	buf := new(bytes.Buffer)
-	if err = c.echo.renderer.Render(buf, name, data); err != nil {
+	if err = c.echo.renderer.Render(buf, name, data, c); err != nil {
 		return
 	}
 	c.response.Header().Set(ContentType, TextHTMLCharsetUTF8)

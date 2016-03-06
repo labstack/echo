@@ -1,6 +1,6 @@
 footer {
     background-color: inherit !important;
-    border-top: 2px solid #E0E0E0;
+    border-top: 2px solid #e0e0e0;
 }
 .facebook a:hover {
     color: #3B5998;
@@ -15,12 +15,12 @@ footer {
     color: #333;
 }
 :not(pre) > code {
-    padding: 2px 4px;
-    background: #EEE;
+    padding: 0 4px;
+    background: #eee;
     color: #424242;
     font-size: .95em;
     font-family: Source Code Pro, Monaco, Menlo, Consolas, monospace;
-    border: 1px solid #E0E0E0;
+    border: 1px solid #e0e0e0;
     border-radius: 2px;
 }
 a:link {

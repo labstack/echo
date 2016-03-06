@@ -23,7 +23,7 @@ type (
 	}
 )
 
-func (t *Template) Render(w io.Writer, name string, data interface{}) error {
+func (t *Template) Render(w io.Writer, name string, data interface{}, c Context) error {
 	return t.templates.ExecuteTemplate(w, name, data)
 }
 
@@ -45,6 +45,10 @@ func TestContext(t *testing.T) {
 
 	// Socket
 	assert.Nil(t, c.Socket())
+
+	// ParamNames
+	c.Object().pnames = []string{"uid", "fid"}
+	assert.EqualValues(t, []string{"uid", "fid"}, c.ParamNames())
 
 	// Param by id
 	c.Object().pnames = []string{"id"}

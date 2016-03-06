@@ -17,19 +17,20 @@ import (
 
 func main() {
 	e := echo.New()
-	e.Use(mw.Log())
-	e.Get("/", func(c echo.Context) error {
+	e.Use(mw.Logger())
+	e.Use(mw.Recover())
+	e.Get("/", echo.HandlerFunc(func(c echo.Context) error {
 		return c.String(200, "Hello, World!")
-	})
-	e.Get("/v2", func(c echo.Context) error {
+	}))
+	e.Get("/v2", echo.HandlerFunc(func(c echo.Context) error {
 		return c.String(200, "Echo v2")
-	})
+	}))
 
 	// FastHTTP
-	// e.Run(fasthttp.New(":4444"))
+	// e.Run(fasthttp.New(":1323"))
 
 	// Standard
-	e.Run(standard.New(":4444"))
+	e.Run(standard.New(":1323"))
 }
 ```
 
@@ -81,6 +82,10 @@ BenchmarkZeus_GithubAll              2000            748827 ns/op          30068
 - Discuss before sending a pull request
 - Suggest new features/recipes
 - Improve/fix documentation
+
+## Support
+
+- [Chat](https://gitter.im/labstack/echo)
 
 ## Credits
 - [Vishal Rana](https://github.com/vishr) - Author

@@ -63,7 +63,7 @@ type (
 
 	// Binder is the interface that wraps the Bind method.
 	Binder interface {
-		Bind(engine.Request, interface{}) error
+		Bind(interface{}, Context) error
 	}
 
 	binder struct {
@@ -76,7 +76,7 @@ type (
 
 	// Renderer is the interface that wraps the Render method.
 	Renderer interface {
-		Render(w io.Writer, name string, data interface{}) error
+		Render(io.Writer, string, interface{}, Context) error
 	}
 )
 
@@ -444,15 +444,16 @@ func (e *HTTPError) Error() string {
 	return e.message
 }
 
-func (binder) Bind(r engine.Request, i interface{}) (err error) {
-	ct := r.Header().Get(ContentType)
+func (binder) Bind(i interface{}, c Context) (err error) {
+	req := c.Request()
+	ct := req.Header().Get(ContentType)
 	err = ErrUnsupportedMediaType
 	if strings.HasPrefix(ct, ApplicationJSON) {
-		if err = json.NewDecoder(r.Body()).Decode(i); err != nil {
+		if err = json.NewDecoder(req.Body()).Decode(i); err != nil {
 			err = NewHTTPError(http.StatusBadRequest, err.Error())
 		}
 	} else if strings.HasPrefix(ct, ApplicationXML) {
-		if err = xml.NewDecoder(r.Body()).Decode(i); err != nil {
+		if err = xml.NewDecoder(req.Body()).Decode(i); err != nil {
 			err = NewHTTPError(http.StatusBadRequest, err.Error())
 		}
 	}
