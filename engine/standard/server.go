@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/labstack/echo"
 	"github.com/labstack/echo/engine"
 	"github.com/labstack/gommon/log"
 )
@@ -116,14 +115,4 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.pool.url.Put(reqURL)
 	s.pool.response.Put(res)
 	s.pool.header.Put(resHdr)
-}
-
-// WrapHandler wraps `http.Handler` into `echo.Handler`.
-func WrapHandler(h http.Handler) echo.Handler {
-	return echo.HandlerFunc(func(c echo.Context) error {
-		w := c.Response().Object().(http.ResponseWriter)
-		r := c.Request().Object().(*http.Request)
-		h.ServeHTTP(w, r)
-		return nil
-	})
 }

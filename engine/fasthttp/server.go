@@ -5,7 +5,6 @@ package fasthttp
 import (
 	"sync"
 
-	"github.com/labstack/echo"
 	"github.com/labstack/echo/engine"
 	"github.com/labstack/gommon/log"
 	"github.com/valyala/fasthttp"
@@ -121,13 +120,4 @@ func (s *Server) Start() {
 	} else {
 		s.logger.Fatal(fasthttp.ListenAndServe(addr, handler))
 	}
-}
-
-// WrapHandler wraps `fasthttp.RequestHandler` into `echo.Handler`.
-func WrapHandler(h fasthttp.RequestHandler) echo.Handler {
-	return echo.HandlerFunc(func(c echo.Context) error {
-		c := c.Request().Object().(*fasthttp.RequestCtx)
-		h(c)
-		return nil
-	})
 }
