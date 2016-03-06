@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/labstack/echo"
-	"github.com/labstack/gommon/log"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -53,13 +52,11 @@ func TestLogger(t *testing.T) {
 
 func TestLoggerIPAddress(t *testing.T) {
 	e := echo.New()
-	l := log.New("echo")
-	buf := new(bytes.Buffer)
-	l.SetOutput(buf)
-	e.SetLogger(l)
 	req, _ := http.NewRequest(echo.GET, "/", nil)
 	rec := httptest.NewRecorder()
 	c := echo.NewContext(req, echo.NewResponse(rec, e), e)
+	buf := new(bytes.Buffer)
+	e.Logger().SetOutput(buf)
 	ip := "127.0.0.1"
 	h := func(c *echo.Context) error {
 		return c.String(http.StatusOK, "test")

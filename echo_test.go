@@ -12,7 +12,6 @@ import (
 
 	"errors"
 
-	"github.com/labstack/gommon/log"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/websocket"
 )
@@ -40,11 +39,6 @@ func TestEcho(t *testing.T) {
 	// DefaultHTTPErrorHandler
 	e.DefaultHTTPErrorHandler(errors.New("error"), c)
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
-
-	// Logger
-	l := log.New("test")
-	e.SetLogger(l)
-	assert.Equal(t, l, e.Logger())
 
 	// Autoindex
 	e.AutoIndex(true)
