@@ -311,6 +311,25 @@ func TestRouterTwoParam(t *testing.T) {
 	assert.Equal(t, "1", c.P(1))
 }
 
+// Issue #378
+func TestRouterParamWithSlash(t *testing.T) {
+	e := New()
+	r := e.router
+
+	r.Add(GET, "/a/:b/c/d/:e", func(c *Context) error {
+		return nil
+	}, e)
+
+	r.Add(GET, "/a/:b/c/:d/:f", func(c *Context) error {
+		return nil
+	}, e)
+
+	c := NewContext(nil, nil, e)
+	assert.NotPanics(t, func() {
+		r.Find(GET, "/a/1/c/d/2/3", c)
+	})
+}
+
 func TestRouterMatchAny(t *testing.T) {
 	e := New()
 	r := e.router
