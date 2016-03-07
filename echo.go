@@ -14,8 +14,6 @@ import (
 
 	"encoding/xml"
 
-	"github.com/valyala/fasthttp"
-
 	"github.com/labstack/echo/engine"
 	"github.com/labstack/gommon/log"
 )
@@ -471,25 +469,6 @@ func (binder) Bind(i interface{}, c Context) (err error) {
 		}
 	}
 	return
-}
-
-// WrapStandardHandler wraps `http.Handler` into `echo.Handler`.
-func WrapStandardHandler(h http.Handler) Handler {
-	return HandlerFunc(func(c Context) error {
-		w := c.Response().Object().(http.ResponseWriter)
-		r := c.Request().Object().(*http.Request)
-		h.ServeHTTP(w, r)
-		return nil
-	})
-}
-
-// WrapFastHTTPHandler wraps `fasthttp.RequestHandler` into `echo.Handler`.
-func WrapFastHTTPHandler(h fasthttp.RequestHandler) Handler {
-	return HandlerFunc(func(c Context) error {
-		ctx := c.Request().Object().(*fasthttp.RequestCtx)
-		h(ctx)
-		return nil
-	})
 }
 
 func handlerName(h Handler) string {
