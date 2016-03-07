@@ -471,6 +471,18 @@ func (binder) Bind(i interface{}, c Context) (err error) {
 	return
 }
 
+// WrapMiddleware wrap `echo.Handler` into `echo.MiddlewareFunc`.
+func WrapMiddleware(h Handler) MiddlewareFunc {
+	return func(next Handler) Handler {
+		return HandlerFunc(func(c Context) error {
+			if !c.Response().Committed() {
+				h.Handle(c)
+			}
+			return next.Handle(c)
+		})
+	}
+}
+
 func handlerName(h Handler) string {
 	t := reflect.ValueOf(h).Type()
 	if t.Kind() == reflect.Func {
