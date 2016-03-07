@@ -123,11 +123,24 @@ func (s *Server) Start() {
 	}
 }
 
-// WrapHandler wraps `fasthttp.RequestHandler` into `echo.Handler`.
-func WrapHandler(h fasthttp.RequestHandler) echo.Handler {
-	return echo.HandlerFunc(func(c echo.Context) error {
+// WrapHandler wraps `fasthttp.RequestHandler` into `echo.HandlerFunc`.
+func WrapHandler(h fasthttp.RequestHandler) echo.HandlerFunc {
+	return func(c echo.Context) error {
 		ctx := c.Request().Object().(*fasthttp.RequestCtx)
 		h(ctx)
 		return nil
-	})
+	}
+}
+
+// WrapMiddleware wraps `fasthttp.RequestHandler` into `echo.MiddlewareFunc`
+func WrapMiddleware(m fasthttp.RequestHandler) echo.MiddlewareFunc {
+	return func(next echo.Handler) echo.Handler {
+		return echo.HandlerFunc(func(c echo.Context) error {
+			ctx := c.Request().Object().(*fasthttp.RequestCtx)
+			if !c.Response().Committed() {
+				m(ctx)
+			}
+			return next.Handle(c)
+		})
+	}
 }

@@ -118,12 +118,26 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.pool.header.Put(resHdr)
 }
 
-// WrapHandler wraps `http.Handler` into `echo.Handler`.
-func WrapHandler(h http.Handler) echo.Handler {
-	return echo.HandlerFunc(func(c echo.Context) error {
+// WrapHandler wraps `http.Handler` into `echo.HandlerFunc`.
+func WrapHandler(h http.Handler) echo.HandlerFunc {
+	return func(c echo.Context) error {
 		w := c.Response().Object().(http.ResponseWriter)
 		r := c.Request().Object().(*http.Request)
 		h.ServeHTTP(w, r)
 		return nil
-	})
+	}
+}
+
+// WrapMiddleware wraps `http.Handler` into `echo.MiddlewareFunc`
+func WrapMiddleware(m http.Handler) echo.MiddlewareFunc {
+	return func(next echo.Handler) echo.Handler {
+		return echo.HandlerFunc(func(c echo.Context) error {
+			w := c.Response().Object().(http.ResponseWriter)
+			r := c.Request().Object().(*http.Request)
+			if !c.Response().Committed() {
+				m.ServeHTTP(w, r)
+			}
+			return next.Handle(c)
+		})
+	}
 }
