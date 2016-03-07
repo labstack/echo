@@ -373,6 +373,23 @@ func TestRouterMicroParam(t *testing.T) {
 	assert.Equal(t, "3", c.P(2))
 }
 
+func TestRouterTooManyParamValues(t *testing.T) {
+	e := New()
+	r := e.router
+
+	r.Add(GET, "/a/:b/c/d/:e", func(c *Context) error {
+		return nil
+	}, e)
+
+	r.Add(GET, "/a/:b/c/:d/:f", func(c *Context) error {
+		return nil
+	}, e)
+
+	c := NewContext(nil, nil, e)
+	r.Find(GET, "/a/1/c/d/2/3", c)
+	assert.Equal(t, 0, len(c.pnames))
+}
+
 func TestRouterMixParamMatchAny(t *testing.T) {
 	e := New()
 	r := e.router
