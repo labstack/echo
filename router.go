@@ -351,12 +351,18 @@ func (r *Router) Find(method, path string, context Context) {
 		// Param node
 	Param:
 		if c = cn.findChildByKind(pkind); c != nil {
+			// Issue #378
+			if len(ctx.pvalues) == n {
+				continue
+			}
+
 			// Save next
 			if cn.label == '/' {
 				nk = akind
 				nn = cn
 				ns = search
 			}
+
 			cn = c
 			i, l := 0, len(search)
 			for ; i < l && search[i] != '/'; i++ {

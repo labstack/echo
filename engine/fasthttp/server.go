@@ -133,12 +133,12 @@ func WrapHandler(h fasthttp.RequestHandler) echo.HandlerFunc {
 }
 
 // WrapMiddleware wraps `fasthttp.RequestHandler` into `echo.MiddlewareFunc`
-func WrapMiddleware(m fasthttp.RequestHandler) echo.MiddlewareFunc {
+func WrapMiddleware(h fasthttp.RequestHandler) echo.MiddlewareFunc {
 	return func(next echo.Handler) echo.Handler {
 		return echo.HandlerFunc(func(c echo.Context) error {
 			ctx := c.Request().Object().(*fasthttp.RequestCtx)
 			if !c.Response().Committed() {
-				m(ctx)
+				h(ctx)
 			}
 			return next.Handle(c)
 		})
