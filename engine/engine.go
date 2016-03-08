@@ -8,10 +8,8 @@ import (
 )
 
 type (
-	HandlerFunc func(Request, Response)
-
 	Engine interface {
-		SetHandler(HandlerFunc)
+		SetHandler(Handler)
 		SetLogger(*log.Logger)
 		Start()
 	}
@@ -67,4 +65,14 @@ type (
 		ReadTimeout  time.Duration
 		WriteTimeout time.Duration
 	}
+
+	Handler interface {
+		ServeHTTP(Request, Response)
+	}
+
+	HandlerFunc func(Request, Response)
 )
+
+func (h HandlerFunc) ServeHTTP(req Request, res Response) {
+	h.ServeHTTP(req, res)
+}

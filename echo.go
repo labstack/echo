@@ -426,7 +426,7 @@ func (e *Echo) ServeHTTP(req engine.Request, res engine.Response) {
 
 // Run starts the HTTP engine.
 func (e *Echo) Run(eng engine.Engine) {
-	eng.SetHandler(e.ServeHTTP)
+	eng.SetHandler(e)
 	eng.SetLogger(e.logger)
 	eng.Start()
 }

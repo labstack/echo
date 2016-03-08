@@ -43,9 +43,6 @@ func TestContext(t *testing.T) {
 	// Response
 	assert.NotNil(t, c.Response())
 
-	// Socket
-	assert.Nil(t, c.Socket())
-
 	// ParamNames
 	c.Object().pnames = []string{"uid", "fid"}
 	assert.EqualValues(t, []string{"uid", "fid"}, c.ParamNames())

@@ -8,11 +8,11 @@ menu:
 
 ### Migrating from v1
 
-#### What got changed?
+#### Change log
 
 - Echo now uses `Engine` interface to abstract `HTTP` server implementation, allowing
-us to use HTTP servers beyond Go standard library, supports standard HTTP server and [FastHTTP](https://github.com/valyala/fasthttp).
-- Context, Request and Response as an interface, enabling adding your own functions and easy testing. [More...](https://github.com/labstack/echo/issues/146)
+us to use HTTP servers beyond the standard library. It currently supports standard HTTP server and [FastHTTP](https://github.com/valyala/fasthttp).
+- Context, Request and Response are converted to interfaces. [More...](https://github.com/labstack/echo/issues/146)
 - Moved API's for serving static files into middleware.
     - `Echo#Index`
     - `Echo#Favicon`
@@ -29,35 +29,3 @@ it can be achieved via middleware.
 - Ability to define middleware at route level.
 
 #### How?
-
-##### v1 Handler
-
-```go
-func welcome(c *echo.Context) error {
-	return c.String(http.StatusOK, "Welcome!\n")
-}
-```
-
-##### v2 Handler
-
-```go
-func welcome(echo.HandlerFunc(c echo.Context) error {
-	return c.String(http.StatusOK, "Welcome!\n")
-})
-```
-
-##### v1 Middleware
-
-```go
-func welcome(c *echo.Context) error {
-	return c.String(http.StatusOK, "Welcome!\n")
-}
-```
-
-v2
-
-```go
-func welcome(echo.HandlerFunc(c echo.Context) error {
-	return c.String(http.StatusOK, "Welcome!\n")
-})
-```

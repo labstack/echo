@@ -12,7 +12,7 @@ type (
 	Server struct {
 		*http.Server
 		config  *engine.Config
-		handler engine.HandlerFunc
+		handler engine.Handler
 		pool    *Pool
 		logger  *log.Logger
 	}
@@ -65,15 +65,15 @@ func NewConfig(c *engine.Config) (s *Server) {
 				},
 			},
 		},
-		handler: func(req engine.Request, res engine.Response) {
+		handler: engine.HandlerFunc(func(req engine.Request, res engine.Response) {
 			s.logger.Fatal("handler not set")
-		},
+		}),
 		logger: log.New("echo"),
 	}
 	return
 }
 
-func (s *Server) SetHandler(h engine.HandlerFunc) {
+func (s *Server) SetHandler(h engine.Handler) {
 	s.handler = h
 }
 
@@ -108,7 +108,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	resHdr.reset(w.Header())
 	res.reset(w, resHdr)
 
-	s.handler(req, res)
+	s.handler.ServeHTTP(req, res)
 
 	s.pool.request.Put(req)
 	s.pool.header.Put(reqHdr)
