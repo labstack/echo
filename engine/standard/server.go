@@ -14,8 +14,8 @@ type (
 		server  *http.Server
 		config  *engine.Config
 		handler engine.Handler
-		pool    *Pool
 		logger  *log.Logger
+		pool    *Pool
 	}
 
 	Pool struct {
@@ -42,7 +42,10 @@ func NewWithTLS(addr, certfile, keyfile string) *Server {
 
 func NewWithConfig(c *engine.Config) (s *Server) {
 	s = &Server{
-		server: new(http.Server),
+		server: &http.Server{
+			Addr:    c.Address,
+			Handler: s,
+		},
 		config: c,
 		pool: &Pool{
 			request: sync.Pool{
@@ -83,8 +86,6 @@ func (s *Server) SetLogger(l *log.Logger) {
 }
 
 func (s *Server) Start() {
-	s.server.Addr = s.config.Address
-	s.server.Handler = s
 	certfile := s.config.TLSCertfile
 	keyfile := s.config.TLSKeyfile
 	if certfile != "" && keyfile != "" {

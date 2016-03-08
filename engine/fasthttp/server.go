@@ -15,8 +15,8 @@ type (
 	Server struct {
 		config  *engine.Config
 		handler engine.Handler
-		pool    *Pool
 		logger  *log.Logger
+		pool    *Pool
 	}
 
 	Pool struct {
