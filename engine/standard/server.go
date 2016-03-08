@@ -42,10 +42,7 @@ func NewWithTLS(addr, certfile, keyfile string) *Server {
 
 func NewWithConfig(c *engine.Config) (s *Server) {
 	s = &Server{
-		server: &http.Server{
-			Addr:    c.Address,
-			Handler: s,
-		},
+		server: new(http.Server),
 		config: c,
 		pool: &Pool{
 			request: sync.Pool{
@@ -74,6 +71,8 @@ func NewWithConfig(c *engine.Config) (s *Server) {
 		}),
 		logger: log.New("echo"),
 	}
+	s.server.Addr = c.Address
+	s.server.Handler = s
 	return
 }
 
