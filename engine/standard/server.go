@@ -11,7 +11,7 @@ import (
 
 type (
 	Server struct {
-		*http.Server
+		server  *http.Server
 		config  *engine.Config
 		handler engine.Handler
 		pool    *Pool
@@ -28,21 +28,21 @@ type (
 
 func New(addr string) *Server {
 	c := &engine.Config{Address: addr}
-	return NewConfig(c)
+	return NewWithConfig(c)
 }
 
-func NewTLS(addr, certfile, keyfile string) *Server {
+func NewWithTLS(addr, certfile, keyfile string) *Server {
 	c := &engine.Config{
 		Address:     addr,
 		TLSCertfile: certfile,
 		TLSKeyfile:  keyfile,
 	}
-	return NewConfig(c)
+	return NewWithConfig(c)
 }
 
-func NewConfig(c *engine.Config) (s *Server) {
+func NewWithConfig(c *engine.Config) (s *Server) {
 	s = &Server{
-		Server: new(http.Server),
+		server: new(http.Server),
 		config: c,
 		pool: &Pool{
 			request: sync.Pool{
@@ -83,14 +83,14 @@ func (s *Server) SetLogger(l *log.Logger) {
 }
 
 func (s *Server) Start() {
-	s.Addr = s.config.Address
-	s.Handler = s
+	s.server.Addr = s.config.Address
+	s.server.Handler = s
 	certfile := s.config.TLSCertfile
 	keyfile := s.config.TLSKeyfile
 	if certfile != "" && keyfile != "" {
-		s.logger.Fatal(s.ListenAndServeTLS(certfile, keyfile))
+		s.logger.Fatal(s.server.ListenAndServeTLS(certfile, keyfile))
 	} else {
-		s.logger.Fatal(s.ListenAndServe())
+		s.logger.Fatal(s.server.ListenAndServe())
 	}
 }
 
@@ -116,6 +116,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.pool.url.Put(reqURL)
 	s.pool.response.Put(res)
 	s.pool.header.Put(resHdr)
+}
+
+func (s *Server) Server() *http.Server {
+	return s.server
 }
 
 // WrapHandler wraps `http.Handler` into `echo.HandlerFunc`.
