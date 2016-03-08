@@ -49,9 +49,10 @@ better performance.
 *Example*
 
 ```go
-e.Get("/users/:name", func(c *echo.Context) error {
+e.Get("/users/:name/*", func(c *echo.Context) error {
 	// By name
 	name := c.Param("name")
+    rest := c.Param("_*") // everything captured by the wildcard
 
 	// By index
 	name := c.P(0)
