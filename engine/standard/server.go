@@ -28,19 +28,19 @@ type (
 
 func New(addr string) *Server {
 	c := &engine.Config{Address: addr}
-	return NewWithConfig(c)
+	return NewFromConfig(c)
 }
 
-func NewWithTLS(addr, certfile, keyfile string) *Server {
+func NewFromTLS(addr, certfile, keyfile string) *Server {
 	c := &engine.Config{
 		Address:     addr,
 		TLSCertfile: certfile,
 		TLSKeyfile:  keyfile,
 	}
-	return NewWithConfig(c)
+	return NewFromConfig(c)
 }
 
-func NewWithConfig(c *engine.Config) (s *Server) {
+func NewFromConfig(c *engine.Config) (s *Server) {
 	s = &Server{
 		server: new(http.Server),
 		config: c,
