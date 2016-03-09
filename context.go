@@ -325,4 +325,5 @@ func (c *context) reset(req engine.Request, res engine.Response) {
 	c.response = res
 	c.query = nil
 	c.store = nil
+	c.handler = notFoundHandler
 }

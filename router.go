@@ -282,8 +282,6 @@ func (n *node) check405() HandlerFunc {
 
 func (r *Router) Find(method, path string, context Context) {
 	ctx := context.Object()
-	// h = notFoundHandler
-	// e = r.echo
 	cn := r.tree // Current node as root
 
 	var (

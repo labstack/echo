@@ -25,11 +25,6 @@ const (
 func BasicAuth(fn BasicAuthFunc, options ...*BasicAuthOptions) echo.MiddlewareFunc {
 	return func(next echo.Handler) echo.Handler {
 		return echo.HandlerFunc(func(c echo.Context) error {
-			// Skip WebSocket
-			if (c.Request().Header().Get(echo.Upgrade)) == echo.WebSocket {
-				return nil
-			}
-
 			auth := c.Request().Header().Get(echo.Authorization)
 			l := len(basic)
 

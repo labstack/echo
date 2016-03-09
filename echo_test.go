@@ -222,22 +222,22 @@ func TestEchoGroup(t *testing.T) {
 			return h.Handle(c)
 		})
 	}))
-	g1.Get("/", h)
+	g1.Get("", h)
 
 	// Nested groups
 	g2 := e.Group("/group2")
 	g3 := g2.Group("/group3")
-	g3.Get("/", h)
+	g3.Get("", h)
 
 	request(GET, "/users", e)
 	assert.Equal(t, "0", buf.String())
 
 	buf.Reset()
-	request(GET, "/group1/", e)
+	request(GET, "/group1", e)
 	assert.Equal(t, "01", buf.String())
 
 	buf.Reset()
-	c, _ := request(GET, "/group2/group3/", e)
+	c, _ := request(GET, "/group2/group3", e)
 	assert.Equal(t, http.StatusOK, c)
 }
 

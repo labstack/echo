@@ -61,7 +61,7 @@ func (g *Group) Match(methods []string, path string, handler Handler, middleware
 }
 
 func (g *Group) Group(prefix string, m ...Middleware) *Group {
-	return g.echo.Group(prefix, m...)
+	return g.echo.Group(g.prefix+prefix, m...)
 }
 
 func (g *Group) add(method, path string, handler Handler, middleware ...Middleware) {

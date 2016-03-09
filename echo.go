@@ -141,12 +141,6 @@ const (
 	WWWAuthenticate    = "WWW-Authenticate"
 	XForwardedFor      = "X-Forwarded-For"
 	XRealIP            = "X-Real-IP"
-
-	//-----------
-	// Protocols
-	//-----------
-
-	WebSocket = "websocket"
 )
 
 var (
