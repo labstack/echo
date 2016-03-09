@@ -53,8 +53,4 @@ func TestBasicAuth(t *testing.T) {
 	he = h.Handle(c).(*echo.HTTPError)
 	assert.Equal(t, http.StatusUnauthorized, he.Code())
 	assert.Equal(t, basic+" realm=Restricted", res.Header().Get(echo.WWWAuthenticate))
-
-	// WebSocket
-	c.Request().Header().Set(echo.Upgrade, echo.WebSocket)
-	assert.NoError(t, h.Handle(c))
 }

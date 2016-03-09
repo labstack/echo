@@ -171,7 +171,7 @@ func (r *Router) insert(method, path string, h Handler, t kind, ppath string, pn
 			// Node already exists
 			if h != nil {
 				cn.addHandler(method, h)
-				cn.ppath = path
+				cn.ppath = ppath
 				cn.pnames = pnames
 			}
 		}
