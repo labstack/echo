@@ -548,6 +548,11 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h, e := e.router.Find(r.Method, r.URL.Path, c)
 	c.reset(r, w, e)
 
+	// Execute lifecycle function(s)
+	for i := len(preRequestHandlerFuncs) - 1; i >= 0; i-- {
+		preRequestHandlerFuncs[i](c)
+	}
+
 	// Chain middleware with handler in the end
 	for i := len(e.middleware) - 1; i >= 0; i-- {
 		h = e.middleware[i](h)
