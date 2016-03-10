@@ -60,6 +60,9 @@ func (r *Response) WriteHeader(code int) {
 // Additionally, Write will increment the size of the current response.
 // See [http.Response.Write](https://golang.org/pkg/net/http/#Response.Write)
 func (r *Response) Write(b []byte) (n int, err error) {
+	if !r.committed {
+		r.WriteHeader(200)
+	}
 	n, err = r.writer.Write(b)
 	r.size += int64(n)
 	return n, err
