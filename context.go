@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"net/http"
 	"path/filepath"
+	"strconv"
 
 	"net/url"
 
@@ -132,6 +133,7 @@ func (c *Context) Render(code int, name string, data interface{}) (err error) {
 		return
 	}
 	c.response.Header().Set(ContentType, TextHTMLCharsetUTF8)
+	c.response.Header().Set(ContentLength, strconv.Itoa(buf.Len()))
 	c.response.WriteHeader(code)
 	c.response.Write(buf.Bytes())
 	return
@@ -139,17 +141,21 @@ func (c *Context) Render(code int, name string, data interface{}) (err error) {
 
 // HTML sends an HTTP response with status code.
 func (c *Context) HTML(code int, html string) (err error) {
+	b := []byte(html)
 	c.response.Header().Set(ContentType, TextHTMLCharsetUTF8)
+	c.response.Header().Set(ContentLength, strconv.Itoa(len(b)))
 	c.response.WriteHeader(code)
-	c.response.Write([]byte(html))
+	c.response.Write(b)
 	return
 }
 
 // String sends a string response with status code.
 func (c *Context) String(code int, s string) (err error) {
+	b := []byte(s)
 	c.response.Header().Set(ContentType, TextPlainCharsetUTF8)
+	c.response.Header().Set(ContentLength, strconv.Itoa(len(b)))
 	c.response.WriteHeader(code)
-	c.response.Write([]byte(s))
+	c.response.Write(b)
 	return
 }
 
@@ -174,6 +180,7 @@ func (c *Context) JSONIndent(code int, i interface{}, prefix string, indent stri
 // JSONBlob sends a JSON blob response with status code.
 func (c *Context) JSONBlob(code int, b []byte) (err error) {
 	c.response.Header().Set(ContentType, ApplicationJSONCharsetUTF8)
+	c.response.Header().Set(ContentLength, strconv.Itoa(len(b)))
 	c.response.WriteHeader(code)
 	c.response.Write(b)
 	return
@@ -186,9 +193,14 @@ func (c *Context) JSONP(code int, callback string, i interface{}) (err error) {
 	if err != nil {
 		return err
 	}
+	callbackBuff := []byte(callback)
+	length := len(b) + len(callbackBuff) + 3
 	c.response.Header().Set(ContentType, ApplicationJavaScriptCharsetUTF8)
+	c.response.Header().Set(ContentLength, strconv.Itoa(length))
+
 	c.response.WriteHeader(code)
-	c.response.Write([]byte(callback + "("))
+	c.response.Write(callbackBuff)
+	c.response.Write([]byte("("))
 	c.response.Write(b)
 	c.response.Write([]byte(");"))
 	return
@@ -200,9 +212,11 @@ func (c *Context) XML(code int, i interface{}) (err error) {
 	if err != nil {
 		return err
 	}
+	h := []byte(xml.Header)
+	c.response.Header().Set(ContentLength, strconv.Itoa(len(h)+len(b)))
 	c.response.Header().Set(ContentType, ApplicationXMLCharsetUTF8)
 	c.response.WriteHeader(code)
-	c.response.Write([]byte(xml.Header))
+	c.response.Write(h)
 	c.response.Write(b)
 	return
 }
@@ -218,9 +232,11 @@ func (c *Context) XMLIndent(code int, i interface{}, prefix string, indent strin
 }
 
 func (c *Context) xml(code int, b []byte) {
+	h := []byte(xml.Header)
+	c.response.Header().Set(ContentLength, strconv.Itoa(len(h)+len(b)))
 	c.response.Header().Set(ContentType, ApplicationXMLCharsetUTF8)
 	c.response.WriteHeader(code)
-	c.response.Write([]byte(xml.Header))
+	c.response.Write(h)
 	c.response.Write(b)
 }
 
