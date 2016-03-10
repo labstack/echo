@@ -6,11 +6,11 @@ import "github.com/valyala/fasthttp"
 
 type (
 	RequestHeader struct {
-		header fasthttp.RequestHeader
+		fasthttp.RequestHeader
 	}
 
 	ResponseHeader struct {
-		header fasthttp.ResponseHeader
+		fasthttp.ResponseHeader
 	}
 )
 
@@ -19,23 +19,19 @@ func (h *RequestHeader) Add(key, val string) {
 }
 
 func (h *RequestHeader) Del(key string) {
-	h.header.Del(key)
+	h.RequestHeader.Del(key)
 }
 
 func (h *RequestHeader) Get(key string) string {
-	return string(h.header.Peek(key))
+	return string(h.Peek(key))
 }
 
 func (h *RequestHeader) Set(key, val string) {
-	h.header.Set(key, val)
-}
-
-func (h *RequestHeader) Object() interface{} {
-	return h.header
+	h.RequestHeader.Set(key, val)
 }
 
 func (h *RequestHeader) reset(hdr fasthttp.RequestHeader) {
-	h.header = hdr
+	h.RequestHeader = hdr
 }
 
 func (h *ResponseHeader) Add(key, val string) {
@@ -43,21 +39,17 @@ func (h *ResponseHeader) Add(key, val string) {
 }
 
 func (h *ResponseHeader) Del(key string) {
-	h.header.Del(key)
+	h.ResponseHeader.Del(key)
 }
 
 func (h *ResponseHeader) Get(key string) string {
-	return string(h.header.Peek(key))
+	return string(h.Peek(key))
 }
 
 func (h *ResponseHeader) Set(key, val string) {
-	h.header.Set(key, val)
-}
-
-func (h *ResponseHeader) Object() interface{} {
-	return h.header
+	h.ResponseHeader.Set(key, val)
 }
 
 func (h *ResponseHeader) reset(hdr fasthttp.ResponseHeader) {
-	h.header = hdr
+	h.ResponseHeader = hdr
 }

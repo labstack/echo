@@ -13,7 +13,7 @@ import (
 
 type (
 	Response struct {
-		context   *fasthttp.RequestCtx
+		*fasthttp.RequestCtx
 		header    engine.Header
 		status    int
 		size      int64
@@ -25,15 +25,11 @@ type (
 
 func NewResponse(c *fasthttp.RequestCtx) *Response {
 	return &Response{
-		context: c,
-		header:  &ResponseHeader{c.Response.Header},
-		writer:  c,
-		logger:  log.New("test"),
+		RequestCtx: c,
+		header:     &ResponseHeader{c.Response.Header},
+		writer:     c,
+		logger:     log.New("test"),
 	}
-}
-
-func (r *Response) Object() interface{} {
-	return r.context
 }
 
 func (r *Response) Header() engine.Header {
@@ -46,12 +42,12 @@ func (r *Response) WriteHeader(code int) {
 		return
 	}
 	r.status = code
-	r.context.SetStatusCode(code)
+	r.SetStatusCode(code)
 	r.committed = true
 }
 
 func (r *Response) Write(b []byte) (int, error) {
-	return r.context.Write(b)
+	return r.RequestCtx.Write(b)
 }
 
 func (r *Response) Status() int {
@@ -66,16 +62,16 @@ func (r *Response) Committed() bool {
 	return r.committed
 }
 
-func (r *Response) SetWriter(w io.Writer) {
-	r.writer = w
-}
-
-func (r *Response) Writer() io.Writer {
-	return r.writer
-}
+// func (r *Response) SetWriter(w io.Writer) {
+// 	r.writer = w
+// }
+//
+// func (r *Response) Writer() io.Writer {
+// 	return r.writer
+// }
 
 func (r *Response) reset(c *fasthttp.RequestCtx, h engine.Header) {
-	r.context = c
+	r.RequestCtx = c
 	r.header = h
 	r.status = http.StatusOK
 	r.size = 0

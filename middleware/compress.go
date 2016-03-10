@@ -1,11 +1,9 @@
 package middleware
 
 import (
-	"bufio"
 	"compress/gzip"
 	"io"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"strings"
 	"sync"
@@ -19,9 +17,9 @@ type (
 		level int
 	}
 
-	gzipWriter struct {
-		io.Writer
+	gzipResponseWriter struct {
 		engine.Response
+		io.Writer
 	}
 )
 
@@ -33,15 +31,15 @@ func Gzip(options ...*GzipOptions) echo.MiddlewareFunc {
 		return echo.HandlerFunc(func(c echo.Context) error {
 			c.Response().Header().Add(echo.Vary, echo.AcceptEncoding)
 			if strings.Contains(c.Request().Header().Get(echo.AcceptEncoding), scheme) {
-				w := writerPool.Get().(*gzip.Writer)
-				w.Reset(c.Response().Writer())
+				w := pool.Get().(*gzip.Writer)
+				w.Reset(c.Response())
 				defer func() {
 					w.Close()
-					writerPool.Put(w)
+					pool.Put(w)
 				}()
-				gw := gzipWriter{Writer: w, Response: c.Response()}
+				gw := gzipResponseWriter{Response: c.Response(), Writer: w}
 				c.Response().Header().Set(echo.ContentEncoding, scheme)
-				c.Response().SetWriter(gw)
+				c.SetResponse(gw)
 			}
 			if err := next.Handle(c); err != nil {
 				c.Error(err)
@@ -51,26 +49,14 @@ func Gzip(options ...*GzipOptions) echo.MiddlewareFunc {
 	}
 }
 
-func (w gzipWriter) Write(b []byte) (int, error) {
-	if w.Header().Get(echo.ContentType) == "" {
-		w.Header().Set(echo.ContentType, http.DetectContentType(b))
+func (g gzipResponseWriter) Write(b []byte) (int, error) {
+	if g.Header().Get(echo.ContentType) == "" {
+		g.Header().Set(echo.ContentType, http.DetectContentType(b))
 	}
-	return w.Writer.Write(b)
+	return g.Writer.Write(b)
 }
 
-func (w gzipWriter) Flush() error {
-	return w.Writer.(*gzip.Writer).Flush()
-}
-
-func (w gzipWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	return w.Response.(http.Hijacker).Hijack()
-}
-
-func (w *gzipWriter) CloseNotify() <-chan bool {
-	return w.Response.(http.CloseNotifier).CloseNotify()
-}
-
-var writerPool = sync.Pool{
+var pool = sync.Pool{
 	New: func() interface{} {
 		return gzip.NewWriter(ioutil.Discard)
 	},

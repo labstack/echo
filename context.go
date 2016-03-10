@@ -26,6 +26,7 @@ type (
 	Context interface {
 		netContext.Context
 		Request() engine.Request
+		SetResponse(engine.Response)
 		Response() engine.Response
 		Path() string
 		P(int) string
@@ -110,7 +111,12 @@ func (c *context) Request() engine.Request {
 	return c.request
 }
 
-// Response returns *Response.
+// SetResponse sets `engine.Response`.
+func (c *context) SetResponse(r engine.Response) {
+	c.response = r
+}
+
+// Response returns `engine.Response`.
 func (c *context) Response() engine.Response {
 	return c.response
 }

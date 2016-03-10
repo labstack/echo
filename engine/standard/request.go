@@ -9,22 +9,22 @@ import (
 
 type (
 	Request struct {
-		request *http.Request
-		url     engine.URL
-		header  engine.Header
+		*http.Request
+		url    engine.URL
+		header engine.Header
 	}
 )
 
 func NewRequest(r *http.Request) *Request {
 	return &Request{
-		request: r,
-		url:     &URL{url: r.URL},
+		Request: r,
+		url:     &URL{URL: r.URL},
 		header:  &Header{r.Header},
 	}
 }
 
 func (r *Request) TLS() bool {
-	return r.request.TLS != nil
+	return r.Request.TLS != nil
 }
 
 func (r *Request) Scheme() string {
@@ -35,7 +35,7 @@ func (r *Request) Scheme() string {
 }
 
 func (r *Request) Host() string {
-	return r.request.Host
+	return r.Request.Host
 }
 
 func (r *Request) URL() engine.URL {
@@ -59,31 +59,27 @@ func (r *Request) Header() engine.Header {
 // }
 
 func (r *Request) RemoteAddress() string {
-	return r.request.RemoteAddr
+	return r.RemoteAddr
 }
 
 func (r *Request) Method() string {
-	return r.request.Method
+	return r.Request.Method
 }
 
 func (r *Request) URI() string {
-	return r.request.RequestURI
+	return r.RequestURI
 }
 
 func (r *Request) Body() io.ReadCloser {
-	return r.request.Body
+	return r.Request.Body
 }
 
 func (r *Request) FormValue(name string) string {
-	return r.request.FormValue(name)
-}
-
-func (r *Request) Object() interface{} {
-	return r.request
+	return r.Request.FormValue(name)
 }
 
 func (r *Request) reset(req *http.Request, h engine.Header, u engine.URL) {
-	r.request = req
+	r.Request = req
 	r.header = h
 	r.url = u
 }

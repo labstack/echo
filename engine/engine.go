@@ -30,7 +30,6 @@ type (
 		Method() string
 		Body() io.ReadCloser
 		FormValue(string) string
-		Object() interface{}
 	}
 
 	// Response defines an interface for HTTP response.
@@ -41,9 +40,8 @@ type (
 		Status() int
 		Size() int64
 		Committed() bool
-		SetWriter(io.Writer)
-		Writer() io.Writer
-		Object() interface{}
+		// SetWriter(io.Writer)
+		// Writer() io.Writer
 	}
 
 	// Header defines an interface for HTTP header.
@@ -52,7 +50,6 @@ type (
 		Del(string)
 		Get(string) string
 		Set(string, string)
-		Object() interface{}
 	}
 
 	// URL defines an interface for HTTP request url.
@@ -60,7 +57,6 @@ type (
 		SetPath(string)
 		Path() string
 		QueryValue(string) string
-		Object() interface{}
 	}
 
 	// Config defines engine configuration.

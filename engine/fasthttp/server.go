@@ -126,7 +126,7 @@ func (s *Server) Start() {
 // WrapHandler wraps `fasthttp.RequestHandler` into `echo.HandlerFunc`.
 func WrapHandler(h fasthttp.RequestHandler) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		ctx := c.Request().Object().(*fasthttp.RequestCtx)
+		ctx := c.Request().(*Request).RequestCtx
 		h(ctx)
 		return nil
 	}
@@ -136,7 +136,7 @@ func WrapHandler(h fasthttp.RequestHandler) echo.HandlerFunc {
 func WrapMiddleware(h fasthttp.RequestHandler) echo.MiddlewareFunc {
 	return func(next echo.Handler) echo.Handler {
 		return echo.HandlerFunc(func(c echo.Context) error {
-			ctx := c.Request().Object().(*fasthttp.RequestCtx)
+			ctx := c.Request().(*Request).RequestCtx
 			h(ctx)
 			return next.Handle(c)
 		})
