@@ -1,6 +1,6 @@
 # *NOTICE*
 
-#### Soon master branch, website/docs and godoc will be pointing to v2 branch, if you want to continue using v1, use a package manager to get a stable v1 release or latest commit, you can use https://github.com/Masterminds/glide, it's nice. You can also use `http://labix.org/gopkg.in` like `go get gopkg.in/labstack/echo.v1`. It is advisable to migrate to v2.
+#### Soon master branch, website/docs and godoc will be pointing to v2 branch, if you want to continue using v1, use a package manager (https://github.com/Masterminds/glide, it's nice!) to get a stable v1 release or latest commit or you can use `https://gopkg.in` like `go get gopkg.in/labstack/echo.v1`. It is advisable to migrate to v2.
 
 # [Echo](http://labstack.com/echo) [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/labstack/echo) [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/labstack/echo/master/LICENSE) [![Build Status](http://img.shields.io/travis/labstack/echo.svg?style=flat-square)](https://travis-ci.org/labstack/echo) [![Coverage Status](http://img.shields.io/coveralls/labstack/echo.svg?style=flat-square)](https://coveralls.io/r/labstack/echo) [![Join the chat at https://gitter.im/labstack/echo](https://img.shields.io/badge/gitter-join%20chat-brightgreen.svg?style=flat-square)](https://gitter.im/labstack/echo)
 
