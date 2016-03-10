@@ -3,16 +3,16 @@ title: Subdomains
 menu:
   side:
     parent: recipes
-    weight: 10 
+    weight: 10
 ---
 
-`server.go`
+`main.go`
 
-{{< embed "subdomains/server.go" >}}
+{{< embed "subdomains/main.go" >}}
 
 ### Maintainers
 
 - [axdg](https://github.com/axdg)
-- [vishr](https://github.com/axdg)
+- [vishr](https://github.com/vishr)
 
-### [Source Code](https://github.com/vishr/echo-recipes/blob/master/v2/subdomains)
+### [Source Code]({{< source "subdomains" >}})

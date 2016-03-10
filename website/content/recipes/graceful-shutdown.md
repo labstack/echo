@@ -8,15 +8,15 @@ menu:
 
 ### With [grace](https://github.com/facebookgo/grace)
 
-`server.go`
+`main.go`
 
-{{< embed "graceful-shutdown/grace/server.go" >}}
+{{< embed "graceful-shutdown/grace/main.go" >}}
 
 ### With [graceful](https://github.com/tylerb/graceful)
 
-`server.go`
+`main.go`
 
-{{< embed "graceful-shutdown/graceful/server.go" >}}
+{{< embed "graceful-shutdown/graceful/main.go" >}}
 
 ### Maintainers
 
@@ -24,6 +24,5 @@ menu:
 
 ### Source Code
 
-[graceful](https://github.com/vishr/echo-recipes/blob/master/v2/graceful-shutdown/graceful)
-
-[grace](https://github.com/vishr/echo-recipes/blob/master/v2/graceful-shutdown/grace)
+- [graceful]({{< source "graceful-shutdown/graceful" >}})
+- [grace]({{< source "graceful-shutdown/grace" >}})

@@ -10,7 +10,7 @@ menu:
 
 `server.go`
 
-{{< embed "website/server.go" >}}
+{{< embed "website/main.go" >}}
 
 ### Client
 
@@ -22,4 +22,4 @@ menu:
 
 - [vishr](https://github.com/vishr)
 
-### [Source Code](https://github.com/vishr/echo-recipes/blob/master/v2/website)
+### [Source Code]({{< source "website" >}})

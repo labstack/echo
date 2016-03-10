@@ -11,9 +11,9 @@ menu:
 
 ### Server
 
-`server.go`
+`main.go`
 
-{{< embed "streaming-response/server.go" >}}
+{{< embed "streaming-response/main.go" >}}
 
 ### Client
 
@@ -35,4 +35,4 @@ $ curl localhost:1323
 
 - [vishr](https://github.com/vishr)
 
-### [Source Code](https://github.com/vishr/echo-recipes/blob/master/v2/streaming-response)
+### [Source Code]({{< source "streaming-response" >}})

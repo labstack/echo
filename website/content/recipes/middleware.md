@@ -17,4 +17,4 @@ menu:
 
 - [vishr](https://github.com/vishr)
 
-### [Source Code](https://github.com/vishr/echo-recipes/blob/master/v2/middleware)
+### [Source Code]({{< source "middleware" >}})

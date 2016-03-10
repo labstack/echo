@@ -18,11 +18,11 @@ expects the token to be present in an Authorization HTTP header using the method
 or even the request body. We will use the HS236 signing method, note that several
 other algorithms are available.
 
-`server.go`
+`main.go`
 
-{{< embed "jwt-authentication/server.go" >}}
+{{< embed "jwt-authentication/main.go" >}}
 
-Run `server.go` and making a request to the root path `/` returns a 200 OK response,
+Run `main.go` and making a request to the root path `/` returns a 200 OK response,
 as this route does not use our JWT authentication middleware. Sending requests to
 `/restricted` (our authenticated route) with either no Authorization header or invalid
 Authorization headers / tokens will return 401 Unauthorized.
@@ -55,4 +55,4 @@ $  curl localhost:1323/restricted -H "Authorization: Bearer <token>" => Access g
 
 - [axdg](https://github.com/axdg)
 
-### [Source Code](https://github.com/vishr/echo-recipes/blob/master/v2/jwt-authentication)
+### [Source Code]({{< source "jwt-authentication" >}})

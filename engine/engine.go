@@ -8,12 +8,14 @@ import (
 )
 
 type (
+	// Engine defines an interface for HTTP server.
 	Engine interface {
 		SetHandler(Handler)
 		SetLogger(*log.Logger)
 		Start()
 	}
 
+	// Request defines an interface for HTTP request.
 	Request interface {
 		TLS() bool
 		Scheme() string
@@ -31,6 +33,7 @@ type (
 		Object() interface{}
 	}
 
+	// Response defines an interface for HTTP response.
 	Response interface {
 		Header() Header
 		WriteHeader(int)
@@ -43,6 +46,7 @@ type (
 		Object() interface{}
 	}
 
+	// Header defines an interface for HTTP header.
 	Header interface {
 		Add(string, string)
 		Del(string)
@@ -51,6 +55,7 @@ type (
 		Object() interface{}
 	}
 
+	// URL defines an interface for HTTP request url.
 	URL interface {
 		SetPath(string)
 		Path() string
@@ -58,6 +63,7 @@ type (
 		Object() interface{}
 	}
 
+	// Config defines engine configuration.
 	Config struct {
 		Address      string
 		TLSCertfile  string

@@ -10,7 +10,7 @@ menu:
 
 `server.go`
 
-{{< embed "websocket/server.go" >}}
+{{< embed "websocket/main.go" >}}
 
 ### Client
 
@@ -44,4 +44,4 @@ Hello, Server!
 
 - [vishr](https://github.com/vishr)
 
-### [Source Code](https://github.com/vishr/echo-recipes/blob/master/v2/websocket)
+### [Source Code]({{< source "websocket" >}})

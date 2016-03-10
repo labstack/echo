@@ -132,16 +132,16 @@ func WrapHandler(h http.Handler) echo.HandlerFunc {
 	}
 }
 
-// WrapMiddleware wraps `http.Handler` into `echo.MiddlewareFunc`
-func WrapMiddleware(h http.Handler) echo.MiddlewareFunc {
+// WrapMiddleware wraps `func(http.Handler) http.Handler` into `echo.MiddlewareFunc`
+func WrapMiddleware(m func(http.Handler) http.Handler) echo.MiddlewareFunc {
 	return func(next echo.Handler) echo.Handler {
-		return echo.HandlerFunc(func(c echo.Context) error {
+		return echo.HandlerFunc(func(c echo.Context) (err error) {
 			w := c.Response().Object().(http.ResponseWriter)
 			r := c.Request().Object().(*http.Request)
-			if !c.Response().Committed() {
-				h.ServeHTTP(w, r)
-			}
-			return next.Handle(c)
+			m(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				err = next.Handle(c)
+			})).ServeHTTP(w, r)
+			return
 		})
 	}
 }

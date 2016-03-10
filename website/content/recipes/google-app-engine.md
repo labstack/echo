@@ -132,4 +132,4 @@ but is outside the scope of this recipe.
 
 - [CaptainCodeman](https://github.com/CaptainCodeman)
 
-### [Source Code](https://github.com/vishr/echo-recipes/blob/master/v2/google-app-engine)
+### [Source Code]({{< source "google-app-engine" >}})

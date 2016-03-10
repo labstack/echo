@@ -11,9 +11,9 @@ menu:
 
 ### Server
 
-`server.go`
+`main.go`
 
-{{< embed "streaming-file-upload/server.go" >}}
+{{< embed "streaming-file-upload/main.go" >}}
 
 ### Client
 
@@ -25,4 +25,4 @@ menu:
 
 - [vishr](https://github.com/vishr)
 
-### [Source Code](https://github.com/vishr/echo-recipes/blob/master/v2/streaming-file-upload)
+### [Source Code]({{< source "streaming-file-upload" >}})

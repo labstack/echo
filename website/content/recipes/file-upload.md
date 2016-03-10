@@ -36,9 +36,9 @@ if _, err = io.Copy(dst, file); err != nil {
 
 ### Server
 
-`server.go`
+`main.go`
 
-{{< embed "file-upload/server.go" >}}
+{{< embed "file-upload/main.go" >}}
 
 ### Client
 
@@ -50,4 +50,4 @@ if _, err = io.Copy(dst, file); err != nil {
 
 - [vishr](https://github.com/vishr)
 
-### [Source Code](https://github.com/vishr/echo-recipes/blob/master/v2/file-upload)
+### [Source Code]({{< source "file-upload" >}})
