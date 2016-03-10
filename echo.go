@@ -36,6 +36,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
+	"net"
 	"net/http"
 	"path"
 	"path/filepath"
@@ -569,7 +571,11 @@ func (e *Echo) Server(addr string) *http.Server {
 
 // Run runs a server.
 func (e *Echo) Run(addr string) {
-	e.run(e.Server(addr))
+	if strings.HasPrefix(addr, "unix://") {
+		e.run_unix(e.Server(addr))
+	} else {
+		e.run(e.Server(addr))
+	}
 }
 
 // RunTLS runs a server with TLS configuration.
@@ -579,7 +585,11 @@ func (e *Echo) RunTLS(addr, certfile, keyfile string) {
 
 // RunServer runs a custom server.
 func (e *Echo) RunServer(s *http.Server) {
-	e.run(s)
+	if strings.HasPrefix(s.Addr, "unix://") {
+		e.run_unix(s)
+	} else { 
+		e.run(s)
+	}
 }
 
 // RunTLSServer runs a custom server with TLS configuration.
@@ -587,6 +597,7 @@ func (e *Echo) RunTLSServer(s *http.Server, crtFile, keyFile string) {
 	e.run(s, crtFile, keyFile)
 }
 
+// run TCP based server.
 func (e *Echo) run(s *http.Server, files ...string) {
 	s.Handler = e
 	if len(files) == 0 {
@@ -595,6 +606,21 @@ func (e *Echo) run(s *http.Server, files ...string) {
 		e.logger.Fatal(s.ListenAndServeTLS(files[0], files[1]))
 	} else {
 		e.logger.Fatal("invalid TLS configuration")
+	}
+}
+
+// run Unix-socket based server.
+func (e *Echo) run_unix(s *http.Server) {
+	s.Handler = e
+	if s.Addr != "" {
+		addr := strings.TrimPrefix(s.Addr, "unix://")
+		ln, err := net.Listen("unix", addr)
+		if err != nil {
+			e.logger.Fatal("Failed to listen on unix-socket: '" + s.Addr + "'")
+		}
+		e.logger.Fatal(s.Serve(ln.(*net.UnixListener)))
+	} else {
+		e.logger.Fatal("invalid address paramater!")
 	}
 }
 
