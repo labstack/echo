@@ -74,5 +74,5 @@ type (
 )
 
 func (h HandlerFunc) ServeHTTP(req Request, res Response) {
-	h.ServeHTTP(req, res)
+	h(req, res)
 }
