@@ -11,7 +11,7 @@ import (
 
 type (
 	Server struct {
-		server  *http.Server
+		*http.Server
 		config  *engine.Config
 		handler engine.Handler
 		logger  *log.Logger
@@ -42,7 +42,7 @@ func NewFromTLS(addr, certfile, keyfile string) *Server {
 
 func NewFromConfig(c *engine.Config) (s *Server) {
 	s = &Server{
-		server: new(http.Server),
+		Server: new(http.Server),
 		config: c,
 		pool: &Pool{
 			request: sync.Pool{
@@ -71,8 +71,8 @@ func NewFromConfig(c *engine.Config) (s *Server) {
 		}),
 		logger: log.New("echo"),
 	}
-	s.server.Addr = c.Address
-	s.server.Handler = s
+	s.Addr = c.Address
+	s.Handler = s
 	return
 }
 
@@ -88,9 +88,9 @@ func (s *Server) Start() {
 	certfile := s.config.TLSCertfile
 	keyfile := s.config.TLSKeyfile
 	if certfile != "" && keyfile != "" {
-		s.logger.Fatal(s.server.ListenAndServeTLS(certfile, keyfile))
+		s.logger.Fatal(s.ListenAndServeTLS(certfile, keyfile))
 	} else {
-		s.logger.Fatal(s.server.ListenAndServe())
+		s.logger.Fatal(s.ListenAndServe())
 	}
 }
 
@@ -116,10 +116,6 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.pool.url.Put(reqURL)
 	s.pool.response.Put(res)
 	s.pool.header.Put(resHdr)
-}
-
-func (s *Server) Server() *http.Server {
-	return s.server
 }
 
 // WrapHandler wraps `http.Handler` into `echo.HandlerFunc`.

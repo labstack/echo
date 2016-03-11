@@ -41,7 +41,7 @@ SetLogOutput sets the output destination for the logger. Default value is `os.St
 
 `echo#SetLogLevel(l log.Level)`
 
-SetLogLevel sets the log level for the logger. Default value is `log.FATAL`.
+SetLogLevel sets the log level for the logger. Default value is `log.ERROR`.
 
 ### Auto index
 

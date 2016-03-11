@@ -62,13 +62,13 @@ func (r *Response) Committed() bool {
 	return r.committed
 }
 
-// func (r *Response) SetWriter(w io.Writer) {
-// 	r.writer = w
-// }
-//
-// func (r *Response) Writer() io.Writer {
-// 	return r.writer
-// }
+func (r *Response) SetWriter(w io.Writer) {
+	r.writer = w
+}
+
+func (r *Response) Writer() io.Writer {
+	return r.writer
+}
 
 func (r *Response) reset(c *fasthttp.RequestCtx, h engine.Header) {
 	r.RequestCtx = c

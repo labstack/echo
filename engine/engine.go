@@ -40,8 +40,8 @@ type (
 		Status() int
 		Size() int64
 		Committed() bool
-		// SetWriter(io.Writer)
-		// Writer() io.Writer
+		SetWriter(io.Writer)
+		Writer() io.Writer
 	}
 
 	// Header defines an interface for HTTP header.

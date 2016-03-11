@@ -32,14 +32,14 @@ func Gzip(options ...*GzipOptions) echo.MiddlewareFunc {
 			c.Response().Header().Add(echo.Vary, echo.AcceptEncoding)
 			if strings.Contains(c.Request().Header().Get(echo.AcceptEncoding), scheme) {
 				w := pool.Get().(*gzip.Writer)
-				w.Reset(c.Response())
+				w.Reset(c.Response().Writer())
 				defer func() {
 					w.Close()
 					pool.Put(w)
 				}()
-				gw := gzipResponseWriter{Response: c.Response(), Writer: w}
+				g := gzipResponseWriter{Response: c.Response(), Writer: w}
 				c.Response().Header().Set(echo.ContentEncoding, scheme)
-				c.SetResponse(gw)
+				c.Response().SetWriter(g)
 			}
 			if err := next.Handle(c); err != nil {
 				c.Error(err)
