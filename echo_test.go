@@ -263,7 +263,7 @@ func TestEchoMethodNotAllowed(t *testing.T) {
 func TestEchoHTTPError(t *testing.T) {
 	m := http.StatusText(http.StatusBadRequest)
 	he := NewHTTPError(http.StatusBadRequest, m)
-	assert.Equal(t, http.StatusBadRequest, he.Code())
+	assert.Equal(t, http.StatusBadRequest, he.Code)
 	assert.Equal(t, m, he.Error())
 }
 

@@ -411,7 +411,7 @@ func TestRouterMultiRoute(t *testing.T) {
 	c = NewContext(nil, nil, e)
 	r.Find(GET, "/user", c)
 	he := c.Handle(c).(*HTTPError)
-	assert.Equal(t, http.StatusNotFound, he.code)
+	assert.Equal(t, http.StatusNotFound, he.Code)
 }
 
 func TestRouterPriority(t *testing.T) {
@@ -514,7 +514,7 @@ func TestRouterPriorityNotFound(t *testing.T) {
 	c = NewContext(nil, nil, e)
 	r.Find(GET, "/abc/def", c)
 	he := c.Handle(c).(*HTTPError)
-	assert.Equal(t, http.StatusNotFound, he.Code())
+	assert.Equal(t, http.StatusNotFound, he.Code)
 }
 
 func TestRouterParamNames(t *testing.T) {

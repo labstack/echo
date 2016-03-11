@@ -41,8 +41,8 @@ type (
 	}
 
 	HTTPError struct {
-		code    int
-		message string
+		Code    int
+		Message string
 	}
 
 	Middleware interface {
@@ -240,8 +240,8 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 	code := http.StatusInternalServerError
 	msg := http.StatusText(code)
 	if he, ok := err.(*HTTPError); ok {
-		code = he.code
-		msg = he.message
+		code = he.Code
+		msg = he.Message
 	}
 	if e.debug {
 		msg = err.Error()
@@ -426,27 +426,17 @@ func (e *Echo) Run(eng engine.Engine) {
 }
 
 func NewHTTPError(code int, msg ...string) *HTTPError {
-	he := &HTTPError{code: code, message: http.StatusText(code)}
+	he := &HTTPError{Code: code, Message: http.StatusText(code)}
 	if len(msg) > 0 {
 		m := msg[0]
-		he.message = m
+		he.Message = m
 	}
 	return he
 }
 
-// SetCode sets code.
-func (e *HTTPError) SetCode(code int) {
-	e.code = code
-}
-
-// Code returns code.
-func (e *HTTPError) Code() int {
-	return e.code
-}
-
-// Error returns message.
+// Error makes it compatible with `error` interface.
 func (e *HTTPError) Error() string {
-	return e.message
+	return e.Message
 }
 
 func (binder) Bind(i interface{}, c Context) (err error) {

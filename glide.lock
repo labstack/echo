@@ -1,5 +1,5 @@
 hash: f220137e9ccd9aaf3051be33c3c23ea8abd2c40df6cf96175c3994d482b5e007
-updated: 2016-03-06T08:57:09.146198268-08:00
+updated: 2016-03-11T07:51:13.670742959-08:00
 imports:
 - name: github.com/klauspost/compress
   version: 2d3d403f37d2e70b722590bc286076a17422e1f2
@@ -21,9 +21,9 @@ imports:
 - name: github.com/mattn/go-isatty
   version: 56b76bdf51f7708750eac80fa38b952bb9f32639
 - name: github.com/valyala/fasthttp
-  version: 57df0ba8a413b7f236b6f64aa6b8b5419ffe828f
+  version: ca2c5535a325ab129d46891de0bbe84261822b3c
 - name: golang.org/x/net
-  version: 08f168e593b5aab61849054b77981de812666697
+  version: e7da8edaa52631091740908acaf2c2d4c9b3ce90
   subpackages:
   - context
   - websocket

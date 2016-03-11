@@ -253,7 +253,7 @@ func testBindError(t *testing.T, c Context, ct string) {
 	switch ct {
 	case ApplicationJSON, ApplicationXML:
 		if assert.IsType(t, new(HTTPError), err) {
-			assert.Equal(t, http.StatusBadRequest, err.(*HTTPError).code)
+			assert.Equal(t, http.StatusBadRequest, err.(*HTTPError).Code)
 		}
 	default:
 		if assert.IsType(t, new(HTTPError), err) {
