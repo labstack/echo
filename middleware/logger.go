@@ -4,8 +4,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/labstack/echo"
 	"github.com/labstack/gommon/color"
+	echo "gopkg.in/labstack/echo.v1"
 )
 
 const (

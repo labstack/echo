@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/labstack/echo"
 	"github.com/stretchr/testify/assert"
+	echo "gopkg.in/labstack/echo.v1"
 )
 
 type closeNotifyingRecorder struct {

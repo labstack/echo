@@ -7,8 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/labstack/echo"
 	"github.com/stretchr/testify/assert"
+	echo "gopkg.in/labstack/echo.v1"
 )
 
 func TestLogger(t *testing.T) {

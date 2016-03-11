@@ -88,7 +88,7 @@ A fast and unfancy micro web framework for Go.
 ### Installation
 
 ```sh
-$ go get github.com/labstack/echo
+$ go get gopkg.in/labstack/echo.v1
 ```
 
 ### Hello, World!
@@ -101,8 +101,8 @@ package main
 import (
 	"net/http"
 
-	"github.com/labstack/echo"
-	mw "github.com/labstack/echo/middleware"
+	echo "gopkg.in/labstack/echo.v1"
+	mw "gopkg.in/labstack/echo.v1/middleware"
 )
 
 // Handler
