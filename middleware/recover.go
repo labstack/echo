@@ -5,7 +5,7 @@ import (
 
 	"runtime"
 
-	"github.com/labstack/echo"
+	echo "gopkg.in/labstack/echo.v1"
 )
 
 // Recover returns a middleware which recovers from panics anywhere in the chain

@@ -8,8 +8,8 @@ Example:
     import (
         "net/http"
 
-        "github.com/labstack/echo"
-        mw "github.com/labstack/echo/middleware"
+        echo "gopkg.in/labstack/echo.v1"
+        mw "gopkg.in/labstack/echo.v1/middleware"
     )
 
     func hello(c *echo.Context) error {

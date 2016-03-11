@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 	"net/http"
 
-	"github.com/labstack/echo"
+	echo "gopkg.in/labstack/echo.v1"
 )
 
 type (
