@@ -29,6 +29,7 @@ us to use HTTP servers beyond Go standard library. It currently supports standar
 - Middleware is run before hitting the router, which doesn't require `Echo#Hook` API as
 it can be achieved via middleware.
 - Ability to define middleware at route level.
+- `Echo#HTTPError` exposed it's fields `Code` and `Message`.
 
 #### How?
 

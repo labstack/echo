@@ -1,6 +1,5 @@
 ---
 title: Google App Engine
-draft: true
 menu:
   side:
     parent: recipes

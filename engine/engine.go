@@ -68,13 +68,17 @@ type (
 		WriteTimeout time.Duration
 	}
 
+	// Handler defines an interface to server HTTP requests via `ServeHTTP(Request, Response)`
+	// function.
 	Handler interface {
 		ServeHTTP(Request, Response)
 	}
 
+	// HandlerFunc is an adapter to allow the use of `func(Request, Response)` as HTTP handlers.
 	HandlerFunc func(Request, Response)
 )
 
+// ServeHTTP serves HTTP request.
 func (h HandlerFunc) ServeHTTP(req Request, res Response) {
 	h(req, res)
 }
