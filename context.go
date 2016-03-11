@@ -81,12 +81,13 @@ const (
 // NewContext creates a Context object.
 func NewContext(req engine.Request, res engine.Response, e *Echo) Context {
 	return &context{
-		request:  req,
-		response: res,
-		echo:     e,
-		pvalues:  make([]string, *e.maxParam),
-		store:    make(store),
-		handler:  notFoundHandler,
+		netContext: netContext.TODO(),
+		request:    req,
+		response:   res,
+		echo:       e,
+		pvalues:    make([]string, *e.maxParam),
+		store:      make(store),
+		handler:    notFoundHandler,
 	}
 }
 
@@ -367,6 +368,7 @@ func detectContentType(name string) (t string) {
 }
 
 func (c *context) reset(req engine.Request, res engine.Response) {
+	c.netContext = c.echo.contextFunc(req)
 	c.request = req
 	c.response = res
 	c.query = nil

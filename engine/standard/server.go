@@ -80,11 +80,6 @@ func NewFromConfig(c engine.Config) (s *Server) {
 	return
 }
 
-// SetHandler implements `engine.Engine#SetHandler` method.
-func (s *Server) SetHandler(h engine.Handler) {
-	s.handler = h
-}
-
 // SetLogger implements `engine.Engine#SetLogger` method.
 func (s *Server) SetLogger(l *log.Logger) {
 	s.logger = l
