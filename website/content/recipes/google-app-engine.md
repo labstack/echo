@@ -50,9 +50,9 @@ themselves to the instance - I've found the `Group` feature naturally fits into 
 per REST endpoint, often with a higher-level `api` group created that they attach to instead of the root
 Echo instance directly (so things like CORS middleware can be added at this higher common-level).
 
-`some-endpoint.go`
+`users.go`
 
-{{< embed "google-app-engine/some-endpoint.go" >}}
+{{< embed "google-app-engine/users.go" >}}
 
 If we run our app it should execute as it did before when everything was in one file although we have
 at least gained the ability to organize our handlers a little more cleanly.
