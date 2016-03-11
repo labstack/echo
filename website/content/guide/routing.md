@@ -22,12 +22,10 @@ e.Get("/hello", func(c echo.Context) error {
 ```
 
 You can use `Echo.Any(path string, h Handler)` to register a handler for all HTTP methods.
-To register it for some methods, use `Echo.Match(methods []string, path string, h Handler)`.
+If you want to register it for some methods use `Echo.Match(methods []string, path string, h Handler)`.
 
-
-Echo's default handler is `func(*echo.Context) error` where `echo.Context` primarily
-holds HTTP request and response objects. Echo also has a support for other types
-of handlers.
+Echo defines handler function as `func(echo.Context) error` where `echo.Context` primarily
+holds HTTP request and response interfaces.
 
 ### Match-any
 
@@ -71,20 +69,20 @@ Above routes would resolve in the following order:
 
 ### Group
 
-`Echo.Group(prefix string, m ...Middleware) *Group`
+`Echo#Group(prefix string, m ...Middleware) *Group`
 
 Routes with common prefix can be grouped to define a new sub-router with optional
-middleware. If middleware is passed to the function, it overrides parent middleware
-- helpful if you want a completely new middleware stack for the group. To add middleware
-later you can use `Group.Use(m ...Middleware)`. Groups can also be nested.
+middleware. In addition to specified middleware group also inherits parent middleware.
+To add middleware later in the group you can use `Group.Use(m ...Middleware)`.
+Groups can also be nested.
 
 In the code below, we create an admin group which requires basic HTTP authentication
 for routes `/admin/*`.
 
 ```go
 e.Group("/admin")
-e.Use(mw.BasicAuth(func(usr, pwd string) bool {
-	if usr == "joe" && pwd == "secret" {
+e.Use(middleware.BasicAuth(func(username, password string) bool {
+	if username == "joe" && password == "secret" {
 		return true
 	}
 	return false

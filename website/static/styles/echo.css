@@ -1,3 +1,6 @@
+body, p, ol, ul {
+    font-size: 16px;
+}
 footer {
     background-color: inherit !important;
     border-top: 2px solid #e0e0e0;

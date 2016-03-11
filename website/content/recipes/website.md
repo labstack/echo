@@ -1,5 +1,6 @@
 ---
 title: Website
+draft: true
 menu:
   side:
     parent: recipes

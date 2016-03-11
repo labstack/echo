@@ -34,8 +34,8 @@ BasicAuth middleware provides an HTTP basic authentication.
 
 ```go
 g := e.Group("/admin")
-g.Use(mw.BasicAuth(func(usr, pwd string) bool {
-	if usr == "joe" && pwd == "secret" {
+e.Use(middleware.BasicAuth(func(username, password string) bool {
+	if username == "joe" && password == "secret" {
 		return true
 	}
 	return false
@@ -61,7 +61,7 @@ control to the centralized
 *Example*
 
 ```go
-e.Use(mw.Recover())
+e.Use(middleware.Recover())
 ```
 
-### [Recipes](https://github.com/labstack/echo/tree/master/recipes/middleware)
+### [Recipes](https://github.com/labstack/echox/tree/master/recipe/middleware)

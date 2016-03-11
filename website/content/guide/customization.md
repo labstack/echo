@@ -27,55 +27,80 @@ Enable/disable debug mode.
 
 ### Log prefix
 
-`echo#SetLogPrefix(prefix string)`
+`Echo#SetLogPrefix(prefix string)`
 
 SetLogPrefix sets the prefix for the logger. Default value is `echo`.
 
 ### Log output
 
-`echo#SetLogOutput(w io.Writer)`
+`Echo#SetLogOutput(w io.Writer)`
 
 SetLogOutput sets the output destination for the logger. Default value is `os.Stdout`
 
+To completely disable logs use `Echo#SetLogOutput(io.Discard)`
+
 ### Log level
 
-`echo#SetLogLevel(l log.Level)`
+`Echo#SetLogLevel(l log.Level)`
 
 SetLogLevel sets the log level for the logger. Default value is `log.ERROR`.
 
-### Auto index
+### Engine
 
-`Echo#AutoIndex(on bool)`
-
-Enable/disable automatically creating an index page for the directory.
-
-*Example*
+#### Standard HTTP server
 
 ```go
-e := echo.New()
-e.AutoIndex(true)
-e.ServerDir("/", "/Users/vr/Projects/echo")
-e.Run(":1323")
+e.Run(standard.New(":1323"))
 ```
 
-Browse to `http://localhost:1323/` to see the directory listing.
-
-### Hook
-
-`Echo#Hook(h http.HandlerFunc)`
-
-Hook registers a callback which is invoked from `Echo#ServerHTTP` as the first
-statement. Hook is useful if you want to modify response/response objects even
-before it hits the router or any middleware.
-
-For example, the following hook strips the trailing slash from the request path.
+##### From TLS
 
 ```go
-e.Hook(func(w http.ResponseWriter, r *http.Request) {
-    path := r.URL.Path
-    l := len(path) - 1
-    if path != "/" && path[l] == '/' {
-        r.URL.Path = path[:l]
-    }
-})
+e.Run(standard.NewFromTLS(":1323", "<certfile>", "<keyfile>"))
 ```
+
+##### From config
+
+```go
+e.Run(standard.NewFromConfig(&Config{}))
+```
+
+#### FastHTTP server
+
+```go
+e.Run(fasthttp.New(":1323"))
+```
+
+##### From TLS
+
+```go
+e.Run(fasthttp.NewFromTLS(":1323", "<certfile>", "<keyfile>"))
+```
+
+
+##### From config
+```go
+e.Run(fasthttp.NewFromConfig(&Config{}))
+```
+
+#### Configuration
+
+##### `Address`
+
+Address to bind.
+
+##### `TLSCertfile`
+
+TLS certificate file path
+
+##### `TLSKeyfile`
+
+TLS key file path
+
+##### `ReadTimeout`
+
+HTTP read timeout
+
+##### `WriteTimeout`
+
+HTTP write timeout

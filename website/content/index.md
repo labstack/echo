@@ -11,41 +11,12 @@ A fast and unfancy micro web framework for Go.
 ## Features
 
 - Fast HTTP router which smartly prioritize routes.
-- Extensible middleware, supports:
-	- `echo.MiddlewareFunc`
-	- `func(echo.HandlerFunc) echo.HandlerFunc`
-	- `echo.HandlerFunc`
-	- `func(*echo.Context) error`
-	- `func(http.Handler) http.Handler`
-	- `http.Handler`
-	- `http.HandlerFunc`
-	- `func(http.ResponseWriter, *http.Request)`
-- Extensible handler, supports:
-    - `echo.HandlerFunc`
-    - `func(*echo.Context) error`
-    - `http.Handler`
-    - `http.HandlerFunc`
-    - `func(http.ResponseWriter, *http.Request)`
-- Sub-router/Groups
-- Handy functions to send variety of HTTP response:
-    - HTML
-    - HTML via templates
-    - String
-    - JSON
-    - JSONP
-    - XML
-    - File
-    - NoContent
-    - Redirect
-    - Error
-- Build-in support for:
-	- Favicon
-	- Index file
-	- Static files
-	- WebSocket
+- Run with standard HTTP server or FastHTTP server.
+- Extensible middleware framework.
+- Router groups with nesting.
+- Handy functions to send variety of HTTP responses.
 - Centralized HTTP error handling.
-- Customizable HTTP request binding function.
-- Customizable HTTP response rendering function, allowing you to use any HTML template engine.
+- Template rendering with any template engine.
 
 ## Performance
 
@@ -61,7 +32,7 @@ $ go get github.com/labstack/echo
 
 ### Hello, World!
 
-Create `server.go`
+Create `main.go`
 
 ```go
 package main
@@ -70,12 +41,15 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo"
-	mw "github.com/labstack/echo/middleware"
+	"github.com/labstack/echo/engine/standard"
+	"github.com/labstack/echo/middleware"
 )
 
 // Handler
-func hello(c echo.Context) error {
-	return c.String(http.StatusOK, "Hello, World!\n")
+func hello() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		return c.String(http.StatusOK, "Hello, World!\n")
+	}
 }
 
 func main() {
@@ -83,29 +57,29 @@ func main() {
 	e := echo.New()
 
 	// Middleware
-	e.Use(mw.Logger())
-	e.Use(mw.Recover())
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
 
 	// Routes
-	e.Get("/", hello)
+	e.Get("/", hello())
 
 	// Start server
-	e.Run(":1323")
+	e.Run(standard.New(":1323"))
 }
 ```
 
 Start server
 
 ```sh
-$ go run server.go
+$ go run main.go
 ```
 
 Browse to [http://localhost:1323](http://localhost:1323) and you should see
 Hello, World! on the page.
 
 ### Next?
-- Browse [recipes](https://github.com/labstack/echo/tree/master/recipes)
-- Head over to [guide]({{< relref "guide/installation.md" >}})
+- Browse [recipes](/recipes/hello-world)
+- Head over to [guide](/guide/installation")
 
 ## Contribute
 
