@@ -66,7 +66,7 @@ func (r *Request) Body() io.ReadCloser {
 }
 
 func (r *Request) FormValue(name string) string {
-	return ""
+	return r.RequestCtx.FormValue(name)
 }
 
 func (r *Request) reset(c *fasthttp.RequestCtx, h engine.Header, u engine.URL) {
