@@ -296,7 +296,7 @@ func (c *context) Attachment(file string) (err error) {
 		return
 	}
 	_, name := filepath.Split(file)
-	err = c.AttachmentReader(file, name)
+	err = c.AttachmentReader(f, name)
 	return
 }
 
