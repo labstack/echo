@@ -83,8 +83,8 @@ Browse to [http://localhost:1323](http://localhost:1323) and you should see
 Hello, World! on the page.
 
 ### Next?
-- Browse [recipes](/recipes/hello-world)
-- Head over to [guide](/guide/installation")
+- Browse [recipes](https://labstack.com/echo/recipes/hello-world)
+- Head over to [guide](https://labstack.com/echo/guide/installation)
 
 ## Contribute
 
