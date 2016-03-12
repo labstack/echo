@@ -136,6 +136,7 @@ const (
 	ContentEncoding    = "Content-Encoding"
 	ContentLength      = "Content-Length"
 	ContentType        = "Content-Type"
+	LastModified       = "Last-Modified"
 	Location           = "Location"
 	Upgrade            = "Upgrade"
 	Vary               = "Vary"
@@ -163,6 +164,8 @@ var (
 
 	ErrUnsupportedMediaType  = NewHTTPError(http.StatusUnsupportedMediaType)
 	ErrNotFound              = NewHTTPError(http.StatusNotFound)
+	ErrUnauthorized          = NewHTTPError(http.StatusUnauthorized)
+	ErrMethodNotAllowed      = NewHTTPError(http.StatusMethodNotAllowed)
 	ErrRendererNotRegistered = errors.New("renderer not registered")
 	ErrInvalidRedirectCode   = errors.New("invalid redirect status code")
 
@@ -171,11 +174,11 @@ var (
 	//----------------
 
 	notFoundHandler = HandlerFunc(func(c Context) error {
-		return NewHTTPError(http.StatusNotFound)
+		return ErrNotFound
 	})
 
 	methodNotAllowedHandler = HandlerFunc(func(c Context) error {
-		return NewHTTPError(http.StatusMethodNotAllowed)
+		return ErrMethodNotAllowed
 	})
 )
 

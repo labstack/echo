@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"encoding/base64"
-	"net/http"
 
 	"github.com/labstack/echo"
 )
@@ -43,7 +42,7 @@ func BasicAuth(fn BasicAuthFunc, options ...BasicAuthOptions) echo.MiddlewareFun
 				}
 			}
 			c.Response().Header().Set(echo.WWWAuthenticate, basic+" realm=Restricted")
-			return echo.NewHTTPError(http.StatusUnauthorized)
+			return echo.ErrUnauthorized
 		})
 	}
 }

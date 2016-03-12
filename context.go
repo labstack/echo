@@ -295,8 +295,8 @@ func (c *context) Attachment(file string) (err error) {
 		return
 	}
 	_, name := filepath.Split(file)
-	c.response.Header().Set(ContentDisposition, "attachment; filename="+name)
 	c.response.Header().Set(ContentType, detectContentType(file))
+	c.response.Header().Set(ContentDisposition, "attachment; filename="+name)
 	c.response.WriteHeader(http.StatusOK)
 	_, err = io.Copy(c.response, f)
 	return
@@ -339,8 +339,8 @@ func (c *context) Object() *context {
 }
 
 func ServeContent(req engine.Request, res engine.Response, f http.File, fi os.FileInfo) error {
-	// TODO: http.ServeContent(c.Response(), c.Request(), fi.Name(), fi.ModTime(), f)
 	res.Header().Set(ContentType, detectContentType(fi.Name()))
+	res.Header().Set(LastModified, fi.ModTime().UTC().Format(http.TimeFormat))
 	res.WriteHeader(http.StatusOK)
 	_, err := io.Copy(res, f)
 	return err
