@@ -47,6 +47,7 @@ type (
 		XMLBlob(int, []byte) error
 		File(string) error
 		Attachment(string) error
+		AttachmentReader(io.Reader, string) error
 		NoContent(int) error
 		Redirect(int, string) error
 		Error(err error)
@@ -295,10 +296,16 @@ func (c *context) Attachment(file string) (err error) {
 		return
 	}
 	_, name := filepath.Split(file)
-	c.response.Header().Set(ContentDisposition, "attachment; filename="+name)
-	c.response.Header().Set(ContentType, detectContentType(file))
+	err = c.AttachmentReader(f, name)
+	return
+}
+
+// AttachmentReader sends a response as file attachment, prompting client to save the file.
+func (c *context) AttachmentReader(file io.Reader, filename string) (err error) {
+	c.response.Header().Set(ContentDisposition, "attachment; filename="+filename)
+	c.response.Header().Set(ContentType, detectContentType(filename))
 	c.response.WriteHeader(http.StatusOK)
-	_, err = io.Copy(c.response, f)
+	_, err = io.Copy(c.response, file)
 	return
 }
 
