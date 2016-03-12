@@ -79,7 +79,7 @@ Hello, World! on the page.
 
 ### Next?
 - Browse [recipes](/recipes/hello-world)
-- Head over to [guide](/guide/installation")
+- Head over to [guide](/guide/installation)
 
 ## Contribute
 

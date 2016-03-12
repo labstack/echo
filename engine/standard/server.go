@@ -12,7 +12,7 @@ import (
 type (
 	Server struct {
 		*http.Server
-		config  *engine.Config
+		config  engine.Config
 		handler engine.Handler
 		logger  *log.Logger
 		pool    *Pool
@@ -27,12 +27,12 @@ type (
 )
 
 func New(addr string) *Server {
-	c := &engine.Config{Address: addr}
+	c := engine.Config{Address: addr}
 	return NewFromConfig(c)
 }
 
 func NewFromTLS(addr, certfile, keyfile string) *Server {
-	c := &engine.Config{
+	c := engine.Config{
 		Address:     addr,
 		TLSCertfile: certfile,
 		TLSKeyfile:  keyfile,
@@ -40,7 +40,7 @@ func NewFromTLS(addr, certfile, keyfile string) *Server {
 	return NewFromConfig(c)
 }
 
-func NewFromConfig(c *engine.Config) (s *Server) {
+func NewFromConfig(c engine.Config) (s *Server) {
 	s = &Server{
 		Server: new(http.Server),
 		config: c,

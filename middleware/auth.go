@@ -22,7 +22,7 @@ const (
 //
 // For valid credentials it calls the next handler.
 // For invalid credentials, it sends "401 - Unauthorized" response.
-func BasicAuth(fn BasicAuthFunc, options ...*BasicAuthOptions) echo.MiddlewareFunc {
+func BasicAuth(fn BasicAuthFunc, options ...BasicAuthOptions) echo.MiddlewareFunc {
 	return func(next echo.Handler) echo.Handler {
 		return echo.HandlerFunc(func(c echo.Context) error {
 			auth := c.Request().Header().Get(echo.Authorization)
@@ -36,7 +36,7 @@ func BasicAuth(fn BasicAuthFunc, options ...*BasicAuthOptions) echo.MiddlewareFu
 						if cred[i] == ':' {
 							// Verify credentials
 							if fn(cred[:i], cred[i+1:]) {
-								return nil
+								return next.Handle(c)
 							}
 						}
 					}
