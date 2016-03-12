@@ -296,10 +296,7 @@ func (c *context) Attachment(file string) (err error) {
 		return
 	}
 	_, name := filepath.Split(file)
-	c.response.Header().Set(ContentDisposition, "attachment; filename="+name)
-	c.response.Header().Set(ContentType, detectContentType(file))
-	c.response.WriteHeader(http.StatusOK)
-	_, err = io.Copy(c.response, f)
+	err = c.AttachmentReader(file, name)
 	return
 }
 
