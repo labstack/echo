@@ -15,12 +15,6 @@ menu:
 us to use HTTP servers beyond Go standard library. It currently supports standard HTTP server and [FastHTTP](https://github.com/valyala/fasthttp).
 - Context, Request and Response are converted to interfaces. [More...](https://github.com/labstack/echo/issues/146)
 - Handler signature is changed to `func (c echo.Context) error`.
-- Moved API's for serving static files into middleware.
-    - `Echo#Index`
-    - `Echo#Favicon`
-    - `Echo#Static`
-    - `Echo#ServeDir`
-    - `Echo#ServeFile`
 - Dropped auto wrapping of handler and middleware to enforce compile time check.
 - Handler only accepts `Echo#Handler` interface.
 - Middleware only accepts `Echo#Middleware` interface.
@@ -33,4 +27,6 @@ it can be achieved via middleware.
 
 #### How?
 
-Quite easy, browse through [recipes](/recipes/hello-world) freshly converted to v2.
+Quite easy
+- Browse through [recipes](/recipes/hello-world) freshly converted to v2.
+- Read documentation and dig into test cases.

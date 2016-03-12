@@ -7,6 +7,7 @@ import (
 	"mime"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"time"
 
@@ -44,6 +45,7 @@ type (
 		JSONP(int, string, interface{}) error
 		XML(int, interface{}) error
 		XMLBlob(int, []byte) error
+		File(string) error
 		Attachment(string) error
 		NoContent(int) error
 		Redirect(int, string) error
@@ -263,7 +265,30 @@ func (c *context) XMLBlob(code int, b []byte) (err error) {
 	return
 }
 
-// Attachment sends specified file as an attachment to the client.
+// File sends a response with the content of the file.
+func (c *context) File(file string) error {
+	root, file := filepath.Split(file)
+	fs := http.Dir(root)
+	f, err := fs.Open(file)
+	if err != nil {
+		return ErrNotFound
+	}
+	defer f.Close()
+
+	fi, _ := f.Stat()
+	if fi.IsDir() {
+		file = path.Join(file, "index.html")
+		f, err = fs.Open(file)
+		if err != nil {
+			return ErrNotFound
+		}
+		fi, _ = f.Stat()
+	}
+
+	return ServeContent(c.Request(), c.Response(), f, fi)
+}
+
+// Attachment sends a response as file attachment, prompting client to save the file.
 func (c *context) Attachment(file string) (err error) {
 	f, err := os.Open(file)
 	if err != nil {
@@ -271,7 +296,7 @@ func (c *context) Attachment(file string) (err error) {
 	}
 	_, name := filepath.Split(file)
 	c.response.Header().Set(ContentDisposition, "attachment; filename="+name)
-	c.response.Header().Set(ContentType, c.detectContentType(file))
+	c.response.Header().Set(ContentType, detectContentType(file))
 	c.response.WriteHeader(http.StatusOK)
 	_, err = io.Copy(c.response, f)
 	return
@@ -313,7 +338,19 @@ func (c *context) Object() *context {
 	return c
 }
 
-func (c *context) detectContentType(name string) (t string) {
+func ServeContent(req engine.Request, res engine.Response, f http.File, fi os.FileInfo) error {
+	// TODO: http.ServeContent(c.Response(), c.Request(), fi.Name(), fi.ModTime(), f)
+	ct := mime.TypeByExtension(filepath.Ext(fi.Name()))
+	if ct == "" {
+		ct = OctetStream
+	}
+	req.Header().Set(ContentType, ct)
+	res.WriteHeader(http.StatusOK)
+	_, err := io.Copy(res, f)
+	return err
+}
+
+func detectContentType(name string) (t string) {
 	if t = mime.TypeByExtension(filepath.Ext(name)); t == "" {
 		t = OctetStream
 	}

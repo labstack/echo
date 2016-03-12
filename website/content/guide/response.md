@@ -88,14 +88,35 @@ Sends an HTML response with status code.
 
 Sends a string response with status code.
 
+### File
+
+`func (c *context) File(file string) error`
+
+Sends a response with the content of the file.
+
 ### Attachment
 
-`Context#Attachment(file string) (err error)`
+`Context#Attachment(file string) error`
 
-Sends file as an attachment.
+Sends a response as file attachment, prompting client to save the file.
 
-### Static files
+### Static Files
 
-`Echo#Use(middleware.Static("public"))`
+`Echo#Use(middleware.Static(root string))`
 
-Serves static files from public folder.
+Serves static files from the provided `root` directory.
+
+`Echo#Static(prefix, root string)`
+
+Serves files from provided `root` directory for `/<prefix>*` HTTP path.
+
+`Echo#File(path, file string)`
+
+Serves provided `file` for `/<path>` HTTP path.
+
+*Examples*
+
+- Serving static files with no prefix `e.Use(middleware.Static("public"))`
+- Serving static files with a prefix `e.Static("/static", "assets")`
+- Serving an index page `e.File("/", "public/index.html")`
+- Serving a favicon `e.File("/favicon.ico", "images/facicon.ico")`

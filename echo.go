@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path"
 	"reflect"
 	"runtime"
 	"strings"
@@ -346,6 +347,20 @@ func (e *Echo) Match(methods []string, path string, handler Handler, middleware 
 	for _, m := range methods {
 		e.add(m, path, handler, middleware...)
 	}
+}
+
+// Static serves files from provided `root` directory for `/<prefix>*` HTTP path.
+func (e *Echo) Static(prefix, root string) {
+	e.Get(prefix+"*", HandlerFunc(func(c Context) error {
+		return c.File(path.Join(root, c.P(0))) // Param `_`
+	}))
+}
+
+// File serves provided file for `/<path>` HTTP path.
+func (e *Echo) File(path, file string) {
+	e.Get(path, HandlerFunc(func(c Context) error {
+		return c.File(file)
+	}))
 }
 
 func (e *Echo) add(method, path string, handler Handler, middleware ...Middleware) {

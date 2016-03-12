@@ -2,11 +2,8 @@ package middleware
 
 import (
 	"fmt"
-	"io"
-	"mime"
 	"net/http"
 	"path"
-	"path/filepath"
 
 	"github.com/labstack/echo"
 )
@@ -19,10 +16,10 @@ type (
 	}
 )
 
-func Static(root string, options ...*StaticOptions) echo.MiddlewareFunc {
+func Static(root string, options ...StaticOptions) echo.MiddlewareFunc {
 	return func(next echo.Handler) echo.Handler {
 		// Default options
-		opts := new(StaticOptions)
+		opts := StaticOptions{}
 		if len(options) > 0 {
 			opts = options[0]
 		}
@@ -85,23 +82,7 @@ func Static(root string, options ...*StaticOptions) echo.MiddlewareFunc {
 				}
 				fi, _ = f.Stat() // Index file stat
 			}
-			ct := mime.TypeByExtension(filepath.Ext(fi.Name()))
-			if ct == "" {
-				ct = echo.OctetStream
-			}
-			c.Response().Header().Set(echo.ContentType, ct)
-			c.Response().WriteHeader(http.StatusOK)
-			_, err = io.Copy(c.Response(), f)
-			return err
-			// TODO:
-			// http.ServeContent(c.Response(), c.Request(), fi.Name(), fi.ModTime(), f)
+			return echo.ServeContent(c.Request(), c.Response(), f, fi)
 		})
-	}
-}
-
-// Favicon serves the default favicon - GET /favicon.ico.
-func Favicon() echo.HandlerFunc {
-	return func(c echo.Context) error {
-		return nil
 	}
 }

@@ -13,7 +13,7 @@ type (
 	}
 )
 
-func Logger(options ...*LoggerOptions) echo.MiddlewareFunc {
+func Logger(options ...LoggerOptions) echo.MiddlewareFunc {
 	return func(next echo.Handler) echo.Handler {
 		return echo.HandlerFunc(func(c echo.Context) error {
 			req := c.Request()

@@ -13,7 +13,7 @@ type (
 
 // Recover returns a middleware which recovers from panics anywhere in the chain
 // and handles the control to the centralized HTTPErrorHandler.
-func Recover(options ...*RecoverOptions) echo.MiddlewareFunc {
+func Recover(options ...RecoverOptions) echo.MiddlewareFunc {
 	return func(next echo.Handler) echo.Handler {
 		// TODO: Provide better stack trace
 		// - `https://github.com/go-errors/errors`

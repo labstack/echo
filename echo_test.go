@@ -40,6 +40,45 @@ func TestEcho(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, rec.Status())
 }
 
+func TestEchoStatic(t *testing.T) {
+	e := New()
+
+	// OK
+	e.Static("/images", "_fixture/images")
+	c, b := request(GET, "/images/walle.png", e)
+	assert.Equal(t, http.StatusOK, c)
+	assert.NotEmpty(t, b)
+
+	// No file
+	e.Static("/images", "_fixture/scripts")
+	c, _ = request(GET, "/images/bolt.png", e)
+	assert.Equal(t, http.StatusNotFound, c)
+
+	// Directory
+	e.Static("/images", "_fixture/images")
+	c, _ = request(GET, "/images", e)
+	assert.Equal(t, http.StatusNotFound, c)
+
+	// Directory with index.html
+	e.Static("/", "_fixture")
+	c, r := request(GET, "/", e)
+	assert.Equal(t, http.StatusOK, c)
+	assert.Equal(t, true, strings.HasPrefix(r, "<!doctype html>"))
+
+	// Sub-directory with index.html
+	c, r = request(GET, "/folder", e)
+	assert.Equal(t, http.StatusOK, c)
+	assert.Equal(t, true, strings.HasPrefix(r, "<!doctype html>"))
+}
+
+func TestEchoFile(t *testing.T) {
+	e := New()
+	e.File("/walle", "_fixture/images/walle.png")
+	c, b := request(GET, "/walle", e)
+	assert.Equal(t, http.StatusOK, c)
+	assert.NotEmpty(t, b)
+}
+
 func TestEchoMiddleware(t *testing.T) {
 	e := New()
 	buf := new(bytes.Buffer)
