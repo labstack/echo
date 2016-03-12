@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"io"
 	"io/ioutil"
+	"mime/multipart"
 )
 
 import (
@@ -66,7 +67,15 @@ func (r *Request) Body() io.ReadCloser {
 }
 
 func (r *Request) FormValue(name string) string {
-	return ""
+	return string(r.RequestCtx.FormValue(name))
+}
+
+func (r *Request) FormFile(name string) (*multipart.FileHeader, error) {
+	return r.RequestCtx.FormFile(name)
+}
+
+func (r *Request) MultipartForm() (*multipart.Form, error) {
+	return r.RequestCtx.MultipartForm()
 }
 
 func (r *Request) reset(c *fasthttp.RequestCtx, h engine.Header, u engine.URL) {

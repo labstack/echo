@@ -2,6 +2,7 @@ package standard
 
 import (
 	"io"
+	"mime/multipart"
 	"net/http"
 
 	"github.com/labstack/echo/engine"
@@ -76,6 +77,15 @@ func (r *Request) Body() io.ReadCloser {
 
 func (r *Request) FormValue(name string) string {
 	return r.Request.FormValue(name)
+}
+
+func (r *Request) FormFile(name string) (*multipart.FileHeader, error) {
+	_, fh, err := r.Request.FormFile(name)
+	return fh, err
+}
+
+func (r *Request) MultipartForm() (*multipart.Form, error) {
+	return r.Request.MultipartForm, nil
 }
 
 func (r *Request) reset(req *http.Request, h engine.Header, u engine.URL) {

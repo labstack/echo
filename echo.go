@@ -201,7 +201,7 @@ func New() (e *Echo) {
 
 	// Logger
 	e.logger = log.New("echo")
-	e.logger.SetLevel(log.ERROR)
+	e.logger.SetLevel(log.FATAL)
 
 	return
 }
@@ -253,7 +253,7 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 	if !c.Response().Committed() {
 		c.String(code, msg)
 	}
-	e.logger.Error(err)
+	e.logger.Debug(err)
 }
 
 // SetHTTPErrorHandler registers a custom Echo.HTTPErrorHandler.
