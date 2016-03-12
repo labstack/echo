@@ -340,11 +340,7 @@ func (c *context) Object() *context {
 
 func ServeContent(req engine.Request, res engine.Response, f http.File, fi os.FileInfo) error {
 	// TODO: http.ServeContent(c.Response(), c.Request(), fi.Name(), fi.ModTime(), f)
-	ct := mime.TypeByExtension(filepath.Ext(fi.Name()))
-	if ct == "" {
-		ct = OctetStream
-	}
-	req.Header().Set(ContentType, ct)
+	res.Header().Set(ContentType, detectContentType(fi.Name()))
 	res.WriteHeader(http.StatusOK)
 	_, err := io.Copy(res, f)
 	return err
