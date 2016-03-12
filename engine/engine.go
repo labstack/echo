@@ -3,6 +3,7 @@ package engine
 import (
 	"io"
 	"time"
+	"mime/multipart"
 
 	"github.com/labstack/gommon/log"
 )
@@ -30,6 +31,7 @@ type (
 		Method() string
 		Body() io.ReadCloser
 		FormValue(string) string
+		File(string) (*multipart.FileHeader, error)
 	}
 
 	// Response defines an interface for HTTP response.
