@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"os"
 	"testing"
 	"text/template"
 
@@ -161,11 +162,14 @@ func TestContext(t *testing.T) {
 	// Attachment
 	rec = test.NewResponseRecorder()
 	c = NewContext(req, rec, e)
-	err = c.Attachment("_fixture/images/walle.png")
+	file, err := os.Open("_fixture/images/walle.png")
 	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rec.Status())
-		assert.Equal(t, rec.Header().Get(ContentDisposition), "attachment; filename=walle.png")
-		assert.Equal(t, 219885, rec.Body.Len())
+		err = c.Attachment(file, "walle.png")
+		if assert.NoError(t, err) {
+			assert.Equal(t, http.StatusOK, rec.Status())
+			assert.Equal(t, "attachment; filename=walle.png", rec.Header().Get(ContentDisposition))
+			assert.Equal(t, 219885, rec.Body.Len())
+		}
 	}
 
 	// NoContent
@@ -198,12 +202,12 @@ func TestContextPath(t *testing.T) {
 	r.Add(GET, "/users/:id", nil, e)
 	c := NewContext(nil, nil, e)
 	r.Find(GET, "/users/1", c)
-	assert.Equal(t, c.Path(), "/users/:id")
+	assert.Equal(t, "/users/:id", c.Path())
 
 	r.Add(GET, "/users/:uid/files/:fid", nil, e)
 	c = NewContext(nil, nil, e)
 	r.Find(GET, "/users/1/files/1", c)
-	assert.Equal(t, c.Path(), "/users/:uid/files/:fid")
+	assert.Equal(t, "/users/:uid/files/:fid", c.Path())
 }
 
 func TestContextQuery(t *testing.T) {
