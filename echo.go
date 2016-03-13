@@ -477,8 +477,8 @@ func (binder) Bind(i interface{}, c Context) (err error) {
 func WrapMiddleware(h Handler) MiddlewareFunc {
 	return func(next Handler) Handler {
 		return HandlerFunc(func(c Context) error {
-			if !c.Response().Committed() {
-				h.Handle(c)
+			if err := h.Handle(c); err != nil {
+				return err
 			}
 			return next.Handle(c)
 		})
