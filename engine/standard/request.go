@@ -85,6 +85,7 @@ func (r *Request) FormFile(name string) (*multipart.FileHeader, error) {
 }
 
 func (r *Request) MultipartForm() (*multipart.Form, error) {
+	r.Request.ParseMultipartForm(32 << 20) // 32 MB
 	return r.Request.MultipartForm, nil
 }
 
