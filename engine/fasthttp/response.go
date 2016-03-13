@@ -26,7 +26,7 @@ type (
 func NewResponse(c *fasthttp.RequestCtx) *Response {
 	return &Response{
 		RequestCtx: c,
-		header:     &ResponseHeader{c.Response.Header},
+		header:     &ResponseHeader{&c.Response.Header},
 		writer:     c,
 		logger:     log.New("test"),
 	}

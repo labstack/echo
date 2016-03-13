@@ -26,7 +26,7 @@ func NewRequest(c *fasthttp.RequestCtx) *Request {
 	return &Request{
 		RequestCtx: c,
 		url:        &URL{URI: c.URI()},
-		header:     &RequestHeader{c.Request.Header},
+		header:     &RequestHeader{&c.Request.Header},
 	}
 }
 

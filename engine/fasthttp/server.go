@@ -94,14 +94,14 @@ func (s *Server) Start() {
 		req := s.pool.request.Get().(*Request)
 		reqHdr := s.pool.requestHeader.Get().(*RequestHeader)
 		reqURL := s.pool.url.Get().(*URL)
-		reqHdr.reset(c.Request.Header)
+		reqHdr.reset(&c.Request.Header)
 		reqURL.reset(c.URI())
 		req.reset(c, reqHdr, reqURL)
 
 		// Response
 		res := s.pool.response.Get().(*Response)
 		resHdr := s.pool.responseHeader.Get().(*ResponseHeader)
-		resHdr.reset(c.Response.Header)
+		resHdr.reset(&c.Response.Header)
 		res.reset(c, resHdr)
 
 		s.handler.ServeHTTP(req, res)

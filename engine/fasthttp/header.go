@@ -6,11 +6,11 @@ import "github.com/valyala/fasthttp"
 
 type (
 	RequestHeader struct {
-		fasthttp.RequestHeader
+		*fasthttp.RequestHeader
 	}
 
 	ResponseHeader struct {
-		fasthttp.ResponseHeader
+		*fasthttp.ResponseHeader
 	}
 )
 
@@ -30,7 +30,7 @@ func (h *RequestHeader) Set(key, val string) {
 	h.RequestHeader.Set(key, val)
 }
 
-func (h *RequestHeader) reset(hdr fasthttp.RequestHeader) {
+func (h *RequestHeader) reset(hdr *fasthttp.RequestHeader) {
 	h.RequestHeader = hdr
 }
 
@@ -50,6 +50,6 @@ func (h *ResponseHeader) Set(key, val string) {
 	h.ResponseHeader.Set(key, val)
 }
 
-func (h *ResponseHeader) reset(hdr fasthttp.ResponseHeader) {
+func (h *ResponseHeader) reset(hdr *fasthttp.ResponseHeader) {
 	h.ResponseHeader = hdr
 }

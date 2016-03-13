@@ -1,8 +1,8 @@
 hash: f220137e9ccd9aaf3051be33c3c23ea8abd2c40df6cf96175c3994d482b5e007
-updated: 2016-03-11T07:51:13.670742959-08:00
+updated: 2016-03-13T09:34:16.391046379-07:00
 imports:
 - name: github.com/klauspost/compress
-  version: 2d3d403f37d2e70b722590bc286076a17422e1f2
+  version: 006acde2c5d283d2f8b8aa03d8f0cd2891c680cf
   subpackages:
   - flate
   - gzip
