@@ -26,6 +26,7 @@ type (
 	// response objects, path parameters, data and registered handler.
 	Context interface {
 		netContext.Context
+		SetNetContext(netContext.Context)
 		Request() engine.Request
 		Response() engine.Response
 		Path() string
@@ -57,15 +58,16 @@ type (
 	}
 
 	context struct {
-		request  engine.Request
-		response engine.Response
-		path     string
-		pnames   []string
-		pvalues  []string
-		query    url.Values
-		store    store
-		handler  Handler
-		echo     *Echo
+		netContext netContext.Context
+		request    engine.Request
+		response   engine.Response
+		path       string
+		pnames     []string
+		pvalues    []string
+		query      url.Values
+		store      store
+		handler    Handler
+		echo       *Echo
 	}
 
 	store map[string]interface{}
@@ -87,24 +89,28 @@ func NewContext(req engine.Request, res engine.Response, e *Echo) Context {
 	}
 }
 
-func (c *context) Handle(ctx Context) error {
-	return c.handler.Handle(ctx)
+func (c *context) SetNetContext(ctx netContext.Context) {
+	c.netContext = ctx
 }
 
 func (c *context) Deadline() (deadline time.Time, ok bool) {
-	return
+	return c.netContext.Deadline()
 }
 
 func (c *context) Done() <-chan struct{} {
-	return nil
+	return c.netContext.Done()
 }
 
 func (c *context) Err() error {
-	return nil
+	return c.netContext.Err()
 }
 
 func (c *context) Value(key interface{}) interface{} {
-	return nil
+	return c.netContext.Value(key)
+}
+
+func (c *context) Handle(ctx Context) error {
+	return c.handler.Handle(ctx)
 }
 
 // Request returns *http.Request.
