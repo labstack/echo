@@ -9,11 +9,19 @@ import (
 )
 
 type (
-	LoggerOptions struct {
+	LoggerConfig struct {
 	}
 )
 
-func Logger(options ...LoggerOptions) echo.MiddlewareFunc {
+var (
+	DefaultLoggerConfig = LoggerConfig{}
+)
+
+func Logger() echo.MiddlewareFunc {
+	return LoggerFromConfig(DefaultLoggerConfig)
+}
+
+func LoggerFromConfig(config LoggerConfig) echo.MiddlewareFunc {
 	return func(next echo.Handler) echo.Handler {
 		return echo.HandlerFunc(func(c echo.Context) error {
 			req := c.Request()

@@ -1,36 +1,53 @@
 package middleware
 
 import (
-	"errors"
+	"fmt"
+	"runtime"
 
 	"github.com/labstack/echo"
+	"github.com/labstack/gommon/color"
 )
 
 type (
-	RecoverOptions struct {
+	RecoverConfig struct {
+		StackSize  int
+		StackAll   bool
+		PrintStack bool
 	}
 )
 
+var (
+	DefaultRecoverConfig = RecoverConfig{
+		StackSize:  4 << 10, // 4 KB
+		StackAll:   true,
+		PrintStack: true,
+	}
+)
+
+func Recover() echo.MiddlewareFunc {
+	return RecoverWithConfig(DefaultRecoverConfig)
+}
+
 // Recover returns a middleware which recovers from panics anywhere in the chain
 // and handles the control to the centralized HTTPErrorHandler.
-func Recover(options ...RecoverOptions) echo.MiddlewareFunc {
+func RecoverWithConfig(config RecoverConfig) echo.MiddlewareFunc {
 	return func(next echo.Handler) echo.Handler {
-		// TODO: Provide better stack trace
-		// - `https://github.com/go-errors/errors`
-		// - `https://github.com/docker/libcontainer/tree/master/stacktrace`
 		return echo.HandlerFunc(func(c echo.Context) error {
 			defer func() {
 				if r := recover(); r != nil {
-					e := ""
+					var err error
 					switch r := r.(type) {
-					case string:
-						e = r
 					case error:
-						e = r.Error()
+						err = r
 					default:
-						e = "unknown error"
+						err = fmt.Errorf("%v", r)
 					}
-					c.Error(errors.New("panic recover|" + e))
+					stack := make([]byte, config.StackSize)
+					length := runtime.Stack(stack, config.StackAll)
+					if config.PrintStack {
+						c.Logger().Printf("%s|%s", color.Red("PANIC RECOVER"), stack[:length])
+					}
+					c.Error(err)
 				}
 			}()
 			return next.Handle(c)

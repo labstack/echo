@@ -13,8 +13,8 @@ import (
 )
 
 type (
-	GzipOptions struct {
-		level int
+	GzipConfig struct {
+		Level int
 	}
 
 	gzipResponseWriter struct {
@@ -23,11 +23,24 @@ type (
 	}
 )
 
+var (
+	defaultGzipConfig = GzipConfig{
+		Level: gzip.DefaultCompression,
+	}
+)
+
 // Gzip returns a middleware which compresses HTTP response using gzip compression
 // scheme.
-func Gzip(options ...GzipOptions) echo.MiddlewareFunc {
+func Gzip() echo.MiddlewareFunc {
+	return GzipFromConfig(defaultGzipConfig)
+}
+
+// GzipFromConfig return `Gzip` middleware from config.
+func GzipFromConfig(config GzipConfig) echo.MiddlewareFunc {
+	pool := gzipPool(config)
+	scheme := "gzip"
+
 	return func(next echo.Handler) echo.Handler {
-		scheme := "gzip"
 		return echo.HandlerFunc(func(c echo.Context) error {
 			c.Response().Header().Add(echo.Vary, echo.AcceptEncoding)
 			if strings.Contains(c.Request().Header().Get(echo.AcceptEncoding), scheme) {
@@ -56,8 +69,11 @@ func (g gzipResponseWriter) Write(b []byte) (int, error) {
 	return g.Writer.Write(b)
 }
 
-var pool = sync.Pool{
-	New: func() interface{} {
-		return gzip.NewWriter(ioutil.Discard)
-	},
+func gzipPool(config GzipConfig) sync.Pool {
+	return sync.Pool{
+		New: func() interface{} {
+			w, _ := gzip.NewWriterLevel(ioutil.Discard, config.Level)
+			return w
+		},
+	}
 }

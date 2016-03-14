@@ -9,26 +9,30 @@ import (
 )
 
 type (
-	StaticOptions struct {
+	StaticConfig struct {
 		Root   string `json:"root"`
 		Index  string `json:"index"`
 		Browse bool   `json:"browse"`
 	}
 )
 
-func Static(root string, options ...StaticOptions) echo.MiddlewareFunc {
-	return func(next echo.Handler) echo.Handler {
-		// Default options
-		opts := StaticOptions{}
-		if len(options) > 0 {
-			opts = options[0]
-		}
-		if opts.Index == "" {
-			opts.Index = "index.html"
-		}
+var (
+	DefaultStaticConfig = StaticConfig{
+		Index:  "index.html",
+		Browse: false,
+	}
+)
 
+func Static(root string) echo.MiddlewareFunc {
+	c := DefaultStaticConfig
+	c.Root = root
+	return StaticFromConfig(c)
+}
+
+func StaticFromConfig(config StaticConfig) echo.MiddlewareFunc {
+	return func(next echo.Handler) echo.Handler {
 		return echo.HandlerFunc(func(c echo.Context) error {
-			fs := http.Dir(root)
+			fs := http.Dir(config.Root)
 			file := path.Clean(c.Request().URL().Path())
 			f, err := fs.Open(file)
 			if err != nil {
@@ -49,10 +53,10 @@ func Static(root string, options ...StaticOptions) echo.MiddlewareFunc {
 				d := f
 
 				// Index file
-				file = path.Join(file, opts.Index)
+				file = path.Join(file, config.Index)
 				f, err = fs.Open(file)
 				if err != nil {
-					if opts.Browse {
+					if config.Browse {
 						dirs, err := d.Readdir(-1)
 						if err != nil {
 							return err
