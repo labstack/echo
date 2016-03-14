@@ -27,6 +27,7 @@ type (
 	Context interface {
 		netContext.Context
 		SetNetContext(netContext.Context)
+		NetContext() netContext.Context
 		Request() engine.Request
 		Response() engine.Response
 		Path() string
@@ -91,6 +92,10 @@ func NewContext(req engine.Request, res engine.Response, e *Echo) Context {
 
 func (c *context) SetNetContext(ctx netContext.Context) {
 	c.netContext = ctx
+}
+
+func (c *context) NetContext() netContext.Context {
+	return c.netContext
 }
 
 func (c *context) Deadline() (deadline time.Time, ok bool) {
