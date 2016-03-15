@@ -72,6 +72,10 @@ func (r *Request) Method() string {
 	return r.request.Method
 }
 
+func (r *Request) SetMethod(method string) {
+	r.request.Method = method
+}
+
 func (r *Request) URI() string {
 	return r.request.RequestURI
 }

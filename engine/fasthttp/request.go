@@ -63,6 +63,11 @@ func (r *Request) Method() string {
 	return string(r.RequestCtx.Method())
 }
 
+// SetMethod implements `Request#SetMethod` method.
+func (r *Request) SetMethod(method string) {
+	r.Request.Header.SetMethod(method)
+}
+
 // URI implements `Request#URI` method.
 func (r *Request) URI() string {
 	return string(r.RequestURI())

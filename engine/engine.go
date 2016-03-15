@@ -32,6 +32,7 @@ type (
 		UserAgent() string
 		RemoteAddress() string
 		Method() string
+		SetMethod(string)
 		Body() io.ReadCloser
 		FormValue(string) string
 		FormFile(string) (*multipart.FileHeader, error)
