@@ -129,7 +129,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // WrapHandler wraps `http.Handler` into `echo.HandlerFunc`.
 func WrapHandler(h http.Handler) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		w := c.Response().(*Response).ResponseWriter
+		w := &responseAdapter{
+			ResponseWriter: c.Response().(*Response).ResponseWriter,
+			writer:         c.Response(),
+		}
 		r := c.Request().(*Request).Request
 		h.ServeHTTP(w, r)
 		return nil

@@ -19,6 +19,11 @@ type (
 		writer    io.Writer
 		logger    *log.Logger
 	}
+
+	responseAdapter struct {
+		http.ResponseWriter
+		writer io.Writer
+	}
 )
 
 // Header implements `engine.Response#Header` method.
@@ -76,4 +81,8 @@ func (r *Response) reset(w http.ResponseWriter, h engine.Header) {
 	r.size = 0
 	r.committed = false
 	r.writer = w
+}
+
+func (r *responseAdapter) Write(b []byte) (n int, err error) {
+	return r.writer.Write(b)
 }
