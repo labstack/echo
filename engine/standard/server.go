@@ -27,7 +27,7 @@ type (
 	}
 )
 
-// New returns an instance of `standard.Server` with specified listen address.
+// New returns an instance of `standard.Server` with provided listen address.
 func New(addr string) *Server {
 	c := engine.Config{Address: addr}
 	return NewFromConfig(c)

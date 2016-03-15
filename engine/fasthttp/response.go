@@ -42,7 +42,7 @@ func (r *Response) WriteHeader(code int) {
 
 // Write implements `engine.Response#Write` method.
 func (r *Response) Write(b []byte) (int, error) {
-	return r.RequestCtx.Write(b)
+	return r.writer.Write(b)
 }
 
 // Status implements `engine.Response#Status` method.
