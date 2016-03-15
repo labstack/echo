@@ -70,10 +70,11 @@ func (g *Group) add(method, path string, handler Handler, middleware ...Middlewa
 	middleware = append(g.middleware, middleware...)
 
 	g.echo.router.Add(method, path, HandlerFunc(func(c Context) error {
+		h := handler
 		for _, m := range middleware {
-			handler = m.Handle(handler)
+			h = m.Handle(h)
 		}
-		return handler.Handle(c)
+		return h.Handle(c)
 	}), g.echo)
 	r := Route{
 		Method:  method,

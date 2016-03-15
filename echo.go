@@ -369,10 +369,11 @@ func (e *Echo) File(path, file string) {
 func (e *Echo) add(method, path string, handler Handler, middleware ...Middleware) {
 	name := handlerName(handler)
 	e.router.Add(method, path, HandlerFunc(func(c Context) error {
+		h := handler
 		for _, m := range middleware {
-			handler = m.Handle(handler)
+			h = m.Handle(h)
 		}
-		return handler.Handle(c)
+		return h.Handle(c)
 	}), e)
 	r := Route{
 		Method:  method,
