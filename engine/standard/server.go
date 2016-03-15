@@ -10,15 +10,16 @@ import (
 )
 
 type (
+	// Server implements `engine.Engine`.
 	Server struct {
 		*http.Server
 		config  engine.Config
 		handler engine.Handler
 		logger  *log.Logger
-		pool    *Pool
+		pool    *pool
 	}
 
-	Pool struct {
+	pool struct {
 		request  sync.Pool
 		response sync.Pool
 		header   sync.Pool
@@ -26,11 +27,13 @@ type (
 	}
 )
 
+// New returns an instance of `standard.Server` with specified listen address.
 func New(addr string) *Server {
 	c := engine.Config{Address: addr}
 	return NewFromConfig(c)
 }
 
+// NewFromTLS returns an instance of `standard.Server` from TLS config.
 func NewFromTLS(addr, certfile, keyfile string) *Server {
 	c := engine.Config{
 		Address:     addr,
@@ -40,11 +43,12 @@ func NewFromTLS(addr, certfile, keyfile string) *Server {
 	return NewFromConfig(c)
 }
 
+// NewFromConfig returns an instance of `standard.Server` from config.
 func NewFromConfig(c engine.Config) (s *Server) {
 	s = &Server{
 		Server: new(http.Server),
 		config: c,
-		pool: &Pool{
+		pool: &pool{
 			request: sync.Pool{
 				New: func() interface{} {
 					return &Request{}
@@ -76,14 +80,17 @@ func NewFromConfig(c engine.Config) (s *Server) {
 	return
 }
 
+// SetHandler implements `Engine#SetHandler` method.
 func (s *Server) SetHandler(h engine.Handler) {
 	s.handler = h
 }
 
+// SetLogger implements `Engine#SetLogger` method.
 func (s *Server) SetLogger(l *log.Logger) {
 	s.logger = l
 }
 
+// Start implements `Engine#Start` method.
 func (s *Server) Start() {
 	certfile := s.config.TLSCertfile
 	keyfile := s.config.TLSKeyfile
@@ -94,6 +101,7 @@ func (s *Server) Start() {
 	}
 }
 
+// ServeHTTP implements `http.Handler` interface.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Request
 	req := s.pool.request.Get().(*Request)

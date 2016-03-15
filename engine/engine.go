@@ -9,16 +9,18 @@ import (
 )
 
 type (
-	// Engine defines an interface for HTTP server.
+	// Engine defines the interface for HTTP server.
 	Engine interface {
 		SetHandler(Handler)
 		SetLogger(*log.Logger)
 		Start()
 	}
 
-	// Request defines an interface for HTTP request.
+	// Request defines the interface for HTTP request.
 	Request interface {
+		// TLS returns true if connection is TLS otherwise false.
 		TLS() bool
+
 		Scheme() string
 		Host() string
 		URI() string
@@ -27,6 +29,7 @@ type (
 		// Proto() string
 		// ProtoMajor() int
 		// ProtoMinor() int
+		UserAgent() string
 		RemoteAddress() string
 		Method() string
 		Body() io.ReadCloser
@@ -35,7 +38,7 @@ type (
 		MultipartForm() (*multipart.Form, error)
 	}
 
-	// Response defines an interface for HTTP response.
+	// Response defines the interface for HTTP response.
 	Response interface {
 		Header() Header
 		WriteHeader(int)
@@ -43,22 +46,22 @@ type (
 		Status() int
 		Size() int64
 		Committed() bool
-		SetWriter(io.Writer)
 		Writer() io.Writer
+		SetWriter(io.Writer)
 	}
 
-	// Header defines an interface for HTTP header.
+	// Header defines the interface for HTTP header.
 	Header interface {
 		Add(string, string)
 		Del(string)
-		Get(string) string
 		Set(string, string)
+		Get(string) string
 	}
 
-	// URL defines an interface for HTTP request url.
+	// URL defines the interface for HTTP request url.
 	URL interface {
-		SetPath(string)
 		Path() string
+		SetPath(string)
 		QueryValue(string) string
 	}
 

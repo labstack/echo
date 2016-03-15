@@ -3,20 +3,24 @@ package standard
 import "net/url"
 
 type (
+	// URL implements `engine.URL`.
 	URL struct {
 		*url.URL
 		query url.Values
 	}
 )
 
-func (u *URL) SetPath(path string) {
-	u.URL.Path = path
-}
-
+// Path implements `URL#Path` method.
 func (u *URL) Path() string {
 	return u.URL.Path
 }
 
+// SetPath implements `URL#SetPath` method.
+func (u *URL) SetPath(path string) {
+	u.URL.Path = path
+}
+
+// QueryValue implements `URL#QueryValue` method.
 func (u *URL) QueryValue(name string) string {
 	if u.query == nil {
 		u.query = u.Query()

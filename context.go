@@ -26,8 +26,8 @@ type (
 	// response objects, path parameters, data and registered handler.
 	Context interface {
 		netContext.Context
-		SetNetContext(netContext.Context)
 		NetContext() netContext.Context
+		SetNetContext(netContext.Context)
 		Request() engine.Request
 		Response() engine.Response
 		Path() string
@@ -36,8 +36,8 @@ type (
 		ParamNames() []string
 		Query(string) string
 		Form(string) string
-		Set(string, interface{})
 		Get(string) interface{}
+		Set(string, interface{})
 		Bind(interface{}) error
 		Render(int, string, interface{}) error
 		HTML(int, string) error
@@ -90,12 +90,12 @@ func NewContext(req engine.Request, res engine.Response, e *Echo) Context {
 	}
 }
 
-func (c *context) SetNetContext(ctx netContext.Context) {
-	c.netContext = ctx
-}
-
 func (c *context) NetContext() netContext.Context {
 	return c.netContext
+}
+
+func (c *context) SetNetContext(ctx netContext.Context) {
+	c.netContext = ctx
 }
 
 func (c *context) Deadline() (deadline time.Time, ok bool) {
@@ -169,17 +169,17 @@ func (c *context) Form(name string) string {
 	return c.request.FormValue(name)
 }
 
-// Get retrieves data from the context.
-func (c *context) Get(key string) interface{} {
-	return c.store[key]
-}
-
 // Set saves data in the context.
 func (c *context) Set(key string, val interface{}) {
 	if c.store == nil {
 		c.store = make(store)
 	}
 	c.store[key] = val
+}
+
+// Get retrieves data from the context.
+func (c *context) Get(key string) interface{} {
+	return c.store[key]
 }
 
 // Bind binds the request body into specified type `i`. The default binder does

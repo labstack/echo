@@ -60,6 +60,10 @@ func (r *Request) Header() engine.Header {
 // 	return r.request.ProtoMinor()
 // }
 
+func (r *Request) UserAgent() string {
+	return r.request.UserAgent()
+}
+
 func (r *Request) RemoteAddress() string {
 	return r.request.RemoteAddr
 }
