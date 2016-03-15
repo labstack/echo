@@ -26,6 +26,11 @@ func (u *URL) QueryValue(name string) string {
 	return string(u.QueryArgs().Peek(name))
 }
 
+// QueryString implements `engine.URL#QueryString` method.
+func (u *URL) QueryString() string {
+	return string(u.URI.QueryString())
+}
+
 func (u *URL) reset(uri *fasthttp.URI) {
 	u.URI = uri
 }

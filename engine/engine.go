@@ -64,6 +64,7 @@ type (
 		Path() string
 		SetPath(string)
 		QueryValue(string) string
+		QueryString() string
 	}
 
 	// Config defines engine configuration.

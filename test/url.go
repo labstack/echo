@@ -28,6 +28,10 @@ func (u *URL) QueryValue(name string) string {
 	return u.query.Get(name)
 }
 
+func (u *URL) QueryString() string {
+	return u.url.RawQuery
+}
+
 func (u *URL) Object() interface{} {
 	return u.url
 }

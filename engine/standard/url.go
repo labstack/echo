@@ -28,6 +28,11 @@ func (u *URL) QueryValue(name string) string {
 	return u.query.Get(name)
 }
 
+// QueryString implements `engine.URL#QueryString` method.
+func (u *URL) QueryString() string {
+	return u.URL.RawQuery
+}
+
 func (u *URL) reset(url *url.URL) {
 	u.URL = url
 }

@@ -42,6 +42,7 @@ func (h *RequestHeader) reset(hdr *fasthttp.RequestHeader) {
 
 // Add implements `engine.Header#Add` method.
 func (h *ResponseHeader) Add(key, val string) {
+	// TODO: https://github.com/valyala/fasthttp/issues/69
 	// h.header.Add(key, val)
 }
 
