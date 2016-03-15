@@ -10,17 +10,17 @@ type (
 	}
 )
 
-// Path implements `URL#Path` method.
+// Path implements `engine.URL#Path` method.
 func (u *URL) Path() string {
 	return u.URL.Path
 }
 
-// SetPath implements `URL#SetPath` method.
+// SetPath implements `engine.URL#SetPath` method.
 func (u *URL) SetPath(path string) {
 	u.URL.Path = path
 }
 
-// QueryValue implements `URL#QueryValue` method.
+// QueryValue implements `engine.URL#QueryValue` method.
 func (u *URL) QueryValue(name string) string {
 	if u.query == nil {
 		u.query = u.Query()

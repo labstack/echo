@@ -23,72 +23,72 @@ type (
 	}
 )
 
-// TLS implements `Request#TLS` method.
+// TLS implements `engine.Request#TLS` method.
 func (r *Request) TLS() bool {
 	return r.IsTLS()
 }
 
-// Scheme implements `Request#Scheme` method.
+// Scheme implements `engine.Request#Scheme` method.
 func (r *Request) Scheme() string {
 	return string(r.RequestCtx.URI().Scheme())
 }
 
-// Host implements `Request#Host` method.
+// Host implements `engine.Request#Host` method.
 func (r *Request) Host() string {
 	return string(r.RequestCtx.Host())
 }
 
-// URL implements `Request#URL` method.
+// URL implements `engine.Request#URL` method.
 func (r *Request) URL() engine.URL {
 	return r.url
 }
 
-// Header implements `Request#Header` method.
+// Header implements `engine.Request#Header` method.
 func (r *Request) Header() engine.Header {
 	return r.header
 }
 
-// UserAgent implements `Request#UserAgent` method.
+// UserAgent implements `engine.Request#UserAgent` method.
 func (r *Request) UserAgent() string {
 	return string(r.RequestCtx.UserAgent())
 }
 
-// RemoteAddress implements `Request#RemoteAddress` method.
+// RemoteAddress implements `engine.Request#RemoteAddress` method.
 func (r *Request) RemoteAddress() string {
 	return r.RemoteAddr().String()
 }
 
-// Method implements `Request#Method` method.
+// Method implements `engine.Request#Method` method.
 func (r *Request) Method() string {
 	return string(r.RequestCtx.Method())
 }
 
-// SetMethod implements `Request#SetMethod` method.
+// SetMethod implements `engine.Request#SetMethod` method.
 func (r *Request) SetMethod(method string) {
 	r.Request.Header.SetMethod(method)
 }
 
-// URI implements `Request#URI` method.
+// URI implements `engine.Request#URI` method.
 func (r *Request) URI() string {
 	return string(r.RequestURI())
 }
 
-// Body implements `Request#Body` method.
+// Body implements `engine.Request#Body` method.
 func (r *Request) Body() io.ReadCloser {
 	return ioutil.NopCloser(bytes.NewBuffer(r.PostBody()))
 }
 
-// FormValue implements `Request#FormValue` method.
+// FormValue implements `engine.Request#FormValue` method.
 func (r *Request) FormValue(name string) string {
 	return string(r.RequestCtx.FormValue(name))
 }
 
-// FormFile implements `Request#FormFile` method.
+// FormFile implements `engine.Request#FormFile` method.
 func (r *Request) FormFile(name string) (*multipart.FileHeader, error) {
 	return r.RequestCtx.FormFile(name)
 }
 
-// MultipartForm implements `Request#MultipartForm` method.
+// MultipartForm implements `engine.Request#MultipartForm` method.
 func (r *Request) MultipartForm() (*multipart.Form, error) {
 	return r.RequestCtx.MultipartForm()
 }

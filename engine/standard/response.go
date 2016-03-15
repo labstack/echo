@@ -21,12 +21,12 @@ type (
 	}
 )
 
-// Header implements `Response#Header` method.
+// Header implements `engine.Response#Header` method.
 func (r *Response) Header() engine.Header {
 	return r.header
 }
 
-// WriteHeader implements `Response#WriteHeader` method.
+// WriteHeader implements `engine.Response#WriteHeader` method.
 func (r *Response) WriteHeader(code int) {
 	if r.committed {
 		r.logger.Warn("response already committed")
@@ -37,34 +37,34 @@ func (r *Response) WriteHeader(code int) {
 	r.committed = true
 }
 
-// Write implements `Response#Write` method.
+// Write implements `engine.Response#Write` method.
 func (r *Response) Write(b []byte) (n int, err error) {
 	n, err = r.writer.Write(b)
 	r.size += int64(n)
 	return
 }
 
-// Status implements `Response#Status` method.
+// Status implements `engine.Response#Status` method.
 func (r *Response) Status() int {
 	return r.status
 }
 
-// Size implements `Response#Size` method.
+// Size implements `engine.Response#Size` method.
 func (r *Response) Size() int64 {
 	return r.size
 }
 
-// Committed implements `Response#Committed` method.
+// Committed implements `engine.Response#Committed` method.
 func (r *Response) Committed() bool {
 	return r.committed
 }
 
-// Writer implements `Response#Writer` method.
+// Writer implements `engine.Response#Writer` method.
 func (r *Response) Writer() io.Writer {
 	return r.writer
 }
 
-// SetWriter implements `Response#SetWriter` method.
+// SetWriter implements `engine.Response#SetWriter` method.
 func (r *Response) SetWriter(w io.Writer) {
 	r.writer = w
 }

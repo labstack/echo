@@ -9,22 +9,22 @@ type (
 	}
 )
 
-// Add implements `Header#Add` method.
+// Add implements `engine.Header#Add` method.
 func (h *Header) Add(key, val string) {
 	h.Header.Add(key, val)
 }
 
-// Del implements `Header#Del` method.
+// Del implements `engine.Header#Del` method.
 func (h *Header) Del(key string) {
 	h.Header.Del(key)
 }
 
-// Set implements `Header#Set` method.
+// Set implements `engine.Header#Set` method.
 func (h *Header) Set(key, val string) {
 	h.Header.Set(key, val)
 }
 
-// Get implements `Header#Get` method.
+// Get implements `engine.Header#Get` method.
 func (h *Header) Get(key string) string {
 	return h.Header.Get(key)
 }

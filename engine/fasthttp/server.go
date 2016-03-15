@@ -84,17 +84,17 @@ func NewFromConfig(c engine.Config) (s *Server) {
 	return
 }
 
-// SetHandler implements `Engine#SetHandler` method.
+// SetHandler implements `engine.Engine#SetHandler` method.
 func (s *Server) SetHandler(h engine.Handler) {
 	s.handler = h
 }
 
-// SetLogger implements `Engine#SetLogger` method.
+// SetLogger implements `engine.Engine#SetLogger` method.
 func (s *Server) SetLogger(l *log.Logger) {
 	s.logger = l
 }
 
-// Start implements `Engine#Start` method.
+// Start implements `engine.Engine#Start` method.
 func (s *Server) Start() {
 	handler := func(c *fasthttp.RequestCtx) {
 		// Request

@@ -11,19 +11,19 @@ type (
 	}
 )
 
-// Path implements `URL#Path` method.
+// Path implements `engine.URL#Path` method.
 func (u *URL) Path() string {
 	return string(u.URI.Path())
 }
 
-// SetPath implements `URL#SetPath` method.
+// SetPath implements `engine.URL#SetPath` method.
 func (u *URL) SetPath(path string) {
-	// return string(u.URI.Path())
+	u.URI.SetPath(path)
 }
 
-// QueryValue implements `URL#QueryValue` method.
+// QueryValue implements `engine.URL#QueryValue` method.
 func (u *URL) QueryValue(name string) string {
-	return ""
+	return string(u.QueryArgs().Peek(name))
 }
 
 func (u *URL) reset(uri *fasthttp.URI) {

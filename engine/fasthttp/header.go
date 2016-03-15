@@ -16,22 +16,22 @@ type (
 	}
 )
 
-// Add implements `Header#Add` method.
+// Add implements `engine.Header#Add` method.
 func (h *RequestHeader) Add(key, val string) {
 	// h.RequestHeader.Add(key, val)
 }
 
-// Del implements `Header#Del` method.
+// Del implements `engine.Header#Del` method.
 func (h *RequestHeader) Del(key string) {
 	h.RequestHeader.Del(key)
 }
 
-// Set implements `Header#Set` method.
+// Set implements `engine.Header#Set` method.
 func (h *RequestHeader) Set(key, val string) {
 	h.RequestHeader.Set(key, val)
 }
 
-// Get implements `Header#Get` method.
+// Get implements `engine.Header#Get` method.
 func (h *RequestHeader) Get(key string) string {
 	return string(h.Peek(key))
 }
@@ -40,22 +40,22 @@ func (h *RequestHeader) reset(hdr *fasthttp.RequestHeader) {
 	h.RequestHeader = hdr
 }
 
-// Add implements `Header#Add` method.
+// Add implements `engine.Header#Add` method.
 func (h *ResponseHeader) Add(key, val string) {
 	// h.header.Add(key, val)
 }
 
-// Del implements `Header#Del` method.
+// Del implements `engine.Header#Del` method.
 func (h *ResponseHeader) Del(key string) {
 	h.ResponseHeader.Del(key)
 }
 
-// Get implements `Header#Get` method.
+// Get implements `engine.Header#Get` method.
 func (h *ResponseHeader) Get(key string) string {
 	return string(h.Peek(key))
 }
 
-// Set implements `Header#Set` method.
+// Set implements `engine.Header#Set` method.
 func (h *ResponseHeader) Set(key, val string) {
 	h.ResponseHeader.Set(key, val)
 }
