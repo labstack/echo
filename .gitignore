@@ -31,14 +31,14 @@ _testmain.go
 
 # compiled web files
 website/public
-website/make
 website/Makefile
 
 # node.js web dependencies
 node_modules
 
-# code coverage output files
-*.coverprofile
+# IntelliJ
+.idea
+*.iml
 
-# glide
+# Glide
 vendor
