@@ -17,6 +17,8 @@ import (
 
 	"github.com/labstack/echo/engine"
 	"github.com/labstack/gommon/log"
+
+	netContext "golang.org/x/net/context"
 )
 
 type (
@@ -33,6 +35,7 @@ type (
 		debug            bool
 		router           *Router
 		logger           *log.Logger
+		contextFunc      ContextFunc
 	}
 
 	Route struct {
@@ -78,6 +81,8 @@ type (
 	Renderer interface {
 		Render(io.Writer, string, interface{}, Context) error
 	}
+
+	ContextFunc func(req engine.Request) netContext.Context
 )
 
 const (
@@ -203,6 +208,10 @@ func New() (e *Echo) {
 	e.logger = log.New("echo")
 	e.logger.SetLevel(log.FATAL)
 
+	e.contextFunc = func(req engine.Request) netContext.Context {
+		return netContext.Background()
+	}
+
 	return
 }
 
@@ -264,6 +273,11 @@ func (e *Echo) SetHTTPErrorHandler(h HTTPErrorHandler) {
 // SetBinder registers a custom binder. It's invoked by Context.Bind().
 func (e *Echo) SetBinder(b Binder) {
 	e.binder = b
+}
+
+// SetContectFunc registered a custom context factory.
+func (e *Echo) SetContectFunc(fn ContextFunc) {
+	e.contextFunc = fn
 }
 
 // SetRenderer registers an HTML template renderer. It's invoked by Context.Render().
