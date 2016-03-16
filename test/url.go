@@ -32,10 +32,6 @@ func (u *URL) QueryString() string {
 	return u.url.RawQuery
 }
 
-func (u *URL) Object() interface{} {
-	return u.url
-}
-
 func (u *URL) reset(url *url.URL) {
 	u.url = url
 }

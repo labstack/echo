@@ -80,10 +80,6 @@ func (r *Response) Writer() io.Writer {
 	return r.writer
 }
 
-func (r *Response) Object() interface{} {
-	return r.response
-}
-
 func (r *Response) reset(w http.ResponseWriter, h engine.Header) {
 	r.response = w
 	r.header = h

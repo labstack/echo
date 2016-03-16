@@ -292,7 +292,7 @@ func (e *Echo) Debug() bool {
 	return e.debug
 }
 
-// Pre adds middleware to the chain which is runs before router.
+// Pre adds middleware to the chain which is run before router.
 func (e *Echo) Pre(middleware ...Middleware) {
 	e.middleware = append(e.middleware, middleware...)
 	e.head = e.pristineHead
@@ -303,7 +303,7 @@ func (e *Echo) Pre(middleware ...Middleware) {
 	}
 }
 
-// Use adds middleware to the chain which is runs after router.
+// Use adds middleware to the chain which is run after router.
 func (e *Echo) Use(middleware ...Middleware) {
 	e.middleware = append(e.middleware, middleware...)
 	e.head = e.pristineHead
