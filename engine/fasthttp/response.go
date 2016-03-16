@@ -41,8 +41,10 @@ func (r *Response) WriteHeader(code int) {
 }
 
 // Write implements `engine.Response#Write` method.
-func (r *Response) Write(b []byte) (int, error) {
-	return r.writer.Write(b)
+func (r *Response) Write(b []byte) (n int, err error) {
+	n, err = r.writer.Write(b)
+	r.size += int64(n)
+	return
 }
 
 // Status implements `engine.Response#Status` method.
