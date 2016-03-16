@@ -1,12 +1,20 @@
 language: go
+sudo: false
+
 go:
     - 1.5
     - 1.6
     - tip
 before_install:
-    - go get github.com/modocache/gover
-    - go get github.com/mattn/goveralls
-    - go get golang.org/x/tools/cmd/cover
+  - export PATH=$PATH:$GOPATH/bin
+  - go get golang.org/x/tools/cmd/vet
+  - go get golang.org/x/tools/cmd/cover
+  - go get github.com/modocache/gover
+  - go get github.com/mattn/goveralls
+
+install:
+  - go get -t -v ./...
+
 script:
     - go test -coverprofile=echo.coverprofile
     - go test -coverprofile=middleware.coverprofile ./middleware
