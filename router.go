@@ -47,12 +47,12 @@ func NewRouter(e *Echo) *Router {
 	}
 }
 
-func (r *Router) Handle(h Handler) Handler {
+func (r *Router) Handle(next Handler) Handler {
 	return HandlerFunc(func(c Context) error {
 		method := c.Request().Method()
 		path := c.Request().URL().Path()
 		r.Find(method, path, c)
-		return c.Handle(c)
+		return next.Handle(c)
 	})
 }
 

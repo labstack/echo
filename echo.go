@@ -24,6 +24,7 @@ type (
 		prefix           string
 		middleware       []Middleware
 		head             Handler
+		pristineHead     Handler
 		maxParam         *int
 		notFoundHandler  HandlerFunc
 		httpErrorHandler HTTPErrorHandler
@@ -190,7 +191,16 @@ func New() (e *Echo) {
 		return NewContext(nil, nil, e)
 	}
 	e.router = NewRouter(e)
-	e.head = e.router.Handle(nil)
+	e.middleware = []Middleware{e.router}
+	e.head = e.router.Handle(HandlerFunc(func(c Context) error {
+		return c.Handle(c)
+	}))
+	e.pristineHead = e.head
+
+	// e.head = HandlerFunc(func(c Context) error {
+	// 	return c.Handle(c)
+	// })
+	// e.router.Handle(e.head)
 
 	//----------
 	// Defaults
@@ -282,14 +292,25 @@ func (e *Echo) Debug() bool {
 	return e.debug
 }
 
-// Use adds handler to the middleware chain.
-func (e *Echo) Use(middleware ...Middleware) {
+// Pre adds middleware to the chain which is runs before router.
+func (e *Echo) Pre(middleware ...Middleware) {
 	e.middleware = append(e.middleware, middleware...)
-	m := append(e.middleware, e.router)
+	e.head = e.pristineHead
 
 	// Chain middleware
-	for i := len(m) - 1; i >= 0; i-- {
-		e.head = m[i].Handle(e.head)
+	for i := len(e.middleware) - 1; i >= 0; i-- {
+		e.head = e.middleware[i].Handle(e.head)
+	}
+}
+
+// Use adds middleware to the chain which is runs after router.
+func (e *Echo) Use(middleware ...Middleware) {
+	e.middleware = append(e.middleware, middleware...)
+	e.head = e.pristineHead
+
+	// Chain middleware
+	for i := len(e.middleware) - 1; i >= 0; i-- {
+		e.head = e.middleware[i].Handle(e.head)
 	}
 }
 
