@@ -36,6 +36,16 @@ func (h *RequestHeader) Get(key string) string {
 	return string(h.Peek(key))
 }
 
+func (h *RequestHeader) All() []string {
+	hdrs := make([]string, h.Len())
+	idx := 0
+	h.VisitAll(func(k, v []byte) {
+		hdrs[idx] = string(k)
+		idx++
+	})
+	return hdrs
+}
+
 func (h *RequestHeader) reset(hdr *fasthttp.RequestHeader) {
 	h.RequestHeader = hdr
 }
@@ -59,6 +69,16 @@ func (h *ResponseHeader) Get(key string) string {
 // Set implements `engine.Header#Set` method.
 func (h *ResponseHeader) Set(key, val string) {
 	h.ResponseHeader.Set(key, val)
+}
+
+func (h *ResponseHeader) All() []string {
+	hdrs := make([]string, h.Len())
+	idx := 0
+	h.VisitAll(func(k, v []byte) {
+		hdrs[idx] = string(k)
+		idx++
+	})
+	return hdrs
 }
 
 func (h *ResponseHeader) reset(hdr *fasthttp.ResponseHeader) {

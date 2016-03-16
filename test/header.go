@@ -24,6 +24,16 @@ func (h *Header) Set(key, val string) {
 	h.header.Set(key, val)
 }
 
+func (h *Header) All() []string {
+	headers := make([]string, len(h.header))
+	idx := 0
+	for header, _ := range h.header {
+		headers[idx] = header
+		idx++
+	}
+	return headers
+}
+
 func (h *Header) Object() interface{} {
 	return h.header
 }
