@@ -29,6 +29,16 @@ func (h *Header) Get(key string) string {
 	return h.Header.Get(key)
 }
 
+func (h *Header) All() []string {
+	headers := make([]string, len(h.Header))
+	idx := 0
+	for header, _ := range h.Header {
+		headers[idx] = header
+		idx++
+	}
+	return headers
+}
+
 func (h *Header) reset(hdr http.Header) {
 	h.Header = hdr
 }

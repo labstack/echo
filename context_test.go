@@ -239,6 +239,16 @@ func TestContextNetContext(t *testing.T) {
 	// assert.Equal(t, "val", c.Value("key"))
 }
 
+func TestHeaderAll(t *testing.T) {
+	req := test.NewRequest(GET, "/", strings.NewReader(""))
+	req.Header().Add(ContentLength, "123")
+	req.Header().Add(ContentType, TextPlain)
+	all := req.Header().All()
+	assert.Equal(t, 2, len(all))
+	assert.Contains(t, all, ContentType)
+	assert.Contains(t, all, ContentLength)
+}
+
 func testBindOk(t *testing.T, c Context, ct string) {
 	c.Request().Header().Set(ContentType, ct)
 	u := new(user)
