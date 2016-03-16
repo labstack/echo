@@ -367,6 +367,7 @@ func detectContentType(name string) (t string) {
 }
 
 func (c *context) reset(req engine.Request, res engine.Response) {
+	c.netContext = nil
 	c.request = req
 	c.response = res
 	c.query = nil

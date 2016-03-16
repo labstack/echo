@@ -146,7 +146,10 @@ func WrapMiddleware(m func(http.Handler) http.Handler) echo.MiddlewareFunc {
 			req := c.Request().(*Request)
 			res := c.Response().(*Response)
 			m(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				res.ResponseWriter = w
+				res.ResponseWriter = &responseAdapter{
+					ResponseWriter: res.ResponseWriter,
+					writer:         c.Response(),
+				}
 				req.Request = r
 				err = next.Handle(c)
 			})).ServeHTTP(res.ResponseWriter, req.Request)
