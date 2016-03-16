@@ -35,4 +35,5 @@ func (u *URL) QueryString() string {
 
 func (u *URL) reset(url *url.URL) {
 	u.URL = url
+	u.query = nil
 }
