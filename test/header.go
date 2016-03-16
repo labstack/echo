@@ -24,6 +24,16 @@ func (h *Header) Set(key, val string) {
 	h.header.Set(key, val)
 }
 
+func (h *Header) Keys() (keys []string) {
+	keys = make([]string, len(h.header))
+	i := 0
+	for k := range h.header {
+		keys[i] = k
+		i++
+	}
+	return
+}
+
 func (h *Header) reset(hdr http.Header) {
 	h.header = hdr
 }

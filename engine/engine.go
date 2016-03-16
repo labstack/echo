@@ -57,6 +57,7 @@ type (
 		Del(string)
 		Set(string, string)
 		Get(string) string
+		Keys() []string
 	}
 
 	// URL defines the interface for HTTP request url.

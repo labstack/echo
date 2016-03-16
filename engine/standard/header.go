@@ -29,6 +29,17 @@ func (h *Header) Get(key string) string {
 	return h.Header.Get(key)
 }
 
+// Keys implements `engine.Header#Keys` method.
+func (h *Header) Keys() (keys []string) {
+	keys = make([]string, len(h.Header))
+	i := 0
+	for k := range h.Header {
+		keys[i] = k
+		i++
+	}
+	return
+}
+
 func (h *Header) reset(hdr http.Header) {
 	h.Header = hdr
 }
