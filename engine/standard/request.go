@@ -83,7 +83,7 @@ func (r *Request) URI() string {
 }
 
 // Body implements `engine.Request#Body` method.
-func (r *Request) Body() io.ReadCloser {
+func (r *Request) Body() io.Reader {
 	return r.Request.Body
 }
 

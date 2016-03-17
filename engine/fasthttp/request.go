@@ -5,7 +5,6 @@ package fasthttp
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"mime/multipart"
 )
 
@@ -74,8 +73,8 @@ func (r *Request) URI() string {
 }
 
 // Body implements `engine.Request#Body` method.
-func (r *Request) Body() io.ReadCloser {
-	return ioutil.NopCloser(bytes.NewBuffer(r.PostBody()))
+func (r *Request) Body() io.Reader {
+	return bytes.NewBuffer(r.PostBody())
 }
 
 // FormValue implements `engine.Request#FormValue` method.

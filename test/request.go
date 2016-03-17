@@ -80,7 +80,7 @@ func (r *Request) URI() string {
 	return r.request.RequestURI
 }
 
-func (r *Request) Body() io.ReadCloser {
+func (r *Request) Body() io.Reader {
 	return r.request.Body
 }
 
