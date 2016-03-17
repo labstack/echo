@@ -255,17 +255,24 @@ func TestEchoGroup(t *testing.T) {
 
 	// Group
 	g1 := e.Group("/group1")
-	g1.Use(MiddlewareFunc(func(h Handler) Handler {
-		return HandlerFunc(func(c Context) error {
-			buf.WriteString("1")
-			return h.Handle(c)
-		})
-	}))
+	g1.Use(WrapMiddleware(HandlerFunc(func(c Context) error {
+		buf.WriteString("1")
+		return h.Handle(c)
+
+	})))
 	g1.Get("", h)
 
-	// Nested groups
+	// Nested groups with middleware
 	g2 := e.Group("/group2")
+	g2.Use(WrapMiddleware(HandlerFunc(func(c Context) error {
+		buf.WriteString("2")
+		return nil
+	})))
 	g3 := g2.Group("/group3")
+	g3.Use(WrapMiddleware(HandlerFunc(func(c Context) error {
+		buf.WriteString("3")
+		return nil
+	})))
 	g3.Get("", h)
 
 	request(GET, "/users", e)
@@ -276,8 +283,8 @@ func TestEchoGroup(t *testing.T) {
 	assert.Equal(t, "01", buf.String())
 
 	buf.Reset()
-	c, _ := request(GET, "/group2/group3", e)
-	assert.Equal(t, http.StatusOK, c)
+	request(GET, "/group2/group3", e)
+	assert.Equal(t, "023", buf.String())
 }
 
 func TestEchoNotFound(t *testing.T) {

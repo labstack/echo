@@ -391,9 +391,13 @@ func (e *Echo) add(method, path string, handler Handler, middleware ...Middlewar
 	name := handlerName(handler)
 	e.router.Add(method, path, HandlerFunc(func(c Context) error {
 		h := handler
-		for _, m := range middleware {
-			h = m.Handle(h)
+		// Chain middleware
+		for i := len(middleware) - 1; i >= 0; i-- {
+			h = middleware[i].Handle(h)
 		}
+		// for _, m := range middleware {
+		// 	h = m.Handle(h)
+		// }
 		return h.Handle(c)
 	}), e)
 	r := Route{
@@ -404,7 +408,7 @@ func (e *Echo) add(method, path string, handler Handler, middleware ...Middlewar
 	e.router.routes = append(e.router.routes, r)
 }
 
-// Group creates a new sub-router with prefix.
+// Group creates a new router group with prefix.
 func (e *Echo) Group(prefix string, m ...Middleware) (g *Group) {
 	g = &Group{prefix: prefix, echo: e}
 	g.Use(m...)

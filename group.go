@@ -60,7 +60,9 @@ func (g *Group) Match(methods []string, path string, handler Handler, middleware
 	}
 }
 
+// Group creates a new sub-group with prefix.
 func (g *Group) Group(prefix string, m ...Middleware) *Group {
+	m = append(g.middleware, m...)
 	return g.echo.Group(g.prefix+prefix, m...)
 }
 
@@ -71,8 +73,9 @@ func (g *Group) add(method, path string, handler Handler, middleware ...Middlewa
 
 	g.echo.router.Add(method, path, HandlerFunc(func(c Context) error {
 		h := handler
-		for _, m := range middleware {
-			h = m.Handle(h)
+		// Chain middleware
+		for i := len(middleware) - 1; i >= 0; i-- {
+			h = middleware[i].Handle(h)
 		}
 		return h.Handle(c)
 	}), g.echo)

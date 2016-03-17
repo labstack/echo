@@ -18,20 +18,39 @@ type (
 
 	// Request defines the interface for HTTP request.
 	Request interface {
-		// TLS returns true if connection is TLS otherwise false.
+		// TLS returns true if HTTP connection is TLS otherwise false.
 		TLS() bool
 
+		// Scheme returns the HTTP protocol scheme, `http` or `https`.
 		Scheme() string
+
+		// Host returns HTTP request host. // For server requests Host specifies the host on which the
+		// URL is sought. Per RFC 2616, this is either the value of
+		// the "Host" header or the host name given in the URL itself.
 		Host() string
+
+		// URI returns the unmodified `Request-URI` sent by the client.
 		URI() string
+
+		// URL returns `engine.URL`.
 		URL() URL
+
+		// Header returns `engine.Header`.
 		Header() Header
+
 		// Proto() string
 		// ProtoMajor() int
 		// ProtoMinor() int
+
+		// UserAgent returns the client's `User-Agent`.
 		UserAgent() string
+
+		// RemoteAddress returns the client's network address.
 		RemoteAddress() string
+
+		// Method returns the HTTP method of the request.
 		Method() string
+
 		SetMethod(string)
 		Body() io.ReadCloser
 		FormValue(string) string
