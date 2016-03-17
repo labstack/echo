@@ -6,7 +6,8 @@ import (
 	"time"
 
 	"github.com/labstack/gommon/log"
-	"net")
+	"net"
+)
 
 type (
 	// Engine defines the interface for HTTP server.
@@ -16,9 +17,6 @@ type (
 
 		// SetLogger sets the logger for the HTTP server.
 		SetLogger(*log.Logger)
-
-		// SetListener sets custom listener for the HTTP server.
-		SetListener(net.Listener)
 
 		// Start starts the HTTP server.
 		Start()
@@ -140,6 +138,7 @@ type (
 	// Config defines engine configuration.
 	Config struct {
 		Address      string        // TCP address to listen on.
+		Listener     net.Listener  // Custom net.Listener for the HTTP server.
 		TLSCertfile  string        // TLS certificate file path.
 		TLSKeyfile   string        // TLS key file path.
 		ReadTimeout  time.Duration // Maximum duration before timing out read of the request.

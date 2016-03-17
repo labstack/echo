@@ -7,18 +7,16 @@ import (
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/engine"
 	"github.com/labstack/gommon/log"
-	"net"
 )
 
 type (
 	// Server implements `engine.Engine`.
 	Server struct {
 		*http.Server
-		config   engine.Config
-		handler  engine.Handler
-		listener net.Listener
-		logger   *log.Logger
-		pool     *pool
+		config  engine.Config
+		handler engine.Handler
+		logger  *log.Logger
+		pool    *pool
 	}
 
 	pool struct {
@@ -87,11 +85,6 @@ func (s *Server) SetHandler(h engine.Handler) {
 	s.handler = h
 }
 
-// SetHandler implements `engine.Engine#SetListener` method.
-func (s *Server) SetListener(ln net.Listener) {
-	s.listener = ln
-}
-
 // SetLogger implements `engine.Engine#SetLogger` method.
 func (s *Server) SetLogger(l *log.Logger) {
 	s.logger = l
@@ -102,7 +95,7 @@ func (s *Server) Start() {
 	certfile := s.config.TLSCertfile
 	keyfile := s.config.TLSKeyfile
 
-	if nil == s.listener {
+	if nil == s.config.Listener {
 		s.startDefaultListener(certfile, keyfile)
 	} else {
 		s.startCustomListener()
@@ -118,7 +111,7 @@ func (s *Server) startDefaultListener(certfile, keyfile string) {
 }
 
 func (s *Server) startCustomListener() {
-	s.logger.Fatal(s.Serve(s.listener))
+	s.logger.Fatal(s.Serve(s.config.Listener))
 }
 
 // ServeHTTP implements `http.Handler` interface.
