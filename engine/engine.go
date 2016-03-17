@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/labstack/gommon/log"
-)
+	"net")
 
 type (
 	// Engine defines the interface for HTTP server.
@@ -16,6 +16,9 @@ type (
 
 		// SetLogger sets the logger for the HTTP server.
 		SetLogger(*log.Logger)
+
+		// SetListener sets custom listener for the HTTP server.
+		SetListener(net.Listener)
 
 		// Start starts the HTTP server.
 		Start()

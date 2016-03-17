@@ -9,15 +9,17 @@ import (
 	"github.com/labstack/echo/engine"
 	"github.com/labstack/gommon/log"
 	"github.com/valyala/fasthttp"
+	"net"
 )
 
 type (
 	// Server implements `engine.Engine`.
 	Server struct {
-		config  engine.Config
-		handler engine.Handler
-		logger  *log.Logger
-		pool    *pool
+		config   engine.Config
+		handler  engine.Handler
+		listener net.Listener
+		logger   *log.Logger
+		pool     *pool
 	}
 
 	pool struct {
@@ -89,6 +91,11 @@ func (s *Server) SetHandler(h engine.Handler) {
 	s.handler = h
 }
 
+// SetHandler implements `engine.Engine#SetListener` method.
+func (s *Server) SetListener(ln net.Listener) {
+	s.listener = ln
+}
+
 // SetLogger implements `engine.Engine#SetLogger` method.
 func (s *Server) SetLogger(l *log.Logger) {
 	s.logger = l
@@ -123,10 +130,27 @@ func (s *Server) Start() {
 	addr := s.config.Address
 	certfile := s.config.TLSCertfile
 	keyfile := s.config.TLSKeyfile
+
+	if nil == s.listener {
+		s.startDefaultListener(addr, certfile, keyfile, handler)
+	} else {
+		s.startCustomListener(certfile, keyfile, handler)
+	}
+}
+
+func (s *Server) startDefaultListener(addr, certfile, keyfile string, handler func(c *fasthttp.RequestCtx)) {
 	if certfile != "" && keyfile != "" {
 		s.logger.Fatal(fasthttp.ListenAndServeTLS(addr, certfile, keyfile, handler))
 	} else {
 		s.logger.Fatal(fasthttp.ListenAndServe(addr, handler))
+	}
+}
+
+func (s *Server) startCustomListener(certfile, keyfile string, handler func(c *fasthttp.RequestCtx)) {
+	if certfile != "" && keyfile != "" {
+		s.logger.Fatal(fasthttp.ServeTLS(s.listener, certfile, keyfile, handler))
+	} else {
+		s.logger.Fatal(fasthttp.Serve(s.listener, handler))
 	}
 }
 
