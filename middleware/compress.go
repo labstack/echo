@@ -54,10 +54,7 @@ func GzipFromConfig(config GzipConfig) echo.MiddlewareFunc {
 				c.Response().Header().Set(echo.ContentEncoding, scheme)
 				c.Response().SetWriter(g)
 			}
-			if err := next.Handle(c); err != nil {
-				c.Error(err)
-			}
-			return nil
+			return next.Handle(c)
 		})
 	}
 }

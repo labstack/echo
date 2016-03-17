@@ -192,15 +192,11 @@ func New() (e *Echo) {
 	}
 	e.router = NewRouter(e)
 	e.middleware = []Middleware{e.router}
-	e.head = e.router.Handle(HandlerFunc(func(c Context) error {
+	e.head = HandlerFunc(func(c Context) error {
 		return c.Handle(c)
-	}))
+	})
 	e.pristineHead = e.head
-
-	// e.head = HandlerFunc(func(c Context) error {
-	// 	return c.Handle(c)
-	// })
-	// e.router.Handle(e.head)
+	e.chainMiddleware()
 
 	//----------
 	// Defaults
@@ -294,21 +290,18 @@ func (e *Echo) Debug() bool {
 
 // Pre adds middleware to the chain which is run before router.
 func (e *Echo) Pre(middleware ...Middleware) {
-	e.middleware = append(e.middleware, middleware...)
-	e.head = e.pristineHead
-
-	// Chain middleware
-	for i := len(e.middleware) - 1; i >= 0; i-- {
-		e.head = e.middleware[i].Handle(e.head)
-	}
+	e.middleware = append(middleware, e.middleware...)
+	e.chainMiddleware()
 }
 
 // Use adds middleware to the chain which is run after router.
 func (e *Echo) Use(middleware ...Middleware) {
 	e.middleware = append(e.middleware, middleware...)
-	e.head = e.pristineHead
+	e.chainMiddleware()
+}
 
-	// Chain middleware
+func (e *Echo) chainMiddleware() {
+	e.head = e.pristineHead
 	for i := len(e.middleware) - 1; i >= 0; i-- {
 		e.head = e.middleware[i].Handle(e.head)
 	}

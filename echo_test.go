@@ -83,26 +83,26 @@ func TestEchoMiddleware(t *testing.T) {
 	e := New()
 	buf := new(bytes.Buffer)
 
-	e.Use(MiddlewareFunc(func(h Handler) Handler {
-		return HandlerFunc(func(c Context) error {
-			buf.WriteString("a")
-			return h.Handle(c)
-		})
-	}))
+	e.Pre(WrapMiddleware(HandlerFunc(func(c Context) error {
+		assert.Empty(t, c.Path())
+		buf.WriteString("-1")
+		return nil
+	})))
 
-	e.Use(MiddlewareFunc(func(h Handler) Handler {
-		return HandlerFunc(func(c Context) error {
-			buf.WriteString("b")
-			return h.Handle(c)
-		})
-	}))
+	e.Use(WrapMiddleware(HandlerFunc(func(c Context) error {
+		buf.WriteString("1")
+		return nil
+	})))
 
-	e.Use(MiddlewareFunc(func(h Handler) Handler {
-		return HandlerFunc(func(c Context) error {
-			buf.WriteString("c")
-			return h.Handle(c)
-		})
-	}))
+	e.Use(WrapMiddleware(HandlerFunc(func(c Context) error {
+		buf.WriteString("2")
+		return nil
+	})))
+
+	e.Use(WrapMiddleware(HandlerFunc(func(c Context) error {
+		buf.WriteString("3")
+		return nil
+	})))
 
 	// Route
 	e.Get("/", HandlerFunc(func(c Context) error {
@@ -110,17 +110,18 @@ func TestEchoMiddleware(t *testing.T) {
 	}))
 
 	c, b := request(GET, "/", e)
-	assert.Equal(t, "abc", buf.String())
+	assert.Equal(t, "-1123", buf.String())
 	assert.Equal(t, http.StatusOK, c)
 	assert.Equal(t, "OK", b)
+}
 
-	// Error
-	e.Use(MiddlewareFunc(func(Handler) Handler {
-		return HandlerFunc(func(c Context) error {
-			return errors.New("error")
-		})
-	}))
-	c, b = request(GET, "/", e)
+func TestEchoMiddlewareError(t *testing.T) {
+	e := New()
+	e.Use(WrapMiddleware(HandlerFunc(func(c Context) error {
+		return errors.New("error")
+	})))
+	e.Get("/", notFoundHandler)
+	c, _ := request(GET, "/", e)
 	assert.Equal(t, http.StatusInternalServerError, c)
 }
 
