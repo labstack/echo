@@ -100,8 +100,8 @@ func (r *Request) FormFile(name string) (*multipart.FileHeader, error) {
 
 // MultipartForm implements `engine.Request#MultipartForm` method.
 func (r *Request) MultipartForm() (*multipart.Form, error) {
-	r.Request.ParseMultipartForm(32 << 20) // 32 MB
-	return r.Request.MultipartForm, nil
+	err := r.Request.ParseMultipartForm(32 << 20) // 32 MB
+	return r.Request.MultipartForm, err
 }
 
 func (r *Request) reset(req *http.Request, h engine.Header, u engine.URL) {
