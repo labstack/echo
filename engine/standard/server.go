@@ -71,7 +71,7 @@ func NewFromConfig(c engine.Config) (s *Server) {
 			},
 		},
 		handler: engine.HandlerFunc(func(req engine.Request, res engine.Response) {
-			s.logger.Fatal("handler not set")
+			s.logger.Error("handler not set, use `SetHandler()` to set it.")
 		}),
 		logger: log.New("echo"),
 	}
@@ -91,27 +91,23 @@ func (s *Server) SetLogger(l *log.Logger) {
 }
 
 // Start implements `engine.Server#Start` method.
-func (s *Server) Start() {
-	certfile := s.config.TLSCertfile
-	keyfile := s.config.TLSKeyfile
-
+func (s *Server) Start() error {
 	if s.config.Listener == nil {
-		s.startDefaultListener(certfile, keyfile)
-	} else {
-		s.startCustomListener()
+		return s.startDefaultListener()
 	}
+	return s.startCustomListener()
 }
 
-func (s *Server) startDefaultListener(certfile, keyfile string) {
-	if certfile != "" && keyfile != "" {
-		s.logger.Fatal(s.ListenAndServeTLS(certfile, keyfile))
-	} else {
-		s.logger.Fatal(s.ListenAndServe())
+func (s *Server) startDefaultListener() error {
+	c := s.config
+	if c.TLSCertfile != "" && c.TLSKeyfile != "" {
+		return s.ListenAndServeTLS(c.TLSCertfile, c.TLSKeyfile)
 	}
+	return s.ListenAndServe()
 }
 
-func (s *Server) startCustomListener() {
-	s.logger.Fatal(s.Serve(s.config.Listener))
+func (s *Server) startCustomListener() error {
+	return s.Serve(s.config.Listener)
 }
 
 // ServeHTTP implements `http.Handler` interface.

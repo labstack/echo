@@ -20,7 +20,7 @@ type (
 		SetLogger(*log.Logger)
 
 		// Start starts the HTTP server.
-		Start()
+		Start() error
 	}
 
 	// Request defines the interface for HTTP request.
