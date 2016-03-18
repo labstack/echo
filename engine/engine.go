@@ -5,8 +5,9 @@ import (
 	"mime/multipart"
 	"time"
 
-	"github.com/labstack/gommon/log"
 	"net"
+
+	"github.com/labstack/gommon/log"
 )
 
 type (
@@ -138,7 +139,7 @@ type (
 	// Config defines engine configuration.
 	Config struct {
 		Address      string        // TCP address to listen on.
-		Listener     net.Listener  // Custom net.Listener for the HTTP server.
+		Listener     net.Listener  // Custom `net.Listener`. If set, server accepts connections on it.
 		TLSCertfile  string        // TLS certificate file path.
 		TLSKeyfile   string        // TLS key file path.
 		ReadTimeout  time.Duration // Maximum duration before timing out read of the request.

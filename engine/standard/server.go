@@ -95,7 +95,7 @@ func (s *Server) Start() {
 	certfile := s.config.TLSCertfile
 	keyfile := s.config.TLSKeyfile
 
-	if nil == s.config.Listener {
+	if s.config.Listener == nil {
 		s.startDefaultListener(certfile, keyfile)
 	} else {
 		s.startCustomListener()
