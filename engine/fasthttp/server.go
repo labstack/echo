@@ -123,10 +123,27 @@ func (s *Server) Start() {
 	addr := s.config.Address
 	certfile := s.config.TLSCertfile
 	keyfile := s.config.TLSKeyfile
+
+	if nil == s.config.Listener {
+		s.startDefaultListener(addr, certfile, keyfile, handler)
+	} else {
+		s.startCustomListener(certfile, keyfile, handler)
+	}
+}
+
+func (s *Server) startDefaultListener(addr, certfile, keyfile string, handler func(c *fasthttp.RequestCtx)) {
 	if certfile != "" && keyfile != "" {
 		s.logger.Fatal(fasthttp.ListenAndServeTLS(addr, certfile, keyfile, handler))
 	} else {
 		s.logger.Fatal(fasthttp.ListenAndServe(addr, handler))
+	}
+}
+
+func (s *Server) startCustomListener(certfile, keyfile string, handler func(c *fasthttp.RequestCtx)) {
+	if certfile != "" && keyfile != "" {
+		s.logger.Fatal(fasthttp.ServeTLS(s.config.Listener, certfile, keyfile, handler))
+	} else {
+		s.logger.Fatal(fasthttp.Serve(s.config.Listener, handler))
 	}
 }
 

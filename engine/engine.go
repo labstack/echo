@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/labstack/gommon/log"
+	"net"
 )
 
 type (
@@ -137,6 +138,7 @@ type (
 	// Config defines engine configuration.
 	Config struct {
 		Address      string        // TCP address to listen on.
+		Listener     net.Listener  // Custom net.Listener for the HTTP server.
 		TLSCertfile  string        // TLS certificate file path.
 		TLSKeyfile   string        // TLS key file path.
 		ReadTimeout  time.Duration // Maximum duration before timing out read of the request.
