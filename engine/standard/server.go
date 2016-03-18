@@ -94,11 +94,24 @@ func (s *Server) SetLogger(l *log.Logger) {
 func (s *Server) Start() {
 	certfile := s.config.TLSCertfile
 	keyfile := s.config.TLSKeyfile
+
+	if s.config.Listener == nil {
+		s.startDefaultListener(certfile, keyfile)
+	} else {
+		s.startCustomListener()
+	}
+}
+
+func (s *Server) startDefaultListener(certfile, keyfile string) {
 	if certfile != "" && keyfile != "" {
 		s.logger.Fatal(s.ListenAndServeTLS(certfile, keyfile))
 	} else {
 		s.logger.Fatal(s.ListenAndServe())
 	}
+}
+
+func (s *Server) startCustomListener() {
+	s.logger.Fatal(s.Serve(s.config.Listener))
 }
 
 // ServeHTTP implements `http.Handler` interface.

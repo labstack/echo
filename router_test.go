@@ -575,6 +575,7 @@ func TestRouterAPI(t *testing.T) {
 func BenchmarkRouterGitHubAPI(b *testing.B) {
 	e := New()
 	r := e.router
+	b.ReportAllocs()
 
 	// Add routes
 	for _, route := range api {
@@ -584,10 +585,14 @@ func BenchmarkRouterGitHubAPI(b *testing.B) {
 	}
 
 	// Find routes
-	c := e.pool.Get().(*context)
 	for i := 0; i < b.N; i++ {
 		for _, route := range api {
+			// c := e.pool.Get().(*context)
+			c := e.GetContext()
 			r.Find(route.Method, route.Path, c)
+			// router.Find(r.Method, r.Path, c)
+			e.PutContext(c)
+			// e.pool.Put(c)
 		}
 	}
 }
