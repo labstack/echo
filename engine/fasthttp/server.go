@@ -12,7 +12,7 @@ import (
 )
 
 type (
-	// Server implements `engine.Engine`.
+	// Server implements `engine.Server`.
 	Server struct {
 		config  engine.Config
 		handler engine.Handler
@@ -84,17 +84,17 @@ func NewFromConfig(c engine.Config) (s *Server) {
 	return
 }
 
-// SetHandler implements `engine.Engine#SetHandler` method.
+// SetHandler implements `engine.Server#SetHandler` method.
 func (s *Server) SetHandler(h engine.Handler) {
 	s.handler = h
 }
 
-// SetLogger implements `engine.Engine#SetLogger` method.
+// SetLogger implements `engine.Server#SetLogger` method.
 func (s *Server) SetLogger(l *log.Logger) {
 	s.logger = l
 }
 
-// Start implements `engine.Engine#Start` method.
+// Start implements `engine.Server#Start` method.
 func (s *Server) Start() {
 	handler := func(c *fasthttp.RequestCtx) {
 		// Request

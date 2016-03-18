@@ -572,6 +572,26 @@ func TestRouterAPI(t *testing.T) {
 	}
 }
 
+func BenchmarkRouterGitHubAPI(b *testing.B) {
+	e := New()
+	r := e.router
+
+	// Add routes
+	for _, route := range api {
+		r.Add(route.Method, route.Path, HandlerFunc(func(c Context) error {
+			return nil
+		}), e)
+	}
+
+	// Find routes
+	c := e.pool.Get().(*context)
+	for i := 0; i < b.N; i++ {
+		for _, route := range api {
+			r.Find(route.Method, route.Path, c)
+		}
+	}
+}
+
 func (n *node) printTree(pfx string, tail bool) {
 	p := prefix(tail, pfx, "└── ", "├── ")
 	fmt.Printf("%s%s, %p: type=%d, parent=%p, handler=%v\n", p, n.prefix, n, n.kind, n.parent, n.methodHandler)

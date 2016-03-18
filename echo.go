@@ -187,7 +187,6 @@ var (
 func New() (e *Echo) {
 	e = &Echo{maxParam: new(int)}
 	e.pool.New = func() interface{} {
-		// NOTE: v2
 		return NewContext(nil, nil, e)
 	}
 	e.router = NewRouter(e)
@@ -198,14 +197,9 @@ func New() (e *Echo) {
 	e.pristineHead = e.head
 	e.chainMiddleware()
 
-	//----------
 	// Defaults
-	//----------
-
 	e.SetHTTPErrorHandler(e.DefaultHTTPErrorHandler)
 	e.SetBinder(&binder{})
-
-	// Logger
 	e.logger = log.New("echo")
 	e.logger.SetLevel(log.FATAL)
 
@@ -388,9 +382,6 @@ func (e *Echo) add(method, path string, handler Handler, middleware ...Middlewar
 		for i := len(middleware) - 1; i >= 0; i-- {
 			h = middleware[i].Handle(h)
 		}
-		// for _, m := range middleware {
-		// 	h = m.Handle(h)
-		// }
 		return h.Handle(c)
 	}), e)
 	r := Route{
@@ -443,6 +434,18 @@ func (e *Echo) Routes() []Route {
 	return e.router.routes
 }
 
+// GetContext returns `Context` from the sync.Pool. You must return the context by
+// calling `PutContext()`.
+func (e *Echo) GetContext() Context {
+	return e.pool.Get().(Context)
+}
+
+// PutContext returns `Context` instance back to the sync.Pool. You must call it after
+// `GetContext()`.
+func (e *Echo) PutContext(c Context) {
+	e.pool.Put(c)
+}
+
 func (e *Echo) ServeHTTP(req engine.Request, res engine.Response) {
 	c := e.pool.Get().(*context)
 	c.reset(req, res)
@@ -455,11 +458,11 @@ func (e *Echo) ServeHTTP(req engine.Request, res engine.Response) {
 	e.pool.Put(c)
 }
 
-// Run starts the HTTP engine.
-func (e *Echo) Run(eng engine.Engine) {
-	eng.SetHandler(e)
-	eng.SetLogger(e.logger)
-	eng.Start()
+// Run starts the HTTP server.
+func (e *Echo) Run(s engine.Server) {
+	s.SetHandler(e)
+	s.SetLogger(e.logger)
+	s.Start()
 }
 
 func NewHTTPError(code int, msg ...string) *HTTPError {

@@ -9,8 +9,8 @@ import (
 )
 
 type (
-	// Engine defines the interface for HTTP server.
-	Engine interface {
+	// Server defines the interface for HTTP server.
+	Server interface {
 		// SetHandler sets the handler for the HTTP server.
 		SetHandler(Handler)
 
