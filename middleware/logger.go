@@ -21,7 +21,7 @@ type (
 
 var (
 	DefaultLoggerConfig = LoggerConfig{
-		Format: "[${time}] ${remote_ip} ${method} ${path} ${status} ${response_time} ${size}\n",
+		Format: "time=${time_rfc3339}, remote_ip=${remote_ip}, method=${method}, path=${path}, status=${status}, response_time=${response_time}, size=${size}\n",
 	}
 )
 
@@ -74,7 +74,7 @@ func LoggerFromConfig(config LoggerConfig) echo.MiddlewareFunc {
 			_, err = config.template.ExecuteFunc(output, func(w io.Writer, tag string) (int, error) {
 				switch tag {
 				case "time_rfc3339":
-					return w.Write([]byte(time.Now().Format(time.Stamp)))
+					return w.Write([]byte(time.Now().Format(time.RFC3339)))
 				case "remote_ip":
 					return w.Write([]byte(remoteAddr))
 				case "method":
