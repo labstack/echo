@@ -65,17 +65,17 @@ func TestLoggerIPAddress(t *testing.T) {
 	// With X-Real-IP
 	req.Header().Add(echo.XRealIP, ip)
 	h.Handle(c)
-	assert.Contains(t, buf.String(), ip)
+	assert.Contains(t, ip, buf.String())
 
 	// With X-Forwarded-For
 	buf.Reset()
 	req.Header().Del(echo.XRealIP)
 	req.Header().Add(echo.XForwardedFor, ip)
 	h.Handle(c)
-	assert.Contains(t, buf.String(), ip)
+	assert.Contains(t, ip, buf.String())
 
 	// with req.RemoteAddr
 	buf.Reset()
 	h.Handle(c)
-	assert.Contains(t, buf.String(), ip)
+	assert.Contains(t, ip, buf.String())
 }
