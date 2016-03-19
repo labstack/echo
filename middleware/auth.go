@@ -26,9 +26,9 @@ var (
 //
 // For valid credentials it calls the next handler.
 // For invalid credentials, it sends "401 - Unauthorized" response.
-func BasicAuth(fn BasicAuthFunc) echo.MiddlewareFunc {
+func BasicAuth(f BasicAuthFunc) echo.MiddlewareFunc {
 	c := DefaultBasicAuthConfig
-	c.AuthFunc = fn
+	c.AuthFunc = f
 	return BasicAuthFromConfig(c)
 }
 

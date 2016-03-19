@@ -2,10 +2,11 @@ package: github.com/labstack/echo
 import:
 - package: github.com/labstack/gommon
   subpackages:
-  - /color
+  - color
   - log
 - package: github.com/valyala/fasthttp
 - package: golang.org/x/net
   subpackages:
-  - /context
+  - context
   - websocket
+- package: github.com/valyala/fasttemplate

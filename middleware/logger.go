@@ -1,20 +1,28 @@
 package middleware
 
 import (
+	"fmt"
+	"io"
 	"net"
+	"strconv"
 	"time"
 
 	"github.com/labstack/echo"
 	"github.com/labstack/gommon/color"
+	"github.com/valyala/fasttemplate"
 )
 
 type (
 	LoggerConfig struct {
+		Format   string
+		template *fasttemplate.Template
 	}
 )
 
 var (
-	DefaultLoggerConfig = LoggerConfig{}
+	DefaultLoggerConfig = LoggerConfig{
+		Format: "[${time}] ${remote_ip} ${method} ${path} ${status} ${response_time} ${size}\n",
+	}
 )
 
 func Logger() echo.MiddlewareFunc {
@@ -22,13 +30,15 @@ func Logger() echo.MiddlewareFunc {
 }
 
 func LoggerFromConfig(config LoggerConfig) echo.MiddlewareFunc {
+	config.template = fasttemplate.New(config.Format, "${", "}")
+
 	return func(next echo.Handler) echo.Handler {
-		return echo.HandlerFunc(func(c echo.Context) error {
+		return echo.HandlerFunc(func(c echo.Context) (err error) {
 			req := c.Request()
 			res := c.Response()
-			logger := c.Logger()
-
 			remoteAddr := req.RemoteAddress()
+			output := c.Logger().Output()
+
 			if ip := req.Header().Get(echo.XRealIP); ip != "" {
 				remoteAddr = ip
 			} else if ip = req.Header().Get(echo.XForwardedFor); ip != "" {
@@ -42,26 +52,46 @@ func LoggerFromConfig(config LoggerConfig) echo.MiddlewareFunc {
 				return err
 			}
 			stop := time.Now()
-			method := req.Method()
+			method := []byte(req.Method())
 			path := req.URL().Path()
 			if path == "" {
 				path = "/"
 			}
-			size := res.Size()
+			took := stop.Sub(start)
+			size := strconv.FormatInt(res.Size(), 10)
 
 			n := res.Status()
-			code := color.Green(n)
+			status := color.Green(n)
 			switch {
 			case n >= 500:
-				code = color.Red(n)
+				status = color.Red(n)
 			case n >= 400:
-				code = color.Yellow(n)
+				status = color.Yellow(n)
 			case n >= 300:
-				code = color.Cyan(n)
+				status = color.Cyan(n)
 			}
 
-			logger.Printf("%s %s %s %s %s %d", remoteAddr, method, path, code, stop.Sub(start), size)
-			return nil
+			_, err = config.template.ExecuteFunc(output, func(w io.Writer, tag string) (int, error) {
+				switch tag {
+				case "time":
+					return w.Write([]byte(time.Now().Format(time.Stamp)))
+				case "remote_ip":
+					return w.Write([]byte(remoteAddr))
+				case "method":
+					return w.Write(method)
+				case "path":
+					return w.Write([]byte(path))
+				case "status":
+					return w.Write([]byte(status))
+				case "response_time":
+					return w.Write([]byte(took.String()))
+				case "size":
+					return w.Write([]byte(size))
+				default:
+					return w.Write([]byte(fmt.Sprintf("[unknown tag %s]", tag)))
+				}
+			})
+			return
 		})
 	}
 }

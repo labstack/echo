@@ -15,13 +15,13 @@ func TestBasicAuth(t *testing.T) {
 	req := test.NewRequest(echo.GET, "/", nil)
 	res := test.NewResponseRecorder()
 	c := echo.NewContext(req, res, e)
-	fn := func(u, p string) bool {
+	f := func(u, p string) bool {
 		if u == "joe" && p == "secret" {
 			return true
 		}
 		return false
 	}
-	h := BasicAuth(fn)(echo.HandlerFunc(func(c echo.Context) error {
+	h := BasicAuth(f)(echo.HandlerFunc(func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}))
 

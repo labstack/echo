@@ -230,7 +230,7 @@ func (e *Echo) SetLogOutput(w io.Writer) {
 }
 
 // SetLogLevel sets the log level for the logger. Default value is `log.FATAL`.
-func (e *Echo) SetLogLevel(l log.Level) {
+func (e *Echo) SetLogLevel(l uint8) {
 	e.logger.SetLevel(l)
 }
 
@@ -459,10 +459,10 @@ func (e *Echo) ServeHTTP(req engine.Request, res engine.Response) {
 }
 
 // Run starts the HTTP server.
-func (e *Echo) Run(s engine.Server) {
+func (e *Echo) Run(s engine.Server) error {
 	s.SetHandler(e)
 	s.SetLogger(e.logger)
-	s.Start()
+	return s.Start()
 }
 
 func NewHTTPError(code int, msg ...string) *HTTPError {
