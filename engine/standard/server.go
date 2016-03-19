@@ -80,17 +80,17 @@ func NewFromConfig(c engine.Config) (s *Server) {
 	return
 }
 
-// SetHandler implements `engine.Server#SetHandler` method.
+// SetHandler implements `engine.Server#SetHandler` function.
 func (s *Server) SetHandler(h engine.Handler) {
 	s.handler = h
 }
 
-// SetLogger implements `engine.Server#SetLogger` method.
+// SetLogger implements `engine.Server#SetLogger` function.
 func (s *Server) SetLogger(l *log.Logger) {
 	s.logger = l
 }
 
-// Start implements `engine.Server#Start` method.
+// Start implements `engine.Server#Start` function.
 func (s *Server) Start() error {
 	if s.config.Listener == nil {
 		return s.startDefaultListener()

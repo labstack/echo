@@ -1,3 +1,42 @@
+/*
+Package echo implements a fast and unfancy micro web framework for Go.
+
+Example:
+
+	package main
+
+	import (
+	    "net/http"
+
+	    "github.com/labstack/echo"
+	    "github.com/labstack/echo/engine/standard"
+	    "github.com/labstack/echo/middleware"
+	)
+
+	// Handler
+	func hello() echo.HandlerFunc {
+	    return func(c echo.Context) error {
+	        return c.String(http.StatusOK, "Hello, World!\n")
+	    }
+	}
+
+	func main() {
+	    // Echo instance
+	    e := echo.New()
+
+	    // Middleware
+	    e.Use(middleware.Logger())
+	    e.Use(middleware.Recover())
+
+	    // Routes
+	    e.Get("/", hello())
+
+	    // Start server
+	    e.Run(standard.New(":1323"))
+	}
+
+Learn more at https://labstack.com/echo
+*/
 package echo
 
 import (
@@ -20,6 +59,7 @@ import (
 )
 
 type (
+	// Echo is the top-level framework instance.
 	Echo struct {
 		prefix           string
 		middleware       []Middleware
@@ -36,33 +76,43 @@ type (
 		logger           *log.Logger
 	}
 
+	// Route contains a handler and information for matching against requests.
 	Route struct {
 		Method  string
 		Path    string
 		Handler string
 	}
 
+	// HTTPError represents an error that occured while handling a request.
 	HTTPError struct {
 		Code    int
 		Message string
 	}
 
+	// Middleware defines an interface for middleware via `Handle(Handler) Handler`
+	// function.
 	Middleware interface {
 		Handle(Handler) Handler
 	}
 
+	// MiddlewareFunc is an adapter to allow the use of `func(Handler) Handler` as
+	// middleware.
 	MiddlewareFunc func(Handler) Handler
 
+	// Handler defines an interface to server HTTP requests via `Handle(Context)`
+	// function.
 	Handler interface {
 		Handle(Context) error
 	}
 
+	// HandlerFunc is an adapter to allow the use of `func(Context)` as an HTTP
+	// handler.
 	HandlerFunc func(Context) error
 
 	// HTTPErrorHandler is a centralized HTTP error handler.
 	HTTPErrorHandler func(error, Context)
 
-	// Binder is the interface that wraps the Bind method.
+	// Binder is the interface that wraps the Bind function.
 	Binder interface {
 		Bind(interface{}, Context) error
 	}
@@ -70,41 +120,36 @@ type (
 	binder struct {
 	}
 
-	// Validator is the interface that wraps the Validate method.
+	// Validator is the interface that wraps the Validate function.
 	Validator interface {
 		Validate() error
 	}
 
-	// Renderer is the interface that wraps the Render method.
+	// Renderer is the interface that wraps the Render function.
 	Renderer interface {
 		Render(io.Writer, string, interface{}, Context) error
 	}
 )
 
+//--------------
+// HTTP methods
+//--------------
 const (
-	// CONNECT HTTP method
 	CONNECT = "CONNECT"
-	// DELETE HTTP method
-	DELETE = "DELETE"
-	// GET HTTP method
-	GET = "GET"
-	// HEAD HTTP method
-	HEAD = "HEAD"
-	// OPTIONS HTTP method
+	DELETE  = "DELETE"
+	GET     = "GET"
+	HEAD    = "HEAD"
 	OPTIONS = "OPTIONS"
-	// PATCH HTTP method
-	PATCH = "PATCH"
-	// POST HTTP method
-	POST = "POST"
-	// PUT HTTP method
-	PUT = "PUT"
-	// TRACE HTTP method
-	TRACE = "TRACE"
+	PATCH   = "PATCH"
+	POST    = "POST"
+	PUT     = "PUT"
+	TRACE   = "TRACE"
+)
 
-	//-------------
-	// Media types
-	//-------------
-
+//-------------
+// Media types
+//-------------
+const (
 	ApplicationJSON                  = "application/json"
 	ApplicationJSONCharsetUTF8       = ApplicationJSON + "; " + CharsetUTF8
 	ApplicationJavaScript            = "application/javascript"
@@ -120,17 +165,19 @@ const (
 	TextPlainCharsetUTF8             = TextPlain + "; " + CharsetUTF8
 	MultipartForm                    = "multipart/form-data"
 	OctetStream                      = "application/octet-stream"
+)
 
-	//---------
-	// Charset
-	//---------
-
+//---------
+// Charset
+//---------
+const (
 	CharsetUTF8 = "charset=utf-8"
+)
 
-	//---------
-	// Headers
-	//---------
-
+//---------
+// Headers
+//---------
+const (
 	AcceptEncoding     = "Accept-Encoding"
 	Authorization      = "Authorization"
 	ContentDisposition = "Content-Disposition"
@@ -158,22 +205,24 @@ var (
 		PUT,
 		TRACE,
 	}
+)
 
-	//--------
-	// Errors
-	//--------
-
+//--------
+// Errors
+//--------
+var (
 	ErrUnsupportedMediaType  = NewHTTPError(http.StatusUnsupportedMediaType)
 	ErrNotFound              = NewHTTPError(http.StatusNotFound)
 	ErrUnauthorized          = NewHTTPError(http.StatusUnauthorized)
 	ErrMethodNotAllowed      = NewHTTPError(http.StatusMethodNotAllowed)
 	ErrRendererNotRegistered = errors.New("renderer not registered")
 	ErrInvalidRedirectCode   = errors.New("invalid redirect status code")
+)
 
-	//----------------
-	// Error handlers
-	//----------------
-
+//----------------
+// Error handlers
+//----------------
+var (
 	notFoundHandler = HandlerFunc(func(c Context) error {
 		return ErrNotFound
 	})
@@ -206,12 +255,14 @@ func New() (e *Echo) {
 	return
 }
 
-func (m MiddlewareFunc) Handle(h Handler) Handler {
-	return m(h)
+// Handle chains middleware.
+func (f MiddlewareFunc) Handle(h Handler) Handler {
+	return f(h)
 }
 
-func (h HandlerFunc) Handle(c Context) error {
-	return h(c)
+// Handle serves HTTP request.
+func (f HandlerFunc) Handle(c Context) error {
+	return f(c)
 }
 
 // Router returns router.
@@ -261,12 +312,12 @@ func (e *Echo) SetHTTPErrorHandler(h HTTPErrorHandler) {
 	e.httpErrorHandler = h
 }
 
-// SetBinder registers a custom binder. It's invoked by Context.Bind().
+// SetBinder registers a custom binder. It's invoked by `Context#Bind()`.
 func (e *Echo) SetBinder(b Binder) {
 	e.binder = b
 }
 
-// SetRenderer registers an HTML template renderer. It's invoked by Context.Render().
+// SetRenderer registers an HTML template renderer. It's invoked by `Context#Render()`.
 func (e *Echo) SetRenderer(r Renderer) {
 	e.renderer = r
 }
@@ -301,59 +352,70 @@ func (e *Echo) chainMiddleware() {
 	}
 }
 
-// Connect adds a CONNECT route > handler to the router.
+// Connect registers a new CONNECT route for a path with matching handler in the
+// router with optional route-level middleware.
 func (e *Echo) Connect(path string, h Handler, m ...Middleware) {
 	e.add(CONNECT, path, h, m...)
 }
 
-// Delete adds a DELETE route > handler to the router.
+// Delete registers a new DELETE route for a path with matching handler in the router
+// with optional route-level middleware.
 func (e *Echo) Delete(path string, h Handler, m ...Middleware) {
 	e.add(DELETE, path, h, m...)
 }
 
-// Get adds a GET route > handler to the router.
+// Get registers a new GET route for a path with matching handler in the router
+// with optional route-level middleware.
 func (e *Echo) Get(path string, h Handler, m ...Middleware) {
 	e.add(GET, path, h, m...)
 }
 
-// Head adds a HEAD route > handler to the router.
+// Head registers a new HEAD route for a path with matching handler in the
+// router with optional route-level middleware.
 func (e *Echo) Head(path string, h Handler, m ...Middleware) {
 	e.add(HEAD, path, h, m...)
 }
 
-// Options adds an OPTIONS route > handler to the router.
+// Options registers a new OPTIONS route for a path with matching handler in the
+// router with optional route-level middleware.
 func (e *Echo) Options(path string, h Handler, m ...Middleware) {
 	e.add(OPTIONS, path, h, m...)
 }
 
-// Patch adds a PATCH route > handler to the router.
+// Patch registers a new PATCH route for a path with matching handler in the
+// router with optional route-level middleware.
 func (e *Echo) Patch(path string, h Handler, m ...Middleware) {
 	e.add(PATCH, path, h, m...)
 }
 
-// Post adds a POST route > handler to the router.
+// Post registers a new POST route for a path with matching handler in the
+// router with optional route-level middleware.
 func (e *Echo) Post(path string, h Handler, m ...Middleware) {
 	e.add(POST, path, h, m...)
 }
 
-// Put adds a PUT route > handler to the router.
+// Put registers a new PUT route for a path with matching handler in the
+// router with optional route-level middleware.
 func (e *Echo) Put(path string, h Handler, m ...Middleware) {
 	e.add(PUT, path, h, m...)
 }
 
-// Trace adds a TRACE route > handler to the router.
+// Trace registers a new TRACE route for a path with matching handler in the
+// router with optional route-level middleware.
 func (e *Echo) Trace(path string, h Handler, m ...Middleware) {
 	e.add(TRACE, path, h, m...)
 }
 
-// Any adds a route > handler to the router for all HTTP methods.
+// Any registers a new route for all HTTP methods and path with matching handler
+// in the router with optional route-level middleware.
 func (e *Echo) Any(path string, handler Handler, middleware ...Middleware) {
 	for _, m := range methods {
 		e.add(m, path, handler, middleware...)
 	}
 }
 
-// Match adds a route > handler to the router for multiple HTTP methods provided.
+// Match registers a new route for multiple HTTP methods and path with matching
+// handler in the router with optional route-level middleware.
 func (e *Echo) Match(methods []string, path string, handler Handler, middleware ...Middleware) {
 	for _, m := range methods {
 		e.add(m, path, handler, middleware...)
@@ -392,7 +454,7 @@ func (e *Echo) add(method, path string, handler Handler, middleware ...Middlewar
 	e.router.routes = append(e.router.routes, r)
 }
 
-// Group creates a new router group with prefix.
+// Group creates a new router group with prefix and optional group-level middleware.
 func (e *Echo) Group(prefix string, m ...Middleware) (g *Group) {
 	g = &Group{prefix: prefix, echo: e}
 	g.Use(m...)
@@ -448,7 +510,7 @@ func (e *Echo) PutContext(c Context) {
 
 func (e *Echo) ServeHTTP(req engine.Request, res engine.Response) {
 	c := e.pool.Get().(*context)
-	c.reset(req, res)
+	c.Reset(req, res)
 
 	// Execute chain
 	if err := e.head.Handle(c); err != nil {
@@ -465,6 +527,7 @@ func (e *Echo) Run(s engine.Server) error {
 	return s.Start()
 }
 
+// NewHTTPError creates a new HTTPError instance.
 func NewHTTPError(code int, msg ...string) *HTTPError {
 	he := &HTTPError{Code: code, Message: http.StatusText(code)}
 	if len(msg) > 0 {

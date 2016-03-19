@@ -9,14 +9,22 @@ import (
 )
 
 type (
+	// RecoverConfig defines config for recover middleware.
 	RecoverConfig struct {
-		StackSize  int
-		StackAll   bool
+		// StackSize is the stack size to be printed.
+		StackSize int
+
+		// StackAll is flag to format stack traces of all other goroutines into
+		// buffer after the trace for the current goroutine, or not. Default is true.
+		StackAll bool
+
+		// PrintStack is the flag to print stack or not. Default is true.
 		PrintStack bool
 	}
 )
 
 var (
+	// DefaultRecoverConfig is the default recover middleware config.
 	DefaultRecoverConfig = RecoverConfig{
 		StackSize:  4 << 10, // 4 KB
 		StackAll:   true,
@@ -24,12 +32,14 @@ var (
 	}
 )
 
+// Recover returns a middleware which recovers from panics anywhere in the chain
+// and handles the control to the centralized HTTPErrorHandler.
 func Recover() echo.MiddlewareFunc {
 	return RecoverFromConfig(DefaultRecoverConfig)
 }
 
-// Recover returns a middleware which recovers from panics anywhere in the chain
-// and handles the control to the centralized HTTPErrorHandler.
+// RecoverFromConfig returns a recover middleware from config.
+// See `Recover()`.
 func RecoverFromConfig(config RecoverConfig) echo.MiddlewareFunc {
 	return func(next echo.Handler) echo.Handler {
 		return echo.HandlerFunc(func(c echo.Context) error {

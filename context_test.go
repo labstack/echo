@@ -191,8 +191,8 @@ func TestContext(t *testing.T) {
 	c.Error(errors.New("error"))
 	assert.Equal(t, http.StatusInternalServerError, rec.Status())
 
-	// reset
-	c.Object().reset(req, test.NewResponseRecorder())
+	// Reset
+	c.Object().Reset(req, test.NewResponseRecorder())
 }
 
 func TestContextPath(t *testing.T) {

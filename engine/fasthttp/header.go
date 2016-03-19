@@ -16,27 +16,27 @@ type (
 	}
 )
 
-// Add implements `engine.Header#Add` method.
+// Add implements `engine.Header#Add` function.
 func (h *RequestHeader) Add(key, val string) {
 	// h.RequestHeader.Add(key, val)
 }
 
-// Del implements `engine.Header#Del` method.
+// Del implements `engine.Header#Del` function.
 func (h *RequestHeader) Del(key string) {
 	h.RequestHeader.Del(key)
 }
 
-// Set implements `engine.Header#Set` method.
+// Set implements `engine.Header#Set` function.
 func (h *RequestHeader) Set(key, val string) {
 	h.RequestHeader.Set(key, val)
 }
 
-// Get implements `engine.Header#Get` method.
+// Get implements `engine.Header#Get` function.
 func (h *RequestHeader) Get(key string) string {
 	return string(h.Peek(key))
 }
 
-// Keys implements `engine.Header#Keys` method.
+// Keys implements `engine.Header#Keys` function.
 func (h *RequestHeader) Keys() (keys []string) {
 	keys = make([]string, h.Len())
 	i := 0
@@ -51,28 +51,28 @@ func (h *RequestHeader) reset(hdr *fasthttp.RequestHeader) {
 	h.RequestHeader = hdr
 }
 
-// Add implements `engine.Header#Add` method.
+// Add implements `engine.Header#Add` function.
 func (h *ResponseHeader) Add(key, val string) {
 	// TODO: https://github.com/valyala/fasthttp/issues/69
 	// h.header.Add(key, val)
 }
 
-// Del implements `engine.Header#Del` method.
+// Del implements `engine.Header#Del` function.
 func (h *ResponseHeader) Del(key string) {
 	h.ResponseHeader.Del(key)
 }
 
-// Get implements `engine.Header#Get` method.
+// Get implements `engine.Header#Get` function.
 func (h *ResponseHeader) Get(key string) string {
 	return string(h.Peek(key))
 }
 
-// Set implements `engine.Header#Set` method.
+// Set implements `engine.Header#Set` function.
 func (h *ResponseHeader) Set(key, val string) {
 	h.ResponseHeader.Set(key, val)
 }
 
-// Keys implements `engine.Header#Keys` method.
+// Keys implements `engine.Header#Keys` function.
 func (h *ResponseHeader) Keys() (keys []string) {
 	keys = make([]string, h.Len())
 	i := 0

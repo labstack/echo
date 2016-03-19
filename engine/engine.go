@@ -54,7 +54,7 @@ type (
 		// RemoteAddress returns the client's network address.
 		RemoteAddress() string
 
-		// Method returns the request's HTTP method.
+		// Method returns the request's HTTP function.
 		Method() string
 
 		// SetMethod sets the HTTP method of the request.
@@ -136,7 +136,7 @@ type (
 		QueryString() string
 	}
 
-	// Config defines engine configuration.
+	// Config defines engine config.
 	Config struct {
 		Address      string        // TCP address to listen on.
 		Listener     net.Listener  // Custom `net.Listener`. If set, server accepts connections on it.
@@ -152,7 +152,8 @@ type (
 		ServeHTTP(Request, Response)
 	}
 
-	// HandlerFunc is an adapter to allow the use of `func(Request, Response)` as HTTP handlers.
+	// HandlerFunc is an adapter to allow the use of `func(Request, Response)` as
+	// an HTTP handler.
 	HandlerFunc func(Request, Response)
 )
 

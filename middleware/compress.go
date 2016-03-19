@@ -13,7 +13,9 @@ import (
 )
 
 type (
+	// GzipConfig defines config for gzip middleware.
 	GzipConfig struct {
+		// Level is the gzip level.
 		Level int
 	}
 
@@ -24,7 +26,8 @@ type (
 )
 
 var (
-	defaultGzipConfig = GzipConfig{
+	// DefaultGzipConfig is the default gzip middleware config.
+	DefaultGzipConfig = GzipConfig{
 		Level: gzip.DefaultCompression,
 	}
 )
@@ -32,10 +35,11 @@ var (
 // Gzip returns a middleware which compresses HTTP response using gzip compression
 // scheme.
 func Gzip() echo.MiddlewareFunc {
-	return GzipFromConfig(defaultGzipConfig)
+	return GzipFromConfig(DefaultGzipConfig)
 }
 
-// GzipFromConfig return `Gzip` middleware from config.
+// GzipFromConfig return gzip middleware from config.
+// See `Gzip()`.
 func GzipFromConfig(config GzipConfig) echo.MiddlewareFunc {
 	pool := gzipPool(config)
 	scheme := "gzip"

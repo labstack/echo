@@ -15,26 +15,46 @@ import (
 )
 
 type (
+	// LoggerConfig defines config for logger middleware.
+	//
 	LoggerConfig struct {
-		Format   string
-		Output   io.Writer
+		// Format is the log format.
+		//
+		// Example "${remote_id} ${status}"
+		// Available tags:
+		// - time_rfc3339
+		// - remote_ip
+		// - method
+		// - path
+		// - status
+		// - response_time
+		// - response_size
+		Format string
+
+		// Output is the writer where logs are written. Default is `os.Stdout`.
+		Output io.Writer
+
 		template *fasttemplate.Template
 		color    *color.Color
 	}
 )
 
 var (
+	// DefaultLoggerConfig is the default logger middleware config.
 	DefaultLoggerConfig = LoggerConfig{
-		Format: "time=${time_rfc3339}, remote_ip=${remote_ip}, method=${method}, path=${path}, status=${status}, response_time=${response_time}, size=${size}\n",
+		Format: "time=${time_rfc3339}, remote_ip=${remote_ip}, method=${method}, path=${path}, status=${status}, response_time=${response_time}, response_size=${response_size} bytes\n",
 		color:  color.New(),
 		Output: os.Stdout,
 	}
 )
 
+// Logger returns a middleware that logs HTTP requests.
 func Logger() echo.MiddlewareFunc {
 	return LoggerFromConfig(DefaultLoggerConfig)
 }
 
+// LoggerFromConfig returns a logger middleware from config.
+// See `Logger()`.
 func LoggerFromConfig(config LoggerConfig) echo.MiddlewareFunc {
 	config.template = fasttemplate.New(config.Format, "${", "}")
 	config.color = color.New()
@@ -94,7 +114,7 @@ func LoggerFromConfig(config LoggerConfig) echo.MiddlewareFunc {
 					return w.Write([]byte(status))
 				case "response_time":
 					return w.Write([]byte(took.String()))
-				case "size":
+				case "response_size":
 					return w.Write([]byte(size))
 				default:
 					return w.Write([]byte(fmt.Sprintf("[unknown tag %s]", tag)))

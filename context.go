@@ -22,40 +22,108 @@ import (
 )
 
 type (
-	// Context represents context for the current request. It holds request and
-	// response objects, path parameters, data and registered handler.
+	// Context represents the context of the current HTTP request. It holds request and
+	// response objects, path, path parameters, data and registered handler.
 	Context interface {
 		netContext.Context
+
+		// NetContext returns `http://blog.golang.org/context.Context` interface.
 		NetContext() netContext.Context
+
+		// SetNetContext sets `http://blog.golang.org/context.Context` interface.
 		SetNetContext(netContext.Context)
+
+		// Request returns `engine.Request` interface.
 		Request() engine.Request
+
+		// Request returns `engine.Response` interface.
 		Response() engine.Response
+
+		// Path returns the registered path for the handler.
 		Path() string
+
+		// P returns path parameter by index.
 		P(int) string
+
+		// Param returns path parameter by name.
 		Param(string) string
+
+		// ParamNames returns path parameter names.
 		ParamNames() []string
+
+		// Query returns query parameter by name.
 		Query(string) string
+
+		// Form returns form parameter by name.
 		Form(string) string
+
+		// Get retrieves data from the context.
 		Get(string) interface{}
+
+		// Set saves data in the context.
 		Set(string, interface{})
+
+		// Bind binds the request body into provided type `i`. The default binder does
+		// it based on Content-Type header.
 		Bind(interface{}) error
+
+		// Render renders a template with data and sends a text/html response with status
+		// code. Templates can be registered using `Echo.SetRenderer()`.
 		Render(int, string, interface{}) error
+
+		// HTML sends an HTTP response with status code.
 		HTML(int, string) error
+
+		// String sends a string response with status code.
 		String(int, string) error
+
+		// JSON sends a JSON response with status code.
 		JSON(int, interface{}) error
+
+		// JSONBlob sends a JSON blob response with status code.
 		JSONBlob(int, []byte) error
+
+		// JSONP sends a JSONP response with status code. It uses `callback` to construct
+		// the JSONP payload.
 		JSONP(int, string, interface{}) error
+
+		// XML sends an XML response with status code.
 		XML(int, interface{}) error
+
+		// XMLBlob sends a XML blob response with status code.
 		XMLBlob(int, []byte) error
+
+		// File sends a response with the content of the file.
 		File(string) error
+
+		// Attachment sends a response from `io.Reader` as attachment, prompting client
+		// to save the file.
 		Attachment(io.Reader, string) error
+
+		// NoContent sends a response with no body and a status code.
 		NoContent(int) error
+
+		// Redirect redirects the request with status code.
 		Redirect(int, string) error
+
+		// Error invokes the registered HTTP error handler. Generally used by middleware.
 		Error(err error)
+
+		// Handler implements `Handler` interface.
 		Handle(Context) error
+
+		// Logger returns the `Logger` instance.
 		Logger() *log.Logger
+
+		// Echo returns the `Echo` instance.
 		Echo() *Echo
+
+		// Object returns the `context` instance.
 		Object() *context
+
+		// Reset resets the context after request completes. It must be called along
+		// with `Echo#GetContext()` and `Echo#PutContext()`. See `Echo#ServeHTTP()`
+		Reset(engine.Request, engine.Response)
 	}
 
 	context struct {
@@ -118,22 +186,18 @@ func (c *context) Handle(ctx Context) error {
 	return c.handler.Handle(ctx)
 }
 
-// Request returns *http.Request.
 func (c *context) Request() engine.Request {
 	return c.request
 }
 
-// Response returns `engine.Response`.
 func (c *context) Response() engine.Response {
 	return c.response
 }
 
-// Path returns the registered path for the handler.
 func (c *context) Path() string {
 	return c.path
 }
 
-// P returns path parameter by index.
 func (c *context) P(i int) (value string) {
 	l := len(c.pnames)
 	if i < l {
@@ -142,7 +206,6 @@ func (c *context) P(i int) (value string) {
 	return
 }
 
-// Param returns path parameter by name.
 func (c *context) Param(name string) (value string) {
 	l := len(c.pnames)
 	for i, n := range c.pnames {
@@ -154,22 +217,18 @@ func (c *context) Param(name string) (value string) {
 	return
 }
 
-// ParamNames returns path parameter names.
 func (c *context) ParamNames() []string {
 	return c.pnames
 }
 
-// Query returns query parameter by name.
 func (c *context) Query(name string) string {
 	return c.request.URL().QueryValue(name)
 }
 
-// Form returns form parameter by name.
 func (c *context) Form(name string) string {
 	return c.request.FormValue(name)
 }
 
-// Set saves data in the context.
 func (c *context) Set(key string, val interface{}) {
 	if c.store == nil {
 		c.store = make(store)
@@ -177,19 +236,14 @@ func (c *context) Set(key string, val interface{}) {
 	c.store[key] = val
 }
 
-// Get retrieves data from the context.
 func (c *context) Get(key string) interface{} {
 	return c.store[key]
 }
 
-// Bind binds the request body into provided type `i`. The default binder does
-// it based on Content-Type header.
 func (c *context) Bind(i interface{}) error {
 	return c.echo.binder.Bind(i, c)
 }
 
-// Render renders a template with data and sends a text/html response with status
-// code. Templates can be registered using `Echo.SetRenderer()`.
 func (c *context) Render(code int, name string, data interface{}) (err error) {
 	if c.echo.renderer == nil {
 		return ErrRendererNotRegistered
@@ -204,7 +258,6 @@ func (c *context) Render(code int, name string, data interface{}) (err error) {
 	return
 }
 
-// HTML sends an HTTP response with status code.
 func (c *context) HTML(code int, html string) (err error) {
 	c.response.Header().Set(ContentType, TextHTMLCharsetUTF8)
 	c.response.WriteHeader(code)
@@ -212,7 +265,6 @@ func (c *context) HTML(code int, html string) (err error) {
 	return
 }
 
-// String sends a string response with status code.
 func (c *context) String(code int, s string) (err error) {
 	c.response.Header().Set(ContentType, TextPlainCharsetUTF8)
 	c.response.WriteHeader(code)
@@ -220,7 +272,6 @@ func (c *context) String(code int, s string) (err error) {
 	return
 }
 
-// JSON sends a JSON response with status code.
 func (c *context) JSON(code int, i interface{}) (err error) {
 	b, err := json.Marshal(i)
 	if c.echo.Debug() {
@@ -232,7 +283,6 @@ func (c *context) JSON(code int, i interface{}) (err error) {
 	return c.JSONBlob(code, b)
 }
 
-// JSONBlob sends a JSON blob response with status code.
 func (c *context) JSONBlob(code int, b []byte) (err error) {
 	c.response.Header().Set(ContentType, ApplicationJSONCharsetUTF8)
 	c.response.WriteHeader(code)
@@ -240,8 +290,6 @@ func (c *context) JSONBlob(code int, b []byte) (err error) {
 	return
 }
 
-// JSONP sends a JSONP response with status code. It uses `callback` to construct
-// the JSONP payload.
 func (c *context) JSONP(code int, callback string, i interface{}) (err error) {
 	b, err := json.Marshal(i)
 	if err != nil {
@@ -259,7 +307,6 @@ func (c *context) JSONP(code int, callback string, i interface{}) (err error) {
 	return
 }
 
-// XML sends an XML response with status code.
 func (c *context) XML(code int, i interface{}) (err error) {
 	b, err := xml.Marshal(i)
 	if c.echo.Debug() {
@@ -271,7 +318,6 @@ func (c *context) XML(code int, i interface{}) (err error) {
 	return c.XMLBlob(code, b)
 }
 
-// XMLBlob sends a XML blob response with status code.
 func (c *context) XMLBlob(code int, b []byte) (err error) {
 	c.response.Header().Set(ContentType, ApplicationXMLCharsetUTF8)
 	c.response.WriteHeader(code)
@@ -282,7 +328,6 @@ func (c *context) XMLBlob(code int, b []byte) (err error) {
 	return
 }
 
-// File sends a response with the content of the file.
 func (c *context) File(file string) error {
 	root, file := filepath.Split(file)
 	fs := http.Dir(root)
@@ -305,8 +350,6 @@ func (c *context) File(file string) error {
 	return ServeContent(c.Request(), c.Response(), f, fi)
 }
 
-// Attachment sends a response from `io.Reader` as attachment, prompting client
-// to save the file.
 func (c *context) Attachment(r io.Reader, name string) (err error) {
 	c.response.Header().Set(ContentType, detectContentType(name))
 	c.response.Header().Set(ContentDisposition, "attachment; filename="+name)
@@ -315,13 +358,11 @@ func (c *context) Attachment(r io.Reader, name string) (err error) {
 	return
 }
 
-// NoContent sends a response with no body and a status code.
 func (c *context) NoContent(code int) error {
 	c.response.WriteHeader(code)
 	return nil
 }
 
-// Redirect redirects the request with status code.
 func (c *context) Redirect(code int, url string) error {
 	if code < http.StatusMultipleChoices || code > http.StatusTemporaryRedirect {
 		return ErrInvalidRedirectCode
@@ -331,26 +372,24 @@ func (c *context) Redirect(code int, url string) error {
 	return nil
 }
 
-// Error invokes the registered HTTP error handler. Generally used by middleware.
 func (c *context) Error(err error) {
 	c.echo.httpErrorHandler(err, c)
 }
 
-// Echo returns the `Echo` instance.
 func (c *context) Echo() *Echo {
 	return c.echo
 }
 
-// Logger returns the `Logger` instance.
 func (c *context) Logger() *log.Logger {
 	return c.echo.logger
 }
 
-// Object returns the `context` object.
 func (c *context) Object() *context {
 	return c
 }
 
+// ServeContent sends a response from `io.Reader`. It automatically sets the `Content-Type`
+// and `Last-Modified` headers.
 func ServeContent(req engine.Request, res engine.Response, f http.File, fi os.FileInfo) error {
 	res.Header().Set(ContentType, detectContentType(fi.Name()))
 	res.Header().Set(LastModified, fi.ModTime().UTC().Format(http.TimeFormat))
@@ -366,7 +405,7 @@ func detectContentType(name string) (t string) {
 	return
 }
 
-func (c *context) reset(req engine.Request, res engine.Response) {
+func (c *context) Reset(req engine.Request, res engine.Response) {
 	c.netContext = nil
 	c.request = req
 	c.response = res
