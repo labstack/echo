@@ -73,7 +73,7 @@ func LoggerFromConfig(config LoggerConfig) echo.MiddlewareFunc {
 
 			_, err = config.template.ExecuteFunc(output, func(w io.Writer, tag string) (int, error) {
 				switch tag {
-				case "time":
+				case "time_rfc3339":
 					return w.Write([]byte(time.Now().Format(time.Stamp)))
 				case "remote_ip":
 					return w.Write([]byte(remoteAddr))
