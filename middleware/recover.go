@@ -25,12 +25,12 @@ var (
 )
 
 func Recover() echo.MiddlewareFunc {
-	return RecoverWithConfig(DefaultRecoverConfig)
+	return RecoverFromConfig(DefaultRecoverConfig)
 }
 
 // Recover returns a middleware which recovers from panics anywhere in the chain
 // and handles the control to the centralized HTTPErrorHandler.
-func RecoverWithConfig(config RecoverConfig) echo.MiddlewareFunc {
+func RecoverFromConfig(config RecoverConfig) echo.MiddlewareFunc {
 	return func(next echo.Handler) echo.Handler {
 		return echo.HandlerFunc(func(c echo.Context) error {
 			defer func() {
@@ -45,7 +45,7 @@ func RecoverWithConfig(config RecoverConfig) echo.MiddlewareFunc {
 					stack := make([]byte, config.StackSize)
 					length := runtime.Stack(stack, config.StackAll)
 					if config.PrintStack {
-						c.Logger().Printf("%s|%s", color.Red("PANIC RECOVER"), stack[:length])
+						c.Logger().Printf("[%s] %s %s", color.Red("PANIC RECOVER"), err, stack[:length])
 					}
 					c.Error(err)
 				}
