@@ -1,7 +1,10 @@
 package standard
 
 import (
+	"bufio"
+	"errors"
 	"io"
+	"net"
 	"net/http"
 
 	"github.com/labstack/echo/engine"
@@ -85,4 +88,11 @@ func (r *Response) reset(w http.ResponseWriter, h engine.Header) {
 
 func (r *responseAdapter) Write(b []byte) (n int, err error) {
 	return r.writer.Write(b)
+}
+
+func (r *responseAdapter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hj, ok := r.ResponseWriter.(http.Hijacker); ok {
+		return hj.Hijack()
+	}
+	return nil, nil, errors.New("I'm not a Hijacker")
 }
