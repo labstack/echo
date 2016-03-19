@@ -53,6 +53,7 @@ func GzipFromConfig(config GzipConfig) echo.MiddlewareFunc {
 				defer func() {
 					w.Close()
 					pool.Put(w)
+					w.Close()
 				}()
 				g := gzipResponseWriter{Response: c.Response(), Writer: w}
 				c.Response().Header().Set(echo.ContentEncoding, scheme)
