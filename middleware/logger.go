@@ -65,6 +65,19 @@ func remoteAddress(request engine.Request) string {
 	return ip
 }
 
+func colorizeStatusCode(code int) string {
+	switch {
+	case code >= 500:
+		return color.Red(code)
+	case code >= 400:
+		return color.Yellow(code)
+	case code >= 300:
+		return color.Cyan(code)
+	default:
+		return color.Green(code)
+	}
+}
+
 // Logger returns a middleware that logs HTTP requests.
 func Logger() echo.MiddlewareFunc {
 	return LoggerFromConfig(DefaultLoggerConfig)
@@ -75,6 +88,7 @@ func Logger() echo.MiddlewareFunc {
 func LoggerFromConfig(config LoggerConfig) echo.MiddlewareFunc {
 	config.template = fasttemplate.New(config.Format, "${", "}")
 	config.color = color.New()
+
 	if w, ok := config.Output.(*os.File); ok && !isatty.IsTerminal(w.Fd()) {
 		config.color.Disable()
 	}
@@ -83,52 +97,42 @@ func LoggerFromConfig(config LoggerConfig) echo.MiddlewareFunc {
 		return echo.HandlerFunc(func(c echo.Context) (err error) {
 			req := c.Request()
 			res := c.Response()
-			remoteAddr := remoteAddress(req)
 
 			start := time.Now()
+
 			if err := next.Handle(c); err != nil {
 				return err
 			}
-			stop := time.Now()
-			method := []byte(req.Method())
-			path := req.URL().Path()
-			if path == "" {
-				path = "/"
-			}
-			took := stop.Sub(start)
-			size := strconv.FormatInt(res.Size(), 10)
 
-			n := res.Status()
-			status := color.Green(n)
-			switch {
-			case n >= 500:
-				status = color.Red(n)
-			case n >= 400:
-				status = color.Yellow(n)
-			case n >= 300:
-				status = color.Cyan(n)
-			}
+			stop := time.Now()
 
 			_, err = config.template.ExecuteFunc(config.Output, func(w io.Writer, tag string) (int, error) {
 				switch tag {
 				case "time_rfc3339":
 					return w.Write([]byte(time.Now().Format(time.RFC3339)))
 				case "remote_ip":
-					return w.Write([]byte(remoteAddr))
+					return w.Write([]byte(remoteAddress(req)))
 				case "method":
-					return w.Write(method)
+					return w.Write([]byte(req.Method()))
 				case "path":
+					path := req.URL().Path()
+
+					if path == "" {
+						path = "/"
+					}
+
 					return w.Write([]byte(path))
 				case "status":
-					return w.Write([]byte(status))
+					return w.Write([]byte(colorizeStatusCode(res.Status())))
 				case "response_time":
-					return w.Write([]byte(took.String()))
+					return w.Write([]byte(stop.Sub(start).String()))
 				case "response_size":
-					return w.Write([]byte(size))
+					return w.Write([]byte(strconv.FormatInt(res.Size(), 10)))
 				default:
 					return w.Write([]byte(fmt.Sprintf("[unknown tag %s]", tag)))
 				}
 			})
+
 			return
 		})
 	}
