@@ -94,7 +94,7 @@ func LoggerFromConfig(config LoggerConfig) echo.MiddlewareFunc {
 	}
 
 	return func(next echo.Handler) echo.Handler {
-		return echo.HandlerFunc(func(c echo.Context) (err error) {
+		return echo.HandlerFunc(func(c echo.Context) error {
 			req := c.Request()
 			res := c.Response()
 
@@ -106,7 +106,7 @@ func LoggerFromConfig(config LoggerConfig) echo.MiddlewareFunc {
 
 			stop := time.Now()
 
-			_, err = config.template.ExecuteFunc(config.Output, func(w io.Writer, tag string) (int, error) {
+			_, err := config.template.ExecuteFunc(config.Output, func(w io.Writer, tag string) (int, error) {
 				switch tag {
 				case "time_rfc3339":
 					return w.Write([]byte(time.Now().Format(time.RFC3339)))
@@ -133,7 +133,7 @@ func LoggerFromConfig(config LoggerConfig) echo.MiddlewareFunc {
 				}
 			})
 
-			return
+			return err
 		})
 	}
 }
