@@ -1,26 +1,28 @@
-hash: fc82f692d0964f55086fbff3572309a4dc9ffef356a2fa27687b997b761e345f
-updated: 2016-01-30T10:01:06.631964896-08:00
+hash: 8b57b20e89ff74be22c696521d2c6f9bd11fb1521ac56d9ef0b0b9ef0352ad7e
+updated: 2016-03-19T21:08:56.443543993-07:00
 imports:
 - name: github.com/labstack/echo
-  version: 28b1b9d57b8a7b0b79ae05530b27244e27ba4bff
+  version: 576dfeb71d257a11e14bf637073b8c64576d2628
 - name: github.com/labstack/gommon
-  version: 43358a791be603db7175670d78abf544245f9941
+  version: 9c0a60557b6840125c331d8c8075119770aa2805
   subpackages:
-  - /color
+  - color
   - log
 - name: github.com/mattn/go-colorable
-  version: 4af63d73f5bea08b682ad2cd198b1e607afd6be0
+  version: 9cbef7c35391cca05f15f8181dc0b18bc9736dbb
 - name: github.com/mattn/go-isatty
   version: 56b76bdf51f7708750eac80fa38b952bb9f32639
-- name: golang.org/x/crypto
-  version: 1f22c0103821b9390939b6776727195525381532
-  repo: https://golang.org/x/crypto
+- name: github.com/valyala/fasttemplate
+  version: 3b874956e03f1636d171bda64b130f9135f42cff
 - name: golang.org/x/net
-  version: 04b9de9b512f58addf28c9853d50ebef61c3953e
+  version: 35b06af0720201bc2f326773a80767387544f8c4
   subpackages:
-  - /context
+  - context
   - websocket
-- name: golang.org/x/text
-  version: 6fc2e00a0d64b1f7fc1212dae5b0c939cf6d9ac4
-  repo: https://golang.org/x/text
+- name: golang.org/x/sys
+  version: 9d4e42a20653790449273b3c85e67d6d8bae6e2e
+  subpackages:
+  - unix
+- name: gopkg.in/labstack/echo.v1
+  version: 982498ca223e754d658ca18e07d1161e26186173
 devImports: []
