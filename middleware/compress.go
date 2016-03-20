@@ -48,14 +48,22 @@ func GzipFromConfig(config GzipConfig) echo.MiddlewareFunc {
 		return echo.HandlerFunc(func(c echo.Context) error {
 			c.Response().Header().Add(echo.Vary, echo.AcceptEncoding)
 			if strings.Contains(c.Request().Header().Get(echo.AcceptEncoding), scheme) {
-				w := pool.Get().(*gzip.Writer)
-				w.Reset(c.Response().Writer())
+				rw := c.Response().Writer()
+				gw := pool.Get().(*gzip.Writer)
+				gw.Reset(rw)
 				defer func() {
-					w.Close()
-					pool.Put(w)
-					w.Close()
+					if c.Response().Size() == 0 {
+						// We have to reset response to it's pristine state when
+						// nothing is written to body or error is returned.
+						// See issue #424, #407.
+						c.Response().SetWriter(rw)
+						c.Response().Header().Del(echo.ContentEncoding)
+						gw.Reset(ioutil.Discard)
+					}
+					gw.Close()
+					pool.Put(gw)
 				}()
-				g := gzipResponseWriter{Response: c.Response(), Writer: w}
+				g := gzipResponseWriter{Response: c.Response(), Writer: gw}
 				c.Response().Header().Set(echo.ContentEncoding, scheme)
 				c.Response().SetWriter(g)
 			}

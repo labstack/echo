@@ -78,7 +78,7 @@ func LoggerFromConfig(config LoggerConfig) echo.MiddlewareFunc {
 
 			start := time.Now()
 			if err := next.Handle(c); err != nil {
-				return err
+				c.Error(err)
 			}
 			stop := time.Now()
 			method := []byte(req.Method())

@@ -131,9 +131,7 @@ type (
 	}
 )
 
-//--------------
 // HTTP methods
-//--------------
 const (
 	CONNECT = "CONNECT"
 	DELETE  = "DELETE"
@@ -146,9 +144,7 @@ const (
 	TRACE   = "TRACE"
 )
 
-//-------------
 // Media types
-//-------------
 const (
 	ApplicationJSON                  = "application/json"
 	ApplicationJSONCharsetUTF8       = ApplicationJSON + "; " + CharsetUTF8
@@ -167,16 +163,12 @@ const (
 	OctetStream                      = "application/octet-stream"
 )
 
-//---------
 // Charset
-//---------
 const (
 	CharsetUTF8 = "charset=utf-8"
 )
 
-//---------
 // Headers
-//---------
 const (
 	AcceptEncoding     = "Accept-Encoding"
 	Authorization      = "Authorization"
@@ -207,9 +199,7 @@ var (
 	}
 )
 
-//--------
 // Errors
-//--------
 var (
 	ErrUnsupportedMediaType  = NewHTTPError(http.StatusUnsupportedMediaType)
 	ErrNotFound              = NewHTTPError(http.StatusNotFound)
@@ -219,9 +209,7 @@ var (
 	ErrInvalidRedirectCode   = errors.New("invalid redirect status code")
 )
 
-//----------------
 // Error handlers
-//----------------
 var (
 	notFoundHandler = HandlerFunc(func(c Context) error {
 		return ErrNotFound
