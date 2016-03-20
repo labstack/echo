@@ -78,6 +78,26 @@ func colorizeStatusCode(code int) string {
 	}
 }
 
+func pathOrSlash(request engine.Request) string {
+	path := request.URL().Path()
+
+	if path == "" {
+		return "/"
+	}
+
+	return path
+}
+
+func disableColorIfNecessary(output io.Writer, color *color.Color) {
+	if output != nil {
+		return
+	}
+
+	if w, ok := output.(*os.File); ok && !isatty.IsTerminal(w.Fd()) {
+		color.Disable()
+	}
+}
+
 // Logger returns a middleware that logs HTTP requests.
 func Logger() echo.MiddlewareFunc {
 	return LoggerFromConfig(DefaultLoggerConfig)
@@ -89,9 +109,7 @@ func LoggerFromConfig(config LoggerConfig) echo.MiddlewareFunc {
 	config.template = fasttemplate.New(config.Format, "${", "}")
 	config.color = color.New()
 
-	if w, ok := config.Output.(*os.File); ok && !isatty.IsTerminal(w.Fd()) {
-		config.color.Disable()
-	}
+	disableColorIfNecessary(config.Output, config.color)
 
 	return func(next echo.Handler) echo.Handler {
 		return echo.HandlerFunc(func(c echo.Context) error {
@@ -115,13 +133,7 @@ func LoggerFromConfig(config LoggerConfig) echo.MiddlewareFunc {
 				case "method":
 					return w.Write([]byte(req.Method()))
 				case "path":
-					path := req.URL().Path()
-
-					if path == "" {
-						path = "/"
-					}
-
-					return w.Write([]byte(path))
+					return w.Write([]byte(pathOrSlash(req)))
 				case "status":
 					return w.Write([]byte(colorizeStatusCode(res.Status())))
 				case "response_time":
