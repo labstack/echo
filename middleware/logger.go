@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/labstack/echo"
+	"github.com/labstack/echo/engine"
 	"github.com/labstack/gommon/color"
 	"github.com/mattn/go-isatty"
 	"github.com/valyala/fasttemplate"
@@ -48,6 +49,22 @@ var (
 	}
 )
 
+func remoteAddress(request engine.Request) string {
+	header := request.Header()
+
+	if ip := header.Get(echo.XRealIP); ip != "" {
+		return ip
+	}
+
+	if ip := header.Get(echo.XForwardedFor); ip != "" {
+		return ip
+	}
+
+	ip, _, _ := net.SplitHostPort(request.RemoteAddress())
+
+	return ip
+}
+
 // Logger returns a middleware that logs HTTP requests.
 func Logger() echo.MiddlewareFunc {
 	return LoggerFromConfig(DefaultLoggerConfig)
@@ -66,15 +83,7 @@ func LoggerFromConfig(config LoggerConfig) echo.MiddlewareFunc {
 		return echo.HandlerFunc(func(c echo.Context) (err error) {
 			req := c.Request()
 			res := c.Response()
-			remoteAddr := req.RemoteAddress()
-
-			if ip := req.Header().Get(echo.XRealIP); ip != "" {
-				remoteAddr = ip
-			} else if ip = req.Header().Get(echo.XForwardedFor); ip != "" {
-				remoteAddr = ip
-			} else {
-				remoteAddr, _, _ = net.SplitHostPort(remoteAddr)
-			}
+			remoteAddr := remoteAddress(req)
 
 			start := time.Now()
 			if err := next.Handle(c); err != nil {
