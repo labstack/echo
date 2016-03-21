@@ -210,17 +210,17 @@ func TestContextPath(t *testing.T) {
 	assert.Equal(t, "/users/:uid/files/:fid", c.Path())
 }
 
-func TestContextQuery(t *testing.T) {
+func TestContextQueryParam(t *testing.T) {
 	q := make(url.Values)
 	q.Set("name", "joe")
 	q.Set("email", "joe@labstack.com")
 	req := test.NewRequest(GET, "/?"+q.Encode(), nil)
 	c := NewContext(req, nil, New())
-	assert.Equal(t, "joe", c.Query("name"))
-	assert.Equal(t, "joe@labstack.com", c.Query("email"))
+	assert.Equal(t, "joe", c.QueryParam("name"))
+	assert.Equal(t, "joe@labstack.com", c.QueryParam("email"))
 }
 
-func TestContextForm(t *testing.T) {
+func TestContextFormValue(t *testing.T) {
 	f := make(url.Values)
 	f.Set("name", "joe")
 	f.Set("email", "joe@labstack.com")
@@ -229,8 +229,8 @@ func TestContextForm(t *testing.T) {
 	req.Header().Add(ContentType, ApplicationForm)
 
 	c := NewContext(req, nil, New())
-	assert.Equal(t, "joe", c.Form("name"))
-	assert.Equal(t, "joe@labstack.com", c.Form("email"))
+	assert.Equal(t, "joe", c.FormValue("name"))
+	assert.Equal(t, "joe@labstack.com", c.FormValue("email"))
 }
 
 func TestContextNetContext(t *testing.T) {

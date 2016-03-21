@@ -21,8 +21,8 @@ func (u *URL) SetPath(path string) {
 	u.URI.SetPath(path)
 }
 
-// QueryValue implements `engine.URL#QueryValue` function.
-func (u *URL) QueryValue(name string) string {
+// QueryParam implements `engine.URL#QueryParam` function.
+func (u *URL) QueryParam(name string) string {
 	return string(u.QueryArgs().Peek(name))
 }
 

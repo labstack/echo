@@ -63,13 +63,13 @@ type (
 		// Body returns request's body.
 		Body() io.Reader
 
-		// FormValue returns form field value for the provided name.
+		// FormValue returns the form field value for the provided name.
 		FormValue(string) string
 
-		// FormFile returns form file for the provided name.
+		// FormFile returns the multipart form file for the provided name.
 		FormFile(string) (*multipart.FileHeader, error)
 
-		// MultipartForm returns multipart form.
+		// MultipartForm returns the multipart form.
 		MultipartForm() (*multipart.Form, error)
 	}
 
@@ -129,8 +129,8 @@ type (
 		// SetPath sets the request URL path.
 		SetPath(string)
 
-		// QueryValue returns query parameter value for the provided name.
-		QueryValue(string) string
+		// QueryParam returns the query param for the provided name.
+		QueryParam(string) string
 
 		// QueryString returns the URL query string.
 		QueryString() string

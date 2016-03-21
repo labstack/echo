@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"io"
 	"mime"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"path"
@@ -51,11 +52,20 @@ type (
 		// ParamNames returns path parameter names.
 		ParamNames() []string
 
-		// Query returns query parameter by name.
-		Query(string) string
+		// QueryParam returns the query param for the provided name. It is an alias
+		// for `engine.URL#QueryParam()`.
+		QueryParam(string) string
 
-		// Form returns form parameter by name.
-		Form(string) string
+		// FormValue returns the form field value for the provided name. It is an
+		// alias for `engine.Request#FormValue()`.
+		FormValue(string) string
+
+		// FormFile returns the multipart form file for the provided name. It is an
+		// alias for `engine.Request#FormFile()`.
+		FormFile(string) (*multipart.FileHeader, error)
+
+		// MultipartForm returns the multipart form. It is an alias for `engine.Request#MultipartForm()`.
+		MultipartForm() (*multipart.Form, error)
 
 		// Get retrieves data from the context.
 		Get(string) interface{}
@@ -221,12 +231,20 @@ func (c *context) ParamNames() []string {
 	return c.pnames
 }
 
-func (c *context) Query(name string) string {
-	return c.request.URL().QueryValue(name)
+func (c *context) QueryParam(name string) string {
+	return c.request.URL().QueryParam(name)
 }
 
-func (c *context) Form(name string) string {
+func (c *context) FormValue(name string) string {
 	return c.request.FormValue(name)
+}
+
+func (c *context) FormFile(name string) (*multipart.FileHeader, error) {
+	return c.request.FormFile(name)
+}
+
+func (c *context) MultipartForm() (*multipart.Form, error) {
+	return c.request.MultipartForm()
 }
 
 func (c *context) Set(key string, val interface{}) {
