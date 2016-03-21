@@ -238,7 +238,7 @@ func New() (e *Echo) {
 	e.SetHTTPErrorHandler(e.DefaultHTTPErrorHandler)
 	e.SetBinder(&binder{})
 	e.logger = log.New("echo")
-	e.logger.SetLevel(log.FATAL)
+	e.logger.SetLevel(log.ERROR)
 
 	return
 }
@@ -268,7 +268,7 @@ func (e *Echo) SetLogOutput(w io.Writer) {
 	e.logger.SetOutput(w)
 }
 
-// SetLogLevel sets the log level for the logger. Default value is `log.FATAL`.
+// SetLogLevel sets the log level for the logger. Default value is `log.ERROR`.
 func (e *Echo) SetLogLevel(l uint8) {
 	e.logger.SetLevel(l)
 }
@@ -292,7 +292,7 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 	if !c.Response().Committed() {
 		c.String(code, msg)
 	}
-	e.logger.Error(err)
+	e.logger.Debug(err)
 }
 
 // SetHTTPErrorHandler registers a custom Echo.HTTPErrorHandler.
@@ -509,10 +509,10 @@ func (e *Echo) ServeHTTP(req engine.Request, res engine.Response) {
 }
 
 // Run starts the HTTP server.
-func (e *Echo) Run(s engine.Server) error {
+func (e *Echo) Run(s engine.Server) {
 	s.SetHandler(e)
 	s.SetLogger(e.logger)
-	return s.Start()
+	e.logger.Error(s.Start())
 }
 
 // NewHTTPError creates a new HTTPError instance.
