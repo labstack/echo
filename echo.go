@@ -496,9 +496,9 @@ func (e *Echo) PutContext(c Context) {
 	e.pool.Put(c)
 }
 
-func (e *Echo) ServeHTTP(req engine.Request, res engine.Response) {
+func (e *Echo) ServeHTTP(rq engine.Request, rs engine.Response) {
 	c := e.pool.Get().(*context)
-	c.Reset(req, res)
+	c.Reset(rq, rs)
 
 	// Execute chain
 	if err := e.head.Handle(c); err != nil {
@@ -531,15 +531,15 @@ func (e *HTTPError) Error() string {
 }
 
 func (binder) Bind(i interface{}, c Context) (err error) {
-	req := c.Request()
-	ct := req.Header().Get(ContentType)
+	rq := c.Request()
+	ct := rq.Header().Get(ContentType)
 	err = ErrUnsupportedMediaType
 	if strings.HasPrefix(ct, ApplicationJSON) {
-		if err = json.NewDecoder(req.Body()).Decode(i); err != nil {
+		if err = json.NewDecoder(rq.Body()).Decode(i); err != nil {
 			err = NewHTTPError(http.StatusBadRequest, err.Error())
 		}
 	} else if strings.HasPrefix(ct, ApplicationXML) {
-		if err = xml.NewDecoder(req.Body()).Decode(i); err != nil {
+		if err = xml.NewDecoder(rq.Body()).Decode(i); err != nil {
 			err = NewHTTPError(http.StatusBadRequest, err.Error())
 		}
 	}

@@ -158,6 +158,6 @@ type (
 )
 
 // ServeHTTP serves HTTP request.
-func (h HandlerFunc) ServeHTTP(req Request, res Response) {
-	h(req, res)
+func (h HandlerFunc) ServeHTTP(rq Request, rs Response) {
+	h(rq, rs)
 }

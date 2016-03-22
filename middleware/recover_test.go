@@ -15,9 +15,9 @@ func TestRecover(t *testing.T) {
 	e.SetDebug(true)
 	buf := new(bytes.Buffer)
 	e.SetLogOutput(buf)
-	req := test.NewRequest(echo.GET, "/", nil)
+	rq := test.NewRequest(echo.GET, "/", nil)
 	rec := test.NewResponseRecorder()
-	c := echo.NewContext(req, rec, e)
+	c := echo.NewContext(rq, rec, e)
 	h := Recover()(echo.HandlerFunc(func(c echo.Context) error {
 		panic("test")
 	}))

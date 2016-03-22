@@ -75,9 +75,9 @@ func StaticFromConfig(config StaticConfig) echo.MiddlewareFunc {
 						}
 
 						// Create a directory index
-						res := c.Response()
-						res.Header().Set(echo.ContentType, echo.TextHTMLCharsetUTF8)
-						if _, err = fmt.Fprintf(res, "<pre>\n"); err != nil {
+						rs := c.Response()
+						rs.Header().Set(echo.ContentType, echo.TextHTMLCharsetUTF8)
+						if _, err = fmt.Fprintf(rs, "<pre>\n"); err != nil {
 							return err
 						}
 						for _, d := range dirs {
@@ -87,11 +87,11 @@ func StaticFromConfig(config StaticConfig) echo.MiddlewareFunc {
 								color = "#e91e63"
 								name += "/"
 							}
-							if _, err = fmt.Fprintf(res, "<a href=\"%s\" style=\"color: %s;\">%s</a>\n", name, color, name); err != nil {
+							if _, err = fmt.Fprintf(rs, "<a href=\"%s\" style=\"color: %s;\">%s</a>\n", name, color, name); err != nil {
 								return err
 							}
 						}
-						_, err = fmt.Fprintf(res, "</pre>\n")
+						_, err = fmt.Fprintf(rs, "</pre>\n")
 						return err
 					}
 					return next.Handle(c)

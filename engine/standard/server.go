@@ -70,7 +70,7 @@ func NewFromConfig(c engine.Config) (s *Server) {
 				},
 			},
 		},
-		handler: engine.HandlerFunc(func(req engine.Request, res engine.Response) {
+		handler: engine.HandlerFunc(func(rq engine.Request, rs engine.Response) {
 			s.logger.Error("handler not set, use `SetHandler()` to set it.")
 		}),
 		logger: log.New("echo"),
@@ -113,25 +113,25 @@ func (s *Server) startCustomListener() error {
 // ServeHTTP implements `http.Handler` interface.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Request
-	req := s.pool.request.Get().(*Request)
+	rq := s.pool.request.Get().(*Request)
 	reqHdr := s.pool.header.Get().(*Header)
 	reqURL := s.pool.url.Get().(*URL)
 	reqHdr.reset(r.Header)
 	reqURL.reset(r.URL)
-	req.reset(r, reqHdr, reqURL)
+	rq.reset(r, reqHdr, reqURL)
 
 	// Response
-	res := s.pool.response.Get().(*Response)
+	rs := s.pool.response.Get().(*Response)
 	resHdr := s.pool.header.Get().(*Header)
 	resHdr.reset(w.Header())
-	res.reset(w, resHdr)
+	rs.reset(w, resHdr)
 
-	s.handler.ServeHTTP(req, res)
+	s.handler.ServeHTTP(rq, rs)
 
-	s.pool.request.Put(req)
+	s.pool.request.Put(rq)
 	s.pool.header.Put(reqHdr)
 	s.pool.url.Put(reqURL)
-	s.pool.response.Put(res)
+	s.pool.response.Put(rs)
 	s.pool.header.Put(resHdr)
 }
 
@@ -152,16 +152,16 @@ func WrapHandler(h http.Handler) echo.HandlerFunc {
 func WrapMiddleware(m func(http.Handler) http.Handler) echo.MiddlewareFunc {
 	return func(next echo.Handler) echo.Handler {
 		return echo.HandlerFunc(func(c echo.Context) (err error) {
-			req := c.Request().(*Request)
-			res := c.Response().(*Response)
+			rq := c.Request().(*Request)
+			rs := c.Response().(*Response)
 			m(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				res.ResponseWriter = &responseAdapter{
-					ResponseWriter: res.ResponseWriter,
+				rs.ResponseWriter = &responseAdapter{
+					ResponseWriter: rs.ResponseWriter,
 					writer:         c.Response(),
 				}
-				req.Request = r
+				rq.Request = r
 				err = next.Handle(c)
-			})).ServeHTTP(res.ResponseWriter, req.Request)
+			})).ServeHTTP(rs.ResponseWriter, rq.Request)
 			return
 		})
 	}

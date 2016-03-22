@@ -78,7 +78,7 @@ func NewFromConfig(c engine.Config) (s *Server) {
 				},
 			},
 		},
-		handler: engine.HandlerFunc(func(req engine.Request, res engine.Response) {
+		handler: engine.HandlerFunc(func(rq engine.Request, rs engine.Response) {
 			s.logger.Error("handler not set, use `SetHandler()` to set it.")
 		}),
 		logger: log.New("echo"),
@@ -124,25 +124,25 @@ func (s *Server) startCustomListener() error {
 
 func (s *Server) ServeHTTP(c *fasthttp.RequestCtx) {
 	// Request
-	req := s.pool.request.Get().(*Request)
+	rq := s.pool.request.Get().(*Request)
 	reqHdr := s.pool.requestHeader.Get().(*RequestHeader)
 	reqURL := s.pool.url.Get().(*URL)
 	reqHdr.reset(&c.Request.Header)
 	reqURL.reset(c.URI())
-	req.reset(c, reqHdr, reqURL)
+	rq.reset(c, reqHdr, reqURL)
 
 	// Response
-	res := s.pool.response.Get().(*Response)
+	rs := s.pool.response.Get().(*Response)
 	resHdr := s.pool.responseHeader.Get().(*ResponseHeader)
 	resHdr.reset(&c.Response.Header)
-	res.reset(c, resHdr)
+	rs.reset(c, resHdr)
 
-	s.handler.ServeHTTP(req, res)
+	s.handler.ServeHTTP(rq, rs)
 
-	s.pool.request.Put(req)
+	s.pool.request.Put(rq)
 	s.pool.requestHeader.Put(reqHdr)
 	s.pool.url.Put(reqURL)
-	s.pool.response.Put(res)
+	s.pool.response.Put(rs)
 	s.pool.responseHeader.Put(resHdr)
 }
 

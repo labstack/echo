@@ -12,9 +12,9 @@ import (
 
 func TestBasicAuth(t *testing.T) {
 	e := echo.New()
-	req := test.NewRequest(echo.GET, "/", nil)
-	res := test.NewResponseRecorder()
-	c := echo.NewContext(req, res, e)
+	rq := test.NewRequest(echo.GET, "/", nil)
+	rs := test.NewResponseRecorder()
+	c := echo.NewContext(rq, rs, e)
 	f := func(u, p string) bool {
 		if u == "joe" && p == "secret" {
 			return true
@@ -27,7 +27,7 @@ func TestBasicAuth(t *testing.T) {
 
 	// Valid credentials
 	auth := basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:secret"))
-	req.Header().Set(echo.Authorization, auth)
+	rq.Header().Set(echo.Authorization, auth)
 	assert.NoError(t, h.Handle(c))
 
 	//---------------------
@@ -36,21 +36,21 @@ func TestBasicAuth(t *testing.T) {
 
 	// Incorrect password
 	auth = basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:password"))
-	req.Header().Set(echo.Authorization, auth)
+	rq.Header().Set(echo.Authorization, auth)
 	he := h.Handle(c).(*echo.HTTPError)
 	assert.Equal(t, http.StatusUnauthorized, he.Code)
-	assert.Equal(t, basic+" realm=Restricted", res.Header().Get(echo.WWWAuthenticate))
+	assert.Equal(t, basic+" realm=Restricted", rs.Header().Get(echo.WWWAuthenticate))
 
 	// Empty Authorization header
-	req.Header().Set(echo.Authorization, "")
+	rq.Header().Set(echo.Authorization, "")
 	he = h.Handle(c).(*echo.HTTPError)
 	assert.Equal(t, http.StatusUnauthorized, he.Code)
-	assert.Equal(t, basic+" realm=Restricted", res.Header().Get(echo.WWWAuthenticate))
+	assert.Equal(t, basic+" realm=Restricted", rs.Header().Get(echo.WWWAuthenticate))
 
 	// Invalid Authorization header
 	auth = base64.StdEncoding.EncodeToString([]byte("invalid"))
-	req.Header().Set(echo.Authorization, auth)
+	rq.Header().Set(echo.Authorization, auth)
 	he = h.Handle(c).(*echo.HTTPError)
 	assert.Equal(t, http.StatusUnauthorized, he.Code)
-	assert.Equal(t, basic+" realm=Restricted", res.Header().Get(echo.WWWAuthenticate))
+	assert.Equal(t, basic+" realm=Restricted", rs.Header().Get(echo.WWWAuthenticate))
 }

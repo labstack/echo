@@ -24,9 +24,9 @@ type (
 
 func TestEcho(t *testing.T) {
 	e := New()
-	req := test.NewRequest(GET, "/", nil)
+	rq := test.NewRequest(GET, "/", nil)
 	rec := test.NewResponseRecorder()
-	c := NewContext(req, rec, e)
+	c := NewContext(rq, rec, e)
 
 	// Router
 	assert.NotNil(t, e.Router())
@@ -290,9 +290,9 @@ func TestEchoGroup(t *testing.T) {
 
 func TestEchoNotFound(t *testing.T) {
 	e := New()
-	req := test.NewRequest(GET, "/files", nil)
+	rq := test.NewRequest(GET, "/files", nil)
 	rec := test.NewResponseRecorder()
-	e.ServeHTTP(req, rec)
+	e.ServeHTTP(rq, rec)
 	assert.Equal(t, http.StatusNotFound, rec.Status())
 }
 
@@ -301,9 +301,9 @@ func TestEchoMethodNotAllowed(t *testing.T) {
 	e.Get("/", HandlerFunc(func(c Context) error {
 		return c.String(http.StatusOK, "Echo!")
 	}))
-	req := test.NewRequest(POST, "/", nil)
+	rq := test.NewRequest(POST, "/", nil)
 	rec := test.NewResponseRecorder()
-	e.ServeHTTP(req, rec)
+	e.ServeHTTP(rq, rec)
 	assert.Equal(t, http.StatusMethodNotAllowed, rec.Status())
 }
 
@@ -329,8 +329,8 @@ func testMethod(t *testing.T, method, path string, e *Echo) {
 }
 
 func request(method, path string, e *Echo) (int, string) {
-	req := test.NewRequest(method, path, nil)
+	rq := test.NewRequest(method, path, nil)
 	rec := test.NewResponseRecorder()
-	e.ServeHTTP(req, rec)
+	e.ServeHTTP(rq, rec)
 	return rec.Status(), rec.Body.String()
 }

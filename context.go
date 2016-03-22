@@ -157,10 +157,10 @@ const (
 )
 
 // NewContext creates a Context object.
-func NewContext(req engine.Request, res engine.Response, e *Echo) Context {
+func NewContext(rq engine.Request, rs engine.Response, e *Echo) Context {
 	return &context{
-		request:  req,
-		response: res,
+		request:  rq,
+		response: rs,
 		echo:     e,
 		pvalues:  make([]string, *e.maxParam),
 		store:    make(store),
@@ -408,11 +408,11 @@ func (c *context) Object() *context {
 
 // ServeContent sends a response from `io.Reader`. It automatically sets the `Content-Type`
 // and `Last-Modified` headers.
-func ServeContent(req engine.Request, res engine.Response, f http.File, fi os.FileInfo) error {
-	res.Header().Set(ContentType, detectContentType(fi.Name()))
-	res.Header().Set(LastModified, fi.ModTime().UTC().Format(http.TimeFormat))
-	res.WriteHeader(http.StatusOK)
-	_, err := io.Copy(res, f)
+func ServeContent(rq engine.Request, rs engine.Response, f http.File, fi os.FileInfo) error {
+	rs.Header().Set(ContentType, detectContentType(fi.Name()))
+	rs.Header().Set(LastModified, fi.ModTime().UTC().Format(http.TimeFormat))
+	rs.WriteHeader(http.StatusOK)
+	_, err := io.Copy(rs, f)
 	return err
 }
 
@@ -423,10 +423,10 @@ func detectContentType(name string) (t string) {
 	return
 }
 
-func (c *context) Reset(req engine.Request, res engine.Response) {
+func (c *context) Reset(rq engine.Request, rs engine.Response) {
 	c.netContext = nil
-	c.request = req
-	c.response = res
+	c.request = rq
+	c.response = rs
 	c.query = nil
 	c.store = nil
 	c.handler = notFoundHandler

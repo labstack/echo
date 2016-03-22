@@ -98,8 +98,8 @@ func (r *Request) MultipartForm() (*multipart.Form, error) {
 	return r.request.MultipartForm, err
 }
 
-func (r *Request) reset(req *http.Request, h engine.Header, u engine.URL) {
-	r.request = req
+func (r *Request) reset(rq *http.Request, h engine.Header, u engine.URL) {
+	r.request = rq
 	r.header = h
 	r.url = u
 }
