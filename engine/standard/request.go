@@ -2,11 +2,11 @@ package standard
 
 import (
 	"io"
-	"log"
 	"mime/multipart"
 	"net/http"
 
 	"github.com/labstack/echo/engine"
+	"github.com/labstack/gommon/log"
 )
 
 type (
