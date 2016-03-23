@@ -14,11 +14,11 @@ type (
 		// StackSize is the stack size to be printed.
 		StackSize int
 
-		// StackAll is flag to format stack traces of all other goroutines into
-		// buffer after the trace for the current goroutine, or not. Default is true.
+		// StackAll is a flag to format stack traces of all other goroutines into
+		// buffer after the trace for the current goroutine, or not.
 		StackAll bool
 
-		// PrintStack is the flag to print stack or not. Default is true.
+		// PrintStack is a flag to print stack or not.
 		PrintStack bool
 	}
 )

@@ -18,9 +18,8 @@ type (
 	// LoggerConfig defines config for logger middleware.
 	//
 	LoggerConfig struct {
-		// Format is the log format.
+		// Format is the log format which can be constructed using the following tags:
 		//
-		// Example "${remote_id} ${status}"
 		// Available tags:
 		// - time_rfc3339
 		// - remote_ip
@@ -30,10 +29,12 @@ type (
 		// - status
 		// - response_time
 		// - response_size
-		Format string
+		//
+		// Example "${remote_id} ${status}"
+		Format string // Required
 
-		// Output is the writer where logs are written. Default is `os.Stdout`.
-		Output io.Writer
+		// Output is the writer where logs are written.
+		Output io.Writer // Required
 
 		template *fasttemplate.Template
 		color    *color.Color
@@ -44,7 +45,7 @@ var (
 	// DefaultLoggerConfig is the default logger middleware config.
 	DefaultLoggerConfig = LoggerConfig{
 		Format: "time=${time_rfc3339}, remote_ip=${remote_ip}, method=${method}, " +
-			"path=${path}, status=${status}, took=${response_time}, sent=t=${response_size} bytes\n",
+			"uri=${uri}, status=${status}, took=${response_time}, sent=${response_size} bytes\n",
 		color:  color.New(),
 		Output: os.Stdout,
 	}
@@ -69,7 +70,7 @@ func LoggerFromConfig(config LoggerConfig) echo.MiddlewareFunc {
 			rq := c.Request()
 			rs := c.Response()
 			start := time.Now()
-			if err := next.Handle(c); err != nil {
+			if err = next.Handle(c); err != nil {
 				c.Error(err)
 			}
 			stop := time.Now()
