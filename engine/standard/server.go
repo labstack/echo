@@ -51,7 +51,7 @@ func NewFromConfig(c engine.Config) (s *Server) {
 		pool: &pool{
 			request: sync.Pool{
 				New: func() interface{} {
-					return &Request{}
+					return &Request{logger: s.logger}
 				},
 			},
 			response: sync.Pool{

@@ -28,6 +28,14 @@ func (u *URL) QueryParam(name string) string {
 	return u.query.Get(name)
 }
 
+// QueryParams implements `engine.URL#QueryParams` function.
+func (u *URL) QueryParams() map[string][]string {
+	if u.query == nil {
+		u.query = u.Query()
+	}
+	return map[string][]string(u.query)
+}
+
 // QueryString implements `engine.URL#QueryString` function.
 func (u *URL) QueryString() string {
 	return u.URL.RawQuery

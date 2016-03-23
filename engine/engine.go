@@ -66,6 +66,9 @@ type (
 		// FormValue returns the form field value for the provided name.
 		FormValue(string) string
 
+		// FormParams returns the form parameters.
+		FormParams() map[string][]string
+
 		// FormFile returns the multipart form file for the provided name.
 		FormFile(string) (*multipart.FileHeader, error)
 
@@ -131,6 +134,9 @@ type (
 
 		// QueryParam returns the query param for the provided name.
 		QueryParam(string) string
+
+		// QueryParam returns the query parameters as map.
+		QueryParams() map[string][]string
 
 		// QueryString returns the URL query string.
 		QueryString() string

@@ -82,6 +82,16 @@ func (r *Request) FormValue(name string) string {
 	return string(r.RequestCtx.FormValue(name))
 }
 
+// FormParams implements `engine.Request#FormParams` function.
+func (r *Request) FormParams() (params map[string][]string) {
+	params = make(map[string][]string)
+	r.PostArgs().VisitAll(func(k, v []byte) {
+		// TODO: Filling with only first value
+		params[string(k)] = []string{string(v)}
+	})
+	return
+}
+
 // FormFile implements `engine.Request#FormFile` function.
 func (r *Request) FormFile(name string) (*multipart.FileHeader, error) {
 	return r.RequestCtx.FormFile(name)

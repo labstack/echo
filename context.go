@@ -56,9 +56,15 @@ type (
 		// for `engine.URL#QueryParam()`.
 		QueryParam(string) string
 
+		// QueryParam returns the query parameters as map. It is an alias for `engine.URL#QueryParams()`.
+		QueryParams() map[string][]string
+
 		// FormValue returns the form field value for the provided name. It is an
 		// alias for `engine.Request#FormValue()`.
 		FormValue(string) string
+
+		// FormParams returns the form parameters as map. It is an alias for `engine.Request#FormParams()`.
+		FormParams() map[string][]string
 
 		// FormFile returns the multipart form file for the provided name. It is an
 		// alias for `engine.Request#FormFile()`.
@@ -235,8 +241,16 @@ func (c *context) QueryParam(name string) string {
 	return c.request.URL().QueryParam(name)
 }
 
+func (c *context) QueryParams() map[string][]string {
+	return c.request.URL().QueryParams()
+}
+
 func (c *context) FormValue(name string) string {
 	return c.request.FormValue(name)
+}
+
+func (c *context) FormParams() map[string][]string {
+	return c.request.FormParams()
 }
 
 func (c *context) FormFile(name string) (*multipart.FileHeader, error) {

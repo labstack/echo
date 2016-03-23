@@ -88,6 +88,11 @@ func (r *Request) FormValue(name string) string {
 	return r.request.FormValue(name)
 }
 
+func (r *Request) FormParams() map[string][]string {
+	r.request.ParseForm()
+	return map[string][]string(r.request.PostForm)
+}
+
 func (r *Request) FormFile(name string) (*multipart.FileHeader, error) {
 	_, fh, err := r.request.FormFile(name)
 	return fh, err

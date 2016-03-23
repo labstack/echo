@@ -2,6 +2,7 @@ package standard
 
 import (
 	"io"
+	"log"
 	"mime/multipart"
 	"net/http"
 
@@ -14,6 +15,7 @@ type (
 		*http.Request
 		url    engine.URL
 		header engine.Header
+		logger *log.Logger
 	}
 )
 
@@ -92,6 +94,14 @@ func (r *Request) FormValue(name string) string {
 	return r.Request.FormValue(name)
 }
 
+// FormParams implements `engine.Request#FormParams` function.
+func (r *Request) FormParams() map[string][]string {
+	if err := r.ParseForm(); err != nil {
+		r.logger.Error(err)
+	}
+	return map[string][]string(r.Request.PostForm)
+}
+
 // FormFile implements `engine.Request#FormFile` function.
 func (r *Request) FormFile(name string) (*multipart.FileHeader, error) {
 	_, fh, err := r.Request.FormFile(name)
@@ -100,7 +110,7 @@ func (r *Request) FormFile(name string) (*multipart.FileHeader, error) {
 
 // MultipartForm implements `engine.Request#MultipartForm` function.
 func (r *Request) MultipartForm() (*multipart.Form, error) {
-	err := r.Request.ParseMultipartForm(32 << 20) // 32 MB
+	err := r.ParseMultipartForm(32 << 20) // 32 MB
 	return r.Request.MultipartForm, err
 }
 
