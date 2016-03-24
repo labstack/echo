@@ -28,7 +28,7 @@ type (
 var (
 	// DefaultGzipConfig is the default gzip middleware config.
 	DefaultGzipConfig = GzipConfig{
-		Level: gzip.DefaultCompression,
+		Level: -1,
 	}
 )
 

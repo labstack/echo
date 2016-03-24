@@ -31,10 +31,10 @@ type (
 		// - response_size
 		//
 		// Example "${remote_id} ${status}"
-		Format string // Required
+		Format string
 
 		// Output is the writer where logs are written.
-		Output io.Writer // Required
+		Output io.Writer
 
 		template *fasttemplate.Template
 		color    *color.Color
