@@ -140,6 +140,7 @@ func WrapHandler(h http.Handler) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		w := &responseAdapter{
 			ResponseWriter: c.Response().(*Response).ResponseWriter,
+			response:       c.Response().(*Response),
 			writer:         c.Response(),
 		}
 		r := c.Request().(*Request).Request

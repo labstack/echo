@@ -24,7 +24,9 @@ type (
 
 	responseAdapter struct {
 		http.ResponseWriter
-		writer io.Writer
+		writer   io.Writer
+		response *Response
+		code     int
 	}
 )
 
@@ -110,6 +112,10 @@ func (r *Response) reset(w http.ResponseWriter, h engine.Header) {
 
 func (r *responseAdapter) Write(b []byte) (n int, err error) {
 	return r.writer.Write(b)
+}
+
+func (r *responseAdapter) WriteHeader(code int) {
+	r.response.WriteHeader(code)
 }
 
 func (r *responseAdapter) Flush() {
