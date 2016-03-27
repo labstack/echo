@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"path"
+	"time"
 
 	"github.com/labstack/echo"
 )
@@ -56,6 +57,11 @@ func StaticFromConfig(config StaticConfig) echo.MiddlewareFunc {
 			fi, err := f.Stat()
 			if err != nil {
 				return err
+			}
+
+			ims, err := time.Parse("Mon, 02 Jan 2006 15:04:05 GMT", c.Request().Header().Get("If-Modified-Since"))
+			if err == nil && fi.ModTime().Unix() <= ims.Unix() {
+				return c.HTML(http.StatusNotModified, "")
 			}
 
 			if fi.IsDir() {
