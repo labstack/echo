@@ -32,7 +32,7 @@ Based on [vishr/go-http-routing-benchmark] (https://github.com/vishr/go-http-rou
 ### Installation
 
 ```sh
-$ go get github.com/labstack/echo
+$ go get github.com/labstack/echo/...
 ```
 
 ### Hello, World!

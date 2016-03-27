@@ -20,7 +20,6 @@ type (
 	LoggerConfig struct {
 		// Format is the log format which can be constructed using the following tags:
 		//
-		// Available tags:
 		// - time_rfc3339
 		// - remote_ip
 		// - uri
