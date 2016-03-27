@@ -239,6 +239,33 @@ func TestContextNetContext(t *testing.T) {
 	// assert.Equal(t, "val", c.Value("key"))
 }
 
+func TestContextServeContent(t *testing.T) {
+	e := New()
+	rq := test.NewRequest(GET, "/", nil)
+	rc := test.NewResponseRecorder()
+	c := NewContext(rq, rc, e)
+
+	// Not cached
+	fs := http.Dir("_fixture/images")
+	f, err := fs.Open("walle.png")
+	if assert.NoError(t, err) {
+		if assert.NoError(t, c.ServeContent(f)) {
+			assert.Equal(t, http.StatusOK, rc.Status())
+		}
+	}
+
+	// Cached
+	rc = test.NewResponseRecorder()
+	c = NewContext(rq, rc, e)
+	fi, err := f.Stat()
+	if assert.NoError(t, err) {
+		rq.Header().Set(IfModifiedSince, fi.ModTime().UTC().Format(http.TimeFormat))
+		if assert.NoError(t, c.ServeContent(f)) {
+			assert.Equal(t, http.StatusNotModified, rc.Status())
+		}
+	}
+}
+
 func testBindOk(t *testing.T, c Context, ct string) {
 	c.Request().Header().Set(ContentType, ct)
 	u := new(user)
