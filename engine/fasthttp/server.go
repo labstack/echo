@@ -149,8 +149,12 @@ func (s *Server) ServeHTTP(c *fasthttp.RequestCtx) {
 // WrapHandler wraps `fasthttp.RequestHandler` into `echo.HandlerFunc`.
 func WrapHandler(h fasthttp.RequestHandler) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		ctx := c.Request().(*Request).RequestCtx
+		rq := c.Request().(*Request)
+		rs := c.Response().(*Response)
+		ctx := rq.RequestCtx
 		h(ctx)
+		rs.status = ctx.Response.StatusCode()
+		rs.size = int64(ctx.Response.Header.ContentLength())
 		return nil
 	}
 }
@@ -159,8 +163,12 @@ func WrapHandler(h fasthttp.RequestHandler) echo.HandlerFunc {
 func WrapMiddleware(h fasthttp.RequestHandler) echo.MiddlewareFunc {
 	return func(next echo.Handler) echo.Handler {
 		return echo.HandlerFunc(func(c echo.Context) error {
-			ctx := c.Request().(*Request).RequestCtx
+			rq := c.Request().(*Request)
+			rs := c.Response().(*Response)
+			ctx := rq.RequestCtx
 			h(ctx)
+			rs.status = ctx.Response.StatusCode()
+			rs.size = int64(ctx.Response.Header.ContentLength())
 			return next.Handle(c)
 		})
 	}
