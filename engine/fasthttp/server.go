@@ -151,6 +151,8 @@ func WrapHandler(h fasthttp.RequestHandler) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		ctx := c.Request().(*Request).RequestCtx
 		h(ctx)
+		c.Response().(*Response).status = ctx.Response.StatusCode()
+		c.Response().(*Response).size = int64(ctx.Response.Header.ContentLength())
 		return nil
 	}
 }
