@@ -22,8 +22,8 @@ type (
 	}
 )
 
-// TLS implements `engine.Request#TLS` function.
-func (r *Request) TLS() bool {
+// IsTLS implements `engine.Request#TLS` function.
+func (r *Request) IsTLS() bool {
 	return r.IsTLS()
 }
 
@@ -45,6 +45,11 @@ func (r *Request) URL() engine.URL {
 // Header implements `engine.Request#Header` function.
 func (r *Request) Header() engine.Header {
 	return r.header
+}
+
+// ContentLength implements `engine.Request#ContentLength` function.
+func (r *Request) ContentLength() int {
+	return r.Request.Header.ContentLength()
 }
 
 // UserAgent implements `engine.Request#UserAgent` function.

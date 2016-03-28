@@ -19,14 +19,14 @@ type (
 	}
 )
 
-// TLS implements `engine.Request#TLS` function.
-func (r *Request) TLS() bool {
+// IsTLS implements `engine.Request#TLS` function.
+func (r *Request) IsTLS() bool {
 	return r.Request.TLS != nil
 }
 
 // Scheme implements `engine.Request#Scheme` function.
 func (r *Request) Scheme() string {
-	if r.TLS() {
+	if r.IsTLS() {
 		return "https"
 	}
 	return "http"
@@ -58,6 +58,11 @@ func (r *Request) Header() engine.Header {
 // func ProtoMinor() int {
 // 	return r.request.ProtoMinor()
 // }
+
+// ContentLength implements `engine.Request#ContentLength` function.
+func (r *Request) ContentLength() int {
+	return int(r.Request.ContentLength)
+}
 
 // UserAgent implements `engine.Request#UserAgent` function.
 func (r *Request) UserAgent() string {

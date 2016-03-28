@@ -25,8 +25,8 @@ type (
 
 	// Request defines the interface for HTTP request.
 	Request interface {
-		// TLS returns true if HTTP connection is TLS otherwise false.
-		TLS() bool
+		// IsTLS returns true if HTTP connection is TLS otherwise false.
+		IsTLS() bool
 
 		// Scheme returns the HTTP protocol scheme, `http` or `https`.
 		Scheme() string
@@ -47,6 +47,9 @@ type (
 		// Proto() string
 		// ProtoMajor() int
 		// ProtoMinor() int
+
+		// ContentLength returns the size of request's body.
+		ContentLength() int
 
 		// UserAgent returns the client's `User-Agent`.
 		UserAgent() string

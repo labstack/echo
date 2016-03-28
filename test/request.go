@@ -25,12 +25,12 @@ func NewRequest(method, url string, body io.Reader) engine.Request {
 	}
 }
 
-func (r *Request) TLS() bool {
+func (r *Request) IsTLS() bool {
 	return r.request.TLS != nil
 }
 
 func (r *Request) Scheme() string {
-	if r.TLS() {
+	if r.IsTLS() {
 		return "https"
 	}
 	return "http"
@@ -59,6 +59,10 @@ func (r *Request) Header() engine.Header {
 // func ProtoMinor() int {
 // 	return r.request.ProtoMinor()
 // }
+
+func (r *Request) ContentLength() int {
+	return int(r.request.ContentLength)
+}
 
 func (r *Request) UserAgent() string {
 	return r.request.UserAgent()
