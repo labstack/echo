@@ -136,7 +136,7 @@ type (
 		// ServeContent sends static content from `io.Reader` and handles caching
 		// via `If-Modified-Since` request header. It automatically sets `Content-Type`
 		// and `Last-Modified` response headers.
-		ServeContent(http.File) error
+		ServeContent(io.Reader, string, time.Time) error
 
 		// Object returns the `context` instance.
 		Object() *context
@@ -380,8 +380,9 @@ func (c *context) File(file string) error {
 		if err != nil {
 			return ErrNotFound
 		}
+		fi, _ = f.Stat()
 	}
-	return c.ServeContent(f)
+	return c.ServeContent(f, fi.Name(), fi.ModTime())
 }
 
 func (c *context) Attachment(r io.Reader, name string) (err error) {
@@ -422,24 +423,20 @@ func (c *context) Object() *context {
 	return c
 }
 
-func (c *context) ServeContent(f http.File) error {
+func (c *context) ServeContent(r io.Reader, name string, modtime time.Time) error {
 	rq := c.Request()
 	rs := c.Response()
-	fi, err := f.Stat()
-	if err != nil {
-		return err
-	}
 
-	if t, err := time.Parse(http.TimeFormat, rq.Header().Get(IfModifiedSince)); err == nil && fi.ModTime().Before(t.Add(1*time.Second)) {
+	if t, err := time.Parse(http.TimeFormat, rq.Header().Get(IfModifiedSince)); err == nil && modtime.Before(t.Add(1*time.Second)) {
 		rs.Header().Del(ContentType)
 		rs.Header().Del(ContentLength)
 		return c.NoContent(http.StatusNotModified)
 	}
 
-	rs.Header().Set(ContentType, detectContentType(fi.Name()))
-	rs.Header().Set(LastModified, fi.ModTime().UTC().Format(http.TimeFormat))
+	rs.Header().Set(ContentType, detectContentType(name))
+	rs.Header().Set(LastModified, modtime.UTC().Format(http.TimeFormat))
 	rs.WriteHeader(http.StatusOK)
-	_, err = io.Copy(rs, f)
+	_, err := io.Copy(rs, r)
 	return err
 }
 

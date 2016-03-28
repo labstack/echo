@@ -97,8 +97,9 @@ func StaticFromConfig(config StaticConfig) echo.MiddlewareFunc {
 					}
 					return next.Handle(c)
 				}
+				fi, _ = f.Stat() // Index file stat
 			}
-			return c.ServeContent(f)
+			return c.ServeContent(f, fi.Name(), fi.ModTime())
 		})
 	}
 }
