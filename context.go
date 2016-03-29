@@ -112,9 +112,9 @@ type (
 		// File sends a response with the content of the file.
 		File(string) error
 
-		// Attachment sends a response from `io.Reader` as attachment, prompting client
-		// to save the file.
-		Attachment(io.Reader, string) error
+		// Attachment sends a response from `io.ReaderSeeker` as attachment, prompting
+		// client to save the file.
+		Attachment(io.ReadSeeker, string) error
 
 		// NoContent sends a response with no body and a status code.
 		NoContent(int) error
@@ -137,7 +137,7 @@ type (
 		// ServeContent sends static content from `io.Reader` and handles caching
 		// via `If-Modified-Since` request header. It automatically sets `Content-Type`
 		// and `Last-Modified` response headers.
-		ServeContent(io.Reader, string, time.Time) error
+		ServeContent(io.ReadSeeker, string, time.Time) error
 
 		// Object returns the `context` instance.
 		Object() *context
@@ -384,8 +384,8 @@ func (c *context) File(file string) error {
 	return c.ServeContent(f, fi.Name(), fi.ModTime())
 }
 
-func (c *context) Attachment(r io.Reader, name string) (err error) {
-	c.response.Header().Set(ContentType, detectContentType(name))
+func (c *context) Attachment(r io.ReadSeeker, name string) (err error) {
+	c.response.Header().Set(ContentType, ContentTypeByExtension(name))
 	c.response.Header().Set(ContentDisposition, "attachment; filename="+name)
 	c.response.WriteHeader(http.StatusOK)
 	_, err = io.Copy(c.response, r)
@@ -422,7 +422,7 @@ func (c *context) Object() *context {
 	return c
 }
 
-func (c *context) ServeContent(r io.Reader, name string, modtime time.Time) error {
+func (c *context) ServeContent(content io.ReadSeeker, name string, modtime time.Time) error {
 	rq := c.Request()
 	rs := c.Response()
 
@@ -432,14 +432,17 @@ func (c *context) ServeContent(r io.Reader, name string, modtime time.Time) erro
 		return c.NoContent(http.StatusNotModified)
 	}
 
-	rs.Header().Set(ContentType, detectContentType(name))
+	rs.Header().Set(ContentType, ContentTypeByExtension(name))
 	rs.Header().Set(LastModified, modtime.UTC().Format(http.TimeFormat))
 	rs.WriteHeader(http.StatusOK)
-	_, err := io.Copy(rs, r)
+	_, err := io.Copy(rs, content)
 	return err
 }
 
-func detectContentType(name string) (t string) {
+// ContentTypeByExtension returns the MIME type associated with the file based on
+// its extension. It returns `application/octet-stream` incase MIME type is not
+// found.
+func ContentTypeByExtension(name string) (t string) {
 	if t = mime.TypeByExtension(filepath.Ext(name)); t == "" {
 		t = OctetStream
 	}
