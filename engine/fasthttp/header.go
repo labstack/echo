@@ -18,7 +18,7 @@ type (
 
 // Add implements `engine.Header#Add` function.
 func (h *RequestHeader) Add(key, val string) {
-	// h.RequestHeader.Add(key, val)
+	h.RequestHeader.Add(key, val)
 }
 
 // Del implements `engine.Header#Del` function.
@@ -53,8 +53,7 @@ func (h *RequestHeader) reset(hdr *fasthttp.RequestHeader) {
 
 // Add implements `engine.Header#Add` function.
 func (h *ResponseHeader) Add(key, val string) {
-	// TODO: https://github.com/valyala/fasthttp/issues/69
-	// h.header.Add(key, val)
+	h.ResponseHeader.Add(key, val)
 }
 
 // Del implements `engine.Header#Del` function.

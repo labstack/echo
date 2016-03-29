@@ -1,8 +1,8 @@
 hash: e740b7b4143d21e271e337a73d785c7c17a3c7ae1c775b7513287bb1599f3f0a
-updated: 2016-03-21T18:17:41.019872464-07:00
+updated: 2016-03-29T07:21:14.848378979-07:00
 imports:
 - name: github.com/klauspost/compress
-  version: 006acde2c5d283d2f8b8aa03d8f0cd2891c680cf
+  version: 9d711f4445beb7f6488148ce04e3b4dc6e72242d
   subpackages:
   - flate
   - gzip
@@ -21,16 +21,16 @@ imports:
 - name: github.com/mattn/go-isatty
   version: 56b76bdf51f7708750eac80fa38b952bb9f32639
 - name: github.com/valyala/fasthttp
-  version: 9ad70994bbadd681cb168849344df71aa045c70e
+  version: 12ba9899844060189449e9768dc0900a56d3624b
 - name: github.com/valyala/fasttemplate
   version: 3b874956e03f1636d171bda64b130f9135f42cff
 - name: golang.org/x/net
-  version: 4d06dbdaa62241ec06ba6df63434548fb09c0099
+  version: 31df19d69da8728e9220def59b80ee577c3e48bf
   subpackages:
   - context
   - websocket
 - name: golang.org/x/sys
-  version: 9d4e42a20653790449273b3c85e67d6d8bae6e2e
+  version: 320cb01ddbbf0473674c2585f9b6e245721de355
   subpackages:
   - unix
 devImports: []
