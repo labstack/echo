@@ -7,6 +7,7 @@ import (
 	"mime"
 	"mime/multipart"
 	"net/http"
+	"os"
 	"path"
 	"path/filepath"
 	"time"
@@ -365,9 +366,7 @@ func (c *context) XMLBlob(code int, b []byte) (err error) {
 }
 
 func (c *context) File(file string) error {
-	root, file := filepath.Split(file)
-	fs := http.Dir(root)
-	f, err := fs.Open(file)
+	f, err := os.Open(file)
 	if err != nil {
 		return ErrNotFound
 	}
@@ -376,7 +375,7 @@ func (c *context) File(file string) error {
 	fi, _ := f.Stat()
 	if fi.IsDir() {
 		file = path.Join(file, "index.html")
-		f, err = fs.Open(file)
+		f, err = os.Open(file)
 		if err != nil {
 			return ErrNotFound
 		}
