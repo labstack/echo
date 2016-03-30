@@ -277,7 +277,7 @@ func (n *node) findHandler(method string) Handler {
 	}
 }
 
-func (n *node) check405() HandlerFunc {
+func (n *node) checkMethodNotAllowed() HandlerFunc {
 	for _, m := range methods {
 		if h := n.findHandler(m); h != nil {
 			return methodNotAllowedHandler
@@ -412,7 +412,7 @@ End:
 
 	// NOTE: Slow zone...
 	if ctx.handler == nil {
-		ctx.handler = cn.check405()
+		ctx.handler = cn.checkMethodNotAllowed()
 
 		// Dig further for any, might have an empty value for *, e.g.
 		// serving a directory. Issue #207.
@@ -421,7 +421,7 @@ End:
 		}
 		ctx.pvalues[len(cn.pnames)-1] = ""
 		if ctx.handler = cn.findHandler(method); ctx.handler == nil {
-			ctx.handler = cn.check405()
+			ctx.handler = cn.checkMethodNotAllowed()
 		}
 	}
 	return
