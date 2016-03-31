@@ -447,6 +447,10 @@ func (e *Echo) add(method, path string, handler Handler, middleware ...Middlewar
 func (e *Echo) Group(prefix string, m ...Middleware) (g *Group) {
 	g = &Group{prefix: prefix, echo: e}
 	g.Use(m...)
+	// Dummy handler so group can be used with static middleware.
+	g.Get("", HandlerFunc(func(c Context) error {
+		return c.NoContent(http.StatusNotFound)
+	}))
 	return
 }
 

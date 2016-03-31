@@ -14,9 +14,10 @@ type (
 		// Root is the directory from where the static content is served.
 		Root string `json:"root"`
 
-		// Index is the index file to be used while serving a directory.
-		// Default is `index.html`.
-		Index string `json:"index"`
+		// Index is the list of index files to be searched and used when serving
+		// a directory.
+		// Default value is `[]string{"index.html"}`.
+		Index []string `json:"index"`
 
 		// Browse is a flag to enable/disable directory browsing.
 		Browse bool `json:"browse"`
@@ -27,7 +28,7 @@ var (
 	// DefaultStaticConfig is the default static middleware config.
 	DefaultStaticConfig = StaticConfig{
 		Root:   "",
-		Index:  "index.html",
+		Index:  []string{"index.html"},
 		Browse: false,
 	}
 )
@@ -46,7 +47,11 @@ func StaticFromConfig(config StaticConfig) echo.MiddlewareFunc {
 	return func(next echo.Handler) echo.Handler {
 		return echo.HandlerFunc(func(c echo.Context) error {
 			fs := http.Dir(config.Root)
-			file := path.Clean(c.Request().URL().Path())
+			p := c.Request().URL().Path()
+			if c.P(0) != "" { // If serving from `Group`, e.g. `/static/*`
+				p = c.P(0)
+			}
+			file := path.Clean(p)
 			f, err := fs.Open(file)
 			if err != nil {
 				return next.Handle(c)
@@ -66,7 +71,8 @@ func StaticFromConfig(config StaticConfig) echo.MiddlewareFunc {
 				d := f
 
 				// Index file
-				file = path.Join(file, config.Index)
+				// TODO: search all files
+				file = path.Join(file, config.Index[0])
 				f, err = fs.Open(file)
 				if err != nil {
 					if config.Browse {
