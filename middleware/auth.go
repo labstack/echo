@@ -7,7 +7,7 @@ import (
 )
 
 type (
-	// BasicAuthConfig defines config for HTTP basic auth middleware.
+	// BasicAuthConfig defines the config for HTTP basic auth middleware.
 	BasicAuthConfig struct {
 		// AuthFunc is the function to validate basic auth credentials.
 		AuthFunc BasicAuthFunc

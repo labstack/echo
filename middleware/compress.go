@@ -13,9 +13,10 @@ import (
 )
 
 type (
-	// GzipConfig defines config for gzip middleware.
+	// GzipConfig defines the config for gzip middleware.
 	GzipConfig struct {
 		// Level is the gzip level.
+		// Optional with default value as `DefaultGzipConfig.Level`.
 		Level int
 	}
 
@@ -41,6 +42,11 @@ func Gzip() echo.MiddlewareFunc {
 // GzipFromConfig return gzip middleware from config.
 // See `Gzip()`.
 func GzipFromConfig(config GzipConfig) echo.MiddlewareFunc {
+	// Defaults
+	if config.Level == 0 {
+		config.Level = DefaultGzipConfig.Level
+	}
+
 	pool := gzipPool(config)
 	scheme := "gzip"
 

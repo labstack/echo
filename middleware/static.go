@@ -9,17 +9,19 @@ import (
 )
 
 type (
-	// StaticConfig defines config for static middleware.
+	// StaticConfig defines the config for static middleware.
 	StaticConfig struct {
 		// Root is the directory from where the static content is served.
+		// Optional with default value as `DefaultStaticConfig.Root`.
 		Root string `json:"root"`
 
 		// Index is the list of index files to be searched and used when serving
 		// a directory.
-		// Default value is `[]string{"index.html"}`.
+		// Optional with default value as `DefaultStaticConfig.Index`.
 		Index []string `json:"index"`
 
 		// Browse is a flag to enable/disable directory browsing.
+		// Required.
 		Browse bool `json:"browse"`
 	}
 )
@@ -44,6 +46,11 @@ func Static(root string) echo.MiddlewareFunc {
 // StaticFromConfig returns a static middleware from config.
 // See `Static()`.
 func StaticFromConfig(config StaticConfig) echo.MiddlewareFunc {
+	// Defaults
+	if config.Index == nil {
+		config.Index = DefaultStaticConfig.Index
+	}
+
 	return func(next echo.Handler) echo.Handler {
 		return echo.HandlerFunc(func(c echo.Context) error {
 			fs := http.Dir(config.Root)
