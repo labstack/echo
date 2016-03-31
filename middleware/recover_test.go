@@ -12,7 +12,6 @@ import (
 
 func TestRecover(t *testing.T) {
 	e := echo.New()
-	e.SetDebug(true)
 	buf := new(bytes.Buffer)
 	e.SetLogOutput(buf)
 	rq := test.NewRequest(echo.GET, "/", nil)
