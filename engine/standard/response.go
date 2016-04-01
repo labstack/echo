@@ -23,8 +23,8 @@ type (
 	}
 
 	responseAdapter struct {
-		http.ResponseWriter
-		Response *Response
+		writer http.ResponseWriter
+		*Response
 	}
 )
 
@@ -100,8 +100,7 @@ func (r *Response) CloseNotify() <-chan bool {
 }
 
 func (r *Response) reset(w http.ResponseWriter, a *responseAdapter, h engine.Header) {
-	// r.ResponseWriter = a
-	r.ResponseWriter = w
+	r.ResponseWriter = a
 	r.header = h
 	r.status = http.StatusOK
 	r.size = 0
@@ -109,27 +108,15 @@ func (r *Response) reset(w http.ResponseWriter, a *responseAdapter, h engine.Hea
 	r.writer = w
 }
 
-func (r *responseAdapter) WriteHeader(code int) {
-	r.Response.WriteHeader(code)
+func (a *responseAdapter) Header() http.Header {
+	return a.writer.Header()
 }
 
-func (r *responseAdapter) Write(b []byte) (n int, err error) {
-	return r.Response.Write(b)
+func (a *responseAdapter) WriteHeader(code int) {
+	a.writer.WriteHeader(code)
 }
 
-func (r *responseAdapter) Flush() {
-	r.ResponseWriter.(http.Flusher).Flush()
-}
-
-func (r *responseAdapter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	return r.ResponseWriter.(http.Hijacker).Hijack()
-}
-
-func (r *responseAdapter) CloseNotify() <-chan bool {
-	return r.ResponseWriter.(http.CloseNotifier).CloseNotify()
-}
-
-func (r *responseAdapter) reset(rw http.ResponseWriter, rq *Response) {
-	r.ResponseWriter = rw
-	r.Response = rq
+func (a *responseAdapter) reset(w http.ResponseWriter, r *Response) {
+	a.writer = w
+	a.Response = r
 }
