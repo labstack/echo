@@ -10,3 +10,6 @@ import:
   - context
   - websocket
 - package: github.com/valyala/fasttemplate
+- package: github.com/stretchr/testify
+  subpackages:
+  - assert

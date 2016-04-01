@@ -99,8 +99,8 @@ func (r *Response) CloseNotify() <-chan bool {
 	return r.ResponseWriter.(http.CloseNotifier).CloseNotify()
 }
 
-func (r *Response) reset(w http.ResponseWriter, h engine.Header) {
-	r.ResponseWriter = w
+func (r *Response) reset(w http.ResponseWriter, a *responseAdapter, h engine.Header) {
+	r.ResponseWriter = a
 	r.header = h
 	r.status = http.StatusOK
 	r.size = 0
@@ -126,4 +126,9 @@ func (r *responseAdapter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 
 func (r *responseAdapter) CloseNotify() <-chan bool {
 	return r.ResponseWriter.(http.CloseNotifier).CloseNotify()
+}
+
+func (r *responseAdapter) reset(rw http.ResponseWriter, rq *Response) {
+	r.ResponseWriter = rw
+	r.Response = rq
 }

@@ -20,10 +20,11 @@ type (
 	}
 
 	pool struct {
-		request  sync.Pool
-		response sync.Pool
-		header   sync.Pool
-		url      sync.Pool
+		request         sync.Pool
+		response        sync.Pool
+		responseAdapter sync.Pool
+		header          sync.Pool
+		url             sync.Pool
 	}
 )
 
@@ -57,6 +58,11 @@ func NewFromConfig(c engine.Config) (s *Server) {
 			response: sync.Pool{
 				New: func() interface{} {
 					return &Response{logger: s.logger}
+				},
+			},
+			responseAdapter: sync.Pool{
+				New: func() interface{} {
+					return &responseAdapter{}
 				},
 			},
 			header: sync.Pool{
@@ -114,25 +120,28 @@ func (s *Server) startCustomListener() error {
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Request
 	rq := s.pool.request.Get().(*Request)
-	reqHdr := s.pool.header.Get().(*Header)
-	reqURL := s.pool.url.Get().(*URL)
-	reqHdr.reset(r.Header)
-	reqURL.reset(r.URL)
-	rq.reset(r, reqHdr, reqURL)
+	rqHdr := s.pool.header.Get().(*Header)
+	rqURL := s.pool.url.Get().(*URL)
+	rqHdr.reset(r.Header)
+	rqURL.reset(r.URL)
+	rq.reset(r, rqHdr, rqURL)
 
 	// Response
 	rs := s.pool.response.Get().(*Response)
-	resHdr := s.pool.header.Get().(*Header)
-	resHdr.reset(w.Header())
-	rs.reset(w, resHdr)
+	rsAdpt := s.pool.responseAdapter.Get().(*responseAdapter)
+	rsAdpt.reset(w, rs)
+	rsHdr := s.pool.header.Get().(*Header)
+	rsHdr.reset(w.Header())
+	rs.reset(w, rsAdpt, rsHdr)
 
 	s.handler.ServeHTTP(rq, rs)
 
+	// Return to pool
 	s.pool.request.Put(rq)
-	s.pool.header.Put(reqHdr)
-	s.pool.url.Put(reqURL)
+	s.pool.header.Put(rqHdr)
+	s.pool.url.Put(rqURL)
 	s.pool.response.Put(rs)
-	s.pool.header.Put(resHdr)
+	s.pool.header.Put(rsHdr)
 }
 
 // WrapHandler wraps `http.Handler` into `echo.HandlerFunc`.
@@ -140,11 +149,7 @@ func WrapHandler(h http.Handler) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		rq := c.Request().(*Request)
 		rs := c.Response().(*Response)
-		w := &responseAdapter{
-			ResponseWriter: rs.ResponseWriter,
-			Response:       rs,
-		}
-		h.ServeHTTP(w, rq.Request)
+		h.ServeHTTP(rs.ResponseWriter, rq.Request)
 		return nil
 	}
 }
@@ -155,13 +160,9 @@ func WrapMiddleware(m func(http.Handler) http.Handler) echo.MiddlewareFunc {
 		return echo.HandlerFunc(func(c echo.Context) (err error) {
 			rq := c.Request().(*Request)
 			rs := c.Response().(*Response)
-			w := &responseAdapter{
-				ResponseWriter: rs.ResponseWriter,
-				Response:       rs,
-			}
 			m(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				err = next.Handle(c)
-			})).ServeHTTP(w, rq.Request)
+			})).ServeHTTP(rs.ResponseWriter, rq.Request)
 			return
 		})
 	}
