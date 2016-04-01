@@ -100,7 +100,8 @@ func (r *Response) CloseNotify() <-chan bool {
 }
 
 func (r *Response) reset(w http.ResponseWriter, a *responseAdapter, h engine.Header) {
-	r.ResponseWriter = a
+	// r.ResponseWriter = a
+	r.ResponseWriter = w
 	r.header = h
 	r.status = http.StatusOK
 	r.size = 0
