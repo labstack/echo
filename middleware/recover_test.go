@@ -20,7 +20,7 @@ func TestRecover(t *testing.T) {
 	h := Recover()(echo.HandlerFunc(func(c echo.Context) error {
 		panic("test")
 	}))
-	h.Handle(c)
+	h(c)
 	assert.Equal(t, http.StatusInternalServerError, rec.Status())
 	assert.Contains(t, buf.String(), "PANIC RECOVER")
 }

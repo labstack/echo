@@ -39,8 +39,8 @@ func BasicAuth(f BasicAuthFunc) echo.MiddlewareFunc {
 // BasicAuthFromConfig returns an HTTP basic auth middleware from config.
 // See `BasicAuth()`.
 func BasicAuthFromConfig(config BasicAuthConfig) echo.MiddlewareFunc {
-	return func(next echo.Handler) echo.Handler {
-		return echo.HandlerFunc(func(c echo.Context) error {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
 			auth := c.Request().Header().Get(echo.Authorization)
 			l := len(basic)
 
@@ -52,7 +52,7 @@ func BasicAuthFromConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 						if cred[i] == ':' {
 							// Verify credentials
 							if config.AuthFunc(cred[:i], cred[i+1:]) {
-								return next.Handle(c)
+								return next(c)
 							}
 						}
 					}
@@ -60,6 +60,6 @@ func BasicAuthFromConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 			}
 			c.Response().Header().Set(echo.WWWAuthenticate, basic+" realm=Restricted")
 			return echo.ErrUnauthorized
-		})
+		}
 	}
 }

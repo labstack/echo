@@ -4,7 +4,7 @@ import "testing"
 
 func TestGroup(t *testing.T) {
 	g := New().Group("/group")
-	h := HandlerFunc(func(Context) error { return nil })
+	h := func(Context) error { return nil }
 	g.Connect("/", h)
 	g.Delete("/", h)
 	g.Get("/", h)

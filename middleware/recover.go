@@ -49,8 +49,8 @@ func RecoverFromConfig(config RecoverConfig) echo.MiddlewareFunc {
 		config.StackSize = DefaultRecoverConfig.StackSize
 	}
 
-	return func(next echo.Handler) echo.Handler {
-		return echo.HandlerFunc(func(c echo.Context) error {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
 			defer func() {
 				if r := recover(); r != nil {
 					var err error
@@ -68,7 +68,7 @@ func RecoverFromConfig(config RecoverConfig) echo.MiddlewareFunc {
 					c.Error(err)
 				}
 			}()
-			return next.Handle(c)
-		})
+			return next(c)
+		}
 	}
 }

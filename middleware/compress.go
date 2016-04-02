@@ -50,8 +50,8 @@ func GzipFromConfig(config GzipConfig) echo.MiddlewareFunc {
 	pool := gzipPool(config)
 	scheme := "gzip"
 
-	return func(next echo.Handler) echo.Handler {
-		return echo.HandlerFunc(func(c echo.Context) error {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
 			rs := c.Response()
 			rs.Header().Add(echo.Vary, echo.AcceptEncoding)
 			if strings.Contains(c.Request().Header().Get(echo.AcceptEncoding), scheme) {
@@ -74,8 +74,8 @@ func GzipFromConfig(config GzipConfig) echo.MiddlewareFunc {
 				rs.Header().Set(echo.ContentEncoding, scheme)
 				rs.SetWriter(g)
 			}
-			return next.Handle(c)
-		})
+			return next(c)
+		}
 	}
 }
 

@@ -83,31 +83,31 @@ func TestEchoMiddleware(t *testing.T) {
 	e := New()
 	buf := new(bytes.Buffer)
 
-	e.Pre(WrapMiddleware(HandlerFunc(func(c Context) error {
+	e.Pre(WrapMiddleware(func(c Context) error {
 		assert.Empty(t, c.Path())
 		buf.WriteString("-1")
 		return nil
-	})))
+	}))
 
-	e.Use(WrapMiddleware(HandlerFunc(func(c Context) error {
+	e.Use(WrapMiddleware(func(c Context) error {
 		buf.WriteString("1")
 		return nil
-	})))
+	}))
 
-	e.Use(WrapMiddleware(HandlerFunc(func(c Context) error {
+	e.Use(WrapMiddleware(func(c Context) error {
 		buf.WriteString("2")
 		return nil
-	})))
+	}))
 
-	e.Use(WrapMiddleware(HandlerFunc(func(c Context) error {
+	e.Use(WrapMiddleware(func(c Context) error {
 		buf.WriteString("3")
 		return nil
-	})))
+	}))
 
 	// Route
-	e.Get("/", HandlerFunc(func(c Context) error {
+	e.Get("/", func(c Context) error {
 		return c.String(http.StatusOK, "OK")
-	}))
+	})
 
 	c, b := request(GET, "/", e)
 	assert.Equal(t, "-1123", buf.String())
@@ -117,9 +117,9 @@ func TestEchoMiddleware(t *testing.T) {
 
 func TestEchoMiddlewareError(t *testing.T) {
 	e := New()
-	e.Use(WrapMiddleware(HandlerFunc(func(c Context) error {
+	e.Use(WrapMiddleware(func(c Context) error {
 		return errors.New("error")
-	})))
+	}))
 	e.Get("/", notFoundHandler)
 	c, _ := request(GET, "/", e)
 	assert.Equal(t, http.StatusInternalServerError, c)
@@ -129,9 +129,9 @@ func TestEchoHandler(t *testing.T) {
 	e := New()
 
 	// HandlerFunc
-	e.Get("/ok", HandlerFunc(func(c Context) error {
+	e.Get("/ok", func(c Context) error {
 		return c.String(http.StatusOK, "OK")
-	}))
+	})
 
 	c, b := request(GET, "/ok", e)
 	assert.Equal(t, http.StatusOK, c)
@@ -185,23 +185,23 @@ func TestEchoTrace(t *testing.T) {
 
 func TestEchoAny(t *testing.T) { // JFC
 	e := New()
-	e.Any("/", HandlerFunc(func(c Context) error {
+	e.Any("/", func(c Context) error {
 		return c.String(http.StatusOK, "Any")
-	}))
+	})
 }
 
 func TestEchoMatch(t *testing.T) { // JFC
 	e := New()
-	e.Match([]string{GET, POST}, "/", HandlerFunc(func(c Context) error {
+	e.Match([]string{GET, POST}, "/", func(c Context) error {
 		return c.String(http.StatusOK, "Match")
-	}))
+	})
 }
 
 func TestEchoURL(t *testing.T) {
 	e := New()
-	static := HandlerFunc(func(Context) error { return nil })
-	getUser := HandlerFunc(func(Context) error { return nil })
-	getFile := HandlerFunc(func(Context) error { return nil })
+	static := func(Context) error { return nil }
+	getUser := func(Context) error { return nil }
+	getFile := func(Context) error { return nil }
 
 	e.Get("/static/file", static)
 	e.Get("/users/:id", getUser)
@@ -224,9 +224,9 @@ func TestEchoRoutes(t *testing.T) {
 		{POST, "/repos/:owner/:repo/git/tags", ""},
 	}
 	for _, r := range routes {
-		e.add(r.Method, r.Path, HandlerFunc(func(c Context) error {
+		e.add(r.Method, r.Path, func(c Context) error {
 			return c.String(http.StatusOK, "OK")
-		}))
+		})
 	}
 
 	for i, r := range e.Routes() {
@@ -238,15 +238,15 @@ func TestEchoRoutes(t *testing.T) {
 func TestEchoGroup(t *testing.T) {
 	e := New()
 	buf := new(bytes.Buffer)
-	e.Use(MiddlewareFunc(func(h Handler) Handler {
-		return HandlerFunc(func(c Context) error {
+	e.Use(MiddlewareFunc(func(h HandlerFunc) HandlerFunc {
+		return func(c Context) error {
 			buf.WriteString("0")
-			return h.Handle(c)
-		})
+			return h(c)
+		}
 	}))
-	h := HandlerFunc(func(c Context) error {
+	h := func(c Context) error {
 		return c.NoContent(http.StatusOK)
-	})
+	}
 
 	//--------
 	// Routes
@@ -256,24 +256,23 @@ func TestEchoGroup(t *testing.T) {
 
 	// Group
 	g1 := e.Group("/group1")
-	g1.Use(WrapMiddleware(HandlerFunc(func(c Context) error {
+	g1.Use(WrapMiddleware(func(c Context) error {
 		buf.WriteString("1")
-		return h.Handle(c)
-
-	})))
+		return h(c)
+	}))
 	g1.Get("", h)
 
 	// Nested groups with middleware
 	g2 := e.Group("/group2")
-	g2.Use(WrapMiddleware(HandlerFunc(func(c Context) error {
+	g2.Use(WrapMiddleware(func(c Context) error {
 		buf.WriteString("2")
 		return nil
-	})))
+	}))
 	g3 := g2.Group("/group3")
-	g3.Use(WrapMiddleware(HandlerFunc(func(c Context) error {
+	g3.Use(WrapMiddleware(func(c Context) error {
 		buf.WriteString("3")
 		return nil
-	})))
+	}))
 	g3.Get("", h)
 
 	request(GET, "/users", e)
@@ -298,9 +297,9 @@ func TestEchoNotFound(t *testing.T) {
 
 func TestEchoMethodNotAllowed(t *testing.T) {
 	e := New()
-	e.Get("/", HandlerFunc(func(c Context) error {
+	e.Get("/", func(c Context) error {
 		return c.String(http.StatusOK, "Echo!")
-	}))
+	})
 	rq := test.NewRequest(POST, "/", nil)
 	rec := test.NewResponseRecorder()
 	e.ServeHTTP(rq, rec)
@@ -317,9 +316,9 @@ func TestEchoHTTPError(t *testing.T) {
 func testMethod(t *testing.T, method, path string, e *Echo) {
 	m := fmt.Sprintf("%c%s", method[0], strings.ToLower(method[1:]))
 	p := reflect.ValueOf(path)
-	h := reflect.ValueOf(HandlerFunc(func(c Context) error {
+	h := reflect.ValueOf(func(c Context) error {
 		return c.String(http.StatusOK, method)
-	}))
+	})
 	i := interface{}(e)
 	reflect.ValueOf(i).MethodByName(m).Call([]reflect.Value{p, h})
 	_, body := request(method, path, e)

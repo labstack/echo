@@ -74,12 +74,12 @@ func LoggerFromConfig(config LoggerConfig) echo.MiddlewareFunc {
 		config.color.Disable()
 	}
 
-	return func(next echo.Handler) echo.Handler {
-		return echo.HandlerFunc(func(c echo.Context) (err error) {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) (err error) {
 			rq := c.Request()
 			rs := c.Response()
 			start := time.Now()
-			if err = next.Handle(c); err != nil {
+			if err = next(c); err != nil {
 				c.Error(err)
 			}
 			stop := time.Now()
@@ -129,6 +129,6 @@ func LoggerFromConfig(config LoggerConfig) echo.MiddlewareFunc {
 				}
 			})
 			return
-		})
+		}
 	}
 }

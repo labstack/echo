@@ -51,8 +51,8 @@ func StaticFromConfig(config StaticConfig) echo.MiddlewareFunc {
 		config.Index = DefaultStaticConfig.Index
 	}
 
-	return func(next echo.Handler) echo.Handler {
-		return echo.HandlerFunc(func(c echo.Context) error {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
 			fs := http.Dir(config.Root)
 			p := c.Request().URL().Path()
 			if c.P(0) != "" { // If serving from `Group`, e.g. `/static/*`
@@ -61,7 +61,7 @@ func StaticFromConfig(config StaticConfig) echo.MiddlewareFunc {
 			file := path.Clean(p)
 			f, err := fs.Open(file)
 			if err != nil {
-				return next.Handle(c)
+				return next(c)
 			}
 			defer f.Close()
 
@@ -108,11 +108,11 @@ func StaticFromConfig(config StaticConfig) echo.MiddlewareFunc {
 						_, err = fmt.Fprintf(rs, "</pre>\n")
 						return err
 					}
-					return next.Handle(c)
+					return next(c)
 				}
 				fi, _ = f.Stat() // Index file stat
 			}
 			return c.ServeContent(f, fi.Name(), fi.ModTime())
-		})
+		}
 	}
 }

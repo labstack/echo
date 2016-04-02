@@ -21,15 +21,15 @@ type (
 	kind          uint8
 	children      []*node
 	methodHandler struct {
-		connect Handler
-		delete  Handler
-		get     Handler
-		head    Handler
-		options Handler
-		patch   Handler
-		post    Handler
-		put     Handler
-		trace   Handler
+		connect HandlerFunc
+		delete  HandlerFunc
+		get     HandlerFunc
+		head    HandlerFunc
+		options HandlerFunc
+		patch   HandlerFunc
+		post    HandlerFunc
+		put     HandlerFunc
+		trace   HandlerFunc
 	}
 )
 
@@ -50,14 +50,14 @@ func NewRouter(e *Echo) *Router {
 	}
 }
 
-// Handle implements `echo.Middleware` which makes router a middleware.
-func (r *Router) Handle(next Handler) Handler {
-	return HandlerFunc(func(c Context) error {
+// Process implements `echo.MiddlewareFunc` which makes router a middleware.
+func (r *Router) Process(next HandlerFunc) HandlerFunc {
+	return func(c Context) error {
 		method := c.Request().Method()
 		path := c.Request().URL().Path()
 		r.Find(method, path, c)
-		return next.Handle(c)
-	})
+		return next(c)
+	}
 }
 
 // Priority is super secret.
@@ -66,7 +66,7 @@ func (r *Router) Priority() int {
 }
 
 // Add registers a new route for method and path with matching handler.
-func (r *Router) Add(method, path string, h Handler, e *Echo) {
+func (r *Router) Add(method, path string, h HandlerFunc, e *Echo) {
 	ppath := path        // Pristine path
 	pnames := []string{} // Param names
 
@@ -98,7 +98,7 @@ func (r *Router) Add(method, path string, h Handler, e *Echo) {
 	r.insert(method, path, h, skind, ppath, pnames, e)
 }
 
-func (r *Router) insert(method, path string, h Handler, t kind, ppath string, pnames []string, e *Echo) {
+func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string, pnames []string, e *Echo) {
 	// Adjust max param
 	l := len(pnames)
 	if *e.maxParam < l {
@@ -229,7 +229,7 @@ func (n *node) findChildByKind(t kind) *node {
 	return nil
 }
 
-func (n *node) addHandler(method string, h Handler) {
+func (n *node) addHandler(method string, h HandlerFunc) {
 	switch method {
 	case GET:
 		n.methodHandler.get = h
@@ -252,7 +252,7 @@ func (n *node) addHandler(method string, h Handler) {
 	}
 }
 
-func (n *node) findHandler(method string) Handler {
+func (n *node) findHandler(method string) HandlerFunc {
 	switch method {
 	case GET:
 		return n.methodHandler.get

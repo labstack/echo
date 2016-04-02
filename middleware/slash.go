@@ -9,15 +9,15 @@ import (
 //
 // Usage `Echo#Pre(AddTrailingSlash())`
 func AddTrailingSlash() echo.MiddlewareFunc {
-	return func(next echo.Handler) echo.Handler {
-		return echo.HandlerFunc(func(c echo.Context) error {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
 			url := c.Request().URL()
 			path := url.Path()
 			if path != "/" && path[len(path)-1] != '/' {
 				url.SetPath(path + "/")
 			}
-			return next.Handle(c)
-		})
+			return next(c)
+		}
 	}
 }
 
@@ -26,15 +26,15 @@ func AddTrailingSlash() echo.MiddlewareFunc {
 //
 // Usage `Echo#Pre(RemoveTrailingSlash())`
 func RemoveTrailingSlash() echo.MiddlewareFunc {
-	return func(next echo.Handler) echo.Handler {
-		return echo.HandlerFunc(func(c echo.Context) error {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
 			url := c.Request().URL()
 			path := url.Path()
 			l := len(path) - 1
 			if path != "/" && path[l] == '/' {
 				url.SetPath(path[:l])
 			}
-			return next.Handle(c)
-		})
+			return next(c)
+		}
 	}
 }

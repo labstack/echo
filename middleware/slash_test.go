@@ -13,10 +13,10 @@ func TestAddTrailingSlash(t *testing.T) {
 	rq := test.NewRequest(echo.GET, "/add-slash", nil)
 	rc := test.NewResponseRecorder()
 	c := echo.NewContext(rq, rc, e)
-	h := AddTrailingSlash()(echo.HandlerFunc(func(c echo.Context) error {
+	h := AddTrailingSlash()(func(c echo.Context) error {
 		return nil
-	}))
-	h.Handle(c)
+	})
+	h(c)
 	assert.Equal(t, "/add-slash/", rq.URL().Path())
 }
 
@@ -25,9 +25,9 @@ func TestRemoveTrailingSlash(t *testing.T) {
 	rq := test.NewRequest(echo.GET, "/remove-slash/", nil)
 	rc := test.NewResponseRecorder()
 	c := echo.NewContext(rq, rc, e)
-	h := RemoveTrailingSlash()(echo.HandlerFunc(func(c echo.Context) error {
+	h := RemoveTrailingSlash()(func(c echo.Context) error {
 		return nil
-	}))
-	h.Handle(c)
+	})
+	h(c)
 	assert.Equal(t, "/remove-slash", rq.URL().Path())
 }

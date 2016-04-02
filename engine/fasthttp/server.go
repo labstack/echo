@@ -162,15 +162,15 @@ func WrapHandler(h fasthttp.RequestHandler) echo.HandlerFunc {
 
 // WrapMiddleware wraps `fasthttp.RequestHandler` into `echo.MiddlewareFunc`
 func WrapMiddleware(h fasthttp.RequestHandler) echo.MiddlewareFunc {
-	return func(next echo.Handler) echo.Handler {
-		return echo.HandlerFunc(func(c echo.Context) error {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
 			rq := c.Request().(*Request)
 			rs := c.Response().(*Response)
 			ctx := rq.RequestCtx
 			h(ctx)
 			rs.status = ctx.Response.StatusCode()
 			rs.size = int64(ctx.Response.Header.ContentLength())
-			return next.Handle(c)
-		})
+			return next(c)
+		}
 	}
 }
