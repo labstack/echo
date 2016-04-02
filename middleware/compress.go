@@ -67,7 +67,10 @@ func GzipFromConfig(config GzipConfig) echo.MiddlewareFunc {
 						rs.Header().Del(echo.ContentEncoding)
 						gw.Reset(ioutil.Discard)
 					}
-					gw.Close()
+					err := gw.Close()
+					if err != nil {
+						c.Logger().Errorf("Error closing gzipWriter: %v", err)
+					}
 					pool.Put(gw)
 				}()
 				g := gzipResponseWriter{Response: rs, Writer: gw}
@@ -84,6 +87,11 @@ func (g gzipResponseWriter) Write(b []byte) (int, error) {
 		g.Header().Set(echo.ContentType, http.DetectContentType(b))
 	}
 	return g.Writer.Write(b)
+}
+
+func (g gzipResponseWriter) WriteHeader(code int) {
+	g.Header().Del(echo.ContentLength)
+	g.Response.WriteHeader(code)
 }
 
 func gzipPool(config GzipConfig) sync.Pool {
