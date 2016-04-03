@@ -42,6 +42,7 @@ package echo
 import (
 	"bytes"
 	"encoding/json"
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
@@ -51,8 +52,6 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-
-	"encoding/xml"
 
 	"github.com/labstack/echo/engine"
 	"github.com/labstack/gommon/log"
@@ -493,6 +492,9 @@ func (e *Echo) ServeHTTP(rq engine.Request, rs engine.Response) {
 func (e *Echo) Run(s engine.Server) {
 	s.SetHandler(e)
 	s.SetLogger(e.logger)
+	if e.Debug() {
+		e.logger.Debug("message=running in debug mode")
+	}
 	e.logger.Error(s.Start())
 }
 
@@ -511,7 +513,7 @@ func (e *HTTPError) Error() string {
 	return e.Message
 }
 
-func (binder) Bind(i interface{}, c Context) (err error) {
+func (b *binder) Bind(i interface{}, c Context) (err error) {
 	rq := c.Request()
 	ct := rq.Header().Get(ContentType)
 	err = ErrUnsupportedMediaType

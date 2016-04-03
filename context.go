@@ -79,8 +79,8 @@ type (
 		// Set saves data in the context.
 		Set(string, interface{})
 
-		// Bind binds the request body into provided type `i`. The default binder does
-		// it based on Content-Type header.
+		// Bind binds the request body into provided type `i`. The default binder
+		// does it based on Content-Type header.
 		Bind(interface{}) error
 
 		// Render renders a template with data and sends a text/html response with status
