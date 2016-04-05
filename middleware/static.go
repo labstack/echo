@@ -55,7 +55,7 @@ func StaticFromConfig(config StaticConfig) echo.MiddlewareFunc {
 		return func(c echo.Context) error {
 			fs := http.Dir(config.Root)
 			p := c.Request().URL().Path()
-			if c.P(0) != "" { // If serving from `Group`, e.g. `/static/*`
+			if c.P(0) != "" { // If serving from `Group`, e.g. `/static*`
 				p = c.P(0)
 			}
 			file := path.Clean(p)
