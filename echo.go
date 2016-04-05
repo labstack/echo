@@ -1,5 +1,5 @@
 /*
-Package echo implements a fast and unfancy micro web framework for Go.
+Package echo implements a fast and unfancy web framework for Go (Golang).
 
 Example:
 
@@ -14,10 +14,8 @@ Example:
 	)
 
 	// Handler
-	func hello() echo.HandlerFunc {
-	    return func(c echo.Context) error {
-	        return c.String(http.StatusOK, "Hello, World!\n")
-	    }
+	func hello(c echo.Context) error {
+	    return c.String(http.StatusOK, "Hello, World!")
 	}
 
 	func main() {
