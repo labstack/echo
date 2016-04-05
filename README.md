@@ -107,7 +107,7 @@ func show(c echo.Context) error {
 
 ### Form `application/x-www-form-urlencoded`
 
-`POST` `/save` `name=Joe Smith, email=joe@labstack.com`
+`POST` `/save`
 
 name | value
 :--- | :---
