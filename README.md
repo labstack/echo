@@ -100,7 +100,7 @@ func getUser(c echo.Context) error {
 func show(c echo.Context) error {
 	// Get team and member from the query string
 	team := c.QueryParam("team")
-	member := c.QueryParam("team")
+	member := c.QueryParam("member")
 }
 ```
 
