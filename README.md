@@ -1,7 +1,7 @@
 # *NOTICE*
 
 - Master branch, website and godoc now points to Echo v2.
-- It is advisable to migrate to v2. (https://labstack.com/echo/guide/migrating/)
+- Echo v2 is in beta but if you want to try it out here is the migrating [guide] (https://labstack.com/echo/guide/migrating/)
 - Looking for v1?
 	- Installation: Use a package manager (https://github.com/Masterminds/glide, it's nice!) to get stable v1 release/commit or use `go get gopkg.in/labstack/echo.v1`.
 	- Godoc: https://godoc.org/gopkg.in/labstack/echo.v1
