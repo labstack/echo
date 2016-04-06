@@ -63,14 +63,14 @@ func TestLoggerIPAddress(t *testing.T) {
 	})
 
 	// With X-Real-IP
-	rq.Header().Add(echo.XRealIP, ip)
+	rq.Header().Add(echo.HeaderXRealIP, ip)
 	h(c)
 	assert.Contains(t, ip, buf.String())
 
 	// With X-Forwarded-For
 	buf.Reset()
-	rq.Header().Del(echo.XRealIP)
-	rq.Header().Add(echo.XForwardedFor, ip)
+	rq.Header().Del(echo.HeaderXRealIP)
+	rq.Header().Add(echo.HeaderXForwardedFor, ip)
 	h(c)
 	assert.Contains(t, ip, buf.String())
 

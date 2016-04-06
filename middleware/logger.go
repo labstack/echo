@@ -90,9 +90,9 @@ func LoggerFromConfig(config LoggerConfig) echo.MiddlewareFunc {
 					return w.Write([]byte(time.Now().Format(time.RFC3339)))
 				case "remote_ip":
 					ra := rq.RemoteAddress()
-					if ip := rq.Header().Get(echo.XRealIP); ip != "" {
+					if ip := rq.Header().Get(echo.HeaderXRealIP); ip != "" {
 						ra = ip
-					} else if ip = rq.Header().Get(echo.XForwardedFor); ip != "" {
+					} else if ip = rq.Header().Get(echo.HeaderXForwardedFor); ip != "" {
 						ra = ip
 					} else {
 						ra, _, _ = net.SplitHostPort(ra)

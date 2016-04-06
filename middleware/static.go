@@ -90,7 +90,7 @@ func StaticFromConfig(config StaticConfig) echo.MiddlewareFunc {
 
 						// Create a directory index
 						rs := c.Response()
-						rs.Header().Set(echo.ContentType, echo.TextHTMLCharsetUTF8)
+						rs.Header().Set(echo.HeaderContentType, echo.MIMETextHTMLCharsetUTF8)
 						if _, err = fmt.Fprintf(rs, "<pre>\n"); err != nil {
 							return err
 						}

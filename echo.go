@@ -127,46 +127,45 @@ const (
 	TRACE   = "TRACE"
 )
 
-// Media types
+// MIME types
 const (
-	ApplicationJSON                  = "application/json"
-	ApplicationJSONCharsetUTF8       = ApplicationJSON + "; " + CharsetUTF8
-	ApplicationJavaScript            = "application/javascript"
-	ApplicationJavaScriptCharsetUTF8 = ApplicationJavaScript + "; " + CharsetUTF8
-	ApplicationXML                   = "application/xml"
-	ApplicationXMLCharsetUTF8        = ApplicationXML + "; " + CharsetUTF8
-	ApplicationForm                  = "application/x-www-form-urlencoded"
-	ApplicationProtobuf              = "application/protobuf"
-	ApplicationMsgpack               = "application/msgpack"
-	TextHTML                         = "text/html"
-	TextHTMLCharsetUTF8              = TextHTML + "; " + CharsetUTF8
-	TextPlain                        = "text/plain"
-	TextPlainCharsetUTF8             = TextPlain + "; " + CharsetUTF8
-	MultipartForm                    = "multipart/form-data"
-	OctetStream                      = "application/octet-stream"
+	MIMEApplicationJSON                  = "application/json"
+	MIMEApplicationJSONCharsetUTF8       = MIMEApplicationJSON + "; " + charsetUTF8
+	MIMEApplicationJavaScript            = "application/javascript"
+	MIMEApplicationJavaScriptCharsetUTF8 = MIMEApplicationJavaScript + "; " + charsetUTF8
+	MIMEApplicationXML                   = "application/xml"
+	MIMEApplicationXMLCharsetUTF8        = MIMEApplicationXML + "; " + charsetUTF8
+	MIMEApplicationForm                  = "application/x-www-form-urlencoded"
+	MIMEApplicationProtobuf              = "application/protobuf"
+	MIMEApplicationMsgpack               = "application/msgpack"
+	MIMETextHTML                         = "text/html"
+	MIMETextHTMLCharsetUTF8              = MIMETextHTML + "; " + charsetUTF8
+	MIMETextPlain                        = "text/plain"
+	MIMETextPlainCharsetUTF8             = MIMETextPlain + "; " + charsetUTF8
+	MIMEMultipartForm                    = "multipart/form-data"
+	MIMEOctetStream                      = "application/octet-stream"
 )
 
-// Charset
 const (
-	CharsetUTF8 = "charset=utf-8"
+	charsetUTF8 = "charset=utf-8"
 )
 
 // Headers
 const (
-	AcceptEncoding     = "Accept-Encoding"
-	Authorization      = "Authorization"
-	ContentDisposition = "Content-Disposition"
-	ContentEncoding    = "Content-Encoding"
-	ContentLength      = "Content-Length"
-	ContentType        = "Content-Type"
-	IfModifiedSince    = "If-Modified-Since"
-	LastModified       = "Last-Modified"
-	Location           = "Location"
-	Upgrade            = "Upgrade"
-	Vary               = "Vary"
-	WWWAuthenticate    = "WWW-Authenticate"
-	XForwardedFor      = "X-Forwarded-For"
-	XRealIP            = "X-Real-IP"
+	HeaderAcceptEncoding     = "Accept-Encoding"
+	HeaderAuthorization      = "Authorization"
+	HeaderContentDisposition = "Content-Disposition"
+	HeaderContentEncoding    = "Content-Encoding"
+	HeaderContentLength      = "Content-Length"
+	HeaderContentType        = "Content-Type"
+	HeaderIfModifiedSince    = "If-Modified-Since"
+	HeaderLastModified       = "Last-Modified"
+	HeaderLocation           = "Location"
+	HeaderUpgrade            = "Upgrade"
+	HeaderVary               = "Vary"
+	HeaderWWWAuthenticate    = "WWW-Authenticate"
+	HeaderXForwardedFor      = "X-Forwarded-For"
+	HeaderXRealIP            = "X-Real-IP"
 )
 
 var (
@@ -514,13 +513,13 @@ func (e *HTTPError) Error() string {
 
 func (b *binder) Bind(i interface{}, c Context) (err error) {
 	rq := c.Request()
-	ct := rq.Header().Get(ContentType)
+	ct := rq.Header().Get(HeaderContentType)
 	err = ErrUnsupportedMediaType
-	if strings.HasPrefix(ct, ApplicationJSON) {
+	if strings.HasPrefix(ct, MIMEApplicationJSON) {
 		if err = json.NewDecoder(rq.Body()).Decode(i); err != nil {
 			err = NewHTTPError(http.StatusBadRequest, err.Error())
 		}
-	} else if strings.HasPrefix(ct, ApplicationXML) {
+	} else if strings.HasPrefix(ct, MIMEApplicationXML) {
 		if err = xml.NewDecoder(rq.Body()).Decode(i); err != nil {
 			err = NewHTTPError(http.StatusBadRequest, err.Error())
 		}

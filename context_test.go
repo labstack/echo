@@ -65,15 +65,15 @@ func TestContext(t *testing.T) {
 	//------
 
 	// JSON
-	testBindOk(t, c, ApplicationJSON)
+	testBindOk(t, c, MIMEApplicationJSON)
 	c.Object().request = test.NewRequest(POST, "/", strings.NewReader(invalidContent))
-	testBindError(t, c, ApplicationJSON)
+	testBindError(t, c, MIMEApplicationJSON)
 
 	// XML
 	c.Object().request = test.NewRequest(POST, "/", strings.NewReader(userXML))
-	testBindOk(t, c, ApplicationXML)
+	testBindOk(t, c, MIMEApplicationXML)
 	c.Object().request = test.NewRequest(POST, "/", strings.NewReader(invalidContent))
-	testBindError(t, c, ApplicationXML)
+	testBindError(t, c, MIMEApplicationXML)
 
 	// Unsupported
 	testBindError(t, c, "")
@@ -102,7 +102,7 @@ func TestContext(t *testing.T) {
 	err = c.JSON(http.StatusOK, user{"1", "Joe"})
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Status())
-		assert.Equal(t, ApplicationJSONCharsetUTF8, rec.Header().Get(ContentType))
+		assert.Equal(t, MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
 		assert.Equal(t, userJSON, rec.Body.String())
 	}
 
@@ -119,7 +119,7 @@ func TestContext(t *testing.T) {
 	err = c.JSONP(http.StatusOK, callback, user{"1", "Joe"})
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Status())
-		assert.Equal(t, ApplicationJavaScriptCharsetUTF8, rec.Header().Get(ContentType))
+		assert.Equal(t, MIMEApplicationJavaScriptCharsetUTF8, rec.Header().Get(HeaderContentType))
 		assert.Equal(t, callback+"("+userJSON+");", rec.Body.String())
 	}
 
@@ -129,7 +129,7 @@ func TestContext(t *testing.T) {
 	err = c.XML(http.StatusOK, user{"1", "Joe"})
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Status())
-		assert.Equal(t, ApplicationXMLCharsetUTF8, rec.Header().Get(ContentType))
+		assert.Equal(t, MIMEApplicationXMLCharsetUTF8, rec.Header().Get(HeaderContentType))
 		assert.Equal(t, xml.Header+userXML, rec.Body.String())
 	}
 
@@ -145,7 +145,7 @@ func TestContext(t *testing.T) {
 	err = c.String(http.StatusOK, "Hello, World!")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Status())
-		assert.Equal(t, TextPlainCharsetUTF8, rec.Header().Get(ContentType))
+		assert.Equal(t, MIMETextPlainCharsetUTF8, rec.Header().Get(HeaderContentType))
 		assert.Equal(t, "Hello, World!", rec.Body.String())
 	}
 
@@ -155,7 +155,7 @@ func TestContext(t *testing.T) {
 	err = c.HTML(http.StatusOK, "Hello, <strong>World!</strong>")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Status())
-		assert.Equal(t, TextHTMLCharsetUTF8, rec.Header().Get(ContentType))
+		assert.Equal(t, MIMETextHTMLCharsetUTF8, rec.Header().Get(HeaderContentType))
 		assert.Equal(t, "Hello, <strong>World!</strong>", rec.Body.String())
 	}
 
@@ -167,7 +167,7 @@ func TestContext(t *testing.T) {
 		err = c.Attachment(file, "walle.png")
 		if assert.NoError(t, err) {
 			assert.Equal(t, http.StatusOK, rec.Status())
-			assert.Equal(t, "attachment; filename=walle.png", rec.Header().Get(ContentDisposition))
+			assert.Equal(t, "attachment; filename=walle.png", rec.Header().Get(HeaderContentDisposition))
 			assert.Equal(t, 219885, rec.Body.Len())
 		}
 	}
@@ -182,7 +182,7 @@ func TestContext(t *testing.T) {
 	rec = test.NewResponseRecorder()
 	c = NewContext(rq, rec, e)
 	assert.Equal(t, nil, c.Redirect(http.StatusMovedPermanently, "http://labstack.github.io/echo"))
-	assert.Equal(t, "http://labstack.github.io/echo", rec.Header().Get(Location))
+	assert.Equal(t, "http://labstack.github.io/echo", rec.Header().Get(HeaderLocation))
 	assert.Equal(t, http.StatusMovedPermanently, rec.Status())
 
 	// Error
@@ -226,7 +226,7 @@ func TestContextFormValue(t *testing.T) {
 	f.Set("email", "joe@labstack.com")
 
 	rq := test.NewRequest(POST, "/", strings.NewReader(f.Encode()))
-	rq.Header().Add(ContentType, ApplicationForm)
+	rq.Header().Add(HeaderContentType, MIMEApplicationForm)
 
 	c := NewContext(rq, nil, New())
 	assert.Equal(t, "joe", c.FormValue("name"))
@@ -258,7 +258,7 @@ func TestContextServeContent(t *testing.T) {
 			// Cached
 			rc = test.NewResponseRecorder()
 			c = NewContext(rq, rc, e)
-			rq.Header().Set(IfModifiedSince, fi.ModTime().UTC().Format(http.TimeFormat))
+			rq.Header().Set(HeaderIfModifiedSince, fi.ModTime().UTC().Format(http.TimeFormat))
 			if assert.NoError(t, c.ServeContent(f, fi.Name(), fi.ModTime())) {
 				assert.Equal(t, http.StatusNotModified, rc.Status())
 			}
@@ -267,7 +267,7 @@ func TestContextServeContent(t *testing.T) {
 }
 
 func testBindOk(t *testing.T, c Context, ct string) {
-	c.Request().Header().Set(ContentType, ct)
+	c.Request().Header().Set(HeaderContentType, ct)
 	u := new(user)
 	err := c.Bind(u)
 	if assert.NoError(t, err) {
@@ -277,12 +277,12 @@ func testBindOk(t *testing.T, c Context, ct string) {
 }
 
 func testBindError(t *testing.T, c Context, ct string) {
-	c.Request().Header().Set(ContentType, ct)
+	c.Request().Header().Set(HeaderContentType, ct)
 	u := new(user)
 	err := c.Bind(u)
 
 	switch ct {
-	case ApplicationJSON, ApplicationXML:
+	case MIMEApplicationJSON, MIMEApplicationXML:
 		if assert.IsType(t, new(HTTPError), err) {
 			assert.Equal(t, http.StatusBadRequest, err.(*HTTPError).Code)
 		}

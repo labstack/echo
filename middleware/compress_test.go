@@ -27,14 +27,14 @@ func TestGzip(t *testing.T) {
 	assert.Equal(t, "test", rec.Body.String())
 
 	rq = test.NewRequest(echo.GET, "/", nil)
-	rq.Header().Set(echo.AcceptEncoding, "gzip")
+	rq.Header().Set(echo.HeaderAcceptEncoding, "gzip")
 	rec = test.NewResponseRecorder()
 	c = echo.NewContext(rq, rec, e)
 
 	// Gzip
 	h(c)
-	assert.Equal(t, "gzip", rec.Header().Get(echo.ContentEncoding))
-	assert.Contains(t, rec.Header().Get(echo.ContentType), echo.TextPlain)
+	assert.Equal(t, "gzip", rec.Header().Get(echo.HeaderContentEncoding))
+	assert.Contains(t, rec.Header().Get(echo.HeaderContentType), echo.MIMETextPlain)
 	r, err := gzip.NewReader(rec.Body)
 	defer r.Close()
 	if assert.NoError(t, err) {
@@ -54,8 +54,8 @@ func TestGzipNoContent(t *testing.T) {
 	})
 	h(c)
 
-	assert.Empty(t, rec.Header().Get(echo.ContentEncoding))
-	assert.Empty(t, rec.Header().Get(echo.ContentType))
+	assert.Empty(t, rec.Header().Get(echo.HeaderContentEncoding))
+	assert.Empty(t, rec.Header().Get(echo.HeaderContentType))
 	b, err := ioutil.ReadAll(rec.Body)
 	if assert.NoError(t, err) {
 		assert.Equal(t, 0, len(b))
@@ -72,7 +72,7 @@ func TestGzipErrorReturned(t *testing.T) {
 	rec := test.NewResponseRecorder()
 	e.ServeHTTP(rq, rec)
 
-	assert.Empty(t, rec.Header().Get(echo.ContentEncoding))
+	assert.Empty(t, rec.Header().Get(echo.HeaderContentEncoding))
 	b, err := ioutil.ReadAll(rec.Body)
 	if assert.NoError(t, err) {
 		assert.Equal(t, "error", string(b))

@@ -53,8 +53,8 @@ func GzipFromConfig(config GzipConfig) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			rs := c.Response()
-			rs.Header().Add(echo.Vary, echo.AcceptEncoding)
-			if strings.Contains(c.Request().Header().Get(echo.AcceptEncoding), scheme) {
+			rs.Header().Add(echo.HeaderVary, echo.HeaderAcceptEncoding)
+			if strings.Contains(c.Request().Header().Get(echo.HeaderAcceptEncoding), scheme) {
 				rw := rs.Writer()
 				gw := pool.Get().(*gzip.Writer)
 				gw.Reset(rw)
@@ -64,14 +64,14 @@ func GzipFromConfig(config GzipConfig) echo.MiddlewareFunc {
 						// nothing is written to body or error is returned.
 						// See issue #424, #407.
 						rs.SetWriter(rw)
-						rs.Header().Del(echo.ContentEncoding)
+						rs.Header().Del(echo.HeaderContentEncoding)
 						gw.Reset(ioutil.Discard)
 					}
 					gw.Close()
 					pool.Put(gw)
 				}()
 				g := gzipResponseWriter{Response: rs, Writer: gw}
-				rs.Header().Set(echo.ContentEncoding, scheme)
+				rs.Header().Set(echo.HeaderContentEncoding, scheme)
 				rs.SetWriter(g)
 			}
 			return next(c)
@@ -80,8 +80,8 @@ func GzipFromConfig(config GzipConfig) echo.MiddlewareFunc {
 }
 
 func (g gzipResponseWriter) Write(b []byte) (int, error) {
-	if g.Header().Get(echo.ContentType) == "" {
-		g.Header().Set(echo.ContentType, http.DetectContentType(b))
+	if g.Header().Get(echo.HeaderContentType) == "" {
+		g.Header().Set(echo.HeaderContentType, http.DetectContentType(b))
 	}
 	return g.Writer.Write(b)
 }

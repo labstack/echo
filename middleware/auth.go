@@ -41,7 +41,7 @@ func BasicAuth(f BasicAuthFunc) echo.MiddlewareFunc {
 func BasicAuthFromConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			auth := c.Request().Header().Get(echo.Authorization)
+			auth := c.Request().Header().Get(echo.HeaderAuthorization)
 			l := len(basic)
 
 			if len(auth) > l+1 && auth[:l] == basic {
@@ -58,7 +58,7 @@ func BasicAuthFromConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 					}
 				}
 			}
-			c.Response().Header().Set(echo.WWWAuthenticate, basic+" realm=Restricted")
+			c.Response().Header().Set(echo.HeaderWWWAuthenticate, basic+" realm=Restricted")
 			return echo.ErrUnauthorized
 		}
 	}

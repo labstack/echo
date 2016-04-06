@@ -289,21 +289,21 @@ func (c *context) Render(code int, name string, data interface{}) (err error) {
 	if err = c.echo.renderer.Render(buf, name, data, c); err != nil {
 		return
 	}
-	c.response.Header().Set(ContentType, TextHTMLCharsetUTF8)
+	c.response.Header().Set(HeaderContentType, MIMETextHTMLCharsetUTF8)
 	c.response.WriteHeader(code)
 	_, err = c.response.Write(buf.Bytes())
 	return
 }
 
 func (c *context) HTML(code int, html string) (err error) {
-	c.response.Header().Set(ContentType, TextHTMLCharsetUTF8)
+	c.response.Header().Set(HeaderContentType, MIMETextHTMLCharsetUTF8)
 	c.response.WriteHeader(code)
 	_, err = c.response.Write([]byte(html))
 	return
 }
 
 func (c *context) String(code int, s string) (err error) {
-	c.response.Header().Set(ContentType, TextPlainCharsetUTF8)
+	c.response.Header().Set(HeaderContentType, MIMETextPlainCharsetUTF8)
 	c.response.WriteHeader(code)
 	_, err = c.response.Write([]byte(s))
 	return
@@ -321,7 +321,7 @@ func (c *context) JSON(code int, i interface{}) (err error) {
 }
 
 func (c *context) JSONBlob(code int, b []byte) (err error) {
-	c.response.Header().Set(ContentType, ApplicationJSONCharsetUTF8)
+	c.response.Header().Set(HeaderContentType, MIMEApplicationJSONCharsetUTF8)
 	c.response.WriteHeader(code)
 	_, err = c.response.Write(b)
 	return
@@ -332,7 +332,7 @@ func (c *context) JSONP(code int, callback string, i interface{}) (err error) {
 	if err != nil {
 		return err
 	}
-	c.response.Header().Set(ContentType, ApplicationJavaScriptCharsetUTF8)
+	c.response.Header().Set(HeaderContentType, MIMEApplicationJavaScriptCharsetUTF8)
 	c.response.WriteHeader(code)
 	if _, err = c.response.Write([]byte(callback + "(")); err != nil {
 		return
@@ -356,7 +356,7 @@ func (c *context) XML(code int, i interface{}) (err error) {
 }
 
 func (c *context) XMLBlob(code int, b []byte) (err error) {
-	c.response.Header().Set(ContentType, ApplicationXMLCharsetUTF8)
+	c.response.Header().Set(HeaderContentType, MIMEApplicationXMLCharsetUTF8)
 	c.response.WriteHeader(code)
 	if _, err = c.response.Write([]byte(xml.Header)); err != nil {
 		return
@@ -385,8 +385,8 @@ func (c *context) File(file string) error {
 }
 
 func (c *context) Attachment(r io.ReadSeeker, name string) (err error) {
-	c.response.Header().Set(ContentType, ContentTypeByExtension(name))
-	c.response.Header().Set(ContentDisposition, "attachment; filename="+name)
+	c.response.Header().Set(HeaderContentType, ContentTypeByExtension(name))
+	c.response.Header().Set(HeaderContentDisposition, "attachment; filename="+name)
 	c.response.WriteHeader(http.StatusOK)
 	_, err = io.Copy(c.response, r)
 	return
@@ -401,7 +401,7 @@ func (c *context) Redirect(code int, url string) error {
 	if code < http.StatusMultipleChoices || code > http.StatusTemporaryRedirect {
 		return ErrInvalidRedirectCode
 	}
-	c.response.Header().Set(Location, url)
+	c.response.Header().Set(HeaderLocation, url)
 	c.response.WriteHeader(code)
 	return nil
 }
@@ -426,14 +426,14 @@ func (c *context) ServeContent(content io.ReadSeeker, name string, modtime time.
 	rq := c.Request()
 	rs := c.Response()
 
-	if t, err := time.Parse(http.TimeFormat, rq.Header().Get(IfModifiedSince)); err == nil && modtime.Before(t.Add(1*time.Second)) {
-		rs.Header().Del(ContentType)
-		rs.Header().Del(ContentLength)
+	if t, err := time.Parse(http.TimeFormat, rq.Header().Get(HeaderIfModifiedSince)); err == nil && modtime.Before(t.Add(1*time.Second)) {
+		rs.Header().Del(HeaderContentType)
+		rs.Header().Del(HeaderContentLength)
 		return c.NoContent(http.StatusNotModified)
 	}
 
-	rs.Header().Set(ContentType, ContentTypeByExtension(name))
-	rs.Header().Set(LastModified, modtime.UTC().Format(http.TimeFormat))
+	rs.Header().Set(HeaderContentType, ContentTypeByExtension(name))
+	rs.Header().Set(HeaderLastModified, modtime.UTC().Format(http.TimeFormat))
 	rs.WriteHeader(http.StatusOK)
 	_, err := io.Copy(rs, content)
 	return err
@@ -444,7 +444,7 @@ func (c *context) ServeContent(content io.ReadSeeker, name string, modtime time.
 // found.
 func ContentTypeByExtension(name string) (t string) {
 	if t = mime.TypeByExtension(filepath.Ext(name)); t == "" {
-		t = OctetStream
+		t = MIMEOctetStream
 	}
 	return
 }
