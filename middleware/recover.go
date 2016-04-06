@@ -62,7 +62,6 @@ func RecoverFromConfig(config RecoverConfig) echo.MiddlewareFunc {
 					}
 					stack := make([]byte, config.StackSize)
 					length := runtime.Stack(stack, !config.DisableStackAll)
-					println(config.DisablePrintStack)
 					if !config.DisablePrintStack {
 						c.Logger().Printf("[%s] %s %s", color.Red("PANIC RECOVER"), err, stack[:length])
 					}
