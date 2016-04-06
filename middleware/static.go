@@ -12,16 +12,16 @@ type (
 	// StaticConfig defines the config for static middleware.
 	StaticConfig struct {
 		// Root is the directory from where the static content is served.
-		// Optional with default value as `DefaultStaticConfig.Root`.
+		// Optional with default value as "".
 		Root string `json:"root"`
 
 		// Index is the list of index files to be searched and used when serving
 		// a directory.
-		// Optional with default value as `DefaultStaticConfig.Index`.
+		// Optional with default value as []string{"index.html"}.
 		Index []string `json:"index"`
 
 		// Browse is a flag to enable/disable directory browsing.
-		// Required.
+		// Optional with default value as false.
 		Browse bool `json:"browse"`
 	}
 )

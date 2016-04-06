@@ -16,7 +16,7 @@ type (
 	// GzipConfig defines the config for gzip middleware.
 	GzipConfig struct {
 		// Level is the gzip level.
-		// Optional with default value as `DefaultGzipConfig.Level`.
+		// Optional with default value as -1.
 		Level int
 	}
 

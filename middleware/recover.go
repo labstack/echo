@@ -12,26 +12,26 @@ type (
 	// RecoverConfig defines the config for recover middleware.
 	RecoverConfig struct {
 		// StackSize is the stack size to be printed.
-		// Optional with default value as `DefaultRecoverConfig.StackSize`.
+		// Optional with default value as 4 KB.
 		StackSize int
 
-		// StackAll is a flag to format stack traces of all other goroutines into
-		// buffer after the trace for the current goroutine, or not.
-		// Required.
-		StackAll bool
+		// DisableStackAll disables formatting stack traces of all other goroutines
+		// into buffer after the trace for the current goroutine.
+		// Optional with default value as false.
+		DisableStackAll bool
 
-		// PrintStack is a flag to print stack or not.
-		// Required.
-		PrintStack bool
+		// DisablePrintStack disables printing stack trace.
+		// Optional with default value as false.
+		DisablePrintStack bool
 	}
 )
 
 var (
 	// DefaultRecoverConfig is the default recover middleware config.
 	DefaultRecoverConfig = RecoverConfig{
-		StackSize:  4 << 10, // 4 KB
-		StackAll:   true,
-		PrintStack: true,
+		StackSize:         4 << 10, // 4 KB
+		DisableStackAll:   false,
+		DisablePrintStack: false,
 	}
 )
 
@@ -61,8 +61,9 @@ func RecoverFromConfig(config RecoverConfig) echo.MiddlewareFunc {
 						err = fmt.Errorf("%v", r)
 					}
 					stack := make([]byte, config.StackSize)
-					length := runtime.Stack(stack, config.StackAll)
-					if config.PrintStack {
+					length := runtime.Stack(stack, !config.DisableStackAll)
+					println(config.DisablePrintStack)
+					if !config.DisablePrintStack {
 						c.Logger().Printf("[%s] %s %s", color.Red("PANIC RECOVER"), err, stack[:length])
 					}
 					c.Error(err)

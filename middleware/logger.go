@@ -34,7 +34,7 @@ type (
 		Format string
 
 		// Output is the writer where logs are written.
-		// Optional with default value as `DefaultLoggerConfig.Output`.
+		// Optional with default value as os.Stdout.
 		Output io.Writer
 
 		template *fasttemplate.Template
