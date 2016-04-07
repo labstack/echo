@@ -52,7 +52,7 @@ var (
 	}
 )
 
-// CORS returns a cross-origin HTTP request (CORS) middleware.
+// CORS returns a Cross-Origin Resource Sharing (CORS) middleware.
 // See https://developer.mozilla.org/en/docs/Web/HTTP/Access_control_CORS
 func CORS() echo.MiddlewareFunc {
 	return CORSFromConfig(DefaultCORSConfig)
