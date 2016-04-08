@@ -30,24 +30,24 @@ type (
 	}
 )
 
-// New returns an instance of `fasthttp.Server` with provided listen address.
+// New returns `fasthttp.Server` with provided listen address.
 func New(addr string) *Server {
 	c := engine.Config{Address: addr}
-	return NewFromConfig(c)
+	return WithConfig(c)
 }
 
-// NewFromTLS returns an instance of `fasthttp.Server` from TLS config.
-func NewFromTLS(addr, certfile, keyfile string) *Server {
+// WithTLS returns `fasthttp.Server` with TLS config.
+func WithTLS(addr, certfile, keyfile string) *Server {
 	c := engine.Config{
 		Address:     addr,
 		TLSCertfile: certfile,
 		TLSKeyfile:  keyfile,
 	}
-	return NewFromConfig(c)
+	return WithConfig(c)
 }
 
-// NewFromConfig returns an instance of `standard.Server` from config.
-func NewFromConfig(c engine.Config) (s *Server) {
+// WithConfig returns `standard.Server` with config.
+func WithConfig(c engine.Config) (s *Server) {
 	s = &Server{
 		Server: new(fasthttp.Server),
 		config: c,

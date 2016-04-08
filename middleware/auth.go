@@ -33,12 +33,12 @@ var (
 func BasicAuth(f BasicAuthFunc) echo.MiddlewareFunc {
 	c := DefaultBasicAuthConfig
 	c.AuthFunc = f
-	return BasicAuthFromConfig(c)
+	return BasicAuthWithConfig(c)
 }
 
-// BasicAuthFromConfig returns an HTTP basic auth middleware from config.
+// BasicAuthWithConfig returns an HTTP basic auth middleware from config.
 // See `BasicAuth()`.
-func BasicAuthFromConfig(config BasicAuthConfig) echo.MiddlewareFunc {
+func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			auth := c.Request().Header().Get(echo.HeaderAuthorization)

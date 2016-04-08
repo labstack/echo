@@ -14,7 +14,7 @@ func TestCORS(t *testing.T) {
 	rq := test.NewRequest(echo.GET, "/", nil)
 	rc := test.NewResponseRecorder()
 	c := echo.NewContext(rq, rc, e)
-	cors := CORSFromConfig(CORSConfig{
+	cors := CORSWithConfig(CORSConfig{
 		AllowCredentials: true,
 	})
 	h := cors(func(c echo.Context) error {
@@ -38,7 +38,7 @@ func TestCORS(t *testing.T) {
 	rc = test.NewResponseRecorder()
 	c = echo.NewContext(rq, rc, e)
 	rq.Header().Set(echo.HeaderOrigin, "localhost")
-	cors = CORSFromConfig(CORSConfig{
+	cors = CORSWithConfig(CORSConfig{
 		AllowOrigins:     []string{"localhost"},
 		AllowCredentials: true,
 		MaxAge:           3600,

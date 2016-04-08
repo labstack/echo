@@ -36,12 +36,12 @@ var (
 // Gzip returns a middleware which compresses HTTP response using gzip compression
 // scheme.
 func Gzip() echo.MiddlewareFunc {
-	return GzipFromConfig(DefaultGzipConfig)
+	return GzipWithConfig(DefaultGzipConfig)
 }
 
-// GzipFromConfig return gzip middleware from config.
+// GzipWithConfig return gzip middleware from config.
 // See `Gzip()`.
-func GzipFromConfig(config GzipConfig) echo.MiddlewareFunc {
+func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 	// Defaults
 	if config.Level == 0 {
 		config.Level = DefaultGzipConfig.Level

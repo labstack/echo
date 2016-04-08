@@ -54,12 +54,12 @@ var (
 
 // Logger returns a middleware that logs HTTP requests.
 func Logger() echo.MiddlewareFunc {
-	return LoggerFromConfig(DefaultLoggerConfig)
+	return LoggerWithConfig(DefaultLoggerConfig)
 }
 
-// LoggerFromConfig returns a logger middleware from config.
+// LoggerWithConfig returns a logger middleware from config.
 // See `Logger()`.
-func LoggerFromConfig(config LoggerConfig) echo.MiddlewareFunc {
+func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 	// Defaults
 	if config.Format == "" {
 		config.Format = DefaultLoggerConfig.Format

@@ -12,7 +12,7 @@ type (
 	// StaticConfig defines the config for static middleware.
 	StaticConfig struct {
 		// Root is the directory from where the static content is served.
-		// Optional with default value as "".
+		// Required.
 		Root string `json:"root"`
 
 		// Index is the list of index files to be searched and used when serving
@@ -40,12 +40,12 @@ var (
 func Static(root string) echo.MiddlewareFunc {
 	c := DefaultStaticConfig
 	c.Root = root
-	return StaticFromConfig(c)
+	return StaticWithConfig(c)
 }
 
-// StaticFromConfig returns a static middleware from config.
+// StaticWithConfig returns a static middleware from config.
 // See `Static()`.
-func StaticFromConfig(config StaticConfig) echo.MiddlewareFunc {
+func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 	// Defaults
 	if config.Index == nil {
 		config.Index = DefaultStaticConfig.Index

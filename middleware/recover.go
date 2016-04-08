@@ -38,12 +38,12 @@ var (
 // Recover returns a middleware which recovers from panics anywhere in the chain
 // and handles the control to the centralized HTTPErrorHandler.
 func Recover() echo.MiddlewareFunc {
-	return RecoverFromConfig(DefaultRecoverConfig)
+	return RecoverWithConfig(DefaultRecoverConfig)
 }
 
-// RecoverFromConfig returns a recover middleware from config.
+// RecoverWithConfig returns a recover middleware from config.
 // See `Recover()`.
-func RecoverFromConfig(config RecoverConfig) echo.MiddlewareFunc {
+func RecoverWithConfig(config RecoverConfig) echo.MiddlewareFunc {
 	// Defaults
 	if config.StackSize == 0 {
 		config.StackSize = DefaultRecoverConfig.StackSize
