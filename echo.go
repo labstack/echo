@@ -289,7 +289,7 @@ func (e *Echo) SetRenderer(r Renderer) {
 // SetDebug enable/disable debug mode.
 func (e *Echo) SetDebug(on bool) {
 	e.debug = on
-	e.SetLogLevel(log.FATAL)
+	e.SetLogLevel(log.DEBUG)
 }
 
 // Debug returns debug mode (enabled or disabled).
