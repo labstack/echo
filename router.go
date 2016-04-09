@@ -50,21 +50,6 @@ func NewRouter(e *Echo) *Router {
 	}
 }
 
-// Process implements `echo.MiddlewareFunc` which makes router a middleware.
-func (r *Router) Process(next HandlerFunc) HandlerFunc {
-	return func(c Context) error {
-		method := c.Request().Method()
-		path := c.Request().URL().Path()
-		r.Find(method, path, c)
-		return next(c)
-	}
-}
-
-// Priority is super secret.
-func (r *Router) Priority() int {
-	return 0
-}
-
 // Add registers a new route for method and path with matching handler.
 func (r *Router) Add(method, path string, h HandlerFunc, e *Echo) {
 	ppath := path        // Pristine path
@@ -406,9 +391,9 @@ func (r *Router) Find(method, path string, context Context) {
 	}
 
 End:
+	ctx.handler = cn.findHandler(method)
 	ctx.path = cn.ppath
 	ctx.pnames = cn.pnames
-	ctx.handler = cn.findHandler(method)
 
 	// NOTE: Slow zone...
 	if ctx.handler == nil {
@@ -419,10 +404,13 @@ End:
 		if cn = cn.findChildByKind(akind); cn == nil {
 			return
 		}
-		ctx.pvalues[len(cn.pnames)-1] = ""
 		if ctx.handler = cn.findHandler(method); ctx.handler == nil {
 			ctx.handler = cn.checkMethodNotAllowed()
 		}
+		ctx.path = cn.ppath
+		ctx.pnames = cn.pnames
+		ctx.pvalues[len(cn.pnames)-1] = ""
 	}
+
 	return
 }

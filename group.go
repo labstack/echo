@@ -81,23 +81,27 @@ func (g *Group) Group(prefix string, m ...MiddlewareFunc) *Group {
 	return g.echo.Group(g.prefix+prefix, m...)
 }
 
-func (g *Group) add(method, path string, handler HandlerFunc, middleware ...MiddlewareFunc) {
-	path = g.prefix + path
-	name := handlerName(handler)
-	middleware = append(g.middleware, middleware...)
+// Static implements `Echo#Static()` for sub-routes within the Group.
+func (g *Group) Static(prefix, root string) {
+	g.StaticWithConfig(prefix, StaticConfig{
+		Root: root,
+	})
+}
 
-	g.echo.router.Add(method, path, func(c Context) error {
-		h := handler
-		// Chain middleware
-		for i := len(middleware) - 1; i >= 0; i-- {
-			h = middleware[i](h)
-		}
-		return h(c)
-	}, g.echo)
-	r := Route{
-		Method:  method,
-		Path:    path,
-		Handler: name,
-	}
-	g.echo.router.routes = append(g.echo.router.routes, r)
+// StaticWithConfig implements `Echo#StaticWithConfig()` for sub-routes within the
+// Group.
+func (g *Group) StaticWithConfig(prefix string, config StaticConfig) {
+	g.Get(prefix+"*", StaticWithConfig(config))
+}
+
+// File implements `Echo#File()` for sub-routes within the Group.
+func (g *Group) File(path, file string) {
+	g.Get(path, func(c Context) error {
+		return c.File(file)
+	})
+}
+
+func (g *Group) add(method, path string, handler HandlerFunc, middleware ...MiddlewareFunc) {
+	middleware = append(g.middleware, middleware...)
+	g.echo.add(method, g.prefix+path, handler, middleware...)
 }

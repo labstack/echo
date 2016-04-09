@@ -281,9 +281,9 @@ func TestRouterStatic(t *testing.T) {
 		c.Set("path", path)
 		return nil
 	}, e)
-	c := NewContext(nil, nil, e)
+	c := NewContext(nil, nil, e).Object()
 	r.Find(GET, path, c)
-	c.Handle(c)
+	c.handler(c)
 	assert.Equal(t, path, c.Get("path"))
 }
 
@@ -377,10 +377,10 @@ func TestRouterMixParamMatchAny(t *testing.T) {
 	r.Add(GET, "/users/:id/*", func(c Context) error {
 		return nil
 	}, e)
-	c := NewContext(nil, nil, e)
+	c := NewContext(nil, nil, e).Object()
 
 	r.Find(GET, "/users/joe/comments", c)
-	c.Handle(c)
+	c.handler(c)
 	assert.Equal(t, "joe", c.P(0))
 }
 
@@ -396,11 +396,11 @@ func TestRouterMultiRoute(t *testing.T) {
 	r.Add(GET, "/users/:id", func(c Context) error {
 		return nil
 	}, e)
-	c := NewContext(nil, nil, e)
+	c := NewContext(nil, nil, e).Object()
 
 	// Route > /users
 	r.Find(GET, "/users", c)
-	c.Handle(c)
+	c.handler(c)
 	assert.Equal(t, "/users", c.Get("path"))
 
 	// Route > /users/:id
@@ -408,9 +408,9 @@ func TestRouterMultiRoute(t *testing.T) {
 	assert.Equal(t, "1", c.P(0))
 
 	// Route > /user
-	c = NewContext(nil, nil, e)
+	c = NewContext(nil, nil, e).Object()
 	r.Find(GET, "/user", c)
-	he := c.Handle(c).(*HTTPError)
+	he := c.handler(c).(*HTTPError)
 	assert.Equal(t, http.StatusNotFound, he.Code)
 }
 
@@ -447,41 +447,41 @@ func TestRouterPriority(t *testing.T) {
 		c.Set("g", 7)
 		return nil
 	}, e)
-	c := NewContext(nil, nil, e)
+	c := NewContext(nil, nil, e).Object()
 
 	// Route > /users
 	r.Find(GET, "/users", c)
-	c.Handle(c)
+	c.handler(c)
 	assert.Equal(t, 1, c.Get("a"))
 
 	// Route > /users/new
 	r.Find(GET, "/users/new", c)
-	c.Handle(c)
+	c.handler(c)
 	assert.Equal(t, 2, c.Get("b"))
 
 	// Route > /users/:id
 	r.Find(GET, "/users/1", c)
-	c.Handle(c)
+	c.handler(c)
 	assert.Equal(t, 3, c.Get("c"))
 
 	// Route > /users/dew
 	r.Find(GET, "/users/dew", c)
-	c.Handle(c)
+	c.handler(c)
 	assert.Equal(t, 4, c.Get("d"))
 
 	// Route > /users/:id/files
 	r.Find(GET, "/users/1/files", c)
-	c.Handle(c)
+	c.handler(c)
 	assert.Equal(t, 5, c.Get("e"))
 
 	// Route > /users/:id
 	r.Find(GET, "/users/news", c)
-	c.Handle(c)
+	c.handler(c)
 	assert.Equal(t, 3, c.Get("c"))
 
 	// Route > /users/*
 	r.Find(GET, "/users/joe/books", c)
-	c.Handle(c)
+	c.handler(c)
 	assert.Equal(t, 7, c.Get("g"))
 	assert.Equal(t, "joe/books", c.Param("_*"))
 }
@@ -490,7 +490,7 @@ func TestRouterPriority(t *testing.T) {
 func TestRouterPriorityNotFound(t *testing.T) {
 	e := New()
 	r := e.router
-	c := NewContext(nil, nil, e)
+	c := NewContext(nil, nil, e).Object()
 
 	// Add
 	r.Add(GET, "/a/foo", func(c Context) error {
@@ -504,16 +504,16 @@ func TestRouterPriorityNotFound(t *testing.T) {
 
 	// Find
 	r.Find(GET, "/a/foo", c)
-	c.Handle(c)
+	c.handler(c)
 	assert.Equal(t, 1, c.Get("a"))
 
 	r.Find(GET, "/a/bar", c)
-	c.Handle(c)
+	c.handler(c)
 	assert.Equal(t, 2, c.Get("b"))
 
-	c = NewContext(nil, nil, e)
+	c = NewContext(nil, nil, e).Object()
 	r.Find(GET, "/abc/def", c)
-	he := c.Handle(c).(*HTTPError)
+	he := c.handler(c).(*HTTPError)
 	assert.Equal(t, http.StatusNotFound, he.Code)
 }
 
@@ -532,11 +532,11 @@ func TestRouterParamNames(t *testing.T) {
 	r.Add(GET, "/users/:uid/files/:fid", func(c Context) error {
 		return nil
 	}, e)
-	c := NewContext(nil, nil, e)
+	c := NewContext(nil, nil, e).Object()
 
 	// Route > /users
 	r.Find(GET, "/users", c)
-	c.Handle(c)
+	c.handler(c)
 	assert.Equal(t, "/users", c.Get("path"))
 
 	// Route > /users/:id

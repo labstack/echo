@@ -27,7 +27,7 @@ Example:
 	    e.Use(middleware.Recover())
 
 	    // Routes
-	    e.Get("/", hello())
+	    e.Get("/", hello)
 
 	    // Start server
 	    e.Run(standard.New(":1323"))
@@ -45,7 +45,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"path"
 	"reflect"
 	"runtime"
 	"strings"
@@ -58,10 +57,8 @@ import (
 type (
 	// Echo is the top-level framework instance.
 	Echo struct {
-		prefix           string
+		premiddleware    []MiddlewareFunc
 		middleware       []MiddlewareFunc
-		head             HandlerFunc
-		pristineHead     HandlerFunc
 		maxParam         *int
 		notFoundHandler  HandlerFunc
 		httpErrorHandler HTTPErrorHandler
@@ -219,12 +216,6 @@ func New() (e *Echo) {
 		return NewContext(nil, nil, e)
 	}
 	e.router = NewRouter(e)
-	e.middleware = []MiddlewareFunc{e.router.Process}
-	e.head = func(c Context) error {
-		return c.Handle(c)
-	}
-	e.pristineHead = e.head
-	e.chainMiddleware()
 
 	// Defaults
 	e.SetHTTPErrorHandler(e.DefaultHTTPErrorHandler)
@@ -305,21 +296,12 @@ func (e *Echo) Debug() bool {
 
 // Pre adds middleware to the chain which is run before router.
 func (e *Echo) Pre(middleware ...MiddlewareFunc) {
-	e.middleware = append(middleware, e.middleware...)
-	e.chainMiddleware()
+	e.premiddleware = append(e.premiddleware, middleware...)
 }
 
 // Use adds middleware to the chain which is run after router.
 func (e *Echo) Use(middleware ...MiddlewareFunc) {
 	e.middleware = append(e.middleware, middleware...)
-	e.chainMiddleware()
-}
-
-func (e *Echo) chainMiddleware() {
-	e.head = e.pristineHead
-	for i := len(e.middleware) - 1; i >= 0; i-- {
-		e.head = e.middleware[i](e.head)
-	}
 }
 
 // Connect registers a new CONNECT route for a path with matching handler in the
@@ -392,14 +374,21 @@ func (e *Echo) Match(methods []string, path string, handler HandlerFunc, middlew
 	}
 }
 
-// Static serves files from provided `root` directory for `/<prefix>*` HTTP path.
+// Static serves static files from provided `root` directory for `/<prefix>*` HTTP
+// path.
 func (e *Echo) Static(prefix, root string) {
-	e.Get(prefix+"*", func(c Context) error {
-		return c.File(path.Join(root, c.P(0))) // Param `_`
+	e.StaticWithConfig(prefix, StaticConfig{
+		Root: root,
 	})
 }
 
-// File serves provided file for `/<path>` HTTP path.
+// StaticWithConfig serves static files with provided config for `/<prefix>*` HTTP
+// path.
+func (e *Echo) StaticWithConfig(prefix string, config StaticConfig) {
+	e.Get(prefix+"*", StaticWithConfig(config))
+}
+
+// File serve provided file for `/<path>` HTTP path.
 func (e *Echo) File(path, file string) {
 	e.Get(path, func(c Context) error {
 		return c.File(file)
@@ -428,11 +417,6 @@ func (e *Echo) add(method, path string, handler HandlerFunc, middleware ...Middl
 func (e *Echo) Group(prefix string, m ...MiddlewareFunc) (g *Group) {
 	g = &Group{prefix: prefix, echo: e}
 	g.Use(m...)
-	// Dummy handler to use static middleware with groups
-	// See also issue #446
-	g.Get("/", func(c Context) error {
-		return c.NoContent(http.StatusNotFound)
-	})
 	return
 }
 
@@ -487,8 +471,25 @@ func (e *Echo) ServeHTTP(rq engine.Request, rs engine.Response) {
 	c := e.pool.Get().(*context)
 	c.Reset(rq, rs)
 
+	// Middleware
+	h := func(Context) error {
+		method := rq.Method()
+		path := rq.URL().Path()
+		e.router.Find(method, path, c)
+		h := c.handler
+		for i := len(e.middleware) - 1; i >= 0; i-- {
+			h = e.middleware[i](h)
+		}
+		return h(c)
+	}
+
+	// Premiddleware
+	for i := len(e.premiddleware) - 1; i >= 0; i-- {
+		h = e.premiddleware[i](h)
+	}
+
 	// Execute chain
-	if err := e.head(c); err != nil {
+	if err := h(c); err != nil {
 		e.httpErrorHandler(err, c)
 	}
 
