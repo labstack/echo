@@ -374,18 +374,16 @@ func (e *Echo) Match(methods []string, path string, handler HandlerFunc, middlew
 	}
 }
 
-// Static serves static files from provided `root` directory for `/<prefix>*` HTTP
-// path.
-func (e *Echo) Static(prefix, root string) {
-	e.StaticWithConfig(prefix, StaticConfig{
+// Static serves static files from provided `root` directory for `/<path>*` URL.
+func (e *Echo) Static(path, root string) {
+	e.StaticWithConfig(path, StaticConfig{
 		Root: root,
 	})
 }
 
-// StaticWithConfig serves static files with provided config for `/<prefix>*` HTTP
-// path.
-func (e *Echo) StaticWithConfig(prefix string, config StaticConfig) {
-	e.Get(prefix+"*", StaticWithConfig(config))
+// StaticWithConfig serves static files with provided config for `/<path>*` URL.
+func (e *Echo) StaticWithConfig(path string, config StaticConfig) {
+	e.Get(path+"*", StaticWithConfig(config))
 }
 
 // File serve provided file for `/<path>` HTTP path.

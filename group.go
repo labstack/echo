@@ -82,16 +82,16 @@ func (g *Group) Group(prefix string, m ...MiddlewareFunc) *Group {
 }
 
 // Static implements `Echo#Static()` for sub-routes within the Group.
-func (g *Group) Static(prefix, root string) {
-	g.StaticWithConfig(prefix, StaticConfig{
+func (g *Group) Static(path, root string) {
+	g.StaticWithConfig(path, StaticConfig{
 		Root: root,
 	})
 }
 
 // StaticWithConfig implements `Echo#StaticWithConfig()` for sub-routes within the
 // Group.
-func (g *Group) StaticWithConfig(prefix string, config StaticConfig) {
-	g.Get(prefix+"*", StaticWithConfig(config))
+func (g *Group) StaticWithConfig(path string, config StaticConfig) {
+	g.Get(path+"*", StaticWithConfig(config))
 }
 
 // File implements `Echo#File()` for sub-routes within the Group.
