@@ -124,6 +124,9 @@ type (
 		// Error invokes the registered HTTP error handler. Generally used by middleware.
 		Error(err error)
 
+		// Handler returns the matched handler by router.
+		Handler() HandlerFunc
+
 		// Logger returns the `Logger` instance.
 		Logger() *log.Logger
 
@@ -406,6 +409,10 @@ func (c *context) Error(err error) {
 
 func (c *context) Echo() *Echo {
 	return c.echo
+}
+
+func (c *context) Handler() HandlerFunc {
+	return c.handler
 }
 
 func (c *context) Logger() *log.Logger {

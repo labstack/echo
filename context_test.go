@@ -1,6 +1,7 @@
 package echo
 
 import (
+	"bytes"
 	"errors"
 	"io"
 	"net/http"
@@ -264,6 +265,21 @@ func TestContextServeContent(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestContextHandler(t *testing.T) {
+	e := New()
+	r := e.Router()
+	b := new(bytes.Buffer)
+
+	r.Add(GET, "/handler", func(Context) error {
+		_, err := b.Write([]byte("handler"))
+		return err
+	}, e)
+	c := NewContext(nil, nil, e)
+	r.Find(GET, "/handler", c)
+	c.Handler()(c)
+	assert.Equal(t, "handler", b.String())
 }
 
 func testBindOk(t *testing.T, c Context, ct string) {

@@ -244,6 +244,12 @@ Middleware | Description
 
 ##### [More...](https://labstack.com/echo/guide/middleware/)
 
+#### Third-party Middleware
+
+Middleware | Description
+:--- | :---
+[echoperm](https://github.com/xyproto/echoperm) | Keeping track of users, login states and permissions.
+
 ### Next
 
 - Head over to [guide](https://labstack.com/echo/guide/installation/)
