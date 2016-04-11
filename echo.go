@@ -45,6 +45,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path"
 	"reflect"
 	"runtime"
 	"strings"
@@ -374,19 +375,14 @@ func (e *Echo) Match(methods []string, path string, handler HandlerFunc, middlew
 	}
 }
 
-// Static serves static files from provided `root` directory for `/<path>*` URL.
-func (e *Echo) Static(path, root string) {
-	e.StaticWithConfig(path, StaticConfig{
-		Root: root,
+// Static serves static files from provided root directory with URL path prefix.
+func (e *Echo) Static(prefix, root string) {
+	e.Get(prefix+"*", func(c Context) error {
+		return c.File(path.Join(root, c.P(0)))
 	})
 }
 
-// StaticWithConfig serves static files with provided config for `/<path>*` URL.
-func (e *Echo) StaticWithConfig(path string, config StaticConfig) {
-	e.Get(path+"*", StaticWithConfig(config))
-}
-
-// File serve provided file for `/<path>` HTTP path.
+// File serves provided file for URL path.
 func (e *Echo) File(path, file string) {
 	e.Get(path, func(c Context) error {
 		return c.File(file)

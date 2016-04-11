@@ -5,9 +5,10 @@ type (
 	// routes that share a common middlware or functionality that should be separate
 	// from the parent echo instance while still inheriting from it.
 	Group struct {
-		prefix     string
-		middleware []MiddlewareFunc
-		echo       *Echo
+		prefix      string
+		middleware  []MiddlewareFunc
+		initialized bool
+		echo        *Echo
 	}
 )
 
@@ -82,26 +83,24 @@ func (g *Group) Group(prefix string, m ...MiddlewareFunc) *Group {
 }
 
 // Static implements `Echo#Static()` for sub-routes within the Group.
-func (g *Group) Static(path, root string) {
-	g.StaticWithConfig(path, StaticConfig{
-		Root: root,
-	})
-}
-
-// StaticWithConfig implements `Echo#StaticWithConfig()` for sub-routes within the
-// Group.
-func (g *Group) StaticWithConfig(path string, config StaticConfig) {
-	g.Get(path+"*", StaticWithConfig(config))
+func (g *Group) Static(prefix, root string) {
+	g.echo.Static(g.prefix+prefix, root)
 }
 
 // File implements `Echo#File()` for sub-routes within the Group.
 func (g *Group) File(path, file string) {
-	g.Get(path, func(c Context) error {
-		return c.File(file)
-	})
+	g.echo.File(g.prefix+path, file)
 }
 
 func (g *Group) add(method, path string, handler HandlerFunc, middleware ...MiddlewareFunc) {
 	middleware = append(g.middleware, middleware...)
+	if !g.initialized {
+		// Allow all requests to reach the group as they might get dropped if router
+		// doesn't find a match, making none of the group middleware process.
+		g.echo.Any(g.prefix+"*", func(c Context) error {
+			return ErrNotFound
+		}, middleware...)
+		g.initialized = true
+	}
 	g.echo.add(method, g.prefix+path, handler, middleware...)
 }
