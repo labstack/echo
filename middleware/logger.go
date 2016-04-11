@@ -113,11 +113,11 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 					s := config.color.Green(n)
 					switch {
 					case n >= 500:
-						s = color.Red(n)
+						s = config.color.Red(n)
 					case n >= 400:
-						s = color.Yellow(n)
+						s = config.color.Yellow(n)
 					case n >= 300:
-						s = color.Cyan(n)
+						s = config.color.Cyan(n)
 					}
 					return w.Write([]byte(s))
 				case "response_time":
