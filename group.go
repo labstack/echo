@@ -5,16 +5,20 @@ type (
 	// routes that share a common middlware or functionality that should be separate
 	// from the parent echo instance while still inheriting from it.
 	Group struct {
-		prefix      string
-		middleware  []MiddlewareFunc
-		initialized bool
-		echo        *Echo
+		prefix     string
+		middleware []MiddlewareFunc
+		echo       *Echo
 	}
 )
 
 // Use implements `Echo#Use()` for sub-routes within the Group.
 func (g *Group) Use(m ...MiddlewareFunc) {
 	g.middleware = append(g.middleware, m...)
+	// Allow all requests to reach the group as they might get dropped if router
+	// doesn't find a match, making none of the group middleware process.
+	g.echo.Any(g.prefix+"*", func(c Context) error {
+		return ErrNotFound
+	}, g.middleware...)
 }
 
 // Connect implements `Echo#Connect()` for sub-routes within the Group.
@@ -94,13 +98,5 @@ func (g *Group) File(path, file string) {
 
 func (g *Group) add(method, path string, handler HandlerFunc, middleware ...MiddlewareFunc) {
 	middleware = append(g.middleware, middleware...)
-	if !g.initialized {
-		// Allow all requests to reach the group as they might get dropped if router
-		// doesn't find a match, making none of the group middleware process.
-		g.echo.Any(g.prefix+"*", func(c Context) error {
-			return ErrNotFound
-		}, middleware...)
-		g.initialized = true
-	}
 	g.echo.add(method, g.prefix+path, handler, middleware...)
 }

@@ -52,6 +52,13 @@ func NewRouter(e *Echo) *Router {
 
 // Add registers a new route for method and path with matching handler.
 func (r *Router) Add(method, path string, h HandlerFunc, e *Echo) {
+	// Validate path
+	if path == "" {
+		e.logger.Fatal("path cannot be empty")
+	}
+	if path[0] != '/' {
+		path = "/" + path
+	}
 	ppath := path        // Pristine path
 	pnames := []string{} // Param names
 

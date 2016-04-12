@@ -496,7 +496,7 @@ func (e *Echo) Run(s engine.Server) {
 	s.SetHandler(e)
 	s.SetLogger(e.logger)
 	if e.Debug() {
-		e.logger.Debug("message=running in debug mode")
+		e.logger.Debug("running in debug mode")
 	}
 	e.logger.Error(s.Start())
 }
