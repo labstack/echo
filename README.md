@@ -1,7 +1,7 @@
 # *NOTICE*
 
 - Master branch, website and godoc now points to Echo v2.
-- Echo v2 is in beta but if you want to try it out here is the migrating [guide] (https://labstack.com/echo/guide/migrating/)
+- Echo v2 is in beta but if you want to try it out here is the migrating [guide] (https://labstack.com/echo/guide/migrating)
 - Looking for v1?
 	- Installation: Use a package manager (https://github.com/Masterminds/glide, it's nice!) to get stable v1 release/commit or use `go get gopkg.in/labstack/echo.v1`.
 	- Godoc: https://godoc.org/gopkg.in/labstack/echo.v1
@@ -197,9 +197,9 @@ Server any file from static directory for path `/static/*`.
 e.Static("/static", "static")
 ```
 
-##### [More...](https://labstack.com/echo/guide/static-files/)
+##### [More...](https://labstack.com/echo/guide/static-files)
 
-### [Template Rendering](https://labstack.com/echo/guide/templates/)
+### [Template Rendering](https://labstack.com/echo/guide/templates)
 
 ### Middleware
 
@@ -233,16 +233,16 @@ e.Get("/users", func(c echo.Context) error {
 
 Middleware | Description
 :--- | :---
-[Logger](https://labstack.com/echo/guide/middleware/#logger-middleware:37ab2f15ff048f67959bcac0a6032f32) | Log HTTP requests
-[Recover](https://labstack.com/echo/guide/middleware/#recover-middleware:37ab2f15ff048f67959bcac0a6032f32) | Recover from panics
-[Gzip](https://labstack.com/echo/guide/middleware/#gzip-middleware:37ab2f15ff048f67959bcac0a6032f32) | Send gzip HTTP response
-[BasicAuth](https://labstack.com/echo/guide/middleware/#basicauth-middleware:37ab2f15ff048f67959bcac0a6032f32) | HTTP basic authentication
-[CORS](https://labstack.com/echo/guide/middleware/#cors-middleware:37ab2f15ff048f67959bcac0a6032f32) | Cross-Origin Resource Sharing
-[Static](https://labstack.com/echo/guide/static-files/#using-static-middleware:123f9d1043075fe4874616541b409e4d) | Serve static files
-[AddTrailingSlash](https://labstack.com/echo/guide/middleware/#addtrailingslash-middleware:37ab2f15ff048f67959bcac0a6032f32) | Add trailing slash to the request URI
-[RemoveTrailingSlash](https://labstack.com/echo/guide/middleware/#removetrailingslash-middleware:37ab2f15ff048f67959bcac0a6032f32) | Remove trailing slash from the request URI
+[Logger](https://labstack.com/echo/guide/middleware#logger-middleware:37ab2f15ff048f67959bcac0a6032f32) | Log HTTP requests
+[Recover](https://labstack.com/echo/guide/middleware#recover-middleware:37ab2f15ff048f67959bcac0a6032f32) | Recover from panics
+[Gzip](https://labstack.com/echo/guide/middleware#gzip-middleware:37ab2f15ff048f67959bcac0a6032f32) | Send gzip HTTP response
+[BasicAuth](https://labstack.com/echo/guide/middleware#basicauth-middleware:37ab2f15ff048f67959bcac0a6032f32) | HTTP basic authentication
+[CORS](https://labstack.com/echo/guide/middleware#cors-middleware:37ab2f15ff048f67959bcac0a6032f32) | Cross-Origin Resource Sharing
+[Static](https://labstack.com/echo/guide/static-files#using-static-middleware:123f9d1043075fe4874616541b409e4d) | Serve static files
+[AddTrailingSlash](https://labstack.com/echo/guide/middleware#addtrailingslash-middleware:37ab2f15ff048f67959bcac0a6032f32) | Add trailing slash to the request URI
+[RemoveTrailingSlash](https://labstack.com/echo/guide/middleware#removetrailingslash-middleware:37ab2f15ff048f67959bcac0a6032f32) | Remove trailing slash from the request URI
 
-##### [More...](https://labstack.com/echo/guide/middleware/)
+##### [More...](https://labstack.com/echo/guide/middleware)
 
 #### Third-party Middleware
 
@@ -252,8 +252,8 @@ Middleware | Description
 
 ### Next
 
-- Head over to [guide](https://labstack.com/echo/guide/installation/)
-- Browse [recipes](https://labstack.com/echo/recipes/hello-world/)
+- Head over to [guide](https://labstack.com/echo/guide/installation)
+- Browse [recipes](https://labstack.com/echo/recipes/hello-world)
 
 ### Need help?
 
