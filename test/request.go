@@ -18,6 +18,7 @@ type (
 
 func NewRequest(method, url string, body io.Reader) engine.Request {
 	r, _ := http.NewRequest(method, url, body)
+	r.RequestURI = url
 	return &Request{
 		request: r,
 		url:     &URL{url: r.URL},
@@ -82,6 +83,10 @@ func (r *Request) SetMethod(method string) {
 
 func (r *Request) URI() string {
 	return r.request.RequestURI
+}
+
+func (r *Request) SetURI(uri string) {
+	r.request.RequestURI = uri
 }
 
 func (r *Request) Body() io.Reader {

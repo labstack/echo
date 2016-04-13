@@ -38,6 +38,9 @@ type (
 		// URI returns the unmodified `Request-URI` sent by the client.
 		URI() string
 
+		// SetURI sets the URI of the request.
+		SetURI(string)
+
 		// URL returns `engine.URL`.
 		URL() URL
 

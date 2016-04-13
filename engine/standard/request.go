@@ -89,6 +89,11 @@ func (r *Request) URI() string {
 	return r.RequestURI
 }
 
+// SetURI implements `engine.Request#SetURI` function.
+func (r *Request) SetURI(uri string) {
+	r.RequestURI = uri
+}
+
 // Body implements `engine.Request#Body` function.
 func (r *Request) Body() io.Reader {
 	return r.Request.Body
