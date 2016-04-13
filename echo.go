@@ -1,5 +1,5 @@
 /*
-Package echo implements a fast and unfancy web framework for Go (Golang).
+Package echo implements a fast and unfancy HTTP server framework for Go (Golang).
 
 Example:
 
