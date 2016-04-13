@@ -32,7 +32,6 @@ func TestAddTrailingSlash(t *testing.T) {
 	})
 	h(c)
 	assert.Equal(t, http.StatusMovedPermanently, rc.Status())
-	assert.Equal(t, "/add-slash/?key=value", rq.URI())
 	assert.Equal(t, "/add-slash/?key=value", rc.Header().Get(echo.HeaderLocation))
 }
 
@@ -59,6 +58,5 @@ func TestRemoveTrailingSlash(t *testing.T) {
 	})
 	h(c)
 	assert.Equal(t, http.StatusMovedPermanently, rc.Status())
-	assert.Equal(t, "/remove-slash?key=value", rq.URI())
 	assert.Equal(t, "/remove-slash?key=value", rc.Header().Get(echo.HeaderLocation))
 }
