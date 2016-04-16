@@ -13,7 +13,7 @@ func TestAddTrailingSlash(t *testing.T) {
 	e := echo.New()
 	rq := test.NewRequest(echo.GET, "/add-slash", nil)
 	rc := test.NewResponseRecorder()
-	c := echo.NewContext(rq, rc, e)
+	c := e.NewContext(rq, rc)
 	h := AddTrailingSlash()(func(c echo.Context) error {
 		return nil
 	})
@@ -24,7 +24,7 @@ func TestAddTrailingSlash(t *testing.T) {
 	// With config
 	rq = test.NewRequest(echo.GET, "/add-slash?key=value", nil)
 	rc = test.NewResponseRecorder()
-	c = echo.NewContext(rq, rc, e)
+	c = e.NewContext(rq, rc)
 	h = AddTrailingSlashWithConfig(TrailingSlashConfig{
 		RedirectCode: http.StatusMovedPermanently,
 	})(func(c echo.Context) error {
@@ -39,7 +39,7 @@ func TestRemoveTrailingSlash(t *testing.T) {
 	e := echo.New()
 	rq := test.NewRequest(echo.GET, "/remove-slash/", nil)
 	rc := test.NewResponseRecorder()
-	c := echo.NewContext(rq, rc, e)
+	c := e.NewContext(rq, rc)
 	h := RemoveTrailingSlash()(func(c echo.Context) error {
 		return nil
 	})
@@ -50,7 +50,7 @@ func TestRemoveTrailingSlash(t *testing.T) {
 	// With config
 	rq = test.NewRequest(echo.GET, "/remove-slash/?key=value", nil)
 	rc = test.NewResponseRecorder()
-	c = echo.NewContext(rq, rc, e)
+	c = e.NewContext(rq, rc)
 	h = RemoveTrailingSlashWithConfig(TrailingSlashConfig{
 		RedirectCode: http.StatusMovedPermanently,
 	})(func(c echo.Context) error {

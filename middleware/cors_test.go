@@ -13,7 +13,7 @@ func TestCORS(t *testing.T) {
 	e := echo.New()
 	rq := test.NewRequest(echo.GET, "/", nil)
 	rc := test.NewResponseRecorder()
-	c := echo.NewContext(rq, rc, e)
+	c := e.NewContext(rq, rc)
 	cors := CORSWithConfig(CORSConfig{
 		AllowCredentials: true,
 	})
@@ -28,7 +28,7 @@ func TestCORS(t *testing.T) {
 	// Wildcard origin
 	rq = test.NewRequest(echo.GET, "/", nil)
 	rc = test.NewResponseRecorder()
-	c = echo.NewContext(rq, rc, e)
+	c = e.NewContext(rq, rc)
 	rq.Header().Set(echo.HeaderOrigin, "localhost")
 	h(c)
 	assert.Equal(t, "*", rc.Header().Get(echo.HeaderAccessControlAllowOrigin))
@@ -36,7 +36,7 @@ func TestCORS(t *testing.T) {
 	// Simple request
 	rq = test.NewRequest(echo.GET, "/", nil)
 	rc = test.NewResponseRecorder()
-	c = echo.NewContext(rq, rc, e)
+	c = e.NewContext(rq, rc)
 	rq.Header().Set(echo.HeaderOrigin, "localhost")
 	cors = CORSWithConfig(CORSConfig{
 		AllowOrigins:     []string{"localhost"},
@@ -52,7 +52,7 @@ func TestCORS(t *testing.T) {
 	// Preflight request
 	rq = test.NewRequest(echo.OPTIONS, "/", nil)
 	rc = test.NewResponseRecorder()
-	c = echo.NewContext(rq, rc, e)
+	c = e.NewContext(rq, rc)
 	rq.Header().Set(echo.HeaderOrigin, "localhost")
 	rq.Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	h(c)

@@ -14,7 +14,7 @@ func TestBasicAuth(t *testing.T) {
 	e := echo.New()
 	rq := test.NewRequest(echo.GET, "/", nil)
 	rs := test.NewResponseRecorder()
-	c := echo.NewContext(rq, rs, e)
+	c := e.NewContext(rq, rs)
 	f := func(u, p string) bool {
 		if u == "joe" && p == "secret" {
 			return true
