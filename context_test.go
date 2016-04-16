@@ -46,12 +46,12 @@ func TestContext(t *testing.T) {
 	assert.NotNil(t, c.Response())
 
 	// ParamNames
-	c.Object().pnames = []string{"uid", "fid"}
+	c.(*context).pnames = []string{"uid", "fid"}
 	assert.EqualValues(t, []string{"uid", "fid"}, c.ParamNames())
 
 	// Param by id
-	c.Object().pnames = []string{"id"}
-	c.Object().pvalues = []string{"1"}
+	c.(*context).pnames = []string{"id"}
+	c.(*context).pvalues = []string{"1"}
 	assert.Equal(t, "1", c.P(0))
 
 	// Param by name
@@ -67,13 +67,13 @@ func TestContext(t *testing.T) {
 
 	// JSON
 	testBindOk(t, c, MIMEApplicationJSON)
-	c.Object().request = test.NewRequest(POST, "/", strings.NewReader(invalidContent))
+	c.(*context).RequestReader.Req = test.NewRequest(POST, "/", strings.NewReader(invalidContent))
 	testBindError(t, c, MIMEApplicationJSON)
 
 	// XML
-	c.Object().request = test.NewRequest(POST, "/", strings.NewReader(userXML))
+	c.(*context).RequestReader.Req = test.NewRequest(POST, "/", strings.NewReader(userXML))
 	testBindOk(t, c, MIMEApplicationXML)
-	c.Object().request = test.NewRequest(POST, "/", strings.NewReader(invalidContent))
+	c.(*context).RequestReader.Req = test.NewRequest(POST, "/", strings.NewReader(invalidContent))
 	testBindError(t, c, MIMEApplicationXML)
 
 	// Unsupported
@@ -86,14 +86,14 @@ func TestContext(t *testing.T) {
 	tpl := &Template{
 		templates: template.Must(template.New("hello").Parse("Hello, {{.}}!")),
 	}
-	c.Object().echo.SetRenderer(tpl)
+	c.(*context).echo.SetRenderer(tpl)
 	err := c.Render(http.StatusOK, "hello", "Joe")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Status())
 		assert.Equal(t, "Hello, Joe!", rec.Body.String())
 	}
 
-	c.Object().echo.renderer = nil
+	c.(*context).echo.renderer = nil
 	err = c.Render(http.StatusOK, "hello", "Joe")
 	assert.Error(t, err)
 
@@ -193,7 +193,7 @@ func TestContext(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, rec.Status())
 
 	// Reset
-	c.Object().Reset(rq, test.NewResponseRecorder())
+	c.(*context).Reset(rq, test.NewResponseRecorder())
 }
 
 func TestContextPath(t *testing.T) {

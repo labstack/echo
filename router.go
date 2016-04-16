@@ -286,8 +286,8 @@ func (n *node) checkMethodNotAllowed() HandlerFunc {
 // - Get context from `Echo#GetContext()`
 // - Reset it `Context#Reset()`
 // - Return it `Echo#PutContext()`.
-func (r *Router) Find(method, path string, context Context) {
-	ctx := context.Object()
+func (r *Router) Find(method, path string, ctx Context) {
+	context := ctx.(*context)
 	cn := r.tree // Current node as root
 
 	var (
@@ -356,7 +356,7 @@ func (r *Router) Find(method, path string, context Context) {
 	Param:
 		if c = cn.findChildByKind(pkind); c != nil {
 			// Issue #378
-			if len(ctx.pvalues) == n {
+			if len(context.pvalues) == n {
 				continue
 			}
 
@@ -371,7 +371,7 @@ func (r *Router) Find(method, path string, context Context) {
 			i, l := 0, len(search)
 			for ; i < l && search[i] != '/'; i++ {
 			}
-			ctx.pvalues[n] = search[:i]
+			context.pvalues[n] = search[:i]
 			n++
 			search = search[i:]
 			continue
@@ -393,30 +393,30 @@ func (r *Router) Find(method, path string, context Context) {
 			// Not found
 			return
 		}
-		ctx.pvalues[len(cn.pnames)-1] = search
+		context.pvalues[len(cn.pnames)-1] = search
 		goto End
 	}
 
 End:
-	ctx.handler = cn.findHandler(method)
-	ctx.path = cn.ppath
-	ctx.pnames = cn.pnames
+	context.handler = cn.findHandler(method)
+	context.path = cn.ppath
+	context.pnames = cn.pnames
 
 	// NOTE: Slow zone...
-	if ctx.handler == nil {
-		ctx.handler = cn.checkMethodNotAllowed()
+	if context.handler == nil {
+		context.handler = cn.checkMethodNotAllowed()
 
 		// Dig further for any, might have an empty value for *, e.g.
 		// serving a directory. Issue #207.
 		if cn = cn.findChildByKind(akind); cn == nil {
 			return
 		}
-		if ctx.handler = cn.findHandler(method); ctx.handler == nil {
-			ctx.handler = cn.checkMethodNotAllowed()
+		if context.handler = cn.findHandler(method); context.handler == nil {
+			context.handler = cn.checkMethodNotAllowed()
 		}
-		ctx.path = cn.ppath
-		ctx.pnames = cn.pnames
-		ctx.pvalues[len(cn.pnames)-1] = ""
+		context.path = cn.ppath
+		context.pnames = cn.pnames
+		context.pvalues[len(cn.pnames)-1] = ""
 	}
 
 	return
