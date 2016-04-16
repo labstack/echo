@@ -19,14 +19,13 @@ type (
 	}
 )
 
-// MockRequest returns `Request` instance for testing purpose.
-func MockRequest() *Request {
-	rq := new(http.Request)
+// NewRequest returns `Request` instance.
+func NewRequest(r *http.Request, l *log.Logger) *Request {
 	return &Request{
-		Request: new(http.Request),
-		url:     &URL{URL: rq.URL},
-		header:  &Header{Header: rq.Header},
-		logger:  log.New("test"),
+		Request: r,
+		url:     &URL{URL: r.URL},
+		header:  &Header{Header: r.Header},
+		logger:  l,
 	}
 }
 

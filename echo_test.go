@@ -25,8 +25,8 @@ type (
 func TestEcho(t *testing.T) {
 	e := New()
 	rq := test.NewRequest(GET, "/", nil)
-	rec := test.NewResponseRecorder()
-	c := NewContext(rq, rec, e)
+	rc := test.NewResponseRecorder()
+	c := e.NewContext(rq, rc)
 
 	// Router
 	assert.NotNil(t, e.Router())
@@ -37,7 +37,7 @@ func TestEcho(t *testing.T) {
 
 	// DefaultHTTPErrorHandler
 	e.DefaultHTTPErrorHandler(errors.New("error"), c)
-	assert.Equal(t, http.StatusInternalServerError, rec.Status())
+	assert.Equal(t, http.StatusInternalServerError, rc.Status())
 }
 
 func TestEchoStatic(t *testing.T) {

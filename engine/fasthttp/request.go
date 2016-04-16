@@ -22,14 +22,13 @@ type (
 	}
 )
 
-// MockRequest returns `Request` instance for testing purpose.
-func MockRequest() *Request {
-	ctx := new(fasthttp.RequestCtx)
+// NewRequest returns `Request` instance.
+func NewRequest(c *fasthttp.RequestCtx, l *log.Logger) *Request {
 	return &Request{
-		RequestCtx: ctx,
-		url:        &URL{URI: ctx.URI()},
-		header:     &RequestHeader{RequestHeader: &ctx.Request.Header},
-		logger:     log.New("test"),
+		RequestCtx: c,
+		url:        &URL{URI: c.URI()},
+		header:     &RequestHeader{RequestHeader: &c.Request.Header},
+		logger:     l,
 	}
 }
 

@@ -215,7 +215,7 @@ var (
 func New() (e *Echo) {
 	e = &Echo{maxParam: new(int)}
 	e.pool.New = func() interface{} {
-		return NewContext(nil, nil, e)
+		return e.NewContext(nil, nil)
 	}
 	e.router = NewRouter(e)
 
@@ -226,6 +226,18 @@ func New() (e *Echo) {
 	e.logger.SetLevel(log.ERROR)
 
 	return
+}
+
+// NewContext returns a Context instance.
+func (e *Echo) NewContext(rq engine.Request, rs engine.Response) Context {
+	return &context{
+		request:  rq,
+		response: rs,
+		echo:     e,
+		pvalues:  make([]string, *e.maxParam),
+		store:    make(store),
+		handler:  notFoundHandler,
+	}
 }
 
 // Router returns router.

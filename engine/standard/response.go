@@ -5,7 +5,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/http/httptest"
 
 	"github.com/labstack/echo/engine"
 	"github.com/labstack/gommon/log"
@@ -29,14 +28,13 @@ type (
 	}
 )
 
-// MockResponse returns `Response` instance for testing purpose.
-func MockResponse() *Response {
-	rc := httptest.NewRecorder()
+// NewResponse returns `Response` instance.
+func NewResponse(w http.ResponseWriter, l *log.Logger) *Response {
 	return &Response{
-		ResponseWriter: rc,
-		header:         &Header{Header: rc.Header()},
-		writer:         rc,
-		logger:         log.New("test"),
+		ResponseWriter: w,
+		header:         &Header{Header: w.Header()},
+		writer:         w,
+		logger:         l,
 	}
 }
 

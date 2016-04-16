@@ -40,6 +40,9 @@ type (
 		// Path returns the registered path for the handler.
 		Path() string
 
+		// SetPath sets the registered path for the handler.
+		SetPath(string)
+
 		// P returns path parameter by index.
 		P(int) string
 
@@ -49,11 +52,20 @@ type (
 		// ParamNames returns path parameter names.
 		ParamNames() []string
 
+		// SetParamNames sets path parameter names.
+		SetParamNames([]string)
+
+		// ParamValues returns path parameter values.
+		ParamValues() []string
+
+		// SetParamValues sets path parameter values.
+		SetParamValues([]string)
+
 		// QueryParam returns the query param for the provided name. It is an alias
 		// for `engine.URL#QueryParam()`.
 		QueryParam(string) string
 
-		// QueryParam returns the query parameters as map. It is an alias for `engine.URL#QueryParams()`.
+		// QueryParams returns the query parameters as map. It is an alias for `engine.URL#QueryParams()`.
 		QueryParams() map[string][]string
 
 		// FormValue returns the form field value for the provided name. It is an
@@ -75,6 +87,9 @@ type (
 
 		// Set saves data in the context.
 		Set(string, interface{})
+
+		// Del data from the context
+		Del(string)
 
 		// Bind binds the request body into provided type `i`. The default binder
 		// does it based on Content-Type header.
@@ -125,6 +140,9 @@ type (
 		// Handler returns the matched handler by router.
 		Handler() HandlerFunc
 
+		// SetHandler sets the matched handler by router.
+		SetHandler(HandlerFunc)
+
 		// Logger returns the `Logger` instance.
 		Logger() *log.Logger
 
@@ -135,9 +153,6 @@ type (
 		// via `If-Modified-Since` request header. It automatically sets `Content-Type`
 		// and `Last-Modified` response headers.
 		ServeContent(io.ReadSeeker, string, time.Time) error
-
-		// Object returns the internal context implementation.
-		Object() *context
 
 		// Reset resets the context after request completes. It must be called along
 		// with `Echo#GetContext()` and `Echo#PutContext()`. See `Echo#ServeHTTP()`
@@ -162,32 +177,6 @@ type (
 const (
 	indexPage = "index.html"
 )
-
-// NewContext creates a Context object.
-func NewContext(rq engine.Request, rs engine.Response, e *Echo) Context {
-	return &context{
-		request:  rq,
-		response: rs,
-		echo:     e,
-		pvalues:  make([]string, *e.maxParam),
-		store:    make(store),
-		handler:  notFoundHandler,
-	}
-}
-
-// MockContext returns `Context` for testing purpose.
-func MockContext(request engine.Request, response engine.Response, path string, paramNames []string, paramValues []string) Context {
-	return &context{
-		request:  request,
-		response: response,
-		echo:     new(Echo),
-		path:     path,
-		pnames:   paramNames,
-		pvalues:  paramValues,
-		store:    make(store),
-		handler:  notFoundHandler,
-	}
-}
 
 func (c *context) NetContext() netContext.Context {
 	return c.netContext
@@ -225,6 +214,10 @@ func (c *context) Path() string {
 	return c.path
 }
 
+func (c *context) SetPath(p string) {
+	c.path = p
+}
+
 func (c *context) P(i int) (value string) {
 	l := len(c.pnames)
 	if i < l {
@@ -246,6 +239,18 @@ func (c *context) Param(name string) (value string) {
 
 func (c *context) ParamNames() []string {
 	return c.pnames
+}
+
+func (c *context) SetParamNames(names []string) {
+	c.pnames = names
+}
+
+func (c *context) ParamValues() []string {
+	return c.pvalues
+}
+
+func (c *context) SetParamValues(values []string) {
+	c.pvalues = values
 }
 
 func (c *context) QueryParam(name string) string {
@@ -281,6 +286,10 @@ func (c *context) Set(key string, val interface{}) {
 
 func (c *context) Get(key string) interface{} {
 	return c.store[key]
+}
+
+func (c *context) Del(key string) {
+	delete(c.store, key)
 }
 
 func (c *context) Bind(i interface{}) error {
@@ -426,12 +435,12 @@ func (c *context) Handler() HandlerFunc {
 	return c.handler
 }
 
-func (c *context) Logger() *log.Logger {
-	return c.echo.logger
+func (c *context) SetHandler(h HandlerFunc) {
+	c.handler = h
 }
 
-func (c *context) Object() *context {
-	return c
+func (c *context) Logger() *log.Logger {
+	return c.echo.logger
 }
 
 func (c *context) ServeContent(content io.ReadSeeker, name string, modtime time.Time) error {

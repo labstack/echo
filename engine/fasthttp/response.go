@@ -24,14 +24,13 @@ type (
 	}
 )
 
-// MockResponse returns `Response` instance for testing purpose.
-func MockResponse() *Response {
-	ctx := new(fasthttp.RequestCtx)
+// NewResponse returns `Response` instance.
+func NewResponse(c *fasthttp.RequestCtx, l *log.Logger) *Response {
 	return &Response{
-		RequestCtx: ctx,
-		header:     &ResponseHeader{ResponseHeader: &ctx.Response.Header},
-		writer:     ctx,
-		logger:     log.New("test"),
+		RequestCtx: c,
+		header:     &ResponseHeader{ResponseHeader: &c.Response.Header},
+		writer:     c,
+		logger:     l,
 	}
 }
 
