@@ -30,13 +30,13 @@ type (
 	}
 )
 
-// New returns `fasthttp.Server` with provided listen address.
+// New returns `Server` with provided listen address.
 func New(addr string) *Server {
 	c := engine.Config{Address: addr}
 	return WithConfig(c)
 }
 
-// WithTLS returns `fasthttp.Server` with TLS config.
+// WithTLS returns `Server` with provided TLS config.
 func WithTLS(addr, certfile, keyfile string) *Server {
 	c := engine.Config{
 		Address:     addr,
@@ -46,7 +46,7 @@ func WithTLS(addr, certfile, keyfile string) *Server {
 	return WithConfig(c)
 }
 
-// WithConfig returns `standard.Server` with config.
+// WithConfig returns `Server` with provided config.
 func WithConfig(c engine.Config) (s *Server) {
 	s = &Server{
 		Server: new(fasthttp.Server),
@@ -54,7 +54,7 @@ func WithConfig(c engine.Config) (s *Server) {
 		pool: &pool{
 			request: sync.Pool{
 				New: func() interface{} {
-					return &Request{}
+					return &Request{logger: s.logger}
 				},
 			},
 			response: sync.Pool{

@@ -28,13 +28,13 @@ type (
 	}
 )
 
-// New returns `standard.Server` with provided listen address.
+// New returns `Server` instance with provided listen address.
 func New(addr string) *Server {
 	c := engine.Config{Address: addr}
 	return WithConfig(c)
 }
 
-// WithTLS returns `standard.Server` with TLS config.
+// WithTLS returns `Server` instance with provided TLS config.
 func WithTLS(addr, certfile, keyfile string) *Server {
 	c := engine.Config{
 		Address:     addr,
@@ -44,7 +44,7 @@ func WithTLS(addr, certfile, keyfile string) *Server {
 	return WithConfig(c)
 }
 
-// WithConfig returns `standard.Server` with config.
+// WithConfig returns `Server` instance with provided config.
 func WithConfig(c engine.Config) (s *Server) {
 	s = &Server{
 		Server: new(http.Server),

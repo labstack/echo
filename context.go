@@ -14,8 +14,6 @@ import (
 	"github.com/labstack/echo/engine"
 	"github.com/labstack/gommon/log"
 
-	"net/url"
-
 	"bytes"
 
 	netContext "golang.org/x/net/context"
@@ -138,7 +136,7 @@ type (
 		// and `Last-Modified` response headers.
 		ServeContent(io.ReadSeeker, string, time.Time) error
 
-		// Object returns the `context` instance.
+		// Object returns the internal context implementation.
 		Object() *context
 
 		// Reset resets the context after request completes. It must be called along
@@ -153,7 +151,6 @@ type (
 		path       string
 		pnames     []string
 		pvalues    []string
-		query      url.Values
 		store      store
 		handler    HandlerFunc
 		echo       *Echo
@@ -173,6 +170,20 @@ func NewContext(rq engine.Request, rs engine.Response, e *Echo) Context {
 		response: rs,
 		echo:     e,
 		pvalues:  make([]string, *e.maxParam),
+		store:    make(store),
+		handler:  notFoundHandler,
+	}
+}
+
+// MockContext returns `Context` for testing purpose.
+func MockContext(request engine.Request, response engine.Response, path string, paramNames []string, paramValues []string) Context {
+	return &context{
+		request:  request,
+		response: response,
+		echo:     new(Echo),
+		path:     path,
+		pnames:   paramNames,
+		pvalues:  paramValues,
 		store:    make(store),
 		handler:  notFoundHandler,
 	}
@@ -454,7 +465,6 @@ func (c *context) Reset(rq engine.Request, rs engine.Response) {
 	c.netContext = nil
 	c.request = rq
 	c.response = rs
-	c.query = nil
 	c.store = nil
 	c.handler = notFoundHandler
 }

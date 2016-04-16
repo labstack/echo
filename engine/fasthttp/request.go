@@ -6,10 +6,9 @@ import (
 	"bytes"
 	"io"
 	"mime/multipart"
-)
 
-import (
 	"github.com/labstack/echo/engine"
+	"github.com/labstack/gommon/log"
 	"github.com/valyala/fasthttp"
 )
 
@@ -19,8 +18,20 @@ type (
 		*fasthttp.RequestCtx
 		url    engine.URL
 		header engine.Header
+		logger *log.Logger
 	}
 )
+
+// MockRequest returns `Request` instance for testing purpose.
+func MockRequest() *Request {
+	ctx := new(fasthttp.RequestCtx)
+	return &Request{
+		RequestCtx: ctx,
+		url:        &URL{URI: ctx.URI()},
+		header:     &RequestHeader{RequestHeader: &ctx.Request.Header},
+		logger:     log.New("test"),
+	}
+}
 
 // IsTLS implements `engine.Request#TLS` function.
 func (r *Request) IsTLS() bool {

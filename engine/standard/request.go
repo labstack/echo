@@ -19,6 +19,17 @@ type (
 	}
 )
 
+// MockRequest returns `Request` instance for testing purpose.
+func MockRequest() *Request {
+	rq := new(http.Request)
+	return &Request{
+		Request: new(http.Request),
+		url:     &URL{URL: rq.URL},
+		header:  &Header{Header: rq.Header},
+		logger:  log.New("test"),
+	}
+}
+
 // IsTLS implements `engine.Request#TLS` function.
 func (r *Request) IsTLS() bool {
 	return r.Request.TLS != nil

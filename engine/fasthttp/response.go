@@ -24,6 +24,17 @@ type (
 	}
 )
 
+// MockResponse returns `Response` instance for testing purpose.
+func MockResponse() *Response {
+	ctx := new(fasthttp.RequestCtx)
+	return &Response{
+		RequestCtx: ctx,
+		header:     &ResponseHeader{ResponseHeader: &ctx.Response.Header},
+		writer:     ctx,
+		logger:     log.New("test"),
+	}
+}
+
 // Header implements `engine.Response#Header` function.
 func (r *Response) Header() engine.Header {
 	return r.header
