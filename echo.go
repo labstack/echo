@@ -78,7 +78,7 @@ type (
 		Handler string
 	}
 
-	// HTTPError represents an error that occured while handling a request.
+	// HTTPError represents an error that occurred while handling a request.
 	HTTPError struct {
 		Code    int
 		Message string
