@@ -1,13 +1,10 @@
 package echo
 
 import (
-	"encoding/json"
-	"encoding/xml"
+	"bytes"
 	"io"
 	"mime"
 	"mime/multipart"
-	"net/http"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -15,8 +12,6 @@ import (
 	"github.com/labstack/gommon/log"
 
 	"net/url"
-
-	"bytes"
 
 	netContext "golang.org/x/net/context"
 )
@@ -55,7 +50,7 @@ type (
 		// for `engine.URL#QueryParam()`.
 		QueryParam(string) string
 
-		// QueryParam returns the query parameters as map. It is an alias for `engine.URL#QueryParams()`.
+		// QueryParams returns the query parameters as map. It is an alias for `engine.URL#QueryParams()`.
 		QueryParams() map[string][]string
 
 		// FormValue returns the form field value for the provided name. It is an
@@ -77,6 +72,9 @@ type (
 
 		// Set saves data in the context.
 		Set(string, interface{})
+
+		// Del data from the context
+		Del(string)
 
 		// Bind binds the request body into provided type `i`. The default binder
 		// does it based on Content-Type header.
@@ -138,28 +136,24 @@ type (
 		// and `Last-Modified` response headers.
 		ServeContent(io.ReadSeeker, string, time.Time) error
 
-		// Object returns the `context` instance.
-		Object() *context
-
 		// Reset resets the context after request completes. It must be called along
 		// with `Echo#GetContext()` and `Echo#PutContext()`. See `Echo#ServeHTTP()`
 		Reset(engine.Request, engine.Response)
 	}
 
 	context struct {
-		netContext netContext.Context
-		request    engine.Request
-		response   engine.Response
-		path       string
-		pnames     []string
-		pvalues    []string
-		query      url.Values
-		store      store
-		handler    HandlerFunc
-		echo       *Echo
-	}
+		ResponseWriter
+		RequestReader
+		NetContextEmbedder
+		MapStore
 
-	store map[string]interface{}
+		path    string
+		pnames  []string
+		pvalues []string
+		query   url.Values
+		handler HandlerFunc
+		echo    *Echo
+	}
 )
 
 const (
@@ -169,45 +163,13 @@ const (
 // NewContext creates a Context object.
 func NewContext(rq engine.Request, rs engine.Response, e *Echo) Context {
 	return &context{
-		request:  rq,
-		response: rs,
-		echo:     e,
-		pvalues:  make([]string, *e.maxParam),
-		store:    make(store),
-		handler:  notFoundHandler,
+		RequestReader:  RequestReader{rq},
+		ResponseWriter: ResponseWriter{rs},
+
+		echo:    e,
+		pvalues: make([]string, *e.maxParam),
+		handler: notFoundHandler,
 	}
-}
-
-func (c *context) NetContext() netContext.Context {
-	return c.netContext
-}
-
-func (c *context) SetNetContext(ctx netContext.Context) {
-	c.netContext = ctx
-}
-
-func (c *context) Deadline() (deadline time.Time, ok bool) {
-	return c.netContext.Deadline()
-}
-
-func (c *context) Done() <-chan struct{} {
-	return c.netContext.Done()
-}
-
-func (c *context) Err() error {
-	return c.netContext.Err()
-}
-
-func (c *context) Value(key interface{}) interface{} {
-	return c.netContext.Value(key)
-}
-
-func (c *context) Request() engine.Request {
-	return c.request
-}
-
-func (c *context) Response() engine.Response {
-	return c.response
 }
 
 func (c *context) Path() string {
@@ -220,6 +182,14 @@ func (c *context) P(i int) (value string) {
 		value = c.pvalues[i]
 	}
 	return
+}
+
+// Set optimizes by only creating the MapStore if this method is called.
+func (c *context) Set(key string, value interface{}) {
+	if c.MapStore == nil {
+		c.MapStore = make(MapStore)
+	}
+	c.MapStore.Set(key, value)
 }
 
 func (c *context) Param(name string) (value string) {
@@ -237,41 +207,6 @@ func (c *context) ParamNames() []string {
 	return c.pnames
 }
 
-func (c *context) QueryParam(name string) string {
-	return c.request.URL().QueryParam(name)
-}
-
-func (c *context) QueryParams() map[string][]string {
-	return c.request.URL().QueryParams()
-}
-
-func (c *context) FormValue(name string) string {
-	return c.request.FormValue(name)
-}
-
-func (c *context) FormParams() map[string][]string {
-	return c.request.FormParams()
-}
-
-func (c *context) FormFile(name string) (*multipart.FileHeader, error) {
-	return c.request.FormFile(name)
-}
-
-func (c *context) MultipartForm() (*multipart.Form, error) {
-	return c.request.MultipartForm()
-}
-
-func (c *context) Set(key string, val interface{}) {
-	if c.store == nil {
-		c.store = make(store)
-	}
-	c.store[key] = val
-}
-
-func (c *context) Get(key string) interface{} {
-	return c.store[key]
-}
-
 func (c *context) Bind(i interface{}) error {
 	return c.echo.binder.Bind(i, c)
 }
@@ -284,123 +219,15 @@ func (c *context) Render(code int, name string, data interface{}) (err error) {
 	if err = c.echo.renderer.Render(buf, name, data, c); err != nil {
 		return
 	}
-	c.response.Header().Set(HeaderContentType, MIMETextHTMLCharsetUTF8)
-	c.response.WriteHeader(code)
-	_, err = c.response.Write(buf.Bytes())
-	return
-}
-
-func (c *context) HTML(code int, html string) (err error) {
-	c.response.Header().Set(HeaderContentType, MIMETextHTMLCharsetUTF8)
-	c.response.WriteHeader(code)
-	_, err = c.response.Write([]byte(html))
-	return
-}
-
-func (c *context) String(code int, s string) (err error) {
-	c.response.Header().Set(HeaderContentType, MIMETextPlainCharsetUTF8)
-	c.response.WriteHeader(code)
-	_, err = c.response.Write([]byte(s))
-	return
-}
-
-func (c *context) JSON(code int, i interface{}) (err error) {
-	b, err := json.Marshal(i)
-	if c.echo.Debug() {
-		b, err = json.MarshalIndent(i, "", "  ")
-	}
-	if err != nil {
-		return err
-	}
-	return c.JSONBlob(code, b)
-}
-
-func (c *context) JSONBlob(code int, b []byte) (err error) {
-	c.response.Header().Set(HeaderContentType, MIMEApplicationJSONCharsetUTF8)
-	c.response.WriteHeader(code)
-	_, err = c.response.Write(b)
-	return
-}
-
-func (c *context) JSONP(code int, callback string, i interface{}) (err error) {
-	b, err := json.Marshal(i)
-	if err != nil {
-		return err
-	}
-	c.response.Header().Set(HeaderContentType, MIMEApplicationJavaScriptCharsetUTF8)
-	c.response.WriteHeader(code)
-	if _, err = c.response.Write([]byte(callback + "(")); err != nil {
-		return
-	}
-	if _, err = c.response.Write(b); err != nil {
-		return
-	}
-	_, err = c.response.Write([]byte(");"))
-	return
-}
-
-func (c *context) XML(code int, i interface{}) (err error) {
-	b, err := xml.Marshal(i)
-	if c.echo.Debug() {
-		b, err = xml.MarshalIndent(i, "", "  ")
-	}
-	if err != nil {
-		return err
-	}
-	return c.XMLBlob(code, b)
-}
-
-func (c *context) XMLBlob(code int, b []byte) (err error) {
-	c.response.Header().Set(HeaderContentType, MIMEApplicationXMLCharsetUTF8)
-	c.response.WriteHeader(code)
-	if _, err = c.response.Write([]byte(xml.Header)); err != nil {
-		return
-	}
-	_, err = c.response.Write(b)
-	return
+	res := c.Response()
+	res.Header().Set(HeaderContentType, MIMETextHTMLCharsetUTF8)
+	res.WriteHeader(code)
+	_, err = res.Write(buf.Bytes())
+	return err
 }
 
 func (c *context) File(file string) error {
-	f, err := os.Open(file)
-	if err != nil {
-		return ErrNotFound
-	}
-	defer f.Close()
-
-	fi, _ := f.Stat()
-	if fi.IsDir() {
-		file = filepath.Join(file, "index.html")
-		f, err = os.Open(file)
-		if err != nil {
-			return ErrNotFound
-		}
-		if fi, err = f.Stat(); err != nil {
-			return err
-		}
-	}
-	return c.ServeContent(f, fi.Name(), fi.ModTime())
-}
-
-func (c *context) Attachment(r io.ReadSeeker, name string) (err error) {
-	c.response.Header().Set(HeaderContentType, ContentTypeByExtension(name))
-	c.response.Header().Set(HeaderContentDisposition, "attachment; filename="+name)
-	c.response.WriteHeader(http.StatusOK)
-	_, err = io.Copy(c.response, r)
-	return
-}
-
-func (c *context) NoContent(code int) error {
-	c.response.WriteHeader(code)
-	return nil
-}
-
-func (c *context) Redirect(code int, url string) error {
-	if code < http.StatusMultipleChoices || code > http.StatusTemporaryRedirect {
-		return ErrInvalidRedirectCode
-	}
-	c.response.Header().Set(HeaderLocation, url)
-	c.response.WriteHeader(code)
-	return nil
+	return c.ResponseWriter.File(c.Request(), file)
 }
 
 func (c *context) Error(err error) {
@@ -419,25 +246,11 @@ func (c *context) Logger() *log.Logger {
 	return c.echo.logger
 }
 
-func (c *context) Object() *context {
-	return c
-}
-
 func (c *context) ServeContent(content io.ReadSeeker, name string, modtime time.Time) error {
 	rq := c.Request()
 	rs := c.Response()
 
-	if t, err := time.Parse(http.TimeFormat, rq.Header().Get(HeaderIfModifiedSince)); err == nil && modtime.Before(t.Add(1*time.Second)) {
-		rs.Header().Del(HeaderContentType)
-		rs.Header().Del(HeaderContentLength)
-		return c.NoContent(http.StatusNotModified)
-	}
-
-	rs.Header().Set(HeaderContentType, ContentTypeByExtension(name))
-	rs.Header().Set(HeaderLastModified, modtime.UTC().Format(http.TimeFormat))
-	rs.WriteHeader(http.StatusOK)
-	_, err := io.Copy(rs, content)
-	return err
+	return ServeContent(rq, rs, content, name, modtime)
 }
 
 // ContentTypeByExtension returns the MIME type associated with the file based on
@@ -451,10 +264,14 @@ func ContentTypeByExtension(name string) (t string) {
 }
 
 func (c *context) Reset(rq engine.Request, rs engine.Response) {
-	c.netContext = nil
-	c.request = rq
-	c.response = rs
+	c.ResponseWriter.Res = rs
+	c.RequestReader.Req = rq
+	c.NetContextEmbedder.Ctx = nil
+	// TODO(aarondl): Is this supposed to be nil?
+	// Constructor makes one on New(), seems like memory optimization
+	// to not create one unless it's used.
+	c.MapStore = nil
+
 	c.query = nil
-	c.store = nil
 	c.handler = notFoundHandler
 }
