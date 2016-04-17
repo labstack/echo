@@ -53,13 +53,13 @@ type (
 		ParamNames() []string
 
 		// SetParamNames sets path parameter names.
-		SetParamNames([]string)
+		SetParamNames(...string)
 
 		// ParamValues returns path parameter values.
 		ParamValues() []string
 
 		// SetParamValues sets path parameter values.
-		SetParamValues([]string)
+		SetParamValues(...string)
 
 		// QueryParam returns the query param for the provided name. It is an alias
 		// for `engine.URL#QueryParam()`.
@@ -241,7 +241,7 @@ func (c *context) ParamNames() []string {
 	return c.pnames
 }
 
-func (c *context) SetParamNames(names []string) {
+func (c *context) SetParamNames(names ...string) {
 	c.pnames = names
 }
 
@@ -249,7 +249,7 @@ func (c *context) ParamValues() []string {
 	return c.pvalues
 }
 
-func (c *context) SetParamValues(values []string) {
+func (c *context) SetParamValues(values ...string) {
 	c.pvalues = values
 }
 
