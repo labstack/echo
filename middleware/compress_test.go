@@ -65,7 +65,7 @@ func TestGzipNoContent(t *testing.T) {
 func TestGzipErrorReturned(t *testing.T) {
 	e := echo.New()
 	e.Use(Gzip())
-	e.Get("/", func(c echo.Context) error {
+	e.GET("/", func(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "error")
 	})
 	rq := test.NewRequest(echo.GET, "/", nil)

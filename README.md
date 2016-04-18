@@ -59,7 +59,7 @@ import (
 
 func main() {
 	e := echo.New()
-	e.Get("/", func(c echo.Context) error {
+	e.GET("/", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Hello, World!")
 	})
 	e.Run(standard.New(":1323"))
@@ -78,10 +78,10 @@ Hello, World! on the page.
 ### Routing
 
 ```go
-e.Post("/users", saveUser)
-e.Get("/users/:id", getUser)
-e.Put("/users/:id", updateUser)
-e.Delete("/users/:id", deleteUser)
+e.POST("/users", saveUser)
+e.GET("/users/:id", getUser)
+e.PUT("/users/:id", updateUser)
+e.DELETE("/users/:id", deleteUser)
 ```
 
 ### Path Parameters
@@ -178,7 +178,7 @@ type User struct {
 	Email string `json:"email" xml:"email"`
 }
 
-e.Post("/users", func(c echo.Context) error {
+e.POST("/users", func(c echo.Context) error {
 	u := new(User)
 	if err := c.Bind(u); err != nil {
 		return err
@@ -224,7 +224,7 @@ track := func(next echo.HandlerFunc) echo.HandlerFunc {
 		return next(c)
 	}
 }
-e.Get("/users", func(c echo.Context) error {
+e.GET("/users", func(c echo.Context) error {
 	return c.String(http.StatusOK, "/users")
 }, track)
 ```

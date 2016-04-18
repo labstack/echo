@@ -105,7 +105,7 @@ func TestEchoMiddleware(t *testing.T) {
 	}))
 
 	// Route
-	e.Get("/", func(c Context) error {
+	e.GET("/", func(c Context) error {
 		return c.String(http.StatusOK, "OK")
 	})
 
@@ -120,7 +120,7 @@ func TestEchoMiddlewareError(t *testing.T) {
 	e.Use(WrapMiddleware(func(c Context) error {
 		return errors.New("error")
 	}))
-	e.Get("/", notFoundHandler)
+	e.GET("/", notFoundHandler)
 	c, _ := request(GET, "/", e)
 	assert.Equal(t, http.StatusInternalServerError, c)
 }
@@ -129,7 +129,7 @@ func TestEchoHandler(t *testing.T) {
 	e := New()
 
 	// HandlerFunc
-	e.Get("/ok", func(c Context) error {
+	e.GET("/ok", func(c Context) error {
 		return c.String(http.StatusOK, "OK")
 	})
 
@@ -203,8 +203,8 @@ func TestEchoURL(t *testing.T) {
 	getUser := func(Context) error { return nil }
 	getFile := func(Context) error { return nil }
 
-	e.Get("/static/file", static)
-	e.Get("/users/:id", getUser)
+	e.GET("/static/file", static)
+	e.GET("/users/:id", getUser)
 	g := e.Group("/group")
 	g.Get("/users/:uid/files/:fid", getFile)
 
@@ -252,7 +252,7 @@ func TestEchoGroup(t *testing.T) {
 	// Routes
 	//--------
 
-	e.Get("/users", h)
+	e.GET("/users", h)
 
 	// Group
 	g1 := e.Group("/group1")
@@ -297,7 +297,7 @@ func TestEchoNotFound(t *testing.T) {
 
 func TestEchoMethodNotAllowed(t *testing.T) {
 	e := New()
-	e.Get("/", func(c Context) error {
+	e.GET("/", func(c Context) error {
 		return c.String(http.StatusOK, "Echo!")
 	})
 	rq := test.NewRequest(POST, "/", nil)

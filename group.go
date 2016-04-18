@@ -21,47 +21,92 @@ func (g *Group) Use(m ...MiddlewareFunc) {
 	}, g.middleware...)
 }
 
-// Connect implements `Echo#Connect()` for sub-routes within the Group.
+// CONNECT implements `Echo#CONNECT()` for sub-routes within the Group.
+func (g *Group) CONNECT(path string, h HandlerFunc, m ...MiddlewareFunc) {
+	g.add(CONNECT, path, h, m...)
+}
+
+// Connect is deprecated, use `CONNECT()` instead.
 func (g *Group) Connect(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	g.add(CONNECT, path, h, m...)
 }
 
-// Delete implements `Echo#Delete()` for sub-routes within the Group.
+// DELETE implements `Echo#DELETE()` for sub-routes within the Group.
+func (g *Group) DELETE(path string, h HandlerFunc, m ...MiddlewareFunc) {
+	g.add(DELETE, path, h, m...)
+}
+
+// Delete is deprecated, use `DELETE()` instead.
 func (g *Group) Delete(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	g.add(DELETE, path, h, m...)
 }
 
-// Get implements `Echo#Get()` for sub-routes within the Group.
+// GET implements `Echo#GET()` for sub-routes within the Group.
+func (g *Group) GET(path string, h HandlerFunc, m ...MiddlewareFunc) {
+	g.add(GET, path, h, m...)
+}
+
+// Get is deprecated, use `GET()` instead.
 func (g *Group) Get(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	g.add(GET, path, h, m...)
 }
 
-// Head implements `Echo#Head()` for sub-routes within the Group.
+// HEAD implements `Echo#HEAD()` for sub-routes within the Group.
+func (g *Group) HEAD(path string, h HandlerFunc, m ...MiddlewareFunc) {
+	g.add(HEAD, path, h, m...)
+}
+
+// Head is deprecated, use `HEAD()` instead.
 func (g *Group) Head(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	g.add(HEAD, path, h, m...)
 }
 
-// Options implements `Echo#Options()` for sub-routes within the Group.
+// OPTIONS implements `Echo#OPTIONS()` for sub-routes within the Group.
+func (g *Group) OPTIONS(path string, h HandlerFunc, m ...MiddlewareFunc) {
+	g.add(OPTIONS, path, h, m...)
+}
+
+// Options is deprecated, use `OPTIONS()` instead.
 func (g *Group) Options(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	g.add(OPTIONS, path, h, m...)
 }
 
-// Patch implements `Echo#Patch()` for sub-routes within the Group.
+// PATCH implements `Echo#PATCH()` for sub-routes within the Group.
+func (g *Group) PATCH(path string, h HandlerFunc, m ...MiddlewareFunc) {
+	g.add(PATCH, path, h, m...)
+}
+
+// Patch is deprecated, use `PATCH()` instead.
 func (g *Group) Patch(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	g.add(PATCH, path, h, m...)
 }
 
-// Post implements `Echo#Post()` for sub-routes within the Group.
+// POST implements `Echo#POST()` for sub-routes within the Group.
+func (g *Group) POST(path string, h HandlerFunc, m ...MiddlewareFunc) {
+	g.add(POST, path, h, m...)
+}
+
+// Post is deprecated, use `POST()` instead.
 func (g *Group) Post(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	g.add(POST, path, h, m...)
 }
 
-// Put implements `Echo#Put()` for sub-routes within the Group.
+// PUT implements `Echo#PUT()` for sub-routes within the Group.
+func (g *Group) PUT(path string, h HandlerFunc, m ...MiddlewareFunc) {
+	g.add(PUT, path, h, m...)
+}
+
+// Put is deprecated, use `PUT()` instead.
 func (g *Group) Put(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	g.add(PUT, path, h, m...)
 }
 
-// Trace implements `Echo#Trace()` for sub-routes within the Group.
+// TRACE implements `Echo#TRACE()` for sub-routes within the Group.
+func (g *Group) TRACE(path string, h HandlerFunc, m ...MiddlewareFunc) {
+	g.add(TRACE, path, h, m...)
+}
+
+// Trace is deprecated, use `TRACE()` instead.
 func (g *Group) Trace(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	g.add(TRACE, path, h, m...)
 }
