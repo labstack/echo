@@ -34,7 +34,7 @@ func NewRequest(c *fasthttp.RequestCtx, l *log.Logger) *Request {
 
 // IsTLS implements `engine.Request#TLS` function.
 func (r *Request) IsTLS() bool {
-	return r.IsTLS()
+	return r.RequestCtx.IsTLS()
 }
 
 // Scheme implements `engine.Request#Scheme` function.
