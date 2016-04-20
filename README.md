@@ -119,7 +119,7 @@ email | joe@labstack.com
 func save(c echo.Context) error {
 	// Get name and email
 	name := c.FormValue("name")
-	email := c.FormParam("email")
+	email := c.FormValue("email")
 }
 ```
 
@@ -137,7 +137,7 @@ avatar | avatar
 func save(c echo.Context) error {
 	// Get name and email
 	name := c.FormValue("name")
-	email := c.FormParam("email")
+	email := c.FormValue("email")
 	// Get avatar
 	avatar, err := c.FormFile("avatar")
 	if err != nil {
