@@ -37,6 +37,10 @@ type (
 		// Optional with default value as os.Stdout.
 		Output io.Writer
 
+		// NoColor is an option for disabling the colored log.
+		// Optional with default value as false.
+		NoColor bool
+
 		template *fasttemplate.Template
 		color    *color.Color
 	}
@@ -70,7 +74,7 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 
 	config.template = fasttemplate.New(config.Format, "${", "}")
 	config.color = color.New()
-	if w, ok := config.Output.(*os.File); !ok || !isatty.IsTerminal(w.Fd()) {
+	if w, ok := config.Output.(*os.File); config.NoColor || !ok || !isatty.IsTerminal(w.Fd()) {
 		config.color.Disable()
 	}
 
