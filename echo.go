@@ -329,8 +329,13 @@ func (e *Echo) Connect(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	e.add(CONNECT, path, h, m...)
 }
 
-// Delete registers a new DELETE route for a path with matching handler in the router
+// DELETE registers a new DELETE route for a path with matching handler in the router
 // with optional route-level middleware.
+func (e *Echo) DELETE(path string, h HandlerFunc, m ...MiddlewareFunc) {
+	e.add(DELETE, path, h, m...)
+}
+
+// Delete is deprecated, use `DELETE()` instead.
 func (e *Echo) Delete(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	e.add(DELETE, path, h, m...)
 }

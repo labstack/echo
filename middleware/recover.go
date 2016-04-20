@@ -12,16 +12,16 @@ type (
 	// RecoverConfig defines the config for recover middleware.
 	RecoverConfig struct {
 		// StackSize is the stack size to be printed.
-		// Optional with default value as 4 KB.
+		// Optional, with default value as 4 KB.
 		StackSize int
 
 		// DisableStackAll disables formatting stack traces of all other goroutines
 		// into buffer after the trace for the current goroutine.
-		// Optional with default value as false.
+		// Optional, with default value as false.
 		DisableStackAll bool
 
 		// DisablePrintStack disables printing stack trace.
-		// Optional with default value as false.
+		// Optional, with default value as false.
 		DisablePrintStack bool
 	}
 )

@@ -30,7 +30,7 @@ type (
 		//
 		// Example "${remote_id} ${status}"
 		//
-		// Optional with default value as `DefaultLoggerConfig.Format`.
+		// Optional, with default value as `DefaultLoggerConfig.Format`.
 		Format string
 
 		// Output is the writer where logs are written.
