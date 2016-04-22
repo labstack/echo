@@ -18,11 +18,11 @@ type (
 
 		// Index is the list of index files to be searched and used when serving
 		// a directory.
-		// Optional with default value as []string{"index.html"}.
+		// Optional, with default value as []string{"index.html"}.
 		Index []string `json:"index"`
 
 		// Browse is a flag to enable/disable directory browsing.
-		// Optional with default value as false.
+		// Optional, with default value as false.
 		Browse bool `json:"browse"`
 	}
 )
@@ -80,10 +80,7 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 				// TODO: search all files
 				file = path.Join(file, config.Index[0])
 				f, err = fs.Open(file)
-				if err != nil {
-					return next(c)
-				}
-				if config.Browse {
+				if err != nil && config.Browse {
 					dirs, err := d.Readdir(-1)
 					if err != nil {
 						return err
