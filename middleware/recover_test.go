@@ -14,13 +14,13 @@ func TestRecover(t *testing.T) {
 	e := echo.New()
 	buf := new(bytes.Buffer)
 	e.SetLogOutput(buf)
-	rq := test.NewRequest(echo.GET, "/", nil)
-	rc := test.NewResponseRecorder()
-	c := e.NewContext(rq, rc)
+	req := test.NewRequest(echo.GET, "/", nil)
+	rec := test.NewResponseRecorder()
+	c := e.NewContext(req, rec)
 	h := Recover()(echo.HandlerFunc(func(c echo.Context) error {
 		panic("test")
 	}))
 	h(c)
-	assert.Equal(t, http.StatusInternalServerError, rc.Status())
+	assert.Equal(t, http.StatusInternalServerError, rec.Status())
 	assert.Contains(t, buf.String(), "PANIC RECOVER")
 }

@@ -134,8 +134,8 @@ func (r *Request) MultipartForm() (*multipart.Form, error) {
 	return r.Request.MultipartForm, err
 }
 
-func (r *Request) reset(rq *http.Request, h engine.Header, u engine.URL) {
-	r.Request = rq
+func (r *Request) reset(req *http.Request, h engine.Header, u engine.URL) {
+	r.Request = req
 	r.header = h
 	r.url = u
 }

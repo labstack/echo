@@ -12,9 +12,9 @@ import (
 
 func TestBasicAuth(t *testing.T) {
 	e := echo.New()
-	rq := test.NewRequest(echo.GET, "/", nil)
-	rs := test.NewResponseRecorder()
-	c := e.NewContext(rq, rs)
+	req := test.NewRequest(echo.GET, "/", nil)
+	res := test.NewResponseRecorder()
+	c := e.NewContext(req, res)
 	f := func(u, p string) bool {
 		if u == "joe" && p == "secret" {
 			return true
@@ -27,7 +27,7 @@ func TestBasicAuth(t *testing.T) {
 
 	// Valid credentials
 	auth := basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:secret"))
-	rq.Header().Set(echo.HeaderAuthorization, auth)
+	req.Header().Set(echo.HeaderAuthorization, auth)
 	assert.NoError(t, h(c))
 
 	//---------------------
@@ -36,21 +36,21 @@ func TestBasicAuth(t *testing.T) {
 
 	// Incorrect password
 	auth = basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:password"))
-	rq.Header().Set(echo.HeaderAuthorization, auth)
+	req.Header().Set(echo.HeaderAuthorization, auth)
 	he := h(c).(*echo.HTTPError)
 	assert.Equal(t, http.StatusUnauthorized, he.Code)
-	assert.Equal(t, basic+" realm=Restricted", rs.Header().Get(echo.HeaderWWWAuthenticate))
+	assert.Equal(t, basic+" realm=Restricted", res.Header().Get(echo.HeaderWWWAuthenticate))
 
 	// Empty Authorization header
-	rq.Header().Set(echo.HeaderAuthorization, "")
+	req.Header().Set(echo.HeaderAuthorization, "")
 	he = h(c).(*echo.HTTPError)
 	assert.Equal(t, http.StatusUnauthorized, he.Code)
-	assert.Equal(t, basic+" realm=Restricted", rs.Header().Get(echo.HeaderWWWAuthenticate))
+	assert.Equal(t, basic+" realm=Restricted", res.Header().Get(echo.HeaderWWWAuthenticate))
 
 	// Invalid Authorization header
 	auth = base64.StdEncoding.EncodeToString([]byte("invalid"))
-	rq.Header().Set(echo.HeaderAuthorization, auth)
+	req.Header().Set(echo.HeaderAuthorization, auth)
 	he = h(c).(*echo.HTTPError)
 	assert.Equal(t, http.StatusUnauthorized, he.Code)
-	assert.Equal(t, basic+" realm=Restricted", rs.Header().Get(echo.HeaderWWWAuthenticate))
+	assert.Equal(t, basic+" realm=Restricted", res.Header().Get(echo.HeaderWWWAuthenticate))
 }

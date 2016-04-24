@@ -35,9 +35,9 @@ func TestContext(t *testing.T) {
 	invalidContent := "invalid content"
 
 	e := New()
-	rq := test.NewRequest(POST, "/", strings.NewReader(userJSON))
-	rc := test.NewResponseRecorder()
-	c := e.NewContext(rq, rc).(*context)
+	req := test.NewRequest(POST, "/", strings.NewReader(userJSON))
+	rec := test.NewResponseRecorder()
+	c := e.NewContext(req, rec).(*context)
 
 	// Request
 	assert.NotNil(t, c.Request())
@@ -89,8 +89,8 @@ func TestContext(t *testing.T) {
 	c.echo.SetRenderer(tpl)
 	err := c.Render(http.StatusOK, "hello", "Joe")
 	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rc.Status())
-		assert.Equal(t, "Hello, Joe!", rc.Body.String())
+		assert.Equal(t, http.StatusOK, rec.Status())
+		assert.Equal(t, "Hello, Joe!", rec.Body.String())
 	}
 
 	c.echo.renderer = nil
@@ -98,102 +98,102 @@ func TestContext(t *testing.T) {
 	assert.Error(t, err)
 
 	// JSON
-	rc = test.NewResponseRecorder()
-	c = e.NewContext(rq, rc).(*context)
+	rec = test.NewResponseRecorder()
+	c = e.NewContext(req, rec).(*context)
 	err = c.JSON(http.StatusOK, user{"1", "Joe"})
 	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rc.Status())
-		assert.Equal(t, MIMEApplicationJSONCharsetUTF8, rc.Header().Get(HeaderContentType))
-		assert.Equal(t, userJSON, rc.Body.String())
+		assert.Equal(t, http.StatusOK, rec.Status())
+		assert.Equal(t, MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, userJSON, rec.Body.String())
 	}
 
 	// JSON (error)
-	rc = test.NewResponseRecorder()
-	c = e.NewContext(rq, rc).(*context)
+	rec = test.NewResponseRecorder()
+	c = e.NewContext(req, rec).(*context)
 	err = c.JSON(http.StatusOK, make(chan bool))
 	assert.Error(t, err)
 
 	// JSONP
-	rc = test.NewResponseRecorder()
-	c = e.NewContext(rq, rc).(*context)
+	rec = test.NewResponseRecorder()
+	c = e.NewContext(req, rec).(*context)
 	callback := "callback"
 	err = c.JSONP(http.StatusOK, callback, user{"1", "Joe"})
 	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rc.Status())
-		assert.Equal(t, MIMEApplicationJavaScriptCharsetUTF8, rc.Header().Get(HeaderContentType))
-		assert.Equal(t, callback+"("+userJSON+");", rc.Body.String())
+		assert.Equal(t, http.StatusOK, rec.Status())
+		assert.Equal(t, MIMEApplicationJavaScriptCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, callback+"("+userJSON+");", rec.Body.String())
 	}
 
 	// XML
-	rc = test.NewResponseRecorder()
-	c = e.NewContext(rq, rc).(*context)
+	rec = test.NewResponseRecorder()
+	c = e.NewContext(req, rec).(*context)
 	err = c.XML(http.StatusOK, user{"1", "Joe"})
 	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rc.Status())
-		assert.Equal(t, MIMEApplicationXMLCharsetUTF8, rc.Header().Get(HeaderContentType))
-		assert.Equal(t, xml.Header+userXML, rc.Body.String())
+		assert.Equal(t, http.StatusOK, rec.Status())
+		assert.Equal(t, MIMEApplicationXMLCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, xml.Header+userXML, rec.Body.String())
 	}
 
 	// XML (error)
-	rc = test.NewResponseRecorder()
-	c = e.NewContext(rq, rc).(*context)
+	rec = test.NewResponseRecorder()
+	c = e.NewContext(req, rec).(*context)
 	err = c.XML(http.StatusOK, make(chan bool))
 	assert.Error(t, err)
 
 	// String
-	rc = test.NewResponseRecorder()
-	c = e.NewContext(rq, rc).(*context)
+	rec = test.NewResponseRecorder()
+	c = e.NewContext(req, rec).(*context)
 	err = c.String(http.StatusOK, "Hello, World!")
 	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rc.Status())
-		assert.Equal(t, MIMETextPlainCharsetUTF8, rc.Header().Get(HeaderContentType))
-		assert.Equal(t, "Hello, World!", rc.Body.String())
+		assert.Equal(t, http.StatusOK, rec.Status())
+		assert.Equal(t, MIMETextPlainCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, "Hello, World!", rec.Body.String())
 	}
 
 	// HTML
-	rc = test.NewResponseRecorder()
-	c = e.NewContext(rq, rc).(*context)
+	rec = test.NewResponseRecorder()
+	c = e.NewContext(req, rec).(*context)
 	err = c.HTML(http.StatusOK, "Hello, <strong>World!</strong>")
 	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rc.Status())
-		assert.Equal(t, MIMETextHTMLCharsetUTF8, rc.Header().Get(HeaderContentType))
-		assert.Equal(t, "Hello, <strong>World!</strong>", rc.Body.String())
+		assert.Equal(t, http.StatusOK, rec.Status())
+		assert.Equal(t, MIMETextHTMLCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, "Hello, <strong>World!</strong>", rec.Body.String())
 	}
 
 	// Attachment
-	rc = test.NewResponseRecorder()
-	c = e.NewContext(rq, rc).(*context)
+	rec = test.NewResponseRecorder()
+	c = e.NewContext(req, rec).(*context)
 	file, err := os.Open("_fixture/images/walle.png")
 	if assert.NoError(t, err) {
 		err = c.Attachment(file, "walle.png")
 		if assert.NoError(t, err) {
-			assert.Equal(t, http.StatusOK, rc.Status())
-			assert.Equal(t, "attachment; filename=walle.png", rc.Header().Get(HeaderContentDisposition))
-			assert.Equal(t, 219885, rc.Body.Len())
+			assert.Equal(t, http.StatusOK, rec.Status())
+			assert.Equal(t, "attachment; filename=walle.png", rec.Header().Get(HeaderContentDisposition))
+			assert.Equal(t, 219885, rec.Body.Len())
 		}
 	}
 
 	// NoContent
-	rc = test.NewResponseRecorder()
-	c = e.NewContext(rq, rc).(*context)
+	rec = test.NewResponseRecorder()
+	c = e.NewContext(req, rec).(*context)
 	c.NoContent(http.StatusOK)
-	assert.Equal(t, http.StatusOK, rc.Status())
+	assert.Equal(t, http.StatusOK, rec.Status())
 
 	// Redirect
-	rc = test.NewResponseRecorder()
-	c = e.NewContext(rq, rc).(*context)
+	rec = test.NewResponseRecorder()
+	c = e.NewContext(req, rec).(*context)
 	assert.Equal(t, nil, c.Redirect(http.StatusMovedPermanently, "http://labstack.github.io/echo"))
-	assert.Equal(t, http.StatusMovedPermanently, rc.Status())
-	assert.Equal(t, "http://labstack.github.io/echo", rc.Header().Get(HeaderLocation))
+	assert.Equal(t, http.StatusMovedPermanently, rec.Status())
+	assert.Equal(t, "http://labstack.github.io/echo", rec.Header().Get(HeaderLocation))
 
 	// Error
-	rc = test.NewResponseRecorder()
-	c = e.NewContext(rq, rc).(*context)
+	rec = test.NewResponseRecorder()
+	c = e.NewContext(req, rec).(*context)
 	c.Error(errors.New("error"))
-	assert.Equal(t, http.StatusInternalServerError, rc.Status())
+	assert.Equal(t, http.StatusInternalServerError, rec.Status())
 
 	// Reset
-	c.Reset(rq, test.NewResponseRecorder())
+	c.Reset(req, test.NewResponseRecorder())
 }
 
 func TestContextPath(t *testing.T) {
@@ -215,9 +215,9 @@ func TestContextQueryParam(t *testing.T) {
 	q := make(url.Values)
 	q.Set("name", "joe")
 	q.Set("email", "joe@labstack.com")
-	rq := test.NewRequest(GET, "/?"+q.Encode(), nil)
+	req := test.NewRequest(GET, "/?"+q.Encode(), nil)
 	e := New()
-	c := e.NewContext(rq, nil)
+	c := e.NewContext(req, nil)
 	assert.Equal(t, "joe", c.QueryParam("name"))
 	assert.Equal(t, "joe@labstack.com", c.QueryParam("email"))
 }
@@ -228,10 +228,10 @@ func TestContextFormValue(t *testing.T) {
 	f.Set("email", "joe@labstack.com")
 
 	e := New()
-	rq := test.NewRequest(POST, "/", strings.NewReader(f.Encode()))
-	rq.Header().Add(HeaderContentType, MIMEApplicationForm)
+	req := test.NewRequest(POST, "/", strings.NewReader(f.Encode()))
+	req.Header().Add(HeaderContentType, MIMEApplicationForm)
 
-	c := e.NewContext(rq, nil)
+	c := e.NewContext(req, nil)
 	assert.Equal(t, "joe", c.FormValue("name"))
 	assert.Equal(t, "joe@labstack.com", c.FormValue("email"))
 }
@@ -244,9 +244,9 @@ func TestContextNetContext(t *testing.T) {
 
 func TestContextServeContent(t *testing.T) {
 	e := New()
-	rq := test.NewRequest(GET, "/", nil)
-	rc := test.NewResponseRecorder()
-	c := e.NewContext(rq, rc)
+	req := test.NewRequest(GET, "/", nil)
+	rec := test.NewResponseRecorder()
+	c := e.NewContext(req, rec)
 
 	fs := http.Dir("_fixture/images")
 	f, err := fs.Open("walle.png")
@@ -255,15 +255,15 @@ func TestContextServeContent(t *testing.T) {
 		if assert.NoError(t, err) {
 			// Not cached
 			if assert.NoError(t, c.ServeContent(f, fi.Name(), fi.ModTime())) {
-				assert.Equal(t, http.StatusOK, rc.Status())
+				assert.Equal(t, http.StatusOK, rec.Status())
 			}
 
 			// Cached
-			rc = test.NewResponseRecorder()
-			c = e.NewContext(rq, rc)
-			rq.Header().Set(HeaderIfModifiedSince, fi.ModTime().UTC().Format(http.TimeFormat))
+			rec = test.NewResponseRecorder()
+			c = e.NewContext(req, rec)
+			req.Header().Set(HeaderIfModifiedSince, fi.ModTime().UTC().Format(http.TimeFormat))
 			if assert.NoError(t, c.ServeContent(f, fi.Name(), fi.ModTime())) {
-				assert.Equal(t, http.StatusNotModified, rc.Status())
+				assert.Equal(t, http.StatusNotModified, rec.Status())
 			}
 		}
 	}

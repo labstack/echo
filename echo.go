@@ -229,10 +229,10 @@ func New() (e *Echo) {
 }
 
 // NewContext returns a Context instance.
-func (e *Echo) NewContext(rq engine.Request, rs engine.Response) Context {
+func (e *Echo) NewContext(req engine.Request, res engine.Response) Context {
 	return &context{
-		request:  rq,
-		response: rs,
+		request:  req,
+		response: res,
 		echo:     e,
 		pvalues:  make([]string, *e.maxParam),
 		store:    make(store),
@@ -520,14 +520,14 @@ func (e *Echo) PutContext(c Context) {
 	e.pool.Put(c)
 }
 
-func (e *Echo) ServeHTTP(rq engine.Request, rs engine.Response) {
+func (e *Echo) ServeHTTP(req engine.Request, res engine.Response) {
 	c := e.pool.Get().(*context)
-	c.Reset(rq, rs)
+	c.Reset(req, res)
 
 	// Middleware
 	h := func(Context) error {
-		method := rq.Method()
-		path := rq.URL().Path()
+		method := req.Method()
+		path := req.URL().Path()
 		e.router.Find(method, path, c)
 		h := c.handler
 		for i := len(e.middleware) - 1; i >= 0; i-- {
@@ -575,15 +575,15 @@ func (e *HTTPError) Error() string {
 }
 
 func (b *binder) Bind(i interface{}, c Context) (err error) {
-	rq := c.Request()
-	ct := rq.Header().Get(HeaderContentType)
+	req := c.Request()
+	ct := req.Header().Get(HeaderContentType)
 	err = ErrUnsupportedMediaType
 	if strings.HasPrefix(ct, MIMEApplicationJSON) {
-		if err = json.NewDecoder(rq.Body()).Decode(i); err != nil {
+		if err = json.NewDecoder(req.Body()).Decode(i); err != nil {
 			err = NewHTTPError(http.StatusBadRequest, err.Error())
 		}
 	} else if strings.HasPrefix(ct, MIMEApplicationXML) {
-		if err = xml.NewDecoder(rq.Body()).Decode(i); err != nil {
+		if err = xml.NewDecoder(req.Body()).Decode(i); err != nil {
 			err = NewHTTPError(http.StatusBadRequest, err.Error())
 		}
 	}

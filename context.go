@@ -452,19 +452,19 @@ func (c *context) Logger() *log.Logger {
 }
 
 func (c *context) ServeContent(content io.ReadSeeker, name string, modtime time.Time) error {
-	rq := c.Request()
-	rs := c.Response()
+	req := c.Request()
+	res := c.Response()
 
-	if t, err := time.Parse(http.TimeFormat, rq.Header().Get(HeaderIfModifiedSince)); err == nil && modtime.Before(t.Add(1*time.Second)) {
-		rs.Header().Del(HeaderContentType)
-		rs.Header().Del(HeaderContentLength)
+	if t, err := time.Parse(http.TimeFormat, req.Header().Get(HeaderIfModifiedSince)); err == nil && modtime.Before(t.Add(1*time.Second)) {
+		res.Header().Del(HeaderContentType)
+		res.Header().Del(HeaderContentLength)
 		return c.NoContent(http.StatusNotModified)
 	}
 
-	rs.Header().Set(HeaderContentType, ContentTypeByExtension(name))
-	rs.Header().Set(HeaderLastModified, modtime.UTC().Format(http.TimeFormat))
-	rs.WriteHeader(http.StatusOK)
-	_, err := io.Copy(rs, content)
+	res.Header().Set(HeaderContentType, ContentTypeByExtension(name))
+	res.Header().Set(HeaderLastModified, modtime.UTC().Format(http.TimeFormat))
+	res.WriteHeader(http.StatusOK)
+	_, err := io.Copy(res, content)
 	return err
 }
 
@@ -478,10 +478,10 @@ func ContentTypeByExtension(name string) (t string) {
 	return
 }
 
-func (c *context) Reset(rq engine.Request, rs engine.Response) {
+func (c *context) Reset(req engine.Request, res engine.Response) {
 	c.netContext = nil
-	c.request = rq
-	c.response = rs
+	c.request = req
+	c.response = res
 	c.store = nil
 	c.handler = notFoundHandler
 }

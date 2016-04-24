@@ -26,8 +26,8 @@ func AddTrailingSlash() echo.MiddlewareFunc {
 func AddTrailingSlashWithConfig(config TrailingSlashConfig) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			rq := c.Request()
-			url := rq.URL()
+			req := c.Request()
+			url := req.URL()
 			path := url.Path()
 			qs := url.QueryString()
 			if path != "/" && path[len(path)-1] != '/' {
@@ -39,7 +39,7 @@ func AddTrailingSlashWithConfig(config TrailingSlashConfig) echo.MiddlewareFunc 
 				if config.RedirectCode != 0 {
 					return c.Redirect(config.RedirectCode, uri)
 				}
-				rq.SetURI(uri)
+				req.SetURI(uri)
 				url.SetPath(path)
 			}
 			return next(c)
@@ -60,8 +60,8 @@ func RemoveTrailingSlash() echo.MiddlewareFunc {
 func RemoveTrailingSlashWithConfig(config TrailingSlashConfig) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			rq := c.Request()
-			url := rq.URL()
+			req := c.Request()
+			url := req.URL()
 			path := url.Path()
 			qs := url.QueryString()
 			l := len(path) - 1
@@ -74,7 +74,7 @@ func RemoveTrailingSlashWithConfig(config TrailingSlashConfig) echo.MiddlewareFu
 				if config.RedirectCode != 0 {
 					return c.Redirect(config.RedirectCode, uri)
 				}
-				rq.SetURI(uri)
+				req.SetURI(uri)
 				url.SetPath(path)
 			}
 			return next(c)

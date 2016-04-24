@@ -11,52 +11,52 @@ import (
 
 func TestAddTrailingSlash(t *testing.T) {
 	e := echo.New()
-	rq := test.NewRequest(echo.GET, "/add-slash", nil)
-	rc := test.NewResponseRecorder()
-	c := e.NewContext(rq, rc)
+	req := test.NewRequest(echo.GET, "/add-slash", nil)
+	rec := test.NewResponseRecorder()
+	c := e.NewContext(req, rec)
 	h := AddTrailingSlash()(func(c echo.Context) error {
 		return nil
 	})
 	h(c)
-	assert.Equal(t, "/add-slash/", rq.URL().Path())
-	assert.Equal(t, "/add-slash/", rq.URI())
+	assert.Equal(t, "/add-slash/", req.URL().Path())
+	assert.Equal(t, "/add-slash/", req.URI())
 
 	// With config
-	rq = test.NewRequest(echo.GET, "/add-slash?key=value", nil)
-	rc = test.NewResponseRecorder()
-	c = e.NewContext(rq, rc)
+	req = test.NewRequest(echo.GET, "/add-slash?key=value", nil)
+	rec = test.NewResponseRecorder()
+	c = e.NewContext(req, rec)
 	h = AddTrailingSlashWithConfig(TrailingSlashConfig{
 		RedirectCode: http.StatusMovedPermanently,
 	})(func(c echo.Context) error {
 		return nil
 	})
 	h(c)
-	assert.Equal(t, http.StatusMovedPermanently, rc.Status())
-	assert.Equal(t, "/add-slash/?key=value", rc.Header().Get(echo.HeaderLocation))
+	assert.Equal(t, http.StatusMovedPermanently, rec.Status())
+	assert.Equal(t, "/add-slash/?key=value", rec.Header().Get(echo.HeaderLocation))
 }
 
 func TestRemoveTrailingSlash(t *testing.T) {
 	e := echo.New()
-	rq := test.NewRequest(echo.GET, "/remove-slash/", nil)
-	rc := test.NewResponseRecorder()
-	c := e.NewContext(rq, rc)
+	req := test.NewRequest(echo.GET, "/remove-slash/", nil)
+	rec := test.NewResponseRecorder()
+	c := e.NewContext(req, rec)
 	h := RemoveTrailingSlash()(func(c echo.Context) error {
 		return nil
 	})
 	h(c)
-	assert.Equal(t, "/remove-slash", rq.URL().Path())
-	assert.Equal(t, "/remove-slash", rq.URI())
+	assert.Equal(t, "/remove-slash", req.URL().Path())
+	assert.Equal(t, "/remove-slash", req.URI())
 
 	// With config
-	rq = test.NewRequest(echo.GET, "/remove-slash/?key=value", nil)
-	rc = test.NewResponseRecorder()
-	c = e.NewContext(rq, rc)
+	req = test.NewRequest(echo.GET, "/remove-slash/?key=value", nil)
+	rec = test.NewResponseRecorder()
+	c = e.NewContext(req, rec)
 	h = RemoveTrailingSlashWithConfig(TrailingSlashConfig{
 		RedirectCode: http.StatusMovedPermanently,
 	})(func(c echo.Context) error {
 		return nil
 	})
 	h(c)
-	assert.Equal(t, http.StatusMovedPermanently, rc.Status())
-	assert.Equal(t, "/remove-slash?key=value", rc.Header().Get(echo.HeaderLocation))
+	assert.Equal(t, http.StatusMovedPermanently, rec.Status())
+	assert.Equal(t, "/remove-slash?key=value", rec.Header().Get(echo.HeaderLocation))
 }

@@ -75,7 +75,7 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			rq := c.Request()
+			req := c.Request()
 			origin := c.Request().Header().Get(echo.HeaderOrigin)
 			header := c.Response().Header()
 
@@ -89,7 +89,7 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 			}
 
 			// Simple request
-			if rq.Method() != echo.OPTIONS {
+			if req.Method() != echo.OPTIONS {
 				header.Add(echo.HeaderVary, echo.HeaderOrigin)
 				if origin == "" || allowedOrigin == "" {
 					return next(c)
@@ -119,7 +119,7 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 			if allowHeaders != "" {
 				header.Set(echo.HeaderAccessControlAllowHeaders, allowHeaders)
 			} else {
-				h := rq.Header().Get(echo.HeaderAccessControlRequestHeaders)
+				h := req.Header().Get(echo.HeaderAccessControlRequestHeaders)
 				if h != "" {
 					header.Set(echo.HeaderAccessControlAllowHeaders, h)
 				}
