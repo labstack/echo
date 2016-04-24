@@ -1,11 +1,13 @@
 package middleware
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/labstack/echo"
@@ -39,6 +41,7 @@ type (
 
 		template *fasttemplate.Template
 		color    *color.Color
+		bufferPool sync.Pool
 	}
 )
 
@@ -73,6 +76,11 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 	if w, ok := config.Output.(*os.File); !ok || !isatty.IsTerminal(w.Fd()) {
 		config.color.Disable()
 	}
+	config.bufferPool = sync.Pool{
+		New: func() interface{} {
+			return bytes.NewBuffer(make([]byte, 256))
+		},
+	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) (err error) {
@@ -84,7 +92,11 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 			}
 			stop := time.Now()
 
-			_, err = config.template.ExecuteFunc(config.Output, func(w io.Writer, tag string) (int, error) {
+			buffer := config.bufferPool.Get().(*bytes.Buffer)
+			buffer.Reset()
+			defer config.bufferPool.Put(buffer)
+
+			_, err = config.template.ExecuteFunc(buffer, func(w io.Writer, tag string) (int, error) {
 				switch tag {
 				case "time_rfc3339":
 					return w.Write([]byte(time.Now().Format(time.RFC3339)))
@@ -128,6 +140,9 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 					return w.Write([]byte(fmt.Sprintf("[unknown tag %s]", tag)))
 				}
 			})
+			if err == nil {
+				config.Output.Write(buffer.Bytes())
+			}
 			return
 		}
 	}
