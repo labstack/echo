@@ -237,6 +237,7 @@ Middleware | Description
 [Recover](https://labstack.com/echo/guide/middleware#recover-middleware:37ab2f15ff048f67959bcac0a6032f32) | Recover from panics
 [Gzip](https://labstack.com/echo/guide/middleware#gzip-middleware:37ab2f15ff048f67959bcac0a6032f32) | Send gzip HTTP response
 [BasicAuth](https://labstack.com/echo/guide/middleware#basicauth-middleware:37ab2f15ff048f67959bcac0a6032f32) | HTTP basic authentication
+[JWTAuth](https://labstack.com/echo/guide/middleware#jwtauth-middleware:37ab2f15ff048f67959bcac0a6032f32) | JWT authentication
 [CORS](https://labstack.com/echo/guide/middleware#cors-middleware:37ab2f15ff048f67959bcac0a6032f32) | Cross-Origin Resource Sharing
 [Static](https://labstack.com/echo/guide/static-files#using-static-middleware:123f9d1043075fe4874616541b409e4d) | Serve static files
 [AddTrailingSlash](https://labstack.com/echo/guide/middleware#addtrailingslash-middleware:37ab2f15ff048f67959bcac0a6032f32) | Add trailing slash to the request URI

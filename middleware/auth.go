@@ -70,7 +70,7 @@ var (
 //
 // For valid credentials it calls the next handler.
 // For invalid credentials, it sends "401 - Unauthorized" response.
-// For empty or invalid `Authorization` header, it sends "400 - Bad Request".
+// For empty or invalid `Authorization` header, it sends "400 - Bad Request" response.
 func BasicAuth(fn BasicAuthFunc) echo.MiddlewareFunc {
 	c := DefaultBasicAuthConfig
 	c.AuthFunc = fn
@@ -104,25 +104,6 @@ func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 			}
 			return echo.NewHTTPError(http.StatusBadRequest, "invalid basic-auth authorization header="+auth)
 		}
-	}
-}
-
-// JWTFromHeader is a `JWTExtractor` that extracts token from the `Authorization` request
-// header.
-func JWTFromHeader(c echo.Context) (string, error) {
-	auth := c.Request().Header().Get(echo.HeaderAuthorization)
-	l := len(bearer)
-	if len(auth) > l+1 && auth[:l] == bearer {
-		return auth[l+1:], nil
-	}
-	return "", echo.NewHTTPError(http.StatusBadRequest, "invalid jwt authorization header="+auth)
-}
-
-// JWTFromQuery returns a `JWTExtractor` that extracts token from the provided query
-// parameter.
-func JWTFromQuery(param string) JWTExtractor {
-	return func(c echo.Context) (string, error) {
-		return c.QueryParam(param), nil
 	}
 }
 
@@ -177,5 +158,24 @@ func JWTAuthWithConfig(config JWTAuthConfig) echo.MiddlewareFunc {
 			}
 			return echo.ErrUnauthorized
 		}
+	}
+}
+
+// JWTFromHeader is a `JWTExtractor` that extracts token from the `Authorization` request
+// header.
+func JWTFromHeader(c echo.Context) (string, error) {
+	auth := c.Request().Header().Get(echo.HeaderAuthorization)
+	l := len(bearer)
+	if len(auth) > l+1 && auth[:l] == bearer {
+		return auth[l+1:], nil
+	}
+	return "", echo.NewHTTPError(http.StatusBadRequest, "invalid jwt authorization header="+auth)
+}
+
+// JWTFromQuery returns a `JWTExtractor` that extracts token from the provided query
+// parameter.
+func JWTFromQuery(param string) JWTExtractor {
+	return func(c echo.Context) (string, error) {
+		return c.QueryParam(param), nil
 	}
 }
