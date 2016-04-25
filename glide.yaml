@@ -13,3 +13,4 @@ import:
 - package: github.com/stretchr/testify
   subpackages:
   - assert
+- package: github.com/dgrijalva/jwt-go

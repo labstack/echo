@@ -1,6 +1,8 @@
-hash: 44dfc8aaffca5078e71afdb209a0ef0a359a35f69fb98c7b6a2fb87a5a70e757
-updated: 2016-04-24T10:21:38.007105128-07:00
+hash: 21820434709470e49c64df0f854d3352088ca664d193e29bc6cd434518c27a7c
+updated: 2016-04-24T11:03:22.86754619-07:00
 imports:
+- name: github.com/dgrijalva/jwt-go
+  version: a2c85815a77d0f951e33ba4db5ae93629a1530af
 - name: github.com/klauspost/compress
   version: 14eb9c4951195779ecfbec34431a976de7335b0a
   subpackages:

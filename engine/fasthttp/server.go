@@ -37,11 +37,11 @@ func New(addr string) *Server {
 }
 
 // WithTLS returns `Server` with provided TLS config.
-func WithTLS(addr, certfile, keyfile string) *Server {
+func WithTLS(addr, certFile, keyFile string) *Server {
 	c := engine.Config{
 		Address:     addr,
-		TLSCertfile: certfile,
-		TLSKeyfile:  keyfile,
+		TLSCertfile: certFile,
+		TLSKeyfile:  keyFile,
 	}
 	return WithConfig(c)
 }
