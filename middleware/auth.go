@@ -23,7 +23,7 @@ type (
 	JWTAuthConfig struct {
 		// SigningKey is the key to validate token.
 		// Required.
-		SigningKey string
+		SigningKey []byte
 
 		// SigningMethod is used to check token signing method.
 		// Optional, with default value as `HS256`.
@@ -114,7 +114,7 @@ func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 // For empty or invalid `Authorization` header, it sends "400 - Bad Request".
 //
 // See https://jwt.io/introduction
-func JWTAuth(key string) echo.MiddlewareFunc {
+func JWTAuth(key []byte) echo.MiddlewareFunc {
 	c := DefaultJWTAuthConfig
 	c.SigningKey = key
 	return JWTAuthWithConfig(c)
@@ -124,7 +124,7 @@ func JWTAuth(key string) echo.MiddlewareFunc {
 // See `JWTAuth()`.
 func JWTAuthWithConfig(config JWTAuthConfig) echo.MiddlewareFunc {
 	// Defaults
-	if config.SigningKey == "" {
+	if config.SigningKey == nil {
 		panic("jwt middleware requires signing key")
 	}
 	if config.SigningMethod == "" {
@@ -148,7 +148,7 @@ func JWTAuthWithConfig(config JWTAuthConfig) echo.MiddlewareFunc {
 				if t.Method.Alg() != config.SigningMethod {
 					return nil, fmt.Errorf("unexpected jwt signing method=%v", t.Header["alg"])
 				}
-				return []byte(config.SigningKey), nil
+				return config.SigningKey, nil
 
 			})
 			if err == nil && token.Valid {

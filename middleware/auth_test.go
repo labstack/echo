@@ -67,7 +67,7 @@ func TestJWTAuth(t *testing.T) {
 	})
 
 	// Unexpected signing method
-	config.SigningKey = "secret"
+	config.SigningKey = []byte("secret")
 	config.SigningMethod = "RS256"
 	h := JWTAuthWithConfig(config)(handler)
 	he := h(c).(*echo.HTTPError)
@@ -76,13 +76,13 @@ func TestJWTAuth(t *testing.T) {
 	// Invalid key
 	auth := bearer + " " + token
 	req.Header().Set(echo.HeaderAuthorization, auth)
-	config.SigningKey = "invalid-key"
+	config.SigningKey = []byte("invalid-key")
 	h = JWTAuthWithConfig(config)(handler)
 	he = h(c).(*echo.HTTPError)
 	assert.Equal(t, http.StatusUnauthorized, he.Code)
 
 	// Valid JWT
-	h = JWTAuth("secret")(handler)
+	h = JWTAuth([]byte("secret"))(handler)
 	if assert.NoError(t, h(c)) {
 		user := c.Get("user").(*jwt.Token)
 		assert.Equal(t, user.Claims["name"], "John Doe")
@@ -90,7 +90,7 @@ func TestJWTAuth(t *testing.T) {
 
 	// Invalid Authorization header
 	req.Header().Set(echo.HeaderAuthorization, "invalid-auth")
-	h = JWTAuth("secret")(handler)
+	h = JWTAuth([]byte("secret"))(handler)
 	he = h(c).(*echo.HTTPError)
 	assert.Equal(t, http.StatusBadRequest, he.Code)
 }
