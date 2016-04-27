@@ -293,6 +293,11 @@ func (e *Echo) SetBinder(b Binder) {
 	e.binder = b
 }
 
+// Binder returns the binder instance.
+func (e *Echo) Binder() Binder {
+	return e.binder
+}
+
 // SetRenderer registers an HTML template renderer. It's invoked by `Context#Render()`.
 func (e *Echo) SetRenderer(r Renderer) {
 	e.renderer = r

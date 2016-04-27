@@ -333,3 +333,10 @@ func request(method, path string, e *Echo) (int, string) {
 	e.ServeHTTP(req, rec)
 	return rec.Status(), rec.Body.String()
 }
+
+func TestEchoBinder(t *testing.T) {
+	e := New()
+	b := &binder{}
+	e.SetBinder(b)
+	assert.Equal(t, b, e.Binder())
+}
