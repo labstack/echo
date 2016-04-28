@@ -24,7 +24,7 @@ type (
 		// Optional, with default value as `user`.
 		ContextKey string
 
-		// Extractor is a function that extracts token from the request
+		// Extractor is a function that extracts token from the request.
 		// Optional, with default values as `JWTFromHeader`.
 		Extractor JWTExtractor
 	}

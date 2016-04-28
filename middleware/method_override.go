@@ -7,6 +7,7 @@ import (
 type (
 	// MethodOverrideConfig defines the config for method override middleware.
 	MethodOverrideConfig struct {
+		// Getter is a function that gets overridden method from the request.
 		Getter MethodOverrideGetter
 	}
 
@@ -23,10 +24,10 @@ var (
 )
 
 // MethodOverride returns a method override middleware.
-// Method override middleware checks for the overriden method from the request and
+// Method override middleware checks for the overridden method from the request and
 // uses it instead of the original method.
 //
-// For security reasons, only `POST` method can be overriden.
+// For security reasons, only `POST` method can be overridden.
 func MethodOverride() echo.MiddlewareFunc {
 	return MethodOverrideWithConfig(DefaultMethodOverrideConfig)
 }

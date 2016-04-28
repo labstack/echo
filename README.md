@@ -242,6 +242,7 @@ Middleware | Description
 [Static](https://labstack.com/echo/guide/static-files#using-static-middleware:123f9d1043075fe4874616541b409e4d) | Serve static files
 [AddTrailingSlash](https://labstack.com/echo/guide/middleware#addtrailingslash-middleware:37ab2f15ff048f67959bcac0a6032f32) | Add trailing slash to the request URI
 [RemoveTrailingSlash](https://labstack.com/echo/guide/middleware#removetrailingslash-middleware:37ab2f15ff048f67959bcac0a6032f32) | Remove trailing slash from the request URI
+[MethodOverride](https://labstack.com/echo/guide/middleware#method-override-middleware:37ab2f15ff048f67959bcac0a6032f32) | Override request method
 
 ##### [More...](https://labstack.com/echo/guide/middleware)
 
