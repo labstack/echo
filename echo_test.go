@@ -333,3 +333,19 @@ func request(method, path string, e *Echo) (int, string) {
 	e.ServeHTTP(req, rec)
 	return rec.Status(), rec.Body.String()
 }
+
+func TestEchoBinder(t *testing.T) {
+	e := New()
+
+	binder := testBinder{}
+	assert.NotEqual(t, binder, e.Binder())
+
+	e.SetBinder(binder)
+	assert.Equal(t, binder, e.Binder())
+}
+
+type testBinder struct {}
+
+func (_ testBinder) Bind(_ interface{}, _ Context) error {
+	return nil
+}
