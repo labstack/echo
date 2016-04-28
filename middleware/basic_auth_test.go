@@ -40,11 +40,11 @@ func TestBasicAuth(t *testing.T) {
 	// Empty Authorization header
 	req.Header().Set(echo.HeaderAuthorization, "")
 	he = h(c).(*echo.HTTPError)
-	assert.Equal(t, http.StatusBadRequest, he.Code)
+	assert.Equal(t, http.StatusUnauthorized, he.Code)
 
 	// Invalid Authorization header
 	auth = base64.StdEncoding.EncodeToString([]byte("invalid"))
 	req.Header().Set(echo.HeaderAuthorization, auth)
 	he = h(c).(*echo.HTTPError)
-	assert.Equal(t, http.StatusBadRequest, he.Code)
+	assert.Equal(t, http.StatusUnauthorized, he.Code)
 }

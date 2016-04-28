@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"encoding/base64"
-	"net/http"
 
 	"github.com/labstack/echo"
 )
@@ -58,12 +57,12 @@ func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 						if config.Validator(cred[:i], cred[i+1:]) {
 							return next(c)
 						}
-						c.Response().Header().Set(echo.HeaderWWWAuthenticate, basic+" realm=Restricted")
-						return echo.ErrUnauthorized
 					}
 				}
 			}
-			return echo.NewHTTPError(http.StatusBadRequest, "invalid basic-auth authorization header="+auth)
+			// Need to return `401` for browsers to pop-up login box.
+			c.Response().Header().Set(echo.HeaderWWWAuthenticate, basic+" realm=Restricted")
+			return echo.ErrUnauthorized
 		}
 	}
 }

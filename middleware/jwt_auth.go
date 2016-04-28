@@ -114,7 +114,7 @@ func JWTFromHeader(c echo.Context) (string, error) {
 	if len(auth) > l+1 && auth[:l] == bearer {
 		return auth[l+1:], nil
 	}
-	return "", echo.NewHTTPError(http.StatusBadRequest, "invalid jwt authorization header="+auth)
+	return "", echo.NewHTTPError(http.StatusBadRequest, "empty or invalid authorization header="+auth)
 }
 
 // JWTFromQuery returns a `JWTExtractor` that extracts token from the provided query
