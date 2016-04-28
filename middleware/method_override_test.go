@@ -10,34 +10,40 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestOverrideMtrhod(t *testing.T) {
+func TestMethodOverride(t *testing.T) {
 	e := echo.New()
-	methodOverride := OverrideMethod()
-	h := methodOverride(func(c echo.Context) error {
-		return c.String(http.StatusOK, c.Request().Method())
-	})
+	m := MethodOverride()
+	h := func(c echo.Context) error {
+		return c.String(http.StatusOK, "Okay")
+	}
 
 	// Override with http header
-	rq := test.NewRequest(echo.POST, "/", nil)
-	rq.Header().Set(HttpMethodOverrideHeader, "DELETE")
-	rc := test.NewResponseRecorder()
-	c := e.NewContext(rq, rc)
-	h(c)
-	assert.Equal(t, "DELETE", rc.Body.String())
+	req := test.NewRequest(echo.POST, "/", nil)
+	rec := test.NewResponseRecorder()
+	req.Header().Set(echo.HeaderXHTTPMethodOverride, echo.DELETE)
+	c := e.NewContext(req, rec)
+	m(h)(c)
+	assert.Equal(t, echo.DELETE, req.Method())
 
-	// Override with body parameter
-	rq = test.NewRequest(echo.POST, "/", bytes.NewReader([]byte("_method=DELETE")))
-	rq.Header().Set(echo.HeaderContentType, echo.MIMEApplicationForm)
-	rc = test.NewResponseRecorder()
-	c = e.NewContext(rq, rc)
-	h(c)
-	assert.Equal(t, "DELETE", rc.Body.String())
+	// Override with form parameter
+	m = MethodOverrideWithConfig(MethodOverrideConfig{Getter: MethodFromForm("_method")})
+	req = test.NewRequest(echo.POST, "/", bytes.NewReader([]byte("_method="+echo.DELETE)))
+	rec = test.NewResponseRecorder()
+	req.Header().Set(echo.HeaderContentType, echo.MIMEApplicationForm)
+	c = e.NewContext(req, rec)
+	m(h)(c)
+	assert.Equal(t, echo.DELETE, req.Method())
 
-	// Ignore GET
-	rq = test.NewRequest(echo.GET, "/", nil)
-	rq.Header().Set(HttpMethodOverrideHeader, "DELETE")
-	rc = test.NewResponseRecorder()
-	c = e.NewContext(rq, rc)
-	h(c)
-	assert.Equal(t, "GET", rc.Body.String())
+	// Override with query paramter
+	m = MethodOverrideWithConfig(MethodOverrideConfig{Getter: MethodFromQuery("_method")})
+	req = test.NewRequest(echo.POST, "/?_method="+echo.DELETE, nil)
+	rec = test.NewResponseRecorder()
+	c = e.NewContext(req, rec)
+	m(h)(c)
+	assert.Equal(t, echo.DELETE, req.Method())
+
+	// Ignore `GET`
+	req = test.NewRequest(echo.GET, "/", nil)
+	req.Header().Set(echo.HeaderXHTTPMethodOverride, echo.DELETE)
+	assert.Equal(t, echo.GET, req.Method())
 }

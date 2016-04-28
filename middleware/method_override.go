@@ -4,36 +4,70 @@ import (
 	"github.com/labstack/echo"
 )
 
-const (
-	HttpMethodOverrideHeader = "X-HTTP-Method-Override"
+type (
+	// MethodOverrideConfig defines the config for method override middleware.
+	MethodOverrideConfig struct {
+		Getter MethodOverrideGetter
+	}
+
+	// MethodOverrideGetter is a function that gets overridden method from the request
+	// Optional, with default values as `MethodFromHeader(echo.HeaderXHTTPMethodOverride)`.
+	MethodOverrideGetter func(echo.Context) string
 )
 
-func OverrideMethod() echo.MiddlewareFunc {
-	return Override()
+var (
+	// DefaultMethodOverrideConfig is the default method override middleware config.
+	DefaultMethodOverrideConfig = MethodOverrideConfig{
+		Getter: MethodFromHeader(echo.HeaderXHTTPMethodOverride),
+	}
+)
+
+// MethodOverride returns a method override middleware.
+// Method override middleware checks for the overriden method from the request and
+// uses it instead of the original method.
+//
+// For security reasons, only `POST` method can be overriden.
+func MethodOverride() echo.MiddlewareFunc {
+	return MethodOverrideWithConfig(DefaultMethodOverrideConfig)
 }
 
-// Override checks for the X-HTTP-Method-Override header
-// or the body for parameter, `_method`
-// and uses the http method instead of Request.Method.
-// It isn't secure to override e.g a GET to a POST,
-// so only Request.Method which are POSTs are considered.
-func Override() echo.MiddlewareFunc {
+// MethodOverrideWithConfig returns a method override middleware from config.
+// See `MethodOverride()`.
+func MethodOverrideWithConfig(config MethodOverrideConfig) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			originalMethod := c.Request().Method()
-
-			if originalMethod == "POST" {
-				m := c.FormValue("_method")
-				if m != "" {
-					c.Request().SetMethod(m)
-				}
-				m = c.Request().Header().Get(HttpMethodOverrideHeader)
+			req := c.Request()
+			if req.Method() == echo.POST {
+				m := config.Getter(c)
 				if m != "" {
 					c.Request().SetMethod(m)
 				}
 			}
-
 			return next(c)
 		}
+	}
+}
+
+// MethodFromHeader is a `MethodOverrideGetter` that gets overridden method from
+// the request header.
+func MethodFromHeader(header string) MethodOverrideGetter {
+	return func(c echo.Context) string {
+		return c.Request().Header().Get(header)
+	}
+}
+
+// MethodFromForm is a `MethodOverrideGetter` that gets overridden method from the
+// form parameter.
+func MethodFromForm(param string) MethodOverrideGetter {
+	return func(c echo.Context) string {
+		return c.FormValue(param)
+	}
+}
+
+// MethodFromQuery is a `MethodOverrideGetter` that gets overridden method from
+// the query parameter.
+func MethodFromQuery(param string) MethodOverrideGetter {
+	return func(c echo.Context) string {
+		return c.QueryParam(param)
 	}
 }

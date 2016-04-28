@@ -162,6 +162,7 @@ const (
 	HeaderUpgrade                       = "Upgrade"
 	HeaderVary                          = "Vary"
 	HeaderWWWAuthenticate               = "WWW-Authenticate"
+	HeaderXHTTPMethodOverride           = "X-HTTP-Method-Override"
 	HeaderXForwardedFor                 = "X-Forwarded-For"
 	HeaderXRealIP                       = "X-Real-IP"
 	HeaderServer                        = "Server"
