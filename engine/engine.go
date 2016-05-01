@@ -69,6 +69,9 @@ type (
 		// Body returns request's body.
 		Body() io.Reader
 
+		// Body sets request's body.
+		SetBody(io.Reader)
+
 		// FormValue returns the form field value for the provided name.
 		FormValue(string) string
 

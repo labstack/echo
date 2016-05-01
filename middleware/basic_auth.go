@@ -21,20 +21,13 @@ const (
 	basic = "Basic"
 )
 
-var (
-	// DefaultBasicAuthConfig is the default basic auth middleware config.
-	DefaultBasicAuthConfig = BasicAuthConfig{}
-)
-
 // BasicAuth returns an HTTP basic auth middleware.
 //
 // For valid credentials it calls the next handler.
 // For invalid credentials, it sends "401 - Unauthorized" response.
 // For empty or invalid `Authorization` header, it sends "400 - Bad Request" response.
 func BasicAuth(fn BasicAuthValidator) echo.MiddlewareFunc {
-	c := DefaultBasicAuthConfig
-	c.Validator = fn
-	return BasicAuthWithConfig(c)
+	return BasicAuthWithConfig(BasicAuthConfig{fn})
 }
 
 // BasicAuthWithConfig returns an HTTP basic auth middleware from config.

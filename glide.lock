@@ -1,5 +1,5 @@
 hash: 21820434709470e49c64df0f854d3352088ca664d193e29bc6cd434518c27a7c
-updated: 2016-04-24T11:03:22.86754619-07:00
+updated: 2016-04-30T19:53:13.742557404-07:00
 imports:
 - name: github.com/dgrijalva/jwt-go
   version: a2c85815a77d0f951e33ba4db5ae93629a1530af
@@ -14,7 +14,7 @@ imports:
 - name: github.com/klauspost/crc32
   version: 19b0b332c9e4516a6370a0456e6182c3b5036720
 - name: github.com/labstack/gommon
-  version: 4fae226dd67b1100622ab213e798e5ee4c5d4230
+  version: 2e62be24dbb1ceb226554aaccfe5a89ec71043b3
   subpackages:
   - color
   - log
@@ -27,16 +27,16 @@ imports:
   subpackages:
   - assert
 - name: github.com/valyala/fasthttp
-  version: 229698876475fef591fb04fabba5479fc3182291
+  version: 3509bd8a7d1d9e9a9a4e8594e78af85fc01e2fba
 - name: github.com/valyala/fasttemplate
   version: 3b874956e03f1636d171bda64b130f9135f42cff
 - name: golang.org/x/net
-  version: b797637b7aeeed133049c7281bfa31dcc9ca42d6
+  version: 1aafd77e1e7f6849ad16a7bdeb65e3589a10b2bb
   subpackages:
   - context
   - websocket
 - name: golang.org/x/sys
-  version: f64b50fbea64174967a8882830d621a18ee1548e
+  version: b776ec39b3e54652e09028aaaaac9757f4f8211a
   subpackages:
   - unix
 devImports: []

@@ -7,6 +7,7 @@ import (
 	"io"
 	"mime/multipart"
 
+	"github.com/labstack/echo"
 	"github.com/labstack/echo/engine"
 	"github.com/labstack/gommon/log"
 	"github.com/valyala/fasthttp"
@@ -95,6 +96,11 @@ func (r *Request) SetURI(uri string) {
 // Body implements `engine.Request#Body` function.
 func (r *Request) Body() io.Reader {
 	return bytes.NewBuffer(r.PostBody())
+}
+
+// SetBody implements `engine.Request#SetBody` function.
+func (r *Request) SetBody(reader io.Reader) {
+	r.SetBodyStream(reader, r.header.Get(echo.HeaderContentType))
 }
 
 // FormValue implements `engine.Request#FormValue` function.

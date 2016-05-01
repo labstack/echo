@@ -2,6 +2,7 @@ package test
 
 import (
 	"io"
+	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 
@@ -91,6 +92,10 @@ func (r *Request) SetURI(uri string) {
 
 func (r *Request) Body() io.Reader {
 	return r.request.Body
+}
+
+func (r *Request) SetBody(reader io.Reader) {
+	r.request.Body = ioutil.NopCloser(reader)
 }
 
 func (r *Request) FormValue(name string) string {
