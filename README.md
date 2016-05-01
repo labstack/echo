@@ -233,6 +233,7 @@ e.GET("/users", func(c echo.Context) error {
 
 Middleware | Description
 :--- | :---
+[BodyLimit](https://labstack.com/echo/guide/middleware#bodylimit-middleware:37ab2f15ff048f67959bcac0a6032f32) | Limit request body 
 [Logger](https://labstack.com/echo/guide/middleware#logger-middleware:37ab2f15ff048f67959bcac0a6032f32) | Log HTTP requests
 [Recover](https://labstack.com/echo/guide/middleware#recover-middleware:37ab2f15ff048f67959bcac0a6032f32) | Recover from panics
 [Gzip](https://labstack.com/echo/guide/middleware#gzip-middleware:37ab2f15ff048f67959bcac0a6032f32) | Send gzip HTTP response

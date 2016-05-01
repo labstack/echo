@@ -13,6 +13,8 @@ import (
 type (
 	// BodyLimitConfig defines the config for body limit middleware.
 	BodyLimitConfig struct {
+		// Limit is the maximum allowed size for a request body, it can be specified
+		// as `4x` or `4xB`, where x is one of the multiple from K, M, G, T or P.
 		Limit string `json:"limit"`
 		limit int
 	}
@@ -31,7 +33,7 @@ type (
 // size exceeds the configured limit, it sends "413 - Request Entity Too Large"
 // response. The body limit is determined based on the actually read and not `Content-Length`
 // request header, which makes it super secure.
-// Limit can be specifed as `4x` or `4xB`, where x is one of the multple from K, M,
+// Limit can be specified as `4x` or `4xB`, where x is one of the multiple from K, M,
 // G, T or P.
 func BodyLimit(limit string) echo.MiddlewareFunc {
 	return BodyLimitWithConfig(BodyLimitConfig{Limit: limit})
