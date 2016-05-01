@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
+	"strings"
 
 	"github.com/labstack/echo/engine"
 )
@@ -15,6 +16,10 @@ type (
 		url     engine.URL
 		header  engine.Header
 	}
+)
+
+const (
+	defaultMemory = 32 << 20 // 32 MB
 )
 
 func NewRequest(method, url string, body io.Reader) engine.Request {
@@ -103,8 +108,16 @@ func (r *Request) FormValue(name string) string {
 }
 
 func (r *Request) FormParams() map[string][]string {
-	r.request.ParseForm()
-	return map[string][]string(r.request.PostForm)
+	if strings.HasPrefix(r.header.Get("Content-Type"), "multipart/form-data") {
+		if err := r.request.ParseMultipartForm(defaultMemory); err != nil {
+			panic(err)
+		}
+	} else {
+		if err := r.request.ParseForm(); err != nil {
+			panic(err)
+		}
+	}
+	return map[string][]string(r.request.Form)
 }
 
 func (r *Request) FormFile(name string) (*multipart.FileHeader, error) {
@@ -113,7 +126,7 @@ func (r *Request) FormFile(name string) (*multipart.FileHeader, error) {
 }
 
 func (r *Request) MultipartForm() (*multipart.Form, error) {
-	err := r.request.ParseMultipartForm(32 << 20) // 32 MB
+	err := r.request.ParseMultipartForm(defaultMemory)
 	return r.request.MultipartForm, err
 }
 

@@ -5,7 +5,9 @@ import (
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
+	"strings"
 
+	"github.com/labstack/echo"
 	"github.com/labstack/echo/engine"
 	"github.com/labstack/gommon/log"
 )
@@ -18,6 +20,10 @@ type (
 		header engine.Header
 		logger *log.Logger
 	}
+)
+
+const (
+	defaultMemory = 32 << 20 // 32 MB
 )
 
 // NewRequest returns `Request` instance.
@@ -122,10 +128,16 @@ func (r *Request) FormValue(name string) string {
 
 // FormParams implements `engine.Request#FormParams` function.
 func (r *Request) FormParams() map[string][]string {
-	if err := r.ParseForm(); err != nil {
-		r.logger.Error(err)
+	if strings.HasPrefix(r.header.Get(echo.HeaderContentType), echo.MIMEMultipartForm) {
+		if err := r.ParseMultipartForm(defaultMemory); err != nil {
+			r.logger.Error(err)
+		}
+	} else {
+		if err := r.ParseForm(); err != nil {
+			r.logger.Error(err)
+		}
 	}
-	return map[string][]string(r.Request.PostForm)
+	return map[string][]string(r.Request.Form)
 }
 
 // FormFile implements `engine.Request#FormFile` function.
@@ -136,7 +148,7 @@ func (r *Request) FormFile(name string) (*multipart.FileHeader, error) {
 
 // MultipartForm implements `engine.Request#MultipartForm` function.
 func (r *Request) MultipartForm() (*multipart.Form, error) {
-	err := r.ParseMultipartForm(32 << 20) // 32 MB
+	err := r.ParseMultipartForm(defaultMemory)
 	return r.Request.MultipartForm, err
 }
 

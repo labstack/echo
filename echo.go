@@ -39,8 +39,6 @@ package echo
 
 import (
 	"bytes"
-	"encoding/json"
-	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
@@ -48,7 +46,6 @@ import (
 	"path"
 	"reflect"
 	"runtime"
-	"strings"
 	"sync"
 
 	"github.com/labstack/echo/engine"
@@ -92,14 +89,6 @@ type (
 
 	// HTTPErrorHandler is a centralized HTTP error handler.
 	HTTPErrorHandler func(error, Context)
-
-	// Binder is the interface that wraps the Bind function.
-	Binder interface {
-		Bind(interface{}, Context) error
-	}
-
-	binder struct {
-	}
 
 	// Validator is the interface that wraps the Validate function.
 	Validator interface {
@@ -579,22 +568,6 @@ func NewHTTPError(code int, msg ...string) *HTTPError {
 // Error makes it compatible with `error` interface.
 func (e *HTTPError) Error() string {
 	return e.Message
-}
-
-func (b *binder) Bind(i interface{}, c Context) (err error) {
-	req := c.Request()
-	ct := req.Header().Get(HeaderContentType)
-	err = ErrUnsupportedMediaType
-	if strings.HasPrefix(ct, MIMEApplicationJSON) {
-		if err = json.NewDecoder(req.Body()).Decode(i); err != nil {
-			err = NewHTTPError(http.StatusBadRequest, err.Error())
-		}
-	} else if strings.HasPrefix(ct, MIMEApplicationXML) {
-		if err = xml.NewDecoder(req.Body()).Decode(i); err != nil {
-			err = NewHTTPError(http.StatusBadRequest, err.Error())
-		}
-	}
-	return
 }
 
 // WrapMiddleware wrap `echo.HandlerFunc` into `echo.MiddlewareFunc`.

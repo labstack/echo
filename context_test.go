@@ -30,10 +30,6 @@ func (t *Template) Render(w io.Writer, name string, data interface{}, c Context)
 }
 
 func TestContext(t *testing.T) {
-	userJSON := `{"id":"1","name":"Joe"}`
-	userXML := `<user><id>1</id><name>Joe</name></user>`
-	invalidContent := "invalid content"
-
 	e := New()
 	req := test.NewRequest(POST, "/", strings.NewReader(userJSON))
 	rec := test.NewResponseRecorder()
@@ -58,26 +54,8 @@ func TestContext(t *testing.T) {
 	assert.Equal(t, "1", c.Param("id"))
 
 	// Store
-	c.Set("user", "Joe")
-	assert.Equal(t, "Joe", c.Get("user"))
-
-	//------
-	// Bind
-	//------
-
-	// JSON
-	testBindOk(t, c, MIMEApplicationJSON)
-	c.request = test.NewRequest(POST, "/", strings.NewReader(invalidContent))
-	testBindError(t, c, MIMEApplicationJSON)
-
-	// XML
-	c.request = test.NewRequest(POST, "/", strings.NewReader(userXML))
-	testBindOk(t, c, MIMEApplicationXML)
-	c.request = test.NewRequest(POST, "/", strings.NewReader(invalidContent))
-	testBindError(t, c, MIMEApplicationXML)
-
-	// Unsupported
-	testBindError(t, c, "")
+	c.Set("user", "Jon Snow")
+	assert.Equal(t, "Jon Snow", c.Get("user"))
 
 	//--------
 	// Render
@@ -87,20 +65,20 @@ func TestContext(t *testing.T) {
 		templates: template.Must(template.New("hello").Parse("Hello, {{.}}!")),
 	}
 	c.echo.SetRenderer(tpl)
-	err := c.Render(http.StatusOK, "hello", "Joe")
+	err := c.Render(http.StatusOK, "hello", "Jon Snow")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Status())
-		assert.Equal(t, "Hello, Joe!", rec.Body.String())
+		assert.Equal(t, "Hello, Jon Snow!", rec.Body.String())
 	}
 
 	c.echo.renderer = nil
-	err = c.Render(http.StatusOK, "hello", "Joe")
+	err = c.Render(http.StatusOK, "hello", "Jon Snow")
 	assert.Error(t, err)
 
 	// JSON
 	rec = test.NewResponseRecorder()
 	c = e.NewContext(req, rec).(*context)
-	err = c.JSON(http.StatusOK, user{"1", "Joe"})
+	err = c.JSON(http.StatusOK, user{1, "Jon Snow"})
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Status())
 		assert.Equal(t, MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
@@ -117,7 +95,7 @@ func TestContext(t *testing.T) {
 	rec = test.NewResponseRecorder()
 	c = e.NewContext(req, rec).(*context)
 	callback := "callback"
-	err = c.JSONP(http.StatusOK, callback, user{"1", "Joe"})
+	err = c.JSONP(http.StatusOK, callback, user{1, "Jon Snow"})
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Status())
 		assert.Equal(t, MIMEApplicationJavaScriptCharsetUTF8, rec.Header().Get(HeaderContentType))
@@ -127,7 +105,7 @@ func TestContext(t *testing.T) {
 	// XML
 	rec = test.NewResponseRecorder()
 	c = e.NewContext(req, rec).(*context)
-	err = c.XML(http.StatusOK, user{"1", "Joe"})
+	err = c.XML(http.StatusOK, user{1, "Jon Snow"})
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Status())
 		assert.Equal(t, MIMEApplicationXMLCharsetUTF8, rec.Header().Get(HeaderContentType))
@@ -282,32 +260,4 @@ func TestContextHandler(t *testing.T) {
 	r.Find(GET, "/handler", c)
 	c.Handler()(c)
 	assert.Equal(t, "handler", b.String())
-}
-
-func testBindOk(t *testing.T, c Context, ct string) {
-	c.Request().Header().Set(HeaderContentType, ct)
-	u := new(user)
-	err := c.Bind(u)
-	if assert.NoError(t, err) {
-		assert.Equal(t, "1", u.ID)
-		assert.Equal(t, "Joe", u.Name)
-	}
-}
-
-func testBindError(t *testing.T, c Context, ct string) {
-	c.Request().Header().Set(HeaderContentType, ct)
-	u := new(user)
-	err := c.Bind(u)
-
-	switch ct {
-	case MIMEApplicationJSON, MIMEApplicationXML:
-		if assert.IsType(t, new(HTTPError), err) {
-			assert.Equal(t, http.StatusBadRequest, err.(*HTTPError).Code)
-		}
-	default:
-		if assert.IsType(t, new(HTTPError), err) {
-			assert.Equal(t, ErrUnsupportedMediaType, err)
-		}
-
-	}
 }
