@@ -18,7 +18,10 @@ func TestBodyLimit(t *testing.T) {
 	rec := test.NewResponseRecorder()
 	c := e.NewContext(req, rec)
 	h := func(c echo.Context) error {
-		body, _ := ioutil.ReadAll(c.Request().Body())
+		body, err := ioutil.ReadAll(c.Request().Body())
+		if err != nil {
+			return err
+		}
 		return c.String(http.StatusOK, string(body))
 	}
 
@@ -28,6 +31,9 @@ func TestBodyLimit(t *testing.T) {
 	assert.Equal(t, "Hello, World!", rec.Body.String())
 
 	// Overlimit
-	// BodyLimit("2B")(h)(c)
-	// assert.Equal(t, "Hello, World!", rec.Body.String())
+	req = test.NewRequest(echo.POST, "/", bytes.NewReader([]byte("Hello, World!")))
+	rec = test.NewResponseRecorder()
+	c = e.NewContext(req, rec)
+	BodyLimit("2B")(h)(c)
+	assert.Equal(t, http.StatusRequestEntityTooLarge, rec.Status())
 }
