@@ -19,6 +19,7 @@
 - Group APIs.
 - Extensible middleware framework.
 - Define middleware at root, group or route level.
+- Data binding for JSON, XML and form payload.
 - Handy functions to send variety of HTTP responses.
 - Centralized HTTP error handling.
 - Template rendering with any template engine.
@@ -169,13 +170,13 @@ func save(c echo.Context) error {
 
 ### Handling Request
 
-- Bind `JSON` or `XML` payload into Go struct based on `Content-Type` request header.
+- Bind `JSON` or `XML` or `form` payload into Go struct based on `Content-Type` request header.
 - Render response as `JSON` or `XML` with status code.
 
 ```go
 type User struct {
-	Name  string `json:"name" xml:"name"`
-	Email string `json:"email" xml:"email"`
+	Name  string `json:"name" xml:"name" form:"name"`
+	Email string `json:"email" xml:"email" form:"email"`
 }
 
 e.POST("/users", func(c echo.Context) error {
@@ -233,7 +234,7 @@ e.GET("/users", func(c echo.Context) error {
 
 Middleware | Description
 :--- | :---
-[BodyLimit](https://labstack.com/echo/guide/middleware#bodylimit-middleware:37ab2f15ff048f67959bcac0a6032f32) | Limit request body 
+[BodyLimit](https://labstack.com/echo/guide/middleware#bodylimit-middleware:37ab2f15ff048f67959bcac0a6032f32) | Limit request body
 [Logger](https://labstack.com/echo/guide/middleware#logger-middleware:37ab2f15ff048f67959bcac0a6032f32) | Log HTTP requests
 [Recover](https://labstack.com/echo/guide/middleware#recover-middleware:37ab2f15ff048f67959bcac0a6032f32) | Recover from panics
 [Gzip](https://labstack.com/echo/guide/middleware#gzip-middleware:37ab2f15ff048f67959bcac0a6032f32) | Send gzip HTTP response
