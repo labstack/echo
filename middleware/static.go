@@ -80,7 +80,12 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 				// TODO: search all files
 				file = path.Join(file, config.Index[0])
 				f, err = fs.Open(file)
-				if err != nil && config.Browse {
+				if err == nil {
+					// Index file
+					if fi, err = f.Stat(); err != nil {
+						return err
+					}
+				} else if err != nil && config.Browse {
 					dirs, err := d.Readdir(-1)
 					if err != nil {
 						return err
@@ -105,9 +110,8 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 					}
 					_, err = fmt.Fprintf(res, "</pre>\n")
 					return err
-				}
-				if fi, err = f.Stat(); err != nil { // Index file
-					return err
+				} else {
+					return next(c)
 				}
 			}
 			return c.ServeContent(f, fi.Name(), fi.ModTime())
