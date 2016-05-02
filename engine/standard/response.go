@@ -61,6 +61,19 @@ func (r *Response) Write(b []byte) (n int, err error) {
 	return
 }
 
+// SetCookie implements `engine.Response#SetCookie` function.
+func (r *Response) SetCookie(c engine.Cookie) {
+	http.SetCookie(r.ResponseWriter, &http.Cookie{
+		Name:     c.Name(),
+		Value:    c.Value(),
+		Path:     c.Path(),
+		Domain:   c.Domain(),
+		Expires:  c.Expires(),
+		Secure:   c.Secure(),
+		HttpOnly: c.HTTPOnly(),
+	})
+}
+
 // Status implements `engine.Response#Status` function.
 func (r *Response) Status() int {
 	return r.status

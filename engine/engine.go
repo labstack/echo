@@ -83,6 +83,12 @@ type (
 
 		// MultipartForm returns the multipart form.
 		MultipartForm() (*multipart.Form, error)
+
+		// Cookie returns the named cookie provided in the request.
+		Cookie(string) Cookie
+
+		// Cookies returns the HTTP cookies sent with the request.
+		Cookies() []Cookie
 	}
 
 	// Response defines the interface for HTTP response.
@@ -95,6 +101,9 @@ type (
 
 		// Write writes the data to the connection as part of an HTTP reply.
 		Write(b []byte) (int, error)
+
+		// SetCookie adds a `Set-Cookie` header in HTTP response.
+		SetCookie(Cookie)
 
 		// Status returns the HTTP response status.
 		Status() int
@@ -149,6 +158,30 @@ type (
 
 		// QueryString returns the URL query string.
 		QueryString() string
+	}
+
+	// Cookie defines the interface for HTTP cookie.
+	Cookie interface {
+		// Name returns the name of the cookie.
+		Name() string
+
+		// Value returns the value of the cookie.
+		Value() string
+
+		// Path returns the path of the cookie.
+		Path() string
+
+		// Domain returns the domain of the cookie.
+		Domain() string
+
+		// Expires returns the expiry time of the cookie.
+		Expires() time.Time
+
+		// Secure indicates if cookie is secured.
+		Secure() bool
+
+		// HTTPOnly indicate if cookies is HTTP only.
+		HTTPOnly() bool
 	}
 
 	// Config defines engine config.

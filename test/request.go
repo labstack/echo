@@ -130,6 +130,21 @@ func (r *Request) MultipartForm() (*multipart.Form, error) {
 	return r.request.MultipartForm, err
 }
 
+func (r *Request) Cookie(name string) engine.Cookie {
+	c, _ := r.request.Cookie(name)
+	return &Cookie{c}
+}
+
+// Cookies implements `engine.Request#Cookies` function.
+func (r *Request) Cookies() []engine.Cookie {
+	cs := r.request.Cookies()
+	cookies := make([]engine.Cookie, len(cs))
+	for i, c := range cs {
+		cookies[i] = &Cookie{c}
+	}
+	return cookies
+}
+
 func (r *Request) reset(req *http.Request, h engine.Header, u engine.URL) {
 	r.request = req
 	r.header = h

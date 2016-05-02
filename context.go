@@ -65,22 +65,37 @@ type (
 		// for `engine.URL#QueryParam()`.
 		QueryParam(string) string
 
-		// QueryParams returns the query parameters as map. It is an alias for `engine.URL#QueryParams()`.
+		// QueryParams returns the query parameters as map.
+		// It is an alias for `engine.URL#QueryParams()`.
 		QueryParams() map[string][]string
 
 		// FormValue returns the form field value for the provided name. It is an
 		// alias for `engine.Request#FormValue()`.
 		FormValue(string) string
 
-		// FormParams returns the form parameters as map. It is an alias for `engine.Request#FormParams()`.
+		// FormParams returns the form parameters as map.
+		// It is an alias for `engine.Request#FormParams()`.
 		FormParams() map[string][]string
 
 		// FormFile returns the multipart form file for the provided name. It is an
 		// alias for `engine.Request#FormFile()`.
 		FormFile(string) (*multipart.FileHeader, error)
 
-		// MultipartForm returns the multipart form. It is an alias for `engine.Request#MultipartForm()`.
+		// MultipartForm returns the multipart form.
+		// It is an alias for `engine.Request#MultipartForm()`.
 		MultipartForm() (*multipart.Form, error)
+
+		// Cookie returns the named cookie provided in the request.
+		// It is an alias for `engine.Request#Cookie()`.
+		Cookie(string) engine.Cookie
+
+		// SetCookie adds a `Set-Cookie` header in HTTP response.
+		// It is an alias for `engine.Response#SetCookie()`.
+		SetCookie(engine.Cookie)
+
+		// Cookies returns the HTTP cookies sent with the request.
+		// It is an alias for `engine.Request#Cookies()`.
+		Cookies() []engine.Cookie
 
 		// Get retrieves data from the context.
 		Get(string) interface{}
@@ -278,6 +293,18 @@ func (c *context) FormFile(name string) (*multipart.FileHeader, error) {
 
 func (c *context) MultipartForm() (*multipart.Form, error) {
 	return c.request.MultipartForm()
+}
+
+func (c *context) Cookie(name string) engine.Cookie {
+	return c.request.Cookie(name)
+}
+
+func (c *context) SetCookie(cookie engine.Cookie) {
+	c.response.SetCookie(cookie)
+}
+
+func (c *context) Cookies() []engine.Cookie {
+	return c.request.Cookies()
 }
 
 func (c *context) Set(key string, val interface{}) {

@@ -16,8 +16,8 @@ type (
 	// Request implements `engine.Request`.
 	Request struct {
 		*http.Request
-		url    engine.URL
 		header engine.Header
+		url    engine.URL
 		logger *log.Logger
 	}
 )
@@ -150,6 +150,22 @@ func (r *Request) FormFile(name string) (*multipart.FileHeader, error) {
 func (r *Request) MultipartForm() (*multipart.Form, error) {
 	err := r.ParseMultipartForm(defaultMemory)
 	return r.Request.MultipartForm, err
+}
+
+// Cookie implements `engine.Request#Cookie` function.
+func (r *Request) Cookie(name string) engine.Cookie {
+	c, _ := r.Request.Cookie(name)
+	return &Cookie{c}
+}
+
+// Cookies implements `engine.Request#Cookies` function.
+func (r *Request) Cookies() []engine.Cookie {
+	cs := r.Request.Cookies()
+	cookies := make([]engine.Cookie, len(cs))
+	for i, c := range cs {
+		cookies[i] = &Cookie{c}
+	}
+	return cookies
 }
 
 func (r *Request) reset(req *http.Request, h engine.Header, u engine.URL) {

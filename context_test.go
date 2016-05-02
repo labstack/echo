@@ -8,6 +8,7 @@ import (
 	"os"
 	"testing"
 	"text/template"
+	"time"
 
 	"strings"
 
@@ -172,6 +173,49 @@ func TestContext(t *testing.T) {
 
 	// Reset
 	c.Reset(req, test.NewResponseRecorder())
+}
+
+func TestContextCookie(t *testing.T) {
+	e := New()
+	req := test.NewRequest(GET, "/", nil)
+	theme := "theme=light"
+	user := "user=Jon Snow"
+	req.Header().Add(HeaderCookie, theme)
+	req.Header().Add(HeaderCookie, user)
+	rec := test.NewResponseRecorder()
+	c := e.NewContext(req, rec).(*context)
+
+	// Read single
+	cookie := c.Cookie("theme")
+	assert.Equal(t, "theme", cookie.Name())
+	assert.Equal(t, "light", cookie.Value())
+
+	// Read multiple
+	for _, cookie := range c.Cookies() {
+		switch cookie.Name() {
+		case "theme":
+			assert.Equal(t, "light", cookie.Value())
+		case "user":
+			assert.Equal(t, "Jon Snow", cookie.Value())
+		}
+	}
+
+	// Write
+	cookie = &test.Cookie{&http.Cookie{
+		Name:     "SSID",
+		Value:    "Ap4PGTEq",
+		Domain:   "labstack.com",
+		Path:     "/",
+		Expires:  time.Now(),
+		Secure:   true,
+		HttpOnly: true,
+	}}
+	c.SetCookie(cookie)
+	assert.Contains(t, rec.Header().Get(HeaderSetCookie), "SSID")
+	assert.Contains(t, rec.Header().Get(HeaderSetCookie), "Ap4PGTEq")
+	assert.Contains(t, rec.Header().Get(HeaderSetCookie), "labstack.com")
+	assert.Contains(t, rec.Header().Get(HeaderSetCookie), "Secure")
+	assert.Contains(t, rec.Header().Get(HeaderSetCookie), "HttpOnly")
 }
 
 func TestContextPath(t *testing.T) {

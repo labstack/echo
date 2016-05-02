@@ -16,8 +16,8 @@ type (
 	// Request implements `engine.Request`.
 	Request struct {
 		*fasthttp.RequestCtx
-		url    engine.URL
 		header engine.Header
+		url    engine.URL
 		logger *log.Logger
 	}
 )
@@ -125,6 +125,27 @@ func (r *Request) FormFile(name string) (*multipart.FileHeader, error) {
 // MultipartForm implements `engine.Request#MultipartForm` function.
 func (r *Request) MultipartForm() (*multipart.Form, error) {
 	return r.RequestCtx.MultipartForm()
+}
+
+// Cookie implements `engine.Request#Cookie` function.
+func (r *Request) Cookie(name string) engine.Cookie {
+	c := new(fasthttp.Cookie)
+	c.SetKey(name)
+	c.ParseBytes(r.Request.Header.Cookie(name))
+	return &Cookie{c}
+}
+
+// Cookies implements `engine.Request#Cookies` function.
+func (r *Request) Cookies() []engine.Cookie {
+	var cookies []engine.Cookie
+	i := 0
+	r.Request.Header.VisitAllCookie(func(name, value []byte) {
+		c := new(fasthttp.Cookie)
+		c.SetKey(string(name))
+		c.ParseBytes(value)
+		cookies[i] = &Cookie{c}
+	})
+	return cookies
 }
 
 func (r *Request) reset(c *fasthttp.RequestCtx, h engine.Header, u engine.URL) {

@@ -145,6 +145,8 @@ const (
 	HeaderContentEncoding               = "Content-Encoding"
 	HeaderContentLength                 = "Content-Length"
 	HeaderContentType                   = "Content-Type"
+	HeaderCookie                        = "Cookie"
+	HeaderSetCookie                     = "Set-Cookie"
 	HeaderIfModifiedSince               = "If-Modified-Since"
 	HeaderLastModified                  = "Last-Modified"
 	HeaderLocation                      = "Location"
