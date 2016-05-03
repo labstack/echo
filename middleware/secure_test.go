@@ -1,32 +1,45 @@
 package middleware
 
-// func TestSecureWithConfig(t *testing.T) {
-// 	e := echo.New()
-//
-// 	config := SecureConfig{
-// 		STSMaxAge:             100,
-// 		STSIncludeSubdomains:  true,
-// 		FrameDeny:             true,
-// 		FrameOptionsValue:     "",
-// 		ContentTypeNosniff:    true,
-// 		XssProtected:          true,
-// 		XssProtectionValue:    "",
-// 		ContentSecurityPolicy: "default-src 'self'",
-// 		DisableProdCheck:      true,
-// 	}
-// 	secure := SecureWithConfig(config)
-// 	h := secure(func(c echo.Context) error {
-// 		return c.String(http.StatusOK, "test")
-// 	})
-//
-// 	rq := test.NewRequest(echo.GET, "/", nil)
-// 	rc := test.NewResponseRecorder()
-// 	c := e.NewContext(rq, rc)
-// 	h(c)
-//
-// 	assert.Equal(t, "max-age=100; includeSubdomains", rc.Header().Get(stsHeader))
-// 	assert.Equal(t, "DENY", rc.Header().Get(frameOptionsHeader))
-// 	assert.Equal(t, "nosniff", rc.Header().Get(contentTypeHeader))
-// 	assert.Equal(t, xssProtectionValue, rc.Header().Get(xssProtectionHeader))
-// 	assert.Equal(t, "default-src 'self'", rc.Header().Get(cspHeader))
-// }
+import (
+	"net/http"
+	"testing"
+
+	"github.com/labstack/echo"
+	"github.com/labstack/echo/test"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestSecure(t *testing.T) {
+	e := echo.New()
+	req := test.NewRequest(echo.GET, "/", nil)
+	rec := test.NewResponseRecorder()
+	c := e.NewContext(req, rec)
+	h := func(c echo.Context) error {
+		return c.String(http.StatusOK, "test")
+	}
+
+	// Default
+	Secure()(h)(c)
+	assert.Equal(t, "1; mode=block", rec.Header().Get(echo.HeaderXXSSProtection))
+	assert.Equal(t, "nosniff", rec.Header().Get(echo.HeaderXContentTypeOptions))
+	assert.Equal(t, "SAMEORIGIN", rec.Header().Get(echo.HeaderXFrameOptions))
+	assert.Equal(t, "", rec.Header().Get(echo.HeaderStrictTransportSecurity))
+	assert.Equal(t, "", rec.Header().Get(echo.HeaderContentSecurityPolicy))
+
+	// Custom
+	req.Header().Set(echo.HeaderXForwardedProto, "https")
+	rec = test.NewResponseRecorder()
+	c = e.NewContext(req, rec)
+	SecureWithConfig(SecureConfig{
+		XSSProtection:         "",
+		ContentTypeNosniff:    "",
+		XFrameOptions:         "",
+		HSTSMaxAge:            3600,
+		ContentSecurityPolicy: "default-src 'self'",
+	})(h)(c)
+	assert.Equal(t, "", rec.Header().Get(echo.HeaderXXSSProtection))
+	assert.Equal(t, "", rec.Header().Get(echo.HeaderXContentTypeOptions))
+	assert.Equal(t, "", rec.Header().Get(echo.HeaderXFrameOptions))
+	assert.Equal(t, "max-age=3600; includeSubdomains", rec.Header().Get(echo.HeaderStrictTransportSecurity))
+	assert.Equal(t, "default-src 'self'", rec.Header().Get(echo.HeaderContentSecurityPolicy))
+}

@@ -14,7 +14,7 @@ func TestMethodOverride(t *testing.T) {
 	e := echo.New()
 	m := MethodOverride()
 	h := func(c echo.Context) error {
-		return c.String(http.StatusOK, "Okay")
+		return c.String(http.StatusOK, "test")
 	}
 
 	// Override with http header

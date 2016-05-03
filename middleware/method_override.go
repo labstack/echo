@@ -35,13 +35,18 @@ func MethodOverride() echo.MiddlewareFunc {
 // MethodOverrideWithConfig returns a method override middleware from config.
 // See `MethodOverride()`.
 func MethodOverrideWithConfig(config MethodOverrideConfig) echo.MiddlewareFunc {
+	// Defaults
+	if config.Getter == nil {
+		config.Getter = DefaultMethodOverrideConfig.Getter
+	}
+
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			req := c.Request()
 			if req.Method() == echo.POST {
 				m := config.Getter(c)
 				if m != "" {
-					c.Request().SetMethod(m)
+					req.SetMethod(m)
 				}
 			}
 			return next(c)
