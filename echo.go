@@ -166,6 +166,13 @@ const (
 	HeaderAccessControlAllowCredentials = "Access-Control-Allow-Credentials"
 	HeaderAccessControlExposeHeaders    = "Access-Control-Expose-Headers"
 	HeaderAccessControlMaxAge           = "Access-Control-Max-Age"
+
+	// Security
+	HeaderStrictTransportSecurity = "Strict-Transport-Security"
+	HeaderXContentTypeOptions     = "X-Content-Type-Options"
+	HeaderXXSSProtection          = "X-XSS-Protection"
+	HeaderXFrameOptions           = "X-Frame-Options"
+	HeaderContentSecurityPolicy   = "Content-Security-Policy"
 )
 
 var (
@@ -191,6 +198,7 @@ var (
 	ErrStatusRequestEntityTooLarge = NewHTTPError(http.StatusRequestEntityTooLarge)
 	ErrRendererNotRegistered       = errors.New("renderer not registered")
 	ErrInvalidRedirectCode         = errors.New("invalid redirect status code")
+	ErrCookieNotFound              = errors.New("cookie not found")
 )
 
 // Error handlers

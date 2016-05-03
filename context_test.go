@@ -186,9 +186,11 @@ func TestContextCookie(t *testing.T) {
 	c := e.NewContext(req, rec).(*context)
 
 	// Read single
-	cookie := c.Cookie("theme")
-	assert.Equal(t, "theme", cookie.Name())
-	assert.Equal(t, "light", cookie.Value())
+	cookie, err := c.Cookie("theme")
+	if assert.NoError(t, err) {
+		assert.Equal(t, "theme", cookie.Name())
+		assert.Equal(t, "light", cookie.Value())
+	}
 
 	// Read multiple
 	for _, cookie := range c.Cookies() {

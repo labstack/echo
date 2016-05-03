@@ -7,6 +7,7 @@ import (
 	"io"
 	"mime/multipart"
 
+	"github.com/labstack/echo"
 	"github.com/labstack/echo/engine"
 	"github.com/labstack/gommon/log"
 	"github.com/valyala/fasthttp"
@@ -128,11 +129,15 @@ func (r *Request) MultipartForm() (*multipart.Form, error) {
 }
 
 // Cookie implements `engine.Request#Cookie` function.
-func (r *Request) Cookie(name string) engine.Cookie {
+func (r *Request) Cookie(name string) (engine.Cookie, error) {
 	c := new(fasthttp.Cookie)
 	c.SetKey(name)
-	c.ParseBytes(r.Request.Header.Cookie(name))
-	return &Cookie{c}
+	b := r.Request.Header.Cookie(name)
+	if b == nil {
+		return nil, echo.ErrCookieNotFound
+	}
+	c.ParseBytes(b)
+	return &Cookie{c}, nil
 }
 
 // Cookies implements `engine.Request#Cookies` function.

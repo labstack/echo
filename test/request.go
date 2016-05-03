@@ -1,6 +1,7 @@
 package test
 
 import (
+	"errors"
 	"io"
 	"io/ioutil"
 	"mime/multipart"
@@ -130,9 +131,12 @@ func (r *Request) MultipartForm() (*multipart.Form, error) {
 	return r.request.MultipartForm, err
 }
 
-func (r *Request) Cookie(name string) engine.Cookie {
-	c, _ := r.request.Cookie(name)
-	return &Cookie{c}
+func (r *Request) Cookie(name string) (engine.Cookie, error) {
+	c, err := r.request.Cookie(name)
+	if err != nil {
+		return nil, errors.New("cookie not found")
+	}
+	return &Cookie{c}, nil
 }
 
 // Cookies implements `engine.Request#Cookies` function.

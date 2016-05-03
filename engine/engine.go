@@ -85,7 +85,7 @@ type (
 		MultipartForm() (*multipart.Form, error)
 
 		// Cookie returns the named cookie provided in the request.
-		Cookie(string) Cookie
+		Cookie(string) (Cookie, error)
 
 		// Cookies returns the HTTP cookies sent with the request.
 		Cookies() []Cookie

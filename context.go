@@ -87,7 +87,7 @@ type (
 
 		// Cookie returns the named cookie provided in the request.
 		// It is an alias for `engine.Request#Cookie()`.
-		Cookie(string) engine.Cookie
+		Cookie(string) (engine.Cookie, error)
 
 		// SetCookie adds a `Set-Cookie` header in HTTP response.
 		// It is an alias for `engine.Response#SetCookie()`.
@@ -295,7 +295,7 @@ func (c *context) MultipartForm() (*multipart.Form, error) {
 	return c.request.MultipartForm()
 }
 
-func (c *context) Cookie(name string) engine.Cookie {
+func (c *context) Cookie(name string) (engine.Cookie, error) {
 	return c.request.Cookie(name)
 }
 
