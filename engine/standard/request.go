@@ -153,9 +153,12 @@ func (r *Request) MultipartForm() (*multipart.Form, error) {
 }
 
 // Cookie implements `engine.Request#Cookie` function.
-func (r *Request) Cookie(name string) engine.Cookie {
-	c, _ := r.Request.Cookie(name)
-	return &Cookie{c}
+func (r *Request) Cookie(name string) (engine.Cookie, error) {
+	c, err := r.Request.Cookie(name)
+	if err != nil {
+		return nil, echo.ErrCookieNotFound
+	}
+	return &Cookie{c}, nil
 }
 
 // Cookies implements `engine.Request#Cookies` function.

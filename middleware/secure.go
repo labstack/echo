@@ -8,32 +8,19 @@ import (
 
 type (
 	SecureConfig struct {
-		STSMaxAge             int64
-		STSIncludeSubdomains  bool
-		FrameDeny             bool
-		FrameOptionsValue     string
-		ContentTypeNosniff    bool
-		XssProtected          bool
-		XssProtectionValue    string
-		ContentSecurityPolicy string
-		DisableProdCheck      bool
+		DisableXSSProtection         bool
+		DisableContentTypeNosniff    bool
+		XFrameOptions                string
+		DisableHSTSIncludeSubdomains bool
+		HSTSMaxAge                   int
+		ContentSecurityPolicy        string
 	}
 )
 
 var (
-	DefaultSecureConfig = SecureConfig{}
-)
-
-const (
-	stsHeader           = "Strict-Transport-Security"
-	stsSubdomainString  = "; includeSubdomains"
-	frameOptionsHeader  = "X-Frame-Options"
-	frameOptionsValue   = "DENY"
-	contentTypeHeader   = "X-Content-Type-Options"
-	contentTypeValue    = "nosniff"
-	xssProtectionHeader = "X-XSS-Protection"
-	xssProtectionValue  = "1; mode=block"
-	cspHeader           = "Content-Security-Policy"
+	DefaultSecureConfig = SecureConfig{
+		XFrameOptions: "SAMEORIGIN",
+	}
 )
 
 func Secure() echo.MiddlewareFunc {
@@ -43,51 +30,26 @@ func Secure() echo.MiddlewareFunc {
 func SecureWithConfig(config SecureConfig) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			setFrameOptions(c, config)
-			setContentTypeOptions(c, config)
-			setXssProtection(c, config)
-			setSTS(c, config)
-			setCSP(c, config)
+			if !config.DisableXSSProtection {
+				c.Response().Header().Set(echo.HeaderXXSSProtection, "1; mode=block")
+			}
+			if !config.DisableContentTypeNosniff {
+				c.Response().Header().Set(echo.HeaderXContentTypeOptions, "nosniff")
+			}
+			if config.XFrameOptions != "" {
+				c.Response().Header().Set(echo.HeaderXFrameOptions, config.XFrameOptions)
+			}
+			if config.HSTSMaxAge != 0 {
+				subdomains := ""
+				if !config.DisableHSTSIncludeSubdomains {
+					subdomains = "; includeSubdomains"
+				}
+				c.Response().Header().Set(echo.HeaderStrictTransportSecurity, fmt.Sprintf("max-age=%d%s", config.HSTSMaxAge, subdomains))
+			}
+			if config.ContentSecurityPolicy != "" {
+				c.Response().Header().Set(echo.HeaderContentSecurityPolicy, config.ContentSecurityPolicy)
+			}
 			return next(c)
 		}
-	}
-}
-
-func setFrameOptions(c echo.Context, opts SecureConfig) {
-	if opts.FrameOptionsValue != "" {
-		c.Response().Header().Set(frameOptionsHeader, opts.FrameOptionsValue)
-	} else if opts.FrameDeny {
-		c.Response().Header().Set(frameOptionsHeader, frameOptionsValue)
-	}
-}
-
-func setContentTypeOptions(c echo.Context, opts SecureConfig) {
-	if opts.ContentTypeNosniff {
-		c.Response().Header().Set(contentTypeHeader, contentTypeValue)
-	}
-}
-
-func setXssProtection(c echo.Context, opts SecureConfig) {
-	if opts.XssProtectionValue != "" {
-		c.Response().Header().Set(xssProtectionHeader, opts.XssProtectionValue)
-	} else if opts.XssProtected {
-		c.Response().Header().Set(xssProtectionHeader, xssProtectionValue)
-	}
-}
-
-func setSTS(c echo.Context, opts SecureConfig) {
-	if opts.STSMaxAge != 0 && opts.DisableProdCheck {
-		subDomains := ""
-		if opts.STSIncludeSubdomains {
-			subDomains = stsSubdomainString
-		}
-
-		c.Response().Header().Set(stsHeader, fmt.Sprintf("max-age=%d%s", opts.STSMaxAge, subDomains))
-	}
-}
-
-func setCSP(c echo.Context, opts SecureConfig) {
-	if opts.ContentSecurityPolicy != "" {
-		c.Response().Header().Set(cspHeader, opts.ContentSecurityPolicy)
 	}
 }
