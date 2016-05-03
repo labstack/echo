@@ -63,9 +63,9 @@ var (
 )
 
 // Secure returns a secure middleware.
-// Secure middleware provide protection against cross-site scripting (XSS) attack,
-// content type sniffing, clickjacking, insecure connection and other code
-// injection attacks.
+// Secure middleware provides protection against cross-site scripting (XSS) attack,
+// content type sniffing, clickjacking, insecure connection and other code injection
+// attacks.
 func Secure() echo.MiddlewareFunc {
 	return SecureWithConfig(DefaultSecureConfig)
 }
