@@ -173,7 +173,8 @@ type (
 		ServeContent(io.ReadSeeker, string, time.Time) error
 
 		// Reset resets the context after request completes. It must be called along
-		// with `Echo#GetContext()` and `Echo#PutContext()`. See `Echo#ServeHTTP()`
+		// with `Echo#AcquireContext()` and `Echo#ReleaseContext()`.
+		// See `Echo#ServeHTTP()`
 		Reset(engine.Request, engine.Response)
 	}
 

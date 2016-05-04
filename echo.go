@@ -515,16 +515,26 @@ func (e *Echo) Routes() []Route {
 	return e.router.routes
 }
 
-// GetContext returns `Context` from the sync.Pool. You must return the context by
-// calling `PutContext()`.
+// AcquireContext returns an empty `Context` instance from the pool.
+// You must be return the context by calling `ReleaseContext()`.
+func (e *Echo) AcquireContext() Context {
+	return e.pool.Get().(Context)
+}
+
+// GetContext is deprecated, use `AcquireContext()` instead.
 func (e *Echo) GetContext() Context {
 	return e.pool.Get().(Context)
 }
 
-// PutContext returns `Context` instance back to the sync.Pool. You must call it after
-// `GetContext()`.
-func (e *Echo) PutContext(c Context) {
+// ReleaseContext returns the `Context` instance back to the pool.
+// You must call it after `AcquireContext()`.
+func (e *Echo) ReleaseContext(c Context) {
 	e.pool.Put(c)
+}
+
+// PutContext is deprecated, use `ReleaseContext()` instead.
+func (e *Echo) PutContext(c Context) {
+	e.ReleaseContext(c)
 }
 
 func (e *Echo) ServeHTTP(req engine.Request, res engine.Response) {

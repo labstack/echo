@@ -588,10 +588,10 @@ func BenchmarkRouterGitHubAPI(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		for _, route := range api {
 			// c := e.pool.Get().(*context)
-			c := e.GetContext()
+			c := e.AcquireContext()
 			r.Find(route.Method, route.Path, c)
 			// router.Find(r.Method, r.Path, c)
-			e.PutContext(c)
+			e.ReleaseContext(c)
 			// e.pool.Put(c)
 		}
 	}

@@ -283,9 +283,9 @@ func (n *node) checkMethodNotAllowed() HandlerFunc {
 //
 // For performance:
 //
-// - Get context from `Echo#GetContext()`
+// - Get context from `Echo#AcquireContext()`
 // - Reset it `Context#Reset()`
-// - Return it `Echo#PutContext()`.
+// - Return it `Echo#ReleaseContext()`.
 func (r *Router) Find(method, path string, context Context) {
 	cn := r.tree // Current node as root
 
