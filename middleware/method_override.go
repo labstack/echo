@@ -24,7 +24,7 @@ var (
 )
 
 // MethodOverride returns a method override middleware.
-// Method override middleware checks for the overridden method from the request and
+// MethodOverride  middleware checks for the overridden method from the request and
 // uses it instead of the original method.
 //
 // For security reasons, only `POST` method can be overridden.
