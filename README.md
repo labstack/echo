@@ -239,7 +239,7 @@ Middleware | Description
 [Recover](https://labstack.com/echo/guide/recover-middleware) | Recover from panics
 [Gzip](https://labstack.com/echo/guide/gzip-middleware) | Send gzip HTTP response
 [BasicAuth](https://labstack.com/echo/guide/basic-auth-middleware) | HTTP basic authentication
-[JWTAuth](https://labstack.com/echo/guide/jwt-auth-middleware) | JWT authentication
+[JWTAuth](https://labstack.com/echo/guide/jwt-middleware) | JWT authentication
 [Secure](https://labstack.com/echo/guide/secure-middleware) | Protection against attacks
 [CORS](https://labstack.com/echo/guide/cors-middleware) | Cross-Origin Resource Sharing
 [Static](https://labstack.com/echo/guide/static-middleware) | Serve static files

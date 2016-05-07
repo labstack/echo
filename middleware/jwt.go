@@ -9,8 +9,8 @@ import (
 )
 
 type (
-	// JWTAuthConfig defines the config for JWT auth middleware.
-	JWTAuthConfig struct {
+	// JWTConfig defines the config for JWT auth middleware.
+	JWTConfig struct {
 		// SigningKey is the key to validate token.
 		// Required.
 		SigningKey []byte
@@ -44,42 +44,42 @@ const (
 )
 
 var (
-	// DefaultJWTAuthConfig is the default JWT auth middleware config.
-	DefaultJWTAuthConfig = JWTAuthConfig{
+	// DefaultJWTConfig is the default JWT auth middleware config.
+	DefaultJWTConfig = JWTConfig{
 		SigningMethod: AlgorithmHS256,
 		ContextKey:    "user",
 		Extractor:     JWTFromHeader,
 	}
 )
 
-// JWTAuth returns a JSON Web Token (JWT) auth middleware.
+// JWT returns a JSON Web Token (JWT) auth middleware.
 //
 // For valid token, it sets the user in context and calls next handler.
 // For invalid token, it sends "401 - Unauthorized" response.
 // For empty or invalid `Authorization` header, it sends "400 - Bad Request".
 //
 // See https://jwt.io/introduction
-func JWTAuth(key []byte) echo.MiddlewareFunc {
-	c := DefaultJWTAuthConfig
+func JWT(key []byte) echo.MiddlewareFunc {
+	c := DefaultJWTConfig
 	c.SigningKey = key
-	return JWTAuthWithConfig(c)
+	return JWTWithConfig(c)
 }
 
-// JWTAuthWithConfig returns a JWT auth middleware from config.
-// See `JWTAuth()`.
-func JWTAuthWithConfig(config JWTAuthConfig) echo.MiddlewareFunc {
+// JWTWithConfig returns a JWT auth middleware from config.
+// See `JWT()`.
+func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	// Defaults
 	if config.SigningKey == nil {
 		panic("jwt middleware requires signing key")
 	}
 	if config.SigningMethod == "" {
-		config.SigningMethod = DefaultJWTAuthConfig.SigningMethod
+		config.SigningMethod = DefaultJWTConfig.SigningMethod
 	}
 	if config.ContextKey == "" {
-		config.ContextKey = DefaultJWTAuthConfig.ContextKey
+		config.ContextKey = DefaultJWTConfig.ContextKey
 	}
 	if config.Extractor == nil {
-		config.Extractor = DefaultJWTAuthConfig.Extractor
+		config.Extractor = DefaultJWTConfig.Extractor
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
