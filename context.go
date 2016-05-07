@@ -425,7 +425,7 @@ func (c *context) File(file string) error {
 
 	fi, _ := f.Stat()
 	if fi.IsDir() {
-		file = filepath.Join(file, "index.html")
+		file = filepath.Join(file, indexPage)
 		f, err = os.Open(file)
 		if err != nil {
 			return ErrNotFound
