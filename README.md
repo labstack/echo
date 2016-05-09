@@ -42,7 +42,7 @@
 ### Installation
 
 ```sh
-$ go get github.com/labstack/echo/...
+$ go get -u github.com/labstack/echo/...
 ```
 
 ### Hello, World!
