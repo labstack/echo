@@ -16,13 +16,13 @@ type (
 		// Limit is the maximum allowed size for a request body, it can be specified
 		// as `4x` or `4xB`, where x is one of the multiple from K, M, G, T or P.
 		Limit string `json:"limit"`
-		limit int
+		limit int64
 	}
 
 	limitedReader struct {
 		BodyLimitConfig
 		reader  io.Reader
-		read    int
+		read    int64
 		context echo.Context
 	}
 )
@@ -63,7 +63,7 @@ func BodyLimitWithConfig(config BodyLimitConfig) echo.MiddlewareFunc {
 
 func (r *limitedReader) Read(b []byte) (n int, err error) {
 	n, err = r.reader.Read(b)
-	r.read += n
+	r.read += int64(n)
 	if r.read > r.limit {
 		s := http.StatusRequestEntityTooLarge
 		r.context.String(s, http.StatusText(s))
