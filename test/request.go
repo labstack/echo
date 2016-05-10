@@ -56,6 +56,10 @@ func (r *Request) Header() engine.Header {
 	return r.header
 }
 
+func (r *Request) Referer() string {
+	return r.request.Referer()
+}
+
 // func Proto() string {
 // 	return r.request.Proto()
 // }

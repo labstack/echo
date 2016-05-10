@@ -48,7 +48,9 @@ type (
 var (
 	// DefaultLoggerConfig is the default logger middleware config.
 	DefaultLoggerConfig = LoggerConfig{
-		Format: `{"time": "${time_rfc3339}", "remote_ip": "${remote_ip}", "method": "${method}", "uri": "${uri}", "status": ${status}, "took": "${response_time}", "sent": "${response_size}B"}`,
+		Format: `{"time": "${time_rfc3339}", "remote_ip": "${remote_ip}", ` +
+			`"method": "${method}", "uri": "${uri}", "status": ${status}, ` +
+			`"latency": "${response_time}", "served": "${response_size}B"}` + "\n",
 		color:  color.New(),
 		Output: os.Stdout,
 	}
