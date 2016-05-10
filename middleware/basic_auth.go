@@ -9,7 +9,7 @@ import (
 type (
 	// BasicAuthConfig defines the config for HTTP basic auth middleware.
 	BasicAuthConfig struct {
-		// Validator is the function to validate basic auth credentials.
+		// Validator is a function to validate basic auth credentials.
 		Validator BasicAuthValidator
 	}
 

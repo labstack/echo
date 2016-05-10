@@ -7,7 +7,7 @@ import (
 type (
 	// TrailingSlashConfig defines the config for TrailingSlash middleware.
 	TrailingSlashConfig struct {
-		// RedirectCode is the status code used when redirecting the request.
+		// Status code to be used when redirecting the request.
 		// Optional, but when provided the request is redirected using this code.
 		RedirectCode int
 	}

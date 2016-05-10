@@ -8,11 +8,11 @@ type (
 	// MethodOverrideConfig defines the config for method override middleware.
 	MethodOverrideConfig struct {
 		// Getter is a function that gets overridden method from the request.
+		// Optional. Default values MethodFromHeader(echo.HeaderXHTTPMethodOverride).
 		Getter MethodOverrideGetter
 	}
 
 	// MethodOverrideGetter is a function that gets overridden method from the request
-	// Optional, with default values as `MethodFromHeader(echo.HeaderXHTTPMethodOverride)`.
 	MethodOverrideGetter func(echo.Context) string
 )
 

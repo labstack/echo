@@ -11,21 +11,20 @@ import (
 type (
 	// JWTConfig defines the config for JWT auth middleware.
 	JWTConfig struct {
-		// SigningKey is the key to validate token.
+		// Signing key to validate token.
 		// Required.
 		SigningKey []byte
 
-		// SigningMethod is used to check token signing method.
-		// Optional, with default value as `HS256`.
+		// Signing method, used to check token signing method.
+		// Optional. Default value HS256.
 		SigningMethod string
 
-		// ContextKey is the key to be used for storing user information from the
-		// token into context.
-		// Optional, with default value as `user`.
+		// Context key to store user information from the token into context.
+		// Optional. Default value "user".
 		ContextKey string
 
 		// Extractor is a function that extracts token from the request.
-		// Optional, with default values as `JWTFromHeader`.
+		// Optional. Default value JWTFromHeader.
 		Extractor JWTExtractor
 	}
 

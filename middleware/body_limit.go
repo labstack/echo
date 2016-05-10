@@ -13,7 +13,7 @@ import (
 type (
 	// BodyLimitConfig defines the config for body limit middleware.
 	BodyLimitConfig struct {
-		// Limit is the maximum allowed size for a request body, it can be specified
+		// Maximum allowed size for a request body, it can be specified
 		// as `4x` or `4xB`, where x is one of the multiple from K, M, G, T or P.
 		Limit string `json:"limit"`
 		limit int64

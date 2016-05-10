@@ -19,7 +19,7 @@ import (
 type (
 	// LoggerConfig defines the config for logger middleware.
 	LoggerConfig struct {
-		// Format is the log format which can be constructed using the following tags:
+		// Log format which can be constructed using the following tags:
 		//
 		// - time_rfc3339
 		// - id (Request ID - Not implemented)
@@ -38,11 +38,11 @@ type (
 		//
 		// Example "${remote_ip} ${status}"
 		//
-		// Optional, with default value as `DefaultLoggerConfig.Format`.
+		// Optional. Default value DefaultLoggerConfig.Format.
 		Format string
 
-		// Output is the writer where logs are written.
-		// Optional with default value as os.Stdout.
+		// Output is a writer where logs are written.
+		// Optional. Default value os.Stdout.
 		Output io.Writer
 
 		template   *fasttemplate.Template

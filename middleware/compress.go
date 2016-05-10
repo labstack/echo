@@ -15,8 +15,8 @@ import (
 type (
 	// GzipConfig defines the config for gzip middleware.
 	GzipConfig struct {
-		// Level is the gzip level.
-		// Optional, with default value as -1.
+		// Gzip compression level.
+		// Optional. Default value -1.
 		Level int
 	}
 

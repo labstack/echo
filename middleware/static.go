@@ -12,17 +12,16 @@ import (
 type (
 	// StaticConfig defines the config for static middleware.
 	StaticConfig struct {
-		// Root is the directory from where the static content is served.
+		// Root directory from where the static content is served.
 		// Required.
 		Root string `json:"root"`
 
-		// Index is the list of index files to be searched and used when serving
-		// a directory.
-		// Optional, with default value as []string{"index.html"}.
-		Index []string `json:"index"`
+		// Index file for serving a directory.
+		// Optional. Default value "index.html".
+		Index string `json:"index"`
 
-		// Browse is a flag to enable/disable directory browsing.
-		// Optional, with default value as false.
+		// Enable/disable directory browsing.
+		// Optional. Default value false.
 		Browse bool `json:"browse"`
 	}
 )
@@ -30,7 +29,7 @@ type (
 var (
 	// DefaultStaticConfig is the default static middleware config.
 	DefaultStaticConfig = StaticConfig{
-		Index:  []string{"index.html"},
+		Index:  "index.html",
 		Browse: false,
 	}
 )
@@ -47,7 +46,7 @@ func Static(root string) echo.MiddlewareFunc {
 // See `Static()`.
 func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 	// Defaults
-	if config.Index == nil {
+	if config.Index == "" {
 		config.Index = DefaultStaticConfig.Index
 	}
 
@@ -77,8 +76,7 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 				d := f
 
 				// Index file
-				// TODO: search all files
-				file = path.Join(file, config.Index[0])
+				file = path.Join(file, config.Index)
 				f, err = fs.Open(file)
 				if err == nil {
 					// Index file
