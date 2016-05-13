@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -113,13 +114,17 @@ func JWTFromHeader(c echo.Context) (string, error) {
 	if len(auth) > l+1 && auth[:l] == bearer {
 		return auth[l+1:], nil
 	}
-	return "", echo.NewHTTPError(http.StatusBadRequest, "empty or invalid authorization header="+auth)
+	return "", errors.New("empty or invalid jwt in authorization header")
 }
 
 // JWTFromQuery returns a `JWTExtractor` that extracts token from the provided query
 // parameter.
 func JWTFromQuery(param string) JWTExtractor {
 	return func(c echo.Context) (string, error) {
-		return c.QueryParam(param), nil
+		token := c.QueryParam(param)
+		if token == "" {
+			return "", errors.New("empty jwt in query param")
+		}
+		return token, nil
 	}
 }
