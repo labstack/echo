@@ -40,7 +40,7 @@ func BodyLimit(limit string) echo.MiddlewareFunc {
 }
 
 // BodyLimitWithConfig returns a body limit middleware from config.
-// See `BodyLimit()`.
+// See: `BodyLimit()`.
 func BodyLimitWithConfig(config BodyLimitConfig) echo.MiddlewareFunc {
 	limit, err := bytes.Parse(config.Limit)
 	if err != nil {

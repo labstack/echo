@@ -174,6 +174,7 @@ const (
 	HeaderXXSSProtection          = "X-XSS-Protection"
 	HeaderXFrameOptions           = "X-Frame-Options"
 	HeaderContentSecurityPolicy   = "Content-Security-Policy"
+	HeaderXCSRFToken              = "X-CSRF-Token"
 )
 
 var (

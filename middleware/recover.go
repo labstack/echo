@@ -42,7 +42,7 @@ func Recover() echo.MiddlewareFunc {
 }
 
 // RecoverWithConfig returns a recover middleware from config.
-// See `Recover()`.
+// See: `Recover()`.
 func RecoverWithConfig(config RecoverConfig) echo.MiddlewareFunc {
 	// Defaults
 	if config.StackSize == 0 {

@@ -57,7 +57,7 @@ var (
 // For invalid token, it sends "401 - Unauthorized" response.
 // For empty or invalid `Authorization` header, it sends "400 - Bad Request".
 //
-// See https://jwt.io/introduction
+// See: https://jwt.io/introduction
 func JWT(key []byte) echo.MiddlewareFunc {
 	c := DefaultJWTConfig
 	c.SigningKey = key
@@ -65,7 +65,7 @@ func JWT(key []byte) echo.MiddlewareFunc {
 }
 
 // JWTWithConfig returns a JWT auth middleware from config.
-// See `JWT()`.
+// See: `JWT()`.
 func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	// Defaults
 	if config.SigningKey == nil {

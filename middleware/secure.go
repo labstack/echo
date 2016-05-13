@@ -71,7 +71,7 @@ func Secure() echo.MiddlewareFunc {
 }
 
 // SecureWithConfig returns a secure middleware from config.
-// See `Secure()`.
+// See: `Secure()`.
 func SecureWithConfig(config SecureConfig) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
