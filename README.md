@@ -242,6 +242,7 @@ Middleware | Description
 [JWTAuth](https://labstack.com/echo/guide/jwt-middleware) | JWT authentication
 [Secure](https://labstack.com/echo/guide/secure-middleware) | Protection against attacks
 [CORS](https://labstack.com/echo/guide/cors-middleware) | Cross-Origin Resource Sharing
+[CSRF](https://labstack.com/echo/guide/csrf-middleware) | Cross-Site Request Forgery
 [Static](https://labstack.com/echo/guide/static-middleware) | Serve static files
 [AddTrailingSlash](https://labstack.com/echo/guide/add-trailing-slash-middleware) | Add trailing slash to the request URI
 [RemoveTrailingSlash](https://labstack.com/echo/guide/remove-trailing-slash-middleware) | Remove trailing slash from the request URI

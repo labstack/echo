@@ -30,18 +30,20 @@ type (
 		// Optional. Default value none.
 		CookieDomain string
 
-		// Paht of the CSRF cookie.
+		// Path of the CSRF cookie.
 		// Optional. Default value none.
 		CookiePath string
 
-		// Expiriation time of the CSRF cookie.
-		// Optioanl. Default value 24hrs.
+		// Expiration time of the CSRF cookie.
+		// Optional. Default value 24H.
 		CookieExpires time.Time
 
 		// Indicates if CSRF cookie is secure.
 		CookieSecure bool
+		// Optional. Default value false.
 
 		// Indicates if CSRF cookie is HTTP only.
+		// Optional. Default value false.
 		CookieHTTPOnly bool
 	}
 )
