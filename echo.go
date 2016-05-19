@@ -282,7 +282,7 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 	if !c.Response().Committed() {
 		c.String(code, msg)
 	}
-	e.logger.Debug(err)
+	e.logger.Error(err)
 }
 
 // SetHTTPErrorHandler registers a custom Echo.HTTPErrorHandler.

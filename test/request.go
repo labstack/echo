@@ -72,8 +72,8 @@ func (r *Request) Referer() string {
 // 	return r.request.ProtoMinor()
 // }
 
-func (r *Request) ContentLength() int {
-	return int(r.request.ContentLength)
+func (r *Request) ContentLength() int64 {
+	return r.request.ContentLength
 }
 
 func (r *Request) UserAgent() string {

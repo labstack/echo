@@ -64,8 +64,8 @@ func (r *Request) Referer() string {
 }
 
 // ContentLength implements `engine.Request#ContentLength` function.
-func (r *Request) ContentLength() int {
-	return r.Request.Header.ContentLength()
+func (r *Request) ContentLength() int64 {
+	return int64(r.Request.Header.ContentLength())
 }
 
 // UserAgent implements `engine.Request#UserAgent` function.

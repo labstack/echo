@@ -60,7 +60,7 @@ type (
 		// ProtocolMinor() int
 
 		// ContentLength returns the size of request's body.
-		ContentLength() int
+		ContentLength() int64
 
 		// UserAgent returns the client's `User-Agent`.
 		UserAgent() string
