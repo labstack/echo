@@ -18,11 +18,11 @@ type (
 	// CSRFConfig defines the config for CSRF middleware.
 	CSRFConfig struct {
 		// Key to create CSRF token.
-		Secret []byte
+		Secret []byte `json:"secret"`
 
 		// Context key to store generated CSRF token into context.
 		// Optional. Default value "csrf".
-		ContextKey string
+		ContextKey string `json:"context_key"`
 
 		// Extractor is a function that extracts token from the request.
 		// Optional. Default value CSRFTokenFromHeader(echo.HeaderXCSRFToken).
@@ -30,27 +30,27 @@ type (
 
 		// Name of the CSRF cookie. This cookie will store CSRF token.
 		// Optional. Default value "csrf".
-		CookieName string
+		CookieName string `json:"cookie_name"`
 
 		// Domain of the CSRF cookie.
 		// Optional. Default value none.
-		CookieDomain string
+		CookieDomain string `json:"cookie_domain"`
 
 		// Path of the CSRF cookie.
 		// Optional. Default value none.
-		CookiePath string
+		CookiePath string `json:"cookie_path"`
 
 		// Expiration time of the CSRF cookie.
 		// Optional. Default value 24H.
-		CookieExpires time.Time
+		CookieExpires time.Time `json:"cookie_expires"`
 
 		// Indicates if CSRF cookie is secure.
-		CookieSecure bool
+		CookieSecure bool `json:"cookie_secure"`
 		// Optional. Default value false.
 
 		// Indicates if CSRF cookie is HTTP only.
 		// Optional. Default value false.
-		CookieHTTPOnly bool
+		CookieHTTPOnly bool `json:"cookie_http_only"`
 	}
 
 	// CSRFTokenExtractor defines a function that takes `echo.Context` and returns

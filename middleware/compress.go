@@ -17,7 +17,7 @@ type (
 	GzipConfig struct {
 		// Gzip compression level.
 		// Optional. Default value -1.
-		Level int
+		Level int `json:"level"`
 	}
 
 	gzipResponseWriter struct {

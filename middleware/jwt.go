@@ -14,15 +14,15 @@ type (
 	JWTConfig struct {
 		// Signing key to validate token.
 		// Required.
-		SigningKey []byte
+		SigningKey []byte `json:"signing_key"`
 
 		// Signing method, used to check token signing method.
 		// Optional. Default value HS256.
-		SigningMethod string
+		SigningMethod string `json:"signing_method"`
 
 		// Context key to store user information from the token into context.
 		// Optional. Default value "user".
-		ContextKey string
+		ContextKey string `json:"context_key"`
 
 		// Extractor is a function that extracts token from the request.
 		// Optional. Default value JWTFromHeader.

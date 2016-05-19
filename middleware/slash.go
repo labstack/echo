@@ -9,7 +9,7 @@ type (
 	TrailingSlashConfig struct {
 		// Status code to be used when redirecting the request.
 		// Optional, but when provided the request is redirected using this code.
-		RedirectCode int
+		RedirectCode int `json:"redirect_code"`
 	}
 )
 

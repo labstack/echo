@@ -39,7 +39,7 @@ type (
 		// Example "${remote_ip} ${status}"
 		//
 		// Optional. Default value DefaultLoggerConfig.Format.
-		Format string
+		Format string `json:"format"`
 
 		// Output is a writer where logs are written.
 		// Optional. Default value os.Stdout.
