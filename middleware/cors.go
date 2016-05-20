@@ -115,7 +115,6 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 				if exposeHeaders != "" {
 					res.Header().Set(echo.HeaderAccessControlExposeHeaders, exposeHeaders)
 				}
-				fmt.Println(res.Header().Keys())
 				return next(c)
 			}
 
@@ -128,7 +127,6 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 			}
 			res.Header().Set(echo.HeaderAccessControlAllowOrigin, allowedOrigin)
 			res.Header().Set(echo.HeaderAccessControlAllowMethods, allowMethods)
-			fmt.Println(res.Header().Keys())
 			if config.AllowCredentials {
 				res.Header().Set(echo.HeaderAccessControlAllowCredentials, "true")
 			}
