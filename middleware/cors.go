@@ -1,11 +1,11 @@
 package middleware
 
 import (
+	"github.com/labstack/echo"
+	"github.com/labstack/echo/engine"
 	"net/http"
 	"strconv"
 	"strings"
-
-	"github.com/labstack/echo"
 )
 
 type (
@@ -58,6 +58,19 @@ func CORS() echo.MiddlewareFunc {
 	return CORSWithConfig(DefaultCORSConfig)
 }
 
+//getOrigin returns the origin header, or a nil pointer if it is not set
+func getOrigin(req engine.Request) *string {
+	var origin string
+
+	for _, k := range req.Header().Keys() {
+		if strings.ToLower(k) == "origin" {
+			origin = req.Header().Get(echo.HeaderOrigin)
+			return &origin
+		}
+	}
+	return nil
+}
+
 // CORSWithConfig returns a CORS middleware from config.
 // See: `CORS()`.
 func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
@@ -77,12 +90,12 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 		return func(c echo.Context) error {
 			req := c.Request()
 			res := c.Response()
-			origin := req.Header().Get(echo.HeaderOrigin)
+			origin := getOrigin(req)
 
 			// Check allowed origins
 			allowedOrigin := ""
 			for _, o := range config.AllowOrigins {
-				if o == "*" || o == origin {
+				if o == "*" || o == *origin {
 					allowedOrigin = o
 					break
 				}
@@ -91,7 +104,7 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 			// Simple request
 			if req.Method() != echo.OPTIONS {
 				res.Header().Add(echo.HeaderVary, echo.HeaderOrigin)
-				if origin == "" || allowedOrigin == "" {
+				if origin == nil || allowedOrigin == "" {
 					return next(c)
 				}
 				res.Header().Set(echo.HeaderAccessControlAllowOrigin, allowedOrigin)
@@ -108,7 +121,7 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 			res.Header().Add(echo.HeaderVary, echo.HeaderOrigin)
 			res.Header().Add(echo.HeaderVary, echo.HeaderAccessControlRequestMethod)
 			res.Header().Add(echo.HeaderVary, echo.HeaderAccessControlRequestHeaders)
-			if origin == "" || allowedOrigin == "" {
+			if origin == nil || allowedOrigin == "" {
 				return next(c)
 			}
 			res.Header().Set(echo.HeaderAccessControlAllowOrigin, allowedOrigin)
