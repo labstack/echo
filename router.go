@@ -5,7 +5,7 @@ type (
 	// request matching and URL path parameter parsing.
 	Router struct {
 		tree   *node
-		routes []Route
+		routes map[string]Route
 		echo   *Echo
 	}
 	node struct {
@@ -45,7 +45,7 @@ func NewRouter(e *Echo) *Router {
 		tree: &node{
 			methodHandler: new(methodHandler),
 		},
-		routes: []Route{},
+		routes: make(map[string]Route),
 		echo:   e,
 	}
 }
