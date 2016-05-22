@@ -49,7 +49,7 @@ func (h *RequestHeader) Keys() (keys []string) {
 
 // Contains implements `engine.Header#Contains` function.
 func (h *RequestHeader) Contains(key string) bool {
-	return h.Contains(key)
+	return h.Peek(key) != nil
 }
 
 func (h *RequestHeader) reset(hdr *fasthttp.RequestHeader) {
@@ -89,7 +89,7 @@ func (h *ResponseHeader) Keys() (keys []string) {
 
 // Contains implements `engine.Header#Contains` function.
 func (h *ResponseHeader) Contains(key string) bool {
-	return h.Contains(key)
+	return h.Peek(key) != nil
 }
 
 func (h *ResponseHeader) reset(hdr *fasthttp.ResponseHeader) {
