@@ -106,8 +106,8 @@ type (
 		// Del deletes data from the context.
 		Del(string)
 
-		// Exists checks if that key exists in the context.
-		Exists(string) bool
+		// Contains checks if the key exists in the context.
+		Contains(string) bool
 
 		// Bind binds the request body into provided type `i`. The default binder
 		// does it based on Content-Type header.
@@ -323,7 +323,7 @@ func (c *context) Del(key string) {
 	delete(c.store, key)
 }
 
-func (c *context) Exists(key string) bool {
+func (c *context) Contains(key string) bool {
 	_, ok := c.store[key]
 	return ok
 }

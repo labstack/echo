@@ -78,6 +78,7 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 			req := c.Request()
 			res := c.Response()
 			origin := req.Header().Get(echo.HeaderOrigin)
+			originSet := req.Header().Contains(echo.HeaderOrigin) // Issue #517
 
 			// Check allowed origins
 			allowedOrigin := ""
@@ -91,7 +92,7 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 			// Simple request
 			if req.Method() != echo.OPTIONS {
 				res.Header().Add(echo.HeaderVary, echo.HeaderOrigin)
-				if origin == "" || allowedOrigin == "" {
+				if !originSet || allowedOrigin == "" {
 					return next(c)
 				}
 				res.Header().Set(echo.HeaderAccessControlAllowOrigin, allowedOrigin)
@@ -108,7 +109,7 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 			res.Header().Add(echo.HeaderVary, echo.HeaderOrigin)
 			res.Header().Add(echo.HeaderVary, echo.HeaderAccessControlRequestMethod)
 			res.Header().Add(echo.HeaderVary, echo.HeaderAccessControlRequestHeaders)
-			if origin == "" || allowedOrigin == "" {
+			if !originSet || allowedOrigin == "" {
 				return next(c)
 			}
 			res.Header().Set(echo.HeaderAccessControlAllowOrigin, allowedOrigin)

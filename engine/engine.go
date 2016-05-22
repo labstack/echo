@@ -146,8 +146,11 @@ type (
 		// no values associated with the key, Get returns "".
 		Get(string) string
 
-		// Keys returns header keys.
+		// Keys returns the header keys.
 		Keys() []string
+
+		// Contains checks if the header is set.
+		Contains(string) bool
 	}
 
 	// URL defines the interface for HTTP request url.
