@@ -20,7 +20,8 @@ type (
 		// Optional. Default value "index.html".
 		Index string `json:"index"`
 
-		// Enable HTML5 mode by forwarding all not-found routes to root.
+		// Enable HTML5 mode by forwarding all not-found requests to root so that
+		// SPA (single-page application) can handle the routing.
 		HTML5 bool `json:"html5"`
 
 		// Enable directory browsing.
