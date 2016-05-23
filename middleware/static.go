@@ -22,6 +22,7 @@ type (
 
 		// Enable HTML5 mode by forwarding all not-found requests to root so that
 		// SPA (single-page application) can handle the routing.
+		// Optional. Default value false.
 		HTML5 bool `json:"html5"`
 
 		// Enable directory browsing.
@@ -33,9 +34,7 @@ type (
 var (
 	// DefaultStaticConfig is the default static middleware config.
 	DefaultStaticConfig = StaticConfig{
-		Index:  "index.html",
-		HTML5:  true,
-		Browse: false,
+		Index: "index.html",
 	}
 )
 
