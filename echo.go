@@ -33,7 +33,7 @@ Example:
 	    e.Run(standard.New(":1323"))
 	}
 
-Learn more at https://labstack.com/echo
+Learn more at https://echo.labstack.com
 */
 package echo
 
