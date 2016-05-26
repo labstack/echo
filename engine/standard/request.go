@@ -6,6 +6,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/engine"
@@ -174,6 +175,20 @@ func (r *Request) Cookies() []engine.Cookie {
 		cookies[i] = &Cookie{c}
 	}
 	return cookies
+}
+
+// AddCookie implements `engine.Request#AddCookie` function.
+func (r *Request) AddCookie(cookie engine.Cookie) {
+	c := &http.Cookie{}
+	c.Name = cookie.Name()
+	c.Value = cookie.Value()
+	c.Path = cookie.Path()
+	c.Domain = cookie.Domain()
+	c.HttpOnly = cookie.HTTPOnly()
+	c.Expires = cookie.Expires()
+	c.MaxAge = int(cookie.Expires().Sub(time.Now()).Seconds())
+
+	r.Request.AddCookie(c)
 }
 
 func (r *Request) reset(req *http.Request, h engine.Header, u engine.URL) {

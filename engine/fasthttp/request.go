@@ -158,6 +158,20 @@ func (r *Request) Cookies() []engine.Cookie {
 	return cookies
 }
 
+// AddCookie implements `engine.Request#AddCookie` function.
+func (r *Request) AddCookie(cookie engine.Cookie) {
+	c := &fasthttp.Cookie{}
+	c.SetKey(cookie.Name())
+	c.SetValue(cookie.Value())
+	c.SetPath(cookie.Path())
+	c.SetDomain(cookie.Domain())
+	c.SetExpire(cookie.Expires())
+	c.SetHTTPOnly(cookie.HTTPOnly())
+	c.SetSecure(cookie.Secure())
+
+	r.Request.Header.SetCookieBytesKV([]byte(cookie.Name()), c.Cookie())
+}
+
 func (r *Request) reset(c *fasthttp.RequestCtx, h engine.Header, u engine.URL) {
 	r.RequestCtx = c
 	r.header = h
