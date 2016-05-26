@@ -20,13 +20,18 @@ type (
 		// Key to create CSRF token.
 		Secret []byte `json:"secret"`
 
+		// Lookup is a string in the form of "<source>:<key>" that is used to extract
+		// token from the request.
+		// Optional. Default value "header:X-CSRF-Token".
+		// Possible values:
+		// - "header:<name>"
+		// - "form:<name>"
+		// - "header:<name>"
+		Lookup string `json:"lookup"`
+
 		// Context key to store generated CSRF token into context.
 		// Optional. Default value "csrf".
 		ContextKey string `json:"context_key"`
-
-		// Extractor is a function that extracts token from the request.
-		// Optional. Default value CSRFTokenFromHeader(echo.HeaderXCSRFToken).
-		Extractor CSRFTokenExtractor
 
 		// Name of the CSRF cookie. This cookie will store CSRF token.
 		// Optional. Default value "csrf".
@@ -53,16 +58,16 @@ type (
 		CookieHTTPOnly bool `json:"cookie_http_only"`
 	}
 
-	// CSRFTokenExtractor defines a function that takes `echo.Context` and returns
+	// csrfTokenExtractor defines a function that takes `echo.Context` and returns
 	// either a token or an error.
-	CSRFTokenExtractor func(echo.Context) (string, error)
+	csrfTokenExtractor func(echo.Context) (string, error)
 )
 
 var (
 	// DefaultCSRFConfig is the default CSRF middleware config.
 	DefaultCSRFConfig = CSRFConfig{
+		Lookup:        "header:" + echo.HeaderXCSRFToken,
 		ContextKey:    "csrf",
-		Extractor:     CSRFTokenFromHeader(echo.HeaderXCSRFToken),
 		CookieName:    "csrf",
 		CookieExpires: time.Now().Add(24 * time.Hour),
 	}
@@ -83,17 +88,27 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 	if config.Secret == nil {
 		panic("csrf secret must be provided")
 	}
+	if config.Lookup == "" {
+		config.Lookup = DefaultCSRFConfig.Lookup
+	}
 	if config.ContextKey == "" {
 		config.ContextKey = DefaultCSRFConfig.ContextKey
-	}
-	if config.Extractor == nil {
-		config.Extractor = DefaultCSRFConfig.Extractor
 	}
 	if config.CookieName == "" {
 		config.CookieName = DefaultCSRFConfig.CookieName
 	}
 	if config.CookieExpires.IsZero() {
 		config.CookieExpires = DefaultCSRFConfig.CookieExpires
+	}
+
+	// Initialize
+	parts := strings.Split(config.Lookup, ":")
+	extractor := csrfTokenFromHeader(parts[1])
+	switch parts[0] {
+	case "form":
+		extractor = csrfTokenFromForm(parts[1])
+	case "query":
+		extractor = csrfTokenFromQuery(parts[1])
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -124,7 +139,7 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 			switch req.Method() {
 			case echo.GET, echo.HEAD, echo.OPTIONS, echo.TRACE:
 			default:
-				token, err := config.Extractor(c)
+				token, err := extractor(c)
 				if err != nil {
 					return err
 				}
@@ -141,17 +156,17 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 	}
 }
 
-// CSRFTokenFromHeader returns a `CSRFTokenExtractor` that extracts token from the
+// csrfTokenFromForm returns a `csrfTokenExtractor` that extracts token from the
 // provided request header.
-func CSRFTokenFromHeader(header string) CSRFTokenExtractor {
+func csrfTokenFromHeader(header string) csrfTokenExtractor {
 	return func(c echo.Context) (string, error) {
 		return c.Request().Header().Get(header), nil
 	}
 }
 
-// CSRFTokenFromForm returns a `CSRFTokenExtractor` that extracts token from the
+// csrfTokenFromForm returns a `csrfTokenExtractor` that extracts token from the
 // provided form parameter.
-func CSRFTokenFromForm(param string) CSRFTokenExtractor {
+func csrfTokenFromForm(param string) csrfTokenExtractor {
 	return func(c echo.Context) (string, error) {
 		token := c.FormValue(param)
 		if token == "" {
@@ -161,9 +176,9 @@ func CSRFTokenFromForm(param string) CSRFTokenExtractor {
 	}
 }
 
-// CSRFTokenFromQuery returns a `CSRFTokenExtractor` that extracts token from the
+// csrfTokenFromQuery returns a `csrfTokenExtractor` that extracts token from the
 // provided query parameter.
-func CSRFTokenFromQuery(param string) CSRFTokenExtractor {
+func csrfTokenFromQuery(param string) csrfTokenExtractor {
 	return func(c echo.Context) (string, error) {
 		token := c.QueryParam(param)
 		if token == "" {

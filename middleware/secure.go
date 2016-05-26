@@ -26,9 +26,9 @@ type (
 		// clickjacking.
 		// Optional. Default value "SAMEORIGIN".
 		// Possible values:
-		// `SAMEORIGIN` - The page can only be displayed in a frame on the same origin as the page itself.
-		// `DENY` - The page cannot be displayed in a frame, regardless of the site attempting to do so.
-		// `ALLOW-FROM uri` - The page can only be displayed in a frame on the specified origin.
+		// - "SAMEORIGIN" - The page can only be displayed in a frame on the same origin as the page itself.
+		// - "DENY" - The page cannot be displayed in a frame, regardless of the site attempting to do so.
+		// - "ALLOW-FROM uri" - The page can only be displayed in a frame on the specified origin.
 		XFrameOptions string `json:"x_frame_options"`
 
 		// HSTSMaxAge sets the `Strict-Transport-Security` header to indicate how

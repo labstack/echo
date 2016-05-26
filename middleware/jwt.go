@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo"
@@ -24,14 +25,16 @@ type (
 		// Optional. Default value "user".
 		ContextKey string `json:"context_key"`
 
-		// Extractor is a function that extracts token from the request.
-		// Optional. Default value JWTFromHeader.
-		Extractor JWTExtractor
+		// Lookup is a string in the form of "<source>:<key>" that is used to extract
+		// token from the request.
+		// Optional. Default value "header:Authorization".
+		// Possible values:
+		// - "header:<name>"
+		// - "form:<name>"
+		Lookup string `json:"lookup"`
 	}
 
-	// JWTExtractor defines a function that takes `echo.Context` and returns either
-	// a token or an error.
-	JWTExtractor func(echo.Context) (string, error)
+	jwtExtractor func(echo.Context) (string, error)
 )
 
 const (
@@ -48,7 +51,7 @@ var (
 	DefaultJWTConfig = JWTConfig{
 		SigningMethod: AlgorithmHS256,
 		ContextKey:    "user",
-		Extractor:     JWTFromHeader,
+		Lookup:        "header:" + echo.HeaderAuthorization,
 	}
 )
 
@@ -78,13 +81,21 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	if config.ContextKey == "" {
 		config.ContextKey = DefaultJWTConfig.ContextKey
 	}
-	if config.Extractor == nil {
-		config.Extractor = DefaultJWTConfig.Extractor
+	if config.Lookup == "" {
+		config.Lookup = DefaultJWTConfig.Lookup
+	}
+
+	// Initialize
+	parts := strings.Split(config.Lookup, ":")
+	extractor := jwtFromHeader(parts[1])
+	switch parts[0] {
+	case "form":
+		extractor = jwtFromQuery(parts[1])
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			auth, err := config.Extractor(c)
+			auth, err := extractor(c)
 			if err != nil {
 				return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 			}
@@ -106,20 +117,22 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	}
 }
 
-// JWTFromHeader is a `JWTExtractor` that extracts token from the `Authorization` request
-// header.
-func JWTFromHeader(c echo.Context) (string, error) {
-	auth := c.Request().Header().Get(echo.HeaderAuthorization)
-	l := len(bearer)
-	if len(auth) > l+1 && auth[:l] == bearer {
-		return auth[l+1:], nil
+// jwtFromHeader returns a `jwtExtractor` that extracts token from the provided
+// request header.
+func jwtFromHeader(header string) jwtExtractor {
+	return func(c echo.Context) (string, error) {
+		auth := c.Request().Header().Get(header)
+		l := len(bearer)
+		if len(auth) > l+1 && auth[:l] == bearer {
+			return auth[l+1:], nil
+		}
+		return "", errors.New("empty or invalid jwt in authorization header")
 	}
-	return "", errors.New("empty or invalid jwt in authorization header")
 }
 
-// JWTFromQuery returns a `JWTExtractor` that extracts token from the provided query
+// jwtFromQuery returns a `jwtExtractor` that extracts token from the provided query
 // parameter.
-func JWTFromQuery(param string) JWTExtractor {
+func jwtFromQuery(param string) jwtExtractor {
 	return func(c echo.Context) (string, error) {
 		token := c.QueryParam(param)
 		if token == "" {
