@@ -25,13 +25,13 @@ type (
 		// Optional. Default value "user".
 		ContextKey string `json:"context_key"`
 
-		// Lookup is a string in the form of "<source>:<key>" that is used to extract
-		// token from the request.
+		// TokenLookup is a string in the form of "<source>:<name>" that is used
+		// to extract token from the request.
 		// Optional. Default value "header:Authorization".
 		// Possible values:
 		// - "header:<name>"
-		// - "form:<name>"
-		Lookup string `json:"lookup"`
+		// - "query:<name>"
+		TokenLookup string `json:"token_lookup"`
 	}
 
 	jwtExtractor func(echo.Context) (string, error)
@@ -51,7 +51,7 @@ var (
 	DefaultJWTConfig = JWTConfig{
 		SigningMethod: AlgorithmHS256,
 		ContextKey:    "user",
-		Lookup:        "header:" + echo.HeaderAuthorization,
+		TokenLookup:   "header:" + echo.HeaderAuthorization,
 	}
 )
 
@@ -81,15 +81,15 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	if config.ContextKey == "" {
 		config.ContextKey = DefaultJWTConfig.ContextKey
 	}
-	if config.Lookup == "" {
-		config.Lookup = DefaultJWTConfig.Lookup
+	if config.TokenLookup == "" {
+		config.TokenLookup = DefaultJWTConfig.TokenLookup
 	}
 
 	// Initialize
-	parts := strings.Split(config.Lookup, ":")
+	parts := strings.Split(config.TokenLookup, ":")
 	extractor := jwtFromHeader(parts[1])
 	switch parts[0] {
-	case "form":
+	case "query":
 		extractor = jwtFromQuery(parts[1])
 	}
 

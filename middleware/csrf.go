@@ -20,14 +20,14 @@ type (
 		// Key to create CSRF token.
 		Secret []byte `json:"secret"`
 
-		// Lookup is a string in the form of "<source>:<key>" that is used to extract
-		// token from the request.
+		// TokenLookup is a string in the form of "<source>:<key>" that is used
+		// to extract token from the request.
 		// Optional. Default value "header:X-CSRF-Token".
 		// Possible values:
 		// - "header:<name>"
 		// - "form:<name>"
 		// - "header:<name>"
-		Lookup string `json:"lookup"`
+		TokenLookup string `json:"token_lookup"`
 
 		// Context key to store generated CSRF token into context.
 		// Optional. Default value "csrf".
@@ -66,7 +66,7 @@ type (
 var (
 	// DefaultCSRFConfig is the default CSRF middleware config.
 	DefaultCSRFConfig = CSRFConfig{
-		Lookup:        "header:" + echo.HeaderXCSRFToken,
+		TokenLookup:   "header:" + echo.HeaderXCSRFToken,
 		ContextKey:    "csrf",
 		CookieName:    "csrf",
 		CookieExpires: time.Now().Add(24 * time.Hour),
@@ -88,8 +88,8 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 	if config.Secret == nil {
 		panic("csrf secret must be provided")
 	}
-	if config.Lookup == "" {
-		config.Lookup = DefaultCSRFConfig.Lookup
+	if config.TokenLookup == "" {
+		config.TokenLookup = DefaultCSRFConfig.TokenLookup
 	}
 	if config.ContextKey == "" {
 		config.ContextKey = DefaultCSRFConfig.ContextKey
@@ -102,7 +102,7 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 	}
 
 	// Initialize
-	parts := strings.Split(config.Lookup, ":")
+	parts := strings.Split(config.TokenLookup, ":")
 	extractor := csrfTokenFromHeader(parts[1])
 	switch parts[0] {
 	case "form":
