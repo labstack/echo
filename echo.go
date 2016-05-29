@@ -263,6 +263,11 @@ func (e *Echo) SetLogLevel(l uint8) {
 	e.logger.SetLevel(l)
 }
 
+// SetLogger defines a custom logger.
+func (e *Echo) SetLogger(l *log.Logger) {
+	e.logger = l
+}
+
 // Logger returns the logger instance.
 func (e *Echo) Logger() *log.Logger {
 	return e.logger
