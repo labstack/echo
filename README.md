@@ -234,19 +234,19 @@ e.GET("/users", func(c echo.Context) error {
 
 Middleware | Description
 :--- | :---
-[BodyLimit](https://echo.labstack.com/body-limit) | Limit request body
-[Logger](https://echo.labstack.com/logger) | Log HTTP requests
-[Recover](https://echo.labstack.com/recover) | Recover from panics
-[Gzip](https://echo.labstack.com/gzip) | Send gzip HTTP response
-[BasicAuth](https://echo.labstack.com/basic-auth) | HTTP basic authentication
-[JWTAuth](https://echo.labstack.com/jwt) | JWT authentication
-[Secure](https://echo.labstack.com/secure) | Protection against attacks
-[CORS](https://echo.labstack.com/cors) | Cross-Origin Resource Sharing
-[CSRF](https://echo.labstack.com/csrf) | Cross-Site Request Forgery
-[Static](https://echo.labstack.com/static) | Serve static files
-[AddTrailingSlash](https://echo.labstack.com/add-trailing-slash) | Add trailing slash to the request URI
-[RemoveTrailingSlash](https://echo.labstack.com/remove-trailing-slash) | Remove trailing slash from the request URI
-[MethodOverride](https://echo.labstack.com/method-override) | Override request method
+[BodyLimit](https://echo.labstack.com/middleware/body-limit) | Limit request body
+[Logger](https://echo.labstack.com/middleware/logger) | Log HTTP requests
+[Recover](https://echo.labstack.com/middleware/recover) | Recover from panics
+[Gzip](https://echo.labstack.com/middleware/gzip) | Send gzip HTTP response
+[BasicAuth](https://echo.labstack.com/middleware/basic-auth) | HTTP basic authentication
+[JWTAuth](https://echo.labstack.com/middleware/jwt) | JWT authentication
+[Secure](https://echo.labstack.com/middleware/secure) | Protection against attacks
+[CORS](https://echo.labstack.com/middleware/cors) | Cross-Origin Resource Sharing
+[CSRF](https://echo.labstack.com/middleware/csrf) | Cross-Site Request Forgery
+[Static](https://echo.labstack.com/middleware/static) | Serve static files
+[AddTrailingSlash](https://echo.labstack.com/middleware/add-trailing-slash) | Add trailing slash to the request URI
+[RemoveTrailingSlash](https://echo.labstack.com/middleware/remove-trailing-slash) | Remove trailing slash from the request URI
+[MethodOverride](https://echo.labstack.com/middleware/method-override) | Override request method
 
 ##### [More...](https://echo.labstack.com/middleware)
 
