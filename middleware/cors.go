@@ -48,7 +48,7 @@ var (
 	// DefaultCORSConfig is the default CORS middleware config.
 	DefaultCORSConfig = CORSConfig{
 		AllowOrigins: []string{"*"},
-		AllowMethods: []string{echo.GET, echo.HEAD, echo.PUT, echo.POST, echo.DELETE},
+		AllowMethods: []string{echo.GET, echo.HEAD, echo.PUT, echo.PATCH, echo.POST, echo.DELETE},
 	}
 )
 
