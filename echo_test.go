@@ -236,9 +236,17 @@ func TestEchoRoutes(t *testing.T) {
 		})
 	}
 
-	for i, r := range e.Routes() {
-		assert.Equal(t, routes[i].Method, r.Method)
-		assert.Equal(t, routes[i].Path, r.Path)
+	for _, r := range e.Routes() {
+		found := false
+		for _, rr := range routes {
+			if r.Method == rr.Method && r.Path == rr.Path {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Route %s : %s not found", r.Method, r.Path)
+		}
 	}
 }
 
