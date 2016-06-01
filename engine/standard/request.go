@@ -43,10 +43,7 @@ func (r *Request) IsTLS() bool {
 
 // Scheme implements `engine.Request#Scheme` function.
 func (r *Request) Scheme() string {
-	if r.IsTLS() {
-		return "https"
-	}
-	return "http"
+	return r.Request.URL.Scheme
 }
 
 // Host implements `engine.Request#Host` function.
