@@ -7,7 +7,8 @@ import (
 
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/engine"
-	"github.com/labstack/gommon/log"
+	"github.com/labstack/echo/log"
+	glog "github.com/labstack/gommon/log"
 	"github.com/valyala/fasthttp"
 )
 
@@ -17,7 +18,7 @@ type (
 		*fasthttp.Server
 		config  engine.Config
 		handler engine.Handler
-		logger  *log.Logger
+		logger  log.Logger
 		pool    *pool
 	}
 
@@ -81,7 +82,7 @@ func WithConfig(c engine.Config) (s *Server) {
 		handler: engine.HandlerFunc(func(req engine.Request, res engine.Response) {
 			s.logger.Error("handler not set, use `SetHandler()` to set it.")
 		}),
-		logger: log.New("echo"),
+		logger: glog.New("echo"),
 	}
 	s.Handler = s.ServeHTTP
 	return
@@ -93,7 +94,7 @@ func (s *Server) SetHandler(h engine.Handler) {
 }
 
 // SetLogger implements `engine.Server#SetLogger` function.
-func (s *Server) SetLogger(l *log.Logger) {
+func (s *Server) SetLogger(l log.Logger) {
 	s.logger = l
 }
 
