@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/engine"
-	"github.com/labstack/gommon/log"
+	"github.com/labstack/echo/log"
 )
 
 type (
@@ -19,7 +19,7 @@ type (
 		size      int64
 		committed bool
 		writer    io.Writer
-		logger    *log.Logger
+		logger    log.Logger
 	}
 
 	responseAdapter struct {
@@ -29,7 +29,7 @@ type (
 )
 
 // NewResponse returns `Response` instance.
-func NewResponse(w http.ResponseWriter, l *log.Logger) *Response {
+func NewResponse(w http.ResponseWriter, l log.Logger) *Response {
 	return &Response{
 		ResponseWriter: w,
 		header:         &Header{Header: w.Header()},

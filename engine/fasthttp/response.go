@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/engine"
-	"github.com/labstack/gommon/log"
+	"github.com/labstack/echo/log"
 	"github.com/valyala/fasthttp"
 )
 
@@ -20,12 +20,12 @@ type (
 		size      int64
 		committed bool
 		writer    io.Writer
-		logger    *log.Logger
+		logger    log.Logger
 	}
 )
 
 // NewResponse returns `Response` instance.
-func NewResponse(c *fasthttp.RequestCtx, l *log.Logger) *Response {
+func NewResponse(c *fasthttp.RequestCtx, l log.Logger) *Response {
 	return &Response{
 		RequestCtx: c,
 		header:     &ResponseHeader{ResponseHeader: &c.Response.Header},
