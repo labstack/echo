@@ -59,4 +59,15 @@ func TestRemoveTrailingSlash(t *testing.T) {
 	h(c)
 	assert.Equal(t, http.StatusMovedPermanently, rec.Status())
 	assert.Equal(t, "/remove-slash?key=value", rec.Header().Get(echo.HeaderLocation))
+
+	// With bare URL
+	req = test.NewRequest(echo.GET, "http://localhost", nil)
+	rec = test.NewResponseRecorder()
+	c = e.NewContext(req, rec)
+	h = RemoveTrailingSlash()(func(c echo.Context) error {
+		return nil
+	})
+	h(c)
+	assert.Equal(t, "", req.URL().Path())
+	assert.Equal(t, "http://localhost", req.URI())
 }
