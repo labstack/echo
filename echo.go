@@ -49,7 +49,8 @@ import (
 	"sync"
 
 	"github.com/labstack/echo/engine"
-	"github.com/labstack/gommon/log"
+	"github.com/labstack/echo/log"
+	glog "github.com/labstack/gommon/log"
 )
 
 type (
@@ -65,7 +66,7 @@ type (
 		pool             sync.Pool
 		debug            bool
 		router           *Router
-		logger           *log.Logger
+		logger           log.Logger
 	}
 
 	// Route contains a handler and information for matching against requests.
@@ -225,9 +226,9 @@ func New() (e *Echo) {
 	// Defaults
 	e.SetHTTPErrorHandler(e.DefaultHTTPErrorHandler)
 	e.SetBinder(&binder{})
-	e.logger = log.New("echo")
-	e.logger.SetLevel(log.ERROR)
-
+	l := glog.New("echo")
+	l.SetLevel(glog.ERROR)
+	e.SetLogger(l)
 	return
 }
 
@@ -248,9 +249,14 @@ func (e *Echo) Router() *Router {
 	return e.router
 }
 
-// SetLogPrefix sets the prefix for the logger. Default value is `echo`.
-func (e *Echo) SetLogPrefix(prefix string) {
-	e.logger.SetPrefix(prefix)
+// Logger returns the logger instance.
+func (e *Echo) Logger() log.Logger {
+	return e.logger
+}
+
+// SetLogger defines a custom logger.
+func (e *Echo) SetLogger(l log.Logger) {
+	e.logger = l
 }
 
 // SetLogOutput sets the output destination for the logger. Default value is `os.Std*`
@@ -258,19 +264,9 @@ func (e *Echo) SetLogOutput(w io.Writer) {
 	e.logger.SetOutput(w)
 }
 
-// SetLogLevel sets the log level for the logger. Default value is `log.ERROR`.
+// SetLogLevel sets the log level for the logger. Default value is `glog.ERROR`.
 func (e *Echo) SetLogLevel(l uint8) {
 	e.logger.SetLevel(l)
-}
-
-// SetLogger defines a custom logger.
-func (e *Echo) SetLogger(l *log.Logger) {
-	e.logger = l
-}
-
-// Logger returns the logger instance.
-func (e *Echo) Logger() *log.Logger {
-	return e.logger
 }
 
 // DefaultHTTPErrorHandler invokes the default HTTP error handler.
@@ -313,7 +309,7 @@ func (e *Echo) SetRenderer(r Renderer) {
 // SetDebug enable/disable debug mode.
 func (e *Echo) SetDebug(on bool) {
 	e.debug = on
-	e.SetLogLevel(log.DEBUG)
+	e.SetLogLevel(glog.DEBUG)
 }
 
 // Debug returns debug mode (enabled or disabled).

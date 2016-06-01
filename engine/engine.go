@@ -7,7 +7,7 @@ import (
 
 	"net"
 
-	"github.com/labstack/gommon/log"
+	"github.com/labstack/echo/log"
 )
 
 type (
@@ -17,7 +17,7 @@ type (
 		SetHandler(Handler)
 
 		// SetLogger sets the logger for the HTTP server.
-		SetLogger(*log.Logger)
+		SetLogger(log.Logger)
 
 		// Start starts the HTTP server.
 		Start() error

@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/labstack/echo/engine"
-	"github.com/labstack/gommon/log"
+	"github.com/labstack/echo/log"
 
 	"bytes"
 
@@ -162,7 +162,7 @@ type (
 		SetHandler(HandlerFunc)
 
 		// Logger returns the `Logger` instance.
-		Logger() *log.Logger
+		Logger() log.Logger
 
 		// Echo returns the `Echo` instance.
 		Echo() *Echo
@@ -475,7 +475,7 @@ func (c *context) SetHandler(h HandlerFunc) {
 	c.handler = h
 }
 
-func (c *context) Logger() *log.Logger {
+func (c *context) Logger() log.Logger {
 	return c.echo.logger
 }
 
