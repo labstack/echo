@@ -9,7 +9,7 @@ import (
 
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/engine"
-	"github.com/labstack/gommon/log"
+	"github.com/labstack/echo/log"
 	"github.com/valyala/fasthttp"
 )
 
@@ -19,12 +19,12 @@ type (
 		*fasthttp.RequestCtx
 		header engine.Header
 		url    engine.URL
-		logger *log.Logger
+		logger log.Logger
 	}
 )
 
 // NewRequest returns `Request` instance.
-func NewRequest(c *fasthttp.RequestCtx, l *log.Logger) *Request {
+func NewRequest(c *fasthttp.RequestCtx, l log.Logger) *Request {
 	return &Request{
 		RequestCtx: c,
 		url:        &URL{URI: c.URI()},
