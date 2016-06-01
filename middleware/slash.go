@@ -69,7 +69,7 @@ func RemoveTrailingSlashWithConfig(config TrailingSlashConfig) echo.MiddlewareFu
 			path := url.Path()
 			qs := url.QueryString()
 			l := len(path) - 1
-			if path != "/" && path[l] == '/' {
+			if l >= 0 && path != "/" && path[l] == '/' {
 				path = path[:l]
 				uri := path
 				if qs != "" {
