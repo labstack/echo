@@ -141,6 +141,7 @@ const (
 // Headers
 const (
 	HeaderAcceptEncoding                = "Accept-Encoding"
+	HeaderAllow                         = "Allow"
 	HeaderAuthorization                 = "Authorization"
 	HeaderContentDisposition            = "Content-Disposition"
 	HeaderContentEncoding               = "Content-Encoding"
