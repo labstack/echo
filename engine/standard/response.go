@@ -56,6 +56,9 @@ func (r *Response) WriteHeader(code int) {
 
 // Write implements `engine.Response#Write` function.
 func (r *Response) Write(b []byte) (n int, err error) {
+	if !r.Committed() {
+		r.WriteHeader(http.StatusOK)
+	}
 	n, err = r.writer.Write(b)
 	r.size += int64(n)
 	return
