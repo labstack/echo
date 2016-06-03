@@ -64,3 +64,27 @@ func TestResponse(t *testing.T) {
 	// reset
 	r.reset(httptest.NewRecorder(), New())
 }
+
+func TestResponseWriteCommit(t *testing.T) {
+	e := New()
+	w := httptest.NewRecorder()
+	r := NewResponse(w, e)
+
+	// Write body, it writes header if not committed yet
+	s := "echo"
+	r.Write([]byte(s))
+
+	assert.Equal(t, w.Code, 200)
+	assert.Equal(t, w.Body.String(), s)
+
+	assert.Equal(t, r.Status(), 200)
+	assert.Equal(t, r.Size(), int64(4))
+	assert.True(t, r.Committed())
+
+	// This is ignored with warning
+	r.WriteHeader(400)
+
+	assert.Equal(t, r.Status(), 200)
+	assert.Equal(t, r.Size(), int64(4))
+	assert.True(t, r.Committed())
+}
