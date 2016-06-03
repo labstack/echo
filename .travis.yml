@@ -10,6 +10,8 @@ before_install:
 script:
     - go test -coverprofile=echo.coverprofile
     - go test -coverprofile=middleware.coverprofile ./middleware
+    - go test -coverprofile=engine_standatd.coverprofile ./engine/standard
+    - go test -coverprofile=engine_fasthttp.coverprofile ./engine/fasthttp
     - $HOME/gopath/bin/gover
     - $HOME/gopath/bin/goveralls -coverprofile=gover.coverprofile -service=travis-ci
 matrix:
