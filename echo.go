@@ -48,6 +48,8 @@ import (
 	"runtime"
 	"sync"
 
+	ncontext "golang.org/x/net/context"
+
 	"github.com/labstack/echo/engine"
 	"github.com/labstack/echo/log"
 	glog "github.com/labstack/gommon/log"
@@ -235,7 +237,8 @@ func New() (e *Echo) {
 
 // NewContext returns a Context instance.
 func (e *Echo) NewContext(req engine.Request, res engine.Response) Context {
-	return &context{
+	return &echoContext{
+		context:  ncontext.Background(),
 		request:  req,
 		response: res,
 		echo:     e,
@@ -546,7 +549,7 @@ func (e *Echo) PutContext(c Context) {
 }
 
 func (e *Echo) ServeHTTP(req engine.Request, res engine.Response) {
-	c := e.pool.Get().(*context)
+	c := e.pool.Get().(*echoContext)
 	c.Reset(req, res)
 
 	// Middleware

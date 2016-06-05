@@ -34,7 +34,7 @@ func TestContext(t *testing.T) {
 	e := New()
 	req := test.NewRequest(POST, "/", strings.NewReader(userJSON))
 	rec := test.NewResponseRecorder()
-	c := e.NewContext(req, rec).(*context)
+	c := e.NewContext(req, rec).(*echoContext)
 
 	// Request
 	assert.NotNil(t, c.Request())
@@ -78,7 +78,7 @@ func TestContext(t *testing.T) {
 
 	// JSON
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*context)
+	c = e.NewContext(req, rec).(*echoContext)
 	err = c.JSON(http.StatusOK, user{1, "Jon Snow"})
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Status())
@@ -88,13 +88,13 @@ func TestContext(t *testing.T) {
 
 	// JSON (error)
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*context)
+	c = e.NewContext(req, rec).(*echoContext)
 	err = c.JSON(http.StatusOK, make(chan bool))
 	assert.Error(t, err)
 
 	// JSONP
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*context)
+	c = e.NewContext(req, rec).(*echoContext)
 	callback := "callback"
 	err = c.JSONP(http.StatusOK, callback, user{1, "Jon Snow"})
 	if assert.NoError(t, err) {
@@ -105,7 +105,7 @@ func TestContext(t *testing.T) {
 
 	// XML
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*context)
+	c = e.NewContext(req, rec).(*echoContext)
 	err = c.XML(http.StatusOK, user{1, "Jon Snow"})
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Status())
@@ -115,13 +115,13 @@ func TestContext(t *testing.T) {
 
 	// XML (error)
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*context)
+	c = e.NewContext(req, rec).(*echoContext)
 	err = c.XML(http.StatusOK, make(chan bool))
 	assert.Error(t, err)
 
 	// String
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*context)
+	c = e.NewContext(req, rec).(*echoContext)
 	err = c.String(http.StatusOK, "Hello, World!")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Status())
@@ -131,7 +131,7 @@ func TestContext(t *testing.T) {
 
 	// HTML
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*context)
+	c = e.NewContext(req, rec).(*echoContext)
 	err = c.HTML(http.StatusOK, "Hello, <strong>World!</strong>")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Status())
@@ -141,7 +141,7 @@ func TestContext(t *testing.T) {
 
 	// Attachment
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*context)
+	c = e.NewContext(req, rec).(*echoContext)
 	file, err := os.Open("_fixture/images/walle.png")
 	if assert.NoError(t, err) {
 		err = c.Attachment(file, "walle.png")
@@ -154,20 +154,20 @@ func TestContext(t *testing.T) {
 
 	// NoContent
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*context)
+	c = e.NewContext(req, rec).(*echoContext)
 	c.NoContent(http.StatusOK)
 	assert.Equal(t, http.StatusOK, rec.Status())
 
 	// Redirect
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*context)
+	c = e.NewContext(req, rec).(*echoContext)
 	assert.Equal(t, nil, c.Redirect(http.StatusMovedPermanently, "http://labstack.github.io/echo"))
 	assert.Equal(t, http.StatusMovedPermanently, rec.Status())
 	assert.Equal(t, "http://labstack.github.io/echo", rec.Header().Get(HeaderLocation))
 
 	// Error
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*context)
+	c = e.NewContext(req, rec).(*echoContext)
 	c.Error(errors.New("error"))
 	assert.Equal(t, http.StatusInternalServerError, rec.Status())
 
@@ -183,7 +183,7 @@ func TestContextCookie(t *testing.T) {
 	req.Header().Add(HeaderCookie, theme)
 	req.Header().Add(HeaderCookie, user)
 	rec := test.NewResponseRecorder()
-	c := e.NewContext(req, rec).(*context)
+	c := e.NewContext(req, rec).(*echoContext)
 
 	// Read single
 	cookie, err := c.Cookie("theme")
