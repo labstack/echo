@@ -26,7 +26,7 @@ type (
 		// Possible values:
 		// - "header:<name>"
 		// - "form:<name>"
-		// - "header:<name>"
+		// - "query:<name>"
 		TokenLookup string `json:"token_lookup"`
 
 		// Context key to store generated CSRF token into context.
