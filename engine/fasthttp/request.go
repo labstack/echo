@@ -136,12 +136,12 @@ func (r *Request) MultipartForm() (*multipart.Form, error) {
 // Cookie implements `engine.Request#Cookie` function.
 func (r *Request) Cookie(name string) (engine.Cookie, error) {
 	c := new(fasthttp.Cookie)
-	c.SetKey(name)
 	b := r.Request.Header.Cookie(name)
 	if b == nil {
 		return nil, echo.ErrCookieNotFound
 	}
 	c.ParseBytes(b)
+	c.SetKey(name)
 	return &Cookie{c}, nil
 }
 
