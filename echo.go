@@ -243,7 +243,6 @@ func (e *Echo) NewContext(req engine.Request, res engine.Response) Context {
 		response: res,
 		echo:     e,
 		pvalues:  make([]string, *e.maxParam),
-		store:    make(store),
 		handler:  notFoundHandler,
 	}
 }

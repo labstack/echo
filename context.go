@@ -25,12 +25,8 @@ type (
 	Context interface {
 		context.Context
 
-		// StdContext returns `net/context.Context`. By default it is set the background
-		// context. To change the context, use SetStdContext().
-		StdContext() context.Context
-
-		// SetStdContext sets `net/context.Context`.
-		SetStdContext(context.Context)
+		// SetContext sets `net/context.Context`.
+		SetContext(context.Context)
 
 		// Request returns `engine.Request` interface.
 		Request() engine.Request
@@ -103,12 +99,6 @@ type (
 
 		// Set saves data in the context.
 		Set(string, interface{})
-
-		// Del deletes data from the context.
-		Del(string)
-
-		// Contains checks if the key exists in the context.
-		Contains(string) bool
 
 		// Bind binds the request body into provided type `i`. The default binder
 		// does it based on Content-Type header.
@@ -186,23 +176,16 @@ type (
 		path     string
 		pnames   []string
 		pvalues  []string
-		store    store
 		handler  HandlerFunc
 		echo     *Echo
 	}
-
-	store map[string]interface{}
 )
 
 const (
 	indexPage = "index.html"
 )
 
-func (c *echoContext) StdContext() context.Context {
-	return c.Context
-}
-
-func (c *echoContext) SetStdContext(ctx context.Context) {
+func (c *echoContext) SetContext(ctx context.Context) {
 	c.Context = ctx
 }
 
@@ -310,23 +293,11 @@ func (c *echoContext) Cookies() []engine.Cookie {
 }
 
 func (c *echoContext) Set(key string, val interface{}) {
-	if c.store == nil {
-		c.store = make(store)
-	}
-	c.store[key] = val
+	c.Context = context.WithValue(c, key, val)
 }
 
 func (c *echoContext) Get(key string) interface{} {
-	return c.store[key]
-}
-
-func (c *echoContext) Del(key string) {
-	delete(c.store, key)
-}
-
-func (c *echoContext) Contains(key string) bool {
-	_, ok := c.store[key]
-	return ok
+	return c.Context.Value(key)
 }
 
 func (c *echoContext) Bind(i interface{}) error {
@@ -511,6 +482,5 @@ func (c *echoContext) Reset(req engine.Request, res engine.Response) {
 	c.Context = nil
 	c.request = req
 	c.response = res
-	c.store = nil
 	c.handler = notFoundHandler
 }

@@ -327,24 +327,23 @@ func TestContextRedirect(t *testing.T) {
 	assert.Error(t, c.Redirect(310, "http://labstack.github.io/echo"))
 }
 
-func TestContextStdContext(t *testing.T) {
+func TestContextEmbedded(t *testing.T) {
 	c := new(echoContext)
-	c.SetStdContext(context.WithValue(c.StdContext(), "key", "val"))
+	c.SetContext(context.WithValue(c, "key", "val"))
 	assert.Equal(t, "val", c.Value("key"))
-	ctx, _ := context.WithDeadline(context.Background(), time.Now())
-	c.SetStdContext(ctx)
+	now := time.Now()
+	ctx, _ := context.WithDeadline(context.Background(), now)
+	c.SetContext(ctx)
+	n, _ := ctx.Deadline()
+	assert.Equal(t, now, n)
 	assert.Equal(t, context.DeadlineExceeded, c.Err())
 	assert.NotNil(t, c.Done())
 }
 
 func TestContextStore(t *testing.T) {
 	c := new(echoContext)
-	c.store = nil
 	c.Set("name", "Jon Snow")
 	assert.Equal(t, "Jon Snow", c.Get("name"))
-	assert.True(t, c.Contains("name"))
-	c.Del("name")
-	assert.Empty(t, c.Get("name"))
 }
 
 func TestContextServeContent(t *testing.T) {
