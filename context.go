@@ -180,7 +180,7 @@ type (
 	}
 
 	echoContext struct {
-		context  context.Context
+		context.Context
 		request  engine.Request
 		response engine.Response
 		path     string
@@ -199,27 +199,27 @@ const (
 )
 
 func (c *echoContext) StdContext() context.Context {
-	return c.context
+	return c.Context
 }
 
 func (c *echoContext) SetStdContext(ctx context.Context) {
-	c.context = ctx
+	c.Context = ctx
 }
 
 func (c *echoContext) Deadline() (deadline time.Time, ok bool) {
-	return c.context.Deadline()
+	return c.Context.Deadline()
 }
 
 func (c *echoContext) Done() <-chan struct{} {
-	return c.context.Done()
+	return c.Context.Done()
 }
 
 func (c *echoContext) Err() error {
-	return c.context.Err()
+	return c.Context.Err()
 }
 
 func (c *echoContext) Value(key interface{}) interface{} {
-	return c.context.Value(key)
+	return c.Context.Value(key)
 }
 
 func (c *echoContext) Request() engine.Request {
@@ -508,7 +508,7 @@ func ContentTypeByExtension(name string) (t string) {
 }
 
 func (c *echoContext) Reset(req engine.Request, res engine.Response) {
-	c.context = nil
+	c.Context = nil
 	c.request = req
 	c.response = res
 	c.store = nil

@@ -48,7 +48,7 @@ import (
 	"runtime"
 	"sync"
 
-	ncontext "golang.org/x/net/context"
+	"golang.org/x/net/context"
 
 	"github.com/labstack/echo/engine"
 	"github.com/labstack/echo/log"
@@ -238,7 +238,7 @@ func New() (e *Echo) {
 // NewContext returns a Context instance.
 func (e *Echo) NewContext(req engine.Request, res engine.Response) Context {
 	return &echoContext{
-		context:  ncontext.Background(),
+		Context:  context.Background(),
 		request:  req,
 		response: res,
 		echo:     e,

@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"testing"
 	"text/template"
 	"time"
+
+	"golang.org/x/net/context"
 
 	"strings"
 
@@ -36,27 +39,17 @@ func TestContext(t *testing.T) {
 	rec := test.NewResponseRecorder()
 	c := e.NewContext(req, rec).(*echoContext)
 
+	// Echo
+	assert.Equal(t, e, c.Echo())
+
 	// Request
-	assert.NotNil(t, c.Request())
+	assert.Equal(t, req, c.Request())
 
 	// Response
-	assert.NotNil(t, c.Response())
+	assert.Equal(t, rec, c.Response())
 
-	// ParamNames
-	c.pnames = []string{"uid", "fid"}
-	assert.EqualValues(t, []string{"uid", "fid"}, c.ParamNames())
-
-	// Param by id
-	c.pnames = []string{"id"}
-	c.pvalues = []string{"1"}
-	assert.Equal(t, "1", c.P(0))
-
-	// Param by name
-	assert.Equal(t, "1", c.Param("id"))
-
-	// Store
-	c.Set("user", "Jon Snow")
-	assert.Equal(t, "Jon Snow", c.Get("user"))
+	// Logger
+	assert.Equal(t, e.logger, c.Logger())
 
 	//--------
 	// Render
@@ -158,13 +151,6 @@ func TestContext(t *testing.T) {
 	c.NoContent(http.StatusOK)
 	assert.Equal(t, http.StatusOK, rec.Status())
 
-	// Redirect
-	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*echoContext)
-	assert.Equal(t, nil, c.Redirect(http.StatusMovedPermanently, "http://labstack.github.io/echo"))
-	assert.Equal(t, http.StatusMovedPermanently, rec.Status())
-	assert.Equal(t, "http://labstack.github.io/echo", rec.Header().Get(HeaderLocation))
-
 	// Error
 	rec = test.NewResponseRecorder()
 	c = e.NewContext(req, rec).(*echoContext)
@@ -203,7 +189,7 @@ func TestContextCookie(t *testing.T) {
 	}
 
 	// Write
-	cookie = &test.Cookie{&http.Cookie{
+	cookie = &test.Cookie{Cookie: &http.Cookie{
 		Name:     "SSID",
 		Value:    "Ap4PGTEq",
 		Domain:   "labstack.com",
@@ -235,35 +221,130 @@ func TestContextPath(t *testing.T) {
 	assert.Equal(t, "/users/:uid/files/:fid", c.Path())
 }
 
-func TestContextQueryParam(t *testing.T) {
-	q := make(url.Values)
-	q.Set("name", "joe")
-	q.Set("email", "joe@labstack.com")
-	req := test.NewRequest(GET, "/?"+q.Encode(), nil)
+func TestContextPathParam(t *testing.T) {
 	e := New()
+	req := test.NewRequest(GET, "/", nil)
 	c := e.NewContext(req, nil)
-	assert.Equal(t, "joe", c.QueryParam("name"))
-	assert.Equal(t, "joe@labstack.com", c.QueryParam("email"))
+
+	// ParamNames
+	c.SetParamNames("uid", "fid")
+	assert.EqualValues(t, []string{"uid", "fid"}, c.ParamNames())
+
+	// ParamValues
+	c.SetParamValues("101", "501")
+	assert.EqualValues(t, []string{"101", "501"}, c.ParamValues())
+
+	// P
+	assert.Equal(t, "101", c.P(0))
+
+	// Param
+	assert.Equal(t, "501", c.Param("fid"))
 }
 
 func TestContextFormValue(t *testing.T) {
 	f := make(url.Values)
-	f.Set("name", "joe")
-	f.Set("email", "joe@labstack.com")
+	f.Set("name", "Jon Snow")
+	f.Set("email", "jon@labstack.com")
 
 	e := New()
 	req := test.NewRequest(POST, "/", strings.NewReader(f.Encode()))
 	req.Header().Add(HeaderContentType, MIMEApplicationForm)
-
 	c := e.NewContext(req, nil)
-	assert.Equal(t, "joe", c.FormValue("name"))
-	assert.Equal(t, "joe@labstack.com", c.FormValue("email"))
+
+	// FormValue
+	assert.Equal(t, "Jon Snow", c.FormValue("name"))
+	assert.Equal(t, "jon@labstack.com", c.FormValue("email"))
+
+	// FormParams
+	assert.Equal(t, map[string][]string{
+		"name":  []string{"Jon Snow"},
+		"email": []string{"jon@labstack.com"},
+	}, c.FormParams())
 }
 
-func TestContextNetContext(t *testing.T) {
-	// c := new(context)
-	// c.Context = xcontext.WithValue(nil, "key", "val")
-	// assert.Equal(t, "val", c.Value("key"))
+func TestContextQueryParam(t *testing.T) {
+	q := make(url.Values)
+	q.Set("name", "Jon Snow")
+	q.Set("email", "jon@labstack.com")
+	req := test.NewRequest(GET, "/?"+q.Encode(), nil)
+	e := New()
+	c := e.NewContext(req, nil)
+
+	// QueryParam
+	assert.Equal(t, "Jon Snow", c.QueryParam("name"))
+	assert.Equal(t, "jon@labstack.com", c.QueryParam("email"))
+
+	// QueryParams
+	assert.Equal(t, map[string][]string{
+		"name":  []string{"Jon Snow"},
+		"email": []string{"jon@labstack.com"},
+	}, c.QueryParams())
+}
+
+func TestContextFormFile(t *testing.T) {
+	e := New()
+	buf := new(bytes.Buffer)
+	mr := multipart.NewWriter(buf)
+	w, err := mr.CreateFormFile("file", "test")
+	if assert.NoError(t, err) {
+		w.Write([]byte("test"))
+	}
+	mr.Close()
+	req := test.NewRequest(POST, "/", buf)
+	req.Header().Set(HeaderContentType, mr.FormDataContentType())
+	rec := test.NewResponseRecorder()
+	c := e.NewContext(req, rec)
+	f, err := c.FormFile("file")
+	if assert.NoError(t, err) {
+		assert.Equal(t, "test", f.Filename)
+	}
+}
+
+func TestContextMultipartForm(t *testing.T) {
+	e := New()
+	buf := new(bytes.Buffer)
+	mw := multipart.NewWriter(buf)
+	mw.WriteField("name", "Jon Snow")
+	mw.Close()
+	req := test.NewRequest(POST, "/", buf)
+	req.Header().Set(HeaderContentType, mw.FormDataContentType())
+	rec := test.NewResponseRecorder()
+	c := e.NewContext(req, rec)
+	f, err := c.MultipartForm()
+	if assert.NoError(t, err) {
+		assert.NotNil(t, f)
+	}
+}
+
+func TestContextRedirect(t *testing.T) {
+	e := New()
+	req := test.NewRequest(GET, "/", nil)
+	rec := test.NewResponseRecorder()
+	c := e.NewContext(req, rec)
+	assert.Equal(t, nil, c.Redirect(http.StatusMovedPermanently, "http://labstack.github.io/echo"))
+	assert.Equal(t, http.StatusMovedPermanently, rec.Status())
+	assert.Equal(t, "http://labstack.github.io/echo", rec.Header().Get(HeaderLocation))
+	assert.Error(t, c.Redirect(310, "http://labstack.github.io/echo"))
+}
+
+func TestContextStdContext(t *testing.T) {
+	c := new(echoContext)
+	c.SetStdContext(context.WithValue(c.StdContext(), "key", "val"))
+	assert.Equal(t, "val", c.Value("key"))
+	ctx, _ := context.WithDeadline(context.Background(), time.Now())
+	c.SetStdContext(ctx)
+	assert.Equal(t, context.DeadlineExceeded, c.Err())
+	assert.NotNil(t, c.Done())
+}
+
+func TestContextStore(t *testing.T) {
+	c := new(echoContext)
+	c.store = nil
+	c.Set("name", "Jon Snow")
+	assert.Equal(t, "Jon Snow", c.Get("name"))
+	assert.True(t, c.Contains("name"))
+	c.Del("name")
+	assert.Empty(t, c.Get("name"))
 }
 
 func TestContextServeContent(t *testing.T) {
