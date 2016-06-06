@@ -238,7 +238,7 @@ func New() (e *Echo) {
 // NewContext returns a Context instance.
 func (e *Echo) NewContext(req engine.Request, res engine.Response) Context {
 	return &echoContext{
-		Context:  context.Background(),
+		context:  context.Background(),
 		request:  req,
 		response: res,
 		echo:     e,
@@ -338,7 +338,7 @@ func (e *Echo) CONNECT(path string, h HandlerFunc, m ...MiddlewareFunc) {
 
 // Connect is deprecated, use `CONNECT()` instead.
 func (e *Echo) Connect(path string, h HandlerFunc, m ...MiddlewareFunc) {
-	e.add(CONNECT, path, h, m...)
+	e.CONNECT(path, h, m...)
 }
 
 // DELETE registers a new DELETE route for a path with matching handler in the router
@@ -349,7 +349,7 @@ func (e *Echo) DELETE(path string, h HandlerFunc, m ...MiddlewareFunc) {
 
 // Delete is deprecated, use `DELETE()` instead.
 func (e *Echo) Delete(path string, h HandlerFunc, m ...MiddlewareFunc) {
-	e.add(DELETE, path, h, m...)
+	e.DELETE(path, h, m...)
 }
 
 // GET registers a new GET route for a path with matching handler in the router
@@ -360,7 +360,7 @@ func (e *Echo) GET(path string, h HandlerFunc, m ...MiddlewareFunc) {
 
 // Get is deprecated, use `GET()` instead.
 func (e *Echo) Get(path string, h HandlerFunc, m ...MiddlewareFunc) {
-	e.add(GET, path, h, m...)
+	e.GET(path, h, m...)
 }
 
 // HEAD registers a new HEAD route for a path with matching handler in the
@@ -371,7 +371,7 @@ func (e *Echo) HEAD(path string, h HandlerFunc, m ...MiddlewareFunc) {
 
 // Head is deprecated, use `HEAD()` instead.
 func (e *Echo) Head(path string, h HandlerFunc, m ...MiddlewareFunc) {
-	e.add(HEAD, path, h, m...)
+	e.HEAD(path, h, m...)
 }
 
 // OPTIONS registers a new OPTIONS route for a path with matching handler in the
@@ -382,7 +382,7 @@ func (e *Echo) OPTIONS(path string, h HandlerFunc, m ...MiddlewareFunc) {
 
 // Options is deprecated, use `OPTIONS()` instead.
 func (e *Echo) Options(path string, h HandlerFunc, m ...MiddlewareFunc) {
-	e.add(OPTIONS, path, h, m...)
+	e.OPTIONS(path, h, m...)
 }
 
 // PATCH registers a new PATCH route for a path with matching handler in the
@@ -393,7 +393,7 @@ func (e *Echo) PATCH(path string, h HandlerFunc, m ...MiddlewareFunc) {
 
 // Patch is deprecated, use `PATCH()` instead.
 func (e *Echo) Patch(path string, h HandlerFunc, m ...MiddlewareFunc) {
-	e.add(PATCH, path, h, m...)
+	e.PATCH(path, h, m...)
 }
 
 // POST registers a new POST route for a path with matching handler in the
@@ -404,7 +404,7 @@ func (e *Echo) POST(path string, h HandlerFunc, m ...MiddlewareFunc) {
 
 // Post is deprecated, use `POST()` instead.
 func (e *Echo) Post(path string, h HandlerFunc, m ...MiddlewareFunc) {
-	e.add(POST, path, h, m...)
+	e.POST(path, h, m...)
 }
 
 // PUT registers a new PUT route for a path with matching handler in the
@@ -415,7 +415,7 @@ func (e *Echo) PUT(path string, h HandlerFunc, m ...MiddlewareFunc) {
 
 // Put is deprecated, use `PUT()` instead.
 func (e *Echo) Put(path string, h HandlerFunc, m ...MiddlewareFunc) {
-	e.add(PUT, path, h, m...)
+	e.PUT(path, h, m...)
 }
 
 // TRACE registers a new TRACE route for a path with matching handler in the
@@ -426,7 +426,7 @@ func (e *Echo) TRACE(path string, h HandlerFunc, m ...MiddlewareFunc) {
 
 // Trace is deprecated, use `TRACE()` instead.
 func (e *Echo) Trace(path string, h HandlerFunc, m ...MiddlewareFunc) {
-	e.add(TRACE, path, h, m...)
+	e.TRACE(path, h, m...)
 }
 
 // Any registers a new route for all HTTP methods and path with matching handler
@@ -531,20 +531,10 @@ func (e *Echo) AcquireContext() Context {
 	return e.pool.Get().(Context)
 }
 
-// GetContext is deprecated, use `AcquireContext()` instead.
-func (e *Echo) GetContext() Context {
-	return e.pool.Get().(Context)
-}
-
 // ReleaseContext returns the `Context` instance back to the pool.
 // You must call it after `AcquireContext()`.
 func (e *Echo) ReleaseContext(c Context) {
 	e.pool.Put(c)
-}
-
-// PutContext is deprecated, use `ReleaseContext()` instead.
-func (e *Echo) PutContext(c Context) {
-	e.ReleaseContext(c)
 }
 
 func (e *Echo) ServeHTTP(req engine.Request, res engine.Response) {

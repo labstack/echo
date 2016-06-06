@@ -23,10 +23,32 @@ type (
 	// Context represents the context of the current HTTP request. It holds request and
 	// response objects, path, path parameters, data and registered handler.
 	Context interface {
-		context.Context
+		// Context returns `net/context.Context`.
+		Context() context.Context
 
 		// SetContext sets `net/context.Context`.
 		SetContext(context.Context)
+
+		// Deadline returns the time when work done on behalf of this context
+		// should be canceled.  Deadline returns ok==false when no deadline is
+		// set.  Successive calls to Deadline return the same results.
+		Deadline() (deadline time.Time, ok bool)
+
+		// Done returns a channel that's closed when work done on behalf of this
+		// context should be canceled.  Done may return nil if this context can
+		// never be canceled.  Successive calls to Done return the same value.
+		Done() <-chan struct{}
+
+		// Err returns a non-nil error value after Done is closed.  Err returns
+		// Canceled if the context was canceled or DeadlineExceeded if the
+		// context's deadline passed.  No other values for Err are defined.
+		// After Done is closed, successive calls to Err return the same value.
+		Err() error
+
+		// Value returns the value associated with this context for key, or nil
+		// if no value is associated with key.  Successive calls to Value with
+		// the same key returns the same result.
+		Value(key interface{}) interface{}
 
 		// Request returns `engine.Request` interface.
 		Request() engine.Request
@@ -170,7 +192,7 @@ type (
 	}
 
 	echoContext struct {
-		context.Context
+		context  context.Context
 		request  engine.Request
 		response engine.Response
 		path     string
@@ -185,24 +207,28 @@ const (
 	indexPage = "index.html"
 )
 
+func (c *echoContext) Context() context.Context {
+	return c.context
+}
+
 func (c *echoContext) SetContext(ctx context.Context) {
-	c.Context = ctx
+	c.context = ctx
 }
 
 func (c *echoContext) Deadline() (deadline time.Time, ok bool) {
-	return c.Context.Deadline()
+	return c.context.Deadline()
 }
 
 func (c *echoContext) Done() <-chan struct{} {
-	return c.Context.Done()
+	return c.context.Done()
 }
 
 func (c *echoContext) Err() error {
-	return c.Context.Err()
+	return c.context.Err()
 }
 
 func (c *echoContext) Value(key interface{}) interface{} {
-	return c.Context.Value(key)
+	return c.context.Value(key)
 }
 
 func (c *echoContext) Request() engine.Request {
@@ -293,11 +319,11 @@ func (c *echoContext) Cookies() []engine.Cookie {
 }
 
 func (c *echoContext) Set(key string, val interface{}) {
-	c.Context = context.WithValue(c, key, val)
+	c.context = context.WithValue(c.context, key, val)
 }
 
 func (c *echoContext) Get(key string) interface{} {
-	return c.Context.Value(key)
+	return c.context.Value(key)
 }
 
 func (c *echoContext) Bind(i interface{}) error {
@@ -479,7 +505,7 @@ func ContentTypeByExtension(name string) (t string) {
 }
 
 func (c *echoContext) Reset(req engine.Request, res engine.Response) {
-	c.Context = nil
+	c.context = context.Background()
 	c.request = req
 	c.response = res
 	c.handler = notFoundHandler
