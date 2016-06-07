@@ -78,6 +78,7 @@ func RequestTest(t *testing.T, request engine.Request) {
 	}
 
 	if cookie, err := request.Cookie("session"); assert.NoError(t, err) {
+		assert.Equal(t, "session", cookie.Name())
 		assert.Equal(t, "securetoken", cookie.Value())
 	}
 
