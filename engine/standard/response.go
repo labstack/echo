@@ -14,6 +14,7 @@ type (
 	// Response implements `engine.Response`.
 	Response struct {
 		http.ResponseWriter
+		adapter   *responseAdapter
 		header    engine.Header
 		status    int
 		size      int64
@@ -23,19 +24,20 @@ type (
 	}
 
 	responseAdapter struct {
-		http.ResponseWriter
-		response *Response
+		*Response
 	}
 )
 
 // NewResponse returns `Response` instance.
-func NewResponse(w http.ResponseWriter, l log.Logger) *Response {
-	return &Response{
+func NewResponse(w http.ResponseWriter, l log.Logger) (r *Response) {
+	r = &Response{
 		ResponseWriter: w,
 		header:         &Header{Header: w.Header()},
 		writer:         w,
 		logger:         l,
 	}
+	r.adapter = &responseAdapter{Response: r}
+	return
 }
 
 // Header implements `engine.Response#Header` function.
@@ -56,7 +58,7 @@ func (r *Response) WriteHeader(code int) {
 
 // Write implements `engine.Response#Write` function.
 func (r *Response) Write(b []byte) (n int, err error) {
-	if !r.Committed() {
+	if !r.committed {
 		r.WriteHeader(http.StatusOK)
 	}
 	n, err = r.writer.Write(b)
@@ -126,7 +128,8 @@ func (r *Response) CloseNotify() <-chan bool {
 }
 
 func (r *Response) reset(w http.ResponseWriter, a *responseAdapter, h engine.Header) {
-	r.ResponseWriter = a
+	r.ResponseWriter = w
+	r.adapter = a
 	r.header = h
 	r.status = http.StatusOK
 	r.size = 0
@@ -134,23 +137,10 @@ func (r *Response) reset(w http.ResponseWriter, a *responseAdapter, h engine.Hea
 	r.writer = w
 }
 
-func (a *responseAdapter) Write(b []byte) (n int, err error) {
-	return a.response.Write(b)
+func (r *responseAdapter) Header() http.Header {
+	return r.ResponseWriter.Header()
 }
 
-func (a *responseAdapter) Flush() {
-	a.ResponseWriter.(http.Flusher).Flush()
-}
-
-func (a *responseAdapter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	return a.ResponseWriter.(http.Hijacker).Hijack()
-}
-
-func (a *responseAdapter) CloseNotify() <-chan bool {
-	return a.ResponseWriter.(http.CloseNotifier).CloseNotify()
-}
-
-func (a *responseAdapter) reset(w http.ResponseWriter, r *Response) {
-	a.ResponseWriter = w
-	a.response = r
+func (r *responseAdapter) reset(res *Response) {
+	r.Response = res
 }

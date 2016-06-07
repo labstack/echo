@@ -1,16 +1,17 @@
 package standard
 
 import (
-	"github.com/labstack/gommon/log"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/labstack/gommon/log"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestResponse_WriteHeader(t *testing.T) {
+func TestResponseWriteHeader(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	resp := NewResponse(recorder, log.New("echo"))
 
@@ -20,7 +21,7 @@ func TestResponse_WriteHeader(t *testing.T) {
 	assert.True(t, resp.Committed())
 }
 
-func TestResponse_Write(t *testing.T) {
+func TestResponseWrite(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	resp := NewResponse(recorder, log.New("echo"))
 	resp.Write([]byte("Hello"))
@@ -32,7 +33,7 @@ func TestResponse_Write(t *testing.T) {
 	assert.True(t, recorder.Flushed)
 }
 
-func TestResponse_SetCookie(t *testing.T) {
+func TestResponseSetCookie(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	resp := NewResponse(recorder, log.New("echo"))
 

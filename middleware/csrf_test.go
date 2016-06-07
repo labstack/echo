@@ -2,6 +2,8 @@ package middleware
 
 import (
 	"net/http"
+	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/labstack/echo"
@@ -14,9 +16,18 @@ func TestCSRF(t *testing.T) {
 	req := test.NewRequest(echo.GET, "/", nil)
 	rec := test.NewResponseRecorder()
 	c := e.NewContext(req, rec)
-	csrf := CSRF([]byte("secret"))
+	csrf := CSRFWithConfig(CSRFConfig{
+		Secret:       []byte("secret"),
+		CookiePath:   "/",
+		CookieDomain: "labstack.com",
+	})
 	h := csrf(func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
+	})
+
+	// No secret
+	assert.Panics(t, func() {
+		CSRF(nil)
 	})
 
 	// Generate CSRF token
@@ -35,6 +46,38 @@ func TestCSRF(t *testing.T) {
 	salt, _ := generateSalt(8)
 	token := generateCSRFToken([]byte("secret"), salt)
 	req.Header().Set(echo.HeaderXCSRFToken, token)
-	h(c)
-	assert.Equal(t, http.StatusOK, rec.Status())
+	if assert.NoError(t, h(c)) {
+		assert.Equal(t, http.StatusOK, rec.Status())
+	}
+}
+
+func TestCSRFTokenFromForm(t *testing.T) {
+	f := make(url.Values)
+	f.Set("csrf", "token")
+	e := echo.New()
+	req := test.NewRequest(echo.POST, "/", strings.NewReader(f.Encode()))
+	req.Header().Add(echo.HeaderContentType, echo.MIMEApplicationForm)
+	c := e.NewContext(req, nil)
+	token, err := csrfTokenFromForm("csrf")(c)
+	if assert.NoError(t, err) {
+		assert.Equal(t, "token", token)
+	}
+	token, err = csrfTokenFromForm("invalid")(c)
+	assert.Error(t, err)
+}
+
+func TestCSRFTokenFromQuery(t *testing.T) {
+	q := make(url.Values)
+	q.Set("csrf", "token")
+	e := echo.New()
+	req := test.NewRequest(echo.GET, "/?"+q.Encode(), nil)
+	req.Header().Add(echo.HeaderContentType, echo.MIMEApplicationForm)
+	c := e.NewContext(req, nil)
+	token, err := csrfTokenFromQuery("csrf")(c)
+	if assert.NoError(t, err) {
+		assert.Equal(t, "token", token)
+	}
+	token, err = csrfTokenFromQuery("invalid")(c)
+	assert.Error(t, err)
+	csrfTokenFromQuery("csrf")
 }

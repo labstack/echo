@@ -130,7 +130,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Response
 	res := s.pool.response.Get().(*Response)
 	resAdpt := s.pool.responseAdapter.Get().(*responseAdapter)
-	resAdpt.reset(w, res)
+	resAdpt.reset(res)
 	resHdr := s.pool.header.Get().(*Header)
 	resHdr.reset(w.Header())
 	res.reset(w, resAdpt, resHdr)
@@ -150,7 +150,7 @@ func WrapHandler(h http.Handler) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		req := c.Request().(*Request)
 		res := c.Response().(*Response)
-		h.ServeHTTP(res.ResponseWriter, req.Request)
+		h.ServeHTTP(res.adapter, req.Request)
 		return nil
 	}
 }
