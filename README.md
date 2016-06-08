@@ -11,7 +11,7 @@
 
 #### Fast and unfancy HTTP server framework for Go (Golang). Up to 10x faster than the rest.
 
-## Features
+## Feature Overview
 
 - Optimized HTTP router which smartly prioritize routes.
 - Build robust and scalable RESTful APIs.
