@@ -1,12 +1,3 @@
-# *NOTICE*
-
-- Master branch, website and godoc now points to Echo v2.
-- Echo v2 is in beta but if you want to try it out here is the migrating [guide] (https://echo.labstack.com/guide/migrating)
-- Looking for v1?
-	- Installation: Use a package manager (https://github.com/Masterminds/glide, it's nice!) to get stable v1 release/commit or use `go get gopkg.in/labstack/echo.v1`.
-	- Godoc: https://godoc.org/gopkg.in/labstack/echo.v1
-	- Docs: https://github.com/labstack/echo/tree/v1.4/website/content
-
 # [Echo](http://labstack.com/echo) [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/labstack/echo) [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/labstack/echo/master/LICENSE) [![Build Status](http://img.shields.io/travis/labstack/echo.svg?style=flat-square)](https://travis-ci.org/labstack/echo) [![Coverage Status](http://img.shields.io/coveralls/labstack/echo.svg?style=flat-square)](https://coveralls.io/r/labstack/echo) [![Join the chat at https://gitter.im/labstack/echo](https://img.shields.io/badge/gitter-join%20chat-brightgreen.svg?style=flat-square)](https://gitter.im/labstack/echo)
 
 #### Fast and unfancy HTTP server framework for Go (Golang). Up to 10x faster than the rest.
