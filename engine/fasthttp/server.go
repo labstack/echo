@@ -161,17 +161,20 @@ func WrapHandler(h fasthttp.RequestHandler) echo.HandlerFunc {
 	}
 }
 
-// WrapMiddleware wraps `fasthttp.RequestHandler` into `echo.MiddlewareFunc`
-func WrapMiddleware(h fasthttp.RequestHandler) echo.MiddlewareFunc {
+// WrapMiddleware wraps `func(fasthttp.RequestHandler) fasthttp.RequestHandler`
+// into `echo.MiddlewareFunc`
+func WrapMiddleware(m func(fasthttp.RequestHandler) fasthttp.RequestHandler) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
+		return func(c echo.Context) (err error) {
 			req := c.Request().(*Request)
 			res := c.Response().(*Response)
 			ctx := req.RequestCtx
-			h(ctx)
+			m(func(ctx *fasthttp.RequestCtx) {
+				next(c)
+			})(ctx)
 			res.status = ctx.Response.StatusCode()
 			res.size = int64(ctx.Response.Header.ContentLength())
-			return next(c)
+			return
 		}
 	}
 }
