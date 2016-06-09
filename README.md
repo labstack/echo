@@ -246,6 +246,7 @@ Middleware | Description
 Middleware | Description
 :--- | :---
 [echoperm](https://github.com/xyproto/echoperm) | Keeping track of users, login states and permissions.
+[echopprof](https://github.com/mtojek/echopprof) | Adapt net/http/pprof to labstack/echo.
 
 ### Next
 
