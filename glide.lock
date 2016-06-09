@@ -1,12 +1,12 @@
 hash: 21820434709470e49c64df0f854d3352088ca664d193e29bc6cd434518c27a7c
-updated: 2016-06-06T13:46:58.552123246-07:00
+updated: 2016-06-08T17:12:40.290079497-07:00
 imports:
 - name: github.com/davecgh/go-spew
   version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
   subpackages:
   - spew
 - name: github.com/dgrijalva/jwt-go
-  version: 9b486c879bab3fde556ce8c27d9a2bb05d5b2c60
+  version: c04502f106d7c5b3fae17c5da49a1bbdd3006b3c
 - name: github.com/klauspost/compress
   version: 14eb9c4951195779ecfbec34431a976de7335b0a
   subpackages:
@@ -18,7 +18,7 @@ imports:
 - name: github.com/klauspost/crc32
   version: 19b0b332c9e4516a6370a0456e6182c3b5036720
 - name: github.com/labstack/gommon
-  version: c21cbdaff511c8f7c27dab37216552d8e7ea7bde
+  version: 7949d308ed2888a634cf124a2f0755e0867b9e1f
   subpackages:
   - color
   - log
@@ -36,11 +36,11 @@ imports:
   subpackages:
   - assert
 - name: github.com/valyala/fasthttp
-  version: 3c5ba2c98d622df52926a4d17be18a6728ccaf1c
+  version: 8f05edbec9fb5b0c7a4012ee746035a82e3e8bfb
 - name: github.com/valyala/fasttemplate
   version: 3b874956e03f1636d171bda64b130f9135f42cff
 - name: golang.org/x/net
-  version: c4c3ea71919de159c9e246d7be66deb7f0a39a58
+  version: 313cf39d4ac368181bce6960ac9be9e7cee67e68
   subpackages:
   - context
   - websocket

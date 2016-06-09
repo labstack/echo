@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"net"
 	"os"
@@ -158,9 +157,8 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 					return w.Write([]byte(b))
 				case "tx_bytes":
 					return w.Write([]byte(strconv.FormatInt(res.Size(), 10)))
-				default:
-					return w.Write([]byte(fmt.Sprintf("[unknown tag %s]", tag)))
 				}
+				return 0, nil
 			})
 			if err == nil {
 				config.Output.Write(buf.Bytes())
