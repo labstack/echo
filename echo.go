@@ -244,8 +244,8 @@ func (e *Echo) SetLogOutput(w io.Writer) {
 	e.logger.SetOutput(w)
 }
 
-// SetLogLevel sets the log level for the logger. Default value is `log.FATAL`.
-func (e *Echo) SetLogLevel(l uint8) {
+// SetLogLevel sets the log level for the logger. Default value FATAL.
+func (e *Echo) SetLogLevel(l log.Lvl) {
 	e.logger.SetLevel(l)
 }
 

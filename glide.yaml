@@ -1,11 +1,14 @@
-package: .
+package: github.com/labstack/echo
 import:
-- package: github.com/labstack/echo
 - package: github.com/labstack/gommon
   subpackages:
-  - /color
+  - color
   - log
 - package: golang.org/x/net
   subpackages:
-  - /context
+  - context
   - websocket
+- package: gopkg.in/labstack/echo.v1
+- package: github.com/stretchr/testify
+  subpackages:
+  - assert
