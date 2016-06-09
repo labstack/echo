@@ -120,8 +120,12 @@ func (r *Request) FormParams() (params map[string][]string) {
 
 	if err == fasthttp.ErrNoMultipartForm {
 		r.PostArgs().VisitAll(func(k, v []byte) {
-			// TODO: Filling with only first value
-			params[string(k)] = []string{string(v)}
+			key := string(k)
+			if _, ok := params[key]; ok {
+				params[key] = append(params[key], string(v))
+			} else {
+				params[string(k)] = []string{string(v)}
+			}
 		})
 	} else if err == nil {
 		for k, v := range mf.Value {
