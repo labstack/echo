@@ -1,11 +1,12 @@
 package test
 
 import (
-	"github.com/labstack/echo/engine"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"strings"
 	"testing"
+
+	"github.com/labstack/echo/engine"
+	"github.com/stretchr/testify/assert"
 )
 
 const MultipartRequest = `POST /labstack/echo HTTP/1.1
@@ -47,7 +48,7 @@ func RequestTest(t *testing.T, request engine.Request) {
 	assert.Equal(t, "/labstack/echo", request.URL().Path())
 	assert.Equal(t, "https://github.com/", request.Referer())
 	assert.Equal(t, "127.0.0.1", request.Header().Get("X-Real-IP"))
-	assert.Equal(t, "https", request.Scheme())
+	assert.Equal(t, "http", request.Scheme())
 	assert.Equal(t, "Mozilla/5.0 (Macintosh; U; Intel Mac OS X; de-de) AppleWebKit/523.10.3 (KHTML, like Gecko) Version/3.0.4 Safari/523.10", request.UserAgent())
 	assert.Equal(t, "127.0.0.1", request.RemoteAddress())
 	assert.Equal(t, "POST", request.Method())

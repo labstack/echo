@@ -43,7 +43,12 @@ func (r *Request) IsTLS() bool {
 
 // Scheme implements `engine.Request#Scheme` function.
 func (r *Request) Scheme() string {
-	return r.Request.URL.Scheme
+	// Can't use `r.Request.URL.Scheme`
+	// See: https://groups.google.com/forum/#!topic/golang-nuts/pMUkBlQBDF0
+	if r.IsTLS() {
+		return "https"
+	}
+	return "http"
 }
 
 // Host implements `engine.Request#Host` function.
