@@ -476,7 +476,6 @@ func (e *Echo) add(method, path string, handler HandlerFunc, middleware ...Middl
 		Handler: name,
 	}
 	e.router.routes[method+path] = r
-	// e.router.routes = append(e.router.routes, r)
 }
 
 // Group creates a new router group with prefix and optional group-level middleware.

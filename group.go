@@ -126,8 +126,10 @@ func (g *Group) Match(methods []string, path string, handler HandlerFunc, middle
 }
 
 // Group creates a new sub-group with prefix and optional sub-group-level middleware.
-func (g *Group) Group(prefix string, m ...MiddlewareFunc) *Group {
-	m = append(g.middleware, m...)
+func (g *Group) Group(prefix string, middleware ...MiddlewareFunc) *Group {
+	m := []MiddlewareFunc{}
+	m = append(m, g.middleware...)
+	m = append(m, middleware...)
 	return g.echo.Group(g.prefix+prefix, m...)
 }
 
@@ -142,6 +144,11 @@ func (g *Group) File(path, file string) {
 }
 
 func (g *Group) add(method, path string, handler HandlerFunc, middleware ...MiddlewareFunc) {
-	middleware = append(g.middleware, middleware...)
-	g.echo.add(method, g.prefix+path, handler, middleware...)
+	// Combine into a new slice, to avoid accidentally passing the same
+	// slice for multiple routes, which would lead to later add() calls overwriting
+	// the middleware from earlier calls
+	m := []MiddlewareFunc{}
+	m = append(m, g.middleware...)
+	m = append(m, middleware...)
+	g.echo.add(method, g.prefix+path, handler, m...)
 }
