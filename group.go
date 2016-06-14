@@ -142,6 +142,11 @@ func (g *Group) File(path, file string) {
 }
 
 func (g *Group) add(method, path string, handler HandlerFunc, middleware ...MiddlewareFunc) {
-	middleware = append(g.middleware, middleware...)
-	g.echo.add(method, g.prefix+path, handler, middleware...)
+	// combine into a new slice, to avoid accidentally passing the same
+	// slice for multiple routes, which would lead to later add() calls overwriting
+	// the middleware from earlier calls
+	var mw []MiddlewareFunc
+	mw = append(mw, g.middleware...)
+	mw = append(mw, middleware...)
+	g.echo.add(method, g.prefix+path, handler, mw...)
 }
