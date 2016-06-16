@@ -82,6 +82,8 @@ func WithConfig(c engine.Config) (s *Server) {
 		}),
 		logger: glog.New("echo"),
 	}
+	s.ReadTimeout = c.ReadTimeout
+	s.WriteTimeout = c.WriteTimeout
 	s.Addr = c.Address
 	s.Handler = s
 	return
