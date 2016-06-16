@@ -199,8 +199,8 @@ type (
 	Config struct {
 		Address      string        // TCP address to listen on.
 		Listener     net.Listener  // Custom `net.Listener`. If set, server accepts connections on it.
-		TLSCertfile  string        // TLS certificate file path.
-		TLSKeyfile   string        // TLS key file path.
+		TLSCertFile  string        // TLS certificate file path.
+		TLSKeyFile   string        // TLS key file path.
 		ReadTimeout  time.Duration // Maximum duration before timing out read of the request.
 		WriteTimeout time.Duration // Maximum duration before timing out write of the response.
 	}

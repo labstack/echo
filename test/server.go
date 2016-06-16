@@ -33,8 +33,8 @@ func New(addr string) *Server {
 func NewTLS(addr, certFile, keyFile string) *Server {
 	c := &engine.Config{
 		Address:     addr,
-		TLSCertfile: certFile,
-		TLSKeyfile:  keyFile,
+		TLSCertFile: certFile,
+		TLSKeyFile:  keyFile,
 	}
 	return NewConfig(c)
 }
@@ -84,8 +84,8 @@ func (s *Server) SetLogger(l *log.Logger) {
 func (s *Server) Start() {
 	s.Addr = s.config.Address
 	s.Handler = s
-	certFile := s.config.TLSCertfile
-	keyFile := s.config.TLSKeyfile
+	certFile := s.config.TLSCertFile
+	keyFile := s.config.TLSKeyFile
 	if certFile != "" && keyFile != "" {
 		s.logger.Fatal(s.ListenAndServeTLS(certFile, keyFile))
 	} else {
