@@ -152,6 +152,9 @@ type (
 		// XMLBlob sends a XML blob response with status code.
 		XMLBlob(int, []byte) error
 
+		// Blob sends any blob data with status code and content type.
+		Blob(int, string, []byte) error
+
 		// File sends a response with the content of the file.
 		File(string) error
 
@@ -338,23 +341,17 @@ func (c *echoContext) Render(code int, name string, data interface{}) (err error
 	if err = c.echo.renderer.Render(buf, name, data, c); err != nil {
 		return
 	}
-	c.response.Header().Set(HeaderContentType, MIMETextHTMLCharsetUTF8)
-	c.response.WriteHeader(code)
-	_, err = c.response.Write(buf.Bytes())
+	err = c.Blob(code, MIMETextHTMLCharsetUTF8, buf.Bytes())
 	return
 }
 
 func (c *echoContext) HTML(code int, html string) (err error) {
-	c.response.Header().Set(HeaderContentType, MIMETextHTMLCharsetUTF8)
-	c.response.WriteHeader(code)
-	_, err = c.response.Write([]byte(html))
+	err = c.Blob(code, MIMETextHTMLCharsetUTF8, []byte(html))
 	return
 }
 
 func (c *echoContext) String(code int, s string) (err error) {
-	c.response.Header().Set(HeaderContentType, MIMETextPlainCharsetUTF8)
-	c.response.WriteHeader(code)
-	_, err = c.response.Write([]byte(s))
+	err = c.Blob(code, MIMETextPlainCharsetUTF8, []byte(s))
 	return
 }
 
@@ -370,9 +367,7 @@ func (c *echoContext) JSON(code int, i interface{}) (err error) {
 }
 
 func (c *echoContext) JSONBlob(code int, b []byte) (err error) {
-	c.response.Header().Set(HeaderContentType, MIMEApplicationJSONCharsetUTF8)
-	c.response.WriteHeader(code)
-	_, err = c.response.Write(b)
+	err = c.Blob(code, MIMEApplicationJSONCharsetUTF8, b)
 	return
 }
 
@@ -381,15 +376,11 @@ func (c *echoContext) JSONP(code int, callback string, i interface{}) (err error
 	if err != nil {
 		return err
 	}
-	c.response.Header().Set(HeaderContentType, MIMEApplicationJavaScriptCharsetUTF8)
-	c.response.WriteHeader(code)
-	if _, err = c.response.Write([]byte(callback + "(")); err != nil {
-		return
-	}
-	if _, err = c.response.Write(b); err != nil {
-		return
-	}
-	_, err = c.response.Write([]byte(");"))
+	buf := new(bytes.Buffer)
+	buf.Write([]byte(callback + "("))
+	buf.Write(b)
+	buf.Write([]byte(");"))
+	err = c.Blob(code, MIMEApplicationJavaScriptCharsetUTF8, buf.Bytes())
 	return
 }
 
@@ -410,6 +401,13 @@ func (c *echoContext) XMLBlob(code int, b []byte) (err error) {
 	if _, err = c.response.Write([]byte(xml.Header)); err != nil {
 		return
 	}
+	_, err = c.response.Write(b)
+	return
+}
+
+func (c *echoContext) Blob(code int, contentType string, b []byte) (err error) {
+	c.response.Header().Set(HeaderContentType, contentType)
+	c.response.WriteHeader(code)
 	_, err = c.response.Write(b)
 	return
 }
