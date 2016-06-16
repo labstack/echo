@@ -1,6 +1,9 @@
 package echo
 
-import "testing"
+import (
+	"github.com/stretchr/testify/assert"
+	"testing"
+)
 
 // TODO: Fix me
 func TestGroup(t *testing.T) {
@@ -28,4 +31,24 @@ func TestGroup(t *testing.T) {
 	g.Match([]string{GET, POST}, "/", h)
 	g.Static("/static", "/tmp")
 	g.File("/walle", "_fixture/images//walle.png")
+}
+
+func TestGroupRouteMiddleware(t *testing.T) {
+	// Ensure middleware slices are not re-used
+	e := New()
+	g := e.Group("/group")
+	h := func(Context) error { return nil }
+	m1 := WrapMiddleware(func(c Context) error { return nil })
+	m2 := WrapMiddleware(func(c Context) error { return nil })
+	m3 := WrapMiddleware(func(c Context) error { return nil })
+	m4 := WrapMiddleware(func(c Context) error { return c.NoContent(404) })
+	m5 := WrapMiddleware(func(c Context) error { return c.NoContent(405) })
+	g.Use(m1, m2, m3)
+	g.GET("/404", h, m4)
+	g.GET("/405", h, m5)
+
+	c, _ := request(GET, "/group/404", e)
+	assert.Equal(t, 404, c)
+	c, _ = request(GET, "/group/405", e)
+	assert.Equal(t, 405, c)
 }
