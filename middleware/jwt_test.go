@@ -45,7 +45,8 @@ func TestJWT(t *testing.T) {
 	h = JWT([]byte("secret"))(handler)
 	if assert.NoError(t, h(c)) {
 		user := c.Get("user").(*jwt.Token)
-		assert.Equal(t, user.Claims["name"], "John Doe")
+		claims := user.Claims.(jwt.MapClaims)
+		assert.Equal(t, claims["name"], "John Doe")
 	}
 
 	// Invalid Authorization header
