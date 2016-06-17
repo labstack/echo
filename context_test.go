@@ -19,6 +19,7 @@ import (
 
 	"encoding/xml"
 
+	"encoding/json"
 	"github.com/labstack/echo/test"
 	"github.com/stretchr/testify/assert"
 )
@@ -79,6 +80,17 @@ func TestContext(t *testing.T) {
 		assert.Equal(t, userJSON, rec.Body.String())
 	}
 
+	// JSONBlob
+	rec = test.NewResponseRecorder()
+	c = e.NewContext(req, rec).(*echoContext)
+	u, err := json.Marshal(user{1, "Jon Snow"})
+	err = c.JSONBlob(http.StatusOK, u)
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, rec.Status())
+		assert.Equal(t, MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, userJSON, string(u))
+	}
+
 	// JSON (error)
 	rec = test.NewResponseRecorder()
 	c = e.NewContext(req, rec).(*echoContext)
@@ -111,6 +123,10 @@ func TestContext(t *testing.T) {
 	c = e.NewContext(req, rec).(*echoContext)
 	err = c.XML(http.StatusOK, make(chan bool))
 	assert.Error(t, err)
+
+	// Encode (error)
+	err = c.Encode(http.StatusOK, "undefined", user{1, "Jon Snow"})
+	assert.Equal(t, ErrEncoderNotFound, err)
 
 	// String
 	rec = test.NewResponseRecorder()
@@ -331,10 +347,12 @@ func TestContextEmbedded(t *testing.T) {
 	c := new(echoContext)
 	c.SetContext(context.WithValue(c, "key", "val"))
 	assert.Equal(t, "val", c.Value("key"))
+	cc := c.Context()
+	assert.Equal(t, "val", cc.Value("key"))
 	now := time.Now()
 	ctx, _ := context.WithDeadline(context.Background(), now)
 	c.SetContext(ctx)
-	n, _ := ctx.Deadline()
+	n, _ := c.Deadline()
 	assert.Equal(t, now, n)
 	assert.Equal(t, context.DeadlineExceeded, c.Err())
 	assert.NotNil(t, c.Done())
@@ -386,4 +404,9 @@ func TestContextHandler(t *testing.T) {
 	r.Find(GET, "/handler", c)
 	c.Handler()(c)
 	assert.Equal(t, "handler", b.String())
+}
+
+func TestContentTypeByExtension(t *testing.T) {
+	ct := ContentTypeByExtension("file.undef")
+	assert.Equal(t, MIMEOctetStream, ct)
 }

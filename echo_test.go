@@ -48,7 +48,7 @@ func TestEcho(t *testing.T) {
 
 	// Debug
 	e.SetDebug(true)
-	assert.True(t, e.debug)
+	assert.True(t, e.Debug())
 
 	// DefaultHTTPErrorHandler
 	e.DefaultHTTPErrorHandler(errors.New("error"), c)
