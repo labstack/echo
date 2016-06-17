@@ -20,6 +20,7 @@ func TestCSRF(t *testing.T) {
 		Secret:       []byte("secret"),
 		CookiePath:   "/",
 		CookieDomain: "labstack.com",
+		TokenLookup:  "query:csrf;form:csrf;header:" + echo.HeaderXCSRFToken,
 	})
 	h := csrf(func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
@@ -38,14 +39,32 @@ func TestCSRF(t *testing.T) {
 	req = test.NewRequest(echo.POST, "/", nil)
 	rec = test.NewResponseRecorder()
 	c = e.NewContext(req, rec)
-	req.Header().Set(echo.HeaderXCSRFToken, "")
+	req.Header().Set(echo.HeaderXCSRFToken, "foo")
 	he := h(c).(*echo.HTTPError)
 	assert.Equal(t, http.StatusForbidden, he.Code)
 
-	// Valid CSRF token
+	// Valid CSRF token from header
 	salt, _ := generateSalt(8)
 	token := generateCSRFToken([]byte("secret"), salt)
 	req.Header().Set(echo.HeaderXCSRFToken, token)
+	if assert.NoError(t, h(c)) {
+		assert.Equal(t, http.StatusOK, rec.Status())
+	}
+
+	// Valid CSRF token from query
+	req = test.NewRequest(echo.POST, "/?csrf="+token, nil)
+	rec = test.NewResponseRecorder()
+	c = e.NewContext(req, rec)
+	if assert.NoError(t, h(c)) {
+		assert.Equal(t, http.StatusOK, rec.Status())
+	}
+
+	// Valid CSRF token from form
+	body := strings.NewReader(url.Values{"csrf": {token}}.Encode())
+	req = test.NewRequest(echo.POST, "/", body)
+	req.Header().Set(echo.HeaderContentType, echo.MIMEApplicationForm)
+	rec = test.NewResponseRecorder()
+	c = e.NewContext(req, rec)
 	if assert.NoError(t, h(c)) {
 		assert.Equal(t, http.StatusOK, rec.Status())
 	}
@@ -58,12 +77,10 @@ func TestCSRFTokenFromForm(t *testing.T) {
 	req := test.NewRequest(echo.POST, "/", strings.NewReader(f.Encode()))
 	req.Header().Add(echo.HeaderContentType, echo.MIMEApplicationForm)
 	c := e.NewContext(req, nil)
-	token, err := csrfTokenFromForm("csrf")(c)
-	if assert.NoError(t, err) {
-		assert.Equal(t, "token", token)
-	}
-	token, err = csrfTokenFromForm("invalid")(c)
-	assert.Error(t, err)
+	token := csrfTokenFromForm("csrf")(c)
+	assert.Equal(t, "token", token)
+	token = csrfTokenFromForm("invalid")(c)
+	assert.Equal(t, token, "")
 }
 
 func TestCSRFTokenFromQuery(t *testing.T) {
@@ -73,11 +90,9 @@ func TestCSRFTokenFromQuery(t *testing.T) {
 	req := test.NewRequest(echo.GET, "/?"+q.Encode(), nil)
 	req.Header().Add(echo.HeaderContentType, echo.MIMEApplicationForm)
 	c := e.NewContext(req, nil)
-	token, err := csrfTokenFromQuery("csrf")(c)
-	if assert.NoError(t, err) {
-		assert.Equal(t, "token", token)
-	}
-	token, err = csrfTokenFromQuery("invalid")(c)
-	assert.Error(t, err)
+	token := csrfTokenFromQuery("csrf")(c)
+	assert.Equal(t, "token", token)
+	token = csrfTokenFromQuery("invalid")(c)
+	assert.Equal(t, token, "")
 	csrfTokenFromQuery("csrf")
 }

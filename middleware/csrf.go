@@ -23,6 +23,8 @@ type (
 		// TokenLookup is a string in the form of "<source>:<key>" that is used
 		// to extract token from the request.
 		// Optional. Default value "header:X-CSRF-Token".
+		// Multiple extractors can be combined with `;` e.g. "form:csrf;header:X-CSRF-Token"
+		// and they're processed in order they're declared
 		// Possible values:
 		// - "header:<name>"
 		// - "form:<name>"
@@ -60,7 +62,7 @@ type (
 
 	// csrfTokenExtractor defines a function that takes `echo.Context` and returns
 	// either a token or an error.
-	csrfTokenExtractor func(echo.Context) (string, error)
+	csrfTokenExtractor func(echo.Context) string
 )
 
 var (
@@ -71,6 +73,10 @@ var (
 		CookieName:    "csrf",
 		CookieExpires: time.Now().Add(24 * time.Hour),
 	}
+
+	CSRFTokenNotFoundErr = errors.New("csrf token not found")
+	CSRFEmptyHTTPErr     = echo.NewHTTPError(http.StatusForbidden, "csrf token not found")
+	CSRFInvalidHTTPErr   = echo.NewHTTPError(http.StatusForbidden, "invalid csrf token")
 )
 
 // CSRF returns a Cross-Site Request Forgery (CSRF) middleware.
@@ -102,13 +108,21 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 	}
 
 	// Initialize
-	parts := strings.Split(config.TokenLookup, ":")
-	extractor := csrfTokenFromHeader(parts[1])
-	switch parts[0] {
-	case "form":
-		extractor = csrfTokenFromForm(parts[1])
-	case "query":
-		extractor = csrfTokenFromQuery(parts[1])
+	extractors := make([]csrfTokenExtractor, 0)
+
+	for _, extractor := range strings.Split(config.TokenLookup, ";") {
+		parts := strings.Split(extractor, ":")
+
+		switch parts[0] {
+		case "form":
+			extractors = append(extractors, csrfTokenFromForm(parts[1]))
+		case "query":
+			extractors = append(extractors, csrfTokenFromQuery(parts[1]))
+		case "header":
+			extractors = append(extractors, csrfTokenFromHeader(parts[1]))
+		default:
+			panic("invalid extractor name '" + parts[0] + "'")
+		}
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -139,16 +153,16 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 			switch req.Method() {
 			case echo.GET, echo.HEAD, echo.OPTIONS, echo.TRACE:
 			default:
-				token, err := extractor(c)
+				token, err := extractCSRFToken(extractors, c)
 				if err != nil {
-					return err
+					return CSRFEmptyHTTPErr
 				}
 				ok, err := validateCSRFToken(token, config.Secret)
 				if err != nil {
 					return err
 				}
 				if !ok {
-					return echo.NewHTTPError(http.StatusForbidden, "invalid csrf token")
+					return CSRFInvalidHTTPErr
 				}
 			}
 			return next(c)
@@ -156,35 +170,43 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 	}
 }
 
+// extractCSRFToken returns token if any of the provided extractors succeeds or
+// the `CSRFTokenNotFoundErr` error
+func extractCSRFToken(extractors []csrfTokenExtractor, c echo.Context) (string, error) {
+	var token string
+
+	for _, extractor := range extractors {
+		token = extractor(c)
+
+		if token != "" {
+			return token, nil
+		}
+	}
+
+	return "", CSRFTokenNotFoundErr
+}
+
 // csrfTokenFromForm returns a `csrfTokenExtractor` that extracts token from the
 // provided request header.
 func csrfTokenFromHeader(header string) csrfTokenExtractor {
-	return func(c echo.Context) (string, error) {
-		return c.Request().Header().Get(header), nil
+	return func(c echo.Context) string {
+		return c.Request().Header().Get(header)
 	}
 }
 
 // csrfTokenFromForm returns a `csrfTokenExtractor` that extracts token from the
 // provided form parameter.
 func csrfTokenFromForm(param string) csrfTokenExtractor {
-	return func(c echo.Context) (string, error) {
-		token := c.FormValue(param)
-		if token == "" {
-			return "", errors.New("empty csrf token in form param")
-		}
-		return token, nil
+	return func(c echo.Context) string {
+		return c.FormValue(param)
 	}
 }
 
 // csrfTokenFromQuery returns a `csrfTokenExtractor` that extracts token from the
 // provided query parameter.
 func csrfTokenFromQuery(param string) csrfTokenExtractor {
-	return func(c echo.Context) (string, error) {
-		token := c.QueryParam(param)
-		if token == "" {
-			return "", errors.New("empty csrf token in query param")
-		}
-		return token, nil
+	return func(c echo.Context) string {
+		return c.QueryParam(param)
 	}
 }
 
