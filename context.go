@@ -1,7 +1,6 @@
 package echo
 
 import (
-	"encoding/json"
 	"encoding/xml"
 	"io"
 	"mime"
@@ -154,6 +153,9 @@ type (
 
 		// Blob sends any blob data with status code and content type.
 		Blob(int, string, []byte) error
+
+		// Encode encodes and send objects with status code and content type.
+		Encode(int, string, interface{}) error
 
 		// File sends a response with the content of the file.
 		File(string) error
@@ -355,24 +357,20 @@ func (c *echoContext) String(code int, s string) (err error) {
 	return
 }
 
-func (c *echoContext) JSON(code int, i interface{}) (err error) {
-	b, err := json.Marshal(i)
-	if c.echo.Debug() {
-		b, err = json.MarshalIndent(i, "", "  ")
-	}
-	if err != nil {
-		return err
-	}
-	return c.JSONBlob(code, b)
+func (c *echoContext) JSON(code int, i interface{}) error {
+	return c.Encode(code, MIMEApplicationJSONCharsetUTF8, i)
 }
 
-func (c *echoContext) JSONBlob(code int, b []byte) (err error) {
-	err = c.Blob(code, MIMEApplicationJSONCharsetUTF8, b)
-	return
+func (c *echoContext) JSONBlob(code int, b []byte) error {
+	return c.Blob(code, MIMEApplicationJSONCharsetUTF8, b)
 }
 
 func (c *echoContext) JSONP(code int, callback string, i interface{}) (err error) {
-	b, err := json.Marshal(i)
+	encoder, err := c.echo.Encoder(MIMEApplicationJSON)
+	if err != nil {
+		return err
+	}
+	b, err := encoder.Encode(i)
 	if err != nil {
 		return err
 	}
@@ -385,10 +383,11 @@ func (c *echoContext) JSONP(code int, callback string, i interface{}) (err error
 }
 
 func (c *echoContext) XML(code int, i interface{}) (err error) {
-	b, err := xml.Marshal(i)
-	if c.echo.Debug() {
-		b, err = xml.MarshalIndent(i, "", "  ")
+	encoder, err := c.echo.Encoder(MIMEApplicationXML)
+	if err != nil {
+		return err
 	}
+	b, err := encoder.Encode(i)
 	if err != nil {
 		return err
 	}
@@ -410,6 +409,18 @@ func (c *echoContext) Blob(code int, contentType string, b []byte) (err error) {
 	c.response.WriteHeader(code)
 	_, err = c.response.Write(b)
 	return
+}
+
+func (c *echoContext) Encode(code int, contentType string, i interface{}) error {
+	encoder, err := c.echo.Encoder(contentType)
+	if err != nil {
+		return err
+	}
+	if b, err := encoder.Encode(i); err != nil {
+		return err
+	} else {
+		return c.Blob(code, contentType, b)
+	}
 }
 
 func (c *echoContext) File(file string) error {
