@@ -13,3 +13,4 @@ node_modules
 vendor
 
 .DS_Store
+.gitconfig
