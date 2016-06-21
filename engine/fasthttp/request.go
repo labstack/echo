@@ -155,7 +155,7 @@ func (r *Request) Cookie(name string) (engine.Cookie, error) {
 	if b == nil {
 		return nil, echo.ErrCookieNotFound
 	}
-	c.ParseBytes(b)
+	c.SetValueBytes(b)
 	c.SetKey(name)
 	return &Cookie{c}, nil
 }
@@ -166,7 +166,7 @@ func (r *Request) Cookies() []engine.Cookie {
 	r.Request.Header.VisitAllCookie(func(name, value []byte) {
 		c := new(fasthttp.Cookie)
 		c.SetKey(string(name))
-		c.ParseBytes(value)
+		c.SetValueBytes(value)
 		cookies = append(cookies, &Cookie{c})
 	})
 	return cookies
