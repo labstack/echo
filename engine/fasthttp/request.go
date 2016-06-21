@@ -155,18 +155,18 @@ func (r *Request) Cookie(name string) (engine.Cookie, error) {
 	if b == nil {
 		return nil, echo.ErrCookieNotFound
 	}
-	c.ParseBytes(b)
 	c.SetKey(name)
+	c.SetValueBytes(b)
 	return &Cookie{c}, nil
 }
 
 // Cookies implements `engine.Request#Cookies` function.
 func (r *Request) Cookies() []engine.Cookie {
-	cookies := make([]engine.Cookie, 0)
+	cookies := []engine.Cookie{}
 	r.Request.Header.VisitAllCookie(func(name, value []byte) {
 		c := new(fasthttp.Cookie)
-		c.SetKey(string(name))
-		c.ParseBytes(value)
+		c.SetKeyBytes(name)
+		c.SetValueBytes(value)
 		cookies = append(cookies, &Cookie{c})
 	})
 	return cookies

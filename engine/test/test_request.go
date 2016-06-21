@@ -86,5 +86,12 @@ func RequestTest(t *testing.T, request engine.Request) {
 	_, err := request.Cookie("foo")
 	assert.Error(t, err)
 
-	assert.Equal(t, 2, len(request.Cookies()))
+	// Cookies
+	cs := request.Cookies()
+	if assert.Len(t, cs, 2) {
+		assert.Equal(t, "session", cs[0].Name())
+		assert.Equal(t, "securetoken", cs[0].Value())
+		assert.Equal(t, "user", cs[1].Name())
+		assert.Equal(t, "123", cs[1].Value())
+	}
 }

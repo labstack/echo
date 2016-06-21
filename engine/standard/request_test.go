@@ -19,7 +19,6 @@ func TestRequest(t *testing.T) {
 	httpReq.RemoteAddr = "127.0.0.1"
 	req := NewRequest(httpReq, log.New("echo"))
 	test.RequestTest(t, req)
-
 	nr, _ := http.NewRequest("GET", "/", nil)
 	req.reset(nr, nil, nil)
 	assert.Equal(t, "", req.Host())
