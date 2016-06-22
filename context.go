@@ -85,14 +85,23 @@ type (
 		// QueryParam returns the query param for the provided name. It is an alias
 		// for `engine.URL#QueryParam()`.
 		QueryParam(string) string
+
 		QueryParamInt(string, ...int) int
+
 		QueryParamInt32(string, ...int32) int32
+
 		QueryParamInt64(string, ...int64) int64
+
 		QueryParamUint(string, ...uint) uint
+
 		QueryParamUint32(string, ...uint32) uint32
+
 		QueryParamUint64(string, ...uint64) uint64
+
 		QueryParamFloat32(string, ...float32) float32
+
 		QueryParamFloat64(string, ...float64) float64
+
 		QueryParamBool(string, ...bool) bool
 
 		// QueryParams returns the query parameters as map.
