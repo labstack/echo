@@ -16,6 +16,8 @@ import (
 
 	"bytes"
 
+	"strconv"
+
 	"golang.org/x/net/context"
 )
 
@@ -83,6 +85,15 @@ type (
 		// QueryParam returns the query param for the provided name. It is an alias
 		// for `engine.URL#QueryParam()`.
 		QueryParam(string) string
+		QueryParamInt(string, ...int) int
+		QueryParamInt32(string, ...int32) int32
+		QueryParamInt64(string, ...int64) int64
+		QueryParamUint(string, ...uint) uint
+		QueryParamUint32(string, ...uint32) uint32
+		QueryParamUint64(string, ...uint64) uint64
+		QueryParamFloat32(string, ...float32) float32
+		QueryParamFloat64(string, ...float64) float64
+		QueryParamBool(string, ...bool) bool
 
 		// QueryParams returns the query parameters as map.
 		// It is an alias for `engine.URL#QueryParams()`.
@@ -284,6 +295,78 @@ func (c *echoContext) SetParamValues(values ...string) {
 
 func (c *echoContext) QueryParam(name string) string {
 	return c.request.URL().QueryParam(name)
+}
+
+func (c *echoContext) QueryParamInt(name string, defaults ...int) int {
+	v, err := strconv.Atoi(c.request.URL().QueryParam(name))
+	if len(defaults) > 0 && err != nil {
+		return defaults[0]
+	}
+	return v
+}
+
+func (c *echoContext) QueryParamInt32(name string, defaults ...int32) int32 {
+	v, err := strconv.ParseInt(c.request.URL().QueryParam(name), 10, 32)
+	if len(defaults) > 0 && err != nil {
+		return defaults[0]
+	}
+	return int32(v)
+}
+
+func (c *echoContext) QueryParamInt64(name string, defaults ...int64) int64 {
+	v, err := strconv.ParseInt(c.request.URL().QueryParam(name), 10, 64)
+	if len(defaults) > 0 && err != nil {
+		return defaults[0]
+	}
+	return v
+}
+
+func (c *echoContext) QueryParamUint(name string, defaults ...uint) uint {
+	v, err := strconv.ParseUint(c.request.URL().QueryParam(name), 10, 64)
+	if len(defaults) > 0 && err != nil {
+		return defaults[0]
+	}
+	return uint(v)
+}
+
+func (c *echoContext) QueryParamUint32(name string, defaults ...uint32) uint32 {
+	v, err := strconv.ParseUint(c.request.URL().QueryParam(name), 10, 32)
+	if len(defaults) > 0 && err != nil {
+		return defaults[0]
+	}
+	return uint32(v)
+}
+
+func (c *echoContext) QueryParamUint64(name string, defaults ...uint64) uint64 {
+	v, err := strconv.ParseUint(c.request.URL().QueryParam(name), 10, 64)
+	if len(defaults) > 0 && err != nil {
+		return defaults[0]
+	}
+	return v
+}
+
+func (c *echoContext) QueryParamFloat32(name string, defaults ...float32) float32 {
+	v, err := strconv.ParseFloat(c.request.URL().QueryParam(name), 32)
+	if len(defaults) > 0 && err != nil {
+		return defaults[0]
+	}
+	return float32(v)
+}
+
+func (c *echoContext) QueryParamFloat64(name string, defaults ...float64) float64 {
+	v, err := strconv.ParseFloat(c.request.URL().QueryParam(name), 64)
+	if len(defaults) > 0 && err != nil {
+		return defaults[0]
+	}
+	return v
+}
+
+func (c *echoContext) QueryParamBool(name string, defaults ...bool) bool {
+	v, err := strconv.ParseBool(c.request.URL().QueryParam(name))
+	if len(defaults) > 0 && err != nil {
+		return defaults[0]
+	}
+	return v
 }
 
 func (c *echoContext) QueryParams() map[string][]string {
