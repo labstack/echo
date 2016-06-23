@@ -68,6 +68,14 @@ func TestBinderXML(t *testing.T) {
 
 func TestBinderForm(t *testing.T) {
 	testBinderOkay(t, strings.NewReader(userForm), MIMEApplicationForm)
+	e := New()
+	req := test.NewRequest(POST, "/", strings.NewReader(userForm))
+	rec := test.NewResponseRecorder()
+	c := e.NewContext(req, rec)
+	req.Header().Set(HeaderContentType, MIMEApplicationForm)
+	var obj = make([]struct{ Field string }, 0)
+	err := c.Bind(&obj)
+	assert.Error(t, err)
 }
 
 func TestBinderMultipartForm(t *testing.T) {
