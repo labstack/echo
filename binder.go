@@ -21,6 +21,12 @@ type (
 
 func (b *binder) Bind(i interface{}, c Context) (err error) {
 	req := c.Request()
+	if req.Method() == GET {
+		if err = b.bindData(i, c.QueryParams()); err != nil {
+			err = NewHTTPError(http.StatusBadRequest, err.Error())
+		}
+		return
+	}
 	ctype := req.Header().Get(HeaderContentType)
 	if req.Body() == nil {
 		err = NewHTTPError(http.StatusBadRequest, "request body can't be empty")
@@ -37,14 +43,14 @@ func (b *binder) Bind(i interface{}, c Context) (err error) {
 			err = NewHTTPError(http.StatusBadRequest, err.Error())
 		}
 	case strings.HasPrefix(ctype, MIMEApplicationForm), strings.HasPrefix(ctype, MIMEMultipartForm):
-		if err = b.bindForm(i, req.FormParams()); err != nil {
+		if err = b.bindData(i, req.FormParams()); err != nil {
 			err = NewHTTPError(http.StatusBadRequest, err.Error())
 		}
 	}
 	return
 }
 
-func (b *binder) bindForm(ptr interface{}, form map[string][]string) error {
+func (b *binder) bindData(ptr interface{}, data map[string][]string) error {
 	typ := reflect.TypeOf(ptr).Elem()
 	val := reflect.ValueOf(ptr).Elem()
 
@@ -65,14 +71,14 @@ func (b *binder) bindForm(ptr interface{}, form map[string][]string) error {
 			inputFieldName = typeField.Name
 			// If "form" tag is nil, we inspect if the field is a struct.
 			if structFieldKind == reflect.Struct {
-				err := b.bindForm(structField.Addr().Interface(), form)
+				err := b.bindData(structField.Addr().Interface(), data)
 				if err != nil {
 					return err
 				}
 				continue
 			}
 		}
-		inputValue, exists := form[inputFieldName]
+		inputValue, exists := data[inputFieldName]
 		if !exists {
 			continue
 		}
