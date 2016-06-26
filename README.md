@@ -189,7 +189,7 @@ Server any file from static directory for path `/static/*`.
 e.Static("/static", "static")
 ```
 
-##### [More...](https://echo.labstack.com/guide/static-files)
+##### [Learn More](https://echo.labstack.com/guide/static-files)
 
 ### [Template Rendering](https://echo.labstack.com/guide/templates)
 
@@ -239,7 +239,7 @@ Middleware | Description
 [RemoveTrailingSlash](https://echo.labstack.com/middleware/remove-trailing-slash) | Remove trailing slash from the request URI
 [MethodOverride](https://echo.labstack.com/middleware/method-override) | Override request method
 
-##### [More...](https://echo.labstack.com/middleware)
+##### [Learn More](https://echo.labstack.com/middleware/overview)
 
 #### Third-party Middleware
 
