@@ -45,9 +45,9 @@ type (
 		// Optional. Default value none.
 		CookiePath string `json:"cookie_path"`
 
-		// Expiration time of the CSRF cookie.
-		// Optional. Default value 24H.
-		CookieExpires time.Time `json:"cookie_expires"`
+		// Max age (in seconds) of the CSRF cookie.
+		// Optional. Default value 86400 (24hr).
+		CookieMaxAge int `json:"cookie_max_age"`
 
 		// Indicates if CSRF cookie is secure.
 		CookieSecure bool `json:"cookie_secure"`
@@ -66,10 +66,10 @@ type (
 var (
 	// DefaultCSRFConfig is the default CSRF middleware config.
 	DefaultCSRFConfig = CSRFConfig{
-		TokenLookup:   "header:" + echo.HeaderXCSRFToken,
-		ContextKey:    "csrf",
-		CookieName:    "csrf",
-		CookieExpires: time.Now().Add(24 * time.Hour),
+		TokenLookup:  "header:" + echo.HeaderXCSRFToken,
+		ContextKey:   "csrf",
+		CookieName:   "csrf",
+		CookieMaxAge: 86400,
 	}
 )
 
@@ -97,8 +97,8 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 	if config.CookieName == "" {
 		config.CookieName = DefaultCSRFConfig.CookieName
 	}
-	if config.CookieExpires.IsZero() {
-		config.CookieExpires = DefaultCSRFConfig.CookieExpires
+	if config.CookieMaxAge == 0 {
+		config.CookieMaxAge = DefaultCSRFConfig.CookieMaxAge
 	}
 
 	// Initialize
@@ -131,7 +131,7 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 			if config.CookieDomain != "" {
 				cookie.SetDomain(config.CookieDomain)
 			}
-			cookie.SetExpires(config.CookieExpires)
+			cookie.SetExpires(time.Now().Add(time.Duration(config.CookieMaxAge) * time.Second))
 			cookie.SetSecure(config.CookieSecure)
 			cookie.SetHTTPOnly(config.CookieHTTPOnly)
 			c.SetCookie(cookie)
