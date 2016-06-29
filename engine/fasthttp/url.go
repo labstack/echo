@@ -13,7 +13,7 @@ type (
 
 // Path implements `engine.URL#Path` function.
 func (u *URL) Path() string {
-	return string(u.URI.Path())
+	return string(u.URI.PathOriginal())
 }
 
 // SetPath implements `engine.URL#SetPath` function.
