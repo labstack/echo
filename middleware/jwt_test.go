@@ -19,6 +19,9 @@ func TestJWT(t *testing.T) {
 	validKey := []byte("secret")
 	invalidKey := []byte("invalid-key")
 	validAuth := bearer + " " + token
+	redirect := func(c echo.Context) error {
+		return echo.NewHTTPError(http.StatusFound, "redirect")
+	}
 
 	for _, tc := range []struct {
 		expPanic   bool
@@ -62,6 +65,15 @@ func TestJWT(t *testing.T) {
 		},
 		{
 			config: JWTConfig{
+				SigningKey:       validKey,
+				HandleEmptyToken: redirect,
+			},
+			hdrAuth:    "",
+			expErrCode: http.StatusFound,
+			info:       "Empty header auth field with redirect",
+		},
+		{
+			config: JWTConfig{
 				SigningKey:  validKey,
 				TokenLookup: "query:jwt",
 			},
@@ -94,6 +106,16 @@ func TestJWT(t *testing.T) {
 			reqURL:     "/?a=b",
 			expErrCode: http.StatusBadRequest,
 			info:       "Empty query",
+		},
+		{
+			config: JWTConfig{
+				SigningKey:       validKey,
+				TokenLookup:      "query:jwt",
+				HandleEmptyToken: redirect,
+			},
+			reqURL:     "/?a=b",
+			expErrCode: http.StatusFound,
+			info:       "Empty query with redirect",
 		},
 	} {
 

@@ -32,6 +32,10 @@ type (
 		// - "header:<name>"
 		// - "query:<name>"
 		TokenLookup string `json:"token_lookup"`
+
+		// HandleEmptyToken is handler executed when there is no token.
+		// It could be used for redirection.
+		HandleEmptyToken echo.HandlerFunc
 	}
 
 	jwtExtractor func(echo.Context) (string, error)
@@ -52,7 +56,12 @@ var (
 		SigningMethod: AlgorithmHS256,
 		ContextKey:    "user",
 		TokenLookup:   "header:" + echo.HeaderAuthorization,
+		HandleEmptyToken: func(c echo.Context) error {
+			return echo.NewHTTPError(http.StatusBadRequest, errJWTEmptyToken.Error())
+		},
 	}
+
+	errJWTEmptyToken = errors.New("empty jwt")
 )
 
 // JWT returns a JSON Web Token (JWT) auth middleware.
@@ -84,6 +93,9 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	if config.TokenLookup == "" {
 		config.TokenLookup = DefaultJWTConfig.TokenLookup
 	}
+	if config.HandleEmptyToken == nil {
+		config.HandleEmptyToken = DefaultJWTConfig.HandleEmptyToken
+	}
 
 	// Initialize
 	parts := strings.Split(config.TokenLookup, ":")
@@ -97,6 +109,9 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 		return func(c echo.Context) error {
 			auth, err := extractor(c)
 			if err != nil {
+				if err == errJWTEmptyToken {
+					return config.HandleEmptyToken(c)
+				}
 				return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 			}
 			token, err := jwt.Parse(auth, func(t *jwt.Token) (interface{}, error) {
@@ -122,11 +137,15 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 func jwtFromHeader(header string) jwtExtractor {
 	return func(c echo.Context) (string, error) {
 		auth := c.Request().Header().Get(header)
+		lenAuth := len(auth)
+		if lenAuth == 0 {
+			return "", errJWTEmptyToken
+		}
 		l := len(bearer)
-		if len(auth) > l+1 && auth[:l] == bearer {
+		if lenAuth > l+1 && auth[:l] == bearer {
 			return auth[l+1:], nil
 		}
-		return "", errors.New("empty or invalid jwt in authorization header")
+		return "", errors.New("invalid jwt in authorization header")
 	}
 }
 
@@ -135,9 +154,10 @@ func jwtFromHeader(header string) jwtExtractor {
 func jwtFromQuery(param string) jwtExtractor {
 	return func(c echo.Context) (string, error) {
 		token := c.QueryParam(param)
+		var err error
 		if token == "" {
-			return "", errors.New("empty jwt in query param")
+			err = errJWTEmptyToken
 		}
-		return token, nil
+		return token, err
 	}
 }
