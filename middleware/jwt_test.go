@@ -60,6 +60,41 @@ func TestJWT(t *testing.T) {
 			expErrCode: http.StatusBadRequest,
 			info:       "Empty header auth field",
 		},
+		{
+			config: JWTConfig{
+				SigningKey:  validKey,
+				TokenLookup: "query:jwt",
+			},
+			reqURL: "/?a=b&jwt=" + token,
+			info:   "Valid query method",
+		},
+		{
+			config: JWTConfig{
+				SigningKey:  validKey,
+				TokenLookup: "query:jwt",
+			},
+			reqURL:     "/?a=b&jwtxyz=" + token,
+			expErrCode: http.StatusBadRequest,
+			info:       "Invalid query param name",
+		},
+		{
+			config: JWTConfig{
+				SigningKey:  validKey,
+				TokenLookup: "query:jwt",
+			},
+			reqURL:     "/?a=b&jwt=invalid-token",
+			expErrCode: http.StatusUnauthorized,
+			info:       "Invalid query param value",
+		},
+		{
+			config: JWTConfig{
+				SigningKey:  validKey,
+				TokenLookup: "query:jwt",
+			},
+			reqURL:     "/?a=b",
+			expErrCode: http.StatusBadRequest,
+			info:       "Empty query",
+		},
 	} {
 
 		if tc.reqURL == "" {
