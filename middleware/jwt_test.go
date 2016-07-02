@@ -29,6 +29,7 @@ func TestJWT(t *testing.T) {
 		config     JWTConfig
 		reqURL     string // "/" if empty
 		hdrAuth    string
+		hdrCookie  string // test.Request doesn't provide SetCookie(); use name=val
 		info       string
 	}{
 		{expPanic: true, info: "No signing key provided"},
@@ -117,6 +118,42 @@ func TestJWT(t *testing.T) {
 			expErrCode: http.StatusFound,
 			info:       "Empty query with redirect",
 		},
+		{
+			config: JWTConfig{
+				SigningKey:  validKey,
+				TokenLookup: "cookie:jwt",
+			},
+			hdrCookie: "jwt=" + token,
+			info:      "Valid cookie method",
+		},
+		{
+			config: JWTConfig{
+				SigningKey:  validKey,
+				TokenLookup: "cookie:jwt",
+			},
+			expErrCode: http.StatusUnauthorized,
+			hdrCookie:  "jwt=invalid",
+			info:       "Invalid token with cookie method",
+		},
+		{
+			config: JWTConfig{
+				SigningKey:  validKey,
+				TokenLookup: "cookie:jwt",
+			},
+			expErrCode: http.StatusBadRequest,
+			hdrCookie:  "",
+			info:       "Empty cookie",
+		},
+		{
+			config: JWTConfig{
+				SigningKey:       validKey,
+				TokenLookup:      "cookie:jwt",
+				HandleEmptyToken: redirect,
+			},
+			expErrCode: http.StatusFound,
+			hdrCookie:  "",
+			info:       "Empty cookie with redirect",
+		},
 	} {
 
 		if tc.reqURL == "" {
@@ -126,6 +163,7 @@ func TestJWT(t *testing.T) {
 		req := test.NewRequest(echo.GET, tc.reqURL, nil)
 		res := test.NewResponseRecorder()
 		req.Header().Set(echo.HeaderAuthorization, tc.hdrAuth)
+		req.Header().Set(echo.HeaderCookie, tc.hdrCookie)
 		c := e.NewContext(req, res)
 
 		if tc.expPanic {

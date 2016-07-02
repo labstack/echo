@@ -31,6 +31,7 @@ type (
 		// Possible values:
 		// - "header:<name>"
 		// - "query:<name>"
+		// - "cookie:<name>"
 		TokenLookup string `json:"token_lookup"`
 
 		// HandleEmptyToken is handler executed when there is no token.
@@ -71,6 +72,7 @@ var (
 // For empty or invalid `Authorization` header, it sends "400 - Bad Request".
 //
 // See: https://jwt.io/introduction
+// See `JWTConfig.TokenLookup`
 func JWT(key []byte) echo.MiddlewareFunc {
 	c := DefaultJWTConfig
 	c.SigningKey = key
@@ -99,10 +101,14 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 
 	// Initialize
 	parts := strings.Split(config.TokenLookup, ":")
-	extractor := jwtFromHeader(parts[1])
+	var extractor jwtExtractor
 	switch parts[0] {
 	case "query":
 		extractor = jwtFromQuery(parts[1])
+	case "cookie":
+		extractor = jwtFromCookie(parts[1])
+	default:
+		extractor = jwtFromHeader(parts[1])
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -159,5 +165,16 @@ func jwtFromQuery(param string) jwtExtractor {
 			err = errJWTEmptyToken
 		}
 		return token, err
+	}
+}
+
+// jwtFromCookie returns a `jwtExtractor` that extracts token from named cookie.
+func jwtFromCookie(name string) jwtExtractor {
+	return func(c echo.Context) (string, error) {
+		cookie, err := c.Cookie(name)
+		if err != nil {
+			return "", errJWTEmptyToken
+		}
+		return cookie.Value(), nil
 	}
 }
