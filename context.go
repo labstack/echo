@@ -508,5 +508,5 @@ func (c *echoContext) Reset(req engine.Request, res engine.Response) {
 	c.context = context.Background()
 	c.request = req
 	c.response = res
-	c.handler = notFoundHandler
+	c.handler = NotFoundHandler
 }

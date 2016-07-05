@@ -129,7 +129,7 @@ func TestEchoMiddlewareError(t *testing.T) {
 	e.Use(WrapMiddleware(func(c Context) error {
 		return errors.New("error")
 	}))
-	e.GET("/", notFoundHandler)
+	e.GET("/", NotFoundHandler)
 	c, _ := request(GET, "/", e)
 	assert.Equal(t, http.StatusInternalServerError, c)
 }
