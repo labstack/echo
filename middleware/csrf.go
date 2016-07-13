@@ -50,12 +50,8 @@ type (
 		CookieMaxAge int `json:"cookie_max_age"`
 
 		// Indicates if CSRF cookie is secure.
+		// Optional. Default value false.
 		CookieSecure bool `json:"cookie_secure"`
-		// Optional. Default value false.
-
-		// Indicates if CSRF cookie is HTTP only.
-		// Optional. Default value false.
-		CookieHTTPOnly bool `json:"cookie_http_only"`
 	}
 
 	// csrfTokenExtractor defines a function that takes `echo.Context` and returns
@@ -68,7 +64,7 @@ var (
 	DefaultCSRFConfig = CSRFConfig{
 		TokenLookup:  "header:" + echo.HeaderXCSRFToken,
 		ContextKey:   "csrf",
-		CookieName:   "csrf",
+		CookieName:   "_csrf",
 		CookieMaxAge: 86400,
 	}
 )
@@ -122,28 +118,33 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 			}
 			token := generateCSRFToken(config.Secret, salt)
 			c.Set(config.ContextKey, token)
-			cookie := new(echo.Cookie)
-			cookie.SetName(config.CookieName)
-			cookie.SetValue(token)
-			if config.CookiePath != "" {
-				cookie.SetPath(config.CookiePath)
-			}
-			if config.CookieDomain != "" {
-				cookie.SetDomain(config.CookieDomain)
-			}
-			cookie.SetExpires(time.Now().Add(time.Duration(config.CookieMaxAge) * time.Second))
-			cookie.SetSecure(config.CookieSecure)
-			cookie.SetHTTPOnly(config.CookieHTTPOnly)
-			c.SetCookie(cookie)
 
 			switch req.Method() {
 			case echo.GET, echo.HEAD, echo.OPTIONS, echo.TRACE:
+				cookie := new(echo.Cookie)
+				cookie.SetName(config.CookieName)
+				cookie.SetValue(token)
+				if config.CookiePath != "" {
+					cookie.SetPath(config.CookiePath)
+				}
+				if config.CookieDomain != "" {
+					cookie.SetDomain(config.CookieDomain)
+				}
+				cookie.SetExpires(time.Now().Add(time.Duration(config.CookieMaxAge) * time.Second))
+				cookie.SetSecure(config.CookieSecure)
+				cookie.SetHTTPOnly(true)
+				c.SetCookie(cookie)
 			default:
-				token, err := extractor(c)
+				cookie, err := c.Cookie(config.CookieName)
 				if err != nil {
 					return err
 				}
-				ok, err := validateCSRFToken(token, config.Secret)
+				serverToken := cookie.Value()
+				clientToken, err := extractor(c)
+				if err != nil {
+					return err
+				}
+				ok, err := validateCSRFToken(serverToken, clientToken, config.Secret)
 				if err != nil {
 					return err
 				}
@@ -194,16 +195,19 @@ func generateCSRFToken(secret, salt []byte) string {
 	return fmt.Sprintf("%s:%s", hex.EncodeToString(h.Sum(nil)), hex.EncodeToString(salt))
 }
 
-func validateCSRFToken(token string, secret []byte) (bool, error) {
-	sep := strings.Index(token, ":")
+func validateCSRFToken(serverToken, clientToken string, secret []byte) (bool, error) {
+	if serverToken != clientToken {
+		return false, nil
+	}
+	sep := strings.Index(clientToken, ":")
 	if sep < 0 {
 		return false, nil
 	}
-	salt, err := hex.DecodeString(token[sep+1:])
+	salt, err := hex.DecodeString(clientToken[sep+1:])
 	if err != nil {
 		return false, err
 	}
-	return token == generateCSRFToken(secret, salt), nil
+	return clientToken == generateCSRFToken(secret, salt), nil
 }
 
 func generateSalt(len uint8) (salt []byte, err error) {
