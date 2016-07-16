@@ -110,17 +110,16 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			req := c.Request()
+			cookie, err := c.Cookie(config.CookieName)
+			token := ""
 
-			// Set CSRF token
-			salt, err := generateSalt(8)
 			if err != nil {
-				return err
-			}
-			token := generateCSRFToken(config.Secret, salt)
-			c.Set(config.ContextKey, token)
-
-			switch req.Method() {
-			case echo.GET, echo.HEAD, echo.OPTIONS, echo.TRACE:
+				// Token expired, generate it
+				salt, err := generateSalt(8)
+				if err != nil {
+					return err
+				}
+				token = generateCSRFToken(config.Secret, salt)
 				cookie := new(echo.Cookie)
 				cookie.SetName(config.CookieName)
 				cookie.SetValue(token)
@@ -134,17 +133,21 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 				cookie.SetSecure(config.CookieSecure)
 				cookie.SetHTTPOnly(true)
 				c.SetCookie(cookie)
+			} else {
+				// Reuse token
+				token = cookie.Value()
+			}
+
+			c.Set(config.ContextKey, token)
+
+			switch req.Method() {
+			case echo.GET, echo.HEAD, echo.OPTIONS, echo.TRACE:
 			default:
-				cookie, err := c.Cookie(config.CookieName)
-				if err != nil {
-					return err
-				}
-				serverToken := cookie.Value()
 				clientToken, err := extractor(c)
 				if err != nil {
 					return err
 				}
-				ok, err := validateCSRFToken(serverToken, clientToken, config.Secret)
+				ok, err := validateCSRFToken(token, clientToken, config.Secret)
 				if err != nil {
 					return err
 				}
