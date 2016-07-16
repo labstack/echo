@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
+	
 	"github.com/labstack/echo"
 )
 
@@ -19,7 +19,7 @@ type (
 	CSRFConfig struct {
 		// Key to create CSRF token.
 		Secret []byte `json:"secret"`
-
+		
 		// TokenLookup is a string in the form of "<source>:<key>" that is used
 		// to extract token from the request.
 		// Optional. Default value "header:X-CSRF-Token".
@@ -28,32 +28,41 @@ type (
 		// - "form:<name>"
 		// - "query:<name>"
 		TokenLookup string `json:"token_lookup"`
-
+		
 		// Context key to store generated CSRF token into context.
 		// Optional. Default value "csrf".
 		ContextKey string `json:"context_key"`
-
+		
 		// Name of the CSRF cookie. This cookie will store CSRF token.
-		// Optional. Default value "csrf".
+		// Optional. Default value "csrfToken".
 		CookieName string `json:"cookie_name"`
-
+		
 		// Domain of the CSRF cookie.
 		// Optional. Default value none.
 		CookieDomain string `json:"cookie_domain"`
-
+		
 		// Path of the CSRF cookie.
 		// Optional. Default value none.
 		CookiePath string `json:"cookie_path"`
-
+		
 		// Max age (in seconds) of the CSRF cookie.
 		// Optional. Default value 86400 (24hr).
 		CookieMaxAge int `json:"cookie_max_age"`
-
+		
 		// Indicates if CSRF cookie is secure.
 		// Optional. Default value false.
 		CookieSecure bool `json:"cookie_secure"`
+		
+		// Indicates if CSRF cookie is HttpOnly.
+		// An HttpOnly cookie cannot be accessed by JavaScript or other client-side APIs.
+		CookieHttpOnly bool `json:"cookie_httponly"`
+		
+		// The message which is sent to the client when the token is not valid.
+		// Only set the message for debug purposes.
+		// Optional. Default value <empty string>.
+		ForbiddenMessage string `json:"forbidden_message"`
 	}
-
+	
 	// csrfTokenExtractor defines a function that takes `echo.Context` and returns
 	// either a token or an error.
 	csrfTokenExtractor func(echo.Context) (string, error)
@@ -64,8 +73,19 @@ var (
 	DefaultCSRFConfig = CSRFConfig{
 		TokenLookup:  "header:" + echo.HeaderXCSRFToken,
 		ContextKey:   "csrf",
-		CookieName:   "_csrf",
+		CookieName:   "csrfToken",
 		CookieMaxAge: 86400,
+		CookieHttpOnly: true,
+	}
+	
+	// DebugModeCSRFConfig is a CSRF middleware config for debugging.
+	DebugModeCSRFConfig = CSRFConfig{
+		TokenLookup:  "header:" + echo.HeaderXCSRFToken,
+		ContextKey:   "csrf",
+		CookieName:   "csrfToken",
+		CookieMaxAge: 86400,
+		CookieHttpOnly: true,
+		ForbiddenMessage: "invalid csrf token", // It is a security issue to send explicit error messages to the client.
 	}
 )
 
@@ -80,69 +100,30 @@ func CSRF(secret []byte) echo.MiddlewareFunc {
 // CSRFWithConfig returns a CSRF middleware from config.
 // See `CSRF()`.
 func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
-	// Defaults
-	if config.Secret == nil {
-		panic("csrf secret must be provided")
-	}
-	if config.TokenLookup == "" {
-		config.TokenLookup = DefaultCSRFConfig.TokenLookup
-	}
-	if config.ContextKey == "" {
-		config.ContextKey = DefaultCSRFConfig.ContextKey
-	}
-	if config.CookieName == "" {
-		config.CookieName = DefaultCSRFConfig.CookieName
-	}
-	if config.CookieMaxAge == 0 {
-		config.CookieMaxAge = DefaultCSRFConfig.CookieMaxAge
-	}
-
+	// Set defaults
+	sanitizeCsrfConfig(&config)
+	
 	// Initialize
-	parts := strings.Split(config.TokenLookup, ":")
-	extractor := csrfTokenFromHeader(parts[1])
-	switch parts[0] {
-	case "form":
-		extractor = csrfTokenFromForm(parts[1])
-	case "query":
-		extractor = csrfTokenFromQuery(parts[1])
-	}
-
+	extractor := getExtractor(&config)
+	
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			req := c.Request()
 			cookie, err := c.Cookie(config.CookieName)
-			token := ""
-
-			if err != nil {
-				// Token expired, generate it
-				salt, err := generateSalt(8)
+			var token string
+			if err == nil {
+				// Get the token to use it again
+				token = cookie.Value()
+			} else {
+				// Generate a new token
+				token, err = newToken(&config)
 				if err != nil {
 					return err
 				}
-				token = generateCSRFToken(config.Secret, salt)
-				cookie := new(echo.Cookie)
-				cookie.SetName(config.CookieName)
-				cookie.SetValue(token)
-				if config.CookiePath != "" {
-					cookie.SetPath(config.CookiePath)
-				}
-				if config.CookieDomain != "" {
-					cookie.SetDomain(config.CookieDomain)
-				}
-				cookie.SetExpires(time.Now().Add(time.Duration(config.CookieMaxAge) * time.Second))
-				cookie.SetSecure(config.CookieSecure)
-				cookie.SetHTTPOnly(true)
-				c.SetCookie(cookie)
-			} else {
-				// Reuse token
-				token = cookie.Value()
 			}
-
-			c.Set(config.ContextKey, token)
-
-			switch req.Method() {
-			case echo.GET, echo.HEAD, echo.OPTIONS, echo.TRACE:
-			default:
+			
+			// Validate token only for requests which are not defined as 'safe' by RFC7231
+			if req.Method() != echo.GET && req.Method() != echo.HEAD && req.Method() != echo.OPTIONS && req.Method() != echo.TRACE {
 				clientToken, err := extractor(c)
 				if err != nil {
 					return err
@@ -152,12 +133,83 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 					return err
 				}
 				if !ok {
-					return echo.NewHTTPError(http.StatusForbidden, "invalid csrf token")
+					return echo.NewHTTPError(http.StatusForbidden, config.ForbiddenMessage)
+				}
+				// Regenerate the token after using it
+				token, err = newToken(&config)
+				if err != nil {
+					return err
 				}
 			}
+			
+			// Set the CSRF cookie even if it's already set to renew the expiration time.
+			c.SetCookie(setNewCookie(&config, token))
+			
+			c.Set(config.ContextKey, token)
+			
+			// Protects clients from caching the response
+			c.Response().Header().Add("Vary", "Cookie")
+			
 			return next(c)
 		}
 	}
+}
+
+// Sets the default values for missed configurations.
+func sanitizeCsrfConfig(config *CSRFConfig) {
+	if config.Secret == nil {
+		panic("csrf secret must be provided")
+	}
+	if len(config.TokenLookup) == 0 {
+		config.TokenLookup = DefaultCSRFConfig.TokenLookup
+	}
+	if len(config.ContextKey) == 0 {
+		config.ContextKey = DefaultCSRFConfig.ContextKey
+	}
+	if len(config.CookieName) == 0 {
+		config.CookieName = DefaultCSRFConfig.CookieName
+	}
+	if config.CookieMaxAge == 0 {
+		config.CookieMaxAge = DefaultCSRFConfig.CookieMaxAge
+	}
+}
+
+// Returns csrfTokenExtractor of config
+func getExtractor(config *CSRFConfig) csrfTokenExtractor {
+	parts := strings.Split(config.TokenLookup, ":")
+	switch parts[0] {
+	case "form":
+		return csrfTokenFromForm(parts[1])
+	case "query":
+		return csrfTokenFromQuery(parts[1])
+	}
+	return csrfTokenFromHeader(parts[1])
+}
+
+// Sets a new cookie for the token
+func setNewCookie(config *CSRFConfig, token string) *echo.Cookie {
+	cookie := new(echo.Cookie)
+	cookie.SetName(config.CookieName)
+	cookie.SetValue(token)
+	if len(config.CookiePath) > 0 {
+		cookie.SetPath(config.CookiePath)
+	}
+	if len(config.CookieDomain) > 0 {
+		cookie.SetDomain(config.CookieDomain)
+	}
+	cookie.SetExpires(time.Now().Add(time.Duration(config.CookieMaxAge) * time.Second))
+	cookie.SetSecure(config.CookieSecure)
+	cookie.SetHTTPOnly(config.CookieHttpOnly)
+	return cookie
+}
+
+// Generates a new token
+func newToken(config *CSRFConfig) (string, error) {
+	salt, err := generateSalt(8)
+	if err != nil {
+		return "", err
+	}
+	return generateCSRFToken(config.Secret, salt), err
 }
 
 // csrfTokenFromForm returns a `csrfTokenExtractor` that extracts token from the
