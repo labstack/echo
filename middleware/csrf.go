@@ -3,12 +3,12 @@ package middleware
 import (
 	"crypto/subtle"
 	"errors"
-	"math/rand"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/labstack/echo"
+	"github.com/labstack/gommon/random"
 )
 
 type (
@@ -117,7 +117,7 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 
 			if err != nil {
 				// Generate token
-				token = generateCSRFToken(config.TokenLength)
+				token = random.String(config.TokenLength)
 			} else {
 				// Reuse token
 				token = k.Value()
@@ -192,16 +192,6 @@ func csrfTokenFromQuery(param string) csrfTokenExtractor {
 		}
 		return token, nil
 	}
-}
-
-func generateCSRFToken(n uint8) string {
-	// TODO: From utility library
-	chars := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = chars[rand.Int63()%int64(len(chars))]
-	}
-	return string(b)
 }
 
 func validateCSRFToken(token, clientToken string) bool {

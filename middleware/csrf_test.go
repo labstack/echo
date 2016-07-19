@@ -8,6 +8,7 @@ import (
 
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/test"
+	"github.com/labstack/gommon/random"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -41,7 +42,7 @@ func TestCSRF(t *testing.T) {
 	assert.Error(t, h(c))
 
 	// Valid CSRF token
-	token := generateCSRFToken(16)
+	token := random.String(16)
 	req.Header().Set(echo.HeaderCookie, "_csrf="+token)
 	req.Header().Set(echo.HeaderXCSRFToken, token)
 	if assert.NoError(t, h(c)) {
