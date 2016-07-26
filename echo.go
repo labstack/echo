@@ -309,10 +309,12 @@ func (e *Echo) SetRenderer(r Renderer) {
 	e.renderer = r
 }
 
-// SetDebug enable/disable debug mode.
+// SetDebug enables/disables debug mode. It also sets DEBUG log level for the logger if debug is enabled.
 func (e *Echo) SetDebug(on bool) {
 	e.debug = on
-	e.SetLogLevel(glog.DEBUG)
+	if on {
+		e.SetLogLevel(glog.DEBUG)
+	}
 }
 
 // Debug returns debug mode (enabled or disabled).
