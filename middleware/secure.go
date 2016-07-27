@@ -7,8 +7,11 @@ import (
 )
 
 type (
-	// SecureConfig defines the config for secure middleware.
+	// SecureConfig defines the config for Secure middleware.
 	SecureConfig struct {
+		// Skipper defines a function to skip middleware.
+		Skipper Skipper
+
 		// XSSProtection provides protection against cross-site scripting attack (XSS)
 		// by setting the `X-XSS-Protection` header.
 		// Optional. Default value "1; mode=block".
@@ -54,15 +57,16 @@ type (
 )
 
 var (
-	// DefaultSecureConfig is the default secure middleware config.
+	// DefaultSecureConfig is the default Secure middleware config.
 	DefaultSecureConfig = SecureConfig{
+		Skipper:            defaultSkipper,
 		XSSProtection:      "1; mode=block",
 		ContentTypeNosniff: "nosniff",
 		XFrameOptions:      "SAMEORIGIN",
 	}
 )
 
-// Secure returns a secure middleware.
+// Secure returns a Secure middleware.
 // Secure middleware provides protection against cross-site scripting (XSS) attack,
 // content type sniffing, clickjacking, insecure connection and other code injection
 // attacks.
@@ -70,11 +74,20 @@ func Secure() echo.MiddlewareFunc {
 	return SecureWithConfig(DefaultSecureConfig)
 }
 
-// SecureWithConfig returns a secure middleware from config.
+// SecureWithConfig returns a Secure middleware from config.
 // See: `Secure()`.
 func SecureWithConfig(config SecureConfig) echo.MiddlewareFunc {
+	// Defaults
+	if config.Skipper == nil {
+		config.Skipper = DefaultSecureConfig.Skipper
+	}
+
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			if config.Skipper(c) {
+				return next(c)
+			}
+
 			req := c.Request()
 			res := c.Response()
 

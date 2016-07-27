@@ -14,6 +14,9 @@ import (
 type (
 	// CSRFConfig defines the config for CSRF middleware.
 	CSRFConfig struct {
+		// Skipper defines a function to skip middleware.
+		Skipper Skipper
+
 		// TokenLength is the length of the generated token.
 		TokenLength uint8 `json:"token_length"`
 		// Optional. Default value 32.
@@ -64,6 +67,7 @@ type (
 var (
 	// DefaultCSRFConfig is the default CSRF middleware config.
 	DefaultCSRFConfig = CSRFConfig{
+		Skipper:      defaultSkipper,
 		TokenLength:  32,
 		TokenLookup:  "header:" + echo.HeaderXCSRFToken,
 		ContextKey:   "csrf",
@@ -83,6 +87,9 @@ func CSRF() echo.MiddlewareFunc {
 // See `CSRF()`.
 func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 	// Defaults
+	if config.Skipper == nil {
+		config.Skipper = DefaultCSRFConfig.Skipper
+	}
 	if config.TokenLength == 0 {
 		config.TokenLength = DefaultCSRFConfig.TokenLength
 	}
@@ -111,6 +118,10 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			if config.Skipper(c) {
+				return next(c)
+			}
+
 			req := c.Request()
 			k, err := c.Cookie(config.CookieName)
 			token := ""

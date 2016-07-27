@@ -11,6 +11,9 @@ import (
 type (
 	// CORSConfig defines the config for CORS middleware.
 	CORSConfig struct {
+		// Skipper defines a function to skip middleware.
+		Skipper Skipper
+
 		// AllowOrigin defines a list of origins that may access the resource.
 		// Optional. Default value []string{"*"}.
 		AllowOrigins []string `json:"allow_origins"`
@@ -47,6 +50,7 @@ type (
 var (
 	// DefaultCORSConfig is the default CORS middleware config.
 	DefaultCORSConfig = CORSConfig{
+		Skipper:      defaultSkipper,
 		AllowOrigins: []string{"*"},
 		AllowMethods: []string{echo.GET, echo.HEAD, echo.PUT, echo.PATCH, echo.POST, echo.DELETE},
 	}
@@ -62,6 +66,9 @@ func CORS() echo.MiddlewareFunc {
 // See: `CORS()`.
 func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 	// Defaults
+	if config.Skipper == nil {
+		config.Skipper = DefaultCORSConfig.Skipper
+	}
 	if len(config.AllowOrigins) == 0 {
 		config.AllowOrigins = DefaultCORSConfig.AllowOrigins
 	}
@@ -75,6 +82,10 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			if config.Skipper(c) {
+				return next(c)
+			}
+
 			req := c.Request()
 			res := c.Response()
 			origin := req.Header().Get(echo.HeaderOrigin)

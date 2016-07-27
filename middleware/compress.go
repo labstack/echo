@@ -13,8 +13,11 @@ import (
 )
 
 type (
-	// GzipConfig defines the config for gzip middleware.
+	// GzipConfig defines the config for Gzip middleware.
 	GzipConfig struct {
+		// Skipper defines a function to skip middleware.
+		Skipper Skipper
+
 		// Gzip compression level.
 		// Optional. Default value -1.
 		Level int `json:"level"`
@@ -27,9 +30,10 @@ type (
 )
 
 var (
-	// DefaultGzipConfig is the default gzip middleware config.
+	// DefaultGzipConfig is the default Gzip middleware config.
 	DefaultGzipConfig = GzipConfig{
-		Level: -1,
+		Skipper: defaultSkipper,
+		Level:   -1,
 	}
 )
 
@@ -39,10 +43,13 @@ func Gzip() echo.MiddlewareFunc {
 	return GzipWithConfig(DefaultGzipConfig)
 }
 
-// GzipWithConfig return gzip middleware from config.
+// GzipWithConfig return Gzip middleware from config.
 // See: `Gzip()`.
 func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 	// Defaults
+	if config.Skipper == nil {
+		config.Skipper = DefaultGzipConfig.Skipper
+	}
 	if config.Level == 0 {
 		config.Level = DefaultGzipConfig.Level
 	}
@@ -52,6 +59,10 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			if config.Skipper(c) {
+				return next(c)
+			}
+
 			res := c.Response()
 			res.Header().Add(echo.HeaderVary, echo.HeaderAcceptEncoding)
 			if strings.Contains(c.Request().Header().Get(echo.HeaderAcceptEncoding), scheme) {

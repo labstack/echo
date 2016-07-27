@@ -7,13 +7,16 @@ import (
 )
 
 type (
-	// BasicAuthConfig defines the config for HTTP basic auth middleware.
+	// BasicAuthConfig defines the config for BasicAuth middleware.
 	BasicAuthConfig struct {
-		// Validator is a function to validate basic auth credentials.
+		// Skipper defines a function to skip middleware.
+		Skipper Skipper
+
+		// Validator is a function to validate BasicAuth credentials.
 		Validator BasicAuthValidator
 	}
 
-	// BasicAuthValidator defines a function to validate basic auth credentials.
+	// BasicAuthValidator defines a function to validate BasicAuth credentials.
 	BasicAuthValidator func(string, string) bool
 )
 
@@ -21,20 +24,38 @@ const (
 	basic = "Basic"
 )
 
-// BasicAuth returns an HTTP basic auth middleware.
+var (
+	// DefaultBasicAuthConfig is the default BasicAuth middleware config.
+	DefaultBasicAuthConfig = BasicAuthConfig{
+		Skipper: defaultSkipper,
+	}
+)
+
+// BasicAuth returns an BasicAuth middleware.
 //
 // For valid credentials it calls the next handler.
 // For invalid credentials, it sends "401 - Unauthorized" response.
 // For empty or invalid `Authorization` header, it sends "400 - Bad Request" response.
 func BasicAuth(fn BasicAuthValidator) echo.MiddlewareFunc {
-	return BasicAuthWithConfig(BasicAuthConfig{fn})
+	c := DefaultBasicAuthConfig
+	c.Validator = fn
+	return BasicAuthWithConfig(c)
 }
 
-// BasicAuthWithConfig returns an HTTP basic auth middleware from config.
+// BasicAuthWithConfig returns an BasicAuth middleware from config.
 // See `BasicAuth()`.
 func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
+	// Defaults
+	if config.Skipper == nil {
+		config.Skipper = DefaultBasicAuthConfig.Skipper
+	}
+
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			if config.Skipper(c) {
+				return next(c)
+			}
+
 			auth := c.Request().Header().Get(echo.HeaderAuthorization)
 			l := len(basic)
 

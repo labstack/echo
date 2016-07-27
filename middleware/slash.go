@@ -7,9 +7,19 @@ import (
 type (
 	// TrailingSlashConfig defines the config for TrailingSlash middleware.
 	TrailingSlashConfig struct {
+		// Skipper defines a function to skip middleware.
+		Skipper Skipper
+
 		// Status code to be used when redirecting the request.
 		// Optional, but when provided the request is redirected using this code.
 		RedirectCode int `json:"redirect_code"`
+	}
+)
+
+var (
+	// DefaultTrailingSlashConfig is the default TrailingSlash middleware config.
+	DefaultTrailingSlashConfig = TrailingSlashConfig{
+		Skipper: defaultSkipper,
 	}
 )
 
@@ -24,8 +34,17 @@ func AddTrailingSlash() echo.MiddlewareFunc {
 // AddTrailingSlashWithConfig returns a AddTrailingSlash middleware from config.
 // See `AddTrailingSlash()`.
 func AddTrailingSlashWithConfig(config TrailingSlashConfig) echo.MiddlewareFunc {
+	// Defaults
+	if config.Skipper == nil {
+		config.Skipper = DefaultTrailingSlashConfig.Skipper
+	}
+
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			if config.Skipper(c) {
+				return next(c)
+			}
+
 			req := c.Request()
 			url := req.URL()
 			path := url.Path()
@@ -62,8 +81,17 @@ func RemoveTrailingSlash() echo.MiddlewareFunc {
 // RemoveTrailingSlashWithConfig returns a RemoveTrailingSlash middleware from config.
 // See `RemoveTrailingSlash()`.
 func RemoveTrailingSlashWithConfig(config TrailingSlashConfig) echo.MiddlewareFunc {
+	// Defaults
+	if config.Skipper == nil {
+		config.Skipper = DefaultTrailingSlashConfig.Skipper
+	}
+
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			if config.Skipper(c) {
+				return next(c)
+			}
+
 			req := c.Request()
 			url := req.URL()
 			path := url.Path()

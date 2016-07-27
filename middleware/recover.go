@@ -9,8 +9,11 @@ import (
 )
 
 type (
-	// RecoverConfig defines the config for recover middleware.
+	// RecoverConfig defines the config for Recover middleware.
 	RecoverConfig struct {
+		// Skipper defines a function to skip middleware.
+		Skipper Skipper
+
 		// Size of the stack to be printed.
 		// Optional. Default value 4KB.
 		StackSize int `json:"stack_size"`
@@ -27,8 +30,9 @@ type (
 )
 
 var (
-	// DefaultRecoverConfig is the default recover middleware config.
+	// DefaultRecoverConfig is the default Recover middleware config.
 	DefaultRecoverConfig = RecoverConfig{
+		Skipper:           defaultSkipper,
 		StackSize:         4 << 10, // 4 KB
 		DisableStackAll:   false,
 		DisablePrintStack: false,
@@ -41,16 +45,23 @@ func Recover() echo.MiddlewareFunc {
 	return RecoverWithConfig(DefaultRecoverConfig)
 }
 
-// RecoverWithConfig returns a recover middleware from config.
+// RecoverWithConfig returns a Recover middleware from config.
 // See: `Recover()`.
 func RecoverWithConfig(config RecoverConfig) echo.MiddlewareFunc {
 	// Defaults
+	if config.Skipper == nil {
+		config.Skipper = DefaultRecoverConfig.Skipper
+	}
 	if config.StackSize == 0 {
 		config.StackSize = DefaultRecoverConfig.StackSize
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			if config.Skipper(c) {
+				return next(c)
+			}
+
 			defer func() {
 				if r := recover(); r != nil {
 					var err error

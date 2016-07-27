@@ -11,8 +11,11 @@ import (
 )
 
 type (
-	// JWTConfig defines the config for JWT auth middleware.
+	// JWTConfig defines the config for JWT middleware.
 	JWTConfig struct {
+		// Skipper defines a function to skip middleware.
+		Skipper Skipper
+
 		// Signing key to validate token.
 		// Required.
 		SigningKey []byte `json:"signing_key"`
@@ -49,6 +52,7 @@ const (
 var (
 	// DefaultJWTConfig is the default JWT auth middleware config.
 	DefaultJWTConfig = JWTConfig{
+		Skipper:       defaultSkipper,
 		SigningMethod: AlgorithmHS256,
 		ContextKey:    "user",
 		TokenLookup:   "header:" + echo.HeaderAuthorization,
@@ -72,6 +76,9 @@ func JWT(key []byte) echo.MiddlewareFunc {
 // See: `JWT()`.
 func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	// Defaults
+	if config.Skipper == nil {
+		config.Skipper = DefaultJWTConfig.Skipper
+	}
 	if config.SigningKey == nil {
 		panic("jwt middleware requires signing key")
 	}
@@ -95,6 +102,10 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			if config.Skipper(c) {
+				return next(c)
+			}
+
 			auth, err := extractor(c)
 			if err != nil {
 				return echo.NewHTTPError(http.StatusBadRequest, err.Error())

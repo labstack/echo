@@ -10,8 +10,11 @@ import (
 )
 
 type (
-	// BodyLimitConfig defines the config for body limit middleware.
+	// BodyLimitConfig defines the config for BodyLimit middleware.
 	BodyLimitConfig struct {
+		// Skipper defines a function to skip middleware.
+		Skipper Skipper
+
 		// Maximum allowed size for a request body, it can be specified
 		// as `4x` or `4xB`, where x is one of the multiple from K, M, G, T or P.
 		Limit string `json:"limit"`
@@ -26,21 +29,35 @@ type (
 	}
 )
 
-// BodyLimit returns a body limit middleware.
+var (
+	// DefaultBodyLimitConfig is the default Gzip middleware config.
+	DefaultBodyLimitConfig = BodyLimitConfig{
+		Skipper: defaultSkipper,
+	}
+)
+
+// BodyLimit returns a BodyLimit middleware.
 //
 // BodyLimit middleware sets the maximum allowed size for a request body, if the
 // size exceeds the configured limit, it sends "413 - Request Entity Too Large"
-// response. The body limit is determined based on both `Content-Length` request
+// response. The BodyLimit is determined based on both `Content-Length` request
 // header and actual content read, which makes it super secure.
 // Limit can be specified as `4x` or `4xB`, where x is one of the multiple from K, M,
 // G, T or P.
 func BodyLimit(limit string) echo.MiddlewareFunc {
-	return BodyLimitWithConfig(BodyLimitConfig{Limit: limit})
+	c := DefaultBodyLimitConfig
+	c.Limit = limit
+	return BodyLimitWithConfig(c)
 }
 
-// BodyLimitWithConfig returns a body limit middleware from config.
+// BodyLimitWithConfig returns a BodyLimit middleware from config.
 // See: `BodyLimit()`.
 func BodyLimitWithConfig(config BodyLimitConfig) echo.MiddlewareFunc {
+	// Defaults
+	if config.Skipper == nil {
+		config.Skipper = DefaultBodyLimitConfig.Skipper
+	}
+
 	limit, err := bytes.Parse(config.Limit)
 	if err != nil {
 		panic(fmt.Errorf("invalid body-limit=%s", config.Limit))
@@ -50,6 +67,10 @@ func BodyLimitWithConfig(config BodyLimitConfig) echo.MiddlewareFunc {
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			if config.Skipper(c) {
+				return next(c)
+			}
+
 			req := c.Request()
 
 			// Based on content length

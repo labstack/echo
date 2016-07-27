@@ -16,8 +16,11 @@ import (
 )
 
 type (
-	// LoggerConfig defines the config for logger middleware.
+	// LoggerConfig defines the config for Logger middleware.
 	LoggerConfig struct {
+		// Skipper defines a function to skip middleware.
+		Skipper Skipper
+
 		// Log format which can be constructed using the following tags:
 		//
 		// - time_rfc3339
@@ -32,8 +35,8 @@ type (
 		// - status
 		// - latency (In microseconds)
 		// - latency_human (Human readable)
-		// - rx_bytes (Bytes received)
-		// - tx_bytes (Bytes sent)
+		// - bytes_in (Bytes received)
+		// - bytes_out (Bytes sent)
 		//
 		// Example "${remote_ip} ${status}"
 		//
@@ -51,14 +54,15 @@ type (
 )
 
 var (
-	// DefaultLoggerConfig is the default logger middleware config.
+	// DefaultLoggerConfig is the default Logger middleware config.
 	DefaultLoggerConfig = LoggerConfig{
+		Skipper: defaultSkipper,
 		Format: `{"time":"${time_rfc3339}","remote_ip":"${remote_ip}",` +
 			`"method":"${method}","uri":"${uri}","status":${status}, "latency":${latency},` +
-			`"latency_human":"${latency_human}","rx_bytes":${rx_bytes},` +
-			`"tx_bytes":${tx_bytes}}` + "\n",
-		color:  color.New(),
+			`"latency_human":"${latency_human}","bytes_in":${bytes_in},` +
+			`"bytes_out":${bytes_out}}` + "\n",
 		Output: os.Stdout,
+		color:  color.New(),
 	}
 )
 
@@ -67,10 +71,13 @@ func Logger() echo.MiddlewareFunc {
 	return LoggerWithConfig(DefaultLoggerConfig)
 }
 
-// LoggerWithConfig returns a logger middleware from config.
+// LoggerWithConfig returns a Logger middleware from config.
 // See: `Logger()`.
 func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 	// Defaults
+	if config.Skipper == nil {
+		config.Skipper = DefaultLoggerConfig.Skipper
+	}
 	if config.Format == "" {
 		config.Format = DefaultLoggerConfig.Format
 	}
@@ -91,6 +98,10 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) (err error) {
+			if config.Skipper(c) {
+				return next(c)
+			}
+
 			req := c.Request()
 			res := c.Response()
 			start := time.Now()
@@ -149,13 +160,13 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 					return w.Write([]byte(strconv.FormatInt(l, 10)))
 				case "latency_human":
 					return w.Write([]byte(stop.Sub(start).String()))
-				case "rx_bytes":
+				case "bytes_in":
 					b := req.Header().Get(echo.HeaderContentLength)
 					if b == "" {
 						b = "0"
 					}
 					return w.Write([]byte(b))
-				case "tx_bytes":
+				case "bytes_out":
 					return w.Write([]byte(strconv.FormatInt(res.Size(), 10)))
 				}
 				return 0, nil
