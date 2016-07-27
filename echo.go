@@ -309,9 +309,10 @@ func (e *Echo) SetRenderer(r Renderer) {
 	e.renderer = r
 }
 
-// SetDebug enables/disables debug mode.
+// SetDebug enable/disable debug mode.
 func (e *Echo) SetDebug(on bool) {
 	e.debug = on
+	e.SetLogLevel(glog.DEBUG)
 }
 
 // Debug returns debug mode (enabled or disabled).
@@ -569,7 +570,6 @@ func (e *Echo) Run(s engine.Server) {
 	s.SetHandler(e)
 	s.SetLogger(e.logger)
 	if e.Debug() {
-		e.SetLogLevel(glog.DEBUG)
 		e.logger.Debug("running in debug mode")
 	}
 	e.logger.Error(s.Start())
