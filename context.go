@@ -130,11 +130,17 @@ type (
 		// code. Templates can be registered using `Echo.SetRenderer()`.
 		Render(int, string, interface{}) error
 
-		// HTML sends an HTTP response with status code.
-		HTML(int, string) error
+		// CustomBlob sends a blob response with status code and content type.
+		CustomBlob(int, string, []byte) error
 
-		// String sends a string response with status code.
-		String(int, string) error
+		// CustomString sends a string response with status code and content type.
+		CustomString(int, string, string) error
+
+		// HTMLBlob sends a HTML blob response with the status code.
+		HTMLBlob(int, []byte) error
+
+		// HTMLString sends a HTML string response with the status code.
+		HTMLString(int, string) error
 
 		// JSON sends a JSON response with status code.
 		JSON(int, interface{}) error
@@ -142,15 +148,35 @@ type (
 		// JSONBlob sends a JSON blob response with status code.
 		JSONBlob(int, []byte) error
 
+		// JSONString sends a JSON string response with status code.
+		JSONString(int, string) error
+
 		// JSONP sends a JSONP response with status code. It uses `callback` to construct
 		// the JSONP payload.
 		JSONP(int, string, interface{}) error
+
+		// JSONPBlob sends a JSONP blob response with status code. It uses `callback`
+		// to construct the JSONP payload.
+		JSONPBlob(int, string, []byte) error
+
+		// JSONPString sends a JSONP string response with status code. It uses `callback`
+		// to construct the JSONP payload.
+		JSONPString(int, string, string) error
+
+		// PlainTextBlob sends a plain text blob response with status code.
+		PlainTextBlob(int, []byte) error
+
+		// PlainTextString sends a plain text string response with status code.
+		PlainTextString(int, string) error
 
 		// XML sends an XML response with status code.
 		XML(int, interface{}) error
 
 		// XMLBlob sends a XML blob response with status code.
 		XMLBlob(int, []byte) error
+
+		// XMLString sends a XML string response with status code.
+		XMLString(int, string) error
 
 		// File sends a response with the content of the file.
 		File(string) error
@@ -164,6 +190,12 @@ type (
 
 		// Redirect redirects the request with status code.
 		Redirect(int, string) error
+
+		// HTML is deprecated, use `HTMLString` instead.
+		HTML(int, string) error
+
+		// String is deprecated, use `PlainTextString` instead.
+		String(int, string) error
 
 		// Error invokes the registered HTTP error handler. Generally used by middleware.
 		Error(err error)
@@ -344,17 +376,31 @@ func (c *echoContext) Render(code int, name string, data interface{}) (err error
 	return
 }
 
-func (c *echoContext) HTML(code int, html string) (err error) {
-	c.response.Header().Set(HeaderContentType, MIMETextHTMLCharsetUTF8)
+func (c *echoContext) CustomBlob(code int, contentType string, b []byte) (err error) {
+	c.response.Header().Set(HeaderContentType, contentType)
 	c.response.WriteHeader(code)
-	_, err = c.response.Write([]byte(html))
+	_, err = c.response.Write(b)
 	return
 }
 
-func (c *echoContext) String(code int, s string) (err error) {
-	c.response.Header().Set(HeaderContentType, MIMETextPlainCharsetUTF8)
+func (c *echoContext) CustomString(code int, contentType string, s string) (err error) {
+	c.response.Header().Set(HeaderContentType, contentType)
 	c.response.WriteHeader(code)
-	_, err = c.response.Write([]byte(s))
+	_, err = c.response.WriteString(s)
+	return
+}
+
+func (c *echoContext) HTMLBlob(code int, b []byte) (err error) {
+	c.response.Header().Set(HeaderContentType, MIMETextHTMLCharsetUTF8)
+	c.response.WriteHeader(code)
+	_, err = c.response.Write(b)
+	return
+}
+
+func (c *echoContext) HTMLString(code int, s string) (err error) {
+	c.response.Header().Set(HeaderContentType, MIMETextHTMLCharsetUTF8)
+	c.response.WriteHeader(code)
+	_, err = c.response.WriteString(s)
 	return
 }
 
@@ -376,20 +422,58 @@ func (c *echoContext) JSONBlob(code int, b []byte) (err error) {
 	return
 }
 
+func (c *echoContext) JSONString(code int, s string) (err error) {
+	c.response.Header().Set(HeaderContentType, MIMEApplicationJSONCharsetUTF8)
+	c.response.WriteHeader(code)
+	_, err = c.response.WriteString(s)
+	return
+}
+
 func (c *echoContext) JSONP(code int, callback string, i interface{}) (err error) {
 	b, err := json.Marshal(i)
 	if err != nil {
 		return err
 	}
+	return c.JSONPBlob(code, callback, b)
+}
+
+func (c *echoContext) JSONPBlob(code int, callback string, b []byte) (err error) {
 	c.response.Header().Set(HeaderContentType, MIMEApplicationJavaScriptCharsetUTF8)
 	c.response.WriteHeader(code)
-	if _, err = c.response.Write([]byte(callback + "(")); err != nil {
+	if _, err = c.response.WriteString(callback + "("); err != nil {
 		return
 	}
 	if _, err = c.response.Write(b); err != nil {
 		return
 	}
-	_, err = c.response.Write([]byte(");"))
+	_, err = c.response.WriteString(");")
+	return
+}
+
+func (c *echoContext) JSONPString(code int, callback string, s string) (err error) {
+	c.response.Header().Set(HeaderContentType, MIMEApplicationJavaScriptCharsetUTF8)
+	c.response.WriteHeader(code)
+	if _, err = c.response.WriteString(callback + "("); err != nil {
+		return
+	}
+	if _, err = c.response.WriteString(s); err != nil {
+		return
+	}
+	_, err = c.response.WriteString(");")
+	return
+}
+
+func (c *echoContext) PlainTextBlob(code int, b []byte) (err error) {
+	c.response.Header().Set(HeaderContentType, MIMETextPlainCharsetUTF8)
+	c.response.WriteHeader(code)
+	_, err = c.response.Write(b)
+	return
+}
+
+func (c *echoContext) PlainTextString(code int, s string) (err error) {
+	c.response.Header().Set(HeaderContentType, MIMETextPlainCharsetUTF8)
+	c.response.WriteHeader(code)
+	_, err = c.response.WriteString(s)
 	return
 }
 
@@ -407,14 +491,32 @@ func (c *echoContext) XML(code int, i interface{}) (err error) {
 func (c *echoContext) XMLBlob(code int, b []byte) (err error) {
 	c.response.Header().Set(HeaderContentType, MIMEApplicationXMLCharsetUTF8)
 	c.response.WriteHeader(code)
-	if _, err = c.response.Write([]byte(xml.Header)); err != nil {
+	if _, err = c.response.WriteString(xml.Header); err != nil {
 		return
 	}
 	_, err = c.response.Write(b)
 	return
 }
 
-func (c *echoContext) File(file string) error {
+func (c *echoContext) XMLString(code int, s string) (err error) {
+	c.response.Header().Set(HeaderContentType, MIMEApplicationXMLCharsetUTF8)
+	c.response.WriteHeader(code)
+	if _, err = c.response.WriteString(xml.Header); err != nil {
+		return
+	}
+	_, err = c.response.WriteString(s)
+	return
+}
+
+func (c *echoContext) HTML(code int, s string) error {
+	return c.HTMLString(code, s)
+}
+
+func (c *echoContext) String(code int, s string) error {
+	return c.PlainTextString(code, s)
+}
+
+func (c *echoContext) File(file string) (err error) {
 	f, err := os.Open(file)
 	if err != nil {
 		return ErrNotFound

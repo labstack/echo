@@ -60,6 +60,10 @@ func (r *Response) Write(b []byte) (n int, err error) {
 	return
 }
 
+func (r *Response) WriteString(s string) (n int, err error) {
+	return r.Write([]byte(s))
+}
+
 // SetCookie implements `engine.Response#SetCookie` function.
 func (r *Response) SetCookie(c engine.Cookie) {
 	http.SetCookie(r.response, &http.Cookie{

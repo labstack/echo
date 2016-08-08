@@ -110,6 +110,10 @@ type (
 		// Write writes the data to the connection as part of an HTTP reply.
 		Write(b []byte) (int, error)
 
+		// WriteString writes the data to the connection as part of an HTTP
+		// reply.
+		WriteString(s string) (int, error)
+
 		// SetCookie adds a `Set-Cookie` header in HTTP response.
 		SetCookie(Cookie)
 
@@ -121,12 +125,6 @@ type (
 
 		// Committed returns true if HTTP response header is written, otherwise false.
 		Committed() bool
-
-		// Write returns the HTTP response writer.
-		Writer() io.Writer
-
-		// SetWriter sets the HTTP response writer.
-		SetWriter(io.Writer)
 	}
 
 	// Header defines the interface for HTTP header.

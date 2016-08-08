@@ -66,6 +66,16 @@ func (r *Response) Write(b []byte) (n int, err error) {
 	return
 }
 
+// WriteString implements `engine.Response#WriteString` function.
+func (r *Response) WriteString(s string) (n int, err error) {
+	if !r.committed {
+		r.WriteHeader(http.StatusOK)
+	}
+	n, err = r.writer.Write([]byte(s))
+	r.size += int64(n)
+	return
+}
+
 // SetCookie implements `engine.Response#SetCookie` function.
 func (r *Response) SetCookie(c engine.Cookie) {
 	http.SetCookie(r.ResponseWriter, &http.Cookie{

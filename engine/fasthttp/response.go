@@ -3,7 +3,6 @@
 package fasthttp
 
 import (
-	"io"
 	"net/http"
 
 	"github.com/labstack/echo/engine"
@@ -19,7 +18,6 @@ type (
 		status    int
 		size      int64
 		committed bool
-		writer    io.Writer
 		logger    log.Logger
 	}
 )
@@ -29,7 +27,6 @@ func NewResponse(c *fasthttp.RequestCtx, l log.Logger) *Response {
 	return &Response{
 		RequestCtx: c,
 		header:     &ResponseHeader{ResponseHeader: &c.Response.Header},
-		writer:     c,
 		logger:     l,
 	}
 }
@@ -55,8 +52,18 @@ func (r *Response) Write(b []byte) (n int, err error) {
 	if !r.committed {
 		r.WriteHeader(http.StatusOK)
 	}
-	n, err = r.writer.Write(b)
-	r.size += int64(n)
+	r.Response.AppendBody(b)
+	r.size += int64(len(b))
+	return
+}
+
+// WriteString implements `engine.Response#WriteString` function.
+func (r *Response) WriteString(s string) (n int, err error) {
+	if !r.committed {
+		r.WriteHeader(http.StatusOK)
+	}
+	r.Response.AppendBodyString(s)
+	r.size += int64(len(s))
 	return
 }
 
@@ -88,21 +95,10 @@ func (r *Response) Committed() bool {
 	return r.committed
 }
 
-// Writer implements `engine.Response#Writer` function.
-func (r *Response) Writer() io.Writer {
-	return r.writer
-}
-
-// SetWriter implements `engine.Response#SetWriter` function.
-func (r *Response) SetWriter(w io.Writer) {
-	r.writer = w
-}
-
 func (r *Response) reset(c *fasthttp.RequestCtx, h engine.Header) {
 	r.RequestCtx = c
 	r.header = h
 	r.status = http.StatusOK
 	r.size = 0
 	r.committed = false
-	r.writer = c
 }
