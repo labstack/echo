@@ -59,11 +59,13 @@ var values = map[string][]string{
 func TestBinderJSON(t *testing.T) {
 	testBinderOkay(t, strings.NewReader(userJSON), MIMEApplicationJSON)
 	testBinderError(t, strings.NewReader(invalidContent), MIMEApplicationJSON)
+	testBinderError(t, strings.NewReader(invalidTypeJSON), MIMEApplicationJSON)
 }
 
 func TestBinderXML(t *testing.T) {
 	testBinderOkay(t, strings.NewReader(userXML), MIMEApplicationXML)
 	testBinderError(t, strings.NewReader(invalidContent), MIMEApplicationXML)
+	testBinderError(t, strings.NewReader(invalidTypeXML), MIMEApplicationXML)
 }
 
 func TestBinderForm(t *testing.T) {
