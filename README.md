@@ -172,7 +172,7 @@ type User struct {
 
 e.POST("/users", func(c echo.Context) error {
 	u := new(User)
-	if err := c.Bind(u); err != nil {
+	if err := c.Bind(&u); err != nil {
 		return err
 	}
 	return c.JSON(http.StatusCreated, u)
