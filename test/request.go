@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	"github.com/labstack/echo/engine"
+
+	"golang.org/x/net/context"
 )
 
 type (
@@ -17,6 +19,7 @@ type (
 		request *http.Request
 		url     engine.URL
 		header  engine.Header
+		ctx     context.Context
 	}
 )
 
@@ -164,6 +167,13 @@ func (r *Request) Cookies() []engine.Cookie {
 		cookies[i] = &Cookie{c}
 	}
 	return cookies
+}
+
+func (r *Request) Context() context.Context {
+	if r.ctx != nil {
+		return r.ctx
+	}
+	return context.Background()
 }
 
 func (r *Request) reset(req *http.Request, h engine.Header, u engine.URL) {

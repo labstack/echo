@@ -1,6 +1,10 @@
 package log
 
-import "io"
+import (
+	"io"
+
+	"golang.org/x/net/context"
+)
 
 type (
 	// Logger defines the logging interface.
@@ -37,12 +41,19 @@ type (
 
 	options struct {
 		prefix string
+		ctx    context.Context
 	}
 )
 
 func Prefix(prefix string) Option {
 	return func(o *options) {
 		o.prefix = prefix
+	}
+}
+
+func WithContext(ctx context.Context) Option {
+	return func(o *options) {
+		o.ctx = ctx
 	}
 }
 

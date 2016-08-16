@@ -8,6 +8,8 @@ import (
 	"mime/multipart"
 	"net"
 
+	"golang.org/x/net/context"
+
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/engine"
 	"github.com/labstack/echo/log"
@@ -21,6 +23,7 @@ type (
 		header engine.Header
 		url    engine.URL
 		logger log.Logger
+		ctx    context.Context
 	}
 )
 
@@ -186,7 +189,16 @@ func (r *Request) Cookies() []engine.Cookie {
 	return cookies
 }
 
+// Context implements `engine.Request#Context` function.
+func (r *Request) Context() context.Context {
+	if r.ctx != nil {
+		return r.ctx
+	}
+	return context.Background()
+}
+
 func (r *Request) reset(c *fasthttp.RequestCtx, h engine.Header, u engine.URL) {
+	r.ctx = context.Background()
 	r.RequestCtx = c
 	r.header = h
 	r.url = u

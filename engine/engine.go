@@ -5,6 +5,8 @@ import (
 	"mime/multipart"
 	"time"
 
+	"golang.org/x/net/context"
+
 	"net"
 
 	"github.com/labstack/echo/log"
@@ -101,6 +103,9 @@ type (
 
 		// Cookies returns the HTTP cookies sent with the request.
 		Cookies() []Cookie
+
+		// Context returns request's context.
+		Context() context.Context
 	}
 
 	// Response defines the interface for HTTP response.

@@ -200,6 +200,7 @@ type (
 		pvalues  []string
 		handler  HandlerFunc
 		echo     *Echo
+		logger   log.Logger
 	}
 )
 
@@ -474,7 +475,7 @@ func (c *echoContext) SetHandler(h HandlerFunc) {
 }
 
 func (c *echoContext) Logger() log.Logger {
-	return c.echo.logger
+	return c.logger
 }
 
 func (c *echoContext) ServeContent(content io.ReadSeeker, name string, modtime time.Time) error {
@@ -504,7 +505,7 @@ func ContentTypeByExtension(name string) (t string) {
 	return
 }
 
-func (c *echoContext) Reset(req engine.Request, res engine.Response) {
+func (c *echoContext) reset(req engine.Request, res engine.Response) {
 	c.context = context.Background()
 	c.request = req
 	c.response = res

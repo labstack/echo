@@ -101,6 +101,17 @@ type (
 	Renderer interface {
 		Render(io.Writer, string, interface{}, Context) error
 	}
+
+	// contextKey
+	contextKey struct {
+		name string
+	}
+)
+
+var (
+	// RequestContextKey is a context key. Itcan be used in standard engine.
+	// type *http.Request
+	RequestContextKey = &contextKey{"http-request"}
 )
 
 // HTTP methods
@@ -243,6 +254,7 @@ func (e *Echo) NewContext(req engine.Request, res engine.Response) Context {
 		echo:     e,
 		pvalues:  make([]string, *e.maxParam),
 		handler:  NotFoundHandler,
+		logger:   e.logger,
 	}
 }
 
@@ -289,7 +301,7 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 			c.String(code, msg)
 		}
 	}
-	e.logger.Error(err)
+	c.Logger().Error(err)
 }
 
 // SetHTTPErrorHandler registers a custom Echo.HTTPErrorHandler.
