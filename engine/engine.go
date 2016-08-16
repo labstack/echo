@@ -68,6 +68,9 @@ type (
 		// RemoteAddress returns the client's network address.
 		RemoteAddress() string
 
+		// RemoteIP returns the client's network ip address.
+		RemoteIP() string
+
 		// Method returns the request's HTTP function.
 		Method() string
 
