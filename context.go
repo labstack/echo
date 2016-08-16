@@ -1,6 +1,8 @@
 package echo
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"encoding/xml"
 	"io"
@@ -13,20 +15,16 @@ import (
 
 	"github.com/labstack/echo/engine"
 	"github.com/labstack/echo/log"
-
-	"bytes"
-
-	"golang.org/x/net/context"
 )
 
 type (
 	// Context represents the context of the current HTTP request. It holds request and
 	// response objects, path, path parameters, data and registered handler.
 	Context interface {
-		// Context returns `net/context.Context`.
+		// Context returns `context.Context`.
 		Context() context.Context
 
-		// SetContext sets `net/context.Context`.
+		// SetContext sets `context.Context`.
 		SetContext(context.Context)
 
 		// Deadline returns the time when work done on behalf of this context
