@@ -2,6 +2,7 @@ package echo
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"mime/multipart"
@@ -10,8 +11,6 @@ import (
 	"testing"
 	"text/template"
 	"time"
-
-	"golang.org/x/net/context"
 
 	"strings"
 

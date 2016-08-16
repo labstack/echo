@@ -39,6 +39,7 @@ package echo
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -47,8 +48,6 @@ import (
 	"reflect"
 	"runtime"
 	"sync"
-
-	"golang.org/x/net/context"
 
 	"github.com/labstack/echo/engine"
 	"github.com/labstack/echo/log"
