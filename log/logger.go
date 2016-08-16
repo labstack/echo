@@ -1,33 +1,56 @@
 package log
 
-import (
-	"io"
-
-	"github.com/labstack/gommon/log"
-)
+import "io"
 
 type (
 	// Logger defines the logging interface.
 	Logger interface {
 		SetOutput(io.Writer)
-		SetLevel(log.Lvl)
+		Output() io.Writer
+		SetLevel(Lvl)
+		Level() Lvl
 		Print(...interface{})
 		Printf(string, ...interface{})
-		Printj(log.JSON)
+		Printj(JSON)
 		Debug(...interface{})
 		Debugf(string, ...interface{})
-		Debugj(log.JSON)
+		Debugj(JSON)
 		Info(...interface{})
 		Infof(string, ...interface{})
-		Infoj(log.JSON)
+		Infoj(JSON)
 		Warn(...interface{})
 		Warnf(string, ...interface{})
-		Warnj(log.JSON)
+		Warnj(JSON)
 		Error(...interface{})
 		Errorf(string, ...interface{})
-		Errorj(log.JSON)
+		Errorj(JSON)
 		Fatal(...interface{})
-		Fatalj(log.JSON)
+		Fatalj(JSON)
 		Fatalf(string, ...interface{})
 	}
+
+	Lvl uint8
+
+	JSON map[string]interface{}
+
+	Option func(*options)
+
+	options struct {
+		prefix string
+	}
+)
+
+func Prefix(prefix string) Option {
+	return func(o *options) {
+		o.prefix = prefix
+	}
+}
+
+const (
+	DEBUG Lvl = iota
+	INFO
+	WARN
+	ERROR
+	FATAL
+	OFF
 )

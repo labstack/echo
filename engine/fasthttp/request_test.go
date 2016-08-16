@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/labstack/echo/engine/test"
-	"github.com/labstack/gommon/log"
+	"github.com/labstack/echo/log"
 	fast "github.com/valyala/fasthttp"
 )
 
@@ -27,5 +27,5 @@ func TestRequest(t *testing.T) {
 	ctx.Init(&fast.Request{}, fakeAddr{addr: "127.0.0.1"}, nil)
 	ctx.Request.Read(bufio.NewReader(bytes.NewBufferString(test.MultipartRequest)))
 	ctx.Request.SetRequestURI(url.String())
-	test.RequestTest(t, NewRequest(ctx, log.New("echo")))
+	test.RequestTest(t, NewRequest(ctx, log.New()))
 }

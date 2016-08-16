@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 
 	"github.com/labstack/echo/engine"
-	"github.com/labstack/gommon/log"
+	"github.com/labstack/echo/log"
 )
 
 type (
@@ -18,7 +18,7 @@ type (
 		size      int64
 		committed bool
 		writer    io.Writer
-		logger    *log.Logger
+		logger    log.Logger
 	}
 
 	ResponseRecorder struct {
@@ -34,7 +34,7 @@ func NewResponseRecorder() *ResponseRecorder {
 			response: rec,
 			header:   &Header{rec.Header()},
 			writer:   rec,
-			logger:   log.New("test"),
+			logger:   log.New(log.Prefix("test")),
 		},
 		Body: rec.Body,
 	}
