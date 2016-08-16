@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"io"
 	"mime/multipart"
+	"net"
 
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/engine"
@@ -76,6 +77,19 @@ func (r *Request) UserAgent() string {
 // RemoteAddress implements `engine.Request#RemoteAddress` function.
 func (r *Request) RemoteAddress() string {
 	return r.RemoteAddr().String()
+}
+
+// RemoteIP implements `engine.Request#RemoteIP` function.
+func (r *Request) RemoteIP() string {
+	ra := r.RemoteAddress()
+	if ip := r.Header().Get(echo.HeaderXForwardedFor); ip != "" {
+		ra = ip
+	} else if ip := r.Header().Get(echo.HeaderXRealIP); ip != "" {
+		ra = ip
+	} else {
+		ra, _, _ = net.SplitHostPort(ra)
+	}
+	return ra
 }
 
 // Method implements `engine.Request#Method` function.

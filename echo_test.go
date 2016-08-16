@@ -25,10 +25,12 @@ type (
 )
 
 const (
-	userJSON       = `{"id":1,"name":"Jon Snow"}`
-	userXML        = `<user><id>1</id><name>Jon Snow</name></user>`
-	userForm       = `id=1&name=Jon Snow`
-	invalidContent = "invalid content"
+	userJSON        = `{"id":1,"name":"Jon Snow"}`
+	userXML         = `<user><id>1</id><name>Jon Snow</name></user>`
+	userForm        = `id=1&name=Jon Snow`
+	invalidTypeJSON = `{"id":"1","name":"Jon Snow"}`
+	invalidTypeXML  = `<user><id>aaa</id><name>Jon Snow</name></user>`
+	invalidContent  = "invalid content"
 )
 
 func TestEcho(t *testing.T) {
