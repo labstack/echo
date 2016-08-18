@@ -1,6 +1,7 @@
 package standard
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"mime/multipart"
@@ -151,11 +152,11 @@ func (r *Request) FormValue(name string) string {
 func (r *Request) FormParams() map[string][]string {
 	if strings.HasPrefix(r.header.Get(echo.HeaderContentType), echo.MIMEMultipartForm) {
 		if err := r.ParseMultipartForm(defaultMemory); err != nil {
-			r.logger.Error(err)
+			panic(fmt.Sprintf("echo: %v", err))
 		}
 	} else {
 		if err := r.ParseForm(); err != nil {
-			r.logger.Error(err)
+			panic(fmt.Sprintf("echo: %v", err))
 		}
 	}
 	return map[string][]string(r.Request.Form)

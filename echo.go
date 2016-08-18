@@ -230,7 +230,7 @@ func New() (e *Echo) {
 	e.SetHTTPErrorHandler(e.DefaultHTTPErrorHandler)
 	e.SetBinder(&binder{})
 	l := glog.New("echo")
-	l.SetLevel(glog.ERROR)
+	l.SetLevel(glog.OFF)
 	e.SetLogger(l)
 	return
 }
@@ -576,7 +576,9 @@ func (e *Echo) Run(s engine.Server) {
 		e.SetLogLevel(glog.DEBUG)
 		e.logger.Debug("running in debug mode")
 	}
-	e.logger.Error(s.Start())
+	if err := s.Start(); err != nil {
+		panic(fmt.Sprintf("echo: %v", err))
+	}
 }
 
 // NewHTTPError creates a new HTTPError instance.

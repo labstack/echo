@@ -66,7 +66,7 @@ func NewConfig(c *engine.Config) (s *Server) {
 			},
 		},
 		handler: engine.HandlerFunc(func(req engine.Request, res engine.Response) {
-			s.logger.Fatal("handler not set")
+			panic("echo: handler not set, use `Server#SetHandler()` to set it.")
 		}),
 		logger: log.New("echo"),
 	}
@@ -81,16 +81,23 @@ func (s *Server) SetLogger(l *log.Logger) {
 	s.logger = l
 }
 
-func (s *Server) Start() {
-	s.Addr = s.config.Address
-	s.Handler = s
-	certFile := s.config.TLSCertFile
-	keyFile := s.config.TLSKeyFile
-	if certFile != "" && keyFile != "" {
-		s.logger.Fatal(s.ListenAndServeTLS(certFile, keyFile))
-	} else {
-		s.logger.Fatal(s.ListenAndServe())
+func (s *Server) Start() error {
+	if s.config.Listener == nil {
+		return s.startDefaultListener()
 	}
+	return s.startCustomListener()
+}
+
+func (s *Server) startDefaultListener() error {
+	c := s.config
+	if c.TLSCertFile != "" && c.TLSKeyFile != "" {
+		return s.ListenAndServeTLS(c.TLSCertFile, c.TLSKeyFile)
+	}
+	return s.ListenAndServe()
+}
+
+func (s *Server) startCustomListener() error {
+	return s.Serve(s.config.Listener)
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
