@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/labstack/echo"
+	"github.com/labstack/echo/engine"
 	"github.com/stretchr/testify/assert"
 	"github.com/valyala/fasthttp"
 )
@@ -13,6 +14,8 @@ import (
 // TODO: Fix me
 func TestServer(t *testing.T) {
 	s := New("")
+	s.SetHandler(engine.HandlerFunc(func(req engine.Request, res engine.Response) {
+	}))
 	ctx := new(fasthttp.RequestCtx)
 	s.ServeHTTP(ctx)
 }

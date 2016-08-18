@@ -7,12 +7,15 @@ import (
 	"testing"
 
 	"github.com/labstack/echo"
+	"github.com/labstack/echo/engine"
 	"github.com/stretchr/testify/assert"
 )
 
 // TODO: Fix me
 func TestServer(t *testing.T) {
 	s := New("")
+	s.SetHandler(engine.HandlerFunc(func(req engine.Request, res engine.Response) {
+	}))
 	rec := httptest.NewRecorder()
 	req := new(http.Request)
 	s.ServeHTTP(rec, req)
