@@ -12,8 +12,8 @@ import (
 
 	"errors"
 
+	"github.com/labstack/echo/log"
 	"github.com/labstack/echo/test"
-	"github.com/labstack/gommon/log"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -339,7 +339,7 @@ func TestEchoContext(t *testing.T) {
 
 func TestEchoLogger(t *testing.T) {
 	e := New()
-	l := log.New("test")
+	l := log.New(log.Prefix("test"))
 	e.SetLogger(l)
 	assert.Equal(t, l, e.Logger())
 	e.SetLogOutput(ioutil.Discard)

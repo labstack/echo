@@ -8,7 +8,6 @@ import (
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/engine"
 	"github.com/labstack/echo/log"
-	glog "github.com/labstack/gommon/log"
 	"github.com/valyala/fasthttp"
 )
 
@@ -82,7 +81,7 @@ func WithConfig(c engine.Config) (s *Server) {
 		handler: engine.HandlerFunc(func(req engine.Request, res engine.Response) {
 			s.logger.Error("handler not set, use `SetHandler()` to set it.")
 		}),
-		logger: glog.New("echo"),
+		logger: log.New(),
 	}
 	s.ReadTimeout = c.ReadTimeout
 	s.WriteTimeout = c.WriteTimeout

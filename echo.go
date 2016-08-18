@@ -52,7 +52,6 @@ import (
 
 	"github.com/labstack/echo/engine"
 	"github.com/labstack/echo/log"
-	glog "github.com/labstack/gommon/log"
 )
 
 type (
@@ -102,6 +101,17 @@ type (
 	Renderer interface {
 		Render(io.Writer, string, interface{}, Context) error
 	}
+
+	// contextKey
+	contextKey struct {
+		name string
+	}
+)
+
+var (
+	// RequestContextKey is a context key. Itcan be used in standard engine.
+	// type *http.Request
+	RequestContextKey = &contextKey{"http-request"}
 )
 
 // HTTP methods
@@ -229,8 +239,8 @@ func New() (e *Echo) {
 	// Defaults
 	e.SetHTTPErrorHandler(e.DefaultHTTPErrorHandler)
 	e.SetBinder(&binder{})
-	l := glog.New("echo")
-	l.SetLevel(glog.ERROR)
+	l := log.New()
+	l.SetLevel(log.ERROR)
 	e.SetLogger(l)
 	return
 }
@@ -244,6 +254,7 @@ func (e *Echo) NewContext(req engine.Request, res engine.Response) Context {
 		echo:     e,
 		pvalues:  make([]string, *e.maxParam),
 		handler:  NotFoundHandler,
+		logger:   e.logger,
 	}
 }
 
@@ -268,7 +279,7 @@ func (e *Echo) SetLogOutput(w io.Writer) {
 }
 
 // SetLogLevel sets the log level for the logger. Default value ERROR.
-func (e *Echo) SetLogLevel(l glog.Lvl) {
+func (e *Echo) SetLogLevel(l log.Lvl) {
 	e.logger.SetLevel(l)
 }
 
@@ -290,7 +301,7 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 			c.String(code, msg)
 		}
 	}
-	e.logger.Error(err)
+	c.Logger().Error(err)
 }
 
 // SetHTTPErrorHandler registers a custom Echo.HTTPErrorHandler.
@@ -573,7 +584,7 @@ func (e *Echo) Run(s engine.Server) {
 	s.SetHandler(e)
 	s.SetLogger(e.logger)
 	if e.Debug() {
-		e.SetLogLevel(glog.DEBUG)
+		e.SetLogLevel(log.DEBUG)
 		e.logger.Debug("running in debug mode")
 	}
 	e.logger.Error(s.Start())

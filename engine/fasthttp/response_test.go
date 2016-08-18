@@ -7,12 +7,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/valyala/fasthttp"
 
-	"github.com/labstack/gommon/log"
+	"github.com/labstack/echo/log"
 )
 
 func TestResponseWriteHeader(t *testing.T) {
 	c := new(fasthttp.RequestCtx)
-	res := NewResponse(c, log.New("test"))
+	res := NewResponse(c, log.New(log.Prefix("test")))
 	res.WriteHeader(http.StatusOK)
 	assert.True(t, res.Committed())
 	assert.Equal(t, http.StatusOK, res.Status())
@@ -20,7 +20,7 @@ func TestResponseWriteHeader(t *testing.T) {
 
 func TestResponseWrite(t *testing.T) {
 	c := new(fasthttp.RequestCtx)
-	res := NewResponse(c, log.New("test"))
+	res := NewResponse(c, log.New(log.Prefix("test")))
 	res.Write([]byte("test"))
 	assert.Equal(t, int64(4), res.Size())
 	assert.Equal(t, "test", string(c.Response.Body()))
@@ -28,7 +28,7 @@ func TestResponseWrite(t *testing.T) {
 
 func TestResponseSetCookie(t *testing.T) {
 	c := new(fasthttp.RequestCtx)
-	res := NewResponse(c, log.New("test"))
+	res := NewResponse(c, log.New(log.Prefix("test")))
 	cookie := new(fasthttp.Cookie)
 	cookie.SetKey("name")
 	cookie.SetValue("Jon Snow")
