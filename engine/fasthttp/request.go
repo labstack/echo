@@ -79,8 +79,8 @@ func (r *Request) RemoteAddress() string {
 	return r.RemoteAddr().String()
 }
 
-// RemoteIP implements `engine.Request#RemoteIP` function.
-func (r *Request) RemoteIP() string {
+// RealIP implements `engine.Request#RealIP` function.
+func (r *Request) RealIP() string {
 	ra := r.RemoteAddress()
 	if ip := r.Header().Get(echo.HeaderXForwardedFor); ip != "" {
 		ra = ip

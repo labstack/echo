@@ -86,7 +86,7 @@ func (r *Request) RemoteAddress() string {
 	return r.request.RemoteAddr
 }
 
-func (r *Request) RemoteIP() string {
+func (r *Request) RealIP() string {
 	ra := r.RemoteAddress()
 	if ip := r.Header().Get(echo.HeaderXForwardedFor); ip != "" {
 		ra = ip
