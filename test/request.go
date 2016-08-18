@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/ipfans/echo"
+	"github.com/labstack/echo"
 	"github.com/labstack/echo/engine"
 )
 
