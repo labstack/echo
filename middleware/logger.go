@@ -3,7 +3,6 @@ package middleware
 import (
 	"bytes"
 	"io"
-	"net"
 	"os"
 	"strconv"
 	"sync"
@@ -118,14 +117,7 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 				case "time_rfc3339":
 					return w.Write([]byte(time.Now().Format(time.RFC3339)))
 				case "remote_ip":
-					ra := req.RemoteAddress()
-					if ip := req.Header().Get(echo.HeaderXRealIP); ip != "" {
-						ra = ip
-					} else if ip = req.Header().Get(echo.HeaderXForwardedFor); ip != "" {
-						ra = ip
-					} else {
-						ra, _, _ = net.SplitHostPort(ra)
-					}
+					ra := req.RealIP()
 					return w.Write([]byte(ra))
 				case "host":
 					return w.Write([]byte(req.Host()))
