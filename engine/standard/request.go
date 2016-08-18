@@ -4,6 +4,7 @@ import (
 	"io"
 	"io/ioutil"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"strings"
 
@@ -96,6 +97,19 @@ func (r *Request) UserAgent() string {
 // RemoteAddress implements `engine.Request#RemoteAddress` function.
 func (r *Request) RemoteAddress() string {
 	return r.RemoteAddr
+}
+
+// RealIP implements `engine.Request#RealIP` function.
+func (r *Request) RealIP() string {
+	ra := r.RemoteAddress()
+	if ip := r.Header().Get(echo.HeaderXForwardedFor); ip != "" {
+		ra = ip
+	} else if ip := r.Header().Get(echo.HeaderXRealIP); ip != "" {
+		ra = ip
+	} else {
+		ra, _, _ = net.SplitHostPort(ra)
+	}
+	return ra
 }
 
 // Method implements `engine.Request#Method` function.

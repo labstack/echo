@@ -5,9 +5,11 @@ import (
 	"io"
 	"io/ioutil"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"strings"
 
+	"github.com/ipfans/echo"
 	"github.com/labstack/echo/engine"
 )
 
@@ -82,6 +84,18 @@ func (r *Request) UserAgent() string {
 
 func (r *Request) RemoteAddress() string {
 	return r.request.RemoteAddr
+}
+
+func (r *Request) RealIP() string {
+	ra := r.RemoteAddress()
+	if ip := r.Header().Get(echo.HeaderXForwardedFor); ip != "" {
+		ra = ip
+	} else if ip := r.Header().Get(echo.HeaderXRealIP); ip != "" {
+		ra = ip
+	} else {
+		ra, _, _ = net.SplitHostPort(ra)
+	}
+	return ra
 }
 
 func (r *Request) Method() string {
