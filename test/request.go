@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/ipfans/echo"
 	"github.com/labstack/echo/engine"
 )
 
@@ -88,9 +87,9 @@ func (r *Request) RemoteAddress() string {
 
 func (r *Request) RealIP() string {
 	ra := r.RemoteAddress()
-	if ip := r.Header().Get(echo.HeaderXForwardedFor); ip != "" {
+	if ip := r.Header().Get("X-Forwarded-For"); ip != "" {
 		ra = ip
-	} else if ip := r.Header().Get(echo.HeaderXRealIP); ip != "" {
+	} else if ip := r.Header().Get("X-Real-IP"); ip != "" {
 		ra = ip
 	} else {
 		ra, _, _ = net.SplitHostPort(ra)
