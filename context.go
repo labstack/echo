@@ -16,39 +16,14 @@ import (
 
 	"bytes"
 
-	"golang.org/x/net/context"
+	"github.com/labstack/echo/context"
 )
 
 type (
 	// Context represents the context of the current HTTP request. It holds request and
 	// response objects, path, path parameters, data and registered handler.
 	Context interface {
-		// Context returns `net/context.Context`.
-		Context() context.Context
-
-		// SetContext sets `net/context.Context`.
-		SetContext(context.Context)
-
-		// Deadline returns the time when work done on behalf of this context
-		// should be canceled.  Deadline returns ok==false when no deadline is
-		// set.  Successive calls to Deadline return the same results.
-		Deadline() (deadline time.Time, ok bool)
-
-		// Done returns a channel that's closed when work done on behalf of this
-		// context should be canceled.  Done may return nil if this context can
-		// never be canceled.  Successive calls to Done return the same value.
-		Done() <-chan struct{}
-
-		// Err returns a non-nil error value after Done is closed.  Err returns
-		// Canceled if the context was canceled or DeadlineExceeded if the
-		// context's deadline passed.  No other values for Err are defined.
-		// After Done is closed, successive calls to Err return the same value.
-		Err() error
-
-		// Value returns the value associated with this context for key, or nil
-		// if no value is associated with key.  Successive calls to Value with
-		// the same key returns the same result.
-		Value(key interface{}) interface{}
+		context.Context
 
 		// Request returns `engine.Request` interface.
 		Request() engine.Request
