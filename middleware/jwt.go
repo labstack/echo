@@ -35,6 +35,10 @@ type (
 		// - "header:<name>"
 		// - "query:<name>"
 		TokenLookup string `json:"token_lookup"`
+
+		// Claims are extendable claims data defining token content.
+		// Optional. Default value jwt.MapClaims
+		Claims jwt.Claims
 	}
 
 	jwtExtractor func(echo.Context) (string, error)
@@ -56,6 +60,7 @@ var (
 		SigningMethod: AlgorithmHS256,
 		ContextKey:    "user",
 		TokenLookup:   "header:" + echo.HeaderAuthorization,
+		Claims:        jwt.MapClaims{},
 	}
 )
 
@@ -91,6 +96,9 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	if config.TokenLookup == "" {
 		config.TokenLookup = DefaultJWTConfig.TokenLookup
 	}
+	if config.Claims == nil {
+		config.Claims = DefaultJWTConfig.Claims
+	}
 
 	// Initialize
 	parts := strings.Split(config.TokenLookup, ":")
@@ -110,7 +118,7 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 			if err != nil {
 				return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 			}
-			token, err := jwt.Parse(auth, func(t *jwt.Token) (interface{}, error) {
+			token, err := jwt.ParseWithClaims(auth, config.Claims, func(t *jwt.Token) (interface{}, error) {
 				// Check the signing method
 				if t.Method.Alg() != config.SigningMethod {
 					return nil, fmt.Errorf("unexpected jwt signing method=%v", t.Header["alg"])
