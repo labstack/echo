@@ -28,6 +28,10 @@ type (
 		// Optional. Default value "user".
 		ContextKey string `json:"context_key"`
 
+		// Claims are extendable claims data defining token content.
+		// Optional. Default value jwt.MapClaims
+		Claims jwt.Claims
+
 		// TokenLookup is a string in the form of "<source>:<name>" that is used
 		// to extract token from the request.
 		// Optional. Default value "header:Authorization".
@@ -35,10 +39,6 @@ type (
 		// - "header:<name>"
 		// - "query:<name>"
 		TokenLookup string `json:"token_lookup"`
-
-		// Claims are extendable claims data defining token content.
-		// Optional. Default value jwt.MapClaims
-		Claims jwt.Claims
 	}
 
 	jwtExtractor func(echo.Context) (string, error)
