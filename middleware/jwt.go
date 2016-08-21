@@ -18,7 +18,7 @@ type (
 
 		// Signing key to validate token.
 		// Required.
-		SigningKey []byte `json:"signing_key"`
+		SigningKey interface{} `json:"signing_key"`
 
 		// Signing method, used to check token signing method.
 		// Optional. Default value HS256.
