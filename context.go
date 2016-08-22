@@ -25,6 +25,12 @@ type (
 	Context interface {
 		context.Context
 
+		// Context returns `net/context.Context`.
+		Context() context.Context
+
+		// SetContext sets `net/context.Context`.
+		SetContext(context.Context)
+
 		// Request returns `engine.Request` interface.
 		Request() engine.Request
 
