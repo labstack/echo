@@ -145,6 +145,19 @@ func TestContext(t *testing.T) {
 		}
 	}
 
+	// Inline
+	rec = test.NewResponseRecorder()
+	c = e.NewContext(req, rec).(*echoContext)
+	file, err = os.Open("_fixture/images/walle.png")
+	if assert.NoError(t, err) {
+		err = c.Inline(file, "walle.png")
+		if assert.NoError(t, err) {
+			assert.Equal(t, http.StatusOK, rec.Status())
+			assert.Equal(t, "inline; filename=walle.png", rec.Header().Get(HeaderContentDisposition))
+			assert.Equal(t, 219885, rec.Body.Len())
+		}
+	}
+
 	// NoContent
 	rec = test.NewResponseRecorder()
 	c = e.NewContext(req, rec).(*echoContext)
