@@ -328,7 +328,8 @@ func TestContextRedirect(t *testing.T) {
 }
 
 func TestContextEmbedded(t *testing.T) {
-	c := new(echoContext)
+	var c Context
+	c = new(echoContext)
 	c.SetContext(context.WithValue(c, "key", "val"))
 	assert.Equal(t, "val", c.Value("key"))
 	now := time.Now()
@@ -341,7 +342,8 @@ func TestContextEmbedded(t *testing.T) {
 }
 
 func TestContextStore(t *testing.T) {
-	c := new(echoContext)
+	var c Context
+	c = new(echoContext)
 	c.Set("name", "Jon Snow")
 	assert.Equal(t, "Jon Snow", c.Get("name"))
 }
