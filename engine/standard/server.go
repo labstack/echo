@@ -165,7 +165,7 @@ func WrapMiddleware(m func(http.Handler) http.Handler) echo.MiddlewareFunc {
 			res := c.Response().(*Response)
 			m(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				err = next(c)
-			})).ServeHTTP(res.ResponseWriter, req.Request)
+			})).ServeHTTP(res.adapter, req.Request)
 			return
 		}
 	}
