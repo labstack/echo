@@ -342,7 +342,8 @@ func TestContextEmbedded(t *testing.T) {
 }
 
 func TestContextStore(t *testing.T) {
-	c := new(echoContext)
+	var c Context
+	c = new(echoContext)
 	c.Set("name", "Jon Snow")
 	assert.Equal(t, "Jon Snow", c.Get("name"))
 }
