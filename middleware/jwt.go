@@ -69,7 +69,7 @@ var (
 //
 // For valid token, it sets the user in context and calls next handler.
 // For invalid token, it returns "401 - Unauthorized" error.
-// For empty or invalid `Authorization` header, it sends "400 - Bad Request".
+// For empty token, it returns "400 - Bad Request" error.
 //
 // See: https://jwt.io/introduction
 // See `JWTConfig.TokenLookup`
