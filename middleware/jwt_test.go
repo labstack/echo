@@ -41,7 +41,10 @@ func TestJWT(t *testing.T) {
 		hdrCookie  string // test.Request doesn't provide SetCookie(); use name=val
 		info       string
 	}{
-		{expPanic: true, info: "No signing key provided"},
+		{
+			expPanic: true,
+			info:     "No signing key provided",
+		},
 		{
 			expErrCode: http.StatusBadRequest,
 			config: JWTConfig{
@@ -141,7 +144,6 @@ func TestJWT(t *testing.T) {
 			info:       "Empty cookie",
 		},
 	} {
-
 		if tc.reqURL == "" {
 			tc.reqURL = "/"
 		}
@@ -173,8 +175,8 @@ func TestJWT(t *testing.T) {
 			case jwt.MapClaims:
 				assert.Equal(t, claims["name"], "John Doe", tc.info)
 			case *jwtCustomClaims:
-				assert.Equal(t, claims.Name, "John Doe")
-				assert.Equal(t, claims.Admin, true)
+				assert.Equal(t, claims.Name, "John Doe", tc.info)
+				assert.Equal(t, claims.Admin, true, tc.info)
 			default:
 				panic("unexpected type of claims")
 			}

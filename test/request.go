@@ -26,7 +26,6 @@ const (
 
 func NewRequest(method, url string, body io.Reader) engine.Request {
 	r, _ := http.NewRequest(method, url, body)
-	r.RequestURI = url
 	return &Request{
 		request: r,
 		url:     &URL{url: r.URL},

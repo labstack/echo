@@ -69,5 +69,4 @@ func TestRemoveTrailingSlash(t *testing.T) {
 	})
 	h(c)
 	assert.Equal(t, "", req.URL().Path())
-	assert.Equal(t, "http://localhost", req.URI())
 }
