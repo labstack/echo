@@ -4,6 +4,7 @@
 
 - [ ] Dependencies installed
 - [ ] No typos
+- [ ] Searched existing issues and docs
 
 ### Expected behaviour
 
