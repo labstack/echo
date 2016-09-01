@@ -235,6 +235,10 @@ Middleware | Description
 [CORS](https://echo.labstack.com/middleware/cors) | Cross-Origin Resource Sharing
 [CSRF](https://echo.labstack.com/middleware/csrf) | Cross-Site Request Forgery
 [Static](https://echo.labstack.com/middleware/static) | Serve static files
+[HTTPSRedirect](https://echo.labstack.com/middleware/redirect#httpsredirect-middleware) | Redirect HTTP requests to HTTPS
+[HTTPSWWWRedirect](https://echo.labstack.com/middleware/redirect#httpswwwredirect-middleware) | Redirect HTTP requests to WWW HTTPS
+[WWWRedirect](https://echo.labstack.com/middleware/redirect#wwwredirect-middleware) | Redirect non WWW requests to WWW
+[NonWWWRedirect](https://echo.labstack.com/middleware/redirect#nonwwwredirect-middleware) | Redirect WWW request to non WWW
 [AddTrailingSlash](https://echo.labstack.com/middleware/add-trailing-slash) | Add trailing slash to the request URI
 [RemoveTrailingSlash](https://echo.labstack.com/middleware/remove-trailing-slash) | Remove trailing slash from the request URI
 [MethodOverride](https://echo.labstack.com/middleware/method-override) | Override request method
