@@ -70,7 +70,7 @@ func Logger() echo.MiddlewareFunc {
 	return LoggerWithConfig(DefaultLoggerConfig)
 }
 
-// LoggerWithConfig returns a Logger middleware from config.
+// LoggerWithConfig returns a Logger middleware with config.
 // See: `Logger()`.
 func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 	// Defaults

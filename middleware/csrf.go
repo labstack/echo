@@ -83,7 +83,7 @@ func CSRF() echo.MiddlewareFunc {
 	return CSRFWithConfig(c)
 }
 
-// CSRFWithConfig returns a CSRF middleware from config.
+// CSRFWithConfig returns a CSRF middleware with config.
 // See `CSRF()`.
 func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 	// Defaults

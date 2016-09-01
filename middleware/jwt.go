@@ -79,7 +79,7 @@ func JWT(key []byte) echo.MiddlewareFunc {
 	return JWTWithConfig(c)
 }
 
-// JWTWithConfig returns a JWT auth middleware from config.
+// JWTWithConfig returns a JWT auth middleware with config.
 // See: `JWT()`.
 func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	// Defaults

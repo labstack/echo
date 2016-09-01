@@ -28,10 +28,10 @@ var (
 //
 // Usage `Echo#Pre(AddTrailingSlash())`
 func AddTrailingSlash() echo.MiddlewareFunc {
-	return AddTrailingSlashWithConfig(TrailingSlashConfig{})
+	return AddTrailingSlashWithConfig(DefaultTrailingSlashConfig)
 }
 
-// AddTrailingSlashWithConfig returns a AddTrailingSlash middleware from config.
+// AddTrailingSlashWithConfig returns a AddTrailingSlash middleware with config.
 // See `AddTrailingSlash()`.
 func AddTrailingSlashWithConfig(config TrailingSlashConfig) echo.MiddlewareFunc {
 	// Defaults
@@ -78,7 +78,7 @@ func RemoveTrailingSlash() echo.MiddlewareFunc {
 	return RemoveTrailingSlashWithConfig(TrailingSlashConfig{})
 }
 
-// RemoveTrailingSlashWithConfig returns a RemoveTrailingSlash middleware from config.
+// RemoveTrailingSlashWithConfig returns a RemoveTrailingSlash middleware with config.
 // See `RemoveTrailingSlash()`.
 func RemoveTrailingSlashWithConfig(config TrailingSlashConfig) echo.MiddlewareFunc {
 	// Defaults

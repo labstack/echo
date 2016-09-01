@@ -34,7 +34,7 @@ func MethodOverride() echo.MiddlewareFunc {
 	return MethodOverrideWithConfig(DefaultMethodOverrideConfig)
 }
 
-// MethodOverrideWithConfig returns a MethodOverride middleware from config.
+// MethodOverrideWithConfig returns a MethodOverride middleware with config.
 // See: `MethodOverride()`.
 func MethodOverrideWithConfig(config MethodOverrideConfig) echo.MiddlewareFunc {
 	// Defaults

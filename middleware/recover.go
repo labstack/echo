@@ -45,7 +45,7 @@ func Recover() echo.MiddlewareFunc {
 	return RecoverWithConfig(DefaultRecoverConfig)
 }
 
-// RecoverWithConfig returns a Recover middleware from config.
+// RecoverWithConfig returns a Recover middleware with config.
 // See: `Recover()`.
 func RecoverWithConfig(config RecoverConfig) echo.MiddlewareFunc {
 	// Defaults

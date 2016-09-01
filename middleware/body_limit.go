@@ -50,7 +50,7 @@ func BodyLimit(limit string) echo.MiddlewareFunc {
 	return BodyLimitWithConfig(c)
 }
 
-// BodyLimitWithConfig returns a BodyLimit middleware from config.
+// BodyLimitWithConfig returns a BodyLimit middleware with config.
 // See: `BodyLimit()`.
 func BodyLimitWithConfig(config BodyLimitConfig) echo.MiddlewareFunc {
 	// Defaults

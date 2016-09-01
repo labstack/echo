@@ -74,7 +74,7 @@ func Secure() echo.MiddlewareFunc {
 	return SecureWithConfig(DefaultSecureConfig)
 }
 
-// SecureWithConfig returns a Secure middleware from config.
+// SecureWithConfig returns a Secure middleware with config.
 // See: `Secure()`.
 func SecureWithConfig(config SecureConfig) echo.MiddlewareFunc {
 	// Defaults

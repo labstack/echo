@@ -43,7 +43,7 @@ func Gzip() echo.MiddlewareFunc {
 	return GzipWithConfig(DefaultGzipConfig)
 }
 
-// GzipWithConfig return Gzip middleware from config.
+// GzipWithConfig return Gzip middleware with config.
 // See: `Gzip()`.
 func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 	// Defaults

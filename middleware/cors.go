@@ -62,7 +62,7 @@ func CORS() echo.MiddlewareFunc {
 	return CORSWithConfig(DefaultCORSConfig)
 }
 
-// CORSWithConfig returns a CORS middleware from config.
+// CORSWithConfig returns a CORS middleware with config.
 // See: `CORS()`.
 func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 	// Defaults

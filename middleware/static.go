@@ -50,7 +50,7 @@ func Static(root string) echo.MiddlewareFunc {
 	return StaticWithConfig(c)
 }
 
-// StaticWithConfig returns a Static middleware from config.
+// StaticWithConfig returns a Static middleware with config.
 // See `Static()`.
 func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 	// Defaults
