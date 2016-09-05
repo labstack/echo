@@ -13,6 +13,7 @@ type (
 		Skipper Skipper
 
 		// Validator is a function to validate BasicAuth credentials.
+		// Required.
 		Validator BasicAuthValidator
 	}
 
@@ -46,6 +47,9 @@ func BasicAuth(fn BasicAuthValidator) echo.MiddlewareFunc {
 // See `BasicAuth()`.
 func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 	// Defaults
+	if config.Validator == nil {
+		panic("basic-auth middleware requires validator function")
+	}
 	if config.Skipper == nil {
 		config.Skipper = DefaultBasicAuthConfig.Skipper
 	}
