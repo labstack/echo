@@ -63,7 +63,7 @@ func (r *Request) URL() engine.URL {
 	return r.url
 }
 
-// Header implements `engine.Request#URL` function.
+// Header implements `engine.Request#Header` function.
 func (r *Request) Header() engine.Header {
 	return r.header
 }
