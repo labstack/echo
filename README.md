@@ -26,7 +26,7 @@
 - Test Suite: https://github.com/vishr/web-framework-benchmark
 - Date: 4/4/2016
 
-![Performance](http://i.imgur.com/fZVnK52.png)
+![Performance](https://i.imgur.com/fZVnK52.png)
 
 ## Quick Start
 

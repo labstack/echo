@@ -76,6 +76,7 @@ var (
 func JWT(key []byte) echo.MiddlewareFunc {
 	c := DefaultJWTConfig
 	c.SigningKey = key
+	c.Claims = jwt.MapClaims{}
 	return JWTWithConfig(c)
 }
 
@@ -96,7 +97,7 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 		config.ContextKey = DefaultJWTConfig.ContextKey
 	}
 	if config.Claims == nil {
-		config.Claims = DefaultJWTConfig.Claims
+		config.Claims = jwt.MapClaims{}
 	}
 	if config.TokenLookup == "" {
 		config.TokenLookup = DefaultJWTConfig.TokenLookup
