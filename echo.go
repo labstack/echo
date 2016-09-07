@@ -69,6 +69,7 @@ type (
 		debug            bool
 		router           *Router
 		logger           log.Logger
+		encoders         map[string]Encoder
 	}
 
 	// Route contains a handler and information for matching against requests.
@@ -205,6 +206,7 @@ var (
 	ErrRendererNotRegistered       = errors.New("renderer not registered")
 	ErrInvalidRedirectCode         = errors.New("invalid redirect status code")
 	ErrCookieNotFound              = errors.New("cookie not found")
+	ErrEncoderNotFound             = errors.New("encoder not found")
 )
 
 // Error handlers
@@ -220,7 +222,15 @@ var (
 
 // New creates an instance of Echo.
 func New() (e *Echo) {
-	e = &Echo{maxParam: new(int)}
+	e = &Echo{
+		maxParam: new(int),
+		encoders: map[string]Encoder{
+			MIMEApplicationJSON:            &jsonEncoder{},
+			MIMEApplicationJSONCharsetUTF8: &jsonEncoder{},
+			MIMEApplicationXML:             &xmlEncoder{},
+			MIMEApplicationXMLCharsetUTF8:  &xmlEncoder{},
+		},
+	}
 	e.pool.New = func() interface{} {
 		return e.NewContext(nil, nil)
 	}
@@ -250,6 +260,20 @@ func (e *Echo) NewContext(req engine.Request, res engine.Response) Context {
 // Router returns router.
 func (e *Echo) Router() *Router {
 	return e.router
+}
+
+// Encoder returns encoder for specified content type
+func (e *Echo) Encoder(contentType string) (Encoder, error) {
+	if encoder, ok := e.encoders[contentType]; !ok {
+		return nil, ErrEncoderNotFound
+	} else {
+		return encoder, nil
+	}
+}
+
+// SetEncoder sets encoder to specified content type
+func (e *Echo) SetEncoder(contentType string, encoder Encoder) {
+	e.encoders[contentType] = encoder
 }
 
 // Logger returns the logger instance.

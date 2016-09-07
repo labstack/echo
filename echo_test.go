@@ -31,6 +31,12 @@ const (
 	invalidContent = "invalid content"
 )
 
+type testEncoder struct{}
+
+func (e *testEncoder) Encode(i interface{}) ([]byte, error) {
+	return []byte("encoded"), nil
+}
+
 func TestEcho(t *testing.T) {
 	e := New()
 	req := test.NewRequest(GET, "/", nil)
@@ -42,11 +48,21 @@ func TestEcho(t *testing.T) {
 
 	// Debug
 	e.SetDebug(true)
-	assert.True(t, e.debug)
+	assert.True(t, e.Debug())
 
 	// DefaultHTTPErrorHandler
 	e.DefaultHTTPErrorHandler(errors.New("error"), c)
 	assert.Equal(t, http.StatusInternalServerError, rec.Status())
+
+	// Encoders
+	_, err := e.Encoder("undefined")
+	assert.Error(t, err)
+
+	e.SetEncoder("custom", &testEncoder{})
+	if enc, err := e.Encoder("custom"); assert.NoError(t, err) {
+		encoded, _ := enc.Encode(nil)
+		assert.Equal(t, []byte("encoded"), encoded)
+	}
 }
 
 func TestEchoStatic(t *testing.T) {
