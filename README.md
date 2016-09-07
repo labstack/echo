@@ -265,7 +265,7 @@ Middleware | Description
 ## Support Us
 
 - :star: the project
-- [Donate](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=JD5R56K84A8G4&lc=US&item_name=LabStack&item_number=echo&currency_code=USD&bn=PP-DonationsBF:btn_donate_LG.gif:NonHosted)
+- [Donate](https://echo.labstack.com/support-echo)
 - :earth_americas: spread the word
 - [Contribute](#contribute) to the project
 
