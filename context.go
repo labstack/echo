@@ -26,9 +26,6 @@ type (
 	Context interface {
 		context.Context
 
-		// Context returns `context.Context`.
-		Context() context.Context
-
 		// SetContext sets `context.Context`.
 		SetContext(context.Context)
 
@@ -192,10 +189,6 @@ type (
 const (
 	indexPage = "index.html"
 )
-
-func (c *echoContext) Context() context.Context {
-	return c.context
-}
 
 func (c *echoContext) SetContext(ctx context.Context) {
 	c.context = ctx
