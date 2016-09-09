@@ -128,11 +128,21 @@ type (
 		// the JSONP payload.
 		JSONP(int, string, interface{}) error
 
+		// JSONPBlob sends a JSONP blob response with status code. It uses `callback`
+		// to construct the JSONP payload.
+		JSONPBlob(int, string, []byte) error
+
 		// XML sends an XML response with status code.
 		XML(int, interface{}) error
 
 		// XMLBlob sends a XML blob response with status code.
 		XMLBlob(int, []byte) error
+
+		// Blob sends a blob response with status code and content type.
+		Blob(int, string, []byte) error
+
+		// Stream sends a streaming response with status code and content type.
+		Stream(int, string, io.Reader) error
 
 		// File sends a response with the content of the file.
 		File(string) error
@@ -356,10 +366,7 @@ func (c *echoContext) JSON(code int, i interface{}) (err error) {
 }
 
 func (c *echoContext) JSONBlob(code int, b []byte) (err error) {
-	c.response.Header().Set(HeaderContentType, MIMEApplicationJSONCharsetUTF8)
-	c.response.WriteHeader(code)
-	_, err = c.response.Write(b)
-	return
+	return c.Blob(code, MIMEApplicationJSONCharsetUTF8, b)
 }
 
 func (c *echoContext) JSONP(code int, callback string, i interface{}) (err error) {
@@ -367,6 +374,10 @@ func (c *echoContext) JSONP(code int, callback string, i interface{}) (err error
 	if err != nil {
 		return err
 	}
+	return c.JSONPBlob(code, callback, b)
+}
+
+func (c *echoContext) JSONPBlob(code int, callback string, b []byte) (err error) {
 	c.response.Header().Set(HeaderContentType, MIMEApplicationJavaScriptCharsetUTF8)
 	c.response.WriteHeader(code)
 	if _, err = c.response.Write([]byte(callback + "(")); err != nil {
@@ -391,12 +402,23 @@ func (c *echoContext) XML(code int, i interface{}) (err error) {
 }
 
 func (c *echoContext) XMLBlob(code int, b []byte) (err error) {
-	c.response.Header().Set(HeaderContentType, MIMEApplicationXMLCharsetUTF8)
-	c.response.WriteHeader(code)
 	if _, err = c.response.Write([]byte(xml.Header)); err != nil {
 		return
 	}
+	return c.Blob(code, MIMEApplicationXMLCharsetUTF8, b)
+}
+
+func (c *echoContext) Blob(code int, contentType string, b []byte) (err error) {
+	c.response.Header().Set(HeaderContentType, contentType)
+	c.response.WriteHeader(code)
 	_, err = c.response.Write(b)
+	return
+}
+
+func (c *echoContext) Stream(code int, contentType string, r io.Reader) (err error) {
+	c.response.Header().Set(HeaderContentType, contentType)
+	c.response.WriteHeader(code)
+	_, err = io.Copy(c.response, r)
 	return
 }
 

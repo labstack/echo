@@ -132,6 +132,17 @@ func TestContext(t *testing.T) {
 		assert.Equal(t, "Hello, <strong>World!</strong>", rec.Body.String())
 	}
 
+	// Stream
+	rec = test.NewResponseRecorder()
+	c = e.NewContext(req, rec).(*echoContext)
+	r := strings.NewReader("response from a stream")
+	err = c.Stream(http.StatusOK, "application/octet-stream", r)
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, rec.Status())
+		assert.Equal(t, "application/octet-stream", rec.Header().Get(HeaderContentType))
+		assert.Equal(t, "response from a stream", rec.Body.String())
+	}
+
 	// Attachment
 	rec = test.NewResponseRecorder()
 	c = e.NewContext(req, rec).(*echoContext)
