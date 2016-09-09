@@ -26,8 +26,11 @@ type (
 	Context interface {
 		context.Context
 
-		// SetContext sets `context.Context`.
-		SetContext(context.Context)
+		// StdContext returns `context.Context`.
+		StdContext() context.Context
+
+		// SetStdContext sets `context.Context`.
+		SetStdContext(context.Context)
 
 		// Request returns `engine.Request` interface.
 		Request() engine.Request
@@ -190,7 +193,11 @@ const (
 	indexPage = "index.html"
 )
 
-func (c *echoContext) SetContext(ctx context.Context) {
+func (c *echoContext) StdContext() context.Context {
+	return c.context
+}
+
+func (c *echoContext) SetStdContext(ctx context.Context) {
 	c.context = ctx
 }
 
