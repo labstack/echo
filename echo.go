@@ -58,6 +58,7 @@ import (
 type (
 	// Echo is the top-level framework instance.
 	Echo struct {
+		server           engine.Server
 		premiddleware    []MiddlewareFunc
 		middleware       []MiddlewareFunc
 		maxParam         *int
@@ -569,16 +570,20 @@ func (e *Echo) ServeHTTP(req engine.Request, res engine.Response) {
 }
 
 // Run starts the HTTP server.
-func (e *Echo) Run(s engine.Server) {
+func (e *Echo) Run(s engine.Server) error {
+	e.server = s
 	s.SetHandler(e)
 	s.SetLogger(e.logger)
 	if e.Debug() {
 		e.SetLogLevel(glog.DEBUG)
 		e.logger.Debug("running in debug mode")
 	}
-	if err := s.Start(); err != nil {
-		panic(fmt.Sprintf("echo: %v", err))
-	}
+	return s.Start()
+}
+
+// Stop stops the HTTP server.
+func (e *Echo) Stop() error {
+	return e.server.Stop()
 }
 
 // NewHTTPError creates a new HTTPError instance.

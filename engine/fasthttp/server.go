@@ -109,6 +109,12 @@ func (s *Server) Start() error {
 
 }
 
+// Stop implements `engine.Server#Stop` function.
+func (s *Server) Stop() error {
+	// TODO: implement `engine.Server#Stop` function
+	return nil
+}
+
 func (s *Server) startDefaultListener() error {
 	c := s.config
 	if c.TLSCertFile != "" && c.TLSKeyFile != "" {
