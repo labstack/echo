@@ -88,6 +88,10 @@ func (s *Server) Start() error {
 	return s.startCustomListener()
 }
 
+func (s *Server) Stop() error {
+	return nil
+}
+
 func (s *Server) startDefaultListener() error {
 	c := s.config
 	if c.TLSCertFile != "" && c.TLSKeyFile != "" {

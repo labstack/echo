@@ -21,6 +21,9 @@ type (
 
 		// Start starts the HTTP server.
 		Start() error
+
+		// Stop stops the HTTP server by closing underlying TCP connection.
+		Stop() error
 	}
 
 	// Request defines the interface for HTTP request.
@@ -205,6 +208,7 @@ type (
 		Listener     net.Listener  // Custom `net.Listener`. If set, server accepts connections on it.
 		TLSCertFile  string        // TLS certificate file path.
 		TLSKeyFile   string        // TLS key file path.
+		DisableHTTP2 bool          // Disables HTTP/2.
 		ReadTimeout  time.Duration // Maximum duration before timing out read of the request.
 		WriteTimeout time.Duration // Maximum duration before timing out write of the response.
 	}
