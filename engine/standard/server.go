@@ -111,7 +111,9 @@ func (s *Server) Start() error {
 		}
 
 		if s.config.TLSCertFile != "" && s.config.TLSKeyFile != "" {
-			config := new(tls.Config)
+			config := &tls.Config{
+				NextProtos: []string{"http/1.1"},
+			}
 			if !s.config.DisableHTTP2 {
 				config.NextProtos = append(config.NextProtos, "h2")
 			}
@@ -132,14 +134,6 @@ func (s *Server) Start() error {
 // Stop implements `engine.Server#Stop` function.
 func (s *Server) Stop() error {
 	return s.config.Listener.Close()
-}
-
-func (s *Server) startDefaultListener() error {
-	c := s.config
-	if c.TLSCertFile != "" && c.TLSKeyFile != "" {
-		return s.ListenAndServeTLS(c.TLSCertFile, c.TLSKeyFile)
-	}
-	return s.ListenAndServe()
 }
 
 // ServeHTTP implements `http.Handler` interface.
