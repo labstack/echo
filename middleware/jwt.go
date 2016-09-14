@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strings"
 
 	"github.com/dgrijalva/jwt-go"
@@ -40,6 +41,8 @@ type (
 		// - "query:<name>"
 		// - "cookie:<name>"
 		TokenLookup string `json:"token_lookup"`
+
+		keyFunc jwt.Keyfunc
 	}
 
 	jwtExtractor func(echo.Context) (string, error)
@@ -76,7 +79,6 @@ var (
 func JWT(key []byte) echo.MiddlewareFunc {
 	c := DefaultJWTConfig
 	c.SigningKey = key
-	c.Claims = jwt.MapClaims{}
 	return JWTWithConfig(c)
 }
 
@@ -97,10 +99,17 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 		config.ContextKey = DefaultJWTConfig.ContextKey
 	}
 	if config.Claims == nil {
-		config.Claims = jwt.MapClaims{}
+		config.Claims = DefaultJWTConfig.Claims
 	}
 	if config.TokenLookup == "" {
 		config.TokenLookup = DefaultJWTConfig.TokenLookup
+	}
+	config.keyFunc = func(t *jwt.Token) (interface{}, error) {
+		// Check the signing method
+		if t.Method.Alg() != config.SigningMethod {
+			return nil, fmt.Errorf("unexpected jwt signing method=%v", t.Header["alg"])
+		}
+		return config.SigningKey, nil
 	}
 
 	// Initialize
@@ -123,14 +132,14 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 			if err != nil {
 				return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 			}
-			token, err := jwt.ParseWithClaims(auth, config.Claims, func(t *jwt.Token) (interface{}, error) {
-				// Check the signing method
-				if t.Method.Alg() != config.SigningMethod {
-					return nil, fmt.Errorf("unexpected jwt signing method=%v", t.Header["alg"])
-				}
-				return config.SigningKey, nil
-
-			})
+			token := new(jwt.Token)
+			// Issue #647, #656
+			if _, ok := config.Claims.(jwt.MapClaims); ok {
+				token, err = jwt.Parse(auth, config.keyFunc)
+			} else {
+				claims := reflect.ValueOf(config.Claims).Interface().(jwt.Claims)
+				token, err = jwt.ParseWithClaims(auth, claims, config.keyFunc)
+			}
 			if err == nil && token.Valid {
 				// Store user information from token into context.
 				c.Set(config.ContextKey, token)
