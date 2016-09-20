@@ -70,6 +70,7 @@ type (
 		debug            bool
 		router           *Router
 		logger           log.Logger
+		meta             map[string]H
 	}
 
 	// Route contains a handler and information for matching against requests.
@@ -77,6 +78,7 @@ type (
 		Method  string
 		Path    string
 		Handler string
+		Meta    H
 	}
 
 	// HTTPError represents an error that occurred while handling a request.
@@ -103,6 +105,8 @@ type (
 	Renderer interface {
 		Render(io.Writer, string, interface{}, Context) error
 	}
+
+	H map[string]interface{}
 )
 
 // HTTP methods
@@ -226,6 +230,7 @@ func New() (e *Echo) {
 		return e.NewContext(nil, nil)
 	}
 	e.router = NewRouter(e)
+	e.meta = map[string]H{}
 
 	// Defaults
 	e.SetHTTPErrorHandler(e.DefaultHTTPErrorHandler)
@@ -474,12 +479,24 @@ func (e *Echo) add(method, path string, handler HandlerFunc, middleware ...Middl
 		}
 		return h(c)
 	}, e)
+	meta := H{}
+	for _, m := range middleware {
+		e.addMeta(meta, handlerName(m))
+	}
+	e.addMeta(meta, name)
 	r := Route{
 		Method:  method,
 		Path:    path,
 		Handler: name,
+		Meta:    meta,
 	}
 	e.router.routes[method+path] = r
+}
+
+func (e *Echo) addMeta(meta H, handler string) {
+	if m, ok := e.meta[handler]; ok {
+		meta.DeepMerge(m)
+	}
 }
 
 // Group creates a new router group with prefix and optional group-level middleware.
@@ -586,6 +603,20 @@ func (e *Echo) Stop() error {
 	return e.server.Stop()
 }
 
+// Add meta information about endpoint using MiddlewareFunc
+func (e *Echo) MetaMiddleware(d H, handler MiddlewareFunc) MiddlewareFunc {
+	name := handlerName(handler)
+	e.meta[name] = d
+	return handler
+}
+
+// Add meta information about endpoint using HandlerFunc
+func (e *Echo) Meta(d H, handler HandlerFunc) HandlerFunc {
+	name := handlerName(handler)
+	e.meta[name] = d
+	return handler
+}
+
 // NewHTTPError creates a new HTTPError instance.
 func NewHTTPError(code int, msg ...string) *HTTPError {
 	he := &HTTPError{Code: code, Message: http.StatusText(code)}
@@ -613,10 +644,30 @@ func WrapMiddleware(h HandlerFunc) MiddlewareFunc {
 	}
 }
 
-func handlerName(h HandlerFunc) string {
+func handlerName(h interface{}) string {
 	t := reflect.ValueOf(h).Type()
 	if t.Kind() == reflect.Func {
 		return runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name()
 	}
 	return t.String()
+}
+
+func (h H) DeepMerge(source H) {
+	for k, value := range source {
+		var (
+			destinationValue interface{}
+			ok               bool
+		)
+		if destinationValue, ok = h[k]; !ok {
+			h[k] = value
+			continue
+		}
+		sourceH, sourceOk := value.(H)
+		destinationH, destinationOk := destinationValue.(H)
+		if sourceOk && sourceOk == destinationOk {
+			destinationH.DeepMerge(sourceH)
+		} else {
+			h[k] = value
+		}
+	}
 }

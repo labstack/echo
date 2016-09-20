@@ -227,10 +227,10 @@ func TestEchoURL(t *testing.T) {
 func TestEchoRoutes(t *testing.T) {
 	e := New()
 	routes := []Route{
-		{GET, "/users/:user/events", ""},
-		{GET, "/users/:user/events/public", ""},
-		{POST, "/repos/:owner/:repo/git/refs", ""},
-		{POST, "/repos/:owner/:repo/git/tags", ""},
+		{GET, "/users/:user/events", "", nil},
+		{GET, "/users/:user/events/public", "", nil},
+		{POST, "/repos/:owner/:repo/git/refs", "", nil},
+		{POST, "/repos/:owner/:repo/git/tags", "", nil},
 	}
 	for _, r := range routes {
 		e.add(r.Method, r.Path, func(c Context) error {
@@ -346,6 +346,43 @@ func TestEchoLogger(t *testing.T) {
 	assert.Equal(t, l.Output(), ioutil.Discard)
 	e.SetLogLevel(log.OFF)
 	assert.Equal(t, l.Level(), log.OFF)
+}
+
+func TestEchoMeta(t *testing.T) {
+	e := New()
+
+	middleware := e.MetaMiddleware(
+		H{"authorization": true, "data": H{"by": "middleware"}},
+		func(next HandlerFunc) HandlerFunc {
+			return func(c Context) error {
+				return next(c)
+			}
+		},
+	)
+	g := e.Group("/root")
+	g.Use(middleware)
+
+	g.GET("/", e.Meta(
+		H{"version": 1.0, "data": H{"by": "handler"}},
+		func(c Context) error {
+			return c.String(http.StatusOK, "OK")
+		},
+	))
+
+	var meta H
+
+	for _, route := range e.Routes() {
+		if route.Path == "/root/" {
+			meta = route.Meta
+		}
+	}
+	assert.Equal(t, H{
+		"authorization": true,
+		"version":       1.0,
+		"data": H{
+			"by": "handler",
+		},
+	}, meta)
 }
 
 func testMethod(t *testing.T, method, path string, e *Echo) {
