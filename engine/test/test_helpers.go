@@ -1,10 +1,11 @@
 package test
 
 import (
-	"github.com/labstack/echo/engine"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/labstack/echo/engine"
+	"github.com/stretchr/testify/assert"
 )
 
 func HeaderTest(t *testing.T, header engine.Header) {
@@ -50,12 +51,12 @@ func URLTest(t *testing.T, url engine.URL) {
 	assert.Equal(t, "param1=value1&param1=value2&param2=value3", url.QueryString())
 }
 
-func CookieTest(t *testing.T, coockie engine.Cookie) {
-	assert.Equal(t, "github.com", coockie.Domain())
-	assert.Equal(t, time.Date(2016, time.January, 1, 0, 0, 0, 0, time.UTC), coockie.Expires())
-	assert.True(t, coockie.HTTPOnly())
-	assert.True(t, coockie.Secure())
-	assert.Equal(t, "session", coockie.Name())
-	assert.Equal(t, "/", coockie.Path())
-	assert.Equal(t, "securetoken", coockie.Value())
+func CookieTest(t *testing.T, cookie engine.Cookie) {
+	assert.Equal(t, "github.com", cookie.Domain())
+	assert.Equal(t, time.Date(2016, time.January, 1, 0, 0, 0, 0, time.UTC), cookie.Expires())
+	assert.True(t, cookie.HTTPOnly())
+	assert.True(t, cookie.Secure())
+	assert.Equal(t, "session", cookie.Name())
+	assert.Equal(t, "/", cookie.Path())
+	assert.Equal(t, "securetoken", cookie.Value())
 }
