@@ -70,7 +70,7 @@ type (
 		debug            bool
 		router           *Router
 		logger           log.Logger
-		meta             map[string]H
+		meta             map[string]M
 	}
 
 	// Route contains a handler and information for matching against requests.
@@ -78,7 +78,7 @@ type (
 		Method  string
 		Path    string
 		Handler string
-		Meta    H
+		Meta    M
 	}
 
 	// HTTPError represents an error that occurred while handling a request.
@@ -106,7 +106,7 @@ type (
 		Render(io.Writer, string, interface{}, Context) error
 	}
 
-	H map[string]interface{}
+	M map[string]interface{}
 )
 
 // HTTP methods
@@ -230,7 +230,7 @@ func New() (e *Echo) {
 		return e.NewContext(nil, nil)
 	}
 	e.router = NewRouter(e)
-	e.meta = map[string]H{}
+	e.meta = map[string]M{}
 
 	// Defaults
 	e.SetHTTPErrorHandler(e.DefaultHTTPErrorHandler)
@@ -479,7 +479,7 @@ func (e *Echo) add(method, path string, handler HandlerFunc, middleware ...Middl
 		}
 		return h(c)
 	}, e)
-	meta := H{}
+	meta := M{}
 	for _, m := range middleware {
 		e.addMeta(meta, handlerName(m))
 	}
@@ -493,7 +493,7 @@ func (e *Echo) add(method, path string, handler HandlerFunc, middleware ...Middl
 	e.router.routes[method+path] = r
 }
 
-func (e *Echo) addMeta(meta H, handler string) {
+func (e *Echo) addMeta(meta M, handler string) {
 	if m, ok := e.meta[handler]; ok {
 		meta.DeepMerge(m)
 	}
@@ -604,16 +604,16 @@ func (e *Echo) Stop() error {
 }
 
 // Add meta information about endpoint using MiddlewareFunc
-func (e *Echo) MetaMiddleware(d H, handler MiddlewareFunc) MiddlewareFunc {
-	name := handlerName(handler)
-	e.meta[name] = d
-	return handler
+func (e *Echo) MetaMiddleware(m M, middleware MiddlewareFunc) MiddlewareFunc {
+	name := handlerName(middleware)
+	e.meta[name] = m
+	return middleware
 }
 
 // Add meta information about endpoint using HandlerFunc
-func (e *Echo) Meta(d H, handler HandlerFunc) HandlerFunc {
+func (e *Echo) MetaHandler(m M, handler HandlerFunc) HandlerFunc {
 	name := handlerName(handler)
-	e.meta[name] = d
+	e.meta[name] = m
 	return handler
 }
 
@@ -652,22 +652,22 @@ func handlerName(h interface{}) string {
 	return t.String()
 }
 
-func (h H) DeepMerge(source H) {
+func (m M) DeepMerge(source M) {
 	for k, value := range source {
 		var (
 			destinationValue interface{}
 			ok               bool
 		)
-		if destinationValue, ok = h[k]; !ok {
-			h[k] = value
+		if destinationValue, ok = m[k]; !ok {
+			m[k] = value
 			continue
 		}
-		sourceH, sourceOk := value.(H)
-		destinationH, destinationOk := destinationValue.(H)
+		sourceM, sourceOk := value.(M)
+		destinationM, destinationOk := destinationValue.(M)
 		if sourceOk && sourceOk == destinationOk {
-			destinationH.DeepMerge(sourceH)
+			destinationM.DeepMerge(sourceM)
 		} else {
-			h[k] = value
+			m[k] = value
 		}
 	}
 }

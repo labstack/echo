@@ -352,7 +352,7 @@ func TestEchoMeta(t *testing.T) {
 	e := New()
 
 	middleware := e.MetaMiddleware(
-		H{"authorization": true, "data": H{"by": "middleware"}},
+		M{"authorization": true, "data": M{"by": "middleware"}},
 		func(next HandlerFunc) HandlerFunc {
 			return func(c Context) error {
 				return next(c)
@@ -362,24 +362,24 @@ func TestEchoMeta(t *testing.T) {
 	g := e.Group("/root")
 	g.Use(middleware)
 
-	g.GET("/", e.Meta(
-		H{"version": 1.0, "data": H{"by": "handler"}},
+	g.GET("/", e.MetaHandler(
+		M{"version": 1.0, "data": M{"by": "handler"}},
 		func(c Context) error {
 			return c.String(http.StatusOK, "OK")
 		},
 	))
 
-	var meta H
+	var meta M
 
 	for _, route := range e.Routes() {
 		if route.Path == "/root/" {
 			meta = route.Meta
 		}
 	}
-	assert.Equal(t, H{
+	assert.Equal(t, M{
 		"authorization": true,
 		"version":       1.0,
-		"data": H{
+		"data": M{
 			"by": "handler",
 		},
 	}, meta)
