@@ -41,10 +41,10 @@ Hello world!
 
 func RequestTest(t *testing.T, request engine.Request) {
 	assert.Equal(t, "github.com", request.Host())
-
+	request.SetHost("labstack.com")
+	assert.Equal(t, "labstack.com", request.Host())
 	request.SetURI("/labstack/echo?token=54321")
 	assert.Equal(t, "/labstack/echo?token=54321", request.URI())
-
 	assert.Equal(t, "/labstack/echo", request.URL().Path())
 	assert.Equal(t, "https://github.com/", request.Referer())
 	assert.Equal(t, "192.168.1.1", request.Header().Get("X-Real-IP"))
@@ -53,7 +53,6 @@ func RequestTest(t *testing.T, request engine.Request) {
 	assert.Equal(t, "127.0.0.1", request.RemoteAddress())
 	assert.Equal(t, "192.168.1.1", request.RealIP())
 	assert.Equal(t, "POST", request.Method())
-
 	assert.Equal(t, int64(261), request.ContentLength())
 	assert.Equal(t, "bar", request.FormValue("foo"))
 

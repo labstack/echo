@@ -48,6 +48,10 @@ func (r *Request) Host() string {
 	return r.request.Host
 }
 
+func (r *Request) SetHost(host string) {
+	r.request.Host = host
+}
+
 func (r *Request) URL() engine.URL {
 	return r.url
 }

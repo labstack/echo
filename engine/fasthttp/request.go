@@ -49,6 +49,11 @@ func (r *Request) Host() string {
 	return string(r.RequestCtx.Host())
 }
 
+// SetHost implements `engine.Request#SetHost` function.
+func (r *Request) SetHost(host string) {
+	r.RequestCtx.Request.SetHost(host)
+}
+
 // URL implements `engine.Request#URL` function.
 func (r *Request) URL() engine.URL {
 	return r.url

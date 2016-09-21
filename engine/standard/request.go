@@ -58,6 +58,11 @@ func (r *Request) Host() string {
 	return r.Request.Host
 }
 
+// SetHost implements `engine.Request#SetHost` function.
+func (r *Request) SetHost(host string) {
+	r.Request.Host = host
+}
+
 // URL implements `engine.Request#URL` function.
 func (r *Request) URL() engine.URL {
 	return r.url
