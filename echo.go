@@ -30,7 +30,7 @@ Example:
 	    e.GET("/", hello)
 
 	    // Start server
-	    e.Run(standard.New(":1323"))
+	    e.Start(":1323")
 	}
 
 Learn more at https://echo.labstack.com
@@ -73,6 +73,7 @@ type (
 		Binder          Binder
 		Renderer        Renderer
 		Logger          log.Logger
+		tlsConfig       *tls.Config
 		premiddleware   []MiddlewareFunc
 		middleware      []MiddlewareFunc
 		maxParam        *int
@@ -230,7 +231,13 @@ var (
 
 // New creates an instance of Echo.
 func New() (e *Echo) {
-	e = &Echo{maxParam: new(int)}
+	e = &Echo{
+		maxParam: new(int),
+		// TODO: https://github.com/golang/go/commit/d24f446a90ea94b87591bf16228d7d871fec3d92
+		tlsConfig: &tls.Config{
+			NextProtos: []string{"http/1.1"},
+		},
+	}
 	e.pool.New = func() interface{} {
 		return e.NewContext(nil, nil)
 	}
@@ -254,6 +261,11 @@ func (e *Echo) NewContext(r *http.Request, w http.ResponseWriter) Context {
 		pvalues:  make([]string, *e.maxParam),
 		handler:  NotFoundHandler,
 	}
+}
+
+// TLSConfig returns internal TLS configuration.
+func (e *Echo) TLSConfig() *tls.Config {
+	return e.tlsConfig
 }
 
 // Router returns router.
@@ -499,8 +511,8 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	e.pool.Put(c)
 }
 
-// Run starts the HTTP server.
-func (e *Echo) Run(address string) (err error) {
+// Start starts the HTTP server.
+func (e *Echo) Start(address string) (err error) {
 	if e.Server == nil {
 		e.Server = &http.Server{Handler: e}
 	}
@@ -510,19 +522,15 @@ func (e *Echo) Run(address string) (err error) {
 			return
 		}
 		if e.TLSCertFile != "" && e.TLSKeyFile != "" {
-			// TODO: https://github.com/golang/go/commit/d24f446a90ea94b87591bf16228d7d871fec3d92
-			config := &tls.Config{
-				NextProtos: []string{"http/1.1"},
-			}
 			if !e.DisableHTTP2 {
-				config.NextProtos = append(config.NextProtos, "h2")
+				e.tlsConfig.NextProtos = append(e.tlsConfig.NextProtos, "h2")
 			}
-			config.Certificates = make([]tls.Certificate, 1)
-			config.Certificates[0], err = tls.LoadX509KeyPair(e.TLSCertFile, e.TLSKeyFile)
+			e.tlsConfig.Certificates = make([]tls.Certificate, 1)
+			e.tlsConfig.Certificates[0], err = tls.LoadX509KeyPair(e.TLSCertFile, e.TLSKeyFile)
 			if err != nil {
 				return
 			}
-			e.Listener = tls.NewListener(tcpKeepAliveListener{e.Listener.(*net.TCPListener)}, config)
+			e.Listener = tls.NewListener(tcpKeepAliveListener{e.Listener.(*net.TCPListener)}, e.tlsConfig)
 		} else {
 			e.Listener = tcpKeepAliveListener{e.Listener.(*net.TCPListener)}
 		}
