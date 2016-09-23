@@ -63,7 +63,6 @@ type (
 	Echo struct {
 		Server       *http.Server
 		Listener     net.Listener
-		TLSServer    *http.Server
 		TLSListener  net.Listener
 		tlsConfig    *tls.Config
 		DisableHTTP2 bool
@@ -528,12 +527,8 @@ func (e *Echo) Start(address string) (err error) {
 
 // StartTLS starts the TLS server.
 func (e *Echo) StartTLS(address string, certFile, keyFile string) (err error) {
-	if e.TLSServer == nil {
-		if e.Server == nil {
-			e.TLSServer = &http.Server{Handler: e}
-		} else {
-			e.TLSServer = e.Server
-		}
+	if e.Server == nil {
+		e.Server = &http.Server{Handler: e}
 	}
 	if e.TLSListener == nil {
 		e.TLSListener, err = net.Listen("tcp", address)
@@ -555,7 +550,7 @@ func (e *Echo) StartTLS(address string, certFile, keyFile string) (err error) {
 		}
 	}
 	e.Logger.Printf(" ⇛ https server started on %v", e.Logger.Color().Green(e.TLSListener.Addr()))
-	return e.TLSServer.Serve(e.TLSListener)
+	return e.Server.Serve(e.TLSListener)
 }
 
 // Stop stops the HTTP server
