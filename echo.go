@@ -39,18 +39,20 @@ package echo
 
 import (
 	"bytes"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"path"
 	"reflect"
 	"runtime"
 	"sync"
+	"time"
 
 	"golang.org/x/net/context"
 
-	"github.com/labstack/echo/engine"
 	"github.com/labstack/echo/log"
 	glog "github.com/labstack/gommon/log"
 )
@@ -58,18 +60,24 @@ import (
 type (
 	// Echo is the top-level framework instance.
 	Echo struct {
-		server           engine.Server
-		premiddleware    []MiddlewareFunc
-		middleware       []MiddlewareFunc
-		maxParam         *int
-		notFoundHandler  HandlerFunc
-		httpErrorHandler HTTPErrorHandler
-		binder           Binder
-		renderer         Renderer
-		pool             sync.Pool
-		debug            bool
-		router           *Router
-		logger           log.Logger
+		Server      *http.Server
+		TLSCertFile string
+		TLSKeyFile  string
+		Listener    net.Listener
+		// DisableHTTP2 disables HTTP2
+		DisableHTTP2 bool
+		// Debug mode
+		Debug bool
+		HTTPErrorHandler
+		Binder          Binder
+		Renderer        Renderer
+		Logger          log.Logger
+		premiddleware   []MiddlewareFunc
+		middleware      []MiddlewareFunc
+		maxParam        *int
+		notFoundHandler HandlerFunc
+		pool            sync.Pool
+		router          *Router
 	}
 
 	// Route contains a handler and information for matching against requests.
@@ -226,22 +234,21 @@ func New() (e *Echo) {
 		return e.NewContext(nil, nil)
 	}
 	e.router = NewRouter(e)
-
 	// Defaults
-	e.SetHTTPErrorHandler(e.DefaultHTTPErrorHandler)
-	e.SetBinder(&binder{})
+	e.HTTPErrorHandler = e.DefaultHTTPErrorHandler
+	e.Binder = &binder{}
 	l := glog.New("echo")
 	l.SetLevel(glog.OFF)
-	e.SetLogger(l)
+	e.Logger = l
 	return
 }
 
 // NewContext returns a Context instance.
-func (e *Echo) NewContext(req engine.Request, res engine.Response) Context {
+func (e *Echo) NewContext(r *http.Request, w http.ResponseWriter) Context {
 	return &echoContext{
 		context:  context.Background(),
-		request:  req,
-		response: res,
+		request:  r,
+		response: NewResponse(w, e),
 		echo:     e,
 		pvalues:  make([]string, *e.maxParam),
 		handler:  NotFoundHandler,
@@ -253,26 +260,6 @@ func (e *Echo) Router() *Router {
 	return e.router
 }
 
-// Logger returns the logger instance.
-func (e *Echo) Logger() log.Logger {
-	return e.logger
-}
-
-// SetLogger defines a custom logger.
-func (e *Echo) SetLogger(l log.Logger) {
-	e.logger = l
-}
-
-// SetLogOutput sets the output destination for the logger. Default value is `os.Std*`
-func (e *Echo) SetLogOutput(w io.Writer) {
-	e.logger.SetOutput(w)
-}
-
-// SetLogLevel sets the log level for the logger. Default value ERROR.
-func (e *Echo) SetLogLevel(l glog.Lvl) {
-	e.logger.SetLevel(l)
-}
-
 // DefaultHTTPErrorHandler invokes the default HTTP error handler.
 func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 	code := http.StatusInternalServerError
@@ -281,47 +268,17 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 		code = he.Code
 		msg = he.Message
 	}
-	if e.debug {
+	if e.Debug {
 		msg = err.Error()
 	}
-	if !c.Response().Committed() {
-		if c.Request().Method() == HEAD { // Issue #608
+	if !c.Response().Committed {
+		if c.Request().Method == HEAD { // Issue #608
 			c.NoContent(code)
 		} else {
 			c.String(code, msg)
 		}
 	}
-	e.logger.Error(err)
-}
-
-// SetHTTPErrorHandler registers a custom Echo.HTTPErrorHandler.
-func (e *Echo) SetHTTPErrorHandler(h HTTPErrorHandler) {
-	e.httpErrorHandler = h
-}
-
-// SetBinder registers a custom binder. It's invoked by `Context#Bind()`.
-func (e *Echo) SetBinder(b Binder) {
-	e.binder = b
-}
-
-// Binder returns the binder instance.
-func (e *Echo) Binder() Binder {
-	return e.binder
-}
-
-// SetRenderer registers an HTML template renderer. It's invoked by `Context#Render()`.
-func (e *Echo) SetRenderer(r Renderer) {
-	e.renderer = r
-}
-
-// SetDebug enables/disables debug mode.
-func (e *Echo) SetDebug(on bool) {
-	e.debug = on
-}
-
-// Debug returns debug mode (enabled or disabled).
-func (e *Echo) Debug() bool {
-	return e.debug
+	e.Logger.Error(err)
 }
 
 // Pre adds middleware to the chain which is run before router.
@@ -340,20 +297,10 @@ func (e *Echo) CONNECT(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	e.add(CONNECT, path, h, m...)
 }
 
-// Connect is deprecated, use `CONNECT()` instead.
-func (e *Echo) Connect(path string, h HandlerFunc, m ...MiddlewareFunc) {
-	e.CONNECT(path, h, m...)
-}
-
 // DELETE registers a new DELETE route for a path with matching handler in the router
 // with optional route-level middleware.
 func (e *Echo) DELETE(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	e.add(DELETE, path, h, m...)
-}
-
-// Delete is deprecated, use `DELETE()` instead.
-func (e *Echo) Delete(path string, h HandlerFunc, m ...MiddlewareFunc) {
-	e.DELETE(path, h, m...)
 }
 
 // GET registers a new GET route for a path with matching handler in the router
@@ -362,20 +309,10 @@ func (e *Echo) GET(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	e.add(GET, path, h, m...)
 }
 
-// Get is deprecated, use `GET()` instead.
-func (e *Echo) Get(path string, h HandlerFunc, m ...MiddlewareFunc) {
-	e.GET(path, h, m...)
-}
-
 // HEAD registers a new HEAD route for a path with matching handler in the
 // router with optional route-level middleware.
 func (e *Echo) HEAD(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	e.add(HEAD, path, h, m...)
-}
-
-// Head is deprecated, use `HEAD()` instead.
-func (e *Echo) Head(path string, h HandlerFunc, m ...MiddlewareFunc) {
-	e.HEAD(path, h, m...)
 }
 
 // OPTIONS registers a new OPTIONS route for a path with matching handler in the
@@ -384,20 +321,10 @@ func (e *Echo) OPTIONS(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	e.add(OPTIONS, path, h, m...)
 }
 
-// Options is deprecated, use `OPTIONS()` instead.
-func (e *Echo) Options(path string, h HandlerFunc, m ...MiddlewareFunc) {
-	e.OPTIONS(path, h, m...)
-}
-
 // PATCH registers a new PATCH route for a path with matching handler in the
 // router with optional route-level middleware.
 func (e *Echo) PATCH(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	e.add(PATCH, path, h, m...)
-}
-
-// Patch is deprecated, use `PATCH()` instead.
-func (e *Echo) Patch(path string, h HandlerFunc, m ...MiddlewareFunc) {
-	e.PATCH(path, h, m...)
 }
 
 // POST registers a new POST route for a path with matching handler in the
@@ -406,31 +333,16 @@ func (e *Echo) POST(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	e.add(POST, path, h, m...)
 }
 
-// Post is deprecated, use `POST()` instead.
-func (e *Echo) Post(path string, h HandlerFunc, m ...MiddlewareFunc) {
-	e.POST(path, h, m...)
-}
-
 // PUT registers a new PUT route for a path with matching handler in the
 // router with optional route-level middleware.
 func (e *Echo) PUT(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	e.add(PUT, path, h, m...)
 }
 
-// Put is deprecated, use `PUT()` instead.
-func (e *Echo) Put(path string, h HandlerFunc, m ...MiddlewareFunc) {
-	e.PUT(path, h, m...)
-}
-
 // TRACE registers a new TRACE route for a path with matching handler in the
 // router with optional route-level middleware.
 func (e *Echo) TRACE(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	e.add(TRACE, path, h, m...)
-}
-
-// Trace is deprecated, use `TRACE()` instead.
-func (e *Echo) Trace(path string, h HandlerFunc, m ...MiddlewareFunc) {
-	e.TRACE(path, h, m...)
 }
 
 // Any registers a new route for all HTTP methods and path with matching handler
@@ -540,14 +452,15 @@ func (e *Echo) ReleaseContext(c Context) {
 	e.pool.Put(c)
 }
 
-func (e *Echo) ServeHTTP(req engine.Request, res engine.Response) {
+// ServeHTTP implements `http.Handler` interface, which serves HTTP requests.
+func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c := e.pool.Get().(*echoContext)
-	c.Reset(req, res)
+	c.Reset(r, w)
 
 	// Middleware
 	h := func(Context) error {
-		method := req.Method()
-		path := req.URL().Path()
+		method := r.Method
+		path := r.URL.Path
 		e.router.Find(method, path, c)
 		h := c.handler
 		for i := len(e.middleware) - 1; i >= 0; i-- {
@@ -563,27 +476,64 @@ func (e *Echo) ServeHTTP(req engine.Request, res engine.Response) {
 
 	// Execute chain
 	if err := h(c); err != nil {
-		e.httpErrorHandler(err, c)
+		e.HTTPErrorHandler(err, c)
 	}
 
 	e.pool.Put(c)
 }
 
 // Run starts the HTTP server.
-func (e *Echo) Run(s engine.Server) error {
-	e.server = s
-	s.SetHandler(e)
-	s.SetLogger(e.logger)
-	if e.Debug() {
-		e.SetLogLevel(glog.DEBUG)
-		e.logger.Debug("running in debug mode")
+func (e *Echo) Run(address string) (err error) {
+	if e.Server == nil {
+		e.Server = &http.Server{Handler: e}
 	}
-	return s.Start()
+	if e.Listener == nil {
+		e.Listener, err = net.Listen("tcp", address)
+		if err != nil {
+			return
+		}
+		if e.TLSCertFile != "" && e.TLSKeyFile != "" {
+			// TODO: https://github.com/golang/go/commit/d24f446a90ea94b87591bf16228d7d871fec3d92
+			config := &tls.Config{
+				NextProtos: []string{"http/1.1"},
+			}
+			if !e.DisableHTTP2 {
+				config.NextProtos = append(config.NextProtos, "h2")
+			}
+			config.Certificates = make([]tls.Certificate, 1)
+			config.Certificates[0], err = tls.LoadX509KeyPair(e.TLSCertFile, e.TLSKeyFile)
+			if err != nil {
+				return
+			}
+			e.Listener = tls.NewListener(tcpKeepAliveListener{e.Listener.(*net.TCPListener)}, config)
+		} else {
+			e.Listener = tcpKeepAliveListener{e.Listener.(*net.TCPListener)}
+		}
+	}
+	return e.Server.Serve(e.Listener)
 }
 
-// Stop stops the HTTP server.
+// Stop stops the HTTP server
 func (e *Echo) Stop() error {
-	return e.server.Stop()
+	return e.Listener.Close()
+}
+
+// tcpKeepAliveListener sets TCP keep-alive timeouts on accepted
+// connections. It's used by ListenAndServe and ListenAndServeTLS so
+// dead TCP connections (e.g. closing laptop mid-download) eventually
+// go away.
+type tcpKeepAliveListener struct {
+	*net.TCPListener
+}
+
+func (ln tcpKeepAliveListener) Accept() (c net.Conn, err error) {
+	tc, err := ln.AcceptTCP()
+	if err != nil {
+		return
+	}
+	tc.SetKeepAlive(true)
+	tc.SetKeepAlivePeriod(3 * time.Minute)
+	return tc, nil
 }
 
 // NewHTTPError creates a new HTTPError instance.

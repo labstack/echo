@@ -7,12 +7,14 @@ import (
 	"io"
 	"mime"
 	"mime/multipart"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
-	"github.com/labstack/echo/engine"
 	"github.com/labstack/echo/log"
 
 	"bytes"
@@ -32,11 +34,21 @@ type (
 		// SetStdContext sets `context.Context`.
 		SetStdContext(context.Context)
 
-		// Request returns `engine.Request` interface.
-		Request() engine.Request
+		// Request returns `*http.Request`.
+		Request() *http.Request
 
-		// Request returns `engine.Response` interface.
-		Response() engine.Response
+		// Request returns `*Response`.
+		Response() *Response
+
+		// IsTLS returns true if HTTP connection is TLS otherwise false.
+		IsTLS() bool
+
+		// Scheme returns the HTTP protocol scheme, `http` or `https`.
+		Scheme() string
+
+		// RealIP returns the client's network address based on `X-Forwarded-For`
+		// or `X-Real-IP` request header.
+		RealIP() string
 
 		// Path returns the registered path for the handler.
 		Path() string
@@ -62,41 +74,35 @@ type (
 		// SetParamValues sets path parameter values.
 		SetParamValues(...string)
 
-		// QueryParam returns the query param for the provided name. It is an alias
-		// for `engine.URL#QueryParam()`.
+		// QueryParam returns the query param for the provided name.
 		QueryParam(string) string
 
-		// QueryParams returns the query parameters as map.
-		// It is an alias for `engine.URL#QueryParams()`.
-		QueryParams() map[string][]string
+		// QueryParams returns the query parameters as `url.Values`.
+		QueryParams() url.Values
 
-		// FormValue returns the form field value for the provided name. It is an
-		// alias for `engine.Request#FormValue()`.
+		// QueryString returns the URL query string.
+		QueryString() string
+
+		// FormValue returns the form field value for the provided name.
 		FormValue(string) string
 
-		// FormParams returns the form parameters as map.
-		// It is an alias for `engine.Request#FormParams()`.
-		FormParams() map[string][]string
+		// FormParams returns the form parameters as `url.Values`.
+		FormParams() (url.Values, error)
 
-		// FormFile returns the multipart form file for the provided name. It is an
-		// alias for `engine.Request#FormFile()`.
+		// FormFile returns the multipart form file for the provided name.
 		FormFile(string) (*multipart.FileHeader, error)
 
 		// MultipartForm returns the multipart form.
-		// It is an alias for `engine.Request#MultipartForm()`.
 		MultipartForm() (*multipart.Form, error)
 
 		// Cookie returns the named cookie provided in the request.
-		// It is an alias for `engine.Request#Cookie()`.
-		Cookie(string) (engine.Cookie, error)
+		Cookie(string) (*http.Cookie, error)
 
 		// SetCookie adds a `Set-Cookie` header in HTTP response.
-		// It is an alias for `engine.Response#SetCookie()`.
-		SetCookie(engine.Cookie)
+		SetCookie(*http.Cookie)
 
 		// Cookies returns the HTTP cookies sent with the request.
-		// It is an alias for `engine.Request#Cookies()`.
-		Cookies() []engine.Cookie
+		Cookies() []*http.Cookie
 
 		// Get retrieves data from the context.
 		Get(string) interface{}
@@ -184,23 +190,25 @@ type (
 		// Reset resets the context after request completes. It must be called along
 		// with `Echo#AcquireContext()` and `Echo#ReleaseContext()`.
 		// See `Echo#ServeHTTP()`
-		Reset(engine.Request, engine.Response)
+		Reset(*http.Request, http.ResponseWriter)
 	}
 
 	echoContext struct {
 		context  context.Context
-		request  engine.Request
-		response engine.Response
+		request  *http.Request
+		response *Response
 		path     string
 		pnames   []string
 		pvalues  []string
+		query    url.Values
 		handler  HandlerFunc
 		echo     *Echo
 	}
 )
 
 const (
-	indexPage = "index.html"
+	defaultMemory = 32 << 20 // 32 MB
+	indexPage     = "index.html"
 )
 
 func (c *echoContext) StdContext() context.Context {
@@ -227,12 +235,37 @@ func (c *echoContext) Value(key interface{}) interface{} {
 	return c.context.Value(key)
 }
 
-func (c *echoContext) Request() engine.Request {
+func (c *echoContext) Request() *http.Request {
 	return c.request
 }
 
-func (c *echoContext) Response() engine.Response {
+func (c *echoContext) Response() *Response {
 	return c.response
+}
+
+func (c *echoContext) IsTLS() bool {
+	return c.request.TLS != nil
+}
+
+func (c *echoContext) Scheme() string {
+	// Can't use `r.Request.URL.Scheme`
+	// See: https://groups.google.com/forum/#!topic/golang-nuts/pMUkBlQBDF0
+	if c.IsTLS() {
+		return "https"
+	}
+	return "http"
+}
+
+func (c *echoContext) RealIP() string {
+	ra := c.request.RemoteAddr
+	if ip := c.request.Header.Get(HeaderXForwardedFor); ip != "" {
+		ra = ip
+	} else if ip := c.request.Header.Get(HeaderXRealIP); ip != "" {
+		ra = ip
+	} else {
+		ra, _, _ = net.SplitHostPort(ra)
+	}
+	return ra
 }
 
 func (c *echoContext) Path() string {
@@ -279,38 +312,59 @@ func (c *echoContext) SetParamValues(values ...string) {
 }
 
 func (c *echoContext) QueryParam(name string) string {
-	return c.request.URL().QueryParam(name)
+	if c.query == nil {
+		c.query = c.request.URL.Query()
+	}
+	return c.query.Get(name)
 }
 
-func (c *echoContext) QueryParams() map[string][]string {
-	return c.request.URL().QueryParams()
+func (c *echoContext) QueryParams() url.Values {
+	if c.query == nil {
+		c.query = c.request.URL.Query()
+	}
+	return c.query
+}
+
+func (c *echoContext) QueryString() string {
+	return c.request.URL.RawQuery
 }
 
 func (c *echoContext) FormValue(name string) string {
 	return c.request.FormValue(name)
 }
 
-func (c *echoContext) FormParams() map[string][]string {
-	return c.request.FormParams()
+func (c *echoContext) FormParams() (url.Values, error) {
+	if strings.HasPrefix(c.request.Header.Get(HeaderContentType), MIMEMultipartForm) {
+		if err := c.request.ParseMultipartForm(defaultMemory); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := c.request.ParseForm(); err != nil {
+			return nil, err
+		}
+	}
+	return c.request.Form, nil
 }
 
 func (c *echoContext) FormFile(name string) (*multipart.FileHeader, error) {
-	return c.request.FormFile(name)
+	_, fh, err := c.request.FormFile(name)
+	return fh, err
 }
 
 func (c *echoContext) MultipartForm() (*multipart.Form, error) {
-	return c.request.MultipartForm()
+	err := c.request.ParseMultipartForm(defaultMemory)
+	return c.request.MultipartForm, err
 }
 
-func (c *echoContext) Cookie(name string) (engine.Cookie, error) {
+func (c *echoContext) Cookie(name string) (*http.Cookie, error) {
 	return c.request.Cookie(name)
 }
 
-func (c *echoContext) SetCookie(cookie engine.Cookie) {
-	c.response.SetCookie(cookie)
+func (c *echoContext) SetCookie(cookie *http.Cookie) {
+	http.SetCookie(c.Response(), cookie)
 }
 
-func (c *echoContext) Cookies() []engine.Cookie {
+func (c *echoContext) Cookies() []*http.Cookie {
 	return c.request.Cookies()
 }
 
@@ -323,15 +377,15 @@ func (c *echoContext) Get(key string) interface{} {
 }
 
 func (c *echoContext) Bind(i interface{}) error {
-	return c.echo.binder.Bind(i, c)
+	return c.echo.Binder.Bind(i, c)
 }
 
 func (c *echoContext) Render(code int, name string, data interface{}) (err error) {
-	if c.echo.renderer == nil {
+	if c.echo.Renderer == nil {
 		return ErrRendererNotRegistered
 	}
 	buf := new(bytes.Buffer)
-	if err = c.echo.renderer.Render(buf, name, data, c); err != nil {
+	if err = c.echo.Renderer.Render(buf, name, data, c); err != nil {
 		return
 	}
 	c.response.Header().Set(HeaderContentType, MIMETextHTMLCharsetUTF8)
@@ -356,7 +410,7 @@ func (c *echoContext) String(code int, s string) (err error) {
 
 func (c *echoContext) JSON(code int, i interface{}) (err error) {
 	b, err := json.Marshal(i)
-	if c.echo.Debug() {
+	if c.echo.Debug {
 		b, err = json.MarshalIndent(i, "", "  ")
 	}
 	if err != nil {
@@ -392,7 +446,7 @@ func (c *echoContext) JSONPBlob(code int, callback string, b []byte) (err error)
 
 func (c *echoContext) XML(code int, i interface{}) (err error) {
 	b, err := xml.Marshal(i)
-	if c.echo.Debug() {
+	if c.echo.Debug {
 		b, err = xml.MarshalIndent(i, "", "  ")
 	}
 	if err != nil {
@@ -474,7 +528,7 @@ func (c *echoContext) Redirect(code int, url string) error {
 }
 
 func (c *echoContext) Error(err error) {
-	c.echo.httpErrorHandler(err, c)
+	c.echo.HTTPErrorHandler(err, c)
 }
 
 func (c *echoContext) Echo() *Echo {
@@ -490,14 +544,14 @@ func (c *echoContext) SetHandler(h HandlerFunc) {
 }
 
 func (c *echoContext) Logger() log.Logger {
-	return c.echo.logger
+	return c.echo.Logger
 }
 
 func (c *echoContext) ServeContent(content io.ReadSeeker, name string, modtime time.Time) error {
 	req := c.Request()
 	res := c.Response()
 
-	if t, err := time.Parse(http.TimeFormat, req.Header().Get(HeaderIfModifiedSince)); err == nil && modtime.Before(t.Add(1*time.Second)) {
+	if t, err := time.Parse(http.TimeFormat, req.Header.Get(HeaderIfModifiedSince)); err == nil && modtime.Before(t.Add(1*time.Second)) {
 		res.Header().Del(HeaderContentType)
 		res.Header().Del(HeaderContentLength)
 		return c.NoContent(http.StatusNotModified)
@@ -520,9 +574,10 @@ func ContentTypeByExtension(name string) (t string) {
 	return
 }
 
-func (c *echoContext) Reset(req engine.Request, res engine.Response) {
+func (c *echoContext) Reset(r *http.Request, w http.ResponseWriter) {
+	// c.query = nil
 	c.context = context.Background()
-	c.request = req
-	c.response = res
+	c.request = r
+	c.response.reset(w)
 	c.handler = NotFoundHandler
 }

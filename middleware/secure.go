@@ -100,7 +100,7 @@ func SecureWithConfig(config SecureConfig) echo.MiddlewareFunc {
 			if config.XFrameOptions != "" {
 				res.Header().Set(echo.HeaderXFrameOptions, config.XFrameOptions)
 			}
-			if (req.IsTLS() || (req.Header().Get(echo.HeaderXForwardedProto) == "https")) && config.HSTSMaxAge != 0 {
+			if (c.IsTLS() || (req.Header.Get(echo.HeaderXForwardedProto) == "https")) && config.HSTSMaxAge != 0 {
 				subdomains := ""
 				if !config.HSTSExcludeSubdomains {
 					subdomains = "; includeSubdomains"

@@ -2,17 +2,17 @@ package middleware
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/labstack/echo"
-	"github.com/labstack/echo/test"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestStatic(t *testing.T) {
 	e := echo.New()
-	req := test.NewRequest(echo.GET, "/", nil)
-	rec := test.NewResponseRecorder()
+	req, _ := http.NewRequest(echo.GET, "/", nil)
+	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	h := Static("../_fixture")(func(c echo.Context) error {
 		return echo.ErrNotFound
@@ -24,8 +24,8 @@ func TestStatic(t *testing.T) {
 	}
 
 	// HTML5 mode
-	req = test.NewRequest(echo.GET, "/client", nil)
-	rec = test.NewResponseRecorder()
+	req, _ = http.NewRequest(echo.GET, "/client", nil)
+	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	static := StaticWithConfig(StaticConfig{
 		Root:  "../_fixture",
@@ -35,12 +35,12 @@ func TestStatic(t *testing.T) {
 		return echo.ErrNotFound
 	})
 	if assert.NoError(t, h(c)) {
-		assert.Equal(t, http.StatusOK, rec.Status())
+		assert.Equal(t, http.StatusOK, rec.Code)
 	}
 
 	// Browse
-	req = test.NewRequest(echo.GET, "/", nil)
-	rec = test.NewResponseRecorder()
+	req, _ = http.NewRequest(echo.GET, "/", nil)
+	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	static = StaticWithConfig(StaticConfig{
 		Root:   "../_fixture/images",
@@ -54,8 +54,8 @@ func TestStatic(t *testing.T) {
 	}
 
 	// Not found
-	req = test.NewRequest(echo.GET, "/not-found", nil)
-	rec = test.NewResponseRecorder()
+	req, _ = http.NewRequest(echo.GET, "/not-found", nil)
+	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	static = StaticWithConfig(StaticConfig{
 		Root: "../_fixture/images",

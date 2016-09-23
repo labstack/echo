@@ -52,9 +52,10 @@ func HTTPSRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 			}
 
 			req := c.Request()
-			host := req.Host()
-			uri := req.URI()
-			if !req.IsTLS() {
+			host := req.Host
+			uri := req.RequestURI
+			println(uri)
+			if !c.IsTLS() {
 				return c.Redirect(config.Code, "https://"+host+uri)
 			}
 			return next(c)
@@ -88,9 +89,9 @@ func HTTPSWWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 			}
 
 			req := c.Request()
-			host := req.Host()
-			uri := req.URI()
-			if !req.IsTLS() && host[:3] != "www" {
+			host := req.Host
+			uri := req.RequestURI
+			if !c.IsTLS() && host[:3] != "www" {
 				return c.Redirect(http.StatusMovedPermanently, "https://www."+host+uri)
 			}
 			return next(c)
@@ -124,10 +125,10 @@ func WWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 			}
 
 			req := c.Request()
-			scheme := req.Scheme()
-			host := req.Host()
+			scheme := c.Scheme()
+			host := req.Host
 			if host[:3] != "www" {
-				uri := req.URI()
+				uri := req.RequestURI
 				return c.Redirect(http.StatusMovedPermanently, scheme+"://www."+host+uri)
 			}
 			return next(c)
@@ -160,10 +161,10 @@ func NonWWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 			}
 
 			req := c.Request()
-			scheme := req.Scheme()
-			host := req.Host()
+			scheme := c.Scheme()
+			host := req.Host
 			if host[:3] == "www" {
-				uri := req.URI()
+				uri := req.RequestURI
 				return c.Redirect(http.StatusMovedPermanently, scheme+"://"+host[4:]+uri)
 			}
 			return next(c)

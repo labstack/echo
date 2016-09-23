@@ -3,10 +3,10 @@ package middleware
 import (
 	"bytes"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/labstack/echo"
-	"github.com/labstack/echo/test"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,32 +18,32 @@ func TestMethodOverride(t *testing.T) {
 	}
 
 	// Override with http header
-	req := test.NewRequest(echo.POST, "/", nil)
-	rec := test.NewResponseRecorder()
-	req.Header().Set(echo.HeaderXHTTPMethodOverride, echo.DELETE)
+	req, _ := http.NewRequest(echo.POST, "/", nil)
+	rec := httptest.NewRecorder()
+	req.Header.Set(echo.HeaderXHTTPMethodOverride, echo.DELETE)
 	c := e.NewContext(req, rec)
 	m(h)(c)
-	assert.Equal(t, echo.DELETE, req.Method())
+	assert.Equal(t, echo.DELETE, req.Method)
 
 	// Override with form parameter
 	m = MethodOverrideWithConfig(MethodOverrideConfig{Getter: MethodFromForm("_method")})
-	req = test.NewRequest(echo.POST, "/", bytes.NewReader([]byte("_method="+echo.DELETE)))
-	rec = test.NewResponseRecorder()
-	req.Header().Set(echo.HeaderContentType, echo.MIMEApplicationForm)
+	req, _ = http.NewRequest(echo.POST, "/", bytes.NewReader([]byte("_method="+echo.DELETE)))
+	rec = httptest.NewRecorder()
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationForm)
 	c = e.NewContext(req, rec)
 	m(h)(c)
-	assert.Equal(t, echo.DELETE, req.Method())
+	assert.Equal(t, echo.DELETE, req.Method)
 
 	// Override with query paramter
 	m = MethodOverrideWithConfig(MethodOverrideConfig{Getter: MethodFromQuery("_method")})
-	req = test.NewRequest(echo.POST, "/?_method="+echo.DELETE, nil)
-	rec = test.NewResponseRecorder()
+	req, _ = http.NewRequest(echo.POST, "/?_method="+echo.DELETE, nil)
+	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	m(h)(c)
-	assert.Equal(t, echo.DELETE, req.Method())
+	assert.Equal(t, echo.DELETE, req.Method)
 
 	// Ignore `GET`
-	req = test.NewRequest(echo.GET, "/", nil)
-	req.Header().Set(echo.HeaderXHTTPMethodOverride, echo.DELETE)
-	assert.Equal(t, echo.GET, req.Method())
+	req, _ = http.NewRequest(echo.GET, "/", nil)
+	req.Header.Set(echo.HeaderXHTTPMethodOverride, echo.DELETE)
+	assert.Equal(t, echo.GET, req.Method)
 }

@@ -2,9 +2,8 @@ package echo
 
 import (
 	"bytes"
-	"fmt"
-	"io/ioutil"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"reflect"
@@ -12,8 +11,6 @@ import (
 
 	"errors"
 
-	"github.com/labstack/echo/test"
-	"github.com/labstack/gommon/log"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -33,20 +30,16 @@ const (
 
 func TestEcho(t *testing.T) {
 	e := New()
-	req := test.NewRequest(GET, "/", nil)
-	rec := test.NewResponseRecorder()
+	req, _ := http.NewRequest(GET, "/", nil)
+	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
 	// Router
 	assert.NotNil(t, e.Router())
 
-	// Debug
-	e.SetDebug(true)
-	assert.True(t, e.debug)
-
 	// DefaultHTTPErrorHandler
 	e.DefaultHTTPErrorHandler(errors.New("error"), c)
-	assert.Equal(t, http.StatusInternalServerError, rec.Status())
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 }
 
 func TestEchoStatic(t *testing.T) {
@@ -306,10 +299,10 @@ func TestEchoGroup(t *testing.T) {
 
 func TestEchoNotFound(t *testing.T) {
 	e := New()
-	req := test.NewRequest(GET, "/files", nil)
-	rec := test.NewResponseRecorder()
-	e.ServeHTTP(req, rec)
-	assert.Equal(t, http.StatusNotFound, rec.Status())
+	req, _ := http.NewRequest(GET, "/files", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusNotFound, rec.Code)
 }
 
 func TestEchoMethodNotAllowed(t *testing.T) {
@@ -317,10 +310,10 @@ func TestEchoMethodNotAllowed(t *testing.T) {
 	e.GET("/", func(c Context) error {
 		return c.String(http.StatusOK, "Echo!")
 	})
-	req := test.NewRequest(POST, "/", nil)
-	rec := test.NewResponseRecorder()
-	e.ServeHTTP(req, rec)
-	assert.Equal(t, http.StatusMethodNotAllowed, rec.Status())
+	req, _ := http.NewRequest(POST, "/", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
 }
 
 func TestEchoHTTPError(t *testing.T) {
@@ -337,25 +330,13 @@ func TestEchoContext(t *testing.T) {
 	e.ReleaseContext(c)
 }
 
-func TestEchoLogger(t *testing.T) {
-	e := New()
-	l := log.New("test")
-	e.SetLogger(l)
-	assert.Equal(t, l, e.Logger())
-	e.SetLogOutput(ioutil.Discard)
-	assert.Equal(t, l.Output(), ioutil.Discard)
-	e.SetLogLevel(log.OFF)
-	assert.Equal(t, l.Level(), log.OFF)
-}
-
 func testMethod(t *testing.T, method, path string, e *Echo) {
-	m := fmt.Sprintf("%c%s", method[0], strings.ToLower(method[1:]))
 	p := reflect.ValueOf(path)
 	h := reflect.ValueOf(func(c Context) error {
 		return c.String(http.StatusOK, method)
 	})
 	i := interface{}(e)
-	reflect.ValueOf(i).MethodByName(m).Call([]reflect.Value{p, h})
+	reflect.ValueOf(i).MethodByName(method).Call([]reflect.Value{p, h})
 	_, body := request(method, path, e)
 	if body != method {
 		t.Errorf("expected body `%s`, got %s.", method, body)
@@ -363,15 +344,8 @@ func testMethod(t *testing.T, method, path string, e *Echo) {
 }
 
 func request(method, path string, e *Echo) (int, string) {
-	req := test.NewRequest(method, path, nil)
-	rec := test.NewResponseRecorder()
-	e.ServeHTTP(req, rec)
-	return rec.Status(), rec.Body.String()
-}
-
-func TestEchoBinder(t *testing.T) {
-	e := New()
-	b := &binder{}
-	e.SetBinder(b)
-	assert.Equal(t, b, e.Binder())
+	req, _ := http.NewRequest(method, path, nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	return rec.Code, rec.Body.String()
 }

@@ -4,17 +4,17 @@ import (
 	"bytes"
 	"compress/gzip"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/labstack/echo"
-	"github.com/labstack/echo/test"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGzip(t *testing.T) {
 	e := echo.New()
-	req := test.NewRequest(echo.GET, "/", nil)
-	rec := test.NewResponseRecorder()
+	req, _ := http.NewRequest(echo.GET, "/", nil)
+	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
 	// Skip if no Accept-Encoding header
@@ -25,9 +25,9 @@ func TestGzip(t *testing.T) {
 	h(c)
 	assert.Equal(t, "test", rec.Body.String())
 
-	req = test.NewRequest(echo.GET, "/", nil)
-	req.Header().Set(echo.HeaderAcceptEncoding, "gzip")
-	rec = test.NewResponseRecorder()
+	req, _ = http.NewRequest(echo.GET, "/", nil)
+	req.Header.Set(echo.HeaderAcceptEncoding, "gzip")
+	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 
 	// Gzip
@@ -45,8 +45,8 @@ func TestGzip(t *testing.T) {
 
 func TestGzipNoContent(t *testing.T) {
 	e := echo.New()
-	req := test.NewRequest(echo.GET, "/", nil)
-	rec := test.NewResponseRecorder()
+	req, _ := http.NewRequest(echo.GET, "/", nil)
+	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	h := Gzip()(func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
@@ -64,9 +64,9 @@ func TestGzipErrorReturned(t *testing.T) {
 	e.GET("/", func(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "error")
 	})
-	req := test.NewRequest(echo.GET, "/", nil)
-	rec := test.NewResponseRecorder()
-	e.ServeHTTP(req, rec)
+	req, _ := http.NewRequest(echo.GET, "/", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
 	assert.Empty(t, rec.Header().Get(echo.HeaderContentEncoding))
 	assert.Equal(t, "error", rec.Body.String())
 }

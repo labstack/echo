@@ -52,10 +52,10 @@ func MethodOverrideWithConfig(config MethodOverrideConfig) echo.MiddlewareFunc {
 			}
 
 			req := c.Request()
-			if req.Method() == echo.POST {
+			if req.Method == echo.POST {
 				m := config.Getter(c)
 				if m != "" {
-					req.SetMethod(m)
+					req.Method = m
 				}
 			}
 			return next(c)
@@ -67,7 +67,7 @@ func MethodOverrideWithConfig(config MethodOverrideConfig) echo.MiddlewareFunc {
 // the request header.
 func MethodFromHeader(header string) MethodOverrideGetter {
 	return func(c echo.Context) string {
-		return c.Request().Header().Get(header)
+		return c.Request().Header.Get(header)
 	}
 }
 

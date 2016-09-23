@@ -117,16 +117,16 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 				case "time_rfc3339":
 					return w.Write([]byte(time.Now().Format(time.RFC3339)))
 				case "remote_ip":
-					ra := req.RealIP()
+					ra := c.RealIP()
 					return w.Write([]byte(ra))
 				case "host":
-					return w.Write([]byte(req.Host()))
+					return w.Write([]byte(req.Host))
 				case "uri":
-					return w.Write([]byte(req.URI()))
+					return w.Write([]byte(req.RequestURI))
 				case "method":
-					return w.Write([]byte(req.Method()))
+					return w.Write([]byte(req.Method))
 				case "path":
-					p := req.URL().Path()
+					p := req.URL.Path
 					if p == "" {
 						p = "/"
 					}
@@ -136,7 +136,7 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 				case "user_agent":
 					return w.Write([]byte(req.UserAgent()))
 				case "status":
-					n := res.Status()
+					n := res.Status
 					s := config.color.Green(n)
 					switch {
 					case n >= 500:
@@ -153,13 +153,13 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 				case "latency_human":
 					return w.Write([]byte(stop.Sub(start).String()))
 				case "bytes_in":
-					b := req.Header().Get(echo.HeaderContentLength)
+					b := req.Header.Get(echo.HeaderContentLength)
 					if b == "" {
 						b = "0"
 					}
 					return w.Write([]byte(b))
 				case "bytes_out":
-					return w.Write([]byte(strconv.FormatInt(res.Size(), 10)))
+					return w.Write([]byte(strconv.FormatInt(res.Size, 10)))
 				}
 				return 0, nil
 			})
