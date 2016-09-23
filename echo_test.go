@@ -85,26 +85,34 @@ func TestEchoMiddleware(t *testing.T) {
 	e := New()
 	buf := new(bytes.Buffer)
 
-	e.Pre(WrapMiddleware(func(c Context) error {
-		assert.Empty(t, c.Path())
-		buf.WriteString("-1")
-		return nil
-	}))
+	e.Pre(func(next HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			assert.Empty(t, c.Path())
+			buf.WriteString("-1")
+			return next(c)
+		}
+	})
 
-	e.Use(WrapMiddleware(func(c Context) error {
-		buf.WriteString("1")
-		return nil
-	}))
+	e.Use(func(next HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			buf.WriteString("1")
+			return next(c)
+		}
+	})
 
-	e.Use(WrapMiddleware(func(c Context) error {
-		buf.WriteString("2")
-		return nil
-	}))
+	e.Use(func(next HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			buf.WriteString("2")
+			return next(c)
+		}
+	})
 
-	e.Use(WrapMiddleware(func(c Context) error {
-		buf.WriteString("3")
-		return nil
-	}))
+	e.Use(func(next HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			buf.WriteString("3")
+			return next(c)
+		}
+	})
 
 	// Route
 	e.GET("/", func(c Context) error {
@@ -119,9 +127,11 @@ func TestEchoMiddleware(t *testing.T) {
 
 func TestEchoMiddlewareError(t *testing.T) {
 	e := New()
-	e.Use(WrapMiddleware(func(c Context) error {
-		return errors.New("error")
-	}))
+	e.Use(func(next HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			return errors.New("error")
+		}
+	})
 	e.GET("/", NotFoundHandler)
 	c, _ := request(GET, "/", e)
 	assert.Equal(t, http.StatusInternalServerError, c)
@@ -138,6 +148,43 @@ func TestEchoHandler(t *testing.T) {
 	c, b := request(GET, "/ok", e)
 	assert.Equal(t, http.StatusOK, c)
 	assert.Equal(t, "OK", b)
+}
+
+func TestEchoWrapHandler(t *testing.T) {
+	e := New()
+	req, _ := http.NewRequest(GET, "", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	h := WrapHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("test"))
+	}))
+	if assert.NoError(t, h(c)) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, "test", rec.Body.String())
+	}
+}
+
+func TestEchoWrapMiddleware(t *testing.T) {
+	e := New()
+	req, _ := http.NewRequest(GET, "", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	buf := new(bytes.Buffer)
+	mw := WrapMiddleware(func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			buf.Write([]byte("mw"))
+			h.ServeHTTP(w, r)
+		})
+	})
+	h := mw(func(c Context) error {
+		return c.String(http.StatusOK, "OK")
+	})
+	if assert.NoError(t, h(c)) {
+		assert.Equal(t, "mw", buf.String())
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, "OK", rec.Body.String())
+	}
 }
 
 func TestEchoConnect(t *testing.T) {
@@ -248,10 +295,10 @@ func TestEchoRoutes(t *testing.T) {
 func TestEchoGroup(t *testing.T) {
 	e := New()
 	buf := new(bytes.Buffer)
-	e.Use(MiddlewareFunc(func(h HandlerFunc) HandlerFunc {
+	e.Use(MiddlewareFunc(func(next HandlerFunc) HandlerFunc {
 		return func(c Context) error {
 			buf.WriteString("0")
-			return h(c)
+			return next(c)
 		}
 	}))
 	h := func(c Context) error {
@@ -266,23 +313,29 @@ func TestEchoGroup(t *testing.T) {
 
 	// Group
 	g1 := e.Group("/group1")
-	g1.Use(WrapMiddleware(func(c Context) error {
-		buf.WriteString("1")
-		return h(c)
-	}))
+	g1.Use(func(next HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			buf.WriteString("1")
+			return next(c)
+		}
+	})
 	g1.Get("", h)
 
 	// Nested groups with middleware
 	g2 := e.Group("/group2")
-	g2.Use(WrapMiddleware(func(c Context) error {
-		buf.WriteString("2")
-		return nil
-	}))
+	g2.Use(func(next HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			buf.WriteString("2")
+			return next(c)
+		}
+	})
 	g3 := g2.Group("/group3")
-	g3.Use(WrapMiddleware(func(c Context) error {
-		buf.WriteString("3")
-		return nil
-	}))
+	g3.Use(func(next HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			buf.WriteString("3")
+			return next(c)
+		}
+	})
 	g3.Get("", h)
 
 	request(GET, "/users", e)

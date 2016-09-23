@@ -551,14 +551,22 @@ func (e *HTTPError) Error() string {
 	return e.Message
 }
 
-// WrapMiddleware wrap `echo.HandlerFunc` into `echo.MiddlewareFunc`.
-func WrapMiddleware(h HandlerFunc) MiddlewareFunc {
+// WrapHandler wraps `http.Handler` into `echo.HandlerFunc`.
+func WrapHandler(h http.Handler) HandlerFunc {
+	return func(c Context) error {
+		h.ServeHTTP(c.Response(), c.Request())
+		return nil
+	}
+}
+
+// WrapMiddleware wraps `func(http.Handler) http.Handler` into `echo.MiddlewareFunc`
+func WrapMiddleware(m func(http.Handler) http.Handler) MiddlewareFunc {
 	return func(next HandlerFunc) HandlerFunc {
-		return func(c Context) error {
-			if err := h(c); err != nil {
-				return err
-			}
-			return next(c)
+		return func(c Context) (err error) {
+			m(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				err = next(c)
+			})).ServeHTTP(c.Response(), c.Request())
+			return
 		}
 	}
 }

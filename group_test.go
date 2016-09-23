@@ -1,8 +1,9 @@
 package echo
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // TODO: Fix me
@@ -38,11 +39,31 @@ func TestGroupRouteMiddleware(t *testing.T) {
 	e := New()
 	g := e.Group("/group")
 	h := func(Context) error { return nil }
-	m1 := WrapMiddleware(func(c Context) error { return nil })
-	m2 := WrapMiddleware(func(c Context) error { return nil })
-	m3 := WrapMiddleware(func(c Context) error { return nil })
-	m4 := WrapMiddleware(func(c Context) error { return c.NoContent(404) })
-	m5 := WrapMiddleware(func(c Context) error { return c.NoContent(405) })
+	m1 := func(next HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			return next(c)
+		}
+	}
+	m2 := func(next HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			return next(c)
+		}
+	}
+	m3 := func(next HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			return next(c)
+		}
+	}
+	m4 := func(next HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			return c.NoContent(404)
+		}
+	}
+	m5 := func(next HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			return c.NoContent(405)
+		}
+	}
 	g.Use(m1, m2, m3)
 	g.GET("/404", h, m4)
 	g.GET("/405", h, m5)
