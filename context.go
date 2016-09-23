@@ -15,6 +15,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/net/websocket"
+
 	"github.com/labstack/echo/log"
 
 	"bytes"
@@ -39,6 +41,12 @@ type (
 
 		// Request returns `*Response`.
 		Response() *Response
+
+		// WebSocket returns `*websocket.Conn`.
+		WebSocket() *websocket.Conn
+
+		// SetWebSocket sets `*websocket.Conn`.
+		SetWebSocket(*websocket.Conn)
 
 		// IsTLS returns true if HTTP connection is TLS otherwise false.
 		IsTLS() bool
@@ -194,15 +202,16 @@ type (
 	}
 
 	echoContext struct {
-		context  context.Context
-		request  *http.Request
-		response *Response
-		path     string
-		pnames   []string
-		pvalues  []string
-		query    url.Values
-		handler  HandlerFunc
-		echo     *Echo
+		context   context.Context
+		request   *http.Request
+		response  *Response
+		webSocket *websocket.Conn
+		path      string
+		pnames    []string
+		pvalues   []string
+		query     url.Values
+		handler   HandlerFunc
+		echo      *Echo
 	}
 )
 
@@ -241,6 +250,14 @@ func (c *echoContext) Request() *http.Request {
 
 func (c *echoContext) Response() *Response {
 	return c.response
+}
+
+func (c *echoContext) WebSocket() *websocket.Conn {
+	return c.webSocket
+}
+
+func (c *echoContext) SetWebSocket(ws *websocket.Conn) {
+	c.webSocket = ws
 }
 
 func (c *echoContext) IsTLS() bool {

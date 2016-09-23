@@ -52,6 +52,7 @@ import (
 	"time"
 
 	"golang.org/x/net/context"
+	"golang.org/x/net/websocket"
 
 	"github.com/labstack/echo/log"
 	glog "github.com/labstack/gommon/log"
@@ -374,6 +375,22 @@ func (e *Echo) File(path, file string) {
 	e.GET(path, func(c Context) error {
 		return c.File(file)
 	})
+}
+
+// WebSocket registers a new WebSocket route for a path with matching handler in
+// the router with optional route-level middleware.
+func (e *Echo) WebSocket(path string, h HandlerFunc, m ...MiddlewareFunc) {
+	e.GET(path, func(c Context) (err error) {
+		wss := websocket.Server{
+			Handler: func(ws *websocket.Conn) {
+				c.SetWebSocket(ws)
+				c.Response().Status = http.StatusSwitchingProtocols
+				err = h(c)
+			},
+		}
+		wss.ServeHTTP(c.Response(), c.Request())
+		return err
+	}, m...)
 }
 
 func (e *Echo) add(method, path string, handler HandlerFunc, middleware ...MiddlewareFunc) {
