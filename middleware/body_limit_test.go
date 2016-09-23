@@ -12,7 +12,6 @@ import (
 )
 
 func TestBodyLimit(t *testing.T) {
-	return
 	e := echo.New()
 	hw := []byte("Hello, World!")
 	req, _ := http.NewRequest(echo.POST, "/", bytes.NewReader(hw))
@@ -29,7 +28,7 @@ func TestBodyLimit(t *testing.T) {
 	// Based on content length (within limit)
 	if assert.NoError(t, BodyLimit("2M")(h)(c)) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, hw, rec.Body.Bytes)
+		assert.Equal(t, hw, rec.Body.Bytes())
 	}
 
 	// Based on content read (overlimit)
