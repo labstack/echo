@@ -3,6 +3,8 @@ package log
 import (
 	"io"
 
+	"github.com/labstack/gommon/color"
+
 	"github.com/labstack/gommon/log"
 )
 
@@ -11,6 +13,7 @@ type (
 	Logger interface {
 		SetOutput(io.Writer)
 		SetLevel(log.Lvl)
+		Color() *color.Color
 		Print(...interface{})
 		Printf(string, ...interface{})
 		Printj(log.JSON)

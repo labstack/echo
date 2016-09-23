@@ -61,19 +61,17 @@ import (
 type (
 	// Echo is the top-level framework instance.
 	Echo struct {
-		Server      *http.Server
-		TLSCertFile string
-		TLSKeyFile  string
-		Listener    net.Listener
-		// DisableHTTP2 disables HTTP2
+		Server       *http.Server
+		Listener     net.Listener
+		TLSServer    *http.Server
+		TLSListener  net.Listener
+		tlsConfig    *tls.Config
 		DisableHTTP2 bool
-		// Debug mode
-		Debug bool
+		Debug        bool
 		HTTPErrorHandler
 		Binder          Binder
 		Renderer        Renderer
 		Logger          log.Logger
-		tlsConfig       *tls.Config
 		premiddleware   []MiddlewareFunc
 		middleware      []MiddlewareFunc
 		maxParam        *int
@@ -521,26 +519,53 @@ func (e *Echo) Start(address string) (err error) {
 		if err != nil {
 			return
 		}
-		if e.TLSCertFile != "" && e.TLSKeyFile != "" {
+		e.Listener = tcpKeepAliveListener{e.Listener.(*net.TCPListener)}
+	}
+
+	e.Logger.Printf(" ⇛ http server started on %v", e.Logger.Color().Green(e.Listener.Addr()))
+	return e.Server.Serve(e.Listener)
+}
+
+// StartTLS starts the TLS server.
+func (e *Echo) StartTLS(address string, certFile, keyFile string) (err error) {
+	if e.TLSServer == nil {
+		if e.Server == nil {
+			e.TLSServer = &http.Server{Handler: e}
+		} else {
+			e.TLSServer = e.Server
+		}
+	}
+	if e.TLSListener == nil {
+		e.TLSListener, err = net.Listen("tcp", address)
+		if err != nil {
+			return
+		}
+		if certFile != "" && keyFile != "" {
 			if !e.DisableHTTP2 {
 				e.tlsConfig.NextProtos = append(e.tlsConfig.NextProtos, "h2")
 			}
 			e.tlsConfig.Certificates = make([]tls.Certificate, 1)
-			e.tlsConfig.Certificates[0], err = tls.LoadX509KeyPair(e.TLSCertFile, e.TLSKeyFile)
+			e.tlsConfig.Certificates[0], err = tls.LoadX509KeyPair(certFile, keyFile)
 			if err != nil {
 				return
 			}
-			e.Listener = tls.NewListener(tcpKeepAliveListener{e.Listener.(*net.TCPListener)}, e.tlsConfig)
+			e.TLSListener = tls.NewListener(tcpKeepAliveListener{e.TLSListener.(*net.TCPListener)}, e.tlsConfig)
 		} else {
-			e.Listener = tcpKeepAliveListener{e.Listener.(*net.TCPListener)}
+			return errors.New("invalid TLS configuration")
 		}
 	}
-	return e.Server.Serve(e.Listener)
+	e.Logger.Printf(" ⇛ https server started on %v", e.Logger.Color().Green(e.TLSListener.Addr()))
+	return e.TLSServer.Serve(e.TLSListener)
 }
 
 // Stop stops the HTTP server
 func (e *Echo) Stop() error {
 	return e.Listener.Close()
+}
+
+// StopTLS stops the TLS server
+func (e *Echo) StopTLS() error {
+	return e.TLSListener.Close()
 }
 
 // tcpKeepAliveListener sets TCP keep-alive timeouts on accepted
