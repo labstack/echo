@@ -104,6 +104,9 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 				if t.Method.Alg() != config.SigningMethod {
 					return nil, fmt.Errorf("unexpected jwt signing method=%v", t.Header["alg"])
 				}
+				if strings.HasPrefix(t.Method.Alg(), "RS") {
+					return jwt.ParseRSAPublicKeyFromPEM(config.SigningKey)
+				}
 				return config.SigningKey, nil
 
 			})

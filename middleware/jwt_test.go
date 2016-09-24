@@ -1,6 +1,10 @@
 package middleware
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"net/http"
 	"testing"
 
@@ -28,7 +32,7 @@ func TestJWT(t *testing.T) {
 
 	// Unexpected signing method
 	config.SigningKey = []byte("secret")
-	config.SigningMethod = "RS256"
+	config.SigningMethod = jwt.SigningMethodRS256.Name
 	h := JWTWithConfig(config)(handler)
 	he := h(c).(*echo.HTTPError)
 	assert.Equal(t, http.StatusBadRequest, he.Code)
@@ -54,4 +58,28 @@ func TestJWT(t *testing.T) {
 	h = JWT([]byte("secret"))(handler)
 	he = h(c).(*echo.HTTPError)
 	assert.Equal(t, http.StatusBadRequest, he.Code)
+
+	// RS256 valid public key
+	privateKey, err := rsa.GenerateKey(rand.Reader, 512)
+	assert.Nil(t, err)
+	rsaToken, err := jwt.New(jwt.SigningMethodRS256).SignedString(privateKey)
+	assert.Nil(t, err)
+	pubDer, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
+	assert.Nil(t, err)
+	pubBlk := pem.Block{
+		Type:    "PUBLIC KEY",
+		Headers: nil,
+		Bytes:   pubDer,
+	}
+	config.SigningKey = pem.EncodeToMemory(&pubBlk)
+	config.SigningMethod = jwt.SigningMethodRS256.Name
+	req.Header().Set(echo.HeaderAuthorization, bearer+" "+rsaToken)
+	h = JWTWithConfig(config)(handler)
+	assert.NoError(t, h(c))
+
+	// RS256 invalid public key
+	config.SigningKey = []byte("Invalid key")
+	h = JWTWithConfig(config)(handler)
+	he = h(c).(*echo.HTTPError)
+	assert.Equal(t, http.StatusUnauthorized, he.Code)
 }
