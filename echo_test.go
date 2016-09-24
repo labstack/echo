@@ -407,6 +407,11 @@ func TestEchoContext(t *testing.T) {
 	e.ReleaseContext(c)
 }
 
+func TestEchoStartShutdown(t *testing.T) {
+	e := New()
+	assert.NoError(t, e.Start(":1323"))
+}
+
 func testMethod(t *testing.T, method, path string, e *Echo) {
 	p := reflect.ValueOf(path)
 	h := reflect.ValueOf(func(c Context) error {

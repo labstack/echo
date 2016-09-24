@@ -16,3 +16,4 @@ import:
 - package: golang.org/x/net
   subpackages:
   - context
+- package: gopkg.in/tylerb/graceful.v1

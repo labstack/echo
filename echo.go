@@ -43,7 +43,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"path"
 	"reflect"
@@ -56,21 +55,21 @@ import (
 
 	"github.com/labstack/echo/log"
 	glog "github.com/labstack/gommon/log"
+	"github.com/tylerb/graceful"
 )
 
 type (
 	// Echo is the top-level framework instance.
 	Echo struct {
-		Server       *http.Server
-		Listener     net.Listener
-		TLSListener  net.Listener
-		tlsConfig    *tls.Config
-		DisableHTTP2 bool
-		Debug        bool
+		Server          *http.Server
+		ShutdownTimeout time.Duration
+		DisableHTTP2    bool
+		Debug           bool
 		HTTPErrorHandler
 		Binder          Binder
 		Renderer        Renderer
 		Logger          log.Logger
+		graceful        *graceful.Server
 		premiddleware   []MiddlewareFunc
 		middleware      []MiddlewareFunc
 		maxParam        *int
@@ -229,22 +228,25 @@ var (
 // New creates an instance of Echo.
 func New() (e *Echo) {
 	e = &Echo{
-		maxParam: new(int),
-		// TODO: https://github.com/golang/go/commit/d24f446a90ea94b87591bf16228d7d871fec3d92
-		tlsConfig: &tls.Config{
-			NextProtos: []string{"http/1.1"},
-		},
+		Server:          new(http.Server),
+		ShutdownTimeout: 5 * time.Second,
+		maxParam:        new(int),
+	}
+	e.graceful = &graceful.Server{
+		Timeout: e.ShutdownTimeout,
+		Server:  e.Server,
+		Logger:  graceful.DefaultLogger(),
 	}
 	e.pool.New = func() interface{} {
 		return e.NewContext(nil, nil)
 	}
 	e.router = NewRouter(e)
-	// Defaults
 	e.HTTPErrorHandler = e.DefaultHTTPErrorHandler
 	e.Binder = &binder{}
 	l := glog.New("echo")
 	l.SetLevel(glog.OFF)
 	e.Logger = l
+	e.graceful.Logger.SetOutput(l.Output())
 	return
 }
 
@@ -258,11 +260,6 @@ func (e *Echo) NewContext(r *http.Request, w http.ResponseWriter) Context {
 		pvalues:  make([]string, *e.maxParam),
 		handler:  NotFoundHandler,
 	}
-}
-
-// TLSConfig returns internal TLS configuration.
-func (e *Echo) TLSConfig() *tls.Config {
-	return e.tlsConfig
 }
 
 // Router returns router.
@@ -390,15 +387,13 @@ func (e *Echo) File(path, file string) {
 // the router with optional route-level middleware.
 func (e *Echo) WebSocket(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	e.GET(path, func(c Context) (err error) {
-		wss := websocket.Server{
-			Handler: func(ws *websocket.Conn) {
-				c.SetWebSocket(ws)
-				c.Response().Status = http.StatusSwitchingProtocols
-				err = h(c)
-			},
-		}
-		wss.ServeHTTP(c.Response(), c.Request())
-		return err
+		websocket.Handler(func(ws *websocket.Conn) {
+			defer ws.Close()
+			c.SetWebSocket(ws)
+			c.Response().Status = http.StatusSwitchingProtocols
+			err = h(c)
+		}).ServeHTTP(c.Response(), c.Request())
+		return
 	}, m...)
 }
 
@@ -508,77 +503,42 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	e.pool.Put(c)
 }
 
+func (e *Echo) applyServerConfig(address string) {
+	e.Server.Addr = address
+	e.Server.Handler = e
+}
+
 // Start starts the HTTP server.
 func (e *Echo) Start(address string) (err error) {
-	if e.Server == nil {
-		e.Server = &http.Server{Handler: e}
-	}
-	if e.Listener == nil {
-		e.Listener, err = net.Listen("tcp", address)
-		if err != nil {
-			return
-		}
-		e.Listener = tcpKeepAliveListener{e.Listener.(*net.TCPListener)}
-	}
-
-	e.Logger.Printf(" ⇛ http server started on %v", e.Logger.Color().Green(e.Listener.Addr()))
-	return e.Server.Serve(e.Listener)
+	e.applyServerConfig(address)
+	return e.graceful.ListenAndServe()
 }
 
 // StartTLS starts the TLS server.
 func (e *Echo) StartTLS(address string, certFile, keyFile string) (err error) {
-	if e.Server == nil {
-		e.Server = &http.Server{Handler: e}
+	e.applyServerConfig(address)
+	if certFile == "" || keyFile == "" {
+		return errors.New("invalid tls configuration")
 	}
-	if e.TLSListener == nil {
-		e.TLSListener, err = net.Listen("tcp", address)
-		if err != nil {
-			return
-		}
-		if certFile != "" && keyFile != "" {
-			if !e.DisableHTTP2 {
-				e.tlsConfig.NextProtos = append(e.tlsConfig.NextProtos, "h2")
-			}
-			e.tlsConfig.Certificates = make([]tls.Certificate, 1)
-			e.tlsConfig.Certificates[0], err = tls.LoadX509KeyPair(certFile, keyFile)
-			if err != nil {
-				return
-			}
-			e.TLSListener = tls.NewListener(tcpKeepAliveListener{e.TLSListener.(*net.TCPListener)}, e.tlsConfig)
-		} else {
-			return errors.New("invalid TLS configuration")
-		}
+	config := &tls.Config{}
+	if e.Server.TLSConfig != nil {
+		// TODO: https://github.com/golang/go/commit/d24f446a90ea94b87591bf16228d7d871fec3d92
+		*config = *e.Server.TLSConfig
 	}
-	e.Logger.Printf(" ⇛ https server started on %v", e.Logger.Color().Green(e.TLSListener.Addr()))
-	return e.Server.Serve(e.TLSListener)
-}
-
-// Stop stops the HTTP server
-func (e *Echo) Stop() error {
-	return e.Listener.Close()
-}
-
-// StopTLS stops the TLS server
-func (e *Echo) StopTLS() error {
-	return e.TLSListener.Close()
-}
-
-// tcpKeepAliveListener sets TCP keep-alive timeouts on accepted
-// connections. It's used by ListenAndServe and ListenAndServeTLS so
-// dead TCP connections (e.g. closing laptop mid-download) eventually
-// go away.
-type tcpKeepAliveListener struct {
-	*net.TCPListener
-}
-
-func (ln tcpKeepAliveListener) Accept() (c net.Conn, err error) {
-	tc, err := ln.AcceptTCP()
+	if !e.DisableHTTP2 {
+		config.NextProtos = append(config.NextProtos, "h2")
+	}
+	config.Certificates = make([]tls.Certificate, 1)
+	config.Certificates[0], err = tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
 		return
 	}
-	tc.SetKeepAlive(true)
-	tc.SetKeepAlivePeriod(3 * time.Minute)
-	return tc, nil
+	return e.graceful.ListenAndServeTLSConfig(config)
+}
+
+// Shutdown gracefully shutdown the server with timeout.
+func (e *Echo) Shutdown(timeout time.Duration) {
+	e.graceful.Stop(timeout)
 }
 
 // NewHTTPError creates a new HTTPError instance.
