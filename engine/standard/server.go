@@ -112,9 +112,7 @@ func (s *Server) Start() error {
 
 		if s.config.TLSCertFile != "" && s.config.TLSKeyFile != "" {
 			// TODO: https://github.com/golang/go/commit/d24f446a90ea94b87591bf16228d7d871fec3d92
-			config := &tls.Config{
-				NextProtos: []string{"http/1.1"},
-			}
+			config := &tls.Config{}
 			if !s.config.DisableHTTP2 {
 				config.NextProtos = append(config.NextProtos, "h2")
 			}
