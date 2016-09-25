@@ -435,7 +435,7 @@ func testMethod(t *testing.T, method, path string, e *Echo) {
 	reflect.ValueOf(i).MethodByName(method).Call([]reflect.Value{p, h})
 	_, body := request(method, path, e)
 	if body != method {
-		t.Errorf("expected body `%s`, got %s.", method, body)
+		t.Errorf("expected body `%s`, got %s", method, body)
 	}
 }
 

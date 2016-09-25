@@ -1,10 +1,10 @@
 hash: 9b52073f044ab24c64a0f01e3efef2aabdeb7ca21abc9129d2ee7a0c995e4412
-updated: 2016-09-24T12:47:09.052189516-07:00
+updated: 2016-09-25T11:05:56.886149316-07:00
 imports:
 - name: github.com/dgrijalva/jwt-go
   version: 24c63f56522a87ec5339cc3567883f1039378fdb
 - name: github.com/labstack/gommon
-  version: 35d2b9f99cc2aa9f89dce3ea318229c68769e182
+  version: 0e66403a8c305a543b9a53c21778a28536f836c0
   subpackages:
   - bytes
   - color
@@ -15,9 +15,11 @@ imports:
 - name: github.com/mattn/go-isatty
   version: 66b8e73f3f5cda9f96b69efd03dd3d7fc4a5cdb8
 - name: github.com/stretchr/testify
-  version: dfaf6b82bc18869f659e7b42a5a768e48bda2429
+  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
   subpackages:
   - assert
+- name: github.com/tylerb/graceful
+  version: 50a48b6e73fcc75b45e22c05b79629a67c79e938
 - name: github.com/valyala/fasthttp
   version: d03a22720925ae6fd6f81db717d9288fc2771d79
 - name: github.com/valyala/fasttemplate

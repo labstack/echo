@@ -54,6 +54,7 @@ import (
 	"golang.org/x/net/websocket"
 
 	"github.com/labstack/echo/log"
+	"github.com/labstack/gommon/color"
 	glog "github.com/labstack/gommon/log"
 	"github.com/tylerb/graceful"
 )
@@ -517,7 +518,7 @@ func (e *Echo) Start(address string) (err error) {
 	e.Server.Handler = e
 	e.graceful.Server = e.Server
 	e.graceful.Addr = address
-	e.Logger.Printf(" ⇛ http server started on %s", e.Logger.Color().Green(address))
+	color.Printf(" ⇛ http server started on %s\n", color.Green(address))
 	return e.graceful.ListenAndServe()
 }
 
@@ -538,7 +539,7 @@ func (e *Echo) StartTLS(address string, certFile, keyFile string) (err error) {
 	if err != nil {
 		return
 	}
-	e.Logger.Printf(" ⇛ https server started on %s", e.Logger.Color().Green(address))
+	color.Printf(" ⇛ https server started on %s\n", color.Green(address))
 	return e.gracefulTLS.ListenAndServeTLSConfig(e.TLSConfig)
 }
 
