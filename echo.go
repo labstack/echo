@@ -63,7 +63,6 @@ type (
 	Echo struct {
 		Server          *http.Server
 		TLSServer       *http.Server
-		TLSConfig       *tls.Config
 		ShutdownTimeout time.Duration
 		DisableHTTP2    bool
 		Debug           bool
@@ -514,6 +513,7 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (e *Echo) Start(address string) (err error) {
 	e.graceful.Server = e.Server
 	e.graceful.Addr = address
+	e.Logger.Printf(" ⇛ http server started on %s", e.Logger.Color().Green(address))
 	return e.graceful.ListenAndServe()
 }
 
@@ -527,9 +527,9 @@ func (e *Echo) StartTLS(address string, certFile, keyFile string) (err error) {
 		return errors.New("invalid tls configuration")
 	}
 	config := &tls.Config{}
-	if e.TLSConfig != nil {
+	if e.TLSServer.TLSConfig != nil {
 		// TODO: https://github.com/golang/go/commit/d24f446a90ea94b87591bf16228d7d871fec3d92
-		*config = *e.TLSConfig
+		*config = *e.TLSServer.TLSConfig
 	}
 	if !e.DisableHTTP2 {
 		config.NextProtos = append(config.NextProtos, "h2")
@@ -539,6 +539,7 @@ func (e *Echo) StartTLS(address string, certFile, keyFile string) (err error) {
 	if err != nil {
 		return
 	}
+	e.Logger.Printf(" ⇛ https server started on %s", e.Logger.Color().Green(address))
 	return e.gracefulTLS.ListenAndServeTLSConfig(config)
 }
 
