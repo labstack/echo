@@ -17,8 +17,6 @@ import (
 
 	"golang.org/x/net/websocket"
 
-	"github.com/labstack/echo/log"
-
 	"bytes"
 
 	"github.com/labstack/echo/context"
@@ -185,7 +183,7 @@ type (
 		SetHandler(HandlerFunc)
 
 		// Logger returns the `Logger` instance.
-		Logger() log.Logger
+		Logger() Logger
 
 		// Echo returns the `Echo` instance.
 		Echo() *Echo
@@ -560,7 +558,7 @@ func (c *echoContext) SetHandler(h HandlerFunc) {
 	c.handler = h
 }
 
-func (c *echoContext) Logger() log.Logger {
+func (c *echoContext) Logger() Logger {
 	return c.echo.Logger
 }
 

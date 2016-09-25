@@ -411,7 +411,7 @@ func TestEchoContext(t *testing.T) {
 func TestEchoStart(t *testing.T) {
 	e := New()
 	go func() {
-		assert.NoError(t, e.Start(":1323"))
+		assert.NoError(t, e.Start(":0"))
 	}()
 	time.Sleep(200 * time.Millisecond)
 	e.Shutdown(1 * time.Second)
@@ -420,7 +420,7 @@ func TestEchoStart(t *testing.T) {
 func TestEchoStartTLS(t *testing.T) {
 	e := New()
 	go func() {
-		assert.NoError(t, e.StartTLS(":1323", "_fixture/certs/cert.pem", "_fixture/certs/key.pem"))
+		assert.NoError(t, e.StartTLS(":0", "_fixture/certs/cert.pem", "_fixture/certs/key.pem"))
 	}()
 	time.Sleep(200 * time.Millisecond)
 	e.ShutdownTLS(1 * time.Second)

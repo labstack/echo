@@ -1,4 +1,4 @@
-package log
+package echo
 
 import (
 	"io"
@@ -13,6 +13,8 @@ type (
 		SetOutput(io.Writer)
 		Level() log.Lvl
 		SetLevel(log.Lvl)
+		Prefix() string
+		SetPrefix(string)
 		Print(...interface{})
 		Printf(string, ...interface{})
 		Printj(log.JSON)

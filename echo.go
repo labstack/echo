@@ -54,7 +54,6 @@ import (
 	"golang.org/x/net/context"
 	"golang.org/x/net/websocket"
 
-	"github.com/labstack/echo/log"
 	"github.com/labstack/gommon/color"
 	glog "github.com/labstack/gommon/log"
 	"github.com/tylerb/graceful"
@@ -72,7 +71,7 @@ type (
 		HTTPErrorHandler
 		Binder          Binder
 		Renderer        Renderer
-		Logger          log.Logger
+		Logger          Logger
 		graceful        *graceful.Server
 		gracefulTLS     *graceful.Server
 		premiddleware   []MiddlewareFunc
@@ -239,21 +238,17 @@ func New() (e *Echo) {
 		TLSConfig:       new(tls.Config),
 		ShutdownTimeout: 15 * time.Second,
 		Logger:          glog.New("echo"),
-		maxParam:        new(int),
+		graceful:        new(graceful.Server),
 		gracefulTLS:     new(graceful.Server),
+		maxParam:        new(int),
 	}
+	e.HTTPErrorHandler = e.DefaultHTTPErrorHandler
+	e.Binder = &binder{}
 	e.Logger.SetLevel(glog.OFF)
-	e.graceful = &graceful.Server{
-		Timeout: e.ShutdownTimeout,
-		Logger:  slog.New(e.Logger.Output(), "echo: ", 0),
-	}
-	*e.gracefulTLS = *e.graceful
 	e.pool.New = func() interface{} {
 		return e.NewContext(nil, nil)
 	}
 	e.router = NewRouter(e)
-	e.HTTPErrorHandler = e.DefaultHTTPErrorHandler
-	e.Binder = &binder{}
 	return
 }
 
@@ -510,22 +505,26 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	e.pool.Put(c)
 }
 
+func (e *Echo) configGraceful(gs *graceful.Server, s *http.Server, address string) {
+	gs.Server = s
+	gs.Addr = address
+	gs.Handler = e
+	gs.Timeout = e.ShutdownTimeout
+	gs.Logger = slog.New(e.Logger.Output(), e.Logger.Prefix()+": ", 0)
+}
+
 // Start starts the HTTP server.
-// Note: If custom `http.Server` is used, it's Addr and Handler properties are ignored.
+// Note: If custom `Echo#Server` is used, it's Addr and Handler properties are ignored.
 func (e *Echo) Start(address string) (err error) {
-	e.Server.Handler = e
-	e.graceful.Server = e.Server
-	e.graceful.Addr = address
+	e.configGraceful(e.graceful, e.Server, address)
 	color.Printf(" ⇛ http server started on %s\n", color.Green(address))
 	return e.graceful.ListenAndServe()
 }
 
 // StartTLS starts the TLS server.
-// Note: If custom `http.Server` is used, it's Addr and Handler properties are ignored.
+// Note: If custom `Echo#TLSServer` is used, it's Addr and Handler properties are ignored.
 func (e *Echo) StartTLS(address string, certFile, keyFile string) (err error) {
-	e.TLSServer.Handler = e
-	e.gracefulTLS.Server = e.TLSServer
-	e.gracefulTLS.Addr = address
+	e.configGraceful(e.gracefulTLS, e.TLSServer, address)
 	if certFile == "" || keyFile == "" {
 		return errors.New("invalid tls configuration")
 	}
