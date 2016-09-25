@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"golang.org/x/net/websocket"
 
@@ -407,9 +408,22 @@ func TestEchoContext(t *testing.T) {
 	e.ReleaseContext(c)
 }
 
-func TestEchoStartShutdown(t *testing.T) {
+func TestEchoStart(t *testing.T) {
 	e := New()
-	assert.NoError(t, e.Start(":1323"))
+	go func() {
+		assert.NoError(t, e.Start(":1323"))
+	}()
+	time.Sleep(200 * time.Millisecond)
+	e.Shutdown(1 * time.Second)
+}
+
+func TestEchoStartTLS(t *testing.T) {
+	e := New()
+	go func() {
+		assert.NoError(t, e.StartTLS(":1323", "_fixture/certs/cert.pem", "_fixture/certs/key.pem"))
+	}()
+	time.Sleep(200 * time.Millisecond)
+	e.ShutdownTLS(1 * time.Second)
 }
 
 func testMethod(t *testing.T, method, path string, e *Echo) {

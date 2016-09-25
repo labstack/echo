@@ -63,6 +63,7 @@ type (
 	Echo struct {
 		Server          *http.Server
 		TLSServer       *http.Server
+		TLSConfig       *tls.Config
 		ShutdownTimeout time.Duration
 		DisableHTTP2    bool
 		Debug           bool
@@ -526,9 +527,9 @@ func (e *Echo) StartTLS(address string, certFile, keyFile string) (err error) {
 		return errors.New("invalid tls configuration")
 	}
 	config := &tls.Config{}
-	if e.Server.TLSConfig != nil {
+	if e.TLSConfig != nil {
 		// TODO: https://github.com/golang/go/commit/d24f446a90ea94b87591bf16228d7d871fec3d92
-		*config = *e.Server.TLSConfig
+		*config = *e.TLSConfig
 	}
 	if !e.DisableHTTP2 {
 		config.NextProtos = append(config.NextProtos, "h2")
