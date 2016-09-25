@@ -43,6 +43,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	slog "log"
 	"net/http"
 	"path"
 	"reflect"
@@ -237,12 +238,14 @@ func New() (e *Echo) {
 		// TODO: https://github.com/golang/go/commit/d24f446a90ea94b87591bf16228d7d871fec3d92
 		TLSConfig:       new(tls.Config),
 		ShutdownTimeout: 15 * time.Second,
+		Logger:          glog.New("echo"),
 		maxParam:        new(int),
 		gracefulTLS:     new(graceful.Server),
 	}
+	e.Logger.SetLevel(glog.OFF)
 	e.graceful = &graceful.Server{
 		Timeout: e.ShutdownTimeout,
-		Logger:  graceful.DefaultLogger(),
+		Logger:  slog.New(e.Logger.Output(), "echo: ", 0),
 	}
 	*e.gracefulTLS = *e.graceful
 	e.pool.New = func() interface{} {
@@ -251,11 +254,6 @@ func New() (e *Echo) {
 	e.router = NewRouter(e)
 	e.HTTPErrorHandler = e.DefaultHTTPErrorHandler
 	e.Binder = &binder{}
-	l := glog.New("echo")
-	l.SetLevel(glog.OFF)
-	e.Logger = l
-	e.graceful.Logger.SetOutput(l.Output())
-	e.gracefulTLS.Logger.SetOutput(l.Output())
 	return
 }
 

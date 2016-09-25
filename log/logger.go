@@ -9,7 +9,9 @@ import (
 type (
 	// Logger defines the logging interface.
 	Logger interface {
+		Output() io.Writer
 		SetOutput(io.Writer)
+		Level() log.Lvl
 		SetLevel(log.Lvl)
 		Print(...interface{})
 		Printf(string, ...interface{})
