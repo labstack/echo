@@ -231,8 +231,9 @@ var (
 // New creates an instance of Echo.
 func New() (e *Echo) {
 	e = &Echo{
-		Server:          new(http.Server),
-		TLSServer:       new(http.Server),
+		Server:    new(http.Server),
+		TLSServer: new(http.Server),
+		// TODO: https://github.com/golang/go/commit/d24f446a90ea94b87591bf16228d7d871fec3d92
 		TLSConfig:       new(tls.Config),
 		ShutdownTimeout: 15 * time.Second,
 		maxParam:        new(int),
@@ -253,6 +254,7 @@ func New() (e *Echo) {
 	l.SetLevel(glog.OFF)
 	e.Logger = l
 	e.graceful.Logger.SetOutput(l.Output())
+	e.gracefulTLS.Logger.SetOutput(l.Output())
 	return
 }
 
@@ -510,9 +512,9 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // Start starts the HTTP server.
-// Note: If custom `http.Server` is used, it's Addr property is ignored in favor
-// of provided address.
+// Note: If custom `http.Server` is used, it's Addr and Handler properties are ignored.
 func (e *Echo) Start(address string) (err error) {
+	e.Server.Handler = e
 	e.graceful.Server = e.Server
 	e.graceful.Addr = address
 	e.Logger.Printf(" ⇛ http server started on %s", e.Logger.Color().Green(address))
@@ -520,29 +522,24 @@ func (e *Echo) Start(address string) (err error) {
 }
 
 // StartTLS starts the TLS server.
-// Note: If custom `http.Server` is used, it's Addr property is ignored in favor
-// of provided address.
+// Note: If custom `http.Server` is used, it's Addr and Handler properties are ignored.
 func (e *Echo) StartTLS(address string, certFile, keyFile string) (err error) {
+	e.TLSServer.Handler = e
 	e.gracefulTLS.Server = e.TLSServer
 	e.gracefulTLS.Addr = address
 	if certFile == "" || keyFile == "" {
 		return errors.New("invalid tls configuration")
 	}
-	config := new(tls.Config)
-	// if e.TLSConfig != nil {
-	// TODO: https://github.com/golang/go/commit/d24f446a90ea94b87591bf16228d7d871fec3d92
-	*config = *e.TLSConfig
-	// }
 	if !e.DisableHTTP2 {
-		config.NextProtos = append(config.NextProtos, "h2")
+		e.TLSConfig.NextProtos = append(e.TLSConfig.NextProtos, "h2")
 	}
-	config.Certificates = make([]tls.Certificate, 1)
-	config.Certificates[0], err = tls.LoadX509KeyPair(certFile, keyFile)
+	e.TLSConfig.Certificates = make([]tls.Certificate, 1)
+	e.TLSConfig.Certificates[0], err = tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
 		return
 	}
 	e.Logger.Printf(" ⇛ https server started on %s", e.Logger.Color().Green(address))
-	return e.gracefulTLS.ListenAndServeTLSConfig(config)
+	return e.gracefulTLS.ListenAndServeTLSConfig(e.TLSConfig)
 }
 
 // Shutdown gracefully shutdown the HTTP server with timeout.
