@@ -62,6 +62,7 @@ type (
 	// Echo is the top-level framework instance.
 	Echo struct {
 		Server          *http.Server
+		TLSServer       *http.Server
 		ShutdownTimeout time.Duration
 		DisableHTTP2    bool
 		Debug           bool
@@ -70,6 +71,7 @@ type (
 		Renderer        Renderer
 		Logger          log.Logger
 		graceful        *graceful.Server
+		gracefulTLS     *graceful.Server
 		premiddleware   []MiddlewareFunc
 		middleware      []MiddlewareFunc
 		maxParam        *int
@@ -229,14 +231,16 @@ var (
 func New() (e *Echo) {
 	e = &Echo{
 		Server:          new(http.Server),
-		ShutdownTimeout: 5 * time.Second,
+		TLSServer:       new(http.Server),
+		ShutdownTimeout: 15 * time.Second,
 		maxParam:        new(int),
+		gracefulTLS:     new(graceful.Server),
 	}
 	e.graceful = &graceful.Server{
 		Timeout: e.ShutdownTimeout,
-		Server:  e.Server,
 		Logger:  graceful.DefaultLogger(),
 	}
+	*e.gracefulTLS = *e.graceful
 	e.pool.New = func() interface{} {
 		return e.NewContext(nil, nil)
 	}
@@ -503,20 +507,21 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	e.pool.Put(c)
 }
 
-func (e *Echo) applyServerConfig(address string) {
-	e.Server.Addr = address
-	e.Server.Handler = e
-}
-
 // Start starts the HTTP server.
+// Note: If custom `http.Server` is used, it's Addr property is ignored in favor
+// of provided address.
 func (e *Echo) Start(address string) (err error) {
-	e.applyServerConfig(address)
+	e.graceful.Server = e.Server
+	e.graceful.Addr = address
 	return e.graceful.ListenAndServe()
 }
 
 // StartTLS starts the TLS server.
+// Note: If custom `http.Server` is used, it's Addr property is ignored in favor
+// of provided address.
 func (e *Echo) StartTLS(address string, certFile, keyFile string) (err error) {
-	e.applyServerConfig(address)
+	e.gracefulTLS.Server = e.TLSServer
+	e.gracefulTLS.Addr = address
 	if certFile == "" || keyFile == "" {
 		return errors.New("invalid tls configuration")
 	}
@@ -533,12 +538,17 @@ func (e *Echo) StartTLS(address string, certFile, keyFile string) (err error) {
 	if err != nil {
 		return
 	}
-	return e.graceful.ListenAndServeTLSConfig(config)
+	return e.gracefulTLS.ListenAndServeTLSConfig(config)
 }
 
-// Shutdown gracefully shutdown the server with timeout.
+// Shutdown gracefully shutdown the HTTP server with timeout.
 func (e *Echo) Shutdown(timeout time.Duration) {
 	e.graceful.Stop(timeout)
+}
+
+// ShutdownTLS gracefully shutdown the TLS server with timeout.
+func (e *Echo) ShutdownTLS(timeout time.Duration) {
+	e.gracefulTLS.Stop(timeout)
 }
 
 // NewHTTPError creates a new HTTPError instance.
