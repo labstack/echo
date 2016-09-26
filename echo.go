@@ -51,6 +51,8 @@ import (
 	"sync"
 	"time"
 
+	"rsc.io/letsencrypt"
+
 	"golang.org/x/net/context"
 	"golang.org/x/net/websocket"
 
@@ -65,6 +67,8 @@ type (
 		Server          *http.Server
 		TLSServer       *http.Server
 		TLSConfig       *tls.Config
+		TLSCacheFile    string
+		TLSHosts        []string
 		ShutdownTimeout time.Duration
 		DisableHTTP2    bool
 		Debug           bool
@@ -72,14 +76,16 @@ type (
 		Binder          Binder
 		Renderer        Renderer
 		Logger          Logger
+		tlsManager      letsencrypt.Manager
 		graceful        *graceful.Server
 		gracefulTLS     *graceful.Server
 		premiddleware   []MiddlewareFunc
 		middleware      []MiddlewareFunc
 		maxParam        *int
+		router          *Router
 		notFoundHandler HandlerFunc
 		pool            sync.Pool
-		router          *Router
+		color           *color.Color
 	}
 
 	// Route contains a handler and information for matching against requests.
@@ -230,17 +236,20 @@ var (
 )
 
 // New creates an instance of Echo.
+
 func New() (e *Echo) {
 	e = &Echo{
 		Server:    new(http.Server),
 		TLSServer: new(http.Server),
 		// TODO: https://github.com/golang/go/commit/d24f446a90ea94b87591bf16228d7d871fec3d92
 		TLSConfig:       new(tls.Config),
+		TLSCacheFile:    "letsencrypt.cache",
 		ShutdownTimeout: 15 * time.Second,
 		Logger:          glog.New("echo"),
 		graceful:        new(graceful.Server),
 		gracefulTLS:     new(graceful.Server),
 		maxParam:        new(int),
+		color:           color.New(),
 	}
 	e.HTTPErrorHandler = e.DefaultHTTPErrorHandler
 	e.Binder = &binder{}
@@ -505,31 +514,38 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	e.pool.Put(c)
 }
 
-func (e *Echo) configGraceful(gs *graceful.Server, s *http.Server, address string) {
+func (e *Echo) config(gs *graceful.Server, s *http.Server, address string) {
+	e.color.SetOutput(e.Logger.Output())
 	gs.Server = s
 	gs.Addr = address
 	gs.Handler = e
 	gs.Timeout = e.ShutdownTimeout
 	gs.Logger = slog.New(e.Logger.Output(), e.Logger.Prefix()+": ", 0)
+	if gs == e.gracefulTLS && !e.DisableHTTP2 {
+		e.TLSConfig.NextProtos = append(e.TLSConfig.NextProtos, "h2")
+	}
+	// Global log
+	slog.SetOutput(e.Logger.Output())
+	slog.SetPrefix(e.Logger.Prefix() + ": ")
+	slog.SetFlags(0)
 }
 
 // Start starts the HTTP server.
-// Note: If custom `Echo#Server` is used, it's Addr and Handler properties are ignored.
+// Note: If custom `Echo#Server` is used, it's Addr and Handler properties are
+// ignored.
 func (e *Echo) Start(address string) (err error) {
-	e.configGraceful(e.graceful, e.Server, address)
+	e.config(e.graceful, e.Server, address)
 	color.Printf(" ⇛ http server started on %s\n", color.Green(address))
 	return e.graceful.ListenAndServe()
 }
 
 // StartTLS starts the TLS server.
-// Note: If custom `Echo#TLSServer` is used, it's Addr and Handler properties are ignored.
+// Note: If custom `Echo#TLSServer` is used, it's Addr and Handler properties are
+// ignored.
 func (e *Echo) StartTLS(address string, certFile, keyFile string) (err error) {
-	e.configGraceful(e.gracefulTLS, e.TLSServer, address)
+	e.config(e.gracefulTLS, e.TLSServer, address)
 	if certFile == "" || keyFile == "" {
 		return errors.New("invalid tls configuration")
-	}
-	if !e.DisableHTTP2 {
-		e.TLSConfig.NextProtos = append(e.TLSConfig.NextProtos, "h2")
 	}
 	e.TLSConfig.Certificates = make([]tls.Certificate, 1)
 	e.TLSConfig.Certificates[0], err = tls.LoadX509KeyPair(certFile, keyFile)
@@ -537,6 +553,22 @@ func (e *Echo) StartTLS(address string, certFile, keyFile string) (err error) {
 		return
 	}
 	color.Printf(" ⇛ https server started on %s\n", color.Green(address))
+	return e.gracefulTLS.ListenAndServeTLSConfig(e.TLSConfig)
+}
+
+// StartAutoTLS starts the TLS server using certificates automatically from https://letsencrypt.org.
+// Note: If custom `Echo#TLSServer` is used, it's Addr and Handler properties are
+// ignored.
+func (e *Echo) StartAutoTLS() (err error) {
+	address := ":443"
+	e.config(e.gracefulTLS, e.TLSServer, address)
+	e.TLSConfig.GetCertificate = e.tlsManager.GetCertificate
+	if err = e.tlsManager.CacheFile(e.TLSCacheFile); err != nil {
+		return
+	}
+	// NOTE: Added security
+	e.tlsManager.SetHosts(e.TLSHosts)
+	color.Printf(" ⇛ https auto tls server started on %s\n", color.Green(address))
 	return e.gracefulTLS.ListenAndServeTLSConfig(e.TLSConfig)
 }
 

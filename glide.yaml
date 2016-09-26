@@ -17,3 +17,4 @@ import:
   subpackages:
   - context
 - package: gopkg.in/tylerb/graceful.v1
+- package: rsc.io/letsencrypt

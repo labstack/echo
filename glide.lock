@@ -1,10 +1,10 @@
-hash: 9b52073f044ab24c64a0f01e3efef2aabdeb7ca21abc9129d2ee7a0c995e4412
-updated: 2016-09-25T11:05:56.886149316-07:00
+hash: bc7c67661e65a599e3ba58ed94c913571971be4acdb9f6c4238d666fc71caa8c
+updated: 2016-09-25T16:36:18.128445429-07:00
 imports:
 - name: github.com/dgrijalva/jwt-go
   version: 24c63f56522a87ec5339cc3567883f1039378fdb
 - name: github.com/labstack/gommon
-  version: 0e66403a8c305a543b9a53c21778a28536f836c0
+  version: f3b1a1b3bd4726161e1200863d278df7da5e66ff
   subpackages:
   - bytes
   - color
@@ -14,8 +14,10 @@ imports:
   version: ed8eb9e318d7a84ce5915b495b7d35e0cfe7b5a8
 - name: github.com/mattn/go-isatty
   version: 66b8e73f3f5cda9f96b69efd03dd3d7fc4a5cdb8
+- name: github.com/miekg/dns
+  version: db96a2b759cdef4f11a34506a42eb8d1290c598e
 - name: github.com/stretchr/testify
-  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
+  version: 976c720a22c8eb4eb6a0b4348ad85ad12491a506
   subpackages:
   - assert
 - name: github.com/tylerb/graceful
@@ -24,17 +26,37 @@ imports:
   version: d03a22720925ae6fd6f81db717d9288fc2771d79
 - name: github.com/valyala/fasttemplate
   version: 3b874956e03f1636d171bda64b130f9135f42cff
+- name: github.com/xenolf/lego
+  version: 82ac43327b01319544c050d5d78a4edeff9565d2
+  subpackages:
+  - acme
+- name: golang.org/x/crypto
+  version: 8e06e8ddd9629eb88639aba897641bff8031f1d3
+  subpackages:
+  - ocsp
 - name: golang.org/x/net
   version: f09c4662a0bd6bd8943ac7b4931e185df9471da4
   subpackages:
   - context
+  - publicsuffix
   - websocket
 - name: golang.org/x/sys
   version: 8f0908ab3b2457e2e15403d3697c9ef5cb4b57a9
   subpackages:
   - unix
+- name: golang.org/x/time
+  version: 2bc1b4fbcc7c3eda9a26f6e523cac1196c6fecd7
+  subpackages:
+  - rate
+- name: gopkg.in/square/go-jose.v1
+  version: aa2e30fdd1fe9dd3394119af66451ae790d50e0d
+  subpackages:
+  - cipher
+  - json
 - name: gopkg.in/tylerb/graceful.v1
   version: 50a48b6e73fcc75b45e22c05b79629a67c79e938
+- name: rsc.io/letsencrypt
+  version: a18c646c3d0772313b7b53c78847bb3eb6463f0b
 testImports:
 - name: github.com/davecgh/go-spew
   version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
