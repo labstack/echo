@@ -40,9 +40,7 @@ Echo is developed and tested using Go `1.6.x` and `1.7.x`
 $ go get -u github.com/labstack/echo
 ```
 
-> #### Ideally, you should rely on a [package manager](https://github.com/avelino/awesome-go#package-management) like glide or govendor to use a specific [version](https://github.com/labstack/echo/releases) of Echo.
-
-#### Latest stable version is v2.1
+> Ideally, you should rely on a [package manager](https://github.com/avelino/awesome-go#package-management) like glide or govendor to use a specific [version](https://github.com/labstack/echo/releases) of Echo.
 
 ### Hello, World!
 
