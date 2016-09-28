@@ -35,6 +35,19 @@ func TestRedirectHTTPSWWWRedirect(t *testing.T) {
 	assert.Equal(t, "https://www.labstack.com", res.Header().Get(echo.HeaderLocation))
 }
 
+func TestRedirectHTTPSNonWWWRedirect(t *testing.T) {
+	e := echo.New()
+	next := func(c echo.Context) (err error) {
+		return c.NoContent(http.StatusOK)
+	}
+	req, _ := http.NewRequest(echo.GET, "http://www.labstack.com", nil)
+	res := httptest.NewRecorder()
+	c := e.NewContext(req, res)
+	HTTPSNonWWWRedirect()(next)(c)
+	assert.Equal(t, http.StatusMovedPermanently, res.Code)
+	assert.Equal(t, "https://labstack.com", res.Header().Get(echo.HeaderLocation))
+}
+
 func TestRedirectWWWRedirect(t *testing.T) {
 	e := echo.New()
 	next := func(c echo.Context) (err error) {
