@@ -51,7 +51,7 @@ import (
 	"sync"
 	"time"
 
-	"rsc.io/letsencrypt"
+	"github.com/rsc/letsencrypt"
 
 	"golang.org/x/net/context"
 	"golang.org/x/net/websocket"

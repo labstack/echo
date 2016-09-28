@@ -11,10 +11,9 @@ import:
 - package: github.com/stretchr/testify
   subpackages:
   - assert
-- package: github.com/valyala/fasthttp
 - package: github.com/valyala/fasttemplate
 - package: golang.org/x/net
   subpackages:
   - context
 - package: gopkg.in/tylerb/graceful.v1
-- package: rsc.io/letsencrypt
+- package: github.com/rsc/letsencrypt
