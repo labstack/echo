@@ -1,0 +1,15 @@
+# Website
+website/public
+website/Makefile
+
+# Node.js
+node_modules
+
+# IntelliJ
+.idea
+*.iml
+
+# Glide
+vendor
+
+.DS_Store

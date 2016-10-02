@@ -1,0 +1,8 @@
+package: github.com/labstack/gommon
+import:
+- package: github.com/valyala/fasttemplate
+- package: github.com/mattn/go-colorable
+- package: github.com/mattn/go-isatty
+- package: github.com/stretchr/testify
+  subpackages:
+  - assert

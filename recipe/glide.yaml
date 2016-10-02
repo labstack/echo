@@ -1,0 +1,20 @@
+package: github.com/labstack/echo/recipe
+import:
+- package: github.com/GeertJohan/go.rice
+- package: github.com/dgrijalva/jwt-go
+- package: github.com/facebookgo/grace
+  subpackages:
+  - gracehttp
+- package: github.com/gorilla/websocket
+- package: github.com/labstack/echo
+  subpackages:
+  - engine
+  - engine/standard
+  - middleware
+- package: github.com/rs/cors
+- package: github.com/thoas/stats
+- package: github.com/tylerb/graceful
+- package: golang.org/x/net
+  subpackages:
+  - websocket
+- package: google.golang.org/appengine

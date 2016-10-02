@@ -18,6 +18,10 @@ type (
 	}
 )
 
+const (
+	www = "www"
+)
+
 var (
 	// DefaultRedirectConfig is the default Redirect middleware config.
 	DefaultRedirectConfig = RedirectConfig{
@@ -26,7 +30,7 @@ var (
 	}
 )
 
-// HTTPSRedirect redirects HTTP requests to HTTPS.
+// HTTPSRedirect redirects http requests to https.
 // For example, http://labstack.com will be redirect to https://labstack.com.
 //
 // Usage `Echo#Pre(HTTPSRedirect())`
@@ -63,7 +67,7 @@ func HTTPSRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 	}
 }
 
-// HTTPSWWWRedirect redirects HTTP requests to HTTPS WWW.
+// HTTPSWWWRedirect redirects http requests to https www.
 // For example, http://labstack.com will be redirect to https://www.labstack.com.
 //
 // Usage `Echo#Pre(HTTPSWWWRedirect())`
@@ -91,7 +95,7 @@ func HTTPSWWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 			req := c.Request()
 			host := req.Host
 			uri := req.RequestURI
-			if !c.IsTLS() && host[:3] != "www" {
+			if !c.IsTLS() && host[:3] != www {
 				return c.Redirect(config.Code, "https://www."+host+uri)
 			}
 			return next(c)
@@ -99,7 +103,7 @@ func HTTPSWWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 	}
 }
 
-// HTTPSNonWWWRedirect redirects HTTP requests to HTTPS non WWW.
+// HTTPSNonWWWRedirect redirects http requests to https non www.
 // For example, http://www.labstack.com will be redirect to https://labstack.com.
 //
 // Usage `Echo#Pre(HTTPSNonWWWRedirect())`
@@ -128,7 +132,7 @@ func HTTPSNonWWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 			host := req.Host
 			uri := req.RequestURI
 			if !c.IsTLS() {
-				if host[:3] == "www" {
+				if host[:3] == www {
 					return c.Redirect(config.Code, "https://"+host[4:]+uri)
 				}
 				return c.Redirect(config.Code, "https://"+host+uri)
@@ -138,7 +142,7 @@ func HTTPSNonWWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 	}
 }
 
-// WWWRedirect redirects non WWW requests to WWW.
+// WWWRedirect redirects non www requests to www.
 // For example, http://labstack.com will be redirect to http://www.labstack.com.
 //
 // Usage `Echo#Pre(WWWRedirect())`
@@ -166,7 +170,7 @@ func WWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 			req := c.Request()
 			scheme := c.Scheme()
 			host := req.Host
-			if host[:3] != "www" {
+			if host[:3] != www {
 				uri := req.RequestURI
 				return c.Redirect(config.Code, scheme+"://www."+host+uri)
 			}
@@ -175,7 +179,7 @@ func WWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 	}
 }
 
-// NonWWWRedirect redirects WWW requests to non WWW.
+// NonWWWRedirect redirects www requests to non www.
 // For example, http://www.labstack.com will be redirect to http://labstack.com.
 //
 // Usage `Echo#Pre(NonWWWRedirect())`
@@ -202,7 +206,7 @@ func NonWWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 			req := c.Request()
 			scheme := c.Scheme()
 			host := req.Host
-			if host[:3] == "www" {
+			if host[:3] == www {
 				uri := req.RequestURI
 				return c.Redirect(config.Code, scheme+"://"+host[4:]+uri)
 			}
