@@ -48,8 +48,7 @@ import (
 	"runtime"
 	"sync"
 
-	"golang.org/x/net/context"
-
+	gcontext "github.com/labstack/echo/context"
 	"github.com/labstack/echo/engine"
 	"github.com/labstack/echo/log"
 	glog "github.com/labstack/gommon/log"
@@ -238,13 +237,14 @@ func New() (e *Echo) {
 
 // NewContext returns a Context instance.
 func (e *Echo) NewContext(req engine.Request, res engine.Response) Context {
-	return &echoContext{
-		context:  context.Background(),
-		request:  req,
-		response: res,
-		echo:     e,
-		pvalues:  make([]string, *e.maxParam),
-		handler:  NotFoundHandler,
+	return &context{
+		stdContext: gcontext.Background(),
+		request:    req,
+		response:   res,
+		store:      make(store),
+		echo:       e,
+		pvalues:    make([]string, *e.maxParam),
+		handler:    NotFoundHandler,
 	}
 }
 
@@ -541,7 +541,7 @@ func (e *Echo) ReleaseContext(c Context) {
 }
 
 func (e *Echo) ServeHTTP(req engine.Request, res engine.Response) {
-	c := e.pool.Get().(*echoContext)
+	c := e.pool.Get().(*context)
 	c.Reset(req, res)
 
 	// Middleware

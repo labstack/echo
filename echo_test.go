@@ -333,7 +333,7 @@ func TestEchoHTTPError(t *testing.T) {
 func TestEchoContext(t *testing.T) {
 	e := New()
 	c := e.AcquireContext()
-	assert.IsType(t, new(echoContext), c)
+	assert.IsType(t, new(context), c)
 	e.ReleaseContext(c)
 }
 
