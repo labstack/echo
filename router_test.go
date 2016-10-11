@@ -350,10 +350,10 @@ func TestRouterMatchAny(t *testing.T) {
 	assert.Equal(t, "", c.Param("_*"))
 
 	r.Find(GET, "/download", c)
-	assert.Equal(t, "download", c.Param("_*"))
+	assert.Equal(t, "download", c.Param("*"))
 
 	r.Find(GET, "/users/joe", c)
-	assert.Equal(t, "joe", c.Param("_*"))
+	assert.Equal(t, "joe", c.Param("*"))
 }
 
 func TestRouterMicroParam(t *testing.T) {
@@ -483,7 +483,7 @@ func TestRouterPriority(t *testing.T) {
 	r.Find(GET, "/users/joe/books", c)
 	c.handler(c)
 	assert.Equal(t, 7, c.Get("g"))
-	assert.Equal(t, "joe/books", c.Param("_*"))
+	assert.Equal(t, "joe/books", c.Param("*"))
 }
 
 // Issue #372
