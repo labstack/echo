@@ -55,9 +55,6 @@ type (
 		// SetPath sets the registered path for the handler.
 		SetPath(string)
 
-		// P returns path parameter by index.
-		P(int) string
-
 		// Param returns path parameter by name.
 		Param(string) string
 
@@ -264,14 +261,6 @@ func (c *context) Path() string {
 
 func (c *context) SetPath(p string) {
 	c.path = p
-}
-
-func (c *context) P(i int) (value string) {
-	l := len(c.pnames)
-	if i < l {
-		value = c.pvalues[i]
-	}
-	return
 }
 
 func (c *context) Param(name string) (value string) {

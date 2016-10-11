@@ -70,7 +70,7 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 			fs := http.Dir(config.Root)
 			p := c.Request().URL.Path
 			if strings.Contains(c.Path(), "*") { // If serving from a group, e.g. `/static*`.
-				p = c.P(0)
+				p = c.Param("_*")
 			}
 			file := path.Clean(p)
 			f, err := fs.Open(file)

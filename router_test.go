@@ -295,7 +295,7 @@ func TestRouterParam(t *testing.T) {
 	}, e)
 	c := e.NewContext(nil, nil).(*context)
 	r.Find(GET, "/users/1", c)
-	assert.Equal(t, "1", c.P(0))
+	assert.Equal(t, "1", c.Param("id"))
 }
 
 func TestRouterTwoParam(t *testing.T) {
@@ -307,8 +307,8 @@ func TestRouterTwoParam(t *testing.T) {
 	c := e.NewContext(nil, nil).(*context)
 
 	r.Find(GET, "/users/1/files/1", c)
-	assert.Equal(t, "1", c.P(0))
-	assert.Equal(t, "1", c.P(1))
+	assert.Equal(t, "1", c.Param("uid"))
+	assert.Equal(t, "1", c.Param("fid"))
 }
 
 // Issue #378
@@ -347,13 +347,13 @@ func TestRouterMatchAny(t *testing.T) {
 	c := e.NewContext(nil, nil).(*context)
 
 	r.Find(GET, "/", c)
-	assert.Equal(t, "", c.P(0))
+	assert.Equal(t, "", c.Param("_*"))
 
 	r.Find(GET, "/download", c)
-	assert.Equal(t, "download", c.P(0))
+	assert.Equal(t, "download", c.Param("_*"))
 
 	r.Find(GET, "/users/joe", c)
-	assert.Equal(t, "joe", c.P(0))
+	assert.Equal(t, "joe", c.Param("_*"))
 }
 
 func TestRouterMicroParam(t *testing.T) {
@@ -364,9 +364,9 @@ func TestRouterMicroParam(t *testing.T) {
 	}, e)
 	c := e.NewContext(nil, nil).(*context)
 	r.Find(GET, "/1/2/3", c)
-	assert.Equal(t, "1", c.P(0))
-	assert.Equal(t, "2", c.P(1))
-	assert.Equal(t, "3", c.P(2))
+	assert.Equal(t, "1", c.Param("a"))
+	assert.Equal(t, "2", c.Param("b"))
+	assert.Equal(t, "3", c.Param("c"))
 }
 
 func TestRouterMixParamMatchAny(t *testing.T) {
@@ -381,7 +381,7 @@ func TestRouterMixParamMatchAny(t *testing.T) {
 
 	r.Find(GET, "/users/joe/comments", c)
 	c.handler(c)
-	assert.Equal(t, "joe", c.P(0))
+	assert.Equal(t, "joe", c.Param("id"))
 }
 
 func TestRouterMultiRoute(t *testing.T) {
@@ -405,7 +405,7 @@ func TestRouterMultiRoute(t *testing.T) {
 
 	// Route > /users/:id
 	r.Find(GET, "/users/1", c)
-	assert.Equal(t, "1", c.P(0))
+	assert.Equal(t, "1", c.Param("id"))
 
 	// Route > /user
 	c = e.NewContext(nil, nil).(*context)
@@ -542,14 +542,14 @@ func TestRouterParamNames(t *testing.T) {
 	// Route > /users/:id
 	r.Find(GET, "/users/1", c)
 	assert.Equal(t, "id", c.pnames[0])
-	assert.Equal(t, "1", c.P(0))
+	assert.Equal(t, "1", c.Param("id"))
 
 	// Route > /users/:uid/files/:fid
 	r.Find(GET, "/users/1/files/1", c)
 	assert.Equal(t, "uid", c.pnames[0])
-	assert.Equal(t, "1", c.P(0))
+	assert.Equal(t, "1", c.Param("uid"))
 	assert.Equal(t, "fid", c.pnames[1])
-	assert.Equal(t, "1", c.P(1))
+	assert.Equal(t, "1", c.Param("fid"))
 }
 
 func TestRouterAPI(t *testing.T) {
@@ -566,7 +566,7 @@ func TestRouterAPI(t *testing.T) {
 		r.Find(route.Method, route.Path, c)
 		for i, n := range c.pnames {
 			if assert.NotEmpty(t, n) {
-				assert.Equal(t, ":"+n, c.P(i))
+				assert.Equal(t, n, c.pnames[i])
 			}
 		}
 	}

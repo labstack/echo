@@ -253,9 +253,6 @@ func TestContextPathParam(t *testing.T) {
 	c.SetParamValues("101", "501")
 	assert.EqualValues(t, []string{"101", "501"}, c.ParamValues())
 
-	// P
-	assert.Equal(t, "101", c.P(0))
-
 	// Param
 	assert.Equal(t, "501", c.Param("fid"))
 }

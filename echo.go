@@ -382,7 +382,7 @@ func (e *Echo) Match(methods []string, path string, handler HandlerFunc, middlew
 // provided root directory.
 func (e *Echo) Static(prefix, root string) {
 	e.GET(prefix+"*", func(c Context) error {
-		return c.File(path.Join(root, c.P(0)))
+		return c.File(path.Join(root, c.Param("_*")))
 	})
 }
 
