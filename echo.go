@@ -53,7 +53,6 @@ import (
 
 	"github.com/rsc/letsencrypt"
 
-	"golang.org/x/net/context"
 	"golang.org/x/net/websocket"
 
 	"github.com/labstack/gommon/color"
@@ -263,10 +262,10 @@ func New() (e *Echo) {
 
 // NewContext returns a Context instance.
 func (e *Echo) NewContext(r *http.Request, w http.ResponseWriter) Context {
-	return &echoContext{
-		context:  context.Background(),
+	return &context{
 		request:  r,
 		response: NewResponse(w, e),
+		store:    make(store),
 		echo:     e,
 		pvalues:  make([]string, *e.maxParam),
 		handler:  NotFoundHandler,
@@ -486,7 +485,7 @@ func (e *Echo) ReleaseContext(c Context) {
 
 // ServeHTTP implements `http.Handler` interface, which serves HTTP requests.
 func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	c := e.pool.Get().(*echoContext)
+	c := e.pool.Get().(*context)
 	c.Reset(r, w)
 
 	// Middleware

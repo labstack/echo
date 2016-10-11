@@ -18,24 +18,17 @@ import (
 	"golang.org/x/net/websocket"
 
 	"bytes"
-
-	"github.com/labstack/echo/context"
 )
 
 type (
 	// Context represents the context of the current HTTP request. It holds request and
 	// response objects, path, path parameters, data and registered handler.
 	Context interface {
-		context.Context
-
-		// StdContext returns `context.Context`.
-		StdContext() context.Context
-
-		// SetStdContext sets `context.Context`.
-		SetStdContext(context.Context)
-
 		// Request returns `*http.Request`.
 		Request() *http.Request
+
+		// SetWebSocket sets `*http.Request`.
+		SetRequest(*http.Request)
 
 		// Request returns `*Response`.
 		Response() *Response
@@ -199,8 +192,7 @@ type (
 		Reset(*http.Request, http.ResponseWriter)
 	}
 
-	echoContext struct {
-		context   context.Context
+	context struct {
 		request   *http.Request
 		response  *Response
 		webSocket *websocket.Conn
@@ -209,8 +201,11 @@ type (
 		pvalues   []string
 		query     url.Values
 		handler   HandlerFunc
+		store     store
 		echo      *Echo
 	}
+
+	store map[string]interface{}
 )
 
 const (
@@ -218,51 +213,31 @@ const (
 	indexPage     = "index.html"
 )
 
-func (c *echoContext) StdContext() context.Context {
-	return c.context
-}
-
-func (c *echoContext) SetStdContext(ctx context.Context) {
-	c.context = ctx
-}
-
-func (c *echoContext) Deadline() (deadline time.Time, ok bool) {
-	return c.context.Deadline()
-}
-
-func (c *echoContext) Done() <-chan struct{} {
-	return c.context.Done()
-}
-
-func (c *echoContext) Err() error {
-	return c.context.Err()
-}
-
-func (c *echoContext) Value(key interface{}) interface{} {
-	return c.context.Value(key)
-}
-
-func (c *echoContext) Request() *http.Request {
+func (c *context) Request() *http.Request {
 	return c.request
 }
 
-func (c *echoContext) Response() *Response {
+func (c *context) SetRequest(r *http.Request) {
+	c.request = r
+}
+
+func (c *context) Response() *Response {
 	return c.response
 }
 
-func (c *echoContext) WebSocket() *websocket.Conn {
+func (c *context) WebSocket() *websocket.Conn {
 	return c.webSocket
 }
 
-func (c *echoContext) SetWebSocket(ws *websocket.Conn) {
+func (c *context) SetWebSocket(ws *websocket.Conn) {
 	c.webSocket = ws
 }
 
-func (c *echoContext) IsTLS() bool {
+func (c *context) IsTLS() bool {
 	return c.request.TLS != nil
 }
 
-func (c *echoContext) Scheme() string {
+func (c *context) Scheme() string {
 	// Can't use `r.Request.URL.Scheme`
 	// See: https://groups.google.com/forum/#!topic/golang-nuts/pMUkBlQBDF0
 	if c.IsTLS() {
@@ -271,7 +246,7 @@ func (c *echoContext) Scheme() string {
 	return "http"
 }
 
-func (c *echoContext) RealIP() string {
+func (c *context) RealIP() string {
 	ra := c.request.RemoteAddr
 	if ip := c.request.Header.Get(HeaderXForwardedFor); ip != "" {
 		ra = ip
@@ -283,15 +258,15 @@ func (c *echoContext) RealIP() string {
 	return ra
 }
 
-func (c *echoContext) Path() string {
+func (c *context) Path() string {
 	return c.path
 }
 
-func (c *echoContext) SetPath(p string) {
+func (c *context) SetPath(p string) {
 	c.path = p
 }
 
-func (c *echoContext) P(i int) (value string) {
+func (c *context) P(i int) (value string) {
 	l := len(c.pnames)
 	if i < l {
 		value = c.pvalues[i]
@@ -299,7 +274,7 @@ func (c *echoContext) P(i int) (value string) {
 	return
 }
 
-func (c *echoContext) Param(name string) (value string) {
+func (c *context) Param(name string) (value string) {
 	l := len(c.pnames)
 	for i, n := range c.pnames {
 		if n == name && i < l {
@@ -310,45 +285,45 @@ func (c *echoContext) Param(name string) (value string) {
 	return
 }
 
-func (c *echoContext) ParamNames() []string {
+func (c *context) ParamNames() []string {
 	return c.pnames
 }
 
-func (c *echoContext) SetParamNames(names ...string) {
+func (c *context) SetParamNames(names ...string) {
 	c.pnames = names
 }
 
-func (c *echoContext) ParamValues() []string {
+func (c *context) ParamValues() []string {
 	return c.pvalues
 }
 
-func (c *echoContext) SetParamValues(values ...string) {
+func (c *context) SetParamValues(values ...string) {
 	c.pvalues = values
 }
 
-func (c *echoContext) QueryParam(name string) string {
+func (c *context) QueryParam(name string) string {
 	if c.query == nil {
 		c.query = c.request.URL.Query()
 	}
 	return c.query.Get(name)
 }
 
-func (c *echoContext) QueryParams() url.Values {
+func (c *context) QueryParams() url.Values {
 	if c.query == nil {
 		c.query = c.request.URL.Query()
 	}
 	return c.query
 }
 
-func (c *echoContext) QueryString() string {
+func (c *context) QueryString() string {
 	return c.request.URL.RawQuery
 }
 
-func (c *echoContext) FormValue(name string) string {
+func (c *context) FormValue(name string) string {
 	return c.request.FormValue(name)
 }
 
-func (c *echoContext) FormParams() (url.Values, error) {
+func (c *context) FormParams() (url.Values, error) {
 	if strings.HasPrefix(c.request.Header.Get(HeaderContentType), MIMEMultipartForm) {
 		if err := c.request.ParseMultipartForm(defaultMemory); err != nil {
 			return nil, err
@@ -361,41 +336,44 @@ func (c *echoContext) FormParams() (url.Values, error) {
 	return c.request.Form, nil
 }
 
-func (c *echoContext) FormFile(name string) (*multipart.FileHeader, error) {
+func (c *context) FormFile(name string) (*multipart.FileHeader, error) {
 	_, fh, err := c.request.FormFile(name)
 	return fh, err
 }
 
-func (c *echoContext) MultipartForm() (*multipart.Form, error) {
+func (c *context) MultipartForm() (*multipart.Form, error) {
 	err := c.request.ParseMultipartForm(defaultMemory)
 	return c.request.MultipartForm, err
 }
 
-func (c *echoContext) Cookie(name string) (*http.Cookie, error) {
+func (c *context) Cookie(name string) (*http.Cookie, error) {
 	return c.request.Cookie(name)
 }
 
-func (c *echoContext) SetCookie(cookie *http.Cookie) {
+func (c *context) SetCookie(cookie *http.Cookie) {
 	http.SetCookie(c.Response(), cookie)
 }
 
-func (c *echoContext) Cookies() []*http.Cookie {
+func (c *context) Cookies() []*http.Cookie {
 	return c.request.Cookies()
 }
 
-func (c *echoContext) Set(key string, val interface{}) {
-	c.context = context.WithValue(c.context, key, val)
+func (c *context) Set(key string, val interface{}) {
+	if c.store == nil {
+		c.store = make(store)
+	}
+	c.store[key] = val
 }
 
-func (c *echoContext) Get(key string) interface{} {
-	return c.context.Value(key)
+func (c *context) Get(key string) interface{} {
+	return c.store[key]
 }
 
-func (c *echoContext) Bind(i interface{}) error {
+func (c *context) Bind(i interface{}) error {
 	return c.echo.Binder.Bind(i, c)
 }
 
-func (c *echoContext) Render(code int, name string, data interface{}) (err error) {
+func (c *context) Render(code int, name string, data interface{}) (err error) {
 	if c.echo.Renderer == nil {
 		return ErrRendererNotRegistered
 	}
@@ -409,21 +387,21 @@ func (c *echoContext) Render(code int, name string, data interface{}) (err error
 	return
 }
 
-func (c *echoContext) HTML(code int, html string) (err error) {
+func (c *context) HTML(code int, html string) (err error) {
 	c.response.Header().Set(HeaderContentType, MIMETextHTMLCharsetUTF8)
 	c.response.WriteHeader(code)
 	_, err = c.response.Write([]byte(html))
 	return
 }
 
-func (c *echoContext) String(code int, s string) (err error) {
+func (c *context) String(code int, s string) (err error) {
 	c.response.Header().Set(HeaderContentType, MIMETextPlainCharsetUTF8)
 	c.response.WriteHeader(code)
 	_, err = c.response.Write([]byte(s))
 	return
 }
 
-func (c *echoContext) JSON(code int, i interface{}) (err error) {
+func (c *context) JSON(code int, i interface{}) (err error) {
 	b, err := json.Marshal(i)
 	if c.echo.Debug {
 		b, err = json.MarshalIndent(i, "", "  ")
@@ -434,11 +412,11 @@ func (c *echoContext) JSON(code int, i interface{}) (err error) {
 	return c.JSONBlob(code, b)
 }
 
-func (c *echoContext) JSONBlob(code int, b []byte) (err error) {
+func (c *context) JSONBlob(code int, b []byte) (err error) {
 	return c.Blob(code, MIMEApplicationJSONCharsetUTF8, b)
 }
 
-func (c *echoContext) JSONP(code int, callback string, i interface{}) (err error) {
+func (c *context) JSONP(code int, callback string, i interface{}) (err error) {
 	b, err := json.Marshal(i)
 	if err != nil {
 		return err
@@ -446,7 +424,7 @@ func (c *echoContext) JSONP(code int, callback string, i interface{}) (err error
 	return c.JSONPBlob(code, callback, b)
 }
 
-func (c *echoContext) JSONPBlob(code int, callback string, b []byte) (err error) {
+func (c *context) JSONPBlob(code int, callback string, b []byte) (err error) {
 	c.response.Header().Set(HeaderContentType, MIMEApplicationJavaScriptCharsetUTF8)
 	c.response.WriteHeader(code)
 	if _, err = c.response.Write([]byte(callback + "(")); err != nil {
@@ -459,7 +437,7 @@ func (c *echoContext) JSONPBlob(code int, callback string, b []byte) (err error)
 	return
 }
 
-func (c *echoContext) XML(code int, i interface{}) (err error) {
+func (c *context) XML(code int, i interface{}) (err error) {
 	b, err := xml.Marshal(i)
 	if c.echo.Debug {
 		b, err = xml.MarshalIndent(i, "", "  ")
@@ -470,28 +448,28 @@ func (c *echoContext) XML(code int, i interface{}) (err error) {
 	return c.XMLBlob(code, b)
 }
 
-func (c *echoContext) XMLBlob(code int, b []byte) (err error) {
+func (c *context) XMLBlob(code int, b []byte) (err error) {
 	if _, err = c.response.Write([]byte(xml.Header)); err != nil {
 		return
 	}
 	return c.Blob(code, MIMEApplicationXMLCharsetUTF8, b)
 }
 
-func (c *echoContext) Blob(code int, contentType string, b []byte) (err error) {
+func (c *context) Blob(code int, contentType string, b []byte) (err error) {
 	c.response.Header().Set(HeaderContentType, contentType)
 	c.response.WriteHeader(code)
 	_, err = c.response.Write(b)
 	return
 }
 
-func (c *echoContext) Stream(code int, contentType string, r io.Reader) (err error) {
+func (c *context) Stream(code int, contentType string, r io.Reader) (err error) {
 	c.response.Header().Set(HeaderContentType, contentType)
 	c.response.WriteHeader(code)
 	_, err = io.Copy(c.response, r)
 	return
 }
 
-func (c *echoContext) File(file string) error {
+func (c *context) File(file string) error {
 	f, err := os.Open(file)
 	if err != nil {
 		return ErrNotFound
@@ -512,15 +490,15 @@ func (c *echoContext) File(file string) error {
 	return c.ServeContent(f, fi.Name(), fi.ModTime())
 }
 
-func (c *echoContext) Attachment(r io.ReadSeeker, name string) (err error) {
+func (c *context) Attachment(r io.ReadSeeker, name string) (err error) {
 	return c.contentDisposition(r, name, "attachment")
 }
 
-func (c *echoContext) Inline(r io.ReadSeeker, name string) (err error) {
+func (c *context) Inline(r io.ReadSeeker, name string) (err error) {
 	return c.contentDisposition(r, name, "inline")
 }
 
-func (c *echoContext) contentDisposition(r io.ReadSeeker, name, dispositionType string) (err error) {
+func (c *context) contentDisposition(r io.ReadSeeker, name, dispositionType string) (err error) {
 	c.response.Header().Set(HeaderContentType, ContentTypeByExtension(name))
 	c.response.Header().Set(HeaderContentDisposition, fmt.Sprintf("%s; filename=%s", dispositionType, name))
 	c.response.WriteHeader(http.StatusOK)
@@ -528,12 +506,12 @@ func (c *echoContext) contentDisposition(r io.ReadSeeker, name, dispositionType 
 	return
 }
 
-func (c *echoContext) NoContent(code int) error {
+func (c *context) NoContent(code int) error {
 	c.response.WriteHeader(code)
 	return nil
 }
 
-func (c *echoContext) Redirect(code int, url string) error {
+func (c *context) Redirect(code int, url string) error {
 	if code < http.StatusMultipleChoices || code > http.StatusTemporaryRedirect {
 		return ErrInvalidRedirectCode
 	}
@@ -542,27 +520,27 @@ func (c *echoContext) Redirect(code int, url string) error {
 	return nil
 }
 
-func (c *echoContext) Error(err error) {
+func (c *context) Error(err error) {
 	c.echo.HTTPErrorHandler(err, c)
 }
 
-func (c *echoContext) Echo() *Echo {
+func (c *context) Echo() *Echo {
 	return c.echo
 }
 
-func (c *echoContext) Handler() HandlerFunc {
+func (c *context) Handler() HandlerFunc {
 	return c.handler
 }
 
-func (c *echoContext) SetHandler(h HandlerFunc) {
+func (c *context) SetHandler(h HandlerFunc) {
 	c.handler = h
 }
 
-func (c *echoContext) Logger() Logger {
+func (c *context) Logger() Logger {
 	return c.echo.Logger
 }
 
-func (c *echoContext) ServeContent(content io.ReadSeeker, name string, modtime time.Time) error {
+func (c *context) ServeContent(content io.ReadSeeker, name string, modtime time.Time) error {
 	req := c.Request()
 	res := c.Response()
 
@@ -589,9 +567,9 @@ func ContentTypeByExtension(name string) (t string) {
 	return
 }
 
-func (c *echoContext) Reset(r *http.Request, w http.ResponseWriter) {
-	// c.query = nil
-	c.context = context.Background()
+func (c *context) Reset(r *http.Request, w http.ResponseWriter) {
+	c.query = nil
+	c.store = nil
 	c.request = r
 	c.response.reset(w)
 	c.handler = NotFoundHandler
