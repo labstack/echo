@@ -280,7 +280,7 @@ func TestEchoURL(t *testing.T) {
 	e.GET("/static/file", static)
 	e.GET("/users/:id", getUser)
 	g := e.Group("/group")
-	g.Get("/users/:uid/files/:fid", getFile)
+	g.GET("/users/:uid/files/:fid", getFile)
 
 	assert.Equal(t, "/static/file", e.URL(static))
 	assert.Equal(t, "/users/:id", e.URL(getUser))
@@ -344,7 +344,7 @@ func TestEchoGroup(t *testing.T) {
 			return next(c)
 		}
 	})
-	g1.Get("", h)
+	g1.GET("", h)
 
 	// Nested groups with middleware
 	g2 := e.Group("/group2")
@@ -361,7 +361,7 @@ func TestEchoGroup(t *testing.T) {
 			return next(c)
 		}
 	})
-	g3.Get("", h)
+	g3.GET("", h)
 
 	request(GET, "/users", e)
 	assert.Equal(t, "0", buf.String())
