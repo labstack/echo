@@ -16,11 +16,6 @@ type (
 // Use implements `Echo#Use()` for sub-routes within the Group.
 func (g *Group) Use(m ...MiddlewareFunc) {
 	g.middleware = append(g.middleware, m...)
-	// Allow all requests to reach the group as they might get dropped if router
-	// doesn't find a match, making none of the group middleware process.
-	g.echo.Any(g.prefix+"*", func(c Context) error {
-		return ErrNotFound
-	}, g.middleware...)
 }
 
 // CONNECT implements `Echo#CONNECT()` for sub-routes within the Group.
