@@ -198,11 +198,9 @@ type (
 		pvalues   []string
 		query     url.Values
 		handler   HandlerFunc
-		store     store
+		store     Map
 		echo      *Echo
 	}
-
-	store map[string]interface{}
 )
 
 const (
@@ -349,7 +347,7 @@ func (c *context) Cookies() []*http.Cookie {
 
 func (c *context) Set(key string, val interface{}) {
 	if c.store == nil {
-		c.store = make(store)
+		c.store = make(Map)
 	}
 	c.store[key] = val
 }

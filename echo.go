@@ -118,6 +118,9 @@ type (
 	Renderer interface {
 		Render(io.Writer, string, interface{}, Context) error
 	}
+
+	// Map defines a generic map of type `map[string]interface{}`.
+	Map map[string]interface{}
 )
 
 // HTTP methods
@@ -265,7 +268,7 @@ func (e *Echo) NewContext(r *http.Request, w http.ResponseWriter) Context {
 	return &context{
 		request:  r,
 		response: NewResponse(w, e),
-		store:    make(store),
+		store:    make(Map),
 		echo:     e,
 		pvalues:  make([]string, *e.maxParam),
 		handler:  NotFoundHandler,
