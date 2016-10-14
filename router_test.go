@@ -552,6 +552,38 @@ func TestRouterParamNames(t *testing.T) {
 	assert.Equal(t, "1", c.P(1))
 }
 
+// Issue #623
+func TestRouterStaticDynamicConflict(t *testing.T) {
+	e := New()
+	r := e.router
+	c := e.NewContext(nil, nil)
+
+	r.Add(GET, "/dictionary/skills", func(c Context) error {
+		c.Set("a", 1)
+		return nil
+	}, e)
+	r.Add(GET, "/dictionary/:name", func(c Context) error {
+		c.Set("b", 2)
+		return nil
+	}, e)
+	r.Add(GET, "/server", func(c Context) error {
+		c.Set("c", 3)
+		return nil
+	}, e)
+
+	r.Find(GET, "/dictionary/skills", c)
+	c.Handler()(c)
+	assert.Equal(t, 1, c.Get("a"))
+	c = e.NewContext(nil, nil)
+	r.Find(GET, "/dictionary/type", c)
+	c.Handler()(c)
+	assert.Equal(t, 2, c.Get("b"))
+	c = e.NewContext(nil, nil)
+	r.Find(GET, "/server", c)
+	c.Handler()(c)
+	assert.Equal(t, 3, c.Get("c"))
+}
+
 func TestRouterAPI(t *testing.T) {
 	e := New()
 	r := e.router
