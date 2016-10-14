@@ -99,9 +99,9 @@ func TestContext(t *testing.T) {
 	// XML
 	rec = test.NewResponseRecorder()
 	c = e.NewContext(req, rec).(*context)
-	err = c.XML(http.StatusOK, user{1, "Jon Snow"})
+	err = c.XML(http.StatusCreated, user{1, "Jon Snow"})
 	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rec.Status())
+		assert.Equal(t, http.StatusCreated, rec.Status())
 		assert.Equal(t, MIMEApplicationXMLCharsetUTF8, rec.Header().Get(HeaderContentType))
 		assert.Equal(t, xml.Header+userXML, rec.Body.String())
 	}

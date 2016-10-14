@@ -390,10 +390,13 @@ func (c *context) XML(code int, i interface{}) (err error) {
 }
 
 func (c *context) XMLBlob(code int, b []byte) (err error) {
+	c.response.Header().Set(HeaderContentType, MIMEApplicationXMLCharsetUTF8)
+	c.response.WriteHeader(code)
 	if _, err = c.response.Write([]byte(xml.Header)); err != nil {
 		return
 	}
-	return c.Blob(code, MIMEApplicationXMLCharsetUTF8, b)
+	_, err = c.response.Write(b)
+	return
 }
 
 func (c *context) Blob(code int, contentType string, b []byte) (err error) {
