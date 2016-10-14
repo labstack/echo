@@ -343,7 +343,7 @@ func (r *Router) Find(method, path string, context Context) {
 		// Static node
 		if c = cn.findChild(search[0], skind); c != nil {
 			// Save next
-			if cn.label == '/' {
+			if cn.prefix[len(cn.prefix)-1] == '/' { // Issue #623
 				nk = pkind
 				nn = cn
 				ns = search
@@ -361,7 +361,7 @@ func (r *Router) Find(method, path string, context Context) {
 			}
 
 			// Save next
-			if cn.label == '/' {
+			if cn.prefix[len(cn.prefix)-1] == '/' { // Issue #623
 				nk = akind
 				nn = cn
 				ns = search
