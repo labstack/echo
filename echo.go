@@ -526,10 +526,6 @@ func (e *Echo) config(gs *graceful.Server, s *http.Server, address string) {
 	if gs == e.gracefulTLS && !e.DisableHTTP2 {
 		e.TLSConfig.NextProtos = append(e.TLSConfig.NextProtos, "h2")
 	}
-	// Global log
-	slog.SetOutput(e.Logger.Output())
-	slog.SetPrefix(e.Logger.Prefix() + ": ")
-	slog.SetFlags(0)
 }
 
 // Start starts the HTTP server.
