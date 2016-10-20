@@ -1,14 +1,39 @@
-hash: dcb2a2984f2e724f0419065a77a4c8a6a52539349e8994c347f0efdb1fca972c
-updated: 2016-09-08T08:30:16.896450504-07:00
+hash: 72f3bb61d0485275144e593f73de0b18217afecac7eaea1bfe1147d106182eca
+updated: 2016-10-20T09:17:44.443328154-07:00
 imports:
+- name: github.com/daaku/go.zipexe
+  version: a5fe2436ffcb3236e175e5149162b41cd28bd27d
 - name: github.com/davecgh/go-spew
   version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
   subpackages:
   - spew
 - name: github.com/dgrijalva/jwt-go
   version: 24c63f56522a87ec5339cc3567883f1039378fdb
+- name: github.com/facebookgo/clock
+  version: 600d898af40aa09a7a93ecb9265d87b0504b6f03
+- name: github.com/facebookgo/grace
+  version: 5729e484473f52048578af1b80d0008c7024089b
+  subpackages:
+  - gracehttp
+  - gracenet
+- name: github.com/facebookgo/httpdown
+  version: a3b1354551a26449fbe05f5d855937f6e7acbd71
+- name: github.com/facebookgo/stats
+  version: 1b76add642e42c6ffba7211ad7b3939ce654526e
+- name: github.com/GeertJohan/go.rice
+  version: 9fdfd46f9806a9228aae341d65ab75c5235c383c
+  subpackages:
+  - embedded
+- name: github.com/golang/protobuf
+  version: 98fa357170587e470c5f27d3c3ea0947b71eb455
+  subpackages:
+  - proto
+- name: github.com/gorilla/websocket
+  version: 5df680c89f2a84ad9cb16cf143557a0853cfaabc
+- name: github.com/kardianos/osext
+  version: c2c54e542fb797ad986b31721e1baedf214ca413
 - name: github.com/klauspost/compress
-  version: 08fe86a420401e830c24114bdf9f1ba91331407a
+  version: 1e658061989f47658e69492cf63a839630a25eba
   subpackages:
   - flate
   - gzip
@@ -16,40 +41,53 @@ imports:
 - name: github.com/klauspost/cpuid
   version: 09cded8978dc9e80714c4d85b0322337b0a1e5e0
 - name: github.com/klauspost/crc32
-  version: 19b0b332c9e4516a6370a0456e6182c3b5036720
+  version: cb6bfca970f6908083f26f39a79009d608efd5cd
 - name: github.com/labstack/gommon
-  version: 431777a5117c8de4352a400dad1e2a55f484b189
+  version: f3b1a1b3bd4726161e1200863d278df7da5e66ff
   subpackages:
   - bytes
   - color
   - log
   - random
 - name: github.com/mattn/go-colorable
-  version: ed8eb9e318d7a84ce5915b495b7d35e0cfe7b5a8
+  version: 6c903ff4aa50920ca86087a280590b36b3152b9c
 - name: github.com/mattn/go-isatty
   version: 66b8e73f3f5cda9f96b69efd03dd3d7fc4a5cdb8
 - name: github.com/pmezard/go-difflib
-  version: 792786c7400a136282c1664665ae0a8db921c6c2
+  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
   subpackages:
   - difflib
 - name: github.com/stretchr/testify
-  version: d77da356e56a7428ad25149ca77381849a6a5232
+  version: 976c720a22c8eb4eb6a0b4348ad85ad12491a506
   subpackages:
   - assert
+- name: github.com/tylerb/graceful
+  version: 50a48b6e73fcc75b45e22c05b79629a67c79e938
 - name: github.com/valyala/bytebufferpool
   version: e746df99fe4a3986f4d4f79e13c1e0117ce9c2f7
 - name: github.com/valyala/fasthttp
-  version: 0503f9d38c2eb8793a0210f950a815810ffd1b64
+  version: 204fed91879e3476bedd4d9ce79e765a824a9b31
   subpackages:
   - fasthttputil
 - name: github.com/valyala/fasttemplate
   version: 3b874956e03f1636d171bda64b130f9135f42cff
 - name: golang.org/x/net
-  version: 9313baa13d9262e49d07b20ed57dceafcd7240cc
+  version: daba796358cd2742b75aae05761f1b898c9f6a5c
   subpackages:
   - context
+  - websocket
 - name: golang.org/x/sys
-  version: 30de6d19a3bd89a5f38ae4028e23aaa5582648af
+  version: 002cbb5f952456d0c50e0d2aff17ea5eca716979
   subpackages:
   - unix
+- name: google.golang.org/appengine
+  version: 5b8c3b819891014a2d12354528f7d046dd53c89e
+  subpackages:
+  - internal
+  - internal/app_identity
+  - internal/base
+  - internal/datastore
+  - internal/log
+  - internal/modules
+  - internal/remote_api
 testImports: []
