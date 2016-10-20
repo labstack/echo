@@ -38,5 +38,7 @@ func main() {
 	e := echo.New()
 	e.GET("/request", request)
 	e.GET("/stream", stream)
-	e.Logger.Fatal(e.StartTLS(":1323", "cert.pem", "key.pem"))
+	if err := e.StartTLS(":1323", "cert.pem", "key.pem"); err != nil {
+		panic(err)
+	}
 }

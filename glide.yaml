@@ -16,6 +16,7 @@ import:
   subpackages:
   - websocket
 - package: google.golang.org/appengine
+- package: github.com/gorilla/websocket
 testImport:
 - package: github.com/stretchr/testify
   subpackages:

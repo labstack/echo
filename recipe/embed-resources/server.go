@@ -17,5 +17,7 @@ func main() {
 	// servers other static files
 	e.GET("/static/*", echo.WrapHandler(http.StripPrefix("/static/", assetHandler)))
 
-	e.Logger.Fatal(e.Start(":3000"))
+	if err := e.Start(":1323"); err != nil {
+		panic(err)
+	}
 }

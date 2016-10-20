@@ -30,7 +30,9 @@ Example:
 	    e.GET("/", hello)
 
 	    // Start server
-	    e.Logger.Fatal(e.Start(":1323"))
+	    if err := e.Start(":1323"); err != nil {
+			panic(err)
+		}
 	}
 
 Learn more at https://echo.labstack.com
@@ -52,8 +54,6 @@ import (
 	"time"
 
 	"github.com/rsc/letsencrypt"
-
-	"golang.org/x/net/websocket"
 
 	"github.com/labstack/gommon/color"
 	glog "github.com/labstack/gommon/log"
@@ -394,20 +394,6 @@ func (e *Echo) File(path, file string) {
 	e.GET(path, func(c Context) error {
 		return c.File(file)
 	})
-}
-
-// WebSocket registers a new WebSocket route for a path with matching handler in
-// the router with optional route-level middleware.
-func (e *Echo) WebSocket(path string, h HandlerFunc, m ...MiddlewareFunc) {
-	e.GET(path, func(c Context) (err error) {
-		websocket.Handler(func(ws *websocket.Conn) {
-			defer ws.Close()
-			c.SetWebSocket(ws)
-			c.Response().Status = http.StatusSwitchingProtocols
-			err = h(c)
-		}).ServeHTTP(c.Response(), c.Request())
-		return
-	}, m...)
 }
 
 func (e *Echo) add(method, path string, handler HandlerFunc, middleware ...MiddlewareFunc) {

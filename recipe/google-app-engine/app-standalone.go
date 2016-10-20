@@ -20,5 +20,7 @@ func createMux() *echo.Echo {
 }
 
 func main() {
-	e.Logger.Fatal(e.Start(":8080"))
+	if err := e.Start(":8080"); err != nil {
+		panic(err)
+	}
 }

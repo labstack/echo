@@ -41,5 +41,7 @@ func main() {
 		}
 		return nil
 	})
-	e.Logger.Fatal((e.Start(":1323")))
+	if err := e.Start(":1323"); err != nil {
+		panic(err)
+	}
 }

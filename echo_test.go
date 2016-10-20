@@ -2,13 +2,10 @@ package echo
 
 import (
 	"bytes"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
-
-	"golang.org/x/net/websocket"
 
 	"reflect"
 	"strings"
@@ -248,27 +245,6 @@ func TestEchoMatch(t *testing.T) { // JFC
 	e.Match([]string{GET, POST}, "/", func(c Context) error {
 		return c.String(http.StatusOK, "Match")
 	})
-}
-
-func TestEchoWebSocket(t *testing.T) {
-	e := New()
-	e.WebSocket("/ws", func(c Context) error {
-		c.WebSocket().Write([]byte("test"))
-		return nil
-	})
-	srv := httptest.NewServer(e)
-	defer srv.Close()
-	addr := srv.Listener.Addr().String()
-	origin := "http://localhost"
-	url := fmt.Sprintf("ws://%s/ws", addr)
-	ws, err := websocket.Dial(url, "", origin)
-	if assert.NoError(t, err) {
-		ws.Write([]byte("test\n"))
-		defer ws.Close()
-		buf := new(bytes.Buffer)
-		buf.ReadFrom(ws)
-		assert.Equal(t, "test", buf.String())
-	}
 }
 
 func TestEchoURL(t *testing.T) {

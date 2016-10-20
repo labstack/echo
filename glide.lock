@@ -1,5 +1,5 @@
-hash: 68fa89887f232f6f139552d50300f5fe9f958da390045b9b99d4f7d0201f42f7
-updated: 2016-10-20T11:50:22.171643207-07:00
+hash: b592629b56c43e0f6fcef629a3e46106b07431120d42ed45952d841655407e3e
+updated: 2016-10-20T16:35:55.384756891-07:00
 imports:
 - name: github.com/daaku/go.zipexe
   version: a5fe2436ffcb3236e175e5149162b41cd28bd27d
@@ -13,6 +13,8 @@ imports:
   version: 98fa357170587e470c5f27d3c3ea0947b71eb455
   subpackages:
   - proto
+- name: github.com/gorilla/websocket
+  version: 460e0a996e9004dce40c3697e5ed4d7bc5a69b93
 - name: github.com/kardianos/osext
   version: c2c54e542fb797ad986b31721e1baedf214ca413
 - name: github.com/labstack/gommon

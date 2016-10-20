@@ -65,5 +65,7 @@ func main() {
 	r.Use(middleware.JWT([]byte("secret")))
 	r.GET("", restricted)
 
-	e.Logger.Fatal(e.Start(":1323"))
+	if err := e.Start(":1323"); err != nil {
+		panic(err)
+	}
 }
