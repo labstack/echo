@@ -30,7 +30,7 @@ Example:
 	    e.GET("/", hello)
 
 	    // Start server
-	    e.Start(":1323")
+	    panic(e.Start(":1323"))
 	}
 
 Learn more at https://echo.labstack.com

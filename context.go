@@ -111,7 +111,7 @@ type (
 		Bind(interface{}) error
 
 		// Render renders a template with data and sends a text/html response with status
-		// code. Templates can be registered using `Echo.SetRenderer()`.
+		// code. Templates can be registered using `Echo.Renderer`.
 		Render(int, string, interface{}) error
 
 		// HTML sends an HTTP response with status code.
