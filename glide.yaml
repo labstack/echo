@@ -1,5 +1,6 @@
 package: github.com/labstack/echo
 import:
+- package: github.com/GeertJohan/go.rice
 - package: github.com/dgrijalva/jwt-go
 - package: github.com/labstack/gommon
   subpackages:

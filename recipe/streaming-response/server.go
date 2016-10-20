@@ -36,10 +36,10 @@ func main() {
 			if err := json.NewEncoder(c.Response()).Encode(l); err != nil {
 				return err
 			}
-			c.Response().(http.Flusher).Flush()
+			c.Response().Flush()
 			time.Sleep(1 * time.Second)
 		}
 		return nil
 	})
-	panic(e.Start(":1323"))
+	e.Logger.Fatal((e.Start(":1323")))
 }

@@ -30,5 +30,5 @@ func main() {
 	})
 
 	// Start server
-	panic(e.Start(":1323"))
+	e.Logger.Fatal(e.Start(":1323"))
 }

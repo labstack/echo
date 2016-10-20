@@ -50,5 +50,5 @@ func getUsers(c echo.Context) error {
 }
 
 func getUser(c echo.Context) error {
-	return c.JSON(http.StatusOK, users[c.P(0)])
+	return c.JSON(http.StatusOK, users[c.Param("id")])
 }

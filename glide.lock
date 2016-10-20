@@ -1,12 +1,20 @@
-hash: c976a13eaa717493a6b9e0e2750dc55e510371cf532a69aa9a14ad945d21b96e
-updated: 2016-10-20T11:28:32.867490559-07:00
+hash: 68fa89887f232f6f139552d50300f5fe9f958da390045b9b99d4f7d0201f42f7
+updated: 2016-10-20T11:50:22.171643207-07:00
 imports:
+- name: github.com/daaku/go.zipexe
+  version: a5fe2436ffcb3236e175e5149162b41cd28bd27d
 - name: github.com/dgrijalva/jwt-go
   version: 24c63f56522a87ec5339cc3567883f1039378fdb
+- name: github.com/GeertJohan/go.rice
+  version: 9fdfd46f9806a9228aae341d65ab75c5235c383c
+  subpackages:
+  - embedded
 - name: github.com/golang/protobuf
   version: 98fa357170587e470c5f27d3c3ea0947b71eb455
   subpackages:
   - proto
+- name: github.com/kardianos/osext
+  version: c2c54e542fb797ad986b31721e1baedf214ca413
 - name: github.com/labstack/gommon
   version: f3b1a1b3bd4726161e1200863d278df7da5e66ff
   subpackages:

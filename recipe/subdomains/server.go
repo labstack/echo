@@ -64,15 +64,15 @@ func main() {
 	e.Any("/*", func(c echo.Context) (err error) {
 		req := c.Request()
 		res := c.Response()
-		host := hosts[req.Host()]
+		host := hosts[req.Host]
 
 		if host == nil {
 			err = echo.ErrNotFound
 		} else {
-			host.Echo.ServeHTTP(req, res)
+			host.Echo.ServeHTTP(res, req)
 		}
 
 		return
 	})
-	panic(e.Start(":1323"))
+	e.Logger.Fatal(e.Start(":1323"))
 }

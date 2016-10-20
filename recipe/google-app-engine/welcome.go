@@ -18,7 +18,7 @@ func init() {
 	t := &Template{
 		templates: template.Must(template.ParseFiles("templates/welcome.html")),
 	}
-	e.SetRenderer(t)
+	e.Renderer = t
 	e.GET("/welcome", welcome)
 }
 

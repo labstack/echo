@@ -34,7 +34,7 @@ func (s *Stats) Process(next echo.HandlerFunc) echo.HandlerFunc {
 		s.mutex.Lock()
 		defer s.mutex.Unlock()
 		s.RequestCount++
-		status := strconv.Itoa(c.Response().Status())
+		status := strconv.Itoa(c.Response().Status)
 		s.Statuses[status]++
 		return nil
 	}
@@ -59,7 +59,7 @@ func main() {
 	e := echo.New()
 
 	// Debug mode
-	e.SetDebug(true)
+	e.Debug = true
 
 	//-------------------
 	// Custom middleware
@@ -78,5 +78,5 @@ func main() {
 	})
 
 	// Start server
-	panic(e.Start(":1323"))
+	e.Logger.Fatal(e.Start(":1323"))
 }

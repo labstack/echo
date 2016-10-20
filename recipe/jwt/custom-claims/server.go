@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 )
@@ -81,5 +82,5 @@ func main() {
 	r.Use(middleware.JWTWithConfig(config))
 	r.GET("", restricted)
 
-	panic(e.Start(":1323"))
+	e.Logger.Fatal(e.Start(":1323"))
 }

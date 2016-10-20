@@ -71,5 +71,5 @@ func main() {
 	e.DELETE("/users/:id", deleteUser)
 
 	// Start server
-	panic(e.Start(":1323"))
+	e.Logger.Fatal(e.Start(":1323"))
 }
