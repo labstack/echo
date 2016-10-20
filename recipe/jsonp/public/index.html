@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+    <title>JSONP</title>
+    <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js"></script>
+    <script type="text/javascript">
+        var host_prefix = 'http://localhost:1323';
+        $(document).ready(function() {
+            // JSONP version - add 'callback=?' to the URL - fetch the JSONP response to the request
+            $("#jsonp-button").click(function(e) {
+                e.preventDefault();
+                // The only difference on the client end is the addition of 'callback=?' to the URL
+                var url = host_prefix + '/jsonp?callback=?';
+                $.getJSON(url, function(jsonp) {
+                    console.log(jsonp);
+                    $("#jsonp-response").html(JSON.stringify(jsonp, null, 2));
+                });
+            });
+        });
+    </script>
+
+</head>
+
+<body>
+    <div class="container" style="margin-top: 50px;">
+        <input type="button" class="btn btn-primary btn-lg" id="jsonp-button" value="Get JSONP response">
+        <p>
+            <pre id="jsonp-response"></pre>
+        </p>
+    </div>
+</body>
+
+</html>

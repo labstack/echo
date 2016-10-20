@@ -1,0 +1,22 @@
+<meta charset="utf-8">
+<meta http-equiv="x-ua-compatible" content="ie=edge">
+<meta name="description" content="{{ .Description }}">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:site" content="@echo">
+<meta name="twitter:title" content="{{ if ne .URL "/" }}{{ .Title }} | {{ end }}{{ .Site.Title }}">
+<meta name="twitter:description" content="{{ .Description }}">
+<meta name="twitter:image" content="{{ .Site.Params.image }}">
+<meta property="og:title" content="{{ if ne .URL "/" }}{{ .Title }} | {{ end }}{{ .Site.Title }}">
+<meta property="og:site_name" content="echo">
+<meta property="og:og:description" content="{{ .Description }}">
+<meta property="og:url" content="{{ .Site.BaseURL }}">
+<meta property="og:image" content="{{ .Site.Params.image }}">
+<title>
+  {{ if ne .URL "/" }}{{ .Title }} | {{ end }}{{ .Site.Title }}
+</title>
+<link rel="stylesheet" href="//cdn.labstack.com/css/w3.css">
+<link rel="stylesheet" href="//unpkg.com/font-awesome@4.6.3/css/font-awesome.min.css">
+<link rel="stylesheet" href="//cdn.jsdelivr.net/docsearch.js/1/docsearch.min.css">
+<link rel="stylesheet" href="/styles/prism.css">
+<link rel="stylesheet" href="/styles/main.css">
