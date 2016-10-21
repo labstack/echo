@@ -545,7 +545,7 @@ func (e *Echo) ServeHTTP(req engine.Request, res engine.Response) {
 	c.Reset(req, res)
 
 	// Middleware
-	h := func(Context) error {
+	h := func(carg Context) error {
 		method := req.Method()
 		path := req.URL().Path()
 		e.router.Find(method, path, c)
@@ -553,7 +553,7 @@ func (e *Echo) ServeHTTP(req engine.Request, res engine.Response) {
 		for i := len(e.middleware) - 1; i >= 0; i-- {
 			h = e.middleware[i](h)
 		}
-		return h(c)
+		return h(carg)
 	}
 
 	// Premiddleware
