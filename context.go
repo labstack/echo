@@ -1,6 +1,7 @@
 package echo
 
 import (
+	"bytes"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
@@ -16,8 +17,6 @@ import (
 	"time"
 
 	"golang.org/x/net/websocket"
-
-	"bytes"
 )
 
 type (
@@ -27,17 +26,11 @@ type (
 		// Request returns `*http.Request`.
 		Request() *http.Request
 
-		// SetWebSocket sets `*http.Request`.
+		// SetRequest sets `*http.Request`.
 		SetRequest(*http.Request)
 
 		// Request returns `*Response`.
 		Response() *Response
-
-		// WebSocket returns `*websocket.Conn`.
-		WebSocket() *websocket.Conn
-
-		// SetWebSocket sets `*websocket.Conn`.
-		SetWebSocket(*websocket.Conn)
 
 		// IsTLS returns true if HTTP connection is TLS otherwise false.
 		IsTLS() bool
@@ -218,14 +211,6 @@ func (c *context) SetRequest(r *http.Request) {
 
 func (c *context) Response() *Response {
 	return c.response
-}
-
-func (c *context) WebSocket() *websocket.Conn {
-	return c.webSocket
-}
-
-func (c *context) SetWebSocket(ws *websocket.Conn) {
-	c.webSocket = ws
 }
 
 func (c *context) IsTLS() bool {
