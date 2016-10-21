@@ -545,15 +545,15 @@ func (e *Echo) ServeHTTP(req engine.Request, res engine.Response) {
 	c.Reset(req, res)
 
 	// Middleware
-	h := func(carg Context) error {
+	h := func(c Context) error {
 		method := req.Method()
 		path := req.URL().Path()
 		e.router.Find(method, path, c)
-		h := c.handler
+		h := c.Handler()
 		for i := len(e.middleware) - 1; i >= 0; i-- {
 			h = e.middleware[i](h)
 		}
-		return h(carg)
+		return h(c)
 	}
 
 	// Premiddleware
