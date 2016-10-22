@@ -15,6 +15,10 @@ type (
 		// Skipper defines a function to skip middleware.
 		Skipper Skipper
 
+		// Prefix to strip from the request URL path.
+		// Required.
+		Prefix string `json:"root"`
+
 		// Root directory from where the static content is served.
 		// Required.
 		Root string `json:"root"`
@@ -44,8 +48,9 @@ var (
 
 // Static returns a Static middleware to serves static content from the provided
 // root directory.
-func Static(root string) echo.MiddlewareFunc {
+func Static(prefix, root string) echo.MiddlewareFunc {
 	c := DefaultStaticConfig
+	c.Prefix = prefix
 	c.Root = root
 	return StaticWithConfig(c)
 }
@@ -68,10 +73,8 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 			}
 
 			fs := http.Dir(config.Root)
-			p := c.Request().URL.Path
-			if strings.Contains(c.Path(), "*") { // If serving from a group, e.g. `/static*`.
-				p = c.Param("*")
-			}
+			p := strings.TrimPrefix(c.Request().URL.Path, config.Prefix)
+			println(p)
 			file := path.Clean(p)
 			f, err := fs.Open(file)
 			if err != nil {

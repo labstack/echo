@@ -347,7 +347,7 @@ func TestRouterMatchAny(t *testing.T) {
 	c := e.NewContext(nil, nil).(*context)
 
 	r.Find(GET, "/", c)
-	assert.Equal(t, "", c.Param("_*"))
+	assert.Equal(t, "", c.Param("*"))
 
 	r.Find(GET, "/download", c)
 	assert.Equal(t, "download", c.Param("*"))

@@ -58,7 +58,6 @@ func HTTPSRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 			req := c.Request()
 			host := req.Host
 			uri := req.RequestURI
-			println(uri)
 			if !c.IsTLS() {
 				return c.Redirect(config.Code, "https://"+host+uri)
 			}
