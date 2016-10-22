@@ -16,7 +16,7 @@ type (
 		Skipper Skipper
 
 		// Prefix to strip from the request URL path.
-		// Required.
+		// Optional. Default value "".
 		Prefix string `json:"root"`
 
 		// Root directory from where the static content is served.
@@ -48,9 +48,8 @@ var (
 
 // Static returns a Static middleware to serves static content from the provided
 // root directory.
-func Static(prefix, root string) echo.MiddlewareFunc {
+func Static(root string) echo.MiddlewareFunc {
 	c := DefaultStaticConfig
-	c.Prefix = prefix
 	c.Root = root
 	return StaticWithConfig(c)
 }

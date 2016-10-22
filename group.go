@@ -19,7 +19,11 @@ func (g *Group) Use(middleware ...MiddlewareFunc) {
 	// Allow requests `/prefix & /prefix/*` to reach the group as they might get
 	// dropped if router doesn't find a match, making none of the group middleware
 	// execute.
-	g.Any("", NotFoundHandler, g.middleware...)
+	p := ""
+	if g.prefix == "" {
+		p = "/"
+	}
+	g.Any(p, NotFoundHandler, g.middleware...)
 	g.Any("/*", NotFoundHandler, g.middleware...)
 }
 

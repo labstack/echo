@@ -51,7 +51,7 @@ func main() {
 
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
-	e.Use(middleware.Static("public"))
+	e.Use(middleware.Static(  "public"))
 
 	e.POST("/upload", upload)
 

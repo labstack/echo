@@ -13,7 +13,7 @@ func main() {
 	e := echo.New()
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
-	e.Use(middleware.Static("public"))
+	e.Use(middleware.Static(  "public"))
 
 	// JSONP
 	e.GET("/jsonp", func(c echo.Context) error {

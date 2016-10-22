@@ -35,7 +35,7 @@ func main() {
 	e := echo.New()
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
-	e.Use(middleware.Static("../public"))
+	e.Use(middleware.Static(  "../public"))
 	e.GET("/ws", hello)
 	if err := e.Start(":1323"); err != nil {
 		panic(err)
