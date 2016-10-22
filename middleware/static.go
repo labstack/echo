@@ -74,7 +74,6 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 
 			fs := http.Dir(config.Root)
 			p := strings.TrimPrefix(c.Request().URL.Path, config.Prefix)
-			println(p)
 			file := path.Clean(p)
 			f, err := fs.Open(file)
 			if err != nil {
