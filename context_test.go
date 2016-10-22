@@ -234,12 +234,12 @@ func TestContextPath(t *testing.T) {
 	e := New()
 	r := e.Router()
 
-	r.Add(GET, "/users/:id", nil, e)
+	r.Add(GET, "/users/:id", nil)
 	c := e.NewContext(nil, nil)
 	r.Find(GET, "/users/1", c)
 	assert.Equal(t, "/users/:id", c.Path())
 
-	r.Add(GET, "/users/:uid/files/:fid", nil, e)
+	r.Add(GET, "/users/:uid/files/:fid", nil)
 	c = e.NewContext(nil, nil)
 	r.Find(GET, "/users/1/files/1", c)
 	assert.Equal(t, "/users/:uid/files/:fid", c.Path())
@@ -400,7 +400,7 @@ func TestContextHandler(t *testing.T) {
 	r.Add(GET, "/handler", func(Context) error {
 		_, err := b.Write([]byte("handler"))
 		return err
-	}, e)
+	})
 	c := e.NewContext(nil, nil)
 	r.Find(GET, "/handler", c)
 	c.Handler()(c)

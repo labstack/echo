@@ -280,7 +280,7 @@ func TestRouterStatic(t *testing.T) {
 	r.Add(GET, path, func(c Context) error {
 		c.Set("path", path)
 		return nil
-	}, e)
+	})
 	c := e.NewContext(nil, nil).(*context)
 	r.Find(GET, path, c)
 	c.handler(c)
@@ -292,7 +292,7 @@ func TestRouterParam(t *testing.T) {
 	r := e.router
 	r.Add(GET, "/users/:id", func(c Context) error {
 		return nil
-	}, e)
+	})
 	c := e.NewContext(nil, nil).(*context)
 	r.Find(GET, "/users/1", c)
 	assert.Equal(t, "1", c.P(0))
@@ -303,7 +303,7 @@ func TestRouterTwoParam(t *testing.T) {
 	r := e.router
 	r.Add(GET, "/users/:uid/files/:fid", func(Context) error {
 		return nil
-	}, e)
+	})
 	c := e.NewContext(nil, nil).(*context)
 
 	r.Find(GET, "/users/1/files/1", c)
@@ -318,11 +318,11 @@ func TestRouterParamWithSlash(t *testing.T) {
 
 	r.Add(GET, "/a/:b/c/d/:e", func(c Context) error {
 		return nil
-	}, e)
+	})
 
 	r.Add(GET, "/a/:b/c/:d/:f", func(c Context) error {
 		return nil
-	}, e)
+	})
 
 	c := e.NewContext(nil, nil).(*context)
 	assert.NotPanics(t, func() {
@@ -337,13 +337,13 @@ func TestRouterMatchAny(t *testing.T) {
 	// Routes
 	r.Add(GET, "/", func(Context) error {
 		return nil
-	}, e)
+	})
 	r.Add(GET, "/*", func(Context) error {
 		return nil
-	}, e)
+	})
 	r.Add(GET, "/users/*", func(Context) error {
 		return nil
-	}, e)
+	})
 	c := e.NewContext(nil, nil).(*context)
 
 	r.Find(GET, "/", c)
@@ -361,7 +361,7 @@ func TestRouterMicroParam(t *testing.T) {
 	r := e.router
 	r.Add(GET, "/:a/:b/:c", func(c Context) error {
 		return nil
-	}, e)
+	})
 	c := e.NewContext(nil, nil).(*context)
 	r.Find(GET, "/1/2/3", c)
 	assert.Equal(t, "1", c.P(0))
@@ -376,7 +376,7 @@ func TestRouterMixParamMatchAny(t *testing.T) {
 	// Route
 	r.Add(GET, "/users/:id/*", func(c Context) error {
 		return nil
-	}, e)
+	})
 	c := e.NewContext(nil, nil).(*context)
 
 	r.Find(GET, "/users/joe/comments", c)
@@ -392,10 +392,10 @@ func TestRouterMultiRoute(t *testing.T) {
 	r.Add(GET, "/users", func(c Context) error {
 		c.Set("path", "/users")
 		return nil
-	}, e)
+	})
 	r.Add(GET, "/users/:id", func(c Context) error {
 		return nil
-	}, e)
+	})
 	c := e.NewContext(nil, nil).(*context)
 
 	// Route > /users
@@ -422,31 +422,31 @@ func TestRouterPriority(t *testing.T) {
 	r.Add(GET, "/users", func(c Context) error {
 		c.Set("a", 1)
 		return nil
-	}, e)
+	})
 	r.Add(GET, "/users/new", func(c Context) error {
 		c.Set("b", 2)
 		return nil
-	}, e)
+	})
 	r.Add(GET, "/users/:id", func(c Context) error {
 		c.Set("c", 3)
 		return nil
-	}, e)
+	})
 	r.Add(GET, "/users/dew", func(c Context) error {
 		c.Set("d", 4)
 		return nil
-	}, e)
+	})
 	r.Add(GET, "/users/:id/files", func(c Context) error {
 		c.Set("e", 5)
 		return nil
-	}, e)
+	})
 	r.Add(GET, "/users/newsee", func(c Context) error {
 		c.Set("f", 6)
 		return nil
-	}, e)
+	})
 	r.Add(GET, "/users/*", func(c Context) error {
 		c.Set("g", 7)
 		return nil
-	}, e)
+	})
 	c := e.NewContext(nil, nil).(*context)
 
 	// Route > /users
@@ -496,11 +496,11 @@ func TestRouterPriorityNotFound(t *testing.T) {
 	r.Add(GET, "/a/foo", func(c Context) error {
 		c.Set("a", 1)
 		return nil
-	}, e)
+	})
 	r.Add(GET, "/a/bar", func(c Context) error {
 		c.Set("b", 2)
 		return nil
-	}, e)
+	})
 
 	// Find
 	r.Find(GET, "/a/foo", c)
@@ -525,13 +525,13 @@ func TestRouterParamNames(t *testing.T) {
 	r.Add(GET, "/users", func(c Context) error {
 		c.Set("path", "/users")
 		return nil
-	}, e)
+	})
 	r.Add(GET, "/users/:id", func(c Context) error {
 		return nil
-	}, e)
+	})
 	r.Add(GET, "/users/:uid/files/:fid", func(c Context) error {
 		return nil
-	}, e)
+	})
 	c := e.NewContext(nil, nil).(*context)
 
 	// Route > /users
@@ -561,15 +561,15 @@ func TestRouterStaticDynamicConflict(t *testing.T) {
 	r.Add(GET, "/dictionary/skills", func(c Context) error {
 		c.Set("a", 1)
 		return nil
-	}, e)
+	})
 	r.Add(GET, "/dictionary/:name", func(c Context) error {
 		c.Set("b", 2)
 		return nil
-	}, e)
+	})
 	r.Add(GET, "/server", func(c Context) error {
 		c.Set("c", 3)
 		return nil
-	}, e)
+	})
 
 	r.Find(GET, "/dictionary/skills", c)
 	c.Handler()(c)
@@ -591,7 +591,7 @@ func TestRouterAPI(t *testing.T) {
 	for _, route := range api {
 		r.Add(route.Method, route.Path, func(c Context) error {
 			return nil
-		}, e)
+		})
 	}
 	c := e.NewContext(nil, nil).(*context)
 	for _, route := range api {
@@ -613,7 +613,7 @@ func BenchmarkRouterGitHubAPI(b *testing.B) {
 	for _, route := range api {
 		r.Add(route.Method, route.Path, func(c Context) error {
 			return nil
-		}, e)
+		})
 	}
 
 	// Find routes
