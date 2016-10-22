@@ -405,7 +405,7 @@ func (e *Echo) add(method, path string, handler HandlerFunc, middleware ...Middl
 			h = middleware[i](h)
 		}
 		return h(c)
-	}, e)
+	})
 	r := Route{
 		Method:  method,
 		Path:    path,
