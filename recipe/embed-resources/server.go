@@ -18,6 +18,6 @@ func main() {
 	e.GET("/static/*", echo.WrapHandler(http.StripPrefix("/static/", assetHandler)))
 
 	if err := e.Start(":1323"); err != nil {
-		panic(err)
+		e.Logger.Fatal(err)
 	}
 }

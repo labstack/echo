@@ -22,6 +22,6 @@ func main() {
 
 	// Start server
 	if err := e.Start(":1323"); err != nil {
-		panic(err)
+		e.Logger.Fatal(err)
 	}
 }

@@ -39,25 +39,29 @@ This serves static files from `static` directory and enables directory browsing.
 
 ```go
 StaticConfig struct {
-  // Skipper defines a function to skip middleware.
-  Skipper Skipper
+    // Skipper defines a function to skip middleware.
+    Skipper Skipper
 
-  // Root directory from where the static content is served.
-  // Required.
-  Root string `json:"root"`
+    // Prefix to strip from the request URL path. Typically used with `Echo#Group`.
+    // Optional. Default value "".
+    Prefix string `json:"root"`
 
-  // Index file for serving a directory.
-  // Optional. Default value "index.html".
-  Index string `json:"index"`
+    // Root directory from where the static content is served.
+    // Required.
+    Root string `json:"root"`
 
-  // Enable HTML5 mode by forwarding all not-found requests to root so that
-  // SPA (single-page application) can handle the routing.
-  // Optional. Default value false.
-  HTML5 bool `json:"html5"`
+    // Index file for serving a directory.
+    // Optional. Default value "index.html".
+    Index string `json:"index"`
 
-  // Enable directory browsing.
-  // Optional. Default value false.
-  Browse bool `json:"browse"`
+    // Enable HTML5 mode by forwarding all not-found requests to root so that
+    // SPA (single-page application) can handle the routing.
+    // Optional. Default value false.
+    HTML5 bool `json:"html5"`
+
+    // Enable directory browsing.
+    // Optional. Default value false.
+    Browse bool `json:"browse"`
 }
 ```
 

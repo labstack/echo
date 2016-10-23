@@ -33,5 +33,8 @@ type (
 		Fatal(...interface{})
 		Fatalj(log.JSON)
 		Fatalf(string, ...interface{})
+		Panic(...interface{})
+		Panicj(log.JSON)
+		Panicf(string, ...interface{})
 	}
 )

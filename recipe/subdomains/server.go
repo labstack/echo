@@ -75,6 +75,6 @@ func main() {
 		return
 	})
 	if err := e.Start(":1323"); err != nil {
-		panic(err)
+		e.Logger.Fatal(err)
 	}
 }

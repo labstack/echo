@@ -15,7 +15,7 @@ type (
 		// Skipper defines a function to skip middleware.
 		Skipper Skipper
 
-		// Prefix to strip from the request URL path.
+		// Prefix to strip from the request URL path. Typically used with `Echo#Group`.
 		// Optional. Default value "".
 		Prefix string `json:"root"`
 

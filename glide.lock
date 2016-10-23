@@ -1,5 +1,5 @@
 hash: b592629b56c43e0f6fcef629a3e46106b07431120d42ed45952d841655407e3e
-updated: 2016-10-20T16:35:55.384756891-07:00
+updated: 2016-10-23T13:10:42.580474947-07:00
 imports:
 - name: github.com/daaku/go.zipexe
   version: a5fe2436ffcb3236e175e5149162b41cd28bd27d
@@ -14,11 +14,11 @@ imports:
   subpackages:
   - proto
 - name: github.com/gorilla/websocket
-  version: 460e0a996e9004dce40c3697e5ed4d7bc5a69b93
+  version: 0b847f2facc24ec406130a05bb1bb72d41993b05
 - name: github.com/kardianos/osext
   version: c2c54e542fb797ad986b31721e1baedf214ca413
 - name: github.com/labstack/gommon
-  version: f3b1a1b3bd4726161e1200863d278df7da5e66ff
+  version: 2d272df536d051e737aea353b86c979d6e88bce0
   subpackages:
   - bytes
   - color
@@ -41,17 +41,17 @@ imports:
   subpackages:
   - acme
 - name: golang.org/x/crypto
-  version: 3ded668c5379f6951fb0de06174442072e5447d3
+  version: 3c0d69f1777220f1a1d2ec373cb94a282f03eb42
   subpackages:
   - ocsp
 - name: golang.org/x/net
-  version: daba796358cd2742b75aae05761f1b898c9f6a5c
+  version: c33d37840d93fc75251f49ab83c5fc8b2faea5e8
   subpackages:
   - context
   - publicsuffix
   - websocket
 - name: golang.org/x/sys
-  version: 002cbb5f952456d0c50e0d2aff17ea5eca716979
+  version: c200b10b5d5e122be351b67af224adc6128af5bf
   subpackages:
   - unix
 - name: golang.org/x/time
@@ -79,7 +79,7 @@ testImports:
   subpackages:
   - spew
 - name: github.com/pmezard/go-difflib
-  version: 792786c7400a136282c1664665ae0a8db921c6c2
+  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
   subpackages:
   - difflib
 - name: github.com/stretchr/testify

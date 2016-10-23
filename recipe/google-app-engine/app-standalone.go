@@ -14,13 +14,13 @@ func createMux() *echo.Echo {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Gzip())
 
-	e.Use(middleware.Static(  "public"))
+	e.Use(middleware.Static("public"))
 
 	return e
 }
 
 func main() {
 	if err := e.Start(":8080"); err != nil {
-		panic(err)
+		e.Logger.Fatal(err)
 	}
 }
