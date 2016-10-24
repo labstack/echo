@@ -50,7 +50,7 @@ func (s *Stats) Handle(c echo.Context) error {
 // ServerHeader middleware adds a `Server` header to the response.
 func ServerHeader(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		c.Response().Header().Set(echo.HeaderServer, "Echo/2.0")
+		c.Response().Header().Set(echo.HeaderServer, "Echo/3.0")
 		return next(c)
 	}
 }
