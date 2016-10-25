@@ -49,7 +49,7 @@ e.Use(func(h echo.HandlerFunc) echo.HandlerFunc {
 **Use in handler**
 
 ```go
-e.Get("/", func(c echo.Context) error {
+e.GET("/", func(c echo.Context) error {
 	cc := c.(*CustomContext)
 	cc.Foo()
 	cc.Bar()
