@@ -55,6 +55,9 @@ func (r *Response) WriteHeader(code int) {
 }
 
 func (r *Response) Write(b []byte) (n int, err error) {
+	if !r.committed {
+		r.WriteHeader(http.StatusOK)
+	}
 	n, err = r.writer.Write(b)
 	r.size += int64(n)
 	return
