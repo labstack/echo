@@ -6,7 +6,6 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"mime"
 	"mime/multipart"
 	"net"
 	"net/http"
@@ -14,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"golang.org/x/net/websocket"
 )
@@ -142,13 +140,12 @@ type (
 		// File sends a response with the content of the file.
 		File(string) error
 
-		// Attachment sends a response from `io.ReaderSeeker` as attachment, prompting
-		// client to save the file.
-		Attachment(io.ReadSeeker, string) error
+		// Attachment sends a response as attachment, prompting client to save the
+		// file.
+		Attachment(string, string) error
 
-		// Inline sends a response from `io.ReaderSeeker` as inline, opening
-		// the file in the browser.
-		Inline(io.ReadSeeker, string) error
+		// Inline sends a response as inline, opening the file in the browser.
+		Inline(string, string) error
 
 		// NoContent sends a response with no body and a status code.
 		NoContent(int) error
@@ -170,11 +167,6 @@ type (
 
 		// Echo returns the `Echo` instance.
 		Echo() *Echo
-
-		// ServeContent sends static content from `io.Reader` and handles caching
-		// via `If-Modified-Since` request header. It automatically sets `Content-Type`
-		// and `Last-Modified` response headers.
-		ServeContent(io.ReadSeeker, string, time.Time) error
 
 		// Reset resets the context after request completes. It must be called along
 		// with `Echo#AcquireContext()` and `Echo#ReleaseContext()`.
@@ -462,22 +454,21 @@ func (c *context) File(file string) error {
 			return err
 		}
 	}
-	return c.ServeContent(f, fi.Name(), fi.ModTime())
+	http.ServeContent(c.Response(), c.Request(), fi.Name(), fi.ModTime(), f)
+	return nil
 }
 
-func (c *context) Attachment(r io.ReadSeeker, name string) (err error) {
-	return c.contentDisposition(r, name, "attachment")
+func (c *context) Attachment(file, name string) (err error) {
+	return c.contentDisposition(file, name, "attachment")
 }
 
-func (c *context) Inline(r io.ReadSeeker, name string) (err error) {
-	return c.contentDisposition(r, name, "inline")
+func (c *context) Inline(file, name string) (err error) {
+	return c.contentDisposition(file, name, "inline")
 }
 
-func (c *context) contentDisposition(r io.ReadSeeker, name, dispositionType string) (err error) {
-	c.response.Header().Set(HeaderContentType, ContentTypeByExtension(name))
+func (c *context) contentDisposition(file, name, dispositionType string) (err error) {
 	c.response.Header().Set(HeaderContentDisposition, fmt.Sprintf("%s; filename=%s", dispositionType, name))
-	c.response.WriteHeader(http.StatusOK)
-	_, err = io.Copy(c.response, r)
+	c.File(file)
 	return
 }
 
@@ -513,33 +504,6 @@ func (c *context) SetHandler(h HandlerFunc) {
 
 func (c *context) Logger() Logger {
 	return c.echo.Logger
-}
-
-func (c *context) ServeContent(content io.ReadSeeker, name string, modtime time.Time) error {
-	req := c.Request()
-	res := c.Response()
-
-	if t, err := time.Parse(http.TimeFormat, req.Header.Get(HeaderIfModifiedSince)); err == nil && modtime.Before(t.Add(1*time.Second)) {
-		res.Header().Del(HeaderContentType)
-		res.Header().Del(HeaderContentLength)
-		return c.NoContent(http.StatusNotModified)
-	}
-
-	res.Header().Set(HeaderContentType, ContentTypeByExtension(name))
-	res.Header().Set(HeaderLastModified, modtime.UTC().Format(http.TimeFormat))
-	res.WriteHeader(http.StatusOK)
-	_, err := io.Copy(res, content)
-	return err
-}
-
-// ContentTypeByExtension returns the MIME type associated with the file based on
-// its extension. It returns `application/octet-stream` incase MIME type is not
-// found.
-func ContentTypeByExtension(name string) (t string) {
-	if t = mime.TypeByExtension(filepath.Ext(name)); t == "" {
-		t = MIMEOctetStream
-	}
-	return
 }
 
 func (c *context) Reset(r *http.Request, w http.ResponseWriter) {

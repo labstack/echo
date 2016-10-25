@@ -7,7 +7,6 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"text/template"
 	"time"
@@ -141,27 +140,21 @@ func TestContext(t *testing.T) {
 	// Attachment
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec).(*context)
-	file, err := os.Open("_fixture/images/walle.png")
+	err = c.Attachment("_fixture/images/walle.png", "walle.png")
 	if assert.NoError(t, err) {
-		err = c.Attachment(file, "walle.png")
-		if assert.NoError(t, err) {
-			assert.Equal(t, http.StatusOK, rec.Code)
-			assert.Equal(t, "attachment; filename=walle.png", rec.Header().Get(HeaderContentDisposition))
-			assert.Equal(t, 219885, rec.Body.Len())
-		}
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, "attachment; filename=walle.png", rec.Header().Get(HeaderContentDisposition))
+		assert.Equal(t, 219885, rec.Body.Len())
 	}
 
 	// Inline
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec).(*context)
-	file, err = os.Open("_fixture/images/walle.png")
+	err = c.Inline("_fixture/images/walle.png", "walle.png")
 	if assert.NoError(t, err) {
-		err = c.Inline(file, "walle.png")
-		if assert.NoError(t, err) {
-			assert.Equal(t, http.StatusOK, rec.Code)
-			assert.Equal(t, "inline; filename=walle.png", rec.Header().Get(HeaderContentDisposition))
-			assert.Equal(t, 219885, rec.Body.Len())
-		}
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, "inline; filename=walle.png", rec.Header().Get(HeaderContentDisposition))
+		assert.Equal(t, 219885, rec.Body.Len())
 	}
 
 	// NoContent
@@ -351,33 +344,6 @@ func TestContextStore(t *testing.T) {
 	c = new(context)
 	c.Set("name", "Jon Snow")
 	assert.Equal(t, "Jon Snow", c.Get("name"))
-}
-
-func TestContextServeContent(t *testing.T) {
-	e := New()
-	req, _ := http.NewRequest(GET, "/", nil)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-
-	fs := http.Dir("_fixture/images")
-	f, err := fs.Open("walle.png")
-	if assert.NoError(t, err) {
-		fi, err := f.Stat()
-		if assert.NoError(t, err) {
-			// Not cached
-			if assert.NoError(t, c.ServeContent(f, fi.Name(), fi.ModTime())) {
-				assert.Equal(t, http.StatusOK, rec.Code)
-			}
-
-			// Cached
-			rec = httptest.NewRecorder()
-			c = e.NewContext(req, rec)
-			req.Header.Set(HeaderIfModifiedSince, fi.ModTime().UTC().Format(http.TimeFormat))
-			if assert.NoError(t, c.ServeContent(f, fi.Name(), fi.ModTime())) {
-				assert.Equal(t, http.StatusNotModified, rec.Code)
-			}
-		}
-	}
 }
 
 func TestContextHandler(t *testing.T) {
