@@ -46,9 +46,9 @@ type (
 		// Optional. Default value os.Stdout.
 		Output io.Writer
 
-		template   *fasttemplate.Template
-		color      *color.Color
-		bufferPool sync.Pool
+		template *fasttemplate.Template
+		color    *color.Color
+		pool     sync.Pool
 	}
 )
 
@@ -89,7 +89,7 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 	if w, ok := config.Output.(*os.File); !ok || !isatty.IsTerminal(w.Fd()) {
 		config.color.Disable()
 	}
-	config.bufferPool = sync.Pool{
+	config.pool = sync.Pool{
 		New: func() interface{} {
 			return bytes.NewBuffer(make([]byte, 256))
 		},
@@ -108,9 +108,9 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 				c.Error(err)
 			}
 			stop := time.Now()
-			buf := config.bufferPool.Get().(*bytes.Buffer)
+			buf := config.pool.Get().(*bytes.Buffer)
 			buf.Reset()
-			defer config.bufferPool.Put(buf)
+			defer config.pool.Put(buf)
 
 			_, err = config.template.ExecuteFunc(buf, func(w io.Writer, tag string) (int, error) {
 				switch tag {
