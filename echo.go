@@ -384,9 +384,15 @@ func (e *Echo) Match(methods []string, path string, handler HandlerFunc, middlew
 // Static registers a new route with path prefix to serve static files from the
 // provided root directory.
 func (e *Echo) Static(prefix, root string) {
-	e.GET(prefix+"*", func(c Context) error {
+	h := func(c Context) error {
 		return c.File(path.Join(root, c.Param("*")))
-	})
+	}
+	e.GET(prefix, h)
+	if prefix == "/" {
+		e.GET(prefix+"*", h)
+	} else {
+		e.GET(prefix+"/*", h)
+	}
 }
 
 // File registers a new route with path to serve a static file.
