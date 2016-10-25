@@ -47,7 +47,7 @@ Example below shows how to use Go `html/template`:
 
     ```go
     e := echo.New()
-    e.SetRenderer(t)
+    e.Renderer = t
     e.GET("/hello", Hello)
     ```
 
