@@ -29,15 +29,20 @@ import (
 
 func main() {
 	e := echo.New()
-	e.Use(func(c echo.Context) error {
+	e.Use(func(handler echo.HandlerFunc) echo.HandlerFunc {
 		// Extract the credentials from HTTP request header and perform a security
 		// check
-
+		
 		// For invalid credentials
-		return echo.NewHTTPError(http.StatusUnauthorized)
+		return func(c echo.Context) error {
+			return echo.NewHTTPError(http.StatusUnauthorized)
+		}
 	})
+
 	e.GET("/welcome", welcome)
-	e.Run(":1323")
+	if err := e.Start(":1323"); err != nil {
+		e.Logger.Fatal(err.Error())
+	}
 }
 
 func welcome(c echo.Context) error {

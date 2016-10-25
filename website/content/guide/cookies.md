@@ -31,21 +31,23 @@ Attribute | Optional
 `Secure` | Yes
 `HTTPOnly` | Yes
 
+Echo uses go standard `http.Cookie` object to add/retrieve cookies from the context received in the handler function.
+
 ### Create a Cookie
 
 ```go
 func writeCookie(c echo.Context) error {
-	cookie := new(echo.Cookie)
-	cookie.SetName("username")
-	cookie.SetValue("jon")
-	cookie.SetExpires(time.Now().Add(24 * time.Hour))
+	cookie := new(http.Cookie)
+	cookie.Name = "username"
+	cookie.Value = "jon"
+	cookie.Expires = time.Now().Add(24 * time.Hour)
 	c.SetCookie(cookie)
 	return c.String(http.StatusOK, "write a cookie")
 }
 ```
 
-- Cookie is created using `new(echo.Cookie)`.
-- Attributes for the cookie are set using `Setter` functions.
+- Cookie is created using `new(http.Cookie)`.
+- Attributes for the cookie are set assigning to the `http.Cookie` instance public attributes.  
 - Finally `c.SetCookie(cookies)` adds a `Set-Cookie` header in HTTP response.
 
 ### Read a Cookie
@@ -56,8 +58,8 @@ func readCookie(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(cookie.Name())
-	fmt.Println(cookie.Value())
+	fmt.Println(cookie.Name)
+	fmt.Println(cookie.Value)
 	return c.String(http.StatusOK, "read a cookie")
 }
 ```
@@ -70,8 +72,8 @@ func readCookie(c echo.Context) error {
 ```go
 func readAllCookies(c echo.Context) error {
 	for _, cookie := range c.Cookies() {
-		fmt.Println(cookie.Name())
-		fmt.Println(cookie.Value())
+		fmt.Println(cookie.Name)
+		fmt.Println(cookie.Value)
 	}
 	return c.String(http.StatusOK, "read all cookie")
 }

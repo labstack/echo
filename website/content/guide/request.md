@@ -57,9 +57,7 @@ $ curl -d "name=joe" http://localhost:1323/users
 
 ### Path Parameter
 
-Registered path parameter can be retrieved either by name `Context#Param(name string) string`
-or by index `Context#P(i int) string`. Getting parameter by index gives a slightly
-better performance.
+Registered path parameter can be retrieved by name `Context#Param(name string) string`.
 
 *Example*
 
@@ -67,9 +65,6 @@ better performance.
 e.GET("/users/:name", func(c echo.Context) error {
 	// By name
 	name := c.Param("name")
-
-	// By index
-	name := c.P(0)
 
 	return c.String(http.StatusOK, name)
 })
@@ -88,10 +83,13 @@ middleware for logging purpose.
 *Example*
 
 ```go
-e.Use(func(c echo.Context) error {
-    println(c.Path()) // Prints `/users/:name`
-    return nil
+e.Use(func(handler echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		println(c.Path())
+		return handler(c)
+	}
 })
+
 e.GET("/users/:name", func(c echo.Context) error) {
     return c.String(http.StatusOK, name)
 })
