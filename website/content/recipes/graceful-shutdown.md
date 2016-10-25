@@ -22,8 +22,8 @@ In order to change this default 15 seconds you could change the `ShutdownTimeout
 ### Maintainers
 
 - [mertenvg](https://github.com/mertenvg)
+- [apaganobeleno](https://github.com/apaganobeleno)
 
 ### Source Code
 
 - [graceful]({{< source "graceful-shutdown/graceful" >}})
-- [grace]({{< source "graceful-shutdown/grace" >}})

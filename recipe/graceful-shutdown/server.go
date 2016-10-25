@@ -9,7 +9,7 @@ import (
 func main() {
 	e := echo.New()
 
-	//Setting up the termination timeout to 30 seconds.
+	// Setting up the termination timeout to 30 seconds.
 	e.ShutdownTimeout = 30 * time.Second
 
 	e.GET("/", func(ctx echo.Context) error {
