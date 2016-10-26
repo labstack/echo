@@ -1,7 +1,5 @@
 package echo
 
-import "path"
-
 type (
 	// Group is a set of sub-routes for a specified route. It can be used for inner
 	// routes that share a common middlware or functionality that should be separate
@@ -19,11 +17,9 @@ func (g *Group) Use(middleware ...MiddlewareFunc) {
 	// Allow requests `/prefix & /prefix/*` to reach the group as they might get
 	// dropped if router doesn't find a match, making none of the group middleware
 	// execute.
-	p := ""
 	if g.prefix == "" {
-		p = "/"
+		g.Any("/", NotFoundHandler, g.middleware...)
 	}
-	g.Any(p, NotFoundHandler, g.middleware...)
 	g.Any("/*", NotFoundHandler, g.middleware...)
 }
 
@@ -96,16 +92,12 @@ func (g *Group) Group(prefix string, middleware ...MiddlewareFunc) *Group {
 
 // Static implements `Echo#Static()` for sub-routes within the Group.
 func (g *Group) Static(prefix, root string) {
-	g.GET(g.prefix+prefix+"*", func(c Context) error {
-		return c.File(path.Join(root, c.Param("*")))
-	})
+	g.echo.Static(g.prefix+prefix, root)
 }
 
 // File implements `Echo#File()` for sub-routes within the Group.
 func (g *Group) File(path, file string) {
-	g.GET(g.prefix+path, func(c Context) error {
-		return c.File(file)
-	})
+	g.echo.File(g.prefix+path, file)
 }
 
 func (g *Group) add(method, path string, handler HandlerFunc, middleware ...MiddlewareFunc) {
