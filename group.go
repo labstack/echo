@@ -137,14 +137,14 @@ func (g *Group) Group(prefix string, middleware ...MiddlewareFunc) *Group {
 
 // Static implements `Echo#Static()` for sub-routes within the Group.
 func (g *Group) Static(prefix, root string) {
-	g.GET(g.prefix+prefix+"*", func(c Context) error {
+	g.GET(prefix+"*", func(c Context) error {
 		return c.File(path.Join(root, c.P(0)))
 	})
 }
 
 // File implements `Echo#File()` for sub-routes within the Group.
 func (g *Group) File(path, file string) {
-	g.GET(g.prefix+path, func(c Context) error {
+	g.GET(path, func(c Context) error {
 		return c.File(file)
 	})
 }
