@@ -445,11 +445,12 @@ func (c *context) File(file string) error {
 
 	fi, _ := f.Stat()
 	if fi.IsDir() {
-		file = filepath.Join(file, "index.html")
+		file = filepath.Join(file, indexPage)
 		f, err = os.Open(file)
 		if err != nil {
 			return ErrNotFound
 		}
+		defer f.Close()
 		if fi, err = f.Stat(); err != nil {
 			return err
 		}
