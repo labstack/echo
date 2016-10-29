@@ -224,7 +224,7 @@ func New() (e *Echo) {
 
 	// Logger
 	e.logger = log.New("echo")
-	e.SetLogLevel(log.FATAL)
+	e.SetLogLevel(log.OFF)
 
 	return
 }
