@@ -85,7 +85,7 @@ func (g *Group) Group(prefix string, middleware ...MiddlewareFunc) *Group {
 
 // Static implements `Echo#Static()` for sub-routes within the Group.
 func (g *Group) Static(prefix, root string) {
-	g.echo.Static(g.prefix+prefix, root)
+	static(g, prefix, root)
 }
 
 // File implements `Echo#File()` for sub-routes within the Group.
