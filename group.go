@@ -17,10 +17,15 @@ func (g *Group) Use(middleware ...MiddlewareFunc) {
 	// Allow requests `/prefix & /prefix/*` to reach the group as they might get
 	// dropped if router doesn't find a match, making none of the group middleware
 	// execute.
+	paths := []string{"/*"}
 	if g.prefix == "" {
-		g.Any("/", NotFoundHandler, g.middleware...)
+		paths = append(paths, "/")
+	} else {
+		paths = append(paths, "")
 	}
-	g.Any("/*", NotFoundHandler, g.middleware...)
+	for _, p := range paths {
+		g.Any(p, NotFoundHandler, g.middleware...)
+	}
 }
 
 // CONNECT implements `Echo#CONNECT()` for sub-routes within the Group.
