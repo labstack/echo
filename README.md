@@ -45,8 +45,8 @@ package main
 
 import (
 	"net/http"
+	
 	"github.com/labstack/echo"
-	"github.com/labstack/echo/engine/standard"
 )
 
 func main() {
@@ -54,7 +54,10 @@ func main() {
 	e.GET("/", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Hello, World!")
 	})
-	e.Run(standard.New(":1323"))
+
+	if err := e.Start(":1323"); err != nil {
+		e.Logger.Fatal(err.Error())
+	}
 }
 ```
 
