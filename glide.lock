@@ -1,5 +1,5 @@
 hash: b592629b56c43e0f6fcef629a3e46106b07431120d42ed45952d841655407e3e
-updated: 2016-10-23T13:10:42.580474947-07:00
+updated: 2016-10-25T11:15:52.451088614-07:00
 imports:
 - name: github.com/daaku/go.zipexe
   version: a5fe2436ffcb3236e175e5149162b41cd28bd27d
@@ -37,15 +37,15 @@ imports:
 - name: github.com/valyala/fasttemplate
   version: 3b874956e03f1636d171bda64b130f9135f42cff
 - name: github.com/xenolf/lego
-  version: e953bbc8b95ad7d2f7172ae6732e71069be48957
+  version: 4bb8bea031eb805f361c04ca222f266b9e7feced
   subpackages:
   - acme
 - name: golang.org/x/crypto
-  version: 3c0d69f1777220f1a1d2ec373cb94a282f03eb42
+  version: ca7e7f10cb9fd9c1a6ff7f60436c086d73714180
   subpackages:
   - ocsp
 - name: golang.org/x/net
-  version: c33d37840d93fc75251f49ab83c5fc8b2faea5e8
+  version: 65dfc08770ce66f74becfdff5f8ab01caef4e946
   subpackages:
   - context
   - publicsuffix
@@ -79,7 +79,7 @@ testImports:
   subpackages:
   - spew
 - name: github.com/pmezard/go-difflib
-  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
+  version: 792786c7400a136282c1664665ae0a8db921c6c2
   subpackages:
   - difflib
 - name: github.com/stretchr/testify

@@ -57,8 +57,8 @@ func main() {
 
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
-	e.Use(middleware.Static("public"))
 
+	e.Static("/", "public")
 	e.POST("/upload", upload)
 
 	if err := e.Start(":1323"); err != nil {

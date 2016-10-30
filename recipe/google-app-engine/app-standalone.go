@@ -14,7 +14,7 @@ func createMux() *echo.Echo {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Gzip())
 
-	e.Use(middleware.Static("public"))
+	e.Static("/", "public")
 
 	return e
 }
