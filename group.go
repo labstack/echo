@@ -14,18 +14,6 @@ type (
 // Use implements `Echo#Use()` for sub-routes within the Group.
 func (g *Group) Use(middleware ...MiddlewareFunc) {
 	g.middleware = append(g.middleware, middleware...)
-	// Allow requests `/prefix & /prefix/*` to reach the group as they might get
-	// dropped if router doesn't find a match, making none of the group middleware
-	// execute.
-	paths := []string{"/*"}
-	if g.prefix == "" {
-		paths = append(paths, "/")
-	} else {
-		paths = append(paths, "")
-	}
-	for _, p := range paths {
-		g.Any(p, NotFoundHandler, g.middleware...)
-	}
 }
 
 // CONNECT implements `Echo#CONNECT()` for sub-routes within the Group.
