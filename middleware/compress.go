@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	"strings"
-	"sync"
 
 	"github.com/labstack/echo"
 )
@@ -55,7 +54,6 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 		config.Level = DefaultGzipConfig.Level
 	}
 
-	pool := gzipPool(config)
 	scheme := "gzip"
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -68,11 +66,10 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 			res.Header().Add(echo.HeaderVary, echo.HeaderAcceptEncoding)
 			if strings.Contains(c.Request().Header.Get(echo.HeaderAcceptEncoding), scheme) {
 				rw := res.Writer()
-				w := pool.Get().(*gzip.Writer)
-				w.Reset(c.Response().Writer())
-				// rw := res.Writer()
-				// gw := pool.Get().(*gzip.Writer)
-				// gw.Reset(rw)
+				w, err := gzip.NewWriterLevel(rw, config.Level)
+				if err != nil {
+					return err
+				}
 				defer func() {
 					if res.Size == 0 {
 						// We have to reset response to it's pristine state when
@@ -83,9 +80,8 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 						w.Reset(ioutil.Discard)
 					}
 					w.Close()
-					pool.Put(w)
 				}()
-				grw := gzipResponseWriter{Writer: w, ResponseWriter: res.Writer()}
+				grw := &gzipResponseWriter{Writer: w, ResponseWriter: rw}
 				res.Header().Set(echo.HeaderContentEncoding, scheme)
 				res.SetWriter(grw)
 			}
@@ -94,30 +90,21 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 	}
 }
 
-func (w gzipResponseWriter) Write(b []byte) (int, error) {
+func (w *gzipResponseWriter) Write(b []byte) (int, error) {
 	if w.Header().Get(echo.HeaderContentType) == "" {
 		w.Header().Set(echo.HeaderContentType, http.DetectContentType(b))
 	}
 	return w.Writer.Write(b)
 }
 
-func (w gzipResponseWriter) Flush() error {
+func (w *gzipResponseWriter) Flush() error {
 	return w.Writer.(*gzip.Writer).Flush()
 }
 
-func (w gzipResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+func (w *gzipResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return w.ResponseWriter.(http.Hijacker).Hijack()
 }
 
 func (w *gzipResponseWriter) CloseNotify() <-chan bool {
 	return w.ResponseWriter.(http.CloseNotifier).CloseNotify()
-}
-
-func gzipPool(config GzipConfig) sync.Pool {
-	return sync.Pool{
-		New: func() interface{} {
-			w, _ := gzip.NewWriterLevel(ioutil.Discard, config.Level)
-			return w
-		},
-	}
 }

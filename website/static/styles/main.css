@@ -131,10 +131,15 @@ a.icon {
     background: #F5F5F5;
 }
 
+.w3-sidenav a:not(.active):hover {
+    background: #CCC;
+    color: #000;
+}
+
 .w3-sidenav a:hover,
 .w3-sidenav .active {
-  background: #00AFD1;
-  color: #FFF;
+    background: #00AFD1;
+    color: #FFF;
 }
 
 #search-menu {

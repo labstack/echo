@@ -14,13 +14,6 @@ type (
 // Use implements `Echo#Use()` for sub-routes within the Group.
 func (g *Group) Use(middleware ...MiddlewareFunc) {
 	g.middleware = append(g.middleware, middleware...)
-	// Allow requests `/prefix & /prefix/*` to reach the group as they might get
-	// dropped if router doesn't find a match, making none of the group middleware
-	// execute.
-	if g.prefix == "" {
-		g.Any("/", NotFoundHandler, g.middleware...)
-	}
-	g.Any("/*", NotFoundHandler, g.middleware...)
 }
 
 // CONNECT implements `Echo#CONNECT()` for sub-routes within the Group.
@@ -92,7 +85,7 @@ func (g *Group) Group(prefix string, middleware ...MiddlewareFunc) *Group {
 
 // Static implements `Echo#Static()` for sub-routes within the Group.
 func (g *Group) Static(prefix, root string) {
-	g.echo.Static(g.prefix+prefix, root)
+	static(g, prefix, root)
 }
 
 // File implements `Echo#File()` for sub-routes within the Group.
