@@ -57,7 +57,10 @@ func main() {
 	e.GET("/", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Hello, World!")
 	})
-	e.Run(standard.New(":1323"))
+	
+	if err := e.Start(":1323"); err != nil {
+		e.Logger.Fatal(err.Error())
+	}
 }
 ```
 
@@ -85,8 +88,10 @@ e.DELETE("/users/:id", deleteUser)
 func getUser(c echo.Context) error {
 	// User ID from path `users/:id`
 	id := c.Param("id")
+	return c.String(http.StatusOK, id)
 }
 ```
+Browse to http://localhost:1323/users/Joe and you should see 'Joe' on the page.
 
 ### Query Parameters
 
@@ -97,8 +102,12 @@ func show(c echo.Context) error {
 	// Get team and member from the query string
 	team := c.QueryParam("team")
 	member := c.QueryParam("member")
+	
+	return c.String(http.StatusOK, "team:" + team + ", member:" + member)
 }
 ```
+
+Browse to http://localhost:1323/show?team=x-men&member=wolverine and you should see 'team:x-men, member:wolverine' on the page.
 
 ### Form `application/x-www-form-urlencoded`
 
@@ -114,7 +123,15 @@ func save(c echo.Context) error {
 	// Get name and email
 	name := c.FormValue("name")
 	email := c.FormValue("email")
+	
+	return c.String(http.StatusOK, "name:" + name + ", email:" + email)
 }
+```
+
+Run the following command.
+```sh
+$ curl -F "name=Joe Smith" -F "email=joe@labstack.com" http://localhost:1323/save
+// => name:Joe Smith, email:joe@labstack.com
 ```
 
 ### Form `multipart/form-data`
@@ -124,41 +141,52 @@ func save(c echo.Context) error {
 name | value
 :--- | :---
 name | Joe Smith
-email | joe@labstack.com
 avatar | avatar
 
 ```go
 func save(c echo.Context) error {
-	// Get name and email
+	// Get name
 	name := c.FormValue("name")
-	email := c.FormValue("email")
 	// Get avatar
 	avatar, err := c.FormFile("avatar")
-	if err != nil {
-		return err
-	}
+  	if err != nil {
+ 		return err
+ 	}
+ 
+ 	// Source
+ 	src, err := avatar.Open()
+ 	if err != nil {
+ 		return err
+ 	}
+ 	defer src.Close()
+ 
+ 	// Destination
+ 	dst, err := os.Create(avatar.Filename)
+ 	if err != nil {
+ 		return err
+ 	}
+ 	defer dst.Close()
+ 
+ 	// Copy
+ 	if _, err = io.Copy(dst, src); err != nil {
+  		return err
+  	}
 
-	// Source
-	src, err := avatar.Open()
-	if err != nil {
-		return err
-	}
-	defer src.Close()
-
-	// Destination
-	dst, err := os.Create(avatar.Filename)
-	if err != nil {
-		return err
-	}
-	defer dst.Close()
-
-	// Copy
-	if _, err = io.Copy(dst, src); err != nil {
-		return err
-	}
-
-	return c.HTML(http.StatusOK, "<b>Thank you!</b>")
+	return c.HTML(http.StatusOK, "<b>Thank you! " + name + "</b>")
 }
+```
+
+Run the following command.
+```sh
+$ curl -F "name=Joe Smith" -F "avatar=@/path/to/your/avatar.png" http://localhost:1323/save
+// => <b>Thank you! Joe Smith</b>
+```
+
+To check the uploaded image, run the following command.
+```sh
+cd <project directory>
+ls avatar.png
+// => avatar.png
 ```
 
 ### Handling Request
