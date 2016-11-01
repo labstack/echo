@@ -25,19 +25,20 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo"
+	"github.com/labstack/echo/engine/standard"
 )
 
 func main() {
 	e := echo.New()
-	e.Use(func(c echo.Context) error {
+	e.Use(echo.WrapMiddleware(func(c echo.Context) error {
 		// Extract the credentials from HTTP request header and perform a security
 		// check
 
 		// For invalid credentials
 		return echo.NewHTTPError(http.StatusUnauthorized)
-	})
-	e.GET("/welcome", welcome)
-	e.Run(":1323")
+	}))
+	e.GET("/", welcome)
+	e.Run(standard.New(":1323"))
 }
 
 func welcome(c echo.Context) error {
