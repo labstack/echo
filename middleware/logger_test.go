@@ -94,11 +94,9 @@ func TestLoggerTemplate(t *testing.T) {
 		Output: buf,
 	}))
 
-	h := func(c echo.Context) error {
+	e.GET("/", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Header Logged")
-	}
-
-	e.GET("/", h)
+	})
 
 	req, _ := http.NewRequest(echo.GET, "/?username=apagano-param&password=secret", nil)
 	req.RequestURI = "/"
