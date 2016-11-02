@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -36,6 +37,10 @@ type (
 		// - latency_human (Human readable)
 		// - bytes_in (Bytes received)
 		// - bytes_out (Bytes sent)
+		// - header_HEADER_NAME (Where HEADER_NAME is your desired header)
+		// - path_PATH_PARAM_NAME
+		// - query_QUERY_PARAM_NAME
+		// - form_FORM_PARAM_NAME
 		//
 		// Example "${remote_ip} ${status}"
 		//
@@ -160,7 +165,19 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 					return w.Write([]byte(b))
 				case "bytes_out":
 					return w.Write([]byte(strconv.FormatInt(res.Size, 10)))
+				default:
+					switch {
+					case strings.HasPrefix(tag, "header:"):
+						return buf.Write([]byte(c.Request().Header.Get(tag[7:])))
+					case strings.HasPrefix(tag, "path:"):
+						return buf.Write([]byte(c.Param(tag[5:])))
+					case strings.HasPrefix(tag, "query:"):
+						return buf.Write([]byte(c.QueryParam(tag[6:])))
+					case strings.HasPrefix(tag, "form:"):
+						return buf.Write([]byte(c.FormValue(tag[5:])))
+					}
 				}
+
 				return 0, nil
 			})
 			if err == nil {
