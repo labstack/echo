@@ -80,7 +80,7 @@ func TestLoggerIPAddress(t *testing.T) {
 	assert.Contains(t, ip, buf.String())
 }
 
-func TestLoggerHeaders(t *testing.T) {
+func TestLoggerTemplate(t *testing.T) {
 	e := echo.New()
 	buf := new(bytes.Buffer)
 
@@ -89,11 +89,17 @@ func TestLoggerHeaders(t *testing.T) {
 		Format: `{"time":"${time_rfc3339}","remote_ip":"${remote_ip}","host":"${host}",` +
 			`"method":"${method}","uri":"${uri}","status":${status}, "latency":${latency},` +
 			`"latency_human":"${latency_human}","bytes_in":${bytes_in},` +
-			`"bytes_out":${bytes_out},"custom_header":"${header:X-Custom-Header}"}` + "\n",
+			`"bytes_out":${bytes_out},"custom_header":"${header:X-Custom-Header}",` +
+			`"custom_query":"${query:username}", "custom_form":"${form:username}"}` + "\n",
 		Output: buf,
 	})
 
-	req, _ := http.NewRequest(echo.GET, "/", nil)
+	req, _ := http.NewRequest(echo.GET, "/?username=apagano-param&password=secret", nil)
+	req.Form = url.Values{
+		"username": []string{"apagano-form"},
+		"password": []string{"secret-form"},
+	}
+
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
@@ -106,92 +112,10 @@ func TestLoggerHeaders(t *testing.T) {
 	h(c)
 
 	assert.Contains(t, buf.String(), "AAA-CUSTOM-VALUE")
+	assert.Contains(t, buf.String(), "apagano-param")
+	assert.Contains(t, buf.String(), "apagano-form")
+
 	assert.NotContains(t, buf.String(), "BBB-CUSTOM-VALUE")
-}
-
-func TestLoggerQuery(t *testing.T) {
-	e := echo.New()
-	buf := new(bytes.Buffer)
-
-	logger := LoggerWithConfig(LoggerConfig{
-		Skipper: defaultSkipper,
-		Format: `{"time":"${time_rfc3339}","remote_ip":"${remote_ip}","host":"${host}",` +
-			`"method":"${method}","uri":"${uri}","status":${status}, "latency":${latency},` +
-			`"latency_human":"${latency_human}","bytes_in":${bytes_in},` +
-			`"bytes_out":${bytes_out},"custom_header":"${query:username}"}` + "\n",
-		Output: buf,
-	})
-
-	req, _ := http.NewRequest(echo.GET, "/?username=apagano&password=secret", nil)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-
-	h := logger(func(c echo.Context) error {
-		return c.String(http.StatusOK, "Header Logged")
-	})
-
-	h(c)
-
-	assert.Contains(t, buf.String(), "apagano")
-	assert.NotContains(t, buf.String(), "secret")
-}
-
-func TestLoggerForm(t *testing.T) {
-	e := echo.New()
-	buf := new(bytes.Buffer)
-
-	logger := LoggerWithConfig(LoggerConfig{
-		Skipper: defaultSkipper,
-		Format: `{"time":"${time_rfc3339}","remote_ip":"${remote_ip}","host":"${host}",` +
-			`"method":"${method}","uri":"${uri}","status":${status}, "latency":${latency},` +
-			`"latency_human":"${latency_human}","bytes_in":${bytes_in},` +
-			`"bytes_out":${bytes_out},"custom_header":"${form:username}"}` + "\n",
-		Output: buf,
-	})
-
-	req, _ := http.NewRequest(echo.POST, "/", nil)
-	req.Form = url.Values{
-		"username": []string{"apagano"},
-		"password": []string{"secret"},
-	}
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-
-	h := logger(func(c echo.Context) error {
-		return c.String(http.StatusOK, "Header Logged")
-	})
-
-	h(c)
-
-	assert.Contains(t, buf.String(), "apagano")
-	assert.NotContains(t, buf.String(), "secret")
-}
-
-func TestLoggerPath(t *testing.T) {
-	e := echo.New()
-	buf := new(bytes.Buffer)
-
-	logger := LoggerWithConfig(LoggerConfig{
-		Skipper: defaultSkipper,
-		Format: `{"time":"${time_rfc3339}","remote_ip":"${remote_ip}","host":"${host}",` +
-			`"method":"${method}","uri":"${uri}","status":${status}, "latency":${latency},` +
-			`"latency_human":"${latency_human}","bytes_in":${bytes_in},` +
-			`"bytes_out":${bytes_out},"custom_header":"${path:username}"}` + "\n",
-		Output: buf,
-	})
-
-	req, _ := http.NewRequest(echo.POST, "/", nil)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	c.SetParamNames("username", "hash")
-	c.SetParamValues("apagano", "hexvalue")
-
-	h := logger(func(c echo.Context) error {
-		return c.String(http.StatusOK, "Header Logged")
-	})
-
-	h(c)
-
-	assert.Contains(t, buf.String(), "apagano")
+	assert.NotContains(t, buf.String(), "secret-form")
 	assert.NotContains(t, buf.String(), "hexvalue")
 }

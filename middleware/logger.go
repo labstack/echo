@@ -37,10 +37,9 @@ type (
 		// - latency_human (Human readable)
 		// - bytes_in (Bytes received)
 		// - bytes_out (Bytes sent)
-		// - header_HEADER_NAME (Where HEADER_NAME is your desired header)
-		// - path_PATH_PARAM_NAME
-		// - query_QUERY_PARAM_NAME
-		// - form_FORM_PARAM_NAME
+		// - header:<name>
+		// - query:<name>
+		// - form:<name>
 		//
 		// Example "${remote_ip} ${status}"
 		//
@@ -169,8 +168,6 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 					switch {
 					case strings.HasPrefix(tag, "header:"):
 						return buf.Write([]byte(c.Request().Header.Get(tag[7:])))
-					case strings.HasPrefix(tag, "path:"):
-						return buf.Write([]byte(c.Param(tag[5:])))
 					case strings.HasPrefix(tag, "query:"):
 						return buf.Write([]byte(c.QueryParam(tag[6:])))
 					case strings.HasPrefix(tag, "form:"):
