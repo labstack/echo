@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/labstack/echo"
@@ -81,41 +82,56 @@ func TestLoggerIPAddress(t *testing.T) {
 }
 
 func TestLoggerTemplate(t *testing.T) {
-	e := echo.New()
 	buf := new(bytes.Buffer)
 
-	logger := LoggerWithConfig(LoggerConfig{
-		Skipper: defaultSkipper,
-		Format: `{"time":"${time_rfc3339}","remote_ip":"${remote_ip}","host":"${host}",` +
+	e := echo.New()
+	e.Use(LoggerWithConfig(LoggerConfig{
+		Format: `{"time":"${time_rfc3339}","remote_ip":"${remote_ip}","host":"${host}","user_agent":"${user_agent}",` +
 			`"method":"${method}","uri":"${uri}","status":${status}, "latency":${latency},` +
-			`"latency_human":"${latency_human}","bytes_in":${bytes_in},` +
-			`"bytes_out":${bytes_out},"custom_header":"${header:X-Custom-Header}",` +
-			`"custom_query":"${query:username}", "custom_form":"${form:username}"}` + "\n",
+			`"latency_human":"${latency_human}","bytes_in":${bytes_in}, "path":"${path}", "referer":"${referer}",` +
+			`"bytes_out":${bytes_out},"ch":"${header:X-Custom-Header}",` +
+			`"us":"${query:username}", "cf":"${form:username}"}` + "\n",
 		Output: buf,
-	})
+	}))
+
+	h := func(c echo.Context) error {
+		return c.String(http.StatusOK, "Header Logged")
+	}
+
+	e.GET("/", h)
 
 	req, _ := http.NewRequest(echo.GET, "/?username=apagano-param&password=secret", nil)
+	req.RequestURI = "/"
+	req.Header.Add(echo.HeaderXRealIP, "127.0.0.1")
+	req.Header.Add("Referer", "google.com")
+	req.Header.Add("User-Agent", "echo-tests-agent")
+	req.Header.Add("X-Custom-Header", "AAA-CUSTOM-VALUE")
 	req.Form = url.Values{
 		"username": []string{"apagano-form"},
 		"password": []string{"secret-form"},
 	}
 
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
+	e.ServeHTTP(rec, req)
 
-	h := logger(func(c echo.Context) error {
-		return c.String(http.StatusOK, "Header Logged")
-	})
+	cases := map[string]bool{
+		"apagano-param":    true,
+		"apagano-form":     true,
+		"AAA-CUSTOM-VALUE": true,
+		"BBB-CUSTOM-VALUE": false,
+		"secret-form":      false,
+		"hexvalue":         false,
+		"GET":              true,
+		"127.0.0.1":        true,
+		"\"path\":\"/\"":   true,
+		"\"uri\":\"/\"":    true,
+		"\"status\":200":   true,
+		"\"bytes_in\":0":   true,
+		"google.com":       true,
+		"echo-tests-agent": true,
+	}
 
-	req.Header.Add("X-Custom-Header", "AAA-CUSTOM-VALUE")
-	req.Header.Add("X-Custom-B-Header", "BBB-CUSTOM-VALUE")
-	h(c)
-
-	assert.Contains(t, buf.String(), "AAA-CUSTOM-VALUE")
-	assert.Contains(t, buf.String(), "apagano-param")
-	assert.Contains(t, buf.String(), "apagano-form")
-
-	assert.NotContains(t, buf.String(), "BBB-CUSTOM-VALUE")
-	assert.NotContains(t, buf.String(), "secret-form")
-	assert.NotContains(t, buf.String(), "hexvalue")
+	for token, present := range cases {
+		assert.True(t, strings.Contains(buf.String(), token) == present, "Case: "+token)
+	}
 }
