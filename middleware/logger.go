@@ -37,6 +37,10 @@ type (
 		// - latency_human (Human readable)
 		// - bytes_in (Bytes received)
 		// - bytes_out (Bytes sent)
+		// - header_HEADER_NAME (Where HEADER_NAME is your desired header)
+		// - path_PATH_PARAM_NAME
+		// - query_QUERY_PARAM_NAME
+		// - form_FORM_PARAM_NAME
 		//
 		// Example "${remote_ip} ${status}"
 		//
