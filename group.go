@@ -12,6 +12,8 @@ func (g *Group) Use(m ...Middleware) {
 	for _, h := range m {
 		g.echo.middleware = append(g.echo.middleware, wrapMiddleware(h))
 	}
+
+	g.echo.Any(g.echo.prefix+"*", notFoundHandler)
 }
 
 // Connect implements the echo.Connect interface for subroutes within the Group.
