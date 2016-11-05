@@ -29,19 +29,21 @@ import (
 
 func main() {
 	e := echo.New()
-	e.Use(func(handler echo.HandlerFunc) echo.HandlerFunc {
-		// Extract the credentials from HTTP request header and perform a security
-		// check
-		
-		// For invalid credentials
+	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			// Extract the credentials from HTTP request header and perform a security
+			// check
+
+			// For invalid credentials
 			return echo.NewHTTPError(http.StatusUnauthorized)
+
+			// For valid credentials call next
+			// return next(c)
 		}
 	})
-
-	e.GET("/welcome", welcome)
+	e.GET("/", welcome)
 	if err := e.Start(":1323"); err != nil {
-		e.Logger.Fatal(err.Error())
+		e.Logger.Fatal(err)
 	}
 }
 
