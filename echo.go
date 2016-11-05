@@ -555,11 +555,11 @@ func (e *Echo) StartServer(s *http.Server) error {
 	if s.TLSConfig == nil {
 		e.server = gs
 		e.Color.Printf(" ⇛ http server started on %s\n", color.Green(s.Addr))
-	} else {
-		e.tlsServer = gs
-		e.Color.Printf(" ⇛ https server started on %s\n", color.Green(s.Addr))
+		return gs.ListenAndServe()
 	}
-	return gs.ListenAndServe()
+	e.tlsServer = gs
+	e.Color.Printf(" ⇛ https server started on %s\n", color.Green(s.Addr))
+	return gs.ListenAndServeTLSConfig(s.TLSConfig)
 }
 
 // Shutdown gracefully shutdown the HTTP server with timeout.
