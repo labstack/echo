@@ -505,7 +505,6 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // Start starts the HTTP server.
 func (e *Echo) Start(address string) error {
-	e.Color.Printf(" ⇛ http server started on %s\n", color.Green(address))
 	return e.StartServer(&http.Server{Addr: address})
 }
 
@@ -520,7 +519,6 @@ func (e *Echo) StartTLS(address string, certFile, keyFile string) (err error) {
 	if err != nil {
 		return
 	}
-	e.Color.Printf(" ⇛ https server started on %s\n", color.Green(address))
 	return e.startTLS(address, config)
 }
 
@@ -533,7 +531,6 @@ func (e *Echo) StartAutoTLS(hosts []string, cacheFile string) (err error) {
 	if err = e.tlsManager.CacheFile(cacheFile); err != nil {
 		return
 	}
-	e.Color.Printf(" ⇛ https auto https server started on %s\n", color.Green(address))
 	return e.startTLS(address, config)
 }
 
@@ -557,8 +554,10 @@ func (e *Echo) StartServer(s *http.Server) error {
 	}
 	if s.TLSConfig == nil {
 		e.server = gs
+		e.Color.Printf(" ⇛ http server started on %s\n", color.Green(s.Addr))
 	} else {
 		e.tlsServer = gs
+		e.Color.Printf(" ⇛ https server started on %s\n", color.Green(s.Addr))
 	}
 	return gs.ListenAndServe()
 }
