@@ -95,7 +95,7 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 			allowedOrigin := ""
 			for _, o := range config.AllowOrigins {
 				if o == "*" || o == origin {
-					allowedOrigin = o
+					allowedOrigin = origin
 					break
 				}
 			}
