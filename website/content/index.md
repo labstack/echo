@@ -48,8 +48,8 @@ package main
 
 import (
 	"net/http"
+	
 	"github.com/labstack/echo"
-	"github.com/labstack/echo/engine/standard"
 )
 
 func main() {
@@ -57,7 +57,7 @@ func main() {
 	e.GET("/", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Hello, World!")
 	})
-	
+
 	if err := e.Start(":1323"); err != nil {
 		e.Logger.Fatal(err.Error())
 	}
@@ -85,12 +85,14 @@ e.DELETE("/users/:id", deleteUser)
 ### Path Parameters
 
 ```go
+// e.GET("/users/:id", getUser)
 func getUser(c echo.Context) error {
-	// User ID from path `users/:id`
-	id := c.Param("id")
+  	// User ID from path `users/:id`
+  	id := c.Param("id")
 	return c.String(http.StatusOK, id)
 }
 ```
+
 Browse to http://localhost:1323/users/Joe and you should see 'Joe' on the page.
 
 ### Query Parameters
@@ -98,11 +100,11 @@ Browse to http://localhost:1323/users/Joe and you should see 'Joe' on the page.
 `/show?team=x-men&member=wolverine`
 
 ```go
+//e.GET("/show", show)
 func show(c echo.Context) error {
 	// Get team and member from the query string
 	team := c.QueryParam("team")
 	member := c.QueryParam("member")
-	
 	return c.String(http.StatusOK, "team:" + team + ", member:" + member)
 }
 ```
@@ -118,17 +120,19 @@ name | value
 name | Joe Smith
 email | joe@labstack.com
 
+
 ```go
+// e.POST("/save", save)
 func save(c echo.Context) error {
 	// Get name and email
 	name := c.FormValue("name")
 	email := c.FormValue("email")
-	
 	return c.String(http.StatusOK, "name:" + name + ", email:" + email)
 }
 ```
 
-Run the following command.
+Run the following command:
+
 ```sh
 $ curl -F "name=Joe Smith" -F "email=joe@labstack.com" http://localhost:1323/save
 // => name:Joe Smith, email:joe@labstack.com
@@ -148,7 +152,7 @@ func save(c echo.Context) error {
 	// Get name
 	name := c.FormValue("name")
 	// Get avatar
-	avatar, err := c.FormFile("avatar")
+  	avatar, err := c.FormFile("avatar")
   	if err != nil {
  		return err
  	}
@@ -181,8 +185,9 @@ Run the following command.
 $ curl -F "name=Joe Smith" -F "avatar=@/path/to/your/avatar.png" http://localhost:1323/save
 // => <b>Thank you! Joe Smith</b>
 ```
+ 
+For checking uploaded image, run the following command.
 
-To check the uploaded image, run the following command.
 ```sh
 cd <project directory>
 ls avatar.png
