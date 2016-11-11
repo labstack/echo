@@ -10,8 +10,11 @@ import (
 )
 
 type (
-	// StaticConfig defines the config for static middleware.
+	// StaticConfig defines the config for Static middleware.
 	StaticConfig struct {
+		// Skipper defines a function to skip middleware.
+		Skipper Skipper
+
 		// Root directory from where the static content is served.
 		// Required.
 		Root string `json:"root"`
@@ -20,21 +23,26 @@ type (
 		// Optional. Default value "index.html".
 		Index string `json:"index"`
 
-		// Enable/disable directory browsing.
+		// Enable HTML5 mode by forwarding all not-found requests to root so that
+		// SPA (single-page application) can handle the routing.
+		// Optional. Default value false.
+		HTML5 bool `json:"html5"`
+
+		// Enable directory browsing.
 		// Optional. Default value false.
 		Browse bool `json:"browse"`
 	}
 )
 
 var (
-	// DefaultStaticConfig is the default static middleware config.
+	// DefaultStaticConfig is the default Static middleware config.
 	DefaultStaticConfig = StaticConfig{
-		Index:  "index.html",
-		Browse: false,
+		Skipper: defaultSkipper,
+		Index:   "index.html",
 	}
 )
 
-// Static returns a static middleware to serves static content from the provided
+// Static returns a Static middleware to serves static content from the provided
 // root directory.
 func Static(root string) echo.MiddlewareFunc {
 	c := DefaultStaticConfig
@@ -42,16 +50,23 @@ func Static(root string) echo.MiddlewareFunc {
 	return StaticWithConfig(c)
 }
 
-// StaticWithConfig returns a static middleware from config.
+// StaticWithConfig returns a Static middleware with config.
 // See `Static()`.
 func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 	// Defaults
+	if config.Skipper == nil {
+		config.Skipper = DefaultStaticConfig.Skipper
+	}
 	if config.Index == "" {
 		config.Index = DefaultStaticConfig.Index
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			if config.Skipper(c) {
+				return next(c)
+			}
+
 			fs := http.Dir(config.Root)
 			p := c.Request().URL().Path()
 			if strings.Contains(c.Path(), "*") { // If serving from a group, e.g. `/static*`.
@@ -60,7 +75,18 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 			file := path.Clean(p)
 			f, err := fs.Open(file)
 			if err != nil {
-				return next(c)
+				// HTML5 mode
+				err = next(c)
+				if he, ok := err.(*echo.HTTPError); ok {
+					if config.HTML5 && he.Code == http.StatusNotFound {
+						file = ""
+						f, err = fs.Open(file)
+					} else {
+						return err
+					}
+				} else {
+					return err
+				}
 			}
 			defer f.Close()
 			fi, err := f.Stat()

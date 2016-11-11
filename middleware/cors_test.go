@@ -25,6 +25,14 @@ func TestCORS(t *testing.T) {
 	h(c)
 	assert.Equal(t, "", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
 
+	// Empty origin header
+	req = test.NewRequest(echo.GET, "/", nil)
+	rec = test.NewResponseRecorder()
+	c = e.NewContext(req, rec)
+	req.Header().Set(echo.HeaderOrigin, "")
+	h(c)
+	assert.Equal(t, "*", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
+
 	// Wildcard origin
 	req = test.NewRequest(echo.GET, "/", nil)
 	rec = test.NewResponseRecorder()

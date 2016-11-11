@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"errors"
+	"fmt"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -21,6 +22,12 @@ type (
 
 func (b *binder) Bind(i interface{}, c Context) (err error) {
 	req := c.Request()
+	if req.Method() == GET {
+		if err = b.bindData(i, c.QueryParams()); err != nil {
+			err = NewHTTPError(http.StatusBadRequest, err.Error())
+		}
+		return
+	}
 	ctype := req.Header().Get(HeaderContentType)
 	if req.Body() == nil {
 		err = NewHTTPError(http.StatusBadRequest, "request body can't be empty")
@@ -30,23 +37,39 @@ func (b *binder) Bind(i interface{}, c Context) (err error) {
 	switch {
 	case strings.HasPrefix(ctype, MIMEApplicationJSON):
 		if err = json.NewDecoder(req.Body()).Decode(i); err != nil {
-			err = NewHTTPError(http.StatusBadRequest, err.Error())
+			if ute, ok := err.(*json.UnmarshalTypeError); ok {
+				err = NewHTTPError(http.StatusBadRequest, fmt.Sprintf("unmarshal type error: expected=%v, got=%v, offset=%v", ute.Type, ute.Value, ute.Offset))
+			} else if se, ok := err.(*json.SyntaxError); ok {
+				err = NewHTTPError(http.StatusBadRequest, fmt.Sprintf("syntax error: offset=%v, error=%v", se.Offset, se.Error()))
+			} else {
+				err = NewHTTPError(http.StatusBadRequest, err.Error())
+			}
 		}
 	case strings.HasPrefix(ctype, MIMEApplicationXML):
 		if err = xml.NewDecoder(req.Body()).Decode(i); err != nil {
-			err = NewHTTPError(http.StatusBadRequest, err.Error())
+			if ute, ok := err.(*xml.UnsupportedTypeError); ok {
+				err = NewHTTPError(http.StatusBadRequest, fmt.Sprintf("unsupported type error: type=%v, error=%v", ute.Type, ute.Error()))
+			} else if se, ok := err.(*xml.SyntaxError); ok {
+				err = NewHTTPError(http.StatusBadRequest, fmt.Sprintf("syntax error: line=%v, error=%v", se.Line, se.Error()))
+			} else {
+				err = NewHTTPError(http.StatusBadRequest, err.Error())
+			}
 		}
 	case strings.HasPrefix(ctype, MIMEApplicationForm), strings.HasPrefix(ctype, MIMEMultipartForm):
-		if err = b.bindForm(i, req.FormParams()); err != nil {
+		if err = b.bindData(i, req.FormParams()); err != nil {
 			err = NewHTTPError(http.StatusBadRequest, err.Error())
 		}
 	}
 	return
 }
 
-func (b *binder) bindForm(ptr interface{}, form map[string][]string) error {
+func (b *binder) bindData(ptr interface{}, data map[string][]string) error {
 	typ := reflect.TypeOf(ptr).Elem()
 	val := reflect.ValueOf(ptr).Elem()
+
+	if typ.Kind() != reflect.Struct {
+		return errors.New("binding element must be a struct")
+	}
 
 	for i := 0; i < typ.NumField(); i++ {
 		typeField := typ.Field(i)
@@ -61,14 +84,14 @@ func (b *binder) bindForm(ptr interface{}, form map[string][]string) error {
 			inputFieldName = typeField.Name
 			// If "form" tag is nil, we inspect if the field is a struct.
 			if structFieldKind == reflect.Struct {
-				err := b.bindForm(structField.Addr().Interface(), form)
+				err := b.bindData(structField.Addr().Interface(), data)
 				if err != nil {
 					return err
 				}
 				continue
 			}
 		}
-		inputValue, exists := form[inputFieldName]
+		inputValue, exists := data[inputFieldName]
 		if !exists {
 			continue
 		}

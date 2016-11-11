@@ -68,6 +68,28 @@ func TestBinderXML(t *testing.T) {
 
 func TestBinderForm(t *testing.T) {
 	testBinderOkay(t, strings.NewReader(userForm), MIMEApplicationForm)
+	testBinderError(t, nil, MIMEApplicationForm)
+	e := New()
+	req := test.NewRequest(POST, "/", strings.NewReader(userForm))
+	rec := test.NewResponseRecorder()
+	c := e.NewContext(req, rec)
+	req.Header().Set(HeaderContentType, MIMEApplicationForm)
+	var obj = make([]struct{ Field string }, 0)
+	err := c.Bind(&obj)
+	assert.Error(t, err)
+}
+
+func TestBinderQueryParams(t *testing.T) {
+	e := New()
+	req := test.NewRequest(GET, "/?id=1&name=Jon Snow", nil)
+	rec := test.NewResponseRecorder()
+	c := e.NewContext(req, rec)
+	u := new(user)
+	err := c.Bind(u)
+	if assert.NoError(t, err) {
+		assert.Equal(t, 1, u.ID)
+		assert.Equal(t, "Jon Snow", u.Name)
+	}
 }
 
 func TestBinderMultipartForm(t *testing.T) {
@@ -91,7 +113,7 @@ func TestBinderUnsupportedMediaType(t *testing.T) {
 func TestBinderbindForm(t *testing.T) {
 	ts := new(binderTestStruct)
 	b := new(binder)
-	b.bindForm(ts, values)
+	b.bindData(ts, values)
 	assertBinderTestStruct(t, ts)
 }
 

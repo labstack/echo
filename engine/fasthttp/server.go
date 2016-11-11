@@ -7,7 +7,8 @@ import (
 
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/engine"
-	"github.com/labstack/gommon/log"
+	"github.com/labstack/echo/log"
+	glog "github.com/labstack/gommon/log"
 	"github.com/valyala/fasthttp"
 )
 
@@ -17,7 +18,7 @@ type (
 		*fasthttp.Server
 		config  engine.Config
 		handler engine.Handler
-		logger  *log.Logger
+		logger  log.Logger
 		pool    *pool
 	}
 
@@ -40,8 +41,8 @@ func New(addr string) *Server {
 func WithTLS(addr, certFile, keyFile string) *Server {
 	c := engine.Config{
 		Address:     addr,
-		TLSCertfile: certFile,
-		TLSKeyfile:  keyFile,
+		TLSCertFile: certFile,
+		TLSKeyFile:  keyFile,
 	}
 	return WithConfig(c)
 }
@@ -79,10 +80,12 @@ func WithConfig(c engine.Config) (s *Server) {
 			},
 		},
 		handler: engine.HandlerFunc(func(req engine.Request, res engine.Response) {
-			s.logger.Error("handler not set, use `SetHandler()` to set it.")
+			panic("echo: handler not set, use `Server#SetHandler()` to set it.")
 		}),
-		logger: log.New("echo"),
+		logger: glog.New("echo"),
 	}
+	s.ReadTimeout = c.ReadTimeout
+	s.WriteTimeout = c.WriteTimeout
 	s.Handler = s.ServeHTTP
 	return
 }
@@ -93,7 +96,7 @@ func (s *Server) SetHandler(h engine.Handler) {
 }
 
 // SetLogger implements `engine.Server#SetLogger` function.
-func (s *Server) SetLogger(l *log.Logger) {
+func (s *Server) SetLogger(l log.Logger) {
 	s.logger = l
 }
 
@@ -106,18 +109,24 @@ func (s *Server) Start() error {
 
 }
 
+// Stop implements `engine.Server#Stop` function.
+func (s *Server) Stop() error {
+	// TODO: implement `engine.Server#Stop` function
+	return nil
+}
+
 func (s *Server) startDefaultListener() error {
 	c := s.config
-	if c.TLSCertfile != "" && c.TLSKeyfile != "" {
-		return s.ListenAndServeTLS(c.Address, c.TLSCertfile, c.TLSKeyfile)
+	if c.TLSCertFile != "" && c.TLSKeyFile != "" {
+		return s.ListenAndServeTLS(c.Address, c.TLSCertFile, c.TLSKeyFile)
 	}
 	return s.ListenAndServe(c.Address)
 }
 
 func (s *Server) startCustomListener() error {
 	c := s.config
-	if c.TLSCertfile != "" && c.TLSKeyfile != "" {
-		return s.ServeTLS(c.Listener, c.TLSCertfile, c.TLSKeyfile)
+	if c.TLSCertFile != "" && c.TLSKeyFile != "" {
+		return s.ServeTLS(c.Listener, c.TLSCertFile, c.TLSKeyFile)
 	}
 	return s.Serve(c.Listener)
 }
@@ -160,17 +169,20 @@ func WrapHandler(h fasthttp.RequestHandler) echo.HandlerFunc {
 	}
 }
 
-// WrapMiddleware wraps `fasthttp.RequestHandler` into `echo.MiddlewareFunc`
-func WrapMiddleware(h fasthttp.RequestHandler) echo.MiddlewareFunc {
+// WrapMiddleware wraps `func(fasthttp.RequestHandler) fasthttp.RequestHandler`
+// into `echo.MiddlewareFunc`
+func WrapMiddleware(m func(fasthttp.RequestHandler) fasthttp.RequestHandler) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
+		return func(c echo.Context) (err error) {
 			req := c.Request().(*Request)
 			res := c.Response().(*Response)
 			ctx := req.RequestCtx
-			h(ctx)
+			m(func(ctx *fasthttp.RequestCtx) {
+				next(c)
+			})(ctx)
 			res.status = ctx.Response.StatusCode()
 			res.size = int64(ctx.Response.Header.ContentLength())
-			return next(c)
+			return
 		}
 	}
 }

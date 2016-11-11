@@ -1,15 +1,17 @@
 package standard
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"strings"
 
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/engine"
-	"github.com/labstack/gommon/log"
+	"github.com/labstack/echo/log"
 )
 
 type (
@@ -18,7 +20,7 @@ type (
 		*http.Request
 		header engine.Header
 		url    engine.URL
-		logger *log.Logger
+		logger log.Logger
 	}
 )
 
@@ -27,7 +29,7 @@ const (
 )
 
 // NewRequest returns `Request` instance.
-func NewRequest(r *http.Request, l *log.Logger) *Request {
+func NewRequest(r *http.Request, l log.Logger) *Request {
 	return &Request{
 		Request: r,
 		url:     &URL{URL: r.URL},
@@ -43,6 +45,8 @@ func (r *Request) IsTLS() bool {
 
 // Scheme implements `engine.Request#Scheme` function.
 func (r *Request) Scheme() string {
+	// Can't use `r.Request.URL.Scheme`
+	// See: https://groups.google.com/forum/#!topic/golang-nuts/pMUkBlQBDF0
 	if r.IsTLS() {
 		return "https"
 	}
@@ -54,12 +58,17 @@ func (r *Request) Host() string {
 	return r.Request.Host
 }
 
+// SetHost implements `engine.Request#SetHost` function.
+func (r *Request) SetHost(host string) {
+	r.Request.Host = host
+}
+
 // URL implements `engine.Request#URL` function.
 func (r *Request) URL() engine.URL {
 	return r.url
 }
 
-// Header implements `engine.Request#URL` function.
+// Header implements `engine.Request#Header` function.
 func (r *Request) Header() engine.Header {
 	return r.header
 }
@@ -82,8 +91,8 @@ func (r *Request) Referer() string {
 // }
 
 // ContentLength implements `engine.Request#ContentLength` function.
-func (r *Request) ContentLength() int {
-	return int(r.Request.ContentLength)
+func (r *Request) ContentLength() int64 {
+	return r.Request.ContentLength
 }
 
 // UserAgent implements `engine.Request#UserAgent` function.
@@ -94,6 +103,19 @@ func (r *Request) UserAgent() string {
 // RemoteAddress implements `engine.Request#RemoteAddress` function.
 func (r *Request) RemoteAddress() string {
 	return r.RemoteAddr
+}
+
+// RealIP implements `engine.Request#RealIP` function.
+func (r *Request) RealIP() string {
+	ra := r.RemoteAddress()
+	if ip := r.Header().Get(echo.HeaderXForwardedFor); ip != "" {
+		ra = ip
+	} else if ip := r.Header().Get(echo.HeaderXRealIP); ip != "" {
+		ra = ip
+	} else {
+		ra, _, _ = net.SplitHostPort(ra)
+	}
+	return ra
 }
 
 // Method implements `engine.Request#Method` function.
@@ -135,11 +157,11 @@ func (r *Request) FormValue(name string) string {
 func (r *Request) FormParams() map[string][]string {
 	if strings.HasPrefix(r.header.Get(echo.HeaderContentType), echo.MIMEMultipartForm) {
 		if err := r.ParseMultipartForm(defaultMemory); err != nil {
-			r.logger.Error(err)
+			panic(fmt.Sprintf("echo: %v", err))
 		}
 	} else {
 		if err := r.ParseForm(); err != nil {
-			r.logger.Error(err)
+			panic(fmt.Sprintf("echo: %v", err))
 		}
 	}
 	return map[string][]string(r.Request.Form)

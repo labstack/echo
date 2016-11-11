@@ -1,30 +1,23 @@
-# *NOTICE*
+# [Echo](http://labstack.com/echo) [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/labstack/echo) [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/labstack/echo/master/LICENSE) [![Build Status](http://img.shields.io/travis/labstack/echo.svg?style=flat-square)](https://travis-ci.org/labstack/echo) [![Coverage Status](http://img.shields.io/coveralls/labstack/echo.svg?style=flat-square)](https://coveralls.io/r/labstack/echo) [![Join the chat at https://gitter.im/labstack/echo](https://img.shields.io/badge/gitter-join%20chat-brightgreen.svg?style=flat-square)](https://gitter.im/labstack/echo) [![Twitter](https://img.shields.io/badge/twitter-@labstack-55acee.svg?style=flat-square)](https://twitter.com/labstack)
 
-- Master branch, website and godoc now points to Echo v2.
-- Echo v2 is in beta but if you want to try it out here is the migrating [guide] (https://labstack.com/echo/guide/migrating)
-- Looking for v1?
-	- Installation: Use a package manager (https://github.com/Masterminds/glide, it's nice!) to get stable v1 release/commit or use `go get gopkg.in/labstack/echo.v1`.
-	- Godoc: https://godoc.org/gopkg.in/labstack/echo.v1
-	- Docs: https://github.com/labstack/echo/tree/v1.4/website/content
+## Don't forget to try the upcoming [v3](https://github.com/labstack/echo/tree/v3) tracked [here]( https://github.com/labstack/echo/issues/665)
 
-# [Echo](http://labstack.com/echo) [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/labstack/echo) [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/labstack/echo/master/LICENSE) [![Build Status](http://img.shields.io/travis/labstack/echo.svg?style=flat-square)](https://travis-ci.org/labstack/echo) [![Coverage Status](http://img.shields.io/coveralls/labstack/echo.svg?style=flat-square)](https://coveralls.io/r/labstack/echo) [![Join the chat at https://gitter.im/labstack/echo](https://img.shields.io/badge/gitter-join%20chat-brightgreen.svg?style=flat-square)](https://gitter.im/labstack/echo)
+#### Fast and unfancy HTTP server framework for Go (Golang). Up to 10x faster than the rest.
 
-#### Echo is a fast and unfancy HTTP server framework for Go (Golang). Up to 10x faster than the rest.
+## Feature Overview
 
-## Features
-
-- Optimized HTTP router which smartly prioritize routes.
-- Build robust and scalable RESTful APIs.
-- Run with standard HTTP server or FastHTTP server.
-- Group APIs.
-- Extensible middleware framework.
-- Define middleware at root, group or route level.
-- Data binding for JSON, XML and form payload.
-- Handy functions to send variety of HTTP responses.
-- Centralized HTTP error handling.
-- Template rendering with any template engine.
-- Define your format for the logger.
-- Highly customizable.
+- Optimized HTTP router which smartly prioritize routes
+- Build robust and scalable RESTful APIs
+- Run with standard HTTP server or FastHTTP server
+- Group APIs
+- Extensible middleware framework
+- Define middleware at root, group or route level
+- Data binding for JSON, XML and form payload
+- Handy functions to send variety of HTTP responses
+- Centralized HTTP error handling
+- Template rendering with any template engine
+- Define your format for the logger
+- Highly customizable
 
 ## Performance
 
@@ -35,15 +28,19 @@
 - Test Suite: https://github.com/vishr/web-framework-benchmark
 - Date: 4/4/2016
 
-![Performance](http://i.imgur.com/fZVnK52.png)
+![Performance](https://i.imgur.com/fZVnK52.png)
 
 ## Quick Start
 
 ### Installation
 
+Echo is developed and tested using Go `1.6.x` and `1.7.x`
+
 ```sh
-$ go get github.com/labstack/echo/...
+$ go get -u github.com/labstack/echo
 ```
+
+> Ideally, you should rely on a [package manager](https://github.com/avelino/awesome-go#package-management) like glide or govendor to use a specific [version](https://github.com/labstack/echo/releases) of Echo.
 
 ### Hello, World!
 
@@ -88,23 +85,31 @@ e.DELETE("/users/:id", deleteUser)
 ### Path Parameters
 
 ```go
+// e.GET("/users/:id", getUser)
 func getUser(c echo.Context) error {
 	// User ID from path `users/:id`
 	id := c.Param("id")
+	return c.String(http.StatusOK, id)
 }
 ```
+
+Browse to http://localhost:1323/users/Joe and you should see 'Joe' on the page.
 
 ### Query Parameters
 
 `/show?team=x-men&member=wolverine`
 
 ```go
+//e.GET("/show", show)
 func show(c echo.Context) error {
 	// Get team and member from the query string
 	team := c.QueryParam("team")
 	member := c.QueryParam("member")
+	return c.String(http.StatusOK, "team:" + team + ", member:" + member)
 }
 ```
+
+Browse to http://localhost:1323/show?team=x-men&member=wolverine and you should see 'team:x-men, member:wolverine' on the page.
 
 ### Form `application/x-www-form-urlencoded`
 
@@ -115,15 +120,21 @@ name | value
 name | Joe Smith
 email | joe@labstack.com
 
-
 ```go
+// e.POST("/save", save)
 func save(c echo.Context) error {
 	// Get name and email
 	name := c.FormValue("name")
 	email := c.FormValue("email")
+	return c.String(http.StatusOK, "name:" + name + ", email:" + email)
 }
 ```
 
+Run the following command.
+```sh
+$ curl -F "name=Joe Smith" -F "email=joe@labstack.com" http://localhost:1323/save
+// => name:Joe Smith, email:joe@labstack.com
+```
 ### Form `multipart/form-data`
 
 `POST` `/save`
@@ -131,14 +142,13 @@ func save(c echo.Context) error {
 name | value
 :--- | :---
 name | Joe Smith
-email | joe@labstack.com
 avatar | avatar
 
 ```go
+// e.POST("/save", save)
 func save(c echo.Context) error {
-	// Get name and email
+	// Get name
 	name := c.FormValue("name")
-	email := c.FormValue("email")
 	// Get avatar
 	avatar, err := c.FormFile("avatar")
 	if err != nil {
@@ -164,8 +174,21 @@ func save(c echo.Context) error {
 		return err
 	}
 
-	return c.HTML(http.StatusOK, "<b>Thank you!</b>")
+	return c.HTML(http.StatusOK, "<b>Thank you! " + name + "</b>")
 }
+```
+
+Run the following command.
+```sh
+$ curl -F "name=Joe Smith" -F "avatar=@/path/to/your/avatar.png" http://localhost:1323/save
+// => <b>Thank you! Joe Smith</b>
+```
+
+For checking uploaded image, run the following command.
+```sh
+cd <project directory>
+ls avatar.png
+// => avatar.png
 ```
 
 ### Handling Request
@@ -198,9 +221,9 @@ Server any file from static directory for path `/static/*`.
 e.Static("/static", "static")
 ```
 
-##### [More...](https://labstack.com/echo/guide/static-files)
+##### [Learn More](https://echo.labstack.com/guide/static-files)
 
-### [Template Rendering](https://labstack.com/echo/guide/templates)
+### [Template Rendering](https://echo.labstack.com/guide/templates)
 
 ### Middleware
 
@@ -234,31 +257,37 @@ e.GET("/users", func(c echo.Context) error {
 
 Middleware | Description
 :--- | :---
-[BodyLimit](https://labstack.com/echo/guide/body-limit-middleware) | Limit request body
-[Logger](https://labstack.com/echo/guide/logger-middleware) | Log HTTP requests
-[Recover](https://labstack.com/echo/guide/recover-middleware) | Recover from panics
-[Gzip](https://labstack.com/echo/guide/gzip-middleware) | Send gzip HTTP response
-[BasicAuth](https://labstack.com/echo/guide/basic-auth-middleware) | HTTP basic authentication
-[JWTAuth](https://labstack.com/echo/guide/jwt-middleware) | JWT authentication
-[Secure](https://labstack.com/echo/guide/secure-middleware) | Protection against attacks
-[CORS](https://labstack.com/echo/guide/cors-middleware) | Cross-Origin Resource Sharing
-[Static](https://labstack.com/echo/guide/static-middleware) | Serve static files
-[AddTrailingSlash](https://labstack.com/echo/guide/add-trailing-slash-middleware) | Add trailing slash to the request URI
-[RemoveTrailingSlash](https://labstack.com/echo/guide/remove-trailing-slash-middleware) | Remove trailing slash from the request URI
-[MethodOverride](https://labstack.com/echo/guide/method-override-middleware) | Override request method
+[BodyLimit](https://echo.labstack.com/middleware/body-limit) | Limit request body
+[Logger](https://echo.labstack.com/middleware/logger) | Log HTTP requests
+[Recover](https://echo.labstack.com/middleware/recover) | Recover from panics
+[Gzip](https://echo.labstack.com/middleware/gzip) | Send gzip HTTP response
+[BasicAuth](https://echo.labstack.com/middleware/basic-auth) | HTTP basic authentication
+[JWTAuth](https://echo.labstack.com/middleware/jwt) | JWT authentication
+[Secure](https://echo.labstack.com/middleware/secure) | Protection against attacks
+[CORS](https://echo.labstack.com/middleware/cors) | Cross-Origin Resource Sharing
+[CSRF](https://echo.labstack.com/middleware/csrf) | Cross-Site Request Forgery
+[Static](https://echo.labstack.com/middleware/static) | Serve static files
+[HTTPSRedirect](https://echo.labstack.com/middleware/redirect#httpsredirect-middleware) | Redirect HTTP requests to HTTPS
+[HTTPSWWWRedirect](https://echo.labstack.com/middleware/redirect#httpswwwredirect-middleware) | Redirect HTTP requests to WWW HTTPS
+[WWWRedirect](https://echo.labstack.com/middleware/redirect#wwwredirect-middleware) | Redirect non WWW requests to WWW
+[NonWWWRedirect](https://echo.labstack.com/middleware/redirect#nonwwwredirect-middleware) | Redirect WWW requests to non WWW
+[AddTrailingSlash](https://echo.labstack.com/middleware/trailing-slash#addtrailingslash-middleware) | Add trailing slash to the request URI
+[RemoveTrailingSlash](https://echo.labstack.com/middleware/trailing-slash#removetrailingslash-middleware) | Remove trailing slash from the request URI
+[MethodOverride](https://echo.labstack.com/middleware/method-override) | Override request method
 
-##### [More...](https://labstack.com/echo/guide/middleware)
+##### [Learn More](https://echo.labstack.com/middleware/overview)
 
 #### Third-party Middleware
 
 Middleware | Description
 :--- | :---
 [echoperm](https://github.com/xyproto/echoperm) | Keeping track of users, login states and permissions.
+[echopprof](https://github.com/mtojek/echopprof) | Adapt net/http/pprof to labstack/echo.
 
 ### Next
 
-- Head over to [guide](https://labstack.com/echo/guide/installation)
-- Browse [recipes](https://labstack.com/echo/recipes/hello-world)
+- Head over to [guide](https://echo.labstack.com/guide/installation)
+- Browse [recipes](https://echo.labstack.com/recipes/hello-world)
 
 ### Need help?
 
@@ -268,7 +297,7 @@ Middleware | Description
 ## Support Us
 
 - :star: the project
-- [Donate](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=JD5R56K84A8G4&lc=US&item_name=LabStack&item_number=echo&currency_code=USD&bn=PP-DonationsBF:btn_donate_LG.gif:NonHosted)
+- [Donate](https://echo.labstack.com/support-echo)
 - :earth_americas: spread the word
 - [Contribute](#contribute) to the project
 

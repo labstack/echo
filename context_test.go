@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"testing"
@@ -11,6 +12,8 @@ import (
 	"time"
 
 	"strings"
+
+	gcontext "github.com/labstack/echo/context"
 
 	"net/url"
 
@@ -36,27 +39,17 @@ func TestContext(t *testing.T) {
 	rec := test.NewResponseRecorder()
 	c := e.NewContext(req, rec).(*context)
 
+	// Echo
+	assert.Equal(t, e, c.Echo())
+
 	// Request
-	assert.NotNil(t, c.Request())
+	assert.Equal(t, req, c.Request())
 
 	// Response
-	assert.NotNil(t, c.Response())
+	assert.Equal(t, rec, c.Response())
 
-	// ParamNames
-	c.pnames = []string{"uid", "fid"}
-	assert.EqualValues(t, []string{"uid", "fid"}, c.ParamNames())
-
-	// Param by id
-	c.pnames = []string{"id"}
-	c.pvalues = []string{"1"}
-	assert.Equal(t, "1", c.P(0))
-
-	// Param by name
-	assert.Equal(t, "1", c.Param("id"))
-
-	// Store
-	c.Set("user", "Jon Snow")
-	assert.Equal(t, "Jon Snow", c.Get("user"))
+	// Logger
+	assert.Equal(t, e.logger, c.Logger())
 
 	//--------
 	// Render
@@ -106,9 +99,9 @@ func TestContext(t *testing.T) {
 	// XML
 	rec = test.NewResponseRecorder()
 	c = e.NewContext(req, rec).(*context)
-	err = c.XML(http.StatusOK, user{1, "Jon Snow"})
+	err = c.XML(http.StatusCreated, user{1, "Jon Snow"})
 	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rec.Status())
+		assert.Equal(t, http.StatusCreated, rec.Status())
 		assert.Equal(t, MIMEApplicationXMLCharsetUTF8, rec.Header().Get(HeaderContentType))
 		assert.Equal(t, xml.Header+userXML, rec.Body.String())
 	}
@@ -139,6 +132,17 @@ func TestContext(t *testing.T) {
 		assert.Equal(t, "Hello, <strong>World!</strong>", rec.Body.String())
 	}
 
+	// Stream
+	rec = test.NewResponseRecorder()
+	c = e.NewContext(req, rec).(*context)
+	r := strings.NewReader("response from a stream")
+	err = c.Stream(http.StatusOK, "application/octet-stream", r)
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, rec.Status())
+		assert.Equal(t, "application/octet-stream", rec.Header().Get(HeaderContentType))
+		assert.Equal(t, "response from a stream", rec.Body.String())
+	}
+
 	// Attachment
 	rec = test.NewResponseRecorder()
 	c = e.NewContext(req, rec).(*context)
@@ -152,18 +156,24 @@ func TestContext(t *testing.T) {
 		}
 	}
 
+	// Inline
+	rec = test.NewResponseRecorder()
+	c = e.NewContext(req, rec).(*context)
+	file, err = os.Open("_fixture/images/walle.png")
+	if assert.NoError(t, err) {
+		err = c.Inline(file, "walle.png")
+		if assert.NoError(t, err) {
+			assert.Equal(t, http.StatusOK, rec.Status())
+			assert.Equal(t, "inline; filename=walle.png", rec.Header().Get(HeaderContentDisposition))
+			assert.Equal(t, 219885, rec.Body.Len())
+		}
+	}
+
 	// NoContent
 	rec = test.NewResponseRecorder()
 	c = e.NewContext(req, rec).(*context)
 	c.NoContent(http.StatusOK)
 	assert.Equal(t, http.StatusOK, rec.Status())
-
-	// Redirect
-	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*context)
-	assert.Equal(t, nil, c.Redirect(http.StatusMovedPermanently, "http://labstack.github.io/echo"))
-	assert.Equal(t, http.StatusMovedPermanently, rec.Status())
-	assert.Equal(t, "http://labstack.github.io/echo", rec.Header().Get(HeaderLocation))
 
 	// Error
 	rec = test.NewResponseRecorder()
@@ -203,7 +213,7 @@ func TestContextCookie(t *testing.T) {
 	}
 
 	// Write
-	cookie = &test.Cookie{&http.Cookie{
+	cookie = &test.Cookie{Cookie: &http.Cookie{
 		Name:     "SSID",
 		Value:    "Ap4PGTEq",
 		Domain:   "labstack.com",
@@ -224,46 +234,135 @@ func TestContextPath(t *testing.T) {
 	e := New()
 	r := e.Router()
 
-	r.Add(GET, "/users/:id", nil, e)
+	r.Add(GET, "/users/:id", nil)
 	c := e.NewContext(nil, nil)
 	r.Find(GET, "/users/1", c)
 	assert.Equal(t, "/users/:id", c.Path())
 
-	r.Add(GET, "/users/:uid/files/:fid", nil, e)
+	r.Add(GET, "/users/:uid/files/:fid", nil)
 	c = e.NewContext(nil, nil)
 	r.Find(GET, "/users/1/files/1", c)
 	assert.Equal(t, "/users/:uid/files/:fid", c.Path())
 }
 
-func TestContextQueryParam(t *testing.T) {
-	q := make(url.Values)
-	q.Set("name", "joe")
-	q.Set("email", "joe@labstack.com")
-	req := test.NewRequest(GET, "/?"+q.Encode(), nil)
+func TestContextPathParam(t *testing.T) {
 	e := New()
+	req := test.NewRequest(GET, "/", nil)
 	c := e.NewContext(req, nil)
-	assert.Equal(t, "joe", c.QueryParam("name"))
-	assert.Equal(t, "joe@labstack.com", c.QueryParam("email"))
+
+	// ParamNames
+	c.SetParamNames("uid", "fid")
+	assert.EqualValues(t, []string{"uid", "fid"}, c.ParamNames())
+
+	// ParamValues
+	c.SetParamValues("101", "501")
+	assert.EqualValues(t, []string{"101", "501"}, c.ParamValues())
+
+	// P
+	assert.Equal(t, "101", c.P(0))
+
+	// Param
+	assert.Equal(t, "501", c.Param("fid"))
 }
 
 func TestContextFormValue(t *testing.T) {
 	f := make(url.Values)
-	f.Set("name", "joe")
-	f.Set("email", "joe@labstack.com")
+	f.Set("name", "Jon Snow")
+	f.Set("email", "jon@labstack.com")
 
 	e := New()
 	req := test.NewRequest(POST, "/", strings.NewReader(f.Encode()))
 	req.Header().Add(HeaderContentType, MIMEApplicationForm)
-
 	c := e.NewContext(req, nil)
-	assert.Equal(t, "joe", c.FormValue("name"))
-	assert.Equal(t, "joe@labstack.com", c.FormValue("email"))
+
+	// FormValue
+	assert.Equal(t, "Jon Snow", c.FormValue("name"))
+	assert.Equal(t, "jon@labstack.com", c.FormValue("email"))
+
+	// FormParams
+	assert.Equal(t, map[string][]string{
+		"name":  []string{"Jon Snow"},
+		"email": []string{"jon@labstack.com"},
+	}, c.FormParams())
 }
 
-func TestContextNetContext(t *testing.T) {
-	// c := new(context)
-	// c.Context = xcontext.WithValue(nil, "key", "val")
-	// assert.Equal(t, "val", c.Value("key"))
+func TestContextQueryParam(t *testing.T) {
+	q := make(url.Values)
+	q.Set("name", "Jon Snow")
+	q.Set("email", "jon@labstack.com")
+	req := test.NewRequest(GET, "/?"+q.Encode(), nil)
+	e := New()
+	c := e.NewContext(req, nil)
+
+	// QueryParam
+	assert.Equal(t, "Jon Snow", c.QueryParam("name"))
+	assert.Equal(t, "jon@labstack.com", c.QueryParam("email"))
+
+	// QueryParams
+	assert.Equal(t, map[string][]string{
+		"name":  []string{"Jon Snow"},
+		"email": []string{"jon@labstack.com"},
+	}, c.QueryParams())
+}
+
+func TestContextFormFile(t *testing.T) {
+	e := New()
+	buf := new(bytes.Buffer)
+	mr := multipart.NewWriter(buf)
+	w, err := mr.CreateFormFile("file", "test")
+	if assert.NoError(t, err) {
+		w.Write([]byte("test"))
+	}
+	mr.Close()
+	req := test.NewRequest(POST, "/", buf)
+	req.Header().Set(HeaderContentType, mr.FormDataContentType())
+	rec := test.NewResponseRecorder()
+	c := e.NewContext(req, rec)
+	f, err := c.FormFile("file")
+	if assert.NoError(t, err) {
+		assert.Equal(t, "test", f.Filename)
+	}
+}
+
+func TestContextMultipartForm(t *testing.T) {
+	e := New()
+	buf := new(bytes.Buffer)
+	mw := multipart.NewWriter(buf)
+	mw.WriteField("name", "Jon Snow")
+	mw.Close()
+	req := test.NewRequest(POST, "/", buf)
+	req.Header().Set(HeaderContentType, mw.FormDataContentType())
+	rec := test.NewResponseRecorder()
+	c := e.NewContext(req, rec)
+	f, err := c.MultipartForm()
+	if assert.NoError(t, err) {
+		assert.NotNil(t, f)
+	}
+}
+
+func TestContextRedirect(t *testing.T) {
+	e := New()
+	req := test.NewRequest(GET, "/", nil)
+	rec := test.NewResponseRecorder()
+	c := e.NewContext(req, rec)
+	assert.Equal(t, nil, c.Redirect(http.StatusMovedPermanently, "http://labstack.github.io/echo"))
+	assert.Equal(t, http.StatusMovedPermanently, rec.Status())
+	assert.Equal(t, "http://labstack.github.io/echo", rec.Header().Get(HeaderLocation))
+	assert.Error(t, c.Redirect(310, "http://labstack.github.io/echo"))
+}
+
+func TestStdContextEmbedded(t *testing.T) {
+	c := new(context)
+	sc := gcontext.WithValue(nil, "key", "val")
+	c.SetStdContext(sc)
+	assert.NotEqual(t, c, c.StdContext())
+}
+
+func TestContextStore(t *testing.T) {
+	var c Context
+	c = new(context)
+	c.Set("name", "Jon Snow")
+	assert.Equal(t, "Jon Snow", c.Get("name"))
 }
 
 func TestContextServeContent(t *testing.T) {
@@ -301,7 +400,7 @@ func TestContextHandler(t *testing.T) {
 	r.Add(GET, "/handler", func(Context) error {
 		_, err := b.Write([]byte("handler"))
 		return err
-	}, e)
+	})
 	c := e.NewContext(nil, nil)
 	r.Find(GET, "/handler", c)
 	c.Handler()(c)

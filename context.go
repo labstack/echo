@@ -3,6 +3,7 @@ package echo
 import (
 	"encoding/json"
 	"encoding/xml"
+	"fmt"
 	"io"
 	"mime"
 	"mime/multipart"
@@ -12,24 +13,22 @@ import (
 	"time"
 
 	"github.com/labstack/echo/engine"
-	"github.com/labstack/gommon/log"
+	"github.com/labstack/echo/log"
 
 	"bytes"
 
-	netContext "golang.org/x/net/context"
+	gcontext "github.com/labstack/echo/context"
 )
 
 type (
 	// Context represents the context of the current HTTP request. It holds request and
 	// response objects, path, path parameters, data and registered handler.
 	Context interface {
-		netContext.Context
+		// StdContext returns `context.Context`.
+		StdContext() gcontext.Context
 
-		// NetContext returns `http://blog.golang.org/context.Context` interface.
-		NetContext() netContext.Context
-
-		// SetNetContext sets `http://blog.golang.org/context.Context` interface.
-		SetNetContext(netContext.Context)
+		// SetStdContext sets `context.Context`.
+		SetStdContext(gcontext.Context)
 
 		// Request returns `engine.Request` interface.
 		Request() engine.Request
@@ -103,12 +102,6 @@ type (
 		// Set saves data in the context.
 		Set(string, interface{})
 
-		// Del deletes data from the context.
-		Del(string)
-
-		// Exists checks if that key exists in the context.
-		Exists(string) bool
-
 		// Bind binds the request body into provided type `i`. The default binder
 		// does it based on Content-Type header.
 		Bind(interface{}) error
@@ -133,11 +126,21 @@ type (
 		// the JSONP payload.
 		JSONP(int, string, interface{}) error
 
+		// JSONPBlob sends a JSONP blob response with status code. It uses `callback`
+		// to construct the JSONP payload.
+		JSONPBlob(int, string, []byte) error
+
 		// XML sends an XML response with status code.
 		XML(int, interface{}) error
 
 		// XMLBlob sends a XML blob response with status code.
 		XMLBlob(int, []byte) error
+
+		// Blob sends a blob response with status code and content type.
+		Blob(int, string, []byte) error
+
+		// Stream sends a streaming response with status code and content type.
+		Stream(int, string, io.Reader) error
 
 		// File sends a response with the content of the file.
 		File(string) error
@@ -145,6 +148,10 @@ type (
 		// Attachment sends a response from `io.ReaderSeeker` as attachment, prompting
 		// client to save the file.
 		Attachment(io.ReadSeeker, string) error
+
+		// Inline sends a response from `io.ReaderSeeker` as inline, opening
+		// the file in the browser.
+		Inline(io.ReadSeeker, string) error
 
 		// NoContent sends a response with no body and a status code.
 		NoContent(int) error
@@ -162,7 +169,7 @@ type (
 		SetHandler(HandlerFunc)
 
 		// Logger returns the `Logger` instance.
-		Logger() *log.Logger
+		Logger() log.Logger
 
 		// Echo returns the `Echo` instance.
 		Echo() *Echo
@@ -179,14 +186,14 @@ type (
 	}
 
 	context struct {
-		netContext netContext.Context
+		stdContext gcontext.Context
 		request    engine.Request
 		response   engine.Response
 		path       string
 		pnames     []string
 		pvalues    []string
-		store      store
 		handler    HandlerFunc
+		store      store
 		echo       *Echo
 	}
 
@@ -197,28 +204,12 @@ const (
 	indexPage = "index.html"
 )
 
-func (c *context) NetContext() netContext.Context {
-	return c.netContext
+func (c *context) StdContext() gcontext.Context {
+	return c.stdContext
 }
 
-func (c *context) SetNetContext(ctx netContext.Context) {
-	c.netContext = ctx
-}
-
-func (c *context) Deadline() (deadline time.Time, ok bool) {
-	return c.netContext.Deadline()
-}
-
-func (c *context) Done() <-chan struct{} {
-	return c.netContext.Done()
-}
-
-func (c *context) Err() error {
-	return c.netContext.Err()
-}
-
-func (c *context) Value(key interface{}) interface{} {
-	return c.netContext.Value(key)
+func (c *context) SetStdContext(ctx gcontext.Context) {
+	c.stdContext = ctx
 }
 
 func (c *context) Request() engine.Request {
@@ -319,15 +310,6 @@ func (c *context) Get(key string) interface{} {
 	return c.store[key]
 }
 
-func (c *context) Del(key string) {
-	delete(c.store, key)
-}
-
-func (c *context) Exists(key string) bool {
-	_, ok := c.store[key]
-	return ok
-}
-
 func (c *context) Bind(i interface{}) error {
 	return c.echo.binder.Bind(i, c)
 }
@@ -372,10 +354,7 @@ func (c *context) JSON(code int, i interface{}) (err error) {
 }
 
 func (c *context) JSONBlob(code int, b []byte) (err error) {
-	c.response.Header().Set(HeaderContentType, MIMEApplicationJSONCharsetUTF8)
-	c.response.WriteHeader(code)
-	_, err = c.response.Write(b)
-	return
+	return c.Blob(code, MIMEApplicationJSONCharsetUTF8, b)
 }
 
 func (c *context) JSONP(code int, callback string, i interface{}) (err error) {
@@ -383,6 +362,10 @@ func (c *context) JSONP(code int, callback string, i interface{}) (err error) {
 	if err != nil {
 		return err
 	}
+	return c.JSONPBlob(code, callback, b)
+}
+
+func (c *context) JSONPBlob(code int, callback string, b []byte) (err error) {
 	c.response.Header().Set(HeaderContentType, MIMEApplicationJavaScriptCharsetUTF8)
 	c.response.WriteHeader(code)
 	if _, err = c.response.Write([]byte(callback + "(")); err != nil {
@@ -416,6 +399,20 @@ func (c *context) XMLBlob(code int, b []byte) (err error) {
 	return
 }
 
+func (c *context) Blob(code int, contentType string, b []byte) (err error) {
+	c.response.Header().Set(HeaderContentType, contentType)
+	c.response.WriteHeader(code)
+	_, err = c.response.Write(b)
+	return
+}
+
+func (c *context) Stream(code int, contentType string, r io.Reader) (err error) {
+	c.response.Header().Set(HeaderContentType, contentType)
+	c.response.WriteHeader(code)
+	_, err = io.Copy(c.response, r)
+	return
+}
+
 func (c *context) File(file string) error {
 	f, err := os.Open(file)
 	if err != nil {
@@ -425,11 +422,12 @@ func (c *context) File(file string) error {
 
 	fi, _ := f.Stat()
 	if fi.IsDir() {
-		file = filepath.Join(file, "index.html")
+		file = filepath.Join(file, indexPage)
 		f, err = os.Open(file)
 		if err != nil {
 			return ErrNotFound
 		}
+		defer f.Close()
 		if fi, err = f.Stat(); err != nil {
 			return err
 		}
@@ -438,8 +436,16 @@ func (c *context) File(file string) error {
 }
 
 func (c *context) Attachment(r io.ReadSeeker, name string) (err error) {
+	return c.contentDisposition(r, name, "attachment")
+}
+
+func (c *context) Inline(r io.ReadSeeker, name string) (err error) {
+	return c.contentDisposition(r, name, "inline")
+}
+
+func (c *context) contentDisposition(r io.ReadSeeker, name, dispositionType string) (err error) {
 	c.response.Header().Set(HeaderContentType, ContentTypeByExtension(name))
-	c.response.Header().Set(HeaderContentDisposition, "attachment; filename="+name)
+	c.response.Header().Set(HeaderContentDisposition, fmt.Sprintf("%s; filename=%s", dispositionType, name))
 	c.response.WriteHeader(http.StatusOK)
 	_, err = io.Copy(c.response, r)
 	return
@@ -475,7 +481,7 @@ func (c *context) SetHandler(h HandlerFunc) {
 	c.handler = h
 }
 
-func (c *context) Logger() *log.Logger {
+func (c *context) Logger() log.Logger {
 	return c.echo.logger
 }
 
@@ -507,9 +513,9 @@ func ContentTypeByExtension(name string) (t string) {
 }
 
 func (c *context) Reset(req engine.Request, res engine.Response) {
-	c.netContext = nil
+	c.stdContext = gcontext.Background()
 	c.request = req
 	c.response = res
 	c.store = nil
-	c.handler = notFoundHandler
+	c.handler = NotFoundHandler
 }

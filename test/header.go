@@ -34,6 +34,11 @@ func (h *Header) Keys() (keys []string) {
 	return
 }
 
+func (h *Header) Contains(key string) bool {
+	_, ok := h.header[key]
+	return ok
+}
+
 func (h *Header) reset(hdr http.Header) {
 	h.header = hdr
 }

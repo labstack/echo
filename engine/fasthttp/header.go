@@ -47,6 +47,11 @@ func (h *RequestHeader) Keys() (keys []string) {
 	return
 }
 
+// Contains implements `engine.Header#Contains` function.
+func (h *RequestHeader) Contains(key string) bool {
+	return h.Peek(key) != nil
+}
+
 func (h *RequestHeader) reset(hdr *fasthttp.RequestHeader) {
 	h.RequestHeader = hdr
 }
@@ -80,6 +85,11 @@ func (h *ResponseHeader) Keys() (keys []string) {
 		i++
 	})
 	return
+}
+
+// Contains implements `engine.Header#Contains` function.
+func (h *ResponseHeader) Contains(key string) bool {
+	return h.Peek(key) != nil
 }
 
 func (h *ResponseHeader) reset(hdr *fasthttp.ResponseHeader) {

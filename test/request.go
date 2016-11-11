@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"strings"
 
@@ -25,7 +26,6 @@ const (
 
 func NewRequest(method, url string, body io.Reader) engine.Request {
 	r, _ := http.NewRequest(method, url, body)
-	r.RequestURI = url
 	return &Request{
 		request: r,
 		url:     &URL{url: r.URL},
@@ -46,6 +46,10 @@ func (r *Request) Scheme() string {
 
 func (r *Request) Host() string {
 	return r.request.Host
+}
+
+func (r *Request) SetHost(host string) {
+	r.request.Host = host
 }
 
 func (r *Request) URL() engine.URL {
@@ -72,8 +76,8 @@ func (r *Request) Referer() string {
 // 	return r.request.ProtoMinor()
 // }
 
-func (r *Request) ContentLength() int {
-	return int(r.request.ContentLength)
+func (r *Request) ContentLength() int64 {
+	return r.request.ContentLength
 }
 
 func (r *Request) UserAgent() string {
@@ -82,6 +86,18 @@ func (r *Request) UserAgent() string {
 
 func (r *Request) RemoteAddress() string {
 	return r.request.RemoteAddr
+}
+
+func (r *Request) RealIP() string {
+	ra := r.RemoteAddress()
+	if ip := r.Header().Get("X-Forwarded-For"); ip != "" {
+		ra = ip
+	} else if ip := r.Header().Get("X-Real-IP"); ip != "" {
+		ra = ip
+	} else {
+		ra, _, _ = net.SplitHostPort(ra)
+	}
+	return ra
 }
 
 func (r *Request) Method() string {

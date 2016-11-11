@@ -3,6 +3,7 @@ package echo
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"testing"
 
@@ -12,6 +13,7 @@ import (
 	"errors"
 
 	"github.com/labstack/echo/test"
+	"github.com/labstack/gommon/log"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -127,7 +129,7 @@ func TestEchoMiddlewareError(t *testing.T) {
 	e.Use(WrapMiddleware(func(c Context) error {
 		return errors.New("error")
 	}))
-	e.GET("/", notFoundHandler)
+	e.GET("/", NotFoundHandler)
 	c, _ := request(GET, "/", e)
 	assert.Equal(t, http.StatusInternalServerError, c)
 }
@@ -248,9 +250,17 @@ func TestEchoRoutes(t *testing.T) {
 		})
 	}
 
-	for i, r := range e.Routes() {
-		assert.Equal(t, routes[i].Method, r.Method)
-		assert.Equal(t, routes[i].Path, r.Path)
+	for _, r := range e.Routes() {
+		found := false
+		for _, rr := range routes {
+			if r.Method == rr.Method && r.Path == rr.Path {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Route %s : %s not found", r.Method, r.Path)
+		}
 	}
 }
 
@@ -330,6 +340,24 @@ func TestEchoHTTPError(t *testing.T) {
 	he := NewHTTPError(http.StatusBadRequest, m)
 	assert.Equal(t, http.StatusBadRequest, he.Code)
 	assert.Equal(t, m, he.Error())
+}
+
+func TestEchoContext(t *testing.T) {
+	e := New()
+	c := e.AcquireContext()
+	assert.IsType(t, new(context), c)
+	e.ReleaseContext(c)
+}
+
+func TestEchoLogger(t *testing.T) {
+	e := New()
+	l := log.New("test")
+	e.SetLogger(l)
+	assert.Equal(t, l, e.Logger())
+	e.SetLogOutput(ioutil.Discard)
+	assert.Equal(t, l.Output(), ioutil.Discard)
+	e.SetLogLevel(log.OFF)
+	assert.Equal(t, l.Level(), log.OFF)
 }
 
 func testMethod(t *testing.T, method, path string, e *Echo) {

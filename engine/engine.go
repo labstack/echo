@@ -7,7 +7,7 @@ import (
 
 	"net"
 
-	"github.com/labstack/gommon/log"
+	"github.com/labstack/echo/log"
 )
 
 type (
@@ -17,10 +17,13 @@ type (
 		SetHandler(Handler)
 
 		// SetLogger sets the logger for the HTTP server.
-		SetLogger(*log.Logger)
+		SetLogger(log.Logger)
 
 		// Start starts the HTTP server.
 		Start() error
+
+		// Stop stops the HTTP server by closing underlying TCP connection.
+		Stop() error
 	}
 
 	// Request defines the interface for HTTP request.
@@ -34,6 +37,9 @@ type (
 		// Host returns HTTP request host. Per RFC 2616, this is either the value of
 		// the `Host` header or the host name given in the URL itself.
 		Host() string
+
+		// SetHost sets the host of the request.
+		SetHost(string)
 
 		// URI returns the unmodified `Request-URI` sent by the client.
 		URI() string
@@ -60,13 +66,17 @@ type (
 		// ProtocolMinor() int
 
 		// ContentLength returns the size of request's body.
-		ContentLength() int
+		ContentLength() int64
 
 		// UserAgent returns the client's `User-Agent`.
 		UserAgent() string
 
 		// RemoteAddress returns the client's network address.
 		RemoteAddress() string
+
+		// RealIP returns the client's network address based on `X-Forwarded-For`
+		// or `X-Real-IP` request header.
+		RealIP() string
 
 		// Method returns the request's HTTP function.
 		Method() string
@@ -146,8 +156,11 @@ type (
 		// no values associated with the key, Get returns "".
 		Get(string) string
 
-		// Keys returns header keys.
+		// Keys returns the header keys.
 		Keys() []string
+
+		// Contains checks if the header is set.
+		Contains(string) bool
 	}
 
 	// URL defines the interface for HTTP request url.
@@ -196,8 +209,9 @@ type (
 	Config struct {
 		Address      string        // TCP address to listen on.
 		Listener     net.Listener  // Custom `net.Listener`. If set, server accepts connections on it.
-		TLSCertfile  string        // TLS certificate file path.
-		TLSKeyfile   string        // TLS key file path.
+		TLSCertFile  string        // TLS certificate file path.
+		TLSKeyFile   string        // TLS key file path.
+		DisableHTTP2 bool          // Disables HTTP/2.
 		ReadTimeout  time.Duration // Maximum duration before timing out read of the request.
 		WriteTimeout time.Duration // Maximum duration before timing out write of the response.
 	}

@@ -6,10 +6,11 @@ import (
 	"bytes"
 	"io"
 	"mime/multipart"
+	"net"
 
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/engine"
-	"github.com/labstack/gommon/log"
+	"github.com/labstack/echo/log"
 	"github.com/valyala/fasthttp"
 )
 
@@ -19,12 +20,12 @@ type (
 		*fasthttp.RequestCtx
 		header engine.Header
 		url    engine.URL
-		logger *log.Logger
+		logger log.Logger
 	}
 )
 
 // NewRequest returns `Request` instance.
-func NewRequest(c *fasthttp.RequestCtx, l *log.Logger) *Request {
+func NewRequest(c *fasthttp.RequestCtx, l log.Logger) *Request {
 	return &Request{
 		RequestCtx: c,
 		url:        &URL{URI: c.URI()},
@@ -48,6 +49,11 @@ func (r *Request) Host() string {
 	return string(r.RequestCtx.Host())
 }
 
+// SetHost implements `engine.Request#SetHost` function.
+func (r *Request) SetHost(host string) {
+	r.RequestCtx.Request.SetHost(host)
+}
+
 // URL implements `engine.Request#URL` function.
 func (r *Request) URL() engine.URL {
 	return r.url
@@ -60,12 +66,12 @@ func (r *Request) Header() engine.Header {
 
 // Referer implements `engine.Request#Referer` function.
 func (r *Request) Referer() string {
-	return r.Referer()
+	return string(r.Request.Header.Referer())
 }
 
 // ContentLength implements `engine.Request#ContentLength` function.
-func (r *Request) ContentLength() int {
-	return r.Request.Header.ContentLength()
+func (r *Request) ContentLength() int64 {
+	return int64(r.Request.Header.ContentLength())
 }
 
 // UserAgent implements `engine.Request#UserAgent` function.
@@ -78,6 +84,19 @@ func (r *Request) RemoteAddress() string {
 	return r.RemoteAddr().String()
 }
 
+// RealIP implements `engine.Request#RealIP` function.
+func (r *Request) RealIP() string {
+	ra := r.RemoteAddress()
+	if ip := r.Header().Get(echo.HeaderXForwardedFor); ip != "" {
+		ra = ip
+	} else if ip := r.Header().Get(echo.HeaderXRealIP); ip != "" {
+		ra = ip
+	} else {
+		ra, _, _ = net.SplitHostPort(ra)
+	}
+	return ra
+}
+
 // Method implements `engine.Request#Method` function.
 func (r *Request) Method() string {
 	return string(r.RequestCtx.Method())
@@ -85,7 +104,7 @@ func (r *Request) Method() string {
 
 // SetMethod implements `engine.Request#SetMethod` function.
 func (r *Request) SetMethod(method string) {
-	r.Request.Header.SetMethod(method)
+	r.Request.Header.SetMethodBytes([]byte(method))
 }
 
 // URI implements `engine.Request#URI` function.
@@ -116,10 +135,25 @@ func (r *Request) FormValue(name string) string {
 // FormParams implements `engine.Request#FormParams` function.
 func (r *Request) FormParams() (params map[string][]string) {
 	params = make(map[string][]string)
-	r.PostArgs().VisitAll(func(k, v []byte) {
-		// TODO: Filling with only first value
-		params[string(k)] = []string{string(v)}
-	})
+	mf, err := r.RequestCtx.MultipartForm()
+
+	if err == fasthttp.ErrNoMultipartForm {
+		r.PostArgs().VisitAll(func(k, v []byte) {
+			key := string(k)
+			if _, ok := params[key]; ok {
+				params[key] = append(params[key], string(v))
+			} else {
+				params[string(k)] = []string{string(v)}
+			}
+		})
+	} else if err == nil {
+		for k, v := range mf.Value {
+			if len(v) > 0 {
+				params[k] = v
+			}
+		}
+	}
+
 	return
 }
 
@@ -136,24 +170,23 @@ func (r *Request) MultipartForm() (*multipart.Form, error) {
 // Cookie implements `engine.Request#Cookie` function.
 func (r *Request) Cookie(name string) (engine.Cookie, error) {
 	c := new(fasthttp.Cookie)
-	c.SetKey(name)
 	b := r.Request.Header.Cookie(name)
 	if b == nil {
 		return nil, echo.ErrCookieNotFound
 	}
-	c.ParseBytes(b)
+	c.SetKey(name)
+	c.SetValueBytes(b)
 	return &Cookie{c}, nil
 }
 
 // Cookies implements `engine.Request#Cookies` function.
 func (r *Request) Cookies() []engine.Cookie {
-	var cookies []engine.Cookie
-	i := 0
+	cookies := []engine.Cookie{}
 	r.Request.Header.VisitAllCookie(func(name, value []byte) {
 		c := new(fasthttp.Cookie)
-		c.SetKey(string(name))
-		c.ParseBytes(value)
-		cookies[i] = &Cookie{c}
+		c.SetKeyBytes(name)
+		c.SetValueBytes(value)
+		cookies = append(cookies, &Cookie{c})
 	})
 	return cookies
 }

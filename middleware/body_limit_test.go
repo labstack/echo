@@ -1,11 +1,10 @@
 package middleware
 
 import (
+	"bytes"
 	"io/ioutil"
 	"net/http"
 	"testing"
-
-	"bytes"
 
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/test"
@@ -14,7 +13,8 @@ import (
 
 func TestBodyLimit(t *testing.T) {
 	e := echo.New()
-	req := test.NewRequest(echo.POST, "/", bytes.NewReader([]byte("Hello, World!")))
+	hw := []byte("Hello, World!")
+	req := test.NewRequest(echo.POST, "/", bytes.NewReader(hw))
 	rec := test.NewResponseRecorder()
 	c := e.NewContext(req, rec)
 	h := func(c echo.Context) error {
@@ -25,15 +25,29 @@ func TestBodyLimit(t *testing.T) {
 		return c.String(http.StatusOK, string(body))
 	}
 
-	// Within limit
-	BodyLimit("2M")(h)(c)
-	assert.Equal(t, http.StatusOK, rec.Status())
-	assert.Equal(t, "Hello, World!", rec.Body.String())
+	// Based on content length (within limit)
+	if assert.NoError(t, BodyLimit("2M")(h)(c)) {
+		assert.Equal(t, http.StatusOK, rec.Status())
+		assert.Equal(t, hw, rec.Body.Bytes())
+	}
 
-	// Overlimit
-	req = test.NewRequest(echo.POST, "/", bytes.NewReader([]byte("Hello, World!")))
+	// Based on content read (overlimit)
+	he := BodyLimit("2B")(h)(c).(*echo.HTTPError)
+	assert.Equal(t, http.StatusRequestEntityTooLarge, he.Code)
+
+	// Based on content read (within limit)
+	req = test.NewRequest(echo.POST, "/", bytes.NewReader(hw))
 	rec = test.NewResponseRecorder()
 	c = e.NewContext(req, rec)
-	BodyLimit("2B")(h)(c)
-	assert.Equal(t, http.StatusRequestEntityTooLarge, rec.Status())
+	if assert.NoError(t, BodyLimit("2M")(h)(c)) {
+		assert.Equal(t, http.StatusOK, rec.Status())
+		assert.Equal(t, "Hello, World!", rec.Body.String())
+	}
+
+	// Based on content read (overlimit)
+	req = test.NewRequest(echo.POST, "/", bytes.NewReader(hw))
+	rec = test.NewResponseRecorder()
+	c = e.NewContext(req, rec)
+	he = BodyLimit("2B")(h)(c).(*echo.HTTPError)
+	assert.Equal(t, http.StatusRequestEntityTooLarge, he.Code)
 }

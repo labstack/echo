@@ -13,7 +13,7 @@ type (
 
 // Path implements `engine.URL#Path` function.
 func (u *URL) Path() string {
-	return string(u.URI.Path())
+	return string(u.URI.PathOriginal())
 }
 
 // SetPath implements `engine.URL#SetPath` function.
@@ -30,8 +30,11 @@ func (u *URL) QueryParam(name string) string {
 func (u *URL) QueryParams() (params map[string][]string) {
 	params = make(map[string][]string)
 	u.QueryArgs().VisitAll(func(k, v []byte) {
-		// TODO: Filling with only first value
-		params[string(k)] = []string{string(v)}
+		_, ok := params[string(k)]
+		if !ok {
+			params[string(k)] = make([]string, 0)
+		}
+		params[string(k)] = append(params[string(k)], string(v))
 	})
 	return
 }

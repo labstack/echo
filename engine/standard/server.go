@@ -1,12 +1,16 @@
 package standard
 
 import (
+	"crypto/tls"
+	"net"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/engine"
-	"github.com/labstack/gommon/log"
+	"github.com/labstack/echo/log"
+	glog "github.com/labstack/gommon/log"
 )
 
 type (
@@ -15,7 +19,7 @@ type (
 		*http.Server
 		config  engine.Config
 		handler engine.Handler
-		logger  *log.Logger
+		logger  log.Logger
 		pool    *pool
 	}
 
@@ -38,8 +42,8 @@ func New(addr string) *Server {
 func WithTLS(addr, certFile, keyFile string) *Server {
 	c := engine.Config{
 		Address:     addr,
-		TLSCertfile: certFile,
-		TLSKeyfile:  keyFile,
+		TLSCertFile: certFile,
+		TLSKeyFile:  keyFile,
 	}
 	return WithConfig(c)
 }
@@ -77,10 +81,12 @@ func WithConfig(c engine.Config) (s *Server) {
 			},
 		},
 		handler: engine.HandlerFunc(func(req engine.Request, res engine.Response) {
-			s.logger.Error("handler not set, use `SetHandler()` to set it.")
+			panic("echo: handler not set, use `Server#SetHandler()` to set it.")
 		}),
-		logger: log.New("echo"),
+		logger: glog.New("echo"),
 	}
+	s.ReadTimeout = c.ReadTimeout
+	s.WriteTimeout = c.WriteTimeout
 	s.Addr = c.Address
 	s.Handler = s
 	return
@@ -92,28 +98,41 @@ func (s *Server) SetHandler(h engine.Handler) {
 }
 
 // SetLogger implements `engine.Server#SetLogger` function.
-func (s *Server) SetLogger(l *log.Logger) {
+func (s *Server) SetLogger(l log.Logger) {
 	s.logger = l
 }
 
 // Start implements `engine.Server#Start` function.
 func (s *Server) Start() error {
 	if s.config.Listener == nil {
-		return s.startDefaultListener()
-	}
-	return s.startCustomListener()
-}
+		ln, err := net.Listen("tcp", s.config.Address)
+		if err != nil {
+			return err
+		}
 
-func (s *Server) startDefaultListener() error {
-	c := s.config
-	if c.TLSCertfile != "" && c.TLSKeyfile != "" {
-		return s.ListenAndServeTLS(c.TLSCertfile, c.TLSKeyfile)
+		if s.config.TLSCertFile != "" && s.config.TLSKeyFile != "" {
+			// TODO: https://github.com/golang/go/commit/d24f446a90ea94b87591bf16228d7d871fec3d92
+			config := &tls.Config{}
+			if !s.config.DisableHTTP2 {
+				config.NextProtos = append(config.NextProtos, "h2")
+			}
+			config.Certificates = make([]tls.Certificate, 1)
+			config.Certificates[0], err = tls.LoadX509KeyPair(s.config.TLSCertFile, s.config.TLSKeyFile)
+			if err != nil {
+				return err
+			}
+			s.config.Listener = tls.NewListener(tcpKeepAliveListener{ln.(*net.TCPListener)}, config)
+		} else {
+			s.config.Listener = tcpKeepAliveListener{ln.(*net.TCPListener)}
+		}
 	}
-	return s.ListenAndServe()
-}
 
-func (s *Server) startCustomListener() error {
 	return s.Serve(s.config.Listener)
+}
+
+// Stop implements `engine.Server#Stop` function.
+func (s *Server) Stop() error {
+	return s.config.Listener.Close()
 }
 
 // ServeHTTP implements `http.Handler` interface.
@@ -129,7 +148,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Response
 	res := s.pool.response.Get().(*Response)
 	resAdpt := s.pool.responseAdapter.Get().(*responseAdapter)
-	resAdpt.reset(w, res)
+	resAdpt.reset(res)
 	resHdr := s.pool.header.Get().(*Header)
 	resHdr.reset(w.Header())
 	res.reset(w, resAdpt, resHdr)
@@ -149,7 +168,7 @@ func WrapHandler(h http.Handler) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		req := c.Request().(*Request)
 		res := c.Response().(*Response)
-		h.ServeHTTP(res.ResponseWriter, req.Request)
+		h.ServeHTTP(res.adapter, req.Request)
 		return nil
 	}
 }
@@ -162,8 +181,26 @@ func WrapMiddleware(m func(http.Handler) http.Handler) echo.MiddlewareFunc {
 			res := c.Response().(*Response)
 			m(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				err = next(c)
-			})).ServeHTTP(res.ResponseWriter, req.Request)
+			})).ServeHTTP(res.adapter, req.Request)
 			return
 		}
 	}
+}
+
+// tcpKeepAliveListener sets TCP keep-alive timeouts on accepted
+// connections. It's used by ListenAndServe and ListenAndServeTLS so
+// dead TCP connections (e.g. closing laptop mid-download) eventually
+// go away.
+type tcpKeepAliveListener struct {
+	*net.TCPListener
+}
+
+func (ln tcpKeepAliveListener) Accept() (c net.Conn, err error) {
+	tc, err := ln.AcceptTCP()
+	if err != nil {
+		return
+	}
+	tc.SetKeepAlive(true)
+	tc.SetKeepAlivePeriod(3 * time.Minute)
+	return tc, nil
 }

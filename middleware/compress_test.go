@@ -3,7 +3,6 @@ package middleware
 import (
 	"bytes"
 	"compress/gzip"
-	"io/ioutil"
 	"net/http"
 	"testing"
 
@@ -52,13 +51,10 @@ func TestGzipNoContent(t *testing.T) {
 	h := Gzip()(func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	})
-	h(c)
-
-	assert.Empty(t, rec.Header().Get(echo.HeaderContentEncoding))
-	assert.Empty(t, rec.Header().Get(echo.HeaderContentType))
-	b, err := ioutil.ReadAll(rec.Body)
-	if assert.NoError(t, err) {
-		assert.Equal(t, 0, len(b))
+	if assert.NoError(t, h(c)) {
+		assert.Empty(t, rec.Header().Get(echo.HeaderContentEncoding))
+		assert.Empty(t, rec.Header().Get(echo.HeaderContentType))
+		assert.Equal(t, 0, len(rec.Body.Bytes()))
 	}
 }
 
@@ -71,10 +67,6 @@ func TestGzipErrorReturned(t *testing.T) {
 	req := test.NewRequest(echo.GET, "/", nil)
 	rec := test.NewResponseRecorder()
 	e.ServeHTTP(req, rec)
-
 	assert.Empty(t, rec.Header().Get(echo.HeaderContentEncoding))
-	b, err := ioutil.ReadAll(rec.Body)
-	if assert.NoError(t, err) {
-		assert.Equal(t, "error", string(b))
-	}
+	assert.Equal(t, "error", rec.Body.String())
 }
