@@ -150,6 +150,18 @@ func TestEchoConnect(t *testing.T) {
 	testMethod(t, CONNECT, "/", e)
 }
 
+
+func TestNamespace(t *testing.T){
+		e := New()
+		ns := e.NewNamespace("v1")
+		ns.Add("/ok", e.GET, func(c Context) error {
+			return c.String(http.StatusOK, "OK")
+		})
+		c, b := request(GET, "/v1/ok", e)
+		assert.Equal(t, http.StatusOK, c)
+		assert.Equal(t, "OK", b)
+}
+
 func TestEchoDelete(t *testing.T) {
 	e := New()
 	testMethod(t, DELETE, "/", e)
