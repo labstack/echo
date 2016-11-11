@@ -159,6 +159,7 @@ func TestNamespace(t *testing.T){
 		ns.Add("/ok", e.GET, func(c Context) error {
 			return c.String(http.StatusOK, "OK")
 		})
+		ns.Route()
 		c, b := request(GET, "/v1/ok", e)
 		assert.Equal(t, http.StatusOK, c)
 		assert.Equal(t, "OK", b)
