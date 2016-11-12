@@ -5,3 +5,4 @@ website/public
 vendor
 
 .DS_Store
+_test
