@@ -11,6 +11,8 @@ Example:
 	    "github.com/labstack/echo"
 	    "github.com/labstack/echo/engine/standard"
 	    "github.com/labstack/echo/middleware"
+	"net"
+	"net"
 	)
 
 	// Handler
@@ -523,8 +525,7 @@ func (e *Echo) StartTLS(address string, certFile, keyFile string) (err error) {
 }
 
 // StartAutoTLS starts the HTTPS server using certificates automatically from https://letsencrypt.org.
-func (e *Echo) StartAutoTLS(hosts []string, cacheFile string) (err error) {
-	address := ":443"
+func (e *Echo) StartAutoTLS(address string, hosts []string, cacheFile string) (err error) {
 	config := new(tls.Config)
 	config.GetCertificate = e.tlsManager.GetCertificate
 	e.tlsManager.SetHosts(hosts) // Added security
