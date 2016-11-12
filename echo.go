@@ -573,11 +573,10 @@ func (e *Echo) ShutdownTLS(timeout time.Duration) {
 }
 
 // NewHTTPError creates a new HTTPError instance.
-func NewHTTPError(code int, msg ...string) *HTTPError {
+func NewHTTPError(code int, msg ...interface{}) *HTTPError {
 	he := &HTTPError{Code: code, Message: http.StatusText(code)}
 	if len(msg) > 0 {
-		m := msg[0]
-		he.Message = m
+		he.Message = fmt.Sprint(msg...)
 	}
 	return he
 }

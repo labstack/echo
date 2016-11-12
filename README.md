@@ -1,6 +1,6 @@
-# [Echo](http://labstack.com/echo) [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/labstack/echo) [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/labstack/echo/master/LICENSE) [![Build Status](http://img.shields.io/travis/labstack/echo.svg?style=flat-square)](https://travis-ci.org/labstack/echo) [![Coverage Status](http://img.shields.io/coveralls/labstack/echo.svg?style=flat-square)](https://coveralls.io/r/labstack/echo) [![Join the chat at https://gitter.im/labstack/echo](https://img.shields.io/badge/gitter-join%20chat-brightgreen.svg?style=flat-square)](https://gitter.im/labstack/echo) [![Twitter](https://img.shields.io/badge/twitter-@labstack-55acee.svg?style=flat-square)](https://twitter.com/labstack)
+# [Echo v3] (https://echo.labstack.com) [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/labstack/echo) [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/labstack/echo/master/LICENSE) [![Build Status](http://img.shields.io/travis/labstack/echo.svg?style=flat-square)](https://travis-ci.org/labstack/echo) [![Coverage Status](http://img.shields.io/coveralls/labstack/echo.svg?style=flat-square)](https://coveralls.io/r/labstack/echo) [![Join the chat at https://gitter.im/labstack/echo](https://img.shields.io/badge/gitter-join%20chat-brightgreen.svg?style=flat-square)](https://gitter.im/labstack/echo) [![Twitter](https://img.shields.io/badge/twitter-@labstack-55acee.svg?style=flat-square)](https://twitter.com/labstack)
 
-#### Fast and unfancy HTTP server framework for Go (Golang). Up to 10x faster than the rest.
+## Fast and unfancy HTTP server framework for Go (Golang).
 
 ## Feature Overview
 
@@ -26,7 +26,7 @@
 - Test Suite: https://github.com/vishr/web-framework-benchmark
 - Date: 4/4/2016
 
-![Performance](https://i.imgur.com/fZVnK52.png)
+![Performance](http://i.imgur.com/F2V7TfO.png)
 
 ## Quick Start
 
@@ -266,7 +266,6 @@ Middleware | Description
 [Secure](https://echo.labstack.com/middleware/secure) | Protection against attacks
 [CORS](https://echo.labstack.com/middleware/cors) | Cross-Origin Resource Sharing
 [CSRF](https://echo.labstack.com/middleware/csrf) | Cross-Site Request Forgery
-[Static](https://echo.labstack.com/middleware/static) | Serve static files
 [HTTPSRedirect](https://echo.labstack.com/middleware/redirect#httpsredirect-middleware) | Redirect HTTP requests to HTTPS
 [HTTPSWWWRedirect](https://echo.labstack.com/middleware/redirect#httpswwwredirect-middleware) | Redirect HTTP requests to WWW HTTPS
 [WWWRedirect](https://echo.labstack.com/middleware/redirect#wwwredirect-middleware) | Redirect non WWW requests to WWW
