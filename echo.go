@@ -11,6 +11,8 @@ Example:
 	    "github.com/labstack/echo"
 	    "github.com/labstack/echo/engine/standard"
 	    "github.com/labstack/echo/middleware"
+	"net"
+	"net"
 	)
 
 	// Handler
@@ -523,8 +525,7 @@ func (e *Echo) StartTLS(address string, certFile, keyFile string) (err error) {
 }
 
 // StartAutoTLS starts the HTTPS server using certificates automatically from https://letsencrypt.org.
-func (e *Echo) StartAutoTLS(hosts []string, cacheFile string) (err error) {
-	address := ":443"
+func (e *Echo) StartAutoTLS(address string, hosts []string, cacheFile string) (err error) {
 	config := new(tls.Config)
 	config.GetCertificate = e.tlsManager.GetCertificate
 	e.tlsManager.SetHosts(hosts) // Added security
@@ -573,11 +574,10 @@ func (e *Echo) ShutdownTLS(timeout time.Duration) {
 }
 
 // NewHTTPError creates a new HTTPError instance.
-func NewHTTPError(code int, msg ...string) *HTTPError {
+func NewHTTPError(code int, msg ...interface{}) *HTTPError {
 	he := &HTTPError{Code: code, Message: http.StatusText(code)}
 	if len(msg) > 0 {
-		m := msg[0]
-		he.Message = m
+		he.Message = fmt.Sprint(msg...)
 	}
 	return he
 }

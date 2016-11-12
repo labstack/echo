@@ -22,14 +22,7 @@ title = "Index"
 
 ## Performance
 
-- Environment:
-	- Go 1.6
-	- wrk 4.0.0
-	- 2 GB, 2 Core (DigitalOcean)
-- Test Suite: https://github.com/vishr/web-framework-benchmark
-- Date: 4/4/2016
-
-<img style="width: 100%;" src="https://i.imgur.com/fZVnK52.png" alt="Performance">
+<img style="width: 75%;" src="http://i.imgur.com/F2V7TfO.png" alt="Performance">
 
 ## Quick Start
 
@@ -269,7 +262,6 @@ Middleware | Description
 [Secure]({{< ref "middleware/secure.md">}}) | Protection against attacks
 [CORS]({{< ref "middleware/cors.md">}}) | Cross-Origin Resource Sharing
 [CSRF]({{< ref "middleware/csrf.md">}}) | Cross-Site Request Forgery
-[Static]({{< ref "middleware/static.md">}}) | Serve static files
 [HTTPSRedirect]({{< ref "middleware/redirect.md#httpsredirect-middleware">}}) | Redirect HTTP requests to HTTPS
 [HTTPSWWWRedirect]({{< ref "middleware/redirect.md#httpswwwredirect-middleware">}}) | Redirect HTTP requests to WWW HTTPS
 [WWWRedirect]({{< ref "middleware/redirect.md#wwwredirect-middleware">}}) | Redirect non WWW requests to WWW

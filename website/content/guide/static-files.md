@@ -11,8 +11,6 @@ Images, JavaScript, CSS, PDF, Fonts and so on...
 
 ## Static Files
 
-### [Using Static Middleware]({{< ref "middleware/static.md">}})
-
 ### Using `Echo#Static()`
 
 `Echo#Static(prefix, root string)` registers a new route with path prefix to serve
