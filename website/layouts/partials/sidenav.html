@@ -5,9 +5,15 @@
   <a class="support w3-btn w3-white w3-border w3-border-theme w3-round-xlarge" href="/support-echo">
     <i class="fa fa-heart" aria-hidden="true"></i> Support Echo
   </a>
+	<h4>
+		<select class="w3-select w3-border" onchange="version(this);">
+			<option value="/v2" selected>v2</option>
+			<option value="/">v3</option>
+    </select>
+	</h4>
   {{ $currentNode := . }}
   {{ range .Site.Menus.side }}
-    <h4>{{ .Pre }} {{ .Name }}</h4>
+    <h3>{{ .Pre }} {{ .Name }}</h3>
       {{ range .Children }}
         <a{{ if $currentNode.IsMenuCurrent "side" . }} class="active"{{ end }} href="{{ .URL }}">
           {{ .Name }}
