@@ -1,6 +1,6 @@
 # [Echo v3] (https://echo.labstack.com) [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/labstack/echo) [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/labstack/echo/master/LICENSE) [![Build Status](http://img.shields.io/travis/labstack/echo.svg?style=flat-square)](https://travis-ci.org/labstack/echo) [![Coverage Status](http://img.shields.io/coveralls/labstack/echo.svg?style=flat-square)](https://coveralls.io/r/labstack/echo) [![Join the chat at https://gitter.im/labstack/echo](https://img.shields.io/badge/gitter-join%20chat-brightgreen.svg?style=flat-square)](https://gitter.im/labstack/echo) [![Twitter](https://img.shields.io/badge/twitter-@labstack-55acee.svg?style=flat-square)](https://twitter.com/labstack)
 
-## Fast and unfancy HTTP server framework for Go (Golang).
+### Fast and unfancy HTTP server framework for Go (Golang).
 
 ## Feature Overview
 
@@ -16,15 +16,10 @@
 - Template rendering with any template engine
 - Define your format for the logger
 - Highly customizable
+- Automatic TLS via Let’s Encrypt
+- Built-in graceful shutdown
 
 ## Performance
-
-- Environment:
-	- Go 1.6
-	- wrk 4.0.0
-	- 2 GB, 2 Core (DigitalOcean)
-- Test Suite: https://github.com/vishr/web-framework-benchmark
-- Date: 4/4/2016
 
 ![Performance](http://i.imgur.com/F2V7TfO.png)
 
