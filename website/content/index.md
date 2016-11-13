@@ -8,7 +8,6 @@ title = "Index"
 
 - Optimized HTTP router which smartly prioritize routes
 - Build robust and scalable RESTful APIs
-- Run with standard HTTP server or FastHTTP server
 - Group APIs
 - Extensible middleware framework
 - Define middleware at root, group or route level
@@ -18,11 +17,12 @@ title = "Index"
 - Template rendering with any template engine
 - Define your format for the logger
 - Highly customizable
-
+- Automatic TLS via Let’s Encrypt
+- Built-in graceful shutdown
 
 ## Performance
 
-<img style="width: 75%;" src="http://i.imgur.com/F2V7TfO.png" alt="Performance">
+<img style="width: 75%;" src="https://i.imgur.com/F2V7TfO.png" alt="Performance">
 
 ## Quick Start
 

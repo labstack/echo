@@ -3,6 +3,7 @@ package echo
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -823,9 +824,11 @@ func TestRouterAPI(t *testing.T) {
 	c := e.NewContext(nil, nil).(*context)
 	for _, route := range gitHubAPI {
 		r.Find(route.Method, route.Path, c)
-		for i, n := range c.pnames {
-			if assert.NotEmpty(t, n) {
-				assert.Equal(t, n, c.pnames[i])
+		for _, n := range c.pnames {
+			for _, p := range strings.Split(n, ",") {
+				if assert.NotEmpty(t, p) {
+					assert.Equal(t, c.Param(p), ":"+p)
+				}
 			}
 		}
 	}

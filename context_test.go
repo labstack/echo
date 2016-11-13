@@ -250,6 +250,18 @@ func TestContextPathParam(t *testing.T) {
 	assert.Equal(t, "501", c.Param("fid"))
 }
 
+func TestContextPathParamNamesAlais(t *testing.T) {
+	e := New()
+	req, _ := http.NewRequest(GET, "/", nil)
+	c := e.NewContext(req, nil)
+
+	c.SetParamNames("id,name")
+	c.SetParamValues("joe")
+
+	assert.Equal(t, "joe", c.Param("id"))
+	assert.Equal(t, "joe", c.Param("name"))
+}
+
 func TestContextFormValue(t *testing.T) {
 	f := make(url.Values)
 	f.Set("name", "Jon Snow")

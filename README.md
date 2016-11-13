@@ -21,7 +21,7 @@
 
 ## Performance
 
-![Performance](http://i.imgur.com/F2V7TfO.png)
+![Performance](https://i.imgur.com/F2V7TfO.png)
 
 ## Quick Start
 

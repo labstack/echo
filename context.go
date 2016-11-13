@@ -13,8 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	"golang.org/x/net/websocket"
 )
 
 type (
@@ -175,16 +173,15 @@ type (
 	}
 
 	context struct {
-		request   *http.Request
-		response  *Response
-		webSocket *websocket.Conn
-		path      string
-		pnames    []string
-		pvalues   []string
-		query     url.Values
-		handler   HandlerFunc
-		store     Map
-		echo      *Echo
+		request  *http.Request
+		response *Response
+		path     string
+		pnames   []string
+		pvalues  []string
+		query    url.Values
+		handler  HandlerFunc
+		store    Map
+		echo     *Echo
 	}
 )
 
@@ -238,15 +235,22 @@ func (c *context) SetPath(p string) {
 	c.path = p
 }
 
-func (c *context) Param(name string) (value string) {
-	l := len(c.pnames)
+func (c *context) Param(name string) string {
 	for i, n := range c.pnames {
-		if n == name && i < l {
-			value = c.pvalues[i]
-			break
+		if i < len(c.pnames) {
+			if strings.HasPrefix(n, name) {
+				return c.pvalues[i]
+			}
+
+			// Param name with aliases
+			for _, p := range strings.Split(n, ",") {
+				if p == name {
+					return c.pvalues[i]
+				}
+			}
 		}
 	}
-	return
+	return ""
 }
 
 func (c *context) ParamNames() []string {
