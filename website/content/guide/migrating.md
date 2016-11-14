@@ -1,6 +1,6 @@
 +++
 title = "Migrating"
-description = "Migrating from Echo v1 to v2"
+description = "Migration Guide"
 [menu.side]
   name = "Migrating"
   parent = "guide"
@@ -22,12 +22,17 @@ us to use HTTP servers beyond Go standard library. It currently supports standar
 - `Echo#HTTPError` exposed it's fields `Code` and `Message`.
 - Option to specify log format in logger middleware and default logger.
 
+## Migrating from v2
+
+### Change Log
+- Context now wraps standard net/http Request and Response. 
+
 #### API
 
-v1 | v2
---- | ---
-`Context#Query()` | `Context#QueryParam()`
-`Context#Form()`  | `Context#FormValue()`
+v1 | v2 | v3
+--- | --- | ---
+`Context#Query()` | `Context#QueryParam()` | `Context#QueryParam()`
+`Context#Form()`  | `Context#FormValue()`  | `Context#FormValue()`
 
 ### FAQ
 
@@ -37,19 +42,19 @@ A. Only if you need to...
 
 ```go
 // `*http.Request`
-c.Request().(*standard.Request).Request
+c.Request()
 
 // `*http.URL`
-c.Request().URL().(*standard.URL).URL
+c.Request().URL
 
 // Request `http.Header`
-c.Request().Header().(*standard.Header).Header
+c.Request().Header
 
 // `http.ResponseWriter`
-c.Response().(*standard.Response).ResponseWriter
+c.Response().writer
 
 // Response `http.Header`
-c.Response().Header().(*standard.Header).Header
+c.Response().Header()
 ```
 
 Q. How to use standard handler and middleware?
@@ -63,13 +68,12 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo"
-	"github.com/labstack/echo/engine/standard"
 )
 
 // Standard middleware
 func middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		println("standard middleware")
+		println("echo middleware")
 		next.ServeHTTP(w, r)
 	})
 }
@@ -81,13 +85,16 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	e := echo.New()
-	e.Use(standard.WrapMiddleware(middleware))
-	e.GET("/", standard.WrapHandler(http.HandlerFunc(handler)))
-	e.Run(standard.New(":1323"))
+	e.Use(echo.WrapMiddleware(middleware))
+	e.GET("/", echo.WrapHandler(http.HandlerFunc(handler)))
+	
+	if err := e.Start(":1323"); err != nil {
+		e.Logger.Fatal(err.Error())
+	}
 }
 ```
 
 ### Next?
 
-- Browse through [recipes](/recipes/hello-world) freshly converted to v2.
+- Browse through [recipes](/recipes/hello-world) freshly converted to v3.
 - Read documentation and dig into test cases.
