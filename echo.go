@@ -3,39 +3,36 @@ Package echo implements a fast and unfancy HTTP server framework for Go (Golang)
 
 Example:
 
-	package main
+  package main
 
-	import (
-	    "net/http"
+  import (
+    "net/http"
 
-	    "github.com/labstack/echo"
-	    "github.com/labstack/echo/engine/standard"
-	    "github.com/labstack/echo/middleware"
-	"net"
-	"net"
-	)
+    "github.com/labstack/echo"
+    "github.com/labstack/echo/middleware"
+  )
 
-	// Handler
-	func hello(c echo.Context) error {
-	    return c.String(http.StatusOK, "Hello, World!")
-	}
+  // Handler
+  func hello(c echo.Context) error {
+    return c.String(http.StatusOK, "Hello, World!")
+  }
 
-	func main() {
-	    // Echo instance
-	    e := echo.New()
+  func main() {
+    // Echo instance
+    e := echo.New()
 
-	    // Middleware
-	    e.Use(middleware.Logger())
-	    e.Use(middleware.Recover())
+    // Middleware
+    e.Use(middleware.Logger())
+    e.Use(middleware.Recover())
 
-	    // Routes
-	    e.GET("/", hello)
+    // Routes
+    e.GET("/", hello)
 
-	    // Start server
-	    if err := e.Start(":1323"); err != nil {
-			e.Logger.Fatal(err)
-		}
-	}
+    // Start server
+    if err := e.Start(":1323"); err != nil {
+      e.Logger.Fatal(err)
+    }
+  }
 
 Learn more at https://echo.labstack.com
 */
