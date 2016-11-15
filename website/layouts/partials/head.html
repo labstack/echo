@@ -3,16 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="x-ua-compatible" content="ie=edge">
-  <meta name="description" content="{{ .Description }}">
+  <meta name="description" content="{{ if ne .URL "/" }}{{ .Description }}{{ else }}{{ .Site.Params.description }}{{ end }}">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="twitter:card" content="summary">
   <meta name="twitter:site" content="@echo">
   <meta name="twitter:title" content="{{ if ne .URL "/" }}{{ .Title }} | {{ end }}{{ .Site.Title }}">
-  <meta name="twitter:description" content="{{ .Description }}">
+  <meta name="twitter:description" content="{{ if ne .URL "/" }}{{ .Description }}{{ else }}{{ .Site.Params.description }}{{ end }}">
   <meta name="twitter:image" content="{{ .Site.Params.image }}">
   <meta property="og:title" content="{{ if ne .URL "/" }}{{ .Title }} | {{ end }}{{ .Site.Title }}">
   <meta property="og:site_name" content="echo">
-  <meta property="og:og:description" content="{{ .Description }}">
+  <meta property="og:og:description" content="{{ if ne .URL "/" }}{{ .Description }}{{ else }}{{ .Site.Params.description }}{{ end }}">
   <meta property="og:url" content="{{ .Site.BaseURL }}">
   <meta property="og:image" content="{{ .Site.Params.image }}">
   <title>
