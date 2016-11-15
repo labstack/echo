@@ -9,12 +9,12 @@ description = "Frequently asked questions in Echo"
 
 ## FAQ
 
-Q: **How to retrieve `*http.Request` and `http.ResponseWriter` from `echo.Context`?**
+Q: How to retrieve `*http.Request` and `http.ResponseWriter` from `echo.Context`?
 
 - `http.Request` > `c.Request()`
 - `http.ResponseWriter` > `c.Response()`
 
-Q: **How to use standard handler `func(http.ResponseWriter, *http.Request)` with Echo?**
+Q: How to use standard handler `func(http.ResponseWriter, *http.Request)` with Echo?
 
 ```go
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -28,7 +28,7 @@ func main() {
 }
 ```
 
-Q: **How to use standard middleware `func(http.Handler) http.Handler` with Echo?**
+Q: How to use standard middleware `func(http.Handler) http.Handler` with Echo?
 
 ```go
 func middleware(h http.Handler) http.Handler {
@@ -48,7 +48,7 @@ func main() {
 }
 ```
 
-Q: **How to run Echo on a specific IP address?**
+Q: How to run Echo on a specific IP address?
 
 ```go
 e.Start("<ip>:<port>")
