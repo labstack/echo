@@ -13,7 +13,6 @@ description = "Migration"
 
 - Automatic TLS certificates via [Let's Encrypt](https://letsencrypt.org/)
 - Built-in support for graceful shutdown
-- Dropped static middleware in favor of `Echo#Static`
 - Utility functions to wrap standard handler and middleware
 - `Map` type as shorthand for `map[string]interface{}`
 - Context now wraps standard net/http Request and Response
@@ -37,6 +36,7 @@ description = "Migration"
 	- `Debug`
 	- `Logger`
 - Enhanced redirect and CORS middleware
+- Dropped static middleware in favor of `Echo#Static`
 - Dropped API
 	- `Echo#Run()`
 	- `Context#P()`

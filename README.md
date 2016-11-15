@@ -6,7 +6,6 @@
 
 - Optimized HTTP router which smartly prioritize routes
 - Build robust and scalable RESTful APIs
-- Run with standard HTTP server or FastHTTP server
 - Group APIs
 - Extensible middleware framework
 - Define middleware at root, group or route level
