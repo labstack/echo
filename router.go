@@ -172,7 +172,10 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 			if h != nil {
 				cn.addHandler(method, h)
 				cn.ppath = ppath
-				for i, n := range cn.pnames {
+				if len(cn.pnames) == 0 { // Issue #729
+					cn.pnames = pnames
+				}
+				for i, n := range pnames {
 					// Param name aliases
 					if !strings.Contains(n, pnames[i]) {
 						cn.pnames[i] += "," + pnames[i]

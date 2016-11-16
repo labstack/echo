@@ -812,29 +812,42 @@ func TestRouterStaticDynamicConflict(t *testing.T) {
 	assert.Equal(t, 3, c.Get("c"))
 }
 
-func TestRouterAPI(t *testing.T) {
+func testRouterAPI(t *testing.T, api []Route) {
 	e := New()
 	r := e.router
 
-	for _, route := range gitHubAPI {
+	for _, route := range api {
 		r.Add(route.Method, route.Path, func(c Context) error {
 			return nil
 		})
 	}
 	c := e.NewContext(nil, nil).(*context)
-	for _, route := range gitHubAPI {
+	for _, route := range api {
 		r.Find(route.Method, route.Path, c)
-		for _, n := range c.pnames {
-			for _, p := range strings.Split(n, ",") {
-				if assert.NotEmpty(t, p) {
-					assert.Equal(t, c.Param(p), ":"+p)
-				}
+		tokens := strings.Split(route.Path[1:], "/")
+		for _, token := range tokens {
+			if token[0] == ':' {
+				assert.Equal(t, c.Param(token[1:]), token)
 			}
 		}
 	}
 }
 
-func benchmarkRoutes(b *testing.B, routes []Route) {
+func TestRouterGitHubAPI(t *testing.T) {
+	testRouterAPI(t, gitHubAPI)
+}
+
+// Issue #729
+func TestRouterParamAlias(t *testing.T) {
+	api := []Route{
+		{GET, "/users/:userID/following", ""},
+		{GET, "/users/:userID/followedBy", ""},
+		{GET, "/users/:userID/follow", ""},
+	}
+	testRouterAPI(t, api)
+}
+
+func benchmarkRouterRoutes(b *testing.B, routes []Route) {
 	e := New()
 	r := e.router
 	b.ReportAllocs()
@@ -856,20 +869,20 @@ func benchmarkRoutes(b *testing.B, routes []Route) {
 	}
 }
 
-func BenchmarkStaticRoute(b *testing.B) {
-	benchmarkRoutes(b, staticRoutes)
+func BenchmarkRouterStaticRoutes(b *testing.B) {
+	benchmarkRouterRoutes(b, staticRoutes)
 }
 
-func BenchmarkGitHubAPI(b *testing.B) {
-	benchmarkRoutes(b, gitHubAPI)
+func BenchmarkRouterGitHubAPI(b *testing.B) {
+	benchmarkRouterRoutes(b, gitHubAPI)
 }
 
-func BenchmarkParseAPI(b *testing.B) {
-	benchmarkRoutes(b, parseAPI)
+func BenchmarkRouterParseAPI(b *testing.B) {
+	benchmarkRouterRoutes(b, parseAPI)
 }
 
-func BenchmarkGooglePlusAPI(b *testing.B) {
-	benchmarkRoutes(b, googlePlusAPI)
+func BenchmarkRouterGooglePlusAPI(b *testing.B) {
+	benchmarkRouterRoutes(b, googlePlusAPI)
 }
 
 func (n *node) printTree(pfx string, tail bool) {
