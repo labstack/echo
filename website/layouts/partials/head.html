@@ -12,7 +12,7 @@
   <meta name="twitter:image" content="{{ .Site.Params.image }}">
   <meta property="og:title" content="{{ if ne .URL "/" }}{{ .Title }} | {{ end }}{{ .Site.Title }}">
   <meta property="og:site_name" content="echo">
-  <meta property="og:og:description" content="{{ if ne .URL "/" }}{{ .Description }}{{ else }}{{ .Site.Params.description }}{{ end }}">
+  <meta property="og:description" content="{{ if ne .URL "/" }}{{ .Description }}{{ else }}{{ .Site.Params.description }}{{ end }}">
   <meta property="og:url" content="{{ .Site.BaseURL }}">
   <meta property="og:image" content="{{ .Site.Params.image }}">
   <title>
