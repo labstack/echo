@@ -4,11 +4,16 @@ go:
     - 1.7
     - tip
 install:
+    - go get golang.org/x/tools/cmd/cover
     - go get github.com/Masterminds/glide
     - go get github.com/mattn/goveralls
+    - go get github.com/modocache/gover
     - glide install
 script:
-    - goveralls -service=travis-ci
+    - go test -coverprofile=echo.coverprofile
+    - go test -coverprofile=middleware.coverprofile ./middleware
+    - gover
+    - goveralls -coverprofile=gover.coverprofile -service=travis-ci
 matrix:
   allow_failures:
     - go: tip
