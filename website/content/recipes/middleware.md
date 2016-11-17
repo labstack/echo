@@ -41,8 +41,8 @@ Server:Echo/2.0
 }
 ```
 
+## [Source Code]({{< source "middleware" >}})
+
 ## Maintainers
 
 - [vishr](https://github.com/vishr)
-
-## [Source Code]({{< source "middleware" >}})

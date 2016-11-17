@@ -14,8 +14,8 @@ description = "CORS example for Echo"
 
 {{< embed "cors/server.go" >}}
 
+## [Source Code]({{< source "cors" >}})
+
 ## Maintainers
 
 - [vishr](https://github.com/vishr)
-
-## [Source Code]({{< source "cors" >}})

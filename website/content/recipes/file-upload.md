@@ -35,11 +35,11 @@ description = "File upload example for Echo"
 
 {{< embed "file-upload/multiple/public/index.html" >}}
 
-## Maintainers
-
-- [vishr](https://github.com/vishr)
-
 ## Source Code
 
 - [single]({{< source "file-upload/single" >}})
 - [multiple]({{< source "file-upload/multiple" >}})
+
+## Maintainers
+
+- [vishr](https://github.com/vishr)
