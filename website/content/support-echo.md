@@ -2,8 +2,6 @@
 title = "Support Echo"
 +++
 
-## Support Echo Development
-
 <p>
   <a href="https://patreon.com/labstack" target="_blank"><br>
     <img style="width: 120px;" src="https://s3.amazonaws.com/patreon_public_assets/toolbox/patreon.png"><br>

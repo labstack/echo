@@ -1,13 +1,11 @@
 +++
-title = "Google App Engine Recipe"
-description = "Google App Engine recipe / example for Echo"
+title = "Google App Engine Example"
+description = "Google App Engine example for Echo"
 [menu.side]
   name = "Google App Engine"
   parent = "recipes"
   weight = 12
 +++
-
-## Google App Engine Recipe
 
 Google App Engine (GAE) provides a range of hosting options from pure PaaS (App Engine Classic)
 through Managed VMs to fully self-managed or container-driven Compute Engine instances. Echo
@@ -17,7 +15,7 @@ to produce a codebase that will run on these and also non-managed platforms auto
 
 We'll walk through the changes needed to support each option.
 
-### Standalone
+## Standalone
 
 Wait? What? I thought this was about AppEngine! Bear with me - the easiest way to show the changes
 required is to start with a setup for standalone and work from there plus there's no reason we
@@ -59,7 +57,7 @@ Echo instance directly (so things like CORS middleware can be added at this high
 If we run our app it should execute as it did before when everything was in one file although we have
 at least gained the ability to organize our handlers a little more cleanly.
 
-### AppEngine Classic and Managed VMs
+## AppEngine Classic and Managed VMs
 
 So far we've seen how to split apart the Echo creation and setup but still have the same app that
 still only runs standalone. Now we'll see hwo those changes allow us to add support for AppEngine
@@ -68,7 +66,7 @@ hosting.
 Refer to the [AppEngine site](https://cloud.google.com/appengine/docs/go/) for full configuration
 and deployment information.
 
-#### app.yaml configuration file
+### app.yaml configuration file
 
 Both of these are Platform as as Service options running on either sandboxed micro-containers
 or managed Compute Engine instances. Both require an `app.yaml` file to describe the app to
@@ -85,7 +83,7 @@ this can help when making the transition from AppEngine Classic to Managed VMs.
 
 {{< embed "google-app-engine/app-engine.yaml" >}}
 
-#### Router configuration
+### Router configuration
 
 We'll now use the [build constraints](http://golang.org/pkg/go/build/) again like we did when creating
 our `app-standalone.go` instance but this time with the opposite tags to use this file _if_ the build has
@@ -131,8 +129,8 @@ switching between AppEngine provided service such as Datastore and alternative s
 such as MongoDB. A combination of go interfaces and build constraints can make this fairly straightforward
 but is outside the scope of this recipe.  
 
-### Maintainers
+## Maintainers
 
 - [CaptainCodeman](https://github.com/CaptainCodeman)
 
-### [Source Code]({{< source "google-app-engine" >}})
+## [Source Code]({{< source "google-app-engine" >}})

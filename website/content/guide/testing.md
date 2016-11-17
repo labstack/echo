@@ -7,16 +7,14 @@ description = "Testing handler and middleware in Echo"
   weight = 9
 +++
 
-## Testing
-
-### Testing Handler
+## Testing Handler
 
 `GET` `/users/:id`
 
 Handler below retrieves user by id from the database. If user is not found it returns
 `404` error with a message.
 
-#### CreateUser
+### CreateUser
 
 `POST` `/users`
 
@@ -24,7 +22,7 @@ Handler below retrieves user by id from the database. If user is not found it re
 - On success `201 - Created`
 - On error `500 - Internal Server Error`
 
-#### GetUser
+### GetUser
 
 `GET` `/users/:email`
 
@@ -130,7 +128,7 @@ func TestGetUser(t *testing.T) {
 }
 ```
 
-#### Using Form Payload
+### Using Form Payload
 
 ```go
 f := make(url.Values)
@@ -139,14 +137,14 @@ f.Set("email", "jon@labstack.com")
 req, err := http.NewRequest(echo.POST, "/", strings.NewReader(f.Encode()))
 ```
 
-#### Setting Path Params
+### Setting Path Params
 
 ```go
 c.SetParamNames("id", "email")
 c.SetParamValues("1", "jon@labstack.com")
 ```
 
-#### Setting Query Params
+### Setting Query Params
 
 ```go
 q := make(url.Values)
@@ -154,7 +152,7 @@ q.Set("email", "jon@labstack.com")
 req, err := http.NewRequest(echo.POST, "/?"+q.Encode(), nil)
 ```
 
-### Testing Middleware
+## Testing Middleware
 
 *TBD*
 

@@ -1,13 +1,11 @@
 +++
-title = "HTTP Routing"
+title = "Routing"
 description = "Routing HTTP request in Echo"
 [menu.side]
   name = "Routing"
   parent = "guide"
   weight = 4
 +++
-
-## Routing
 
 Echo's router is [fast, optimized]({{< ref "index.md#performance">}}) and
 flexible. It's based on [radix tree](http://en.wikipedia.org/wiki/Radix_tree) data
@@ -34,7 +32,7 @@ If you want to register it for some methods use `Echo.Match(methods []string, pa
 Echo defines handler function as `func(echo.Context) error` where `echo.Context` primarily
 holds HTTP request and response interfaces.
 
-### Match-any
+## Match-any
 
 Matches zero or more characters in the path. For example, pattern `/users/*` will
 match:
@@ -44,13 +42,13 @@ match:
 - `/users/1/files/1`
 - `/users/anything...`
 
-### Path matching order
+## Path matching order
 
 - Static
 - Param
 - Match any
 
-#### Example
+### Example
 
 ```go
 e.GET("/users/:id", func(c echo.Context) error {
@@ -74,7 +72,7 @@ Above routes would resolve in the following order:
 
 > Routes can be written in any order.
 
-### Group
+## Group
 
 `Echo#Group(prefix string, m ...Middleware) *Group`
 
@@ -96,7 +94,7 @@ g.Use(middleware.BasicAuth(func(username, password string) bool {
 }))
 ```
 
-### URI building
+## URI building
 
 `Echo.URI` can be used to generate URI for any handler with specified path parameters.
 It's helpful to centralize all your URI patterns which ease in refactoring your

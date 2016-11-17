@@ -1,26 +1,24 @@
 +++
-title = "Middleware Recipe"
-description = "Middleware recipe / example for Echo"
+title = "Middleware Example"
+description = "Middleware example for Echo"
 [menu.side]
   name = "Middleware"
   parent = "recipes"
   weight = 3
 +++
 
-## Middleware Recipe
-
-### How to write a custom middleware?
+## How to write a custom middleware?
 
 - Middleware to collect request count, statuses and uptime.
 - Middleware to write custom `Server` header to the response.
 
-#### Server
+### Server
 
 `server.go`
 
 {{< embed "middleware/server.go" >}}
 
-#### Response
+### Response
 
 *Headers*
 ```sh
@@ -43,8 +41,8 @@ Server:Echo/2.0
 }
 ```
 
-### Maintainers
+## Maintainers
 
 - [vishr](https://github.com/vishr)
 
-### [Source Code]({{< source "middleware" >}})
+## [Source Code]({{< source "middleware" >}})

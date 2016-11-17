@@ -1,39 +1,35 @@
 +++
-title = "WebSocket Recipe"
-description = "WebSocket recipe / example for Echo"
+title = "WebSocket Example"
+description = "WebSocket example for Echo"
 [menu.side]
   name = "WebSocket"
   parent = "recipes"
   weight = 5
 +++
 
-## WebSocket Recipe
+## Using `net` WebSocket
 
-> Only supported in `standard` engine.
-
-### Using `net` WebSocket
-
-#### Server
+### Server
 
 `server.go`
 
 {{< embed "websocket/net/server.go" >}}
 
-### Using `gorilla` WebSocket
+## Using `gorilla` WebSocket
 
-#### Server
+### Server
 
 `server.go`
 
 {{< embed "websocket/gorilla/server.go" >}}
 
-### Client
+## Client
 
 `index.html`
 
 {{< embed "websocket/public/index.html" >}}
 
-### Output
+## Output
 
 `Client`
 
@@ -55,8 +51,8 @@ Hello, Server!
 Hello, Server!
 ```
 
-### Maintainers
+## Maintainers
 
 - [vishr](https://github.com/vishr)
 
-### [Source Code]({{< source "websocket" >}})
+## [Source Code]({{< source "websocket" >}})

@@ -1,30 +1,28 @@
 +++
-title = "Streaming Response Recipe"
-description = "Streaming response recipe / example for Echo"
+title = "Streaming Response Example"
+description = "Streaming response example for Echo"
 [menu.side]
   name = "Streaming Response"
   parent = "recipes"
   weight = 3
 +++
 
-## Streaming Response Recipe
-
 - Send data as it is produced
 - Streaming JSON response with chunked transfer encoding
 
-### Server
+## Server
 
 `server.go`
 
 {{< embed "streaming-response/server.go" >}}
 
-### Client
+## Client
 
 ```sh
 $ curl localhost:1323
 ```
 
-### Output
+## Output
 
 ```sh
 {"Altitude":-97,"Latitude":37.819929,"Longitude":-122.478255}
@@ -34,8 +32,8 @@ $ curl localhost:1323
 {"Altitude":15,"Latitude":37.77493,"Longitude":-122.419416}
 ```
 
-### Maintainers
+## Maintainers
 
 - [vishr](https://github.com/vishr)
 
-### [Source Code]({{< source "streaming-response" >}})
+## [Source Code]({{< source "streaming-response" >}})

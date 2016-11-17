@@ -7,8 +7,6 @@ description = "Handling cookie in Echo"
   weight = 6
 +++
 
-## Cookies
-
 Cookie is a small piece of data sent from a website and stored in the user's web
 browser while the user is browsing. Every time the user loads the website, the browser
 sends the cookie back to the server to notify the user's previous activity.
@@ -19,7 +17,7 @@ in, or recording which pages were visited in the past). Cookies can also store
 passwords and form content a user has previously entered, such as a credit card
 number or an address.
 
-### Cookie Attributes
+## Cookie Attributes
 
 Attribute | Optional
 :--- | :---
@@ -33,7 +31,7 @@ Attribute | Optional
 
 Echo uses go standard `http.Cookie` object to add/retrieve cookies from the context received in the handler function.
 
-### Create a Cookie
+## Create a Cookie
 
 ```go
 func writeCookie(c echo.Context) error {
@@ -50,7 +48,7 @@ func writeCookie(c echo.Context) error {
 - Attributes for the cookie are set assigning to the `http.Cookie` instance public attributes.  
 - Finally `c.SetCookie(cookies)` adds a `Set-Cookie` header in HTTP response.
 
-### Read a Cookie
+## Read a Cookie
 
 ```go
 func readCookie(c echo.Context) error {
@@ -67,7 +65,7 @@ func readCookie(c echo.Context) error {
 - Cookie is read by name using `c.Cookie("username")` from the HTTP request.
 - Cookie attributes are accessed using `Getter` function.
 
-### Read all Cookies
+## Read all Cookies
 
 ```go
 func readAllCookies(c echo.Context) error {
