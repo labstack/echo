@@ -2,6 +2,7 @@ package: github.com/labstack/echo
 import:
 - package: github.com/GeertJohan/go.rice
 - package: github.com/dgrijalva/jwt-go
+- package: github.com/gorilla/websocket
 - package: github.com/labstack/gommon
   subpackages:
   - bytes
@@ -16,7 +17,6 @@ import:
   subpackages:
   - websocket
 - package: google.golang.org/appengine
-- package: github.com/gorilla/websocket
 testImport:
 - package: github.com/stretchr/testify
   subpackages:

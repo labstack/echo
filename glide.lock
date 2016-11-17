@@ -1,5 +1,5 @@
-hash: b592629b56c43e0f6fcef629a3e46106b07431120d42ed45952d841655407e3e
-updated: 2016-10-25T11:15:52.451088614-07:00
+hash: d63c27ff06a540317f63f231ada71f3d03f1c09e79a2c47b29b43c654903fc8b
+updated: 2016-11-17T10:05:04.395879866-08:00
 imports:
 - name: github.com/daaku/go.zipexe
   version: a5fe2436ffcb3236e175e5149162b41cd28bd27d
@@ -79,7 +79,7 @@ testImports:
   subpackages:
   - spew
 - name: github.com/pmezard/go-difflib
-  version: 792786c7400a136282c1664665ae0a8db921c6c2
+  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
   subpackages:
   - difflib
 - name: github.com/stretchr/testify
