@@ -21,8 +21,8 @@ JSONP is a method that allows cross-domain server calls. You can read more about
 
 {{< embed "jsonp/public/index.html" >}}
 
+## [Source Code]({{< source "jsonp" >}})
+
 ## Maintainers
 
 - [willf](https://github.com/willf)
-
-## [Source Code]({{< source "jsonp" >}})

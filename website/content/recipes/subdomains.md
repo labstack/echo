@@ -11,9 +11,9 @@ description = "Subdomains example for Echo"
 
 {{< embed "subdomains/server.go" >}}
 
+## [Source Code]({{< source "subdomains" >}})
+
 ## Maintainers
 
 - [axdg](https://github.com/axdg)
 - [vishr](https://github.com/vishr)
-
-## [Source Code]({{< source "subdomains" >}})

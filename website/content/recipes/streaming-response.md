@@ -32,8 +32,8 @@ $ curl localhost:1323
 {"Altitude":15,"Latitude":37.77493,"Longitude":-122.419416}
 ```
 
+## [Source Code]({{< source "streaming-response" >}})
+
 ## Maintainers
 
 - [vishr](https://github.com/vishr)
-
-## [Source Code]({{< source "streaming-response" >}})

@@ -17,11 +17,11 @@ property of your Echo instance as needed by doing something like:
 
 {{< embed "graceful-shutdown/server.go" >}}
 
+## Source Code
+
+- [graceful]({{< source "graceful-shutdown/graceful" >}})
+
 ## Maintainers
 
 - [mertenvg](https://github.com/mertenvg)
 - [apaganobeleno](https://github.com/apaganobeleno)
-
-## Source Code
-
-- [graceful]({{< source "graceful-shutdown/graceful" >}})

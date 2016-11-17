@@ -43,8 +43,8 @@ a certificate from [CA](https://en.wikipedia.org/wiki/Certificate_authority).
 - https://localhost:1323/request (Displays the information about received HTTP request)
 - https://localhost:1323/stream (Streams the current time every second)
 
+## [Source Code]({{< source "http2" >}})
+
 ## Maintainers
 
 - [vishr](https://github.com/vishr)
-
-## [Source Code]({{< source "http2" >}})

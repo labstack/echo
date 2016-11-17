@@ -13,9 +13,9 @@ description = "Embed resources example for Echo"
 
 {{< embed "embed-resources/server.go" >}}
 
+## [Source Code]({{< source "embed-resources" >}})
+
 ## Maintainers
 
 - [caarlos0](https://github.com/caarlos0)
 - [maddie](https://github.com/maddie)
-
-## [Source Code]({{< source "embed-resources" >}})

@@ -13,8 +13,8 @@ description = "Hello world example for Echo"
 
 {{< embed "hello-world/server.go" >}}
 
+## [Source Code]({{< source "hello-world" >}})
+
 ## Maintainers
 
 - [vishr](https://github.com/vishr)
-
-## [Source Code]({{< source "hello-world" >}})
