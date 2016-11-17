@@ -1,47 +1,45 @@
 +++
-title = "File Upload Recipe"
-description = "File upload recipe / example for Echo"
+title = "File Upload Example"
+description = "File upload example for Echo"
 [menu.side]
   name = "File Upload"
   parent = "recipes"
   weight = 7
 +++
 
-## File Upload Recipe
+## How to upload single file with fields?
 
-### How to upload single file with fields?
-
-#### Server
+### Server
 
 `server.go`
 
 {{< embed "file-upload/single/server.go" >}}
 
-#### Client
+### Client
 
 `index.html`
 
 {{< embed "file-upload/single/public/index.html" >}}
 
-### How to upload multiple files with fields?
+## How to upload multiple files with fields?
 
-#### Server
+### Server
 
 `server.go`
 
 {{< embed "file-upload/multiple/server.go" >}}
 
-#### Client
+### Client
 
 `index.html`
 
 {{< embed "file-upload/multiple/public/index.html" >}}
 
-### Maintainers
+## Maintainers
 
 - [vishr](https://github.com/vishr)
 
-### Source Code
+## Source Code
 
 - [single]({{< source "file-upload/single" >}})
 - [multiple]({{< source "file-upload/multiple" >}})

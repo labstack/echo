@@ -7,8 +7,6 @@ description = "Frequently asked questions in Echo"
   weight = 20
 +++
 
-## FAQ
-
 Q: How to retrieve `*http.Request` and `http.ResponseWriter` from `echo.Context`?
 
 - `http.Request` > `c.Request()`

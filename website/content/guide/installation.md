@@ -7,8 +7,6 @@ description = "Installing Echo"
   weight = 1
 +++
 
-## Installation
-
 Echo is developed and tested using Go `1.6.x` and `1.7.x`
 
 ```sh

@@ -1,5 +1,5 @@
 +++
-title = "HTTP Request"
+title = "Request"
 description = "Handling HTTP request in Echo"
 [menu.side]
   name = "Request"
@@ -7,9 +7,7 @@ description = "Handling HTTP request in Echo"
   weight = 6
 +++
 
-## Request
-
-### Bind Request Body
+## Bind Request Body
 
 To bind request body into a provided Go type use `Context#Bind(interface{})`.
 The default binder supports decoding application/json, application/xml and
@@ -21,7 +19,7 @@ TODO
 
 > Custom binder can be registered via `Echo#SetBinder(Binder)`
 
-### Query Parameter
+## Query Parameter
 
 Query parameter can be retrieved by name using `Context#QueryParam(name string)`.
 
@@ -38,7 +36,7 @@ e.GET("/users", func(c echo.Context) error {
 $ curl -G -d "name=joe" http://localhost:1323/users
 ```
 
-### Form Parameter
+## Form Parameter
 
 Form parameter can be retrieved by name using `Context#FormValue(name string)`.
 
@@ -55,7 +53,7 @@ e.POST("/users", func(c echo.Context) error {
 $ curl -d "name=joe" http://localhost:1323/users
 ```
 
-### Path Parameter
+## Path Parameter
 
 Registered path parameter can be retrieved by name `Context#Param(name string) string`.
 
@@ -75,7 +73,7 @@ $ curl http://localhost:1323/users/joe
 ```
 
 
-### Handler Path
+## Handler Path
 
 `Context#Path()` returns the registered path for the handler, it can be used in the
 middleware for logging purpose.

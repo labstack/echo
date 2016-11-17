@@ -7,9 +7,7 @@ description = "How to use templates in Echo"
   weight = 3
 +++
 
-## Templates
-
-### Template Rendering
+## Template Rendering
 
 `Context#Render(code int, name string, data interface{}) error` renders a template
 with data and sends a text/html response with status code. Templates can be registered

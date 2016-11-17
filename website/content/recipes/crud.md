@@ -1,25 +1,23 @@
 +++
-title = "CRUD Recipe"
-description = "CRUD (Create, read, update and delete) recipe / example for Echo"
+title = "CRUD Example"
+description = "CRUD (Create, read, update and delete) example for Echo"
 [menu.side]
   name = "CRUD"
   parent = "recipes"
   weight = 2
 +++
 
-## CRUD (Create, read, update and delete) Recipe
-
-### Server
+## Server
 
 `server.go`
 
 {{< embed "crud/server.go" >}}
 
-### Client
+## Client
 
 `curl`
 
-#### Create User
+### Create User
 
 ```sh
 curl -X POST \
@@ -37,7 +35,7 @@ curl -X POST \
 }
 ```
 
-#### Get User
+### Get User
 
 ```sh
 curl localhost:1323/users/1
@@ -52,7 +50,7 @@ curl localhost:1323/users/1
 }
 ```
 
-#### Update User
+### Update User
 
 ```sh
 curl -X PUT \
@@ -70,7 +68,7 @@ curl -X PUT \
 }
 ```
 
-#### Delete User
+### Delete User
 
 ```sh
 curl -X DELETE localhost:1323/users/1
@@ -80,8 +78,8 @@ curl -X DELETE localhost:1323/users/1
 
 `NoContent - 204`
 
-### Maintainers
+## Maintainers
 
 - [vishr](https://github.com/vishr)
 
-### [Source Code]({{< source "crud" >}})
+## [Source Code]({{< source "crud" >}})

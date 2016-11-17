@@ -1,6 +1,6 @@
 +++
-title = "JWT Recipe"
-description = "JWT recipe / example for Echo"
+title = "JWT Example"
+description = "JWT example for Echo"
 [menu.side]
   name = "JWT"
   identifier = "jwt-recipe"
@@ -8,28 +8,26 @@ description = "JWT recipe / example for Echo"
   weight = 11
 +++
 
-## JWT Recipe
-
 - JWT authentication using HS256 algorithm.
 - JWT is retrieved from `Authorization` request header.
 
-### Server using Map claims
+## Server using Map claims
 
 `server.go`
 
 {{< embed "jwt/map-claims/server.go" >}}
 
-### Server using custom claims
+## Server using custom claims
 
 `server.go`
 
 {{< embed "jwt/custom-claims/server.go" >}}
 
-### Client
+## Client
 
 `curl`
 
-#### Login
+### Login
 
 Login using username and password to retrieve a token.
 
@@ -45,7 +43,7 @@ curl -X POST -d 'username=jon' -d 'password=shhh!' localhost:1323/login
 }
 ```
 
-#### Request
+### Request
 
 Request a restricted resource using the token in `Authorization` request header.
 
@@ -59,13 +57,13 @@ curl localhost:1323/restricted -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR
 Welcome Jon Snow!
 ```
 
-### Maintainers
+## Maintainers
 
 - [vishr](https://github.com/vishr)
 - [axdg](https://github.com/axdg)
 - [matcornic](https://github.com/matcornic)
 
-### Source Code
+## Source Code
 
 - [With default Map claims]({{< source "jwt/map-claims" >}})
 - [With custom claims]({{< source "jwt/custom-claims" >}})

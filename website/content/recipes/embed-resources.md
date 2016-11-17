@@ -1,23 +1,21 @@
 +++
-title = "Embed Resources Recipe"
-description = "Embed resources recipe / example for Echo"
+title = "Embed Resources Example"
+description = "Embed resources example for Echo"
 [menu.side]
   name = "Embed Resources"
   parent = "recipes"
   weight = 14
 +++
 
-## Embed Resources Recipe
-
-### With go.rice
+## With go.rice
 
 `server.go`
 
 {{< embed "embed-resources/server.go" >}}
 
-### Maintainers
+## Maintainers
 
 - [caarlos0](https://github.com/caarlos0)
 - [maddie](https://github.com/maddie)
 
-### [Source Code]({{< source "embed-resources" >}})
+## [Source Code]({{< source "embed-resources" >}})

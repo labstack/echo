@@ -10,9 +10,18 @@
 				{{ partial "notice.html" }}
         <article class="content">
           <section>
+            <h1>{{ .Title }}</h1>
             {{ .Content }}
           </section>
-          <footer style="margin-top: 40px;">
+          <footer>
+            <div class="w3-panel w3-pale-yellow w3-leftbar w3-border-yellow">
+              <p>
+                <i class="fa fa-pencil" aria-hidden="true"></i>
+                <a href="https://github.com/labstack/echo/blob/master/website/content/{{ .File.Path }}">
+                  Edit this page on GitHub
+                </a>
+              </p>
+            </div>
           </footer>
         </article>
 			</div>

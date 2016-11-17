@@ -7,9 +7,7 @@ description = "Customizing Echo"
   weight = 3
 +++
 
-## Customization
-
-### HTTP Error Handler
+## HTTP Error Handler
 
 Default HTTP error handler rules:
 
@@ -20,20 +18,20 @@ and message `HTTPError.Message`.
 
 You can also set a custom HTTP error handler using `Echo#HTTPErrorHandler`.
 
-### Debugging
+## Debugging
 
 `Echo#Debug` enables/disables debug mode.
 
-### Logging
+## Logging
 
-#### Log Output
+### Log Output
 
 `Echo#Logger.SetOutput(io.Writer)` sets the output destination for the logger.
 Default value `os.Stdout`
 
 To completely disable logs use `Echo#Logger.SetOutput(io.Discard)` or `Echo#Logger.SetLevel(log.OFF)`
 
-#### Log Level
+### Log Level
 
 `Echo#Logger.SetLevel(log.Lvl)`
 

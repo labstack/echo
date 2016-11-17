@@ -9,9 +9,7 @@ description = "Serving static files in Echo"
 
 Images, JavaScript, CSS, PDF, Fonts and so on...
 
-## Static Files
-
-### Using `Echo#Static()`
+## Using `Echo#Static()`
 
 `Echo#Static(prefix, root string)` registers a new route with path prefix to serve
 static files from the provided root directory.
@@ -36,7 +34,7 @@ e.Static("/", "assets")
 Example above will serve any file from the assets directory for path `/*`. For example,
 a request to `/js/main.js` will fetch and serve `assets/js/main.js` file.
 
-### Using `Echo#File()`
+## Using `Echo#File()`
 
 `Echo#File(path, file string)` registers a new route with path to serve a static
 file.
