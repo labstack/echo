@@ -238,7 +238,7 @@ func (c *context) SetPath(p string) {
 func (c *context) Param(name string) string {
 	for i, n := range c.pnames {
 		if i < len(c.pnames) {
-			if strings.HasPrefix(n, name) {
+			if n == name {
 				return c.pvalues[i]
 			}
 
