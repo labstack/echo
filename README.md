@@ -38,20 +38,26 @@ Create `server.go`
 package main
 
 import (
-	"net/http"
-	
-	"github.com/labstack/echo"
+  "net"
+  "net/http"
+  "os"
+
+  "github.com/labstack/echo"
 )
 
 func main() {
-	e := echo.New()
-	e.GET("/", func(c echo.Context) error {
-		return c.String(http.StatusOK, "Hello, World!")
-	})
+  e := echo.New()
 
-	if err := e.Start(":1323"); err != nil {
-		e.Logger.Fatal(err.Error())
-	}
+  e.GET("/", func(c echo.Context) error {
+    return c.String(http.StatusOK, "Hello, World!")
+  })
+
+  port := os.Getenv("PORT")
+  if port == "" {
+    port = "8080"
+  }
+
+  e.Logger.Fatal(e.Start(net.JoinHostPort("", port)))
 }
 ```
 
