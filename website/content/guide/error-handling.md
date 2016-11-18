@@ -40,9 +40,7 @@ func main() {
 		}
 	})
 	e.GET("/", welcome)
-	if err := e.Start(":1323"); err != nil {
-		e.Logger.Fatal(err)
-	}
+	e.Logger.Fatal(e.Start(":1323"))
 }
 
 func welcome(c echo.Context) error {

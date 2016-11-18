@@ -37,7 +37,5 @@ func main() {
 	e.Use(middleware.Recover())
 	e.Static("/", "../public")
 	e.GET("/ws", hello)
-	if err := e.Start(":1323"); err != nil {
-		e.Logger.Fatal(err)
-	}
+	e.Logger.Fatal(e.Start(":1323"))
 }

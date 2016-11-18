@@ -55,7 +55,5 @@ func main() {
 	e.Static("/", "public")
 	e.POST("/upload", upload)
 
-	if err := e.Start(":1323"); err != nil {
-		e.Logger.Fatal(err)
-	}
+	e.Logger.Fatal(e.Start(":1323"))
 }
