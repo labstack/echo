@@ -39,6 +39,6 @@
   },
   "params": {
     "image": "https://echo.labstack.com/images/logo.png",
-    "description": "Echo is micro web framework for Go (Golang), high performance, minimalistic and fast."
+    "description": "Echo is a high performance, minimalistic and fast web framework for Go (Golang)."
   }
 }
