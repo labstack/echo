@@ -71,7 +71,5 @@ func main() {
 	e.DELETE("/users/:id", deleteUser)
 
 	// Start server
-	if err := e.Start(":1323"); err != nil {
-		e.Logger.Fatal(err)
-	}
+	e.Logger.Fatal(e.Start(":1323"))
 }
