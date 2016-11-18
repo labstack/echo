@@ -177,8 +177,8 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 				}
 				for i, n := range pnames {
 					// Param name aliases
-					if !strings.Contains(n, pnames[i]) {
-						cn.pnames[i] += "," + pnames[i]
+					if i < len(cn.pnames) && !strings.Contains(cn.pnames[i], n) {
+						cn.pnames[i] += "," + n
 					}
 				}
 			}
