@@ -7,8 +7,6 @@ description = "Basic auth middleware for Echo"
   weight = 5
 +++
 
-## BasicAuth Middleware
-
 BasicAuth middleware provides an HTTP basic authentication.
 
 - For valid credentials it calls the next handler.
@@ -27,7 +25,7 @@ e.Use(middleware.BasicAuth(func(username, password string) bool {
 }))
 ```
 
-### Custom Configuration
+## Custom Configuration
 
 *Usage*
 
@@ -37,7 +35,7 @@ e.Use(middleware.BasicAuthWithConfig(middleware.BasicAuthConfig{},
 }))
 ```
 
-### Configuration
+## Configuration
 
 ```go
 BasicAuthConfig struct {

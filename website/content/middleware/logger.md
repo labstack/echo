@@ -7,8 +7,6 @@ description = "Logger middleware for Echo"
   weight = 5
 +++
 
-## Logger Middleware
-
 Logger middleware logs the information about each HTTP request.
 
 *Usage*
@@ -21,7 +19,7 @@ Logger middleware logs the information about each HTTP request.
 {"time":"2016-05-10T07:02:25-07:00","remote_ip":"::1","method":"GET","uri":"/","status":200, "latency":55653,"latency_human":"55.653µs","rx_bytes":0,"tx_bytes":13}
 ```
 
-### Custom Configuration
+## Custom Configuration
 
 *Usage*
 
@@ -40,7 +38,7 @@ Example above uses a `Format` which logs request method and request URI.
 method=GET, uri=/hello, status=200
 ```
 
-### Configuration
+## Configuration
 
 ```go
 LoggerConfig struct {

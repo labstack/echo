@@ -7,8 +7,6 @@ description = "Secure middleware for Echo"
   weight = 5
 +++
 
-## Secure Middleware
-
 Secure middleware provides protection against cross-site scripting (XSS) attack,
 content type sniffing, clickjacking, insecure connection and other code injection
 attacks.
@@ -17,7 +15,7 @@ attacks.
 
 `e.Use(middleware.Secure())`
 
-### Custom Configuration
+## Custom Configuration
 
 *Usage*
 
@@ -35,7 +33,7 @@ e.Use(middleware.SecureWithConfig(middleware.SecureConfig{
 Passing empty `XSSProtection`, `ContentTypeNosniff`, `XFrameOptions` or `ContentSecurityPolicy`
 disables that protection.
 
-### Configuration
+## Configuration
 
 ```go
 SecureConfig struct {

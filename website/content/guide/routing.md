@@ -7,9 +7,8 @@ description = "Routing HTTP request in Echo"
   weight = 4
 +++
 
-Echo's router is [fast, optimized]({{< ref "index.md#performance">}}) and
-flexible. It's based on [radix tree](http://en.wikipedia.org/wiki/Radix_tree) data
-structure which makes route lookup really fast. Router leverages [sync pool](https://golang.org/pkg/sync/#Pool)
+Echo's router is based on [radix tree](http://en.wikipedia.org/wiki/Radix_tree) makings
+route lookup really fast, it leverages [sync pool](https://golang.org/pkg/sync/#Pool)
 to reuse memory and achieve zero dynamic memory allocation with no GC overhead.
 
 Routes can be registered by specifying HTTP method, path and a matching handler.

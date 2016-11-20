@@ -29,7 +29,7 @@ e := echo.New()
 e.Pre(middleware.RemoveTrailingSlash())
 ```
 
-### Custom Configuration
+## Custom Configuration
 
 *Usage*
 
@@ -42,7 +42,7 @@ e.Use(middleware.AddTrailingSlashWithConfig(middleware.TrailingSlashConfig{
 
 Example above will add a trailing slash to the request URI and redirect with `308 - StatusMovedPermanently`.
 
-### Configuration
+## Configuration
 
 ```go
 TrailingSlashConfig struct {

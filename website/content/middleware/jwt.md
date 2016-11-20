@@ -7,8 +7,6 @@ description = "JWT middleware for Echo"
   weight = 5
 +++
 
-## JWT Middleware
-
 JWT provides a JSON Web Token (JWT) authentication middleware.
 
 - For valid token, it sets the user in context and calls next handler.
@@ -19,7 +17,7 @@ JWT provides a JSON Web Token (JWT) authentication middleware.
 
 `e.Use(middleware.JWT([]byte("secret"))`
 
-### Custom Configuration
+## Custom Configuration
 
 *Usage*
 
@@ -31,7 +29,7 @@ e.Use(middleware.JWTWithConfig(middleware.JWTConfig{
 }))
 ```
 
-### Configuration
+## Configuration
 
 ```go
 // JWTConfig defines the config for JWT middleware.
@@ -78,4 +76,4 @@ DefaultJWTConfig = JWTConfig{
 }
 ```
 
-### [Recipe]({{< ref "recipes/jwt.md">}})
+## [Recipe]({{< ref "recipes/jwt.md">}})
