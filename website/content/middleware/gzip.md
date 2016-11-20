@@ -7,15 +7,13 @@ description = "Gzip middleware for Echo"
   weight = 5
 +++
 
-## Gzip Middleware
-
 Gzip middleware compresses HTTP response using gzip compression scheme.
 
 *Usage*
 
 `e.Use(middleware.Gzip())`
 
-### Custom Configuration
+## Custom Configuration
 
 *Usage*
 
@@ -26,7 +24,7 @@ e.Use(middleware.GzipWithConfig(middleware.GzipConfig{
 }))
 ```
 
-### Configuration
+## Configuration
 
 ```go
 GzipConfig struct {

@@ -1,16 +1,30 @@
 {{ partial "head.html" . }}
 <body>
 	{{ partial "navbar.html" . }}
-	{{ partial "sidenav.html" . }}
 	{{ partial "search.html" . }}
-	<div class="w3-main w3-padding-64">
+	<div class="w3-content w3-padding-64">
 		{{ partial "ad.html" }}
 	  <div class="w3-row-padding">
 			<div class="w3-col m9 l9">
-				{{ partial "notice.html" }}
-				{{ range where .Data.Pages "Title" "Index" }}
-					{{ .Content }}
-				{{ end }}
+        <div class="hero">
+          <h1>{{ .Site.Data.index.h1 }}</h1>
+          <h2>{{ .Site.Data.index.h2 }}</h2>
+          <p>
+            <img style="width: 100%;" src="/images/echo_terminal.png" alt="Echo">
+          </p>
+        </div>
+
+        <div class="w3-padding-32 w3-center">
+          <a class="w3-btn w3-theme w3-round w3-xlarge" href="/guide">Get Started</a>
+          <a class="w3-btn w3-black w3-round w3-xlarge w3-margin-left" href="https://github.com/labstack/echo" target="_blank">GitHub</a>
+        </div>
+
+        <div class="features">
+          {{ range .Site.Data.index.features }}
+          <div class="feature">
+          </div>
+          {{ end }}
+        </div>
 			</div>
 	  </div>
 	</div>

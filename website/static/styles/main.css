@@ -1,0 +1,8 @@
+.navbar .links a {
+  text-decoration: none;
+  color: inherit;
+  margin-left: 12px;
+}
+.navbar .links a:hover {
+  border-bottom: 4px solid #00AFD1;
+}

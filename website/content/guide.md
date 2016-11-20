@@ -1,28 +1,8 @@
 +++
-title = "Index"
+title = "Guide"
+description = "Guide"
+type = "guide"
 +++
-
-# Fast and unfancy HTTP server framework for Go (Golang).
-
-## Feature Overview
-
-- Optimized HTTP router which smartly prioritize routes
-- Build robust and scalable RESTful APIs
-- Group APIs
-- Extensible middleware framework
-- Define middleware at root, group or route level
-- Data binding for JSON, XML and form payload
-- Handy functions to send variety of HTTP responses
-- Centralized HTTP error handling
-- Template rendering with any template engine
-- Define your format for the logger
-- Highly customizable
-- Automatic TLS via Let’s Encrypt
-- Built-in graceful shutdown
-
-## Performance
-
-<img style="width: 75%;" src="https://i.imgur.com/F2V7TfO.png" alt="Performance">
 
 ## Quick Start
 
@@ -245,69 +225,3 @@ e.GET("/users", func(c echo.Context) error {
 	return c.String(http.StatusOK, "/users")
 }, track)
 ```
-
-#### Built-in Middleware
-
-Middleware | Description
-:--- | :---
-[BodyLimit]({{< ref "middleware/body-limit.md">}}) | Limit request body
-[Logger]({{< ref "middleware/logger.md">}}) | Log HTTP requests
-[Recover]({{< ref "middleware/recover.md">}}) | Recover from panics
-[Gzip]({{< ref "middleware/gzip.md">}}) | Send gzip HTTP response
-[BasicAuth]({{< ref "middleware/basic-auth.md">}}) | HTTP basic authentication
-[JWTAuth]({{< ref "middleware/jwt.md">}}) | JWT authentication
-[Secure]({{< ref "middleware/secure.md">}}) | Protection against attacks
-[CORS]({{< ref "middleware/cors.md">}}) | Cross-Origin Resource Sharing
-[CSRF]({{< ref "middleware/csrf.md">}}) | Cross-Site Request Forgery
-[HTTPSRedirect]({{< ref "middleware/redirect.md#httpsredirect-middleware">}}) | Redirect HTTP requests to HTTPS
-[HTTPSWWWRedirect]({{< ref "middleware/redirect.md#httpswwwredirect-middleware">}}) | Redirect HTTP requests to WWW HTTPS
-[WWWRedirect]({{< ref "middleware/redirect.md#wwwredirect-middleware">}}) | Redirect non WWW requests to WWW
-[NonWWWRedirect]({{< ref "middleware/redirect.md#nonwwwredirect-middleware">}}) | Redirect WWW requests to non WWW
-[AddTrailingSlash]({{< ref "middleware/trailing-slash.md#addtrailingslash-middleware">}}) | Add trailing slash to the request URI
-[RemoveTrailingSlash]({{< ref "middleware/trailing-slash.md#removetrailingslash-middleware">}}) | Remove trailing slash from the request URI
-[MethodOverride]({{< ref "middleware/method-override.md">}}) | Override request method
-
-#### Third-party Middleware
-
-Middleware | Description
-:--- | :---
-[echoperm](https://github.com/xyproto/echoperm) | Keeping track of users, login states and permissions.
-[echopprof](https://github.com/mtojek/echopprof) | Adapt net/http/pprof to labstack/echo.
-
-##### [Learn More](https://echo.labstack.com/middleware/overview)
-
-### Next
-
-- Head over to [guide](https://echo.labstack.com/guide/installation)
-- Browse [recipes](https://echo.labstack.com/recipes/hello-world)
-
-### Need help?
-
-- [Hop on to chat](https://gitter.im/labstack/echo)
-- [Open an issue](https://github.com/labstack/echo/issues/new)
-
-## Support Echo
-
-- ☆ the project
-- [Donate](https://echo.labstack.com/support-echo)
-- 🌐 spread the word
-- [Contribute](#contribute:d680e8a854a7cbad6d490c445cba2eba) to the project
-
-## Contribute
-
-**Use issues for everything**
-
-- Report issues
-- Discuss on chat before sending a pull request
-- Suggest new features or enhancements
-- Improve/fix documentation
-
-## Credits
-
-- [Vishal Rana](https://github.com/vishr) - Author
-- [Nitin Rana](https://github.com/nr17) - Consultant
-- [Contributors](https://github.com/labstack/echo/graphs/contributors)
-
-## License
-
-[MIT](https://github.com/labstack/echo/blob/master/LICENSE)
