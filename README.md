@@ -22,7 +22,7 @@
 
 ![Performance](https://i.imgur.com/F2V7TfO.png)
 
-## Get Started []
+## [Get Started](https://echo.labstack.com/guide)
 
 ## Support Us
 
