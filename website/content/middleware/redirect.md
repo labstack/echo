@@ -40,7 +40,7 @@ For example, http://www.labstack.com will be redirect to https://labstack.com.
 
 ```go
 e := echo.New()
-e.Pre(HTTPSNonWWWRedirect())
+e.Pre(middleware.HTTPSNonWWWRedirect())
 ```
 
 ## WWWRedirect Middleware
