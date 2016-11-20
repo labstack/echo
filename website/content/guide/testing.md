@@ -98,7 +98,7 @@ func TestCreateUser(t *testing.T) {
 	if assert.NoError(t, err) {
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		rec := httptest.NewRecorder()
-		c := e.NewContext(standard.NewRequest(req, e.Logger()), standard.NewResponse(rec, e.Logger()))
+		c := e.NewContext(req, rec)
 		h := &handler{mockDB}
 
 		// Assertions
@@ -114,7 +114,7 @@ func TestGetUser(t *testing.T) {
 	e := echo.New()
 	req := new(http.Request)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(standard.NewRequest(req, e.Logger()), standard.NewResponse(rec, e.Logger()))
+  c := e.NewContext(req, rec)
 	c.SetPath("/users/:email")
 	c.SetParamNames("email")
 	c.SetParamValues("jon@labstack.com")
