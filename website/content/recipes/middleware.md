@@ -1,7 +1,7 @@
 +++
 title = "Middleware Example"
 description = "Middleware example for Echo"
-[menu.side]
+[menu.main]
   name = "Middleware"
   parent = "recipes"
   weight = 3

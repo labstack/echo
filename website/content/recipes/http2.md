@@ -1,7 +1,7 @@
 +++
 title = "HTTP/2 Example"
 description = "HTTP/2 example for Echo"
-[menu.side]
+[menu.main]
   name = "HTTP/2"
   parent = "recipes"
   weight = 3

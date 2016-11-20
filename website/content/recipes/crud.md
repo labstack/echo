@@ -1,7 +1,7 @@
 +++
 title = "CRUD Example"
 description = "CRUD (Create, read, update and delete) example for Echo"
-[menu.side]
+[menu.main]
   name = "CRUD"
   parent = "recipes"
   weight = 2

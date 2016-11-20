@@ -1,6 +1,6 @@
 +++
 title = "echo"
-[menu.side]
+[menu.main]
   name = "echo"
   parent = "godoc"
   weight = 1

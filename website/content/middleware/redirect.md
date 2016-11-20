@@ -1,7 +1,7 @@
 +++
 title = "Redirect Middleware"
 description = "Redirect middleware for Echo"
-[menu.side]
+[menu.main]
   name = "Redirect"
   parent = "middleware"
   weight = 5

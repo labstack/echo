@@ -1,7 +1,7 @@
 +++
 title = "Context"
 description = "Context in Echo"
-[menu.side]
+[menu.main]
   name = "Context"
   identifier = "context"
   parent = "guide"

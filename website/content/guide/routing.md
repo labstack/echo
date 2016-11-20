@@ -1,7 +1,7 @@
 +++
 title = "Routing"
 description = "Routing HTTP request in Echo"
-[menu.side]
+[menu.main]
   name = "Routing"
   parent = "guide"
   weight = 4

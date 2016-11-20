@@ -1,6 +1,7 @@
 +++
 title = "Support Echo"
 description = "Support Echo"
+type = "single"
 +++
 
 <p>

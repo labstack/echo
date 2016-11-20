@@ -1,7 +1,7 @@
 +++
 title = "Static Files"
 description = "Serving static files in Echo"
-[menu.side]
+[menu.main]
   name = "Static Files"
   parent = "guide"
   weight = 3

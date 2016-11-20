@@ -1,7 +1,7 @@
 +++
 title = "JWT Example"
 description = "JWT example for Echo"
-[menu.side]
+[menu.main]
   name = "JWT"
   identifier = "jwt-recipe"
   parent = "recipes"

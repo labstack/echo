@@ -1,7 +1,7 @@
 +++
 title = "TrailingSlash Middleware"
 description = "Trailing slash middleware for Echo"
-[menu.side]
+[menu.main]
   name = "TrailingSlash"
   parent = "middleware"
   weight = 5

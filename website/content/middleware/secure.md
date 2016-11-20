@@ -1,7 +1,7 @@
 +++
 title = "Secure Middleware"
 description = "Secure middleware for Echo"
-[menu.side]
+[menu.main]
   name = "Secure"
   parent = "middleware"
   weight = 5

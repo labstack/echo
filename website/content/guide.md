@@ -2,6 +2,12 @@
 title = "Guide"
 description = "Guide"
 type = "guide"
+[menu.main]
+  name = "Guide"
+  pre = "<i class='fa fa-book'></i>"
+  weight = 1
+  identifier = "guide"
+  url = "/guide"
 +++
 
 ## Quick Start

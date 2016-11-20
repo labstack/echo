@@ -1,2 +1,2 @@
 build:
-	rm -rf public/v3 && hugo
+	rm -rf public && hugo

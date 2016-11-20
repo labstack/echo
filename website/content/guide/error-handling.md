@@ -1,7 +1,7 @@
 +++
 title = "Error Handling"
 description = "Error handling in Echo"
-[menu.side]
+[menu.main]
   name = "Error Handling"
   parent = "guide"
   weight = 8

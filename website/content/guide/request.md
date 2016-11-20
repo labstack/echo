@@ -1,7 +1,7 @@
 +++
 title = "Request"
 description = "Handling HTTP request in Echo"
-[menu.side]
+[menu.main]
   name = "Request"
   parent = "guide"
   weight = 6

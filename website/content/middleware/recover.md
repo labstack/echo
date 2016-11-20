@@ -1,7 +1,7 @@
 +++
 title = "Recover Middleware"
 description = "Recover middleware for Echo"
-[menu.side]
+[menu.main]
   name = "Recover"
   parent = "middleware"
   weight = 5

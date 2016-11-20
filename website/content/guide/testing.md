@@ -1,7 +1,7 @@
 +++
 title = "Testing"
 description = "Testing handler and middleware in Echo"
-[menu.side]
+[menu.main]
   name = "Testing"
   parent = "guide"
   weight = 9

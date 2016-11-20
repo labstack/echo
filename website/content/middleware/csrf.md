@@ -1,7 +1,7 @@
 +++
 title = "CSRF Middleware"
 description = "CSRF middleware for Echo"
-[menu.side]
+[menu.main]
   name = "CSRF"
   parent = "middleware"
   weight = 5

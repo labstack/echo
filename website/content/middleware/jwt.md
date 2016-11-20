@@ -1,7 +1,7 @@
 +++
 title = "JWT Middleware"
 description = "JWT middleware for Echo"
-[menu.side]
+[menu.main]
   name = "JWT"
   parent = "middleware"
   weight = 5

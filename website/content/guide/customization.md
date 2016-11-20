@@ -1,7 +1,7 @@
 +++
 title = "Customization"
 description = "Customizing Echo"
-[menu.side]
+[menu.main]
   name = "Customization"
   parent = "guide"
   weight = 3

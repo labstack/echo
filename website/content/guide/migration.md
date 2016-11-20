@@ -1,7 +1,7 @@
 +++
 title = "Migration"
 description = "Migration"
-[menu.side]
+[menu.main]
   name = "Migration"
   parent = "guide"
   weight = 2

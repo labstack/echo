@@ -1,7 +1,7 @@
 +++
 title = "Gzip Middleware"
 description = "Gzip middleware for Echo"
-[menu.side]
+[menu.main]
   name = "Gzip"
   parent = "middleware"
   weight = 5

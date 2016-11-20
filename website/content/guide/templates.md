@@ -1,7 +1,7 @@
 +++
 title = "Templates"
 description = "How to use templates in Echo"
-[menu.side]
+[menu.main]
   name = "Templates"
   parent = "guide"
   weight = 3

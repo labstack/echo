@@ -1,7 +1,7 @@
 +++
 title = "FAQ"
 description = "Frequently asked questions in Echo"
-[menu.side]
+[menu.main]
   name = "FAQ"
   parent = "guide"
   weight = 20

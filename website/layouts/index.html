@@ -1,8 +1,10 @@
 {{ partial "head.html" . }}
 <body>
-	{{ partial "navbar.html" . }}
-	{{ partial "search.html" . }}
-	<div class="w3-content w3-padding-64">
+	{{ partial "topnav.html" . }}
+  <div class="w3-hide-large">
+    {{ partial "sidenav.html" . }}
+  </div>
+	<div class="w3-container w3-content w3-padding-64">
 		{{ partial "ad.html" }}
 	  <div class="w3-row-padding">
 			<div class="w3-col m9 l9">

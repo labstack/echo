@@ -1,7 +1,7 @@
 +++
 title = "JSONP Example"
 description = "JSONP example for Echo"
-[menu.side]
+[menu.main]
   name = "JSONP"
   parent = "recipes"
   weight = 6

@@ -1,6 +1,6 @@
 +++
 title = "middleware"
-[menu.side]
+[menu.main]
   name = "middleware"
   identifier = "godoc-middleware"
   parent = "godoc"

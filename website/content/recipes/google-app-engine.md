@@ -1,7 +1,7 @@
 +++
 title = "Google App Engine Example"
 description = "Google App Engine example for Echo"
-[menu.side]
+[menu.main]
   name = "Google App Engine"
   parent = "recipes"
   weight = 12

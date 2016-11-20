@@ -1,7 +1,7 @@
 +++
 title = "BodyLimit Middleware"
 description = "Body limit middleware for Echo"
-[menu.side]
+[menu.main]
   name = "BodyLimit"
   parent = "middleware"
   weight = 5

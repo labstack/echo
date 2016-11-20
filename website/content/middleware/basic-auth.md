@@ -1,7 +1,7 @@
 +++
 title = "BasicAuth Middleware"
 description = "Basic auth middleware for Echo"
-[menu.side]
+[menu.main]
   name = "BasicAuth"
   parent = "middleware"
   weight = 5

@@ -1,7 +1,7 @@
 +++
 title = "MethodOverride Middleware"
 description = "Method override middleware for Echo"
-[menu.side]
+[menu.main]
   name = "MethodOverride"
   parent = "middleware"
   weight = 5

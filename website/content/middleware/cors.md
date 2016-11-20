@@ -1,7 +1,7 @@
 +++
 title = "CORS Middleware"
 description = "CORS middleware for Echo"
-[menu.side]
+[menu.main]
   name = "CORS"
   parent = "middleware"
   weight = 5

@@ -1,7 +1,7 @@
 +++
 title = "Logger Middleware"
 description = "Logger middleware for Echo"
-[menu.side]
+[menu.main]
   name = "Logger"
   parent = "middleware"
   weight = 5

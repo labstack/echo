@@ -1,7 +1,7 @@
 +++
 title = "Embed Resources Example"
 description = "Embed resources example for Echo"
-[menu.side]
+[menu.main]
   name = "Embed Resources"
   parent = "recipes"
   weight = 14

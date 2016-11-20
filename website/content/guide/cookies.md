@@ -1,7 +1,7 @@
 +++
 title = "Cookies"
 description = "Handling cookie in Echo"
-[menu.side]
+[menu.main]
   name = "Cookies"
   parent = "guide"
   weight = 6
