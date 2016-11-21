@@ -7,7 +7,7 @@
 	<div class="w3-container w3-content w3-padding-64">
 		{{ partial "ad.html" }}
 	  <div class="w3-row-padding">
-			<div class="w3-col m9 l9">
+			<div class="w3-col m10 l10">
         <div class="hero">
           <h1>{{ .Site.Data.index.h1 }}</h1>
           <h2>{{ .Site.Data.index.h2 }}</h2>
@@ -23,8 +23,15 @@
 
         <div class="features">
           {{ range .Site.Data.index.features }}
-          <div class="feature">
-          </div>
+            <div class="feature">
+              <img src="/images/{{  .icon }}.svg">
+              <h3>
+                {{ .title }}
+              </h3>
+              <p>
+                {{ .text | safeHTML }}
+              </p>
+            </div>
           {{ end }}
         </div>
 			</div>

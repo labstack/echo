@@ -1,5 +1,5 @@
 {
-  "baseurl": "https://echo.labstack.com/",
+  "baseurl": "https://echo.labstack.com",
   "languageCode": "en-us",
   "title": "Echo - Fast and unfancy HTTP server framework for Go (Golang)",
   "canonifyurls": true,

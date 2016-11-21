@@ -12,29 +12,22 @@ import (
 func TestCORS(t *testing.T) {
 	e := echo.New()
 
-	// Origin origin
+	// Wildcard origin
 	req, _ := http.NewRequest(echo.GET, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	h := CORS()(echo.NotFoundHandler)
-	req.Header.Set(echo.HeaderOrigin, "localhost")
-	h(c)
-	assert.Equal(t, "localhost", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
-
-	// Wildcard origin
-	req, _ = http.NewRequest(echo.GET, "/", nil)
-	rec = httptest.NewRecorder()
-	c = e.NewContext(req, rec)
-	h = CORS()(echo.NotFoundHandler)
 	h(c)
 	assert.Equal(t, "*", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
 
-	// Simple request
+	// Allow origins
 	req, _ = http.NewRequest(echo.GET, "/", nil)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
+	h = CORSWithConfig(CORSConfig{
+		AllowOrigins: []string{"localhost"},
+	})(echo.NotFoundHandler)
 	req.Header.Set(echo.HeaderOrigin, "localhost")
-	h = CORS()(echo.NotFoundHandler)
 	h(c)
 	assert.Equal(t, "localhost", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
 
