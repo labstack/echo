@@ -42,7 +42,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	slog "log"
+	"log"
 	"net/http"
 	"path"
 	"reflect"
@@ -546,7 +546,7 @@ func (e *Echo) StartServer(s *http.Server) error {
 	gs := &graceful.Server{
 		Server:  s,
 		Timeout: e.ShutdownTimeout,
-		Logger:  slog.New(e.Logger.Output(), e.Logger.Prefix()+": ", 0),
+		Logger:  log.New(e.Logger.Output(), e.Logger.Prefix()+": ", 0),
 	}
 	if s.TLSConfig == nil {
 		e.server = gs

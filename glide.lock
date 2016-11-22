@@ -1,5 +1,5 @@
 hash: d63c27ff06a540317f63f231ada71f3d03f1c09e79a2c47b29b43c654903fc8b
-updated: 2016-11-17T10:05:04.395879866-08:00
+updated: 2016-11-21T19:12:16.622618752-08:00
 imports:
 - name: github.com/daaku/go.zipexe
   version: a5fe2436ffcb3236e175e5149162b41cd28bd27d
