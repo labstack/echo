@@ -1,0 +1,28 @@
+<nav id="sidenav" class="w3-sidenav w3-collapse w3-card-2">
+  <span class="w3-closenav w3-xxlarge w3-hide-large" onclick="closeSidenav()">
+    &times;
+  </span>
+  <a class="w3-btn w3-white w3-border w3-border-theme w3-round-xlarge support-us" href="/support-echo">
+    <i class="fa fa-heart" aria-hidden="true"></i> Support Echo
+  </a>
+  {{ $currentNode := . }}
+  <div class="w3-hide-large menu">
+    {{ range .Site.Menus.main }}
+      <a{{ if or ($currentNode.HasMenuCurrent "main" .) ($currentNode.IsMenuCurrent "main" .) }} class="active"{{ end }} href="{{ .URL }}">
+        <div class="w3-xlarge w3-padding-top">{{ .Name }}</div>
+      </a>
+    {{ end }}
+  </div>
+  <div class="sub-menu">
+    {{ if .IsPage }}
+      {{ range where .Site.Menus.main "Identifier" .Type }}
+        <div class="w3-xlarge w3-padding-top">{{ .Pre }} {{ .Name }}</div>
+        {{ range .Children }}
+          <a{{ if $currentNode.IsMenuCurrent "main" . }} class="active"{{ end }} href="{{ .URL }}">
+            {{ .Name }}
+          </a>
+        {{ end }}
+      {{ end }}
+  {{ end }}
+  </div>
+</nav>

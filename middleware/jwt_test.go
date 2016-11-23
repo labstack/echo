@@ -2,11 +2,11 @@ package middleware
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo"
-	"github.com/labstack/echo/test"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -148,10 +148,10 @@ func TestJWT(t *testing.T) {
 			tc.reqURL = "/"
 		}
 
-		req := test.NewRequest(echo.GET, tc.reqURL, nil)
-		res := test.NewResponseRecorder()
-		req.Header().Set(echo.HeaderAuthorization, tc.hdrAuth)
-		req.Header().Set(echo.HeaderCookie, tc.hdrCookie)
+		req, _ := http.NewRequest(echo.GET, tc.reqURL, nil)
+		res := httptest.NewRecorder()
+		req.Header.Set(echo.HeaderAuthorization, tc.hdrAuth)
+		req.Header.Set(echo.HeaderCookie, tc.hdrCookie)
 		c := e.NewContext(req, res)
 
 		if tc.expPanic {

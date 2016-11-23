@@ -3,13 +3,174 @@ package echo
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 var (
-	api = []Route{
+	staticRoutes = []Route{
+		{"GET", "/", ""},
+		{"GET", "/cmd.html", ""},
+		{"GET", "/code.html", ""},
+		{"GET", "/contrib.html", ""},
+		{"GET", "/contribute.html", ""},
+		{"GET", "/debugging_with_gdb.html", ""},
+		{"GET", "/docs.html", ""},
+		{"GET", "/effective_go.html", ""},
+		{"GET", "/files.log", ""},
+		{"GET", "/gccgo_contribute.html", ""},
+		{"GET", "/gccgo_install.html", ""},
+		{"GET", "/go-logo-black.png", ""},
+		{"GET", "/go-logo-blue.png", ""},
+		{"GET", "/go-logo-white.png", ""},
+		{"GET", "/go1.1.html", ""},
+		{"GET", "/go1.2.html", ""},
+		{"GET", "/go1.html", ""},
+		{"GET", "/go1compat.html", ""},
+		{"GET", "/go_faq.html", ""},
+		{"GET", "/go_mem.html", ""},
+		{"GET", "/go_spec.html", ""},
+		{"GET", "/help.html", ""},
+		{"GET", "/ie.css", ""},
+		{"GET", "/install-source.html", ""},
+		{"GET", "/install.html", ""},
+		{"GET", "/logo-153x55.png", ""},
+		{"GET", "/Makefile", ""},
+		{"GET", "/root.html", ""},
+		{"GET", "/share.png", ""},
+		{"GET", "/sieve.gif", ""},
+		{"GET", "/tos.html", ""},
+		{"GET", "/articles/", ""},
+		{"GET", "/articles/go_command.html", ""},
+		{"GET", "/articles/index.html", ""},
+		{"GET", "/articles/wiki/", ""},
+		{"GET", "/articles/wiki/edit.html", ""},
+		{"GET", "/articles/wiki/final-noclosure.go", ""},
+		{"GET", "/articles/wiki/final-noerror.go", ""},
+		{"GET", "/articles/wiki/final-parsetemplate.go", ""},
+		{"GET", "/articles/wiki/final-template.go", ""},
+		{"GET", "/articles/wiki/final.go", ""},
+		{"GET", "/articles/wiki/get.go", ""},
+		{"GET", "/articles/wiki/http-sample.go", ""},
+		{"GET", "/articles/wiki/index.html", ""},
+		{"GET", "/articles/wiki/Makefile", ""},
+		{"GET", "/articles/wiki/notemplate.go", ""},
+		{"GET", "/articles/wiki/part1-noerror.go", ""},
+		{"GET", "/articles/wiki/part1.go", ""},
+		{"GET", "/articles/wiki/part2.go", ""},
+		{"GET", "/articles/wiki/part3-errorhandling.go", ""},
+		{"GET", "/articles/wiki/part3.go", ""},
+		{"GET", "/articles/wiki/test.bash", ""},
+		{"GET", "/articles/wiki/test_edit.good", ""},
+		{"GET", "/articles/wiki/test_Test.txt.good", ""},
+		{"GET", "/articles/wiki/test_view.good", ""},
+		{"GET", "/articles/wiki/view.html", ""},
+		{"GET", "/codewalk/", ""},
+		{"GET", "/codewalk/codewalk.css", ""},
+		{"GET", "/codewalk/codewalk.js", ""},
+		{"GET", "/codewalk/codewalk.xml", ""},
+		{"GET", "/codewalk/functions.xml", ""},
+		{"GET", "/codewalk/markov.go", ""},
+		{"GET", "/codewalk/markov.xml", ""},
+		{"GET", "/codewalk/pig.go", ""},
+		{"GET", "/codewalk/popout.png", ""},
+		{"GET", "/codewalk/run", ""},
+		{"GET", "/codewalk/sharemem.xml", ""},
+		{"GET", "/codewalk/urlpoll.go", ""},
+		{"GET", "/devel/", ""},
+		{"GET", "/devel/release.html", ""},
+		{"GET", "/devel/weekly.html", ""},
+		{"GET", "/gopher/", ""},
+		{"GET", "/gopher/appenginegopher.jpg", ""},
+		{"GET", "/gopher/appenginegophercolor.jpg", ""},
+		{"GET", "/gopher/appenginelogo.gif", ""},
+		{"GET", "/gopher/bumper.png", ""},
+		{"GET", "/gopher/bumper192x108.png", ""},
+		{"GET", "/gopher/bumper320x180.png", ""},
+		{"GET", "/gopher/bumper480x270.png", ""},
+		{"GET", "/gopher/bumper640x360.png", ""},
+		{"GET", "/gopher/doc.png", ""},
+		{"GET", "/gopher/frontpage.png", ""},
+		{"GET", "/gopher/gopherbw.png", ""},
+		{"GET", "/gopher/gophercolor.png", ""},
+		{"GET", "/gopher/gophercolor16x16.png", ""},
+		{"GET", "/gopher/help.png", ""},
+		{"GET", "/gopher/pkg.png", ""},
+		{"GET", "/gopher/project.png", ""},
+		{"GET", "/gopher/ref.png", ""},
+		{"GET", "/gopher/run.png", ""},
+		{"GET", "/gopher/talks.png", ""},
+		{"GET", "/gopher/pencil/", ""},
+		{"GET", "/gopher/pencil/gopherhat.jpg", ""},
+		{"GET", "/gopher/pencil/gopherhelmet.jpg", ""},
+		{"GET", "/gopher/pencil/gophermega.jpg", ""},
+		{"GET", "/gopher/pencil/gopherrunning.jpg", ""},
+		{"GET", "/gopher/pencil/gopherswim.jpg", ""},
+		{"GET", "/gopher/pencil/gopherswrench.jpg", ""},
+		{"GET", "/play/", ""},
+		{"GET", "/play/fib.go", ""},
+		{"GET", "/play/hello.go", ""},
+		{"GET", "/play/life.go", ""},
+		{"GET", "/play/peano.go", ""},
+		{"GET", "/play/pi.go", ""},
+		{"GET", "/play/sieve.go", ""},
+		{"GET", "/play/solitaire.go", ""},
+		{"GET", "/play/tree.go", ""},
+		{"GET", "/progs/", ""},
+		{"GET", "/progs/cgo1.go", ""},
+		{"GET", "/progs/cgo2.go", ""},
+		{"GET", "/progs/cgo3.go", ""},
+		{"GET", "/progs/cgo4.go", ""},
+		{"GET", "/progs/defer.go", ""},
+		{"GET", "/progs/defer.out", ""},
+		{"GET", "/progs/defer2.go", ""},
+		{"GET", "/progs/defer2.out", ""},
+		{"GET", "/progs/eff_bytesize.go", ""},
+		{"GET", "/progs/eff_bytesize.out", ""},
+		{"GET", "/progs/eff_qr.go", ""},
+		{"GET", "/progs/eff_sequence.go", ""},
+		{"GET", "/progs/eff_sequence.out", ""},
+		{"GET", "/progs/eff_unused1.go", ""},
+		{"GET", "/progs/eff_unused2.go", ""},
+		{"GET", "/progs/error.go", ""},
+		{"GET", "/progs/error2.go", ""},
+		{"GET", "/progs/error3.go", ""},
+		{"GET", "/progs/error4.go", ""},
+		{"GET", "/progs/go1.go", ""},
+		{"GET", "/progs/gobs1.go", ""},
+		{"GET", "/progs/gobs2.go", ""},
+		{"GET", "/progs/image_draw.go", ""},
+		{"GET", "/progs/image_package1.go", ""},
+		{"GET", "/progs/image_package1.out", ""},
+		{"GET", "/progs/image_package2.go", ""},
+		{"GET", "/progs/image_package2.out", ""},
+		{"GET", "/progs/image_package3.go", ""},
+		{"GET", "/progs/image_package3.out", ""},
+		{"GET", "/progs/image_package4.go", ""},
+		{"GET", "/progs/image_package4.out", ""},
+		{"GET", "/progs/image_package5.go", ""},
+		{"GET", "/progs/image_package5.out", ""},
+		{"GET", "/progs/image_package6.go", ""},
+		{"GET", "/progs/image_package6.out", ""},
+		{"GET", "/progs/interface.go", ""},
+		{"GET", "/progs/interface2.go", ""},
+		{"GET", "/progs/interface2.out", ""},
+		{"GET", "/progs/json1.go", ""},
+		{"GET", "/progs/json2.go", ""},
+		{"GET", "/progs/json2.out", ""},
+		{"GET", "/progs/json3.go", ""},
+		{"GET", "/progs/json4.go", ""},
+		{"GET", "/progs/json5.go", ""},
+		{"GET", "/progs/run", ""},
+		{"GET", "/progs/slices.go", ""},
+		{"GET", "/progs/timeout1.go", ""},
+		{"GET", "/progs/timeout2.go", ""},
+		{"GET", "/progs/update.bash", ""},
+	}
+
+	gitHubAPI = []Route{
 		// OAuth Authorizations
 		{"GET", "/authorizations", "", nil},
 		{"GET", "/authorizations/:id", "", nil},
@@ -271,6 +432,73 @@ var (
 		//{"PATCH", "/user/keys/:id", "", nil},
 		{"DELETE", "/user/keys/:id", "", nil},
 	}
+
+	parseAPI = []Route{
+		// Objects
+		{"POST", "/1/classes/:className", ""},
+		{"GET", "/1/classes/:className/:objectId", ""},
+		{"PUT", "/1/classes/:className/:objectId", ""},
+		{"GET", "/1/classes/:className", ""},
+		{"DELETE", "/1/classes/:className/:objectId", ""},
+
+		// Users
+		{"POST", "/1/users", ""},
+		{"GET", "/1/login", ""},
+		{"GET", "/1/users/:objectId", ""},
+		{"PUT", "/1/users/:objectId", ""},
+		{"GET", "/1/users", ""},
+		{"DELETE", "/1/users/:objectId", ""},
+		{"POST", "/1/requestPasswordReset", ""},
+
+		// Roles
+		{"POST", "/1/roles", ""},
+		{"GET", "/1/roles/:objectId", ""},
+		{"PUT", "/1/roles/:objectId", ""},
+		{"GET", "/1/roles", ""},
+		{"DELETE", "/1/roles/:objectId", ""},
+
+		// Files
+		{"POST", "/1/files/:fileName", ""},
+
+		// Analytics
+		{"POST", "/1/events/:eventName", ""},
+
+		// Push Notifications
+		{"POST", "/1/push", ""},
+
+		// Installations
+		{"POST", "/1/installations", ""},
+		{"GET", "/1/installations/:objectId", ""},
+		{"PUT", "/1/installations/:objectId", ""},
+		{"GET", "/1/installations", ""},
+		{"DELETE", "/1/installations/:objectId", ""},
+
+		// Cloud Functions
+		{"POST", "/1/functions", ""},
+	}
+
+	googlePlusAPI = []Route{
+		// People
+		{"GET", "/people/:userId", ""},
+		{"GET", "/people", ""},
+		{"GET", "/activities/:activityId/people/:collection", ""},
+		{"GET", "/people/:userId/people/:collection", ""},
+		{"GET", "/people/:userId/openIdConnect", ""},
+
+		// Activities
+		{"GET", "/people/:userId/activities/:collection", ""},
+		{"GET", "/activities/:activityId", ""},
+		{"GET", "/activities", ""},
+
+		// Comments
+		{"GET", "/activities/:activityId/comments", ""},
+		{"GET", "/comments/:commentId", ""},
+
+		// Moments
+		{"POST", "/people/:userId/moments/:collection", ""},
+		{"GET", "/people/:userId/moments/:collection", ""},
+		{"DELETE", "/moments/:id", ""},
+	}
 )
 
 func TestRouterStatic(t *testing.T) {
@@ -280,8 +508,8 @@ func TestRouterStatic(t *testing.T) {
 	r.Add(GET, path, func(c Context) error {
 		c.Set("path", path)
 		return nil
-	}, e)
-	c := e.NewContext(nil, nil).(*echoContext)
+	})
+	c := e.NewContext(nil, nil).(*context)
 	r.Find(GET, path, c)
 	c.handler(c)
 	assert.Equal(t, path, c.Get("path"))
@@ -292,10 +520,10 @@ func TestRouterParam(t *testing.T) {
 	r := e.router
 	r.Add(GET, "/users/:id", func(c Context) error {
 		return nil
-	}, e)
-	c := e.NewContext(nil, nil).(*echoContext)
+	})
+	c := e.NewContext(nil, nil).(*context)
 	r.Find(GET, "/users/1", c)
-	assert.Equal(t, "1", c.P(0))
+	assert.Equal(t, "1", c.Param("id"))
 }
 
 func TestRouterTwoParam(t *testing.T) {
@@ -303,12 +531,12 @@ func TestRouterTwoParam(t *testing.T) {
 	r := e.router
 	r.Add(GET, "/users/:uid/files/:fid", func(Context) error {
 		return nil
-	}, e)
-	c := e.NewContext(nil, nil).(*echoContext)
+	})
+	c := e.NewContext(nil, nil).(*context)
 
 	r.Find(GET, "/users/1/files/1", c)
-	assert.Equal(t, "1", c.P(0))
-	assert.Equal(t, "1", c.P(1))
+	assert.Equal(t, "1", c.Param("uid"))
+	assert.Equal(t, "1", c.Param("fid"))
 }
 
 // Issue #378
@@ -318,13 +546,13 @@ func TestRouterParamWithSlash(t *testing.T) {
 
 	r.Add(GET, "/a/:b/c/d/:e", func(c Context) error {
 		return nil
-	}, e)
+	})
 
 	r.Add(GET, "/a/:b/c/:d/:f", func(c Context) error {
 		return nil
-	}, e)
+	})
 
-	c := e.NewContext(nil, nil).(*echoContext)
+	c := e.NewContext(nil, nil).(*context)
 	assert.NotPanics(t, func() {
 		r.Find(GET, "/a/1/c/d/2/3", c)
 	})
@@ -337,23 +565,23 @@ func TestRouterMatchAny(t *testing.T) {
 	// Routes
 	r.Add(GET, "/", func(Context) error {
 		return nil
-	}, e)
+	})
 	r.Add(GET, "/*", func(Context) error {
 		return nil
-	}, e)
+	})
 	r.Add(GET, "/users/*", func(Context) error {
 		return nil
-	}, e)
-	c := e.NewContext(nil, nil).(*echoContext)
+	})
+	c := e.NewContext(nil, nil).(*context)
 
 	r.Find(GET, "/", c)
-	assert.Equal(t, "", c.P(0))
+	assert.Equal(t, "", c.Param("*"))
 
 	r.Find(GET, "/download", c)
-	assert.Equal(t, "download", c.P(0))
+	assert.Equal(t, "download", c.Param("*"))
 
 	r.Find(GET, "/users/joe", c)
-	assert.Equal(t, "joe", c.P(0))
+	assert.Equal(t, "joe", c.Param("*"))
 }
 
 func TestRouterMicroParam(t *testing.T) {
@@ -361,12 +589,12 @@ func TestRouterMicroParam(t *testing.T) {
 	r := e.router
 	r.Add(GET, "/:a/:b/:c", func(c Context) error {
 		return nil
-	}, e)
-	c := e.NewContext(nil, nil).(*echoContext)
+	})
+	c := e.NewContext(nil, nil).(*context)
 	r.Find(GET, "/1/2/3", c)
-	assert.Equal(t, "1", c.P(0))
-	assert.Equal(t, "2", c.P(1))
-	assert.Equal(t, "3", c.P(2))
+	assert.Equal(t, "1", c.Param("a"))
+	assert.Equal(t, "2", c.Param("b"))
+	assert.Equal(t, "3", c.Param("c"))
 }
 
 func TestRouterMixParamMatchAny(t *testing.T) {
@@ -376,12 +604,12 @@ func TestRouterMixParamMatchAny(t *testing.T) {
 	// Route
 	r.Add(GET, "/users/:id/*", func(c Context) error {
 		return nil
-	}, e)
-	c := e.NewContext(nil, nil).(*echoContext)
+	})
+	c := e.NewContext(nil, nil).(*context)
 
 	r.Find(GET, "/users/joe/comments", c)
 	c.handler(c)
-	assert.Equal(t, "joe", c.P(0))
+	assert.Equal(t, "joe", c.Param("id"))
 }
 
 func TestRouterMultiRoute(t *testing.T) {
@@ -392,11 +620,11 @@ func TestRouterMultiRoute(t *testing.T) {
 	r.Add(GET, "/users", func(c Context) error {
 		c.Set("path", "/users")
 		return nil
-	}, e)
+	})
 	r.Add(GET, "/users/:id", func(c Context) error {
 		return nil
-	}, e)
-	c := e.NewContext(nil, nil).(*echoContext)
+	})
+	c := e.NewContext(nil, nil).(*context)
 
 	// Route > /users
 	r.Find(GET, "/users", c)
@@ -405,10 +633,10 @@ func TestRouterMultiRoute(t *testing.T) {
 
 	// Route > /users/:id
 	r.Find(GET, "/users/1", c)
-	assert.Equal(t, "1", c.P(0))
+	assert.Equal(t, "1", c.Param("id"))
 
 	// Route > /user
-	c = e.NewContext(nil, nil).(*echoContext)
+	c = e.NewContext(nil, nil).(*context)
 	r.Find(GET, "/user", c)
 	he := c.handler(c).(*HTTPError)
 	assert.Equal(t, http.StatusNotFound, he.Code)
@@ -422,32 +650,32 @@ func TestRouterPriority(t *testing.T) {
 	r.Add(GET, "/users", func(c Context) error {
 		c.Set("a", 1)
 		return nil
-	}, e)
+	})
 	r.Add(GET, "/users/new", func(c Context) error {
 		c.Set("b", 2)
 		return nil
-	}, e)
+	})
 	r.Add(GET, "/users/:id", func(c Context) error {
 		c.Set("c", 3)
 		return nil
-	}, e)
+	})
 	r.Add(GET, "/users/dew", func(c Context) error {
 		c.Set("d", 4)
 		return nil
-	}, e)
+	})
 	r.Add(GET, "/users/:id/files", func(c Context) error {
 		c.Set("e", 5)
 		return nil
-	}, e)
+	})
 	r.Add(GET, "/users/newsee", func(c Context) error {
 		c.Set("f", 6)
 		return nil
-	}, e)
+	})
 	r.Add(GET, "/users/*", func(c Context) error {
 		c.Set("g", 7)
 		return nil
-	}, e)
-	c := e.NewContext(nil, nil).(*echoContext)
+	})
+	c := e.NewContext(nil, nil).(*context)
 
 	// Route > /users
 	r.Find(GET, "/users", c)
@@ -483,24 +711,24 @@ func TestRouterPriority(t *testing.T) {
 	r.Find(GET, "/users/joe/books", c)
 	c.handler(c)
 	assert.Equal(t, 7, c.Get("g"))
-	assert.Equal(t, "joe/books", c.Param("_*"))
+	assert.Equal(t, "joe/books", c.Param("*"))
 }
 
 // Issue #372
 func TestRouterPriorityNotFound(t *testing.T) {
 	e := New()
 	r := e.router
-	c := e.NewContext(nil, nil).(*echoContext)
+	c := e.NewContext(nil, nil).(*context)
 
 	// Add
 	r.Add(GET, "/a/foo", func(c Context) error {
 		c.Set("a", 1)
 		return nil
-	}, e)
+	})
 	r.Add(GET, "/a/bar", func(c Context) error {
 		c.Set("b", 2)
 		return nil
-	}, e)
+	})
 
 	// Find
 	r.Find(GET, "/a/foo", c)
@@ -511,7 +739,7 @@ func TestRouterPriorityNotFound(t *testing.T) {
 	c.handler(c)
 	assert.Equal(t, 2, c.Get("b"))
 
-	c = e.NewContext(nil, nil).(*echoContext)
+	c = e.NewContext(nil, nil).(*context)
 	r.Find(GET, "/abc/def", c)
 	he := c.handler(c).(*HTTPError)
 	assert.Equal(t, http.StatusNotFound, he.Code)
@@ -525,14 +753,14 @@ func TestRouterParamNames(t *testing.T) {
 	r.Add(GET, "/users", func(c Context) error {
 		c.Set("path", "/users")
 		return nil
-	}, e)
+	})
 	r.Add(GET, "/users/:id", func(c Context) error {
 		return nil
-	}, e)
+	})
 	r.Add(GET, "/users/:uid/files/:fid", func(c Context) error {
 		return nil
-	}, e)
-	c := e.NewContext(nil, nil).(*echoContext)
+	})
+	c := e.NewContext(nil, nil).(*context)
 
 	// Route > /users
 	r.Find(GET, "/users", c)
@@ -542,59 +770,119 @@ func TestRouterParamNames(t *testing.T) {
 	// Route > /users/:id
 	r.Find(GET, "/users/1", c)
 	assert.Equal(t, "id", c.pnames[0])
-	assert.Equal(t, "1", c.P(0))
+	assert.Equal(t, "1", c.Param("id"))
 
 	// Route > /users/:uid/files/:fid
 	r.Find(GET, "/users/1/files/1", c)
 	assert.Equal(t, "uid", c.pnames[0])
-	assert.Equal(t, "1", c.P(0))
+	assert.Equal(t, "1", c.Param("uid"))
 	assert.Equal(t, "fid", c.pnames[1])
-	assert.Equal(t, "1", c.P(1))
+	assert.Equal(t, "1", c.Param("fid"))
 }
 
-func TestRouterAPI(t *testing.T) {
+// Issue #623
+func TestRouterStaticDynamicConflict(t *testing.T) {
+	e := New()
+	r := e.router
+	c := e.NewContext(nil, nil)
+
+	r.Add(GET, "/dictionary/skills", func(c Context) error {
+		c.Set("a", 1)
+		return nil
+	})
+	r.Add(GET, "/dictionary/:name", func(c Context) error {
+		c.Set("b", 2)
+		return nil
+	})
+	r.Add(GET, "/server", func(c Context) error {
+		c.Set("c", 3)
+		return nil
+	})
+
+	r.Find(GET, "/dictionary/skills", c)
+	c.Handler()(c)
+	assert.Equal(t, 1, c.Get("a"))
+	c = e.NewContext(nil, nil)
+	r.Find(GET, "/dictionary/type", c)
+	c.Handler()(c)
+	assert.Equal(t, 2, c.Get("b"))
+	c = e.NewContext(nil, nil)
+	r.Find(GET, "/server", c)
+	c.Handler()(c)
+	assert.Equal(t, 3, c.Get("c"))
+}
+
+func testRouterAPI(t *testing.T, api []Route) {
 	e := New()
 	r := e.router
 
 	for _, route := range api {
 		r.Add(route.Method, route.Path, func(c Context) error {
 			return nil
-		}, e)
+		})
 	}
-	c := e.NewContext(nil, nil).(*echoContext)
+	c := e.NewContext(nil, nil).(*context)
 	for _, route := range api {
 		r.Find(route.Method, route.Path, c)
-		for i, n := range c.pnames {
-			if assert.NotEmpty(t, n) {
-				assert.Equal(t, ":"+n, c.P(i))
+		tokens := strings.Split(route.Path[1:], "/")
+		for _, token := range tokens {
+			if token[0] == ':' {
+				assert.Equal(t, c.Param(token[1:]), token)
 			}
 		}
 	}
 }
 
-func BenchmarkRouterGitHubAPI(b *testing.B) {
+func TestRouterGitHubAPI(t *testing.T) {
+	testRouterAPI(t, gitHubAPI)
+}
+
+// Issue #729
+func TestRouterParamAlias(t *testing.T) {
+	api := []Route{
+		{GET, "/users/:userID/following", ""},
+		{GET, "/users/:userID/followedBy", ""},
+		{GET, "/users/:userID/follow", ""},
+	}
+	testRouterAPI(t, api)
+}
+
+func benchmarkRouterRoutes(b *testing.B, routes []Route) {
 	e := New()
 	r := e.router
 	b.ReportAllocs()
 
 	// Add routes
-	for _, route := range api {
+	for _, route := range routes {
 		r.Add(route.Method, route.Path, func(c Context) error {
 			return nil
-		}, e)
+		})
 	}
 
 	// Find routes
 	for i := 0; i < b.N; i++ {
-		for _, route := range api {
-			// c := e.pool.Get().(*context)
-			c := e.AcquireContext()
+		for _, route := range gitHubAPI {
+			c := e.pool.Get().(*context)
 			r.Find(route.Method, route.Path, c)
-			// router.Find(r.Method, r.Path, c)
-			e.ReleaseContext(c)
-			// e.pool.Put(c)
+			e.pool.Put(c)
 		}
 	}
+}
+
+func BenchmarkRouterStaticRoutes(b *testing.B) {
+	benchmarkRouterRoutes(b, staticRoutes)
+}
+
+func BenchmarkRouterGitHubAPI(b *testing.B) {
+	benchmarkRouterRoutes(b, gitHubAPI)
+}
+
+func BenchmarkRouterParseAPI(b *testing.B) {
+	benchmarkRouterRoutes(b, parseAPI)
+}
+
+func BenchmarkRouterGooglePlusAPI(b *testing.B) {
+	benchmarkRouterRoutes(b, googlePlusAPI)
 }
 
 func (n *node) printTree(pfx string, tail bool) {

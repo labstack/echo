@@ -2,17 +2,17 @@ package middleware
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/labstack/echo"
-	"github.com/labstack/echo/test"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestSecure(t *testing.T) {
 	e := echo.New()
-	req := test.NewRequest(echo.GET, "/", nil)
-	rec := test.NewResponseRecorder()
+	req, _ := http.NewRequest(echo.GET, "/", nil)
+	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	h := func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
@@ -27,8 +27,8 @@ func TestSecure(t *testing.T) {
 	assert.Equal(t, "", rec.Header().Get(echo.HeaderContentSecurityPolicy))
 
 	// Custom
-	req.Header().Set(echo.HeaderXForwardedProto, "https")
-	rec = test.NewResponseRecorder()
+	req.Header.Set(echo.HeaderXForwardedProto, "https")
+	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	SecureWithConfig(SecureConfig{
 		XSSProtection:         "",

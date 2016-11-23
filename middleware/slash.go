@@ -46,9 +46,9 @@ func AddTrailingSlashWithConfig(config TrailingSlashConfig) echo.MiddlewareFunc 
 			}
 
 			req := c.Request()
-			url := req.URL()
-			path := url.Path()
-			qs := url.QueryString()
+			url := req.URL
+			path := url.Path
+			qs := c.QueryString()
 			if path != "/" && path[len(path)-1] != '/' {
 				path += "/"
 				uri := path
@@ -62,8 +62,8 @@ func AddTrailingSlashWithConfig(config TrailingSlashConfig) echo.MiddlewareFunc 
 				}
 
 				// Forward
-				req.SetURI(uri)
-				url.SetPath(path)
+				req.RequestURI = uri
+				url.Path = path
 			}
 			return next(c)
 		}
@@ -93,9 +93,9 @@ func RemoveTrailingSlashWithConfig(config TrailingSlashConfig) echo.MiddlewareFu
 			}
 
 			req := c.Request()
-			url := req.URL()
-			path := url.Path()
-			qs := url.QueryString()
+			url := req.URL
+			path := url.Path
+			qs := c.QueryString()
 			l := len(path) - 1
 			if l >= 0 && path != "/" && path[l] == '/' {
 				path = path[:l]
@@ -110,8 +110,8 @@ func RemoveTrailingSlashWithConfig(config TrailingSlashConfig) echo.MiddlewareFu
 				}
 
 				// Forward
-				req.SetURI(uri)
-				url.SetPath(path)
+				req.RequestURI = uri
+				url.Path = path
 			}
 			return next(c)
 		}

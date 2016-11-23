@@ -18,6 +18,10 @@ type (
 	}
 )
 
+const (
+	www = "www"
+)
+
 var (
 	// DefaultRedirectConfig is the default Redirect middleware config.
 	DefaultRedirectConfig = RedirectConfig{
@@ -26,7 +30,7 @@ var (
 	}
 )
 
-// HTTPSRedirect redirects HTTP requests to HTTPS.
+// HTTPSRedirect redirects http requests to https.
 // For example, http://labstack.com will be redirect to https://labstack.com.
 //
 // Usage `Echo#Pre(HTTPSRedirect())`
@@ -34,7 +38,7 @@ func HTTPSRedirect() echo.MiddlewareFunc {
 	return HTTPSRedirectWithConfig(DefaultRedirectConfig)
 }
 
-// HTTPSRedirectWithConfig returns a HTTPSRedirect middleware with config.
+// HTTPSRedirectWithConfig returns an HTTPSRedirect middleware with config.
 // See `HTTPSRedirect()`.
 func HTTPSRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 	// Defaults
@@ -52,9 +56,9 @@ func HTTPSRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 			}
 
 			req := c.Request()
-			host := req.Host()
-			uri := req.URI()
-			if !req.IsTLS() {
+			host := req.Host
+			uri := req.RequestURI
+			if !c.IsTLS() {
 				return c.Redirect(config.Code, "https://"+host+uri)
 			}
 			return next(c)
@@ -62,7 +66,7 @@ func HTTPSRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 	}
 }
 
-// HTTPSWWWRedirect redirects HTTP requests to WWW HTTPS.
+// HTTPSWWWRedirect redirects http requests to https www.
 // For example, http://labstack.com will be redirect to https://www.labstack.com.
 //
 // Usage `Echo#Pre(HTTPSWWWRedirect())`
@@ -70,7 +74,7 @@ func HTTPSWWWRedirect() echo.MiddlewareFunc {
 	return HTTPSWWWRedirectWithConfig(DefaultRedirectConfig)
 }
 
-// HTTPSWWWRedirectWithConfig returns a HTTPSRedirect middleware with config.
+// HTTPSWWWRedirectWithConfig returns an HTTPSRedirect middleware with config.
 // See `HTTPSWWWRedirect()`.
 func HTTPSWWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 	// Defaults
@@ -88,17 +92,56 @@ func HTTPSWWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 			}
 
 			req := c.Request()
-			host := req.Host()
-			uri := req.URI()
-			if !req.IsTLS() && host[:3] != "www" {
-				return c.Redirect(http.StatusMovedPermanently, "https://www."+host+uri)
+			host := req.Host
+			uri := req.RequestURI
+			if !c.IsTLS() && host[:3] != www {
+				return c.Redirect(config.Code, "https://www."+host+uri)
 			}
 			return next(c)
 		}
 	}
 }
 
-// WWWRedirect redirects non WWW requests to WWW.
+// HTTPSNonWWWRedirect redirects http requests to https non www.
+// For example, http://www.labstack.com will be redirect to https://labstack.com.
+//
+// Usage `Echo#Pre(HTTPSNonWWWRedirect())`
+func HTTPSNonWWWRedirect() echo.MiddlewareFunc {
+	return HTTPSNonWWWRedirectWithConfig(DefaultRedirectConfig)
+}
+
+// HTTPSNonWWWRedirectWithConfig returns an HTTPSRedirect middleware with config.
+// See `HTTPSNonWWWRedirect()`.
+func HTTPSNonWWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
+	// Defaults
+	if config.Skipper == nil {
+		config.Skipper = DefaultTrailingSlashConfig.Skipper
+	}
+	if config.Code == 0 {
+		config.Code = DefaultRedirectConfig.Code
+	}
+
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			if config.Skipper(c) {
+				return next(c)
+			}
+
+			req := c.Request()
+			host := req.Host
+			uri := req.RequestURI
+			if !c.IsTLS() {
+				if host[:3] == www {
+					return c.Redirect(config.Code, "https://"+host[4:]+uri)
+				}
+				return c.Redirect(config.Code, "https://"+host+uri)
+			}
+			return next(c)
+		}
+	}
+}
+
+// WWWRedirect redirects non www requests to www.
 // For example, http://labstack.com will be redirect to http://www.labstack.com.
 //
 // Usage `Echo#Pre(WWWRedirect())`
@@ -106,7 +149,7 @@ func WWWRedirect() echo.MiddlewareFunc {
 	return WWWRedirectWithConfig(DefaultRedirectConfig)
 }
 
-// WWWRedirectWithConfig returns a HTTPSRedirect middleware with config.
+// WWWRedirectWithConfig returns an HTTPSRedirect middleware with config.
 // See `WWWRedirect()`.
 func WWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 	// Defaults
@@ -124,18 +167,18 @@ func WWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 			}
 
 			req := c.Request()
-			scheme := req.Scheme()
-			host := req.Host()
-			if host[:3] != "www" {
-				uri := req.URI()
-				return c.Redirect(http.StatusMovedPermanently, scheme+"://www."+host+uri)
+			scheme := c.Scheme()
+			host := req.Host
+			if host[:3] != www {
+				uri := req.RequestURI
+				return c.Redirect(config.Code, scheme+"://www."+host+uri)
 			}
 			return next(c)
 		}
 	}
 }
 
-// NonWWWRedirect redirects WWW requests to non WWW.
+// NonWWWRedirect redirects www requests to non www.
 // For example, http://www.labstack.com will be redirect to http://labstack.com.
 //
 // Usage `Echo#Pre(NonWWWRedirect())`
@@ -143,7 +186,7 @@ func NonWWWRedirect() echo.MiddlewareFunc {
 	return NonWWWRedirectWithConfig(DefaultRedirectConfig)
 }
 
-// NonWWWRedirectWithConfig returns a HTTPSRedirect middleware with config.
+// NonWWWRedirectWithConfig returns an HTTPSRedirect middleware with config.
 // See `NonWWWRedirect()`.
 func NonWWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 	if config.Skipper == nil {
@@ -160,11 +203,11 @@ func NonWWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 			}
 
 			req := c.Request()
-			scheme := req.Scheme()
-			host := req.Host()
-			if host[:3] == "www" {
-				uri := req.URI()
-				return c.Redirect(http.StatusMovedPermanently, scheme+"://"+host[4:]+uri)
+			scheme := c.Scheme()
+			host := req.Host
+			if host[:3] == www {
+				uri := req.RequestURI
+				return c.Redirect(config.Code, scheme+"://"+host[4:]+uri)
 			}
 			return next(c)
 		}
