@@ -5,11 +5,11 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"strings"
 	"testing"
 
-	"github.com/labstack/echo/test"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -70,19 +70,19 @@ func TestBinderForm(t *testing.T) {
 	testBinderOkay(t, strings.NewReader(userForm), MIMEApplicationForm)
 	testBinderError(t, nil, MIMEApplicationForm)
 	e := New()
-	req := test.NewRequest(POST, "/", strings.NewReader(userForm))
-	rec := test.NewResponseRecorder()
+	req, _ := http.NewRequest(POST, "/", strings.NewReader(userForm))
+	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	req.Header().Set(HeaderContentType, MIMEApplicationForm)
-	var obj = make([]struct{ Field string }, 0)
+	req.Header.Set(HeaderContentType, MIMEApplicationForm)
+	obj := []struct{ Field string }{}
 	err := c.Bind(&obj)
 	assert.Error(t, err)
 }
 
 func TestBinderQueryParams(t *testing.T) {
 	e := New()
-	req := test.NewRequest(GET, "/?id=1&name=Jon Snow", nil)
-	rec := test.NewResponseRecorder()
+	req, _ := http.NewRequest(GET, "/?id=1&name=Jon Snow", nil)
+	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	u := new(user)
 	err := c.Bind(u)
@@ -104,11 +104,6 @@ func TestBinderMultipartForm(t *testing.T) {
 func TestBinderUnsupportedMediaType(t *testing.T) {
 	testBinderError(t, strings.NewReader(invalidContent), MIMEApplicationJSON)
 }
-
-// func assertCustomer(t *testing.T, c *user) {
-// 	assert.Equal(t, 1, c.ID)
-// 	assert.Equal(t, "Joe", c.Name)
-// }
 
 func TestBinderbindForm(t *testing.T) {
 	ts := new(binderTestStruct)
@@ -201,10 +196,10 @@ func assertBinderTestStruct(t *testing.T, ts *binderTestStruct) {
 
 func testBinderOkay(t *testing.T, r io.Reader, ctype string) {
 	e := New()
-	req := test.NewRequest(POST, "/", r)
-	rec := test.NewResponseRecorder()
+	req, _ := http.NewRequest(POST, "/", r)
+	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	req.Header().Set(HeaderContentType, ctype)
+	req.Header.Set(HeaderContentType, ctype)
 	u := new(user)
 	err := c.Bind(u)
 	if assert.NoError(t, err) {
@@ -215,10 +210,10 @@ func testBinderOkay(t *testing.T, r io.Reader, ctype string) {
 
 func testBinderError(t *testing.T, r io.Reader, ctype string) {
 	e := New()
-	req := test.NewRequest(POST, "/", r)
-	rec := test.NewResponseRecorder()
+	req, _ := http.NewRequest(POST, "/", r)
+	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	req.Header().Set(HeaderContentType, ctype)
+	req.Header.Set(HeaderContentType, ctype)
 	u := new(user)
 	err := c.Bind(u)
 

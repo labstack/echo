@@ -22,43 +22,47 @@ type (
 
 func (b *binder) Bind(i interface{}, c Context) (err error) {
 	req := c.Request()
-	if req.Method() == GET {
+	if req.Method == GET {
 		if err = b.bindData(i, c.QueryParams()); err != nil {
-			err = NewHTTPError(http.StatusBadRequest, err.Error())
+			return NewHTTPError(http.StatusBadRequest, err.Error())
 		}
 		return
 	}
-	ctype := req.Header().Get(HeaderContentType)
-	if req.Body() == nil {
-		err = NewHTTPError(http.StatusBadRequest, "request body can't be empty")
-		return
+	ctype := req.Header.Get(HeaderContentType)
+	if req.ContentLength == 0 {
+		return NewHTTPError(http.StatusBadRequest, "request body can't be empty")
 	}
-	err = ErrUnsupportedMediaType
 	switch {
 	case strings.HasPrefix(ctype, MIMEApplicationJSON):
-		if err = json.NewDecoder(req.Body()).Decode(i); err != nil {
+		if err = json.NewDecoder(req.Body).Decode(i); err != nil {
 			if ute, ok := err.(*json.UnmarshalTypeError); ok {
-				err = NewHTTPError(http.StatusBadRequest, fmt.Sprintf("unmarshal type error: expected=%v, got=%v, offset=%v", ute.Type, ute.Value, ute.Offset))
+				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("unmarshal type error: expected=%v, got=%v, offset=%v", ute.Type, ute.Value, ute.Offset))
 			} else if se, ok := err.(*json.SyntaxError); ok {
-				err = NewHTTPError(http.StatusBadRequest, fmt.Sprintf("syntax error: offset=%v, error=%v", se.Offset, se.Error()))
+				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("syntax error: offset=%v, error=%v", se.Offset, se.Error()))
 			} else {
-				err = NewHTTPError(http.StatusBadRequest, err.Error())
+				return NewHTTPError(http.StatusBadRequest, err.Error())
 			}
 		}
 	case strings.HasPrefix(ctype, MIMEApplicationXML):
-		if err = xml.NewDecoder(req.Body()).Decode(i); err != nil {
+		if err = xml.NewDecoder(req.Body).Decode(i); err != nil {
 			if ute, ok := err.(*xml.UnsupportedTypeError); ok {
-				err = NewHTTPError(http.StatusBadRequest, fmt.Sprintf("unsupported type error: type=%v, error=%v", ute.Type, ute.Error()))
+				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("unsupported type error: type=%v, error=%v", ute.Type, ute.Error()))
 			} else if se, ok := err.(*xml.SyntaxError); ok {
-				err = NewHTTPError(http.StatusBadRequest, fmt.Sprintf("syntax error: line=%v, error=%v", se.Line, se.Error()))
+				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("syntax error: line=%v, error=%v", se.Line, se.Error()))
 			} else {
-				err = NewHTTPError(http.StatusBadRequest, err.Error())
+				return NewHTTPError(http.StatusBadRequest, err.Error())
 			}
 		}
 	case strings.HasPrefix(ctype, MIMEApplicationForm), strings.HasPrefix(ctype, MIMEMultipartForm):
-		if err = b.bindData(i, req.FormParams()); err != nil {
-			err = NewHTTPError(http.StatusBadRequest, err.Error())
+		params, err := c.FormParams()
+		if err != nil {
+			return NewHTTPError(http.StatusBadRequest, err.Error())
 		}
+		if err = b.bindData(i, params); err != nil {
+			return NewHTTPError(http.StatusBadRequest, err.Error())
+		}
+	default:
+		return ErrUnsupportedMediaType
 	}
 	return
 }
@@ -100,8 +104,8 @@ func (b *binder) bindData(ptr interface{}, data map[string][]string) error {
 		if structFieldKind == reflect.Slice && numElems > 0 {
 			sliceOf := structField.Type().Elem().Kind()
 			slice := reflect.MakeSlice(structField.Type(), numElems, numElems)
-			for i := 0; i < numElems; i++ {
-				if err := setWithProperType(sliceOf, inputValue[i], slice.Index(i)); err != nil {
+			for j := 0; j < numElems; j++ {
+				if err := setWithProperType(sliceOf, inputValue[j], slice.Index(j)); err != nil {
 					return err
 				}
 			}

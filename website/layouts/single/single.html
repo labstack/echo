@@ -1,0 +1,14 @@
+{{ partial "head.html" . }}
+<body>
+	{{ partial "topnav.html" . }}
+	<div class="w3-container w3-content w3-padding-64">
+	  <div class="w3-row-padding">
+			<div class="w3-col m10 l10">
+        <h1>{{ .Title }}</h1>
+        {{ .Content }}
+			</div>
+	  </div>
+	</div>
+	{{ partial "footer.html" . }}
+</body>
+</html>

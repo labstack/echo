@@ -131,10 +131,10 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 				token = random.String(config.TokenLength)
 			} else {
 				// Reuse token
-				token = k.Value()
+				token = k.Value
 			}
 
-			switch req.Method() {
+			switch req.Method {
 			case echo.GET, echo.HEAD, echo.OPTIONS, echo.TRACE:
 			default:
 				// Validate token only for requests which are not defined as 'safe' by RFC7231
@@ -148,18 +148,18 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 			}
 
 			// Set CSRF cookie
-			cookie := new(echo.Cookie)
-			cookie.SetName(config.CookieName)
-			cookie.SetValue(token)
+			cookie := new(http.Cookie)
+			cookie.Name = config.CookieName
+			cookie.Value = token
 			if config.CookiePath != "" {
-				cookie.SetPath(config.CookiePath)
+				cookie.Path = config.CookiePath
 			}
 			if config.CookieDomain != "" {
-				cookie.SetDomain(config.CookieDomain)
+				cookie.Domain = config.CookieDomain
 			}
-			cookie.SetExpires(time.Now().Add(time.Duration(config.CookieMaxAge) * time.Second))
-			cookie.SetSecure(config.CookieSecure)
-			cookie.SetHTTPOnly(config.CookieHTTPOnly)
+			cookie.Expires = time.Now().Add(time.Duration(config.CookieMaxAge) * time.Second)
+			cookie.Secure = config.CookieSecure
+			cookie.HttpOnly = config.CookieHTTPOnly
 			c.SetCookie(cookie)
 
 			// Store token in the context
@@ -177,7 +177,7 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 // provided request header.
 func csrfTokenFromHeader(header string) csrfTokenExtractor {
 	return func(c echo.Context) (string, error) {
-		return c.Request().Header().Get(header), nil
+		return c.Request().Header.Get(header), nil
 	}
 }
 

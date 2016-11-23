@@ -1,0 +1,27 @@
+h1 = "Echo"
+h2 = "High performance, extensible, minimalist web framework for Go"
+[[features]]
+  icon = "rocket"
+  title = "Optimized Router"
+  text = "Highly optimized HTTP router which smartly prioritize routes"
+[[features]]
+  icon = "cloud"
+  title = "RESTful API"
+  text = "Build robust and scalable RESTful API"
+[[features]]
+  icon = "license"
+  title = "Automatic TLS"
+  text = "Automatically install TLS certificates from Let's Encrypt"
+[[features]]
+  icon = "funnel"
+  title = "Middleware Levels"
+  text = "Define middleware at root, group or route level"
+[[features]]
+  icon = "sync"
+  title = "Data Binding"
+  text = "Data binding for JSON, XML and form payload"
+[[features]]
+  icon = "code"
+  title = "Templates"
+  text = "Template rendering with any template engine"
+

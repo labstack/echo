@@ -60,7 +60,7 @@ func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 				return next(c)
 			}
 
-			auth := c.Request().Header().Get(echo.HeaderAuthorization)
+			auth := c.Request().Header.Get(echo.HeaderAuthorization)
 			l := len(basic)
 
 			if len(auth) > l+1 && auth[:l] == basic {
