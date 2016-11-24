@@ -421,7 +421,7 @@ func (e *Echo) add(method, path string, handler HandlerFunc, middleware ...Middl
 	e.router.routes[method+path] = r
 }
 
-func (e *Echo) addMeta(meta M, handler string) {
+func (e *Echo) addMeta(meta Map, handler string) {
 	if m, ok := e.meta[handler]; ok {
 		meta.DeepMerge(m)
 	}
@@ -584,14 +584,14 @@ func (e *Echo) ShutdownTLS(timeout time.Duration) {
 }
 
 // Add meta information about endpoint using MiddlewareFunc
-func (e *Echo) MetaMiddleware(m M, middleware MiddlewareFunc) MiddlewareFunc {
+func (e *Echo) MetaMiddleware(m Map, middleware MiddlewareFunc) MiddlewareFunc {
 	name := handlerName(middleware)
 	e.meta[name] = m
 	return middleware
 }
 
 // Add meta information about endpoint using HandlerFunc
-func (e *Echo) MetaHandler(m M, handler HandlerFunc) HandlerFunc {
+func (e *Echo) MetaHandler(m Map, handler HandlerFunc) HandlerFunc {
 	name := handlerName(handler)
 	e.meta[name] = m
 	return handler
@@ -640,7 +640,7 @@ func handlerName(h interface{}) string {
 	return t.String()
 }
 
-func (m M) DeepMerge(source Map{
+func (m Map) DeepMerge(source Map)
 	for k, value := range source {
 		var (
 			destinationValue interface{}
