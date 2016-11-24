@@ -76,7 +76,7 @@ type (
 		router          *Router
 		notFoundHandler HandlerFunc
 		pool            sync.Pool
-                meta             map[string]M
+		meta            map[string]Map
 	}
 
 	// Route contains a handler and information for matching against requests.
@@ -84,7 +84,7 @@ type (
 		Method  string
 		Path    string
 		Handler string
-		Meta    M
+		Meta    Map
 	}
 
 	// HTTPError represents an error that occurred while handling a request.
@@ -250,7 +250,7 @@ func New() (e *Echo) {
 		return e.NewContext(nil, nil)
 	}
 	e.router = NewRouter(e)
-	e.meta = map[string]M{}
+	e.meta = map[string]Map{}
 	return
 }
 
@@ -406,7 +406,7 @@ func (e *Echo) add(method, path string, handler HandlerFunc, middleware ...Middl
 			h = middleware[i](h)
 		}
 		return h(c)
-	}, e)
+	})
 	meta := Map{}
 	for _, m := range middleware {
 		e.addMeta(meta, handlerName(m))
@@ -640,7 +640,7 @@ func handlerName(h interface{}) string {
 	return t.String()
 }
 
-func (m Map) DeepMerge(source Map)
+func (m Map) DeepMerge(source Map) {
 	for k, value := range source {
 		var (
 			destinationValue interface{}
