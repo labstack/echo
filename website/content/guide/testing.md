@@ -156,4 +156,4 @@ req, err := http.NewRequest(echo.POST, "/?"+q.Encode(), nil)
 
 *TBD*
 
-You can looking to built-in middleware [test cases](https://github.com/labstack/echo/tree/master/middleware).
+For now you can look into built-in middleware [test cases](https://github.com/labstack/echo/tree/master/middleware).

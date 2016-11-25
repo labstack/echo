@@ -1,7 +1,7 @@
 {
   "baseurl": "https://echo.labstack.com",
   "languageCode": "en-us",
-  "title": "Echo - Fast and unfancy HTTP server framework for Go (Golang)",
+  "title": "Echo - Fast and Unfancy Go Web Framework",
   "canonifyurls": true,
   "googleAnalytics": "UA-85059636-2",
   "permalinks": {
@@ -10,7 +10,6 @@
     "recipes": "/recipes/:filename"
   },
   "params": {
-    "image": "https://echo.labstack.com/images/logo.png",
     "description": "Echo is a high performance, extensible, minimalist web framework for Go (Golang)."
   }
 }
