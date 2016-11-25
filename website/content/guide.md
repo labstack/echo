@@ -200,9 +200,9 @@ Server any file from static directory for path `/static/*`.
 e.Static("/static", "static")
 ```
 
-##### [Learn More](https://echo.labstack.com/guide/static-files)
+#### [Learn More](/guide/static-files)
 
-### [Template Rendering](https://echo.labstack.com/guide/templates)
+### [Template Rendering](/guide/templates)
 
 ### Middleware
 
@@ -231,3 +231,5 @@ e.GET("/users", func(c echo.Context) error {
 	return c.String(http.StatusOK, "/users")
 }, track)
 ```
+
+#### [Learn More](/middleware)

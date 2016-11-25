@@ -7,7 +7,7 @@ description = "Redirect middleware for Echo"
   weight = 5
 +++
 
-## HTTPSRedirect Middleware
+## HTTPSRedirect
 
 HTTPSRedirect middleware redirects http requests to https.
 For example, http://labstack.com will be redirected to https://labstack.com.
@@ -19,7 +19,7 @@ e := echo.New()
 e.Pre(middleware.HTTPSRedirect())
 ```
 
-## HTTPSWWWRedirect Middleware
+## HTTPSWWWRedirect
 
 HTTPSWWWRedirect redirects http requests to www https.
 For example, http://labstack.com will be redirected to https://www.labstack.com.
@@ -31,7 +31,7 @@ e := echo.New()
 e.Pre(middleware.HTTPSWWWRedirect())
 ```
 
-## HTTPSNonWWWRedirect Middleware
+## HTTPSNonWWWRedirect
 
 HTTPSNonWWWRedirect redirects http requests to https non www.
 For example, http://www.labstack.com will be redirect to https://labstack.com.
@@ -43,7 +43,7 @@ e := echo.New()
 e.Pre(middleware.HTTPSNonWWWRedirect())
 ```
 
-## WWWRedirect Middleware
+## WWWRedirect
 
 WWWRedirect redirects non www requests to www.
 
@@ -56,7 +56,7 @@ e := echo.New()
 e.Pre(middleware.WWWRedirect())
 ```
 
-## NonWWWRedirect Middleware
+## NonWWWRedirect
 
 NonWWWRedirect redirects www requests to non www.
 For example, http://www.labstack.com will be redirected to http://labstack.com.

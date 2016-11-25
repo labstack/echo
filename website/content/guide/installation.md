@@ -7,15 +7,32 @@ description = "Installing Echo"
   weight = 1
 +++
 
-Echo is developed and tested using Go `1.6.x` and `1.7.x`
+## Prerequisites
+
+- [Install](https://golang.org/doc/install) Go
+- [Set](https://golang.org/doc/code.html#GOPATH) GOPATH
+
+## Using [go get](https://golang.org/cmd/go/#hdr-Download_and_install_packages_and_dependencies)
 
 ```sh
+$ cd <project in $GOPATH>
 $ go get -u github.com/labstack/echo
 ```
 
-> Ideally you should rely on a [package manager](https://github.com/avelino/awesome-go#package-management) like glide or govendor to use a specific [version](https://github.com/labstack/echo/releases) of Echo.
+## Using [glide](http://glide.sh)
 
-## [Migrating Guide](/guide/migration)
+```sh
+$ cd <project in $GOPATH>
+$ glide get github.com/labstack/echo#~3.0
+```
 
-Echo follows [semantic versioning](http://semver.org) managed through GitHub releases.
-Specific version of Echo can be installed using a [package manager](https://github.com/avelino/awesome-go#package-management).
+## Using [govendor](https://github.com/kardianos/govendor)
+
+```sh
+$ cd <project in $GOPATH>
+$ govendor fetch github.com/labstack/echo@v3.0
+```
+
+Echo is developed using Go `1.7.x` and tested with Go `1.6.x` and `1.7.x`.
+Echo follows [semantic versioning](http://semver.org) managed through GitHub
+releases, specific version of Echo can be installed using a [package manager](https://github.com/avelino/awesome-go#package-management).
