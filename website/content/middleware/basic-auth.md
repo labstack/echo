@@ -1,13 +1,13 @@
 +++
-title = "BasicAuth Middleware"
+title = "Basic Auth Middleware"
 description = "Basic auth middleware for Echo"
 [menu.main]
-  name = "BasicAuth"
+  name = "Basic Auth"
   parent = "middleware"
   weight = 5
 +++
 
-BasicAuth middleware provides an HTTP basic authentication.
+Basic auth middleware provides an HTTP basic authentication.
 
 - For valid credentials it calls the next handler.
 - For invalid credentials, it sends "401 - Unauthorized" response.

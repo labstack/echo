@@ -1,13 +1,13 @@
 +++
-title = "BodyLimit Middleware"
+title = "Body Limit Middleware"
 description = "Body limit middleware for Echo"
 [menu.main]
-  name = "BodyLimit"
+  name = "Body Limit"
   parent = "middleware"
   weight = 5
 +++
 
-BodyLimit middleware sets the maximum allowed size for a request body, if the
+Body limit middleware sets the maximum allowed size for a request body, if the
 size exceeds the configured limit, it sends "413 - Request Entity Too Large"
 response. The body limit is determined based on both `Content-Length` request
 header and actual content read, which makes it super secure.

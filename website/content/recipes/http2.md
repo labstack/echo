@@ -7,12 +7,11 @@ description = "HTTP/2 example for Echo"
   weight = 3
 +++
 
-## What is HTTP/2?
-
 HTTP/2 (originally named HTTP/2.0) is the second major version of the HTTP network
-protocol used by the World Wide Web
+protocol used by the World Wide Web. HTTP/2 improves speed and provides better user
+experience.
 
-### Features
+### Key Features
 
 - Binary, instead of textual.
 - Fully multiplexed, instead of ordered and blocking, can therefore use just one TCP connection.

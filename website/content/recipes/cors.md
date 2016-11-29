@@ -3,7 +3,7 @@ title = "CORS Example"
 description = "CORS example for Echo"
 [menu.main]
   name = "CORS"
-  identifier = "cors-middleware"
+  identifier = "middleware-cors"
   parent = "recipes"
   weight = 3
 +++

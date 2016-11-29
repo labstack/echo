@@ -16,6 +16,10 @@ description = "High performance, extensible, minimalist Go web framework"
   title = "Automatic TLS"
   text = "Automatically install TLS certificates from Let's Encrypt."
 [[features]]
+  icon = "speed_fast"
+  title = "HTTP/2"
+  text = "HTTP/2 support improves speed and provides better user experience."
+[[features]]
   icon = "funnel"
   title = "Middleware"
   text = """

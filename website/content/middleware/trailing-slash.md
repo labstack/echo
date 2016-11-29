@@ -1,15 +1,15 @@
 +++
-title = "TrailingSlash Middleware"
+title = "Trailing Slash Middleware"
 description = "Trailing slash middleware for Echo"
 [menu.main]
-  name = "TrailingSlash"
+  name = "Trailing Slash"
   parent = "middleware"
   weight = 5
 +++
 
-## AddTrailingSlash Middleware
+## Add Trailing Slash  
 
-AddTrailingSlash middleware adds a trailing slash to the request URI.
+Add trailing slash middleware adds a trailing slash to the request URI.
 
 *Usage*
 
@@ -18,9 +18,9 @@ e := echo.New()
 e.Pre(middleware.AddTrailingSlash())
 ```
 
-## RemoveTrailingSlash Middleware
+## Remove Trailing Slash
 
-RemoveTrailingSlash middleware removes a trailing slash from the request URI.
+Remove trailing slash middleware removes a trailing slash from the request URI.
 
 *Usage*
 

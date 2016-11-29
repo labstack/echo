@@ -1,7 +1,7 @@
 {
   "baseurl": "https://echo.labstack.com",
   "languageCode": "en-us",
-  "title": "Echo - Fast and Unfancy Go Web Framework",
+  "title": "Echo - High performance, minimalist Go web framework",
   "canonifyurls": true,
   "googleAnalytics": "UA-85059636-2",
   "permalinks": {
