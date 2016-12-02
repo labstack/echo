@@ -1,65 +1,54 @@
-hash: d63c27ff06a540317f63f231ada71f3d03f1c09e79a2c47b29b43c654903fc8b
-updated: 2016-11-21T19:12:16.622618752-08:00
+hash: c3a41d26c94d8101a2aeaea5bc438cb75c5e9b7bd80850c7ec806c00c535d1c7
+updated: 2016-12-02T08:49:24.85691-08:00
 imports:
 - name: github.com/daaku/go.zipexe
   version: a5fe2436ffcb3236e175e5149162b41cd28bd27d
 - name: github.com/dgrijalva/jwt-go
-  version: 24c63f56522a87ec5339cc3567883f1039378fdb
+  version: 9ed569b5d1ac936e6494082958d63a6aa4fff99a
 - name: github.com/GeertJohan/go.rice
   version: 9fdfd46f9806a9228aae341d65ab75c5235c383c
   subpackages:
   - embedded
 - name: github.com/golang/protobuf
-  version: 98fa357170587e470c5f27d3c3ea0947b71eb455
+  version: 8ee79997227bf9b34611aee7946ae64735e6fd93
   subpackages:
   - proto
 - name: github.com/gorilla/websocket
-  version: 0b847f2facc24ec406130a05bb1bb72d41993b05
+  version: e8f0f8aaa98dfb6586cbdf2978d511e3199a960a
 - name: github.com/kardianos/osext
   version: c2c54e542fb797ad986b31721e1baedf214ca413
 - name: github.com/labstack/gommon
-  version: 2d272df536d051e737aea353b86c979d6e88bce0
+  version: 447fe7433567c785af957e549aadae2bf2000071
   subpackages:
   - bytes
   - color
   - log
   - random
 - name: github.com/mattn/go-colorable
-  version: 6c903ff4aa50920ca86087a280590b36b3152b9c
+  version: d228849504861217f796da67fae4f6e347643f15
 - name: github.com/mattn/go-isatty
-  version: 66b8e73f3f5cda9f96b69efd03dd3d7fc4a5cdb8
-- name: github.com/miekg/dns
-  version: 58f52c57ce9df13460ac68200cef30a008b9c468
-- name: github.com/rsc/letsencrypt
-  version: 76104d26167d38b6a0010f42bfc8ec5487742e8b
+  version: 30a891c33c7cde7b02a981314b4228ec99380cca
 - name: github.com/tylerb/graceful
-  version: 50a48b6e73fcc75b45e22c05b79629a67c79e938
+  version: 4df1190835320af7076dfcf27b3d071fd3612caf
 - name: github.com/valyala/fasttemplate
   version: 3b874956e03f1636d171bda64b130f9135f42cff
-- name: github.com/xenolf/lego
-  version: 4bb8bea031eb805f361c04ca222f266b9e7feced
+- name: golang.org/x/crypto
+  version: 8a549a1948fc5271eb24f36dcb0d3b47dec75a16
   subpackages:
   - acme
-- name: golang.org/x/crypto
-  version: ca7e7f10cb9fd9c1a6ff7f60436c086d73714180
-  subpackages:
-  - ocsp
+  - acme/autocert
 - name: golang.org/x/net
-  version: 65dfc08770ce66f74becfdff5f8ab01caef4e946
+  version: 97edce0b2e423f6a8debb459af47f4a3cb4ff954
   subpackages:
   - context
-  - publicsuffix
+  - context/ctxhttp
   - websocket
 - name: golang.org/x/sys
-  version: c200b10b5d5e122be351b67af224adc6128af5bf
+  version: ca83bd2cb9abb47839b50eb4da612f00158f5870
   subpackages:
   - unix
-- name: golang.org/x/time
-  version: 711ca1cb87636abec28122ef3bc6a77269d433f3
-  subpackages:
-  - rate
 - name: google.golang.org/appengine
-  version: 5b8c3b819891014a2d12354528f7d046dd53c89e
+  version: ca59ef35f409df61fa4a5f8290ff289b37eccfb8
   subpackages:
   - internal
   - internal/app_identity
@@ -68,14 +57,9 @@ imports:
   - internal/log
   - internal/modules
   - internal/remote_api
-- name: gopkg.in/square/go-jose.v1
-  version: aa2e30fdd1fe9dd3394119af66451ae790d50e0d
-  subpackages:
-  - cipher
-  - json
 testImports:
 - name: github.com/davecgh/go-spew
-  version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
+  version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9
   subpackages:
   - spew
 - name: github.com/pmezard/go-difflib
@@ -83,6 +67,6 @@ testImports:
   subpackages:
   - difflib
 - name: github.com/stretchr/testify
-  version: 976c720a22c8eb4eb6a0b4348ad85ad12491a506
+  version: 18a02ba4a312f95da08ff4cfc0055750ce50ae9e
   subpackages:
   - assert
