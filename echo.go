@@ -52,8 +52,8 @@ import (
 
 	"github.com/labstack/gommon/color"
 	glog "github.com/labstack/gommon/log"
-	"github.com/rsc/letsencrypt"
 	"github.com/tylerb/graceful"
+	"golang.org/x/crypto/acme/autocert"
 )
 
 type (
@@ -64,12 +64,12 @@ type (
 		HTTPErrorHandler
 		Binder          Binder
 		Renderer        Renderer
+		AutoTLSManager  autocert.Manager
 		ShutdownTimeout time.Duration
 		Color           *color.Color
 		Logger          Logger
 		server          *graceful.Server
 		tlsServer       *graceful.Server
-		tlsManager      letsencrypt.Manager
 		premiddleware   []MiddlewareFunc
 		middleware      []MiddlewareFunc
 		maxParam        *int
@@ -236,6 +236,9 @@ var (
 // New creates an instance of Echo.
 func New() (e *Echo) {
 	e = &Echo{
+		AutoTLSManager: autocert.Manager{
+			Prompt: autocert.AcceptTOS,
+		},
 		ShutdownTimeout: 15 * time.Second,
 		Logger:          glog.New("echo"),
 		maxParam:        new(int),
@@ -520,13 +523,9 @@ func (e *Echo) StartTLS(address string, certFile, keyFile string) (err error) {
 }
 
 // StartAutoTLS starts the HTTPS server using certificates automatically from https://letsencrypt.org.
-func (e *Echo) StartAutoTLS(address string, hosts []string, cacheFile string) (err error) {
+func (e *Echo) StartAutoTLS(address string) error {
 	config := new(tls.Config)
-	config.GetCertificate = e.tlsManager.GetCertificate
-	e.tlsManager.SetHosts(hosts) // Added security
-	if err = e.tlsManager.CacheFile(cacheFile); err != nil {
-		return
-	}
+	config.GetCertificate = e.AutoTLSManager.GetCertificate
 	return e.startTLS(address, config)
 }
 

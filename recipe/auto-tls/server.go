@@ -9,6 +9,7 @@ import (
 
 func main() {
 	e := echo.New()
+	// e.AutoTLSManager.HostPolicy = autocert.HostWhitelist("<your_domain>")
 	e.Use(middleware.Recover())
 	e.Use(middleware.Logger())
 	e.GET("/", func(c echo.Context) error {
@@ -17,5 +18,5 @@ func main() {
 			<h3>TLS certificates automatically installed from Let's Encrypt :)</h3>
 		`)
 	})
-	e.StartAutoTLS(":443", []string{"<your_domain>"}, "le.cache")
+	e.StartAutoTLS(":443")
 }

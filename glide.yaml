@@ -10,9 +10,11 @@ import:
   - log
   - random
 - package: github.com/mattn/go-isatty
-- package: github.com/rsc/letsencrypt
 - package: github.com/tylerb/graceful
 - package: github.com/valyala/fasttemplate
+- package: golang.org/x/crypto
+  subpackages:
+  - acme/autocert
 - package: golang.org/x/net
   subpackages:
   - websocket
