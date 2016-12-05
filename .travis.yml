@@ -4,6 +4,8 @@ go:
     - 1.7
     - tip
 before_install:
+    - mkdir $GOPATH/src/gopkg.in && mv $GOPATH/src/github.com/labstack/echo $GOPATH/src/gopkg.in/echo.v2
+    - cd $GOPATH/src/gopkg.in/echo.v2
     - go get github.com/modocache/gover
     - go get github.com/mattn/goveralls
     - go get golang.org/x/tools/cmd/cover
