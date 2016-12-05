@@ -4,5 +4,5 @@ title = "engine"
   name = "engine"
   parent = "godoc"
   weight = 3
-  url = "https://godoc.org/github.com/labstack/echo/engine"
+  url = "https://godoc.org/gopkg.in/echo.v2/engine"
 +++

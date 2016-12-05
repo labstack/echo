@@ -4,5 +4,5 @@ title = "fasthttp"
   name = "engine/fasthttp"
   parent = "godoc"
   weight = 5
-  url = "https://godoc.org/github.com/labstack/echo/engine/fasthttp"
+  url = "https://godoc.org/gopkg.in/echo.v2/engine/fasthttp"
 +++

@@ -36,7 +36,7 @@ title = "Index"
 ### Installation
 
 ```sh
-$ go get -u github.com/labstack/echo
+$ go get -u gopkg.in/echo.v2
 ```
 
 ### Hello, World!
@@ -48,8 +48,8 @@ package main
 
 import (
 	"net/http"
-	"github.com/labstack/echo"
-	"github.com/labstack/echo/engine/standard"
+	"gopkg.in/echo.v2"
+	"gopkg.in/echo.v2/engine/standard"
 )
 
 func main() {
