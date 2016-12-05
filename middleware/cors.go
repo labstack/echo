@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/labstack/echo"
+	"gopkg.in/echo.v2"
 )
 
 type (

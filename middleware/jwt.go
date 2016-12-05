@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/labstack/echo"
+	"gopkg.in/echo.v2"
 )
 
 type (

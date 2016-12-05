@@ -3,8 +3,8 @@
 package main
 
 import (
-	"github.com/labstack/echo"
-	"github.com/labstack/echo/engine/standard"
+	"gopkg.in/echo.v2"
+	"gopkg.in/echo.v2/engine/standard"
 	"google.golang.org/appengine"
 	"net/http"
 	"runtime"

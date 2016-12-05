@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/labstack/echo"
-	"github.com/labstack/echo/engine/standard"
-	"github.com/labstack/echo/middleware"
+	"gopkg.in/echo.v2"
+	"gopkg.in/echo.v2/engine/standard"
+	"gopkg.in/echo.v2/middleware"
 )
 
 // jwtCustomClaims are custom claims extending default ones.

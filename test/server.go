@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/labstack/echo/engine"
+	"gopkg.in/echo.v2/engine"
 	"github.com/labstack/gommon/log"
 )
 

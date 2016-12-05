@@ -5,11 +5,11 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/labstack/echo"
+	"gopkg.in/echo.v2"
 
 	"github.com/gorilla/websocket"
-	"github.com/labstack/echo/engine/standard"
-	"github.com/labstack/echo/middleware"
+	"gopkg.in/echo.v2/engine/standard"
+	"gopkg.in/echo.v2/middleware"
 )
 
 var (

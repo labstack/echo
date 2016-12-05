@@ -5,7 +5,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/labstack/echo"
+	"gopkg.in/echo.v2"
 	"github.com/labstack/gommon/bytes"
 )
 

@@ -8,9 +8,9 @@ import (
 	"mime/multipart"
 	"net"
 
-	"github.com/labstack/echo"
-	"github.com/labstack/echo/engine"
-	"github.com/labstack/echo/log"
+	"gopkg.in/echo.v2"
+	"gopkg.in/echo.v2/engine"
+	"gopkg.in/echo.v2/log"
 	"github.com/valyala/fasthttp"
 )
 

@@ -7,7 +7,7 @@ import (
 
 	"net"
 
-	"github.com/labstack/echo/log"
+	"gopkg.in/echo.v2/log"
 )
 
 type (

@@ -1,6 +1,6 @@
 package middleware
 
-import "github.com/labstack/echo"
+import "gopkg.in/echo.v2"
 
 type (
 	// Skipper defines a function to skip middleware. Returning true skips processing

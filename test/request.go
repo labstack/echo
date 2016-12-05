@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/labstack/echo/engine"
+	"gopkg.in/echo.v2/engine"
 )
 
 type (

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/labstack/echo/engine/test"
+	"gopkg.in/echo.v2/engine/test"
 	"github.com/labstack/gommon/log"
 	"github.com/stretchr/testify/assert"
 )

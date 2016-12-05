@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/labstack/echo"
+	"gopkg.in/echo.v2"
 	"github.com/labstack/gommon/color"
 )
 

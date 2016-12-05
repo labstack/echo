@@ -3,7 +3,7 @@ package middleware
 import (
 	"fmt"
 
-	"github.com/labstack/echo"
+	"gopkg.in/echo.v2"
 )
 
 type (

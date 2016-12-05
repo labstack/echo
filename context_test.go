@@ -13,13 +13,13 @@ import (
 
 	"strings"
 
-	gcontext "github.com/labstack/echo/context"
+	gcontext "gopkg.in/echo.v2/context"
 
 	"net/url"
 
 	"encoding/xml"
 
-	"github.com/labstack/echo/test"
+	"gopkg.in/echo.v2/test"
 	"github.com/stretchr/testify/assert"
 )
 
