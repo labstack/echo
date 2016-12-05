@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/labstack/echo"
-	"github.com/labstack/echo/test"
+	"gopkg.in/echo.v2"
+	"gopkg.in/echo.v2/test"
 	"github.com/labstack/gommon/random"
 	"github.com/stretchr/testify/assert"
 )

@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/labstack/echo"
+	"gopkg.in/echo.v2"
 	"github.com/labstack/gommon/color"
 	isatty "github.com/mattn/go-isatty"
 	"github.com/valyala/fasttemplate"

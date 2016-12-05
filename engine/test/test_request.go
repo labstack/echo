@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/labstack/echo/engine"
+	"gopkg.in/echo.v2/engine"
 	"github.com/stretchr/testify/assert"
 )
 

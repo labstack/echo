@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/labstack/echo"
-	"github.com/labstack/echo/test"
+	"gopkg.in/echo.v2"
+	"gopkg.in/echo.v2/test"
 	"github.com/stretchr/testify/assert"
 )
 

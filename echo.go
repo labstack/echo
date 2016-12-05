@@ -8,9 +8,9 @@ Example:
 	import (
 	    "net/http"
 
-	    "github.com/labstack/echo"
-	    "github.com/labstack/echo/engine/standard"
-	    "github.com/labstack/echo/middleware"
+	    "gopkg.in/echo.v2"
+	    "gopkg.in/echo.v2/engine/standard"
+	    "gopkg.in/echo.v2/middleware"
 	)
 
 	// Handler
@@ -48,9 +48,9 @@ import (
 	"runtime"
 	"sync"
 
-	gcontext "github.com/labstack/echo/context"
-	"github.com/labstack/echo/engine"
-	"github.com/labstack/echo/log"
+	gcontext "gopkg.in/echo.v2/context"
+	"gopkg.in/echo.v2/engine"
+	"gopkg.in/echo.v2/log"
 	glog "github.com/labstack/gommon/log"
 )
 

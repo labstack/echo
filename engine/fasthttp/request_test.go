@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/labstack/echo/engine/test"
+	"gopkg.in/echo.v2/engine/test"
 	"github.com/labstack/gommon/log"
 	fast "github.com/valyala/fasthttp"
 )

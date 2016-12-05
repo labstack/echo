@@ -3,8 +3,8 @@ package main
 import (
 	"net/http"
 
-	"github.com/labstack/echo"
-	"github.com/labstack/echo/middleware"
+	"gopkg.in/echo.v2"
+	"gopkg.in/echo.v2/middleware"
 )
 
 type (

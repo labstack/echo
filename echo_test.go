@@ -12,7 +12,7 @@ import (
 
 	"errors"
 
-	"github.com/labstack/echo/test"
+	"gopkg.in/echo.v2/test"
 	"github.com/labstack/gommon/log"
 	"github.com/stretchr/testify/assert"
 )

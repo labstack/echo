@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/labstack/echo/test"
+	"gopkg.in/echo.v2/test"
 	"github.com/stretchr/testify/assert"
 )
 

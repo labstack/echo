@@ -24,8 +24,8 @@ package main
 import (
 	"net/http"
 
-	"github.com/labstack/echo"
-	"github.com/labstack/echo/engine/standard"
+	"gopkg.in/echo.v2"
+	"gopkg.in/echo.v2/engine/standard"
 )
 
 func main() {

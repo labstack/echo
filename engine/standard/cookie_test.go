@@ -1,7 +1,7 @@
 package standard
 
 import (
-	"github.com/labstack/echo/engine/test"
+	"gopkg.in/echo.v2/engine/test"
 	"net/http"
 	"testing"
 	"time"
