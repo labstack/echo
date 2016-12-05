@@ -1,0 +1,11 @@
+baseurl = "https://echo.labstack.com"
+languageCode = "en-us"
+title = "Echo - High performance, minimalist Go web framework"
+canonifyurls = true
+googleAnalytics = "UA-85059636-2"
+[permalinks]
+  guide = "/guide/:filename"
+  middleware = "/middleware/:filename"
+  recipes = "/recipes/:filename"
+[params]
+  description = "Echo is a high performance, extensible, minimalist web framework for Go (Golang)."

@@ -1,10 +1,10 @@
-<nav id="sidenav" class="w3-sidenav w3-collapse w3-card-2">
+<nav id="sidenav" class="w3-sidenav w3-collapse w3-border-right">
   <span class="w3-closenav w3-xxlarge w3-hide-large" onclick="closeSidenav()">
     &times;
   </span>
-  <a class="w3-btn w3-white w3-border w3-border-theme w3-round-xlarge support-us" href="/support-echo">
+  <button class="w3-btn w3-white w3-border w3-border-theme w3-round-xlarge" onclick="location.href='/support-echo';">
     <i class="fa fa-heart" aria-hidden="true"></i> Support Echo
-  </a>
+  </button>
   {{ $currentNode := . }}
   <div class="w3-hide-large menu">
     {{ range .Site.Menus.main }}
