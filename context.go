@@ -366,10 +366,7 @@ func (c *context) HTML(code int, html string) (err error) {
 }
 
 func (c *context) HTMLBlob(code int, b []byte) (err error) {
-	c.response.Header().Set(HeaderContentType, MIMETextHTMLCharsetUTF8)
-	c.response.WriteHeader(code)
-	_, err = c.response.Write(b)
-	return
+	return c.Blob(code, MIMETextHTMLCharsetUTF8, b)
 }
 
 func (c *context) String(code int, s string) (err error) {
