@@ -1,12 +1,12 @@
 {{ partial "head.html" . }}
-<body>
+<body class="index">
 	{{ partial "topnav.html" . }}
   <div class="w3-hide-large">
     {{ partial "sidenav.html" . }}
   </div>
-	<div class="w3-container w3-content w3-padding-128">
+	<div class="w3-container w3-content main">
     {{ partial "ad.html" }}
-	  <div class="w3-row-padding">
+	  <div class="w3-row">
 			<div class="w3-col s12 m10 l10">
         <div class="hero">
           <h1>{{ .Site.Data.index.heading }}</h1>

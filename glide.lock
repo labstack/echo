@@ -1,5 +1,5 @@
-hash: c3a41d26c94d8101a2aeaea5bc438cb75c5e9b7bd80850c7ec806c00c535d1c7
-updated: 2016-12-02T08:49:24.85691-08:00
+hash: 19ec155dd3ba25b967dd609c52b748b5302a30bede03936645c12fef7e9edd75
+updated: 2016-12-05T20:47:56.995548765-08:00
 imports:
 - name: github.com/daaku/go.zipexe
   version: a5fe2436ffcb3236e175e5149162b41cd28bd27d
@@ -57,6 +57,13 @@ imports:
   - internal/log
   - internal/modules
   - internal/remote_api
+- name: gopkg.in/mgo.v2
+  version: 3f83fa5005286a7fe593b055f0d7771a7dce4655
+  subpackages:
+  - bson
+  - internal/json
+  - internal/sasl
+  - internal/scram
 testImports:
 - name: github.com/davecgh/go-spew
   version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9
