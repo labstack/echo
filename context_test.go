@@ -126,10 +126,10 @@ func TestContext(t *testing.T) {
 		assert.Equal(t, "Hello, <strong>World!</strong>", rec.Body.String())
 	}
 
-	// HTMLBuffer
+	// HTMLBlob
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec).(*context)
-	err = c.HTMLBuffer(http.StatusOK, bytes.NewBufferString("Hello, <strong>World!</strong>"))
+	err = c.HTMLBlob(http.StatusOK, bytes.NewBufferString("Hello, <strong>World!</strong>"))
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, MIMETextHTMLCharsetUTF8, rec.Header().Get(HeaderContentType))
