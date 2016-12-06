@@ -19,6 +19,12 @@ type (
 
 	// DefaultBinder is the default implementation of the Binder interface.
 	DefaultBinder struct{}
+
+	// BindUnmarshaler is the interface used to wrap the UnmarshalParam method.
+	BindUnmarshaler interface {
+		// UnmarshalParam decodes and assigns a value from an HTML form.
+		UnmarshalParam(src string) error
+	}
 )
 
 // Bind implements the `Binder#Bind` function.
@@ -151,10 +157,33 @@ func setWithProperType(valueKind reflect.Kind, val string, structField reflect.V
 		return setFloatField(val, 64, structField)
 	case reflect.String:
 		structField.SetString(val)
+	case reflect.Ptr:
+		return unmarshalFieldPtr(val, structField)
 	default:
-		return errors.New("unknown type")
+		return unmarshalField(val, structField)
 	}
 	return nil
+}
+
+func unmarshalField(value string, field reflect.Value) error {
+	ptr := reflect.New(field.Type())
+	if ptr.CanInterface() {
+		iface := ptr.Interface()
+		if unmarshaler, ok := iface.(BindUnmarshaler); ok {
+			err := unmarshaler.UnmarshalParam(value)
+			field.Set(ptr.Elem())
+			return err
+		}
+	}
+	return errors.New("unknown type")
+}
+
+func unmarshalFieldPtr(value string, field reflect.Value) error {
+	if field.IsNil() {
+		// Initialize the pointer to a nil value
+		field.Set(reflect.New(field.Type().Elem()))
+	}
+	return unmarshalField(value, field.Elem())
 }
 
 func setIntField(value string, bitSize int, field reflect.Value) error {
