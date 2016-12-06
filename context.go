@@ -106,8 +106,8 @@ type (
 		// HTML sends an HTTP response with status code.
 		HTML(int, string) error
 
-		// HTMLBuffer sends an HTTP response via a bytes.Buffer with status code.
-		HTMLBuffer(int, *bytes.Buffer) error
+		// HTMLBlob sends an HTTP blob response with status code.
+		HTMLBlob(int, []byte) error
 
 		// String sends a string response with status code.
 		String(int, string) error
@@ -365,10 +365,10 @@ func (c *context) HTML(code int, html string) (err error) {
 	return
 }
 
-func (c *context) HTMLBuffer(code int, buf *bytes.Buffer) (err error) {
+func (c *context) HTMLBlob(code int, b []byte) (err error) {
 	c.response.Header().Set(HeaderContentType, MIMETextHTMLCharsetUTF8)
 	c.response.WriteHeader(code)
-	_, err = c.response.Write(buf.Bytes())
+	_, err = c.response.Write(b)
 	return
 }
 
