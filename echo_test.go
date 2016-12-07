@@ -268,10 +268,10 @@ func TestEchoURL(t *testing.T) {
 func TestEchoRoutes(t *testing.T) {
 	e := New()
 	routes := []Route{
-		{GET, "/users/:user/events", ""},
-		{GET, "/users/:user/events/public", ""},
-		{POST, "/repos/:owner/:repo/git/refs", ""},
-		{POST, "/repos/:owner/:repo/git/tags", ""},
+		{GET, "/users/:user/events", "", nil},
+		{GET, "/users/:user/events/public", "", nil},
+		{POST, "/repos/:owner/:repo/git/refs", "", nil},
+		{POST, "/repos/:owner/:repo/git/tags", "", nil},
 	}
 	for _, r := range routes {
 		e.add(r.Method, r.Path, func(c Context) error {
@@ -400,6 +400,43 @@ func TestEchoStartTLS(t *testing.T) {
 	}()
 	time.Sleep(200 * time.Millisecond)
 	e.ShutdownTLS(1 * time.Second)
+}
+
+func TestEchoMeta(t *testing.T) {
+	e := New()
+
+	middleware := e.MetaMiddleware(
+		Map{"authorization": true, "data": Map{"by": "middleware"}},
+		func(next HandlerFunc) HandlerFunc {
+			return func(c Context) error {
+				return next(c)
+			}
+		},
+	)
+	g := e.Group("/root")
+	g.Use(middleware)
+
+	g.GET("/", e.MetaHandler(
+		Map{"version": 1.0, "data": Map{"by": "handler"}},
+		func(c Context) error {
+			return c.String(http.StatusOK, "OK")
+		},
+	))
+
+	var meta Map
+
+	for _, route := range e.Routes() {
+		if route.Path == "/root/" {
+			meta = route.Meta
+		}
+	}
+	assert.Equal(t, Map{
+		"authorization": true,
+		"version":       1.0,
+		"data": Map{
+			"by": "handler",
+		},
+	}, meta)
 }
 
 func testMethod(t *testing.T, method, path string, e *Echo) {
