@@ -352,14 +352,11 @@ func (c *context) Render(code int, name string, data interface{}) (err error) {
 	if err = c.echo.Renderer.Render(buf, name, data, c); err != nil {
 		return
 	}
-	c.response.Header().Set(HeaderContentType, MIMETextHTMLCharsetUTF8)
-	c.response.WriteHeader(code)
-	_, err = c.response.Write(buf.Bytes())
-	return
+	return c.HTMLBlob(code, buf.Bytes())
 }
 
 func (c *context) HTML(code int, html string) (err error) {
-	return c.Blob(code, MIMETextHTMLCharsetUTF8, []byte(html))
+	return c.HTMLBlob(code, []byte(html))
 }
 
 func (c *context) HTMLBlob(code int, b []byte) (err error) {
