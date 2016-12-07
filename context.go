@@ -359,10 +359,7 @@ func (c *context) Render(code int, name string, data interface{}) (err error) {
 }
 
 func (c *context) HTML(code int, html string) (err error) {
-	c.response.Header().Set(HeaderContentType, MIMETextHTMLCharsetUTF8)
-	c.response.WriteHeader(code)
-	_, err = c.response.Write([]byte(html))
-	return
+	return c.Blob(code, MIMETextHTMLCharsetUTF8, []byte(html))
 }
 
 func (c *context) HTMLBlob(code int, b []byte) (err error) {
@@ -370,10 +367,7 @@ func (c *context) HTMLBlob(code int, b []byte) (err error) {
 }
 
 func (c *context) String(code int, s string) (err error) {
-	c.response.Header().Set(HeaderContentType, MIMETextPlainCharsetUTF8)
-	c.response.WriteHeader(code)
-	_, err = c.response.Write([]byte(s))
-	return
+	return c.Blob(code, MIMETextPlainCharsetUTF8, []byte(s))
 }
 
 func (c *context) JSON(code int, i interface{}) (err error) {
