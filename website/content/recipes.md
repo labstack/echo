@@ -10,4 +10,4 @@ type = "recipes"
   url = "/recipes"
 +++
 
-## Echo Examples
+<script>location = "/recipes/hello-world";</script>

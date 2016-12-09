@@ -43,7 +43,6 @@ User signup
 - Retrieve user credentials from the body and validate against database.
 - For invalid email or password, send `400 - Bad Request` response.
 - For valid email and password, save user in database and send `201 - Created` response.
-  - 
 
 #### Request
 

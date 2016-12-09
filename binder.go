@@ -14,7 +14,7 @@ import (
 type (
 	// Binder is the interface that wraps the Bind method.
 	Binder interface {
-		Bind(interface{}, Context) error
+		Bind(i interface{}, c Context) error
 	}
 
 	binder struct{}
