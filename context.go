@@ -427,7 +427,7 @@ func (c *context) XMLPretty(code int, i interface{}, indent string) (err error) 
 	if err != nil {
 		return
 	}
-	return c.JSONBlob(code, b)
+	return c.XMLBlob(code, b)
 }
 
 func (c *context) XMLBlob(code int, b []byte) (err error) {

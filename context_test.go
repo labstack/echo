@@ -73,6 +73,16 @@ func TestContext(t *testing.T) {
 		assert.Equal(t, userJSON, rec.Body.String())
 	}
 
+	// JSONPretty
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec).(*context)
+	err = c.JSONPretty(http.StatusOK, user{1, "Jon Snow"}, "\t")
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, userJSONPretty, rec.Body.String())
+	}
+
 	// JSON (error)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec).(*context)
@@ -105,6 +115,16 @@ func TestContext(t *testing.T) {
 	c = e.NewContext(req, rec).(*context)
 	err = c.XML(http.StatusOK, make(chan bool))
 	assert.Error(t, err)
+
+	// XMLPretty
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec).(*context)
+	err = c.XMLPretty(http.StatusOK, user{1, "Jon Snow"}, "\t")
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, MIMEApplicationXMLCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, xml.Header+userXMLPretty, rec.Body.String())
+	}
 
 	// String
 	rec = httptest.NewRecorder()

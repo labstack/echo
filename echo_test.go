@@ -29,6 +29,16 @@ const (
 	invalidContent = "invalid content"
 )
 
+const userJSONPretty = `{
+	"id": 1,
+	"name": "Jon Snow"
+}`
+
+const userXMLPretty = `<user>
+	<id>1</id>
+	<name>Jon Snow</name>
+</user>`
+
 func TestEcho(t *testing.T) {
 	e := New()
 	req, _ := http.NewRequest(GET, "/", nil)
