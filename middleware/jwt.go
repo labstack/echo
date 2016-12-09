@@ -52,7 +52,7 @@ const (
 	bearer = "Bearer"
 )
 
-// Algorithims
+// Algorithms
 const (
 	AlgorithmHS256 = "HS256"
 )
