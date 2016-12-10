@@ -105,10 +105,10 @@ func TestBinderUnsupportedMediaType(t *testing.T) {
 	testBinderError(t, strings.NewReader(invalidContent), MIMEApplicationJSON)
 }
 
-func TestBinderbindForm(t *testing.T) {
+func TestBinderbindData(t *testing.T) {
 	ts := new(binderTestStruct)
-	b := new(binder)
-	b.bindData(ts, values)
+	b := new(DefaultBinder)
+	b.bindData(ts, values, "form")
 	assertBinderTestStruct(t, ts)
 }
 

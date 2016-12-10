@@ -17,13 +17,15 @@ type (
 		Bind(i interface{}, c Context) error
 	}
 
-	binder struct{}
+	// DefaultBinder is the default implementation of the Binder interface.
+	DefaultBinder struct{}
 )
 
-func (b *binder) Bind(i interface{}, c Context) (err error) {
+// Bind implements the `Binder#Bind` function.
+func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 	req := c.Request()
 	if req.Method == GET {
-		if err = b.bindData(i, c.QueryParams()); err != nil {
+		if err = b.bindData(i, c.QueryParams(), "query"); err != nil {
 			return NewHTTPError(http.StatusBadRequest, err.Error())
 		}
 		return
@@ -58,7 +60,7 @@ func (b *binder) Bind(i interface{}, c Context) (err error) {
 		if err != nil {
 			return NewHTTPError(http.StatusBadRequest, err.Error())
 		}
-		if err = b.bindData(i, params); err != nil {
+		if err = b.bindData(i, params, "form"); err != nil {
 			return NewHTTPError(http.StatusBadRequest, err.Error())
 		}
 	default:
@@ -67,7 +69,7 @@ func (b *binder) Bind(i interface{}, c Context) (err error) {
 	return
 }
 
-func (b *binder) bindData(ptr interface{}, data map[string][]string) error {
+func (b *DefaultBinder) bindData(ptr interface{}, data map[string][]string, tag string) error {
 	typ := reflect.TypeOf(ptr).Elem()
 	val := reflect.ValueOf(ptr).Elem()
 
@@ -82,13 +84,13 @@ func (b *binder) bindData(ptr interface{}, data map[string][]string) error {
 			continue
 		}
 		structFieldKind := structField.Kind()
-		inputFieldName := typeField.Tag.Get("form")
+		inputFieldName := typeField.Tag.Get(tag)
 
 		if inputFieldName == "" {
 			inputFieldName = typeField.Name
-			// If "form" tag is nil, we inspect if the field is a struct.
+			// If tag is nil, we inspect if the field is a struct.
 			if structFieldKind == reflect.Struct {
-				err := b.bindData(structField.Addr().Interface(), data)
+				err := b.bindData(structField.Addr().Interface(), data, tag)
 				if err != nil {
 					return err
 				}

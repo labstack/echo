@@ -245,7 +245,7 @@ func New() (e *Echo) {
 		Color:           color.New(),
 	}
 	e.HTTPErrorHandler = e.DefaultHTTPErrorHandler
-	e.Binder = &binder{}
+	e.Binder = &DefaultBinder{}
 	e.Logger.SetLevel(glog.OFF)
 	e.pool.New = func() interface{} {
 		return e.NewContext(nil, nil)
