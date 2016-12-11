@@ -283,7 +283,7 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 		code = he.Code
 		msg = he.Message
 	} else {
-		msg = Map{"message": err}
+		msg = Map{"message": err.Error()}
 	}
 
 	if !c.Response().Committed {

@@ -18,5 +18,5 @@ func main() {
 			<h3>TLS certificates automatically installed from Let's Encrypt :)</h3>
 		`)
 	})
-	e.StartAutoTLS(":443")
+	e.Logger.Fatal(e.StartAutoTLS(":443"))
 }
