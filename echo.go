@@ -283,7 +283,10 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 		code = he.Code
 		msg = he.Message
 	} else {
-		msg = Map{"message": err.Error()}
+		msg = err.Error()
+	}
+	if reflect.TypeOf(msg).Kind() != reflect.Ptr {
+		msg = Map{"message": msg}
 	}
 
 	if !c.Response().Committed {
@@ -578,7 +581,7 @@ func (e *Echo) ShutdownTLS(timeout time.Duration) {
 
 // NewHTTPError creates a new HTTPError instance.
 func NewHTTPError(code int, message ...interface{}) *HTTPError {
-	he := &HTTPError{Code: code, Message: Map{"message": http.StatusText(code)}}
+	he := &HTTPError{Code: code, Message: http.StatusText(code)}
 	if len(message) > 0 {
 		he.Message = message[0]
 	}
