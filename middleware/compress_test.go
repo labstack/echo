@@ -62,11 +62,11 @@ func TestGzipErrorReturned(t *testing.T) {
 	e := echo.New()
 	e.Use(Gzip())
 	e.GET("/", func(c echo.Context) error {
-		return echo.NewHTTPError(http.StatusInternalServerError, "error")
+		return echo.ErrNotFound
 	})
 	req, _ := http.NewRequest(echo.GET, "/", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusNotFound, rec.Code)
 	assert.Empty(t, rec.Header().Get(echo.HeaderContentEncoding))
-	assert.Equal(t, "error", rec.Body.String())
 }

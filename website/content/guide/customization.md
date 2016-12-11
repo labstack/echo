@@ -9,14 +9,15 @@ description = "Customizing Echo"
 
 ## HTTP Error Handler
 
-Default HTTP error handler rules:
+Default HTTP error handler sends an error as JSON with the following rules:
 
-- If error is of type `Echo#HTTPError` it sends HTTP response with status code `HTTPError.Code`
+- If error is `Echo#HTTPError` it sends HTTP response with status code `HTTPError.Code`
 and message `HTTPError.Message`.
-- Else it sends `500 - Internal Server Error`.
-- If debug mode is enabled, it uses `error.Error()` as status message.
+- If error is `error` it sends HTTP response with status code `500 - Internal Server Error` 
+and message `error.Error()`.
+- It logs the error.
 
-You can also set a custom HTTP error handler using `Echo#HTTPErrorHandler`.
+You can set a custom HTTP error handler using `Echo#HTTPErrorHandler`.
 
 ## Debugging
 

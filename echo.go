@@ -42,7 +42,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
+	slog "log"
 	"net/http"
 	"path"
 	"reflect"
@@ -51,7 +51,7 @@ import (
 	"time"
 
 	"github.com/labstack/gommon/color"
-	glog "github.com/labstack/gommon/log"
+	"github.com/labstack/gommon/log"
 	"github.com/tylerb/graceful"
 	"golang.org/x/crypto/acme/autocert"
 )
@@ -59,23 +59,23 @@ import (
 type (
 	// Echo is the top-level framework instance.
 	Echo struct {
-		DisableHTTP2 bool
-		Debug        bool
-		HTTPErrorHandler
-		Binder          Binder
-		Renderer        Renderer
-		AutoTLSManager  autocert.Manager
-		ShutdownTimeout time.Duration
-		Color           *color.Color
-		Logger          Logger
-		server          *graceful.Server
-		tlsServer       *graceful.Server
-		premiddleware   []MiddlewareFunc
-		middleware      []MiddlewareFunc
-		maxParam        *int
-		router          *Router
-		notFoundHandler HandlerFunc
-		pool            sync.Pool
+		DisableHTTP2     bool
+		Debug            bool
+		HTTPErrorHandler HTTPErrorHandler
+		Binder           Binder
+		Renderer         Renderer
+		AutoTLSManager   autocert.Manager
+		ShutdownTimeout  time.Duration
+		Color            *color.Color
+		Logger           Logger
+		server           *graceful.Server
+		tlsServer        *graceful.Server
+		premiddleware    []MiddlewareFunc
+		middleware       []MiddlewareFunc
+		maxParam         *int
+		router           *Router
+		notFoundHandler  HandlerFunc
+		pool             sync.Pool
 	}
 
 	// Route contains a handler and information for matching against requests.
@@ -88,7 +88,7 @@ type (
 	// HTTPError represents an error that occurred while handling a request.
 	HTTPError struct {
 		Code    int
-		Message string
+		Message interface{}
 	}
 
 	// MiddlewareFunc defines a function to process middleware.
@@ -240,13 +240,13 @@ func New() (e *Echo) {
 			Prompt: autocert.AcceptTOS,
 		},
 		ShutdownTimeout: 15 * time.Second,
-		Logger:          glog.New("echo"),
+		Logger:          log.New("echo"),
 		maxParam:        new(int),
 		Color:           color.New(),
 	}
 	e.HTTPErrorHandler = e.DefaultHTTPErrorHandler
 	e.Binder = &DefaultBinder{}
-	e.Logger.SetLevel(glog.OFF)
+	e.Logger.SetLevel(log.OFF)
 	e.pool.New = func() interface{} {
 		return e.NewContext(nil, nil)
 	}
@@ -271,24 +271,33 @@ func (e *Echo) Router() *Router {
 	return e.router
 }
 
-// DefaultHTTPErrorHandler invokes the default HTTP error handler.
+// DefaultHTTPErrorHandler is the default HTTP error handler. It sends a JSON response
+// with status code.
 func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
-	code := http.StatusInternalServerError
-	msg := http.StatusText(code)
+	var (
+		code = http.StatusInternalServerError
+		msg  interface{}
+	)
+
 	if he, ok := err.(*HTTPError); ok {
 		code = he.Code
 		msg = he.Message
+	} else {
+		msg = Map{"message": err}
 	}
-	if e.Debug {
-		msg = err.Error()
-	}
+
 	if !c.Response().Committed {
 		if c.Request().Method == HEAD { // Issue #608
-			c.NoContent(code)
+			if err := c.NoContent(code); err != nil {
+				goto ERROR
+			}
 		} else {
-			c.String(code, msg)
+			if err := c.JSON(code, msg); err != nil {
+				goto ERROR
+			}
 		}
 	}
+ERROR:
 	e.Logger.Error(err)
 }
 
@@ -545,7 +554,7 @@ func (e *Echo) StartServer(s *http.Server) error {
 	gs := &graceful.Server{
 		Server:  s,
 		Timeout: e.ShutdownTimeout,
-		Logger:  log.New(e.Logger.Output(), e.Logger.Prefix()+": ", 0),
+		Logger:  slog.New(e.Logger.Output(), e.Logger.Prefix()+": ", 0),
 	}
 	if s.TLSConfig == nil {
 		e.server = gs
@@ -568,17 +577,17 @@ func (e *Echo) ShutdownTLS(timeout time.Duration) {
 }
 
 // NewHTTPError creates a new HTTPError instance.
-func NewHTTPError(code int, msg ...interface{}) *HTTPError {
-	he := &HTTPError{Code: code, Message: http.StatusText(code)}
-	if len(msg) > 0 {
-		he.Message = fmt.Sprint(msg...)
+func NewHTTPError(code int, message ...interface{}) *HTTPError {
+	he := &HTTPError{Code: code, Message: Map{"message": http.StatusText(code)}}
+	if len(message) > 0 {
+		he.Message = message[0]
 	}
 	return he
 }
 
 // Error makes it compatible with `error` interface.
-func (e *HTTPError) Error() string {
-	return e.Message
+func (he *HTTPError) Error() string {
+	return fmt.Sprintf("code=%d, message=%s", he.Code, he.Message)
 }
 
 // WrapHandler wraps `http.Handler` into `echo.HandlerFunc`.

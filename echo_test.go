@@ -380,13 +380,6 @@ func TestEchoMethodNotAllowed(t *testing.T) {
 	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
 }
 
-func TestEchoHTTPError(t *testing.T) {
-	m := http.StatusText(http.StatusBadRequest)
-	he := NewHTTPError(http.StatusBadRequest, m)
-	assert.Equal(t, http.StatusBadRequest, he.Code)
-	assert.Equal(t, m, he.Error())
-}
-
 func TestEchoContext(t *testing.T) {
 	e := New()
 	c := e.AcquireContext()
