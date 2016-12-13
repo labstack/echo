@@ -63,6 +63,7 @@ type (
 		Debug            bool
 		HTTPErrorHandler HTTPErrorHandler
 		Binder           Binder
+		Validator        Validator
 		Renderer         Renderer
 		AutoTLSManager   autocert.Manager
 		ShutdownTimeout  time.Duration
@@ -102,7 +103,7 @@ type (
 
 	// Validator is the interface that wraps the Validate function.
 	Validator interface {
-		Validate() error
+		Validate(i interface{}) error
 	}
 
 	// Renderer is the interface that wraps the Render function.
@@ -217,6 +218,7 @@ var (
 	ErrUnauthorized                = NewHTTPError(http.StatusUnauthorized)
 	ErrMethodNotAllowed            = NewHTTPError(http.StatusMethodNotAllowed)
 	ErrStatusRequestEntityTooLarge = NewHTTPError(http.StatusRequestEntityTooLarge)
+	ErrValidatorNotRegistered      = errors.New("validator not registered")
 	ErrRendererNotRegistered       = errors.New("renderer not registered")
 	ErrInvalidRedirectCode         = errors.New("invalid redirect status code")
 	ErrCookieNotFound              = errors.New("cookie not found")

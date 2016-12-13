@@ -99,8 +99,12 @@ type (
 		// does it based on Content-Type header.
 		Bind(i interface{}) error
 
+		// Validate validates provided `i`. It is usually called after `Context#Bind()`.
+		// Validator must be registered using `Echo#Validator`.
+		Validate(i interface{}) error
+
 		// Render renders a template with data and sends a text/html response with status
-		// code. Templates can be registered using `Echo.Renderer`.
+		// code. Renderer must be registered using `Echo.Renderer`.
 		Render(code int, name string, data interface{}) error
 
 		// HTML sends an HTTP response with status code.
@@ -348,6 +352,13 @@ func (c *context) Set(key string, val interface{}) {
 
 func (c *context) Bind(i interface{}) error {
 	return c.echo.Binder.Bind(i, c)
+}
+
+func (c *context) Validate(i interface{}) error {
+	if c.echo.Validator == nil {
+		return ErrValidatorNotRegistered
+	}
+	return c.echo.Validator.Validate(i)
 }
 
 func (c *context) Render(code int, name string, data interface{}) (err error) {
