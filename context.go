@@ -139,7 +139,7 @@ type (
 		// XMLPretty sends a pretty-print XML with status code.
 		XMLPretty(code int, i interface{}, indent string) error
 
-		// XMLBlob sends a XML blob response with status code.
+		// XMLBlob sends an XML blob response with status code.
 		XMLBlob(code int, b []byte) error
 
 		// Blob sends a blob response with status code and content type.
@@ -161,7 +161,7 @@ type (
 		// NoContent sends a response with no body and a status code.
 		NoContent(code int) error
 
-		// Redirect redirects the request with status code.
+		// Redirect redirects the request to a provided URL with status code.
 		Redirect(code int, url string) error
 
 		// Error invokes the registered HTTP error handler. Generally used by middleware.

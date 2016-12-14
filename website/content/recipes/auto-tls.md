@@ -10,7 +10,7 @@ description = "Automatic TLS certificates from Let's Encrypt example for Echo"
 This recipe shows how to obtain TLS certificates for a domain automatically from
 Let's Encrypt. `Echo#StartAutoTLS` accepts an address which should listen on port `443`.
 
-Browse to `https://<your_domain>`. If everything goes fine, you should see a welcome
+Browse to `https://<DOMAIN>`. If everything goes fine, you should see a welcome
 message with TLS enabled on the website.
 
 > 

@@ -8,10 +8,8 @@ description = "Error handling in Echo"
 +++
 
 Echo advocates centralized HTTP error handling by returning error from middleware
-or handlers.
-
-- Log errors from a unified location
-- Send customized HTTP responses
+and handlers. It allows us to log/report errors to external services from a unified
+location and send customized HTTP responses.
 
 For example, when basic auth middleware finds invalid credentials it returns
 `401 - Unauthorized` error, aborting the current HTTP request.

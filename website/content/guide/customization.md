@@ -21,7 +21,7 @@ You can set a custom HTTP error handler using `Echo#HTTPErrorHandler`.
 
 ## Debugging
 
-`Echo#Debug` enable / disable debug mode.
+`Echo#Debug` enable/disable debug mode.
 
 ## Logging
 
