@@ -24,6 +24,7 @@ type (
 		// Log format which can be constructed using the following tags:
 		//
 		// - time_rfc3339
+		// - time_rfc3339nano
 		// - id (Request ID - Not implemented)
 		// - remote_ip
 		// - uri
@@ -120,6 +121,8 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 				switch tag {
 				case "time_rfc3339":
 					return w.Write([]byte(time.Now().Format(time.RFC3339)))
+				case "time_rfc3339nano":
+					return w.Write([]byte(time.Now().Format(time.RFC3339Nano)))
 				case "remote_ip":
 					ra := c.RealIP()
 					return w.Write([]byte(ra))
