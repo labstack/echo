@@ -1,12 +1,12 @@
-<nav id="sidenav" class="w3-sidenav w3-collapse w3-border-right">
-  <span class="w3-closenav w3-xxlarge w3-hide-large" onclick="closeSidenav()">
+<nav id="sidenav" class="w3-sidenav w3-border-right collapse">
+  <span class="w3-closenav w3-xxlarge hide-large" onclick="closeSidenav()">
     &times;
   </span>
   <button class="w3-btn w3-white w3-border w3-border-theme w3-round-xlarge" onclick="location.href='/support-echo';">
     <i class="fa fa-heart" aria-hidden="true"></i> Support Echo
   </button>
   {{ $currentNode := . }}
-  <div class="w3-hide-large menu">
+  <div class="menu hide-large">
     {{ range .Site.Menus.main }}
       <a{{ if or ($currentNode.HasMenuCurrent "main" .) ($currentNode.IsMenuCurrent "main" .) }} class="active"{{ end }} href="{{ .URL }}">
         <div class="w3-xlarge w3-padding-top">{{ .Name }}</div>

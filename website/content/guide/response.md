@@ -35,6 +35,10 @@ func(c echo.Context) error {
 `Context#HTMLBlob(code int, b []byte)` can be used to send HTML blob with status
 code. You may find it handy using with a template engine which outputs `[]byte`.
 
+## Render Template
+
+[Learn more](/guide/templates)
+
 ## Send JSON
 
 `Context#JSON(code int, i interface{})` can be used to encode a provided Go type into
