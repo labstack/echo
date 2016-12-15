@@ -9,35 +9,27 @@ description = "Customizing Echo"
 
 ## HTTP Error Handler
 
-Default HTTP error handler sends an error as JSON with the following rules:
+`Echo#HTTPErrorHandler` can be used to set custom http error handler.
 
-- If error is `Echo#HTTPError` it sends HTTP response with status code `HTTPError.Code`
-and message `HTTPError.Message`.
-- If error is `error` it sends HTTP response with status code `500 - Internal Server Error` 
-and message `error.Error()`.
-- It logs the error.
-
-You can set a custom HTTP error handler using `Echo#HTTPErrorHandler`.
+[Learn more](/guide/error-handling)
 
 ## Debugging
 
-`Echo#Debug` enable/disable debug mode.
+`Echo#Debug` can be used to enable / disable debug mode.
 
 ## Logging
 
 ### Log Output
 
-`Echo#Logger.SetOutput(io.Writer)` sets the output destination for the logger.
-Default value `os.Stdout`
+`Echo#Logger.SetOutput(io.Writer)` can be used to set the output destination for
+the logger. Default value is `os.Stdout`
 
 To completely disable logs use `Echo#Logger.SetOutput(io.Discard)` or `Echo#Logger.SetLevel(log.OFF)`
 
 ### Log Level
 
-`Echo#Logger.SetLevel(log.Lvl)`
-
-SetLogLevel sets the log level for the logger. Default value `OFF`.
-Possible values:
+`Echo#Logger.SetLevel(log.Lvl)` can be used to set the log level for the logger.
+Default value `OFF`. Possible values:
 
 - `DEBUG`
 - `INFO`
@@ -45,4 +37,6 @@ Possible values:
 - `ERROR`
 - `OFF`
 
-You can also set a custom logger using `Echo#Logger`.
+Logging is implemented using `echo.Logger` interface which allows you to use a
+custom logger. Custom logger can be set using `Echo#Logger`.
+

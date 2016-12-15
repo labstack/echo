@@ -15,7 +15,7 @@ import (
 )
 
 type (
-	binderTestStruct struct {
+	bindTestStruct struct {
 		I           int
 		I8          int8
 		I16         int16
@@ -36,19 +36,16 @@ type (
 		Tptr        *Timestamp
 	}
 
-	// Timestamp is a simple datatype which implements the Scanner interface
-	// used for testing.
 	Timestamp time.Time
 )
 
-// UnmarshalParam unmarshals a value from an HTML form into a Timestamp value
 func (t *Timestamp) UnmarshalParam(src string) error {
 	ts, err := time.Parse(time.RFC3339, src)
 	*t = Timestamp(ts)
 	return err
 }
 
-func (t binderTestStruct) GetCantSet() string {
+func (t bindTestStruct) GetCantSet() string {
 	return t.cantSet
 }
 
@@ -72,19 +69,19 @@ var values = map[string][]string{
 	"Tptr":    {"2016-12-06T19:09:05+01:00"},
 }
 
-func TestBinderJSON(t *testing.T) {
-	testBinderOkay(t, strings.NewReader(userJSON), MIMEApplicationJSON)
-	testBinderError(t, strings.NewReader(invalidContent), MIMEApplicationJSON)
+func TestBindJSON(t *testing.T) {
+	testBindOkay(t, strings.NewReader(userJSON), MIMEApplicationJSON)
+	testBindError(t, strings.NewReader(invalidContent), MIMEApplicationJSON)
 }
 
-func TestBinderXML(t *testing.T) {
-	testBinderOkay(t, strings.NewReader(userXML), MIMEApplicationXML)
-	testBinderError(t, strings.NewReader(invalidContent), MIMEApplicationXML)
+func TestBindXML(t *testing.T) {
+	testBindOkay(t, strings.NewReader(userXML), MIMEApplicationXML)
+	testBindError(t, strings.NewReader(invalidContent), MIMEApplicationXML)
 }
 
-func TestBinderForm(t *testing.T) {
-	testBinderOkay(t, strings.NewReader(userForm), MIMEApplicationForm)
-	testBinderError(t, nil, MIMEApplicationForm)
+func TestBindForm(t *testing.T) {
+	testBindOkay(t, strings.NewReader(userForm), MIMEApplicationForm)
+	testBindError(t, nil, MIMEApplicationForm)
 	e := New()
 	req, _ := http.NewRequest(POST, "/", strings.NewReader(userForm))
 	rec := httptest.NewRecorder()
@@ -95,7 +92,7 @@ func TestBinderForm(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestBinderQueryParams(t *testing.T) {
+func TestBindQueryParams(t *testing.T) {
 	e := New()
 	req, _ := http.NewRequest(GET, "/?id=1&name=Jon Snow", nil)
 	rec := httptest.NewRecorder()
@@ -108,14 +105,14 @@ func TestBinderQueryParams(t *testing.T) {
 	}
 }
 
-func TestBinderScanner(t *testing.T) {
+func TestBindUnmarshalParam(t *testing.T) {
 	e := New()
 	req, _ := http.NewRequest(GET, "/?ts=2016-12-06T19:09:05Z", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	var result struct {
+	result := struct {
 		T Timestamp `query:"ts"`
-	}
+	}{}
 	err := c.Bind(&result)
 	if assert.NoError(t, err) {
 		//		assert.Equal(t, Timestamp(reflect.TypeOf(&Timestamp{}), time.Date(2016, 12, 6, 19, 9, 5, 0, time.UTC)), result.T)
@@ -123,42 +120,42 @@ func TestBinderScanner(t *testing.T) {
 	}
 }
 
-func TestBinderScannerPtr(t *testing.T) {
+func TestBindUnmarshalParamPtr(t *testing.T) {
 	e := New()
 	req, _ := http.NewRequest(GET, "/?ts=2016-12-06T19:09:05Z", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	var result struct {
+	result := struct {
 		Tptr *Timestamp `query:"ts"`
-	}
+	}{}
 	err := c.Bind(&result)
 	if assert.NoError(t, err) {
 		assert.Equal(t, Timestamp(time.Date(2016, 12, 6, 19, 9, 5, 0, time.UTC)), *result.Tptr)
 	}
 }
 
-func TestBinderMultipartForm(t *testing.T) {
+func TestBindMultipartForm(t *testing.T) {
 	body := new(bytes.Buffer)
 	mw := multipart.NewWriter(body)
 	mw.WriteField("id", "1")
 	mw.WriteField("name", "Jon Snow")
 	mw.Close()
-	testBinderOkay(t, body, mw.FormDataContentType())
+	testBindOkay(t, body, mw.FormDataContentType())
 }
 
-func TestBinderUnsupportedMediaType(t *testing.T) {
-	testBinderError(t, strings.NewReader(invalidContent), MIMEApplicationJSON)
+func TestBindUnsupportedMediaType(t *testing.T) {
+	testBindError(t, strings.NewReader(invalidContent), MIMEApplicationJSON)
 }
 
-func TestBinderbindData(t *testing.T) {
-	ts := new(binderTestStruct)
+func TestBindbindData(t *testing.T) {
+	ts := new(bindTestStruct)
 	b := new(DefaultBinder)
 	b.bindData(ts, values, "form")
-	assertBinderTestStruct(t, ts)
+	assertBindTestStruct(t, ts)
 }
 
-func TestBinderSetWithProperType(t *testing.T) {
-	ts := new(binderTestStruct)
+func TestBindSetWithProperType(t *testing.T) {
+	ts := new(bindTestStruct)
 	typ := reflect.TypeOf(ts).Elem()
 	val := reflect.ValueOf(ts).Elem()
 	for i := 0; i < typ.NumField(); i++ {
@@ -174,7 +171,7 @@ func TestBinderSetWithProperType(t *testing.T) {
 		err := setWithProperType(typeField.Type.Kind(), val, structField)
 		assert.NoError(t, err)
 	}
-	assertBinderTestStruct(t, ts)
+	assertBindTestStruct(t, ts)
 
 	type foo struct {
 		Bar bytes.Buffer
@@ -185,8 +182,8 @@ func TestBinderSetWithProperType(t *testing.T) {
 	assert.Error(t, setWithProperType(typ.Field(0).Type.Kind(), "5", val.Field(0)))
 }
 
-func TestBinderSetFields(t *testing.T) {
-	ts := new(binderTestStruct)
+func TestBindSetFields(t *testing.T) {
+	ts := new(bindTestStruct)
 	val := reflect.ValueOf(ts).Elem()
 	// Int
 	if assert.NoError(t, setIntField("5", 0, val.FieldByName("I"))) {
@@ -225,7 +222,7 @@ func TestBinderSetFields(t *testing.T) {
 	}
 }
 
-func assertBinderTestStruct(t *testing.T, ts *binderTestStruct) {
+func assertBindTestStruct(t *testing.T, ts *bindTestStruct) {
 	assert.Equal(t, 0, ts.I)
 	assert.Equal(t, int8(8), ts.I8)
 	assert.Equal(t, int16(16), ts.I16)
@@ -243,7 +240,7 @@ func assertBinderTestStruct(t *testing.T, ts *binderTestStruct) {
 	assert.Equal(t, "", ts.GetCantSet())
 }
 
-func testBinderOkay(t *testing.T, r io.Reader, ctype string) {
+func testBindOkay(t *testing.T, r io.Reader, ctype string) {
 	e := New()
 	req, _ := http.NewRequest(POST, "/", r)
 	rec := httptest.NewRecorder()
@@ -257,7 +254,7 @@ func testBinderOkay(t *testing.T, r io.Reader, ctype string) {
 	}
 }
 
-func testBinderError(t *testing.T, r io.Reader, ctype string) {
+func testBindError(t *testing.T, r io.Reader, ctype string) {
 	e := New()
 	req, _ := http.NewRequest(POST, "/", r)
 	rec := httptest.NewRecorder()

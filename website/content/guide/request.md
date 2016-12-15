@@ -107,6 +107,20 @@ curl \
   -d 'name=Joe'
 ```
 
+To bind a custom data type, you can implement `Echo#BindUnmarshaler` interface.
+
+*Example*
+
+```go
+type Timestamp time.Time
+
+func (t *Timestamp) UnmarshalParam(src string) error {
+	ts, err := time.Parse(time.RFC3339, src)
+	*t = Timestamp(ts)
+	return err
+}
+```
+
 ### Query Parameters
 
 Query parameters can be retrieved by name using `Context#QueryParam(name string)`.
@@ -126,6 +140,8 @@ curl \
   -X GET \
   http://localhost:1323\?name\=Joe
 ```
+
+Similar to form data, custom data type can be bind using `Context#QueryParam(name string)`.
 
 ### Path Parameters
 

@@ -22,7 +22,7 @@ type (
 
 	// BindUnmarshaler is the interface used to wrap the UnmarshalParam method.
 	BindUnmarshaler interface {
-		// UnmarshalParam decodes and assigns a value from an HTML form.
+		// UnmarshalParam decodes and assigns a value from an form or query param.
 		UnmarshalParam(src string) error
 	}
 )

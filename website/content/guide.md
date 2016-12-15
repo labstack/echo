@@ -172,9 +172,9 @@ ls avatar.png
 
 ### Handling Request
 
-- Bind `JSON`, `XML`, `form` or `query` payload into Go struct based on `Content-Type` request header.
-- Render response as `JSON` or `XML` with status code.
-- Use the [BindUnmarshaler](https://godoc.org/github.com/labstack/echo#ParamUnmarshaler) interface to bind custom data types for `form` or `query` payloads. The standard [json.Unmarshaler](https://golang.org/pkg/encoding/json/#Unmarshaler) and [xml.Unmarshaler](https://golang.org/pkg/encoding/xml/#Unmarshaler) can of course be used for JSON and XML payloads, respectively.
+- Bind `json`, `xml`, `form` or `query` payload into Go struct based on `Content-Type`
+request header.
+- Render response as `json` or `xml` with status code.
 
 ```go
 type User struct {
