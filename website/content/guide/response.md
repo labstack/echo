@@ -15,6 +15,9 @@ code.
 *Example*
 
 ```go
+func(c echo.Context) error {
+  return c.String(http.StatusOK, "Hello, World!")
+}
 ```
 
 ## Send HTML (Reference to templates)
