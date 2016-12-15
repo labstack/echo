@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -31,8 +32,21 @@ type (
 		S           string
 		cantSet     string
 		DoesntExist string
+		T           Timestamp
+		Tptr        *Timestamp
 	}
+
+	// Timestamp is a simple datatype which implements the Scanner interface
+	// used for testing.
+	Timestamp time.Time
 )
+
+// UnmarshalParam unmarshals a value from an HTML form into a Timestamp value
+func (t *Timestamp) UnmarshalParam(src string) error {
+	ts, err := time.Parse(time.RFC3339, src)
+	*t = Timestamp(ts)
+	return err
+}
 
 func (t binderTestStruct) GetCantSet() string {
 	return t.cantSet
@@ -54,6 +68,8 @@ var values = map[string][]string{
 	"F64":     {"64.5"},
 	"S":       {"test"},
 	"cantSet": {"test"},
+	"T":       {"2016-12-06T19:09:05+01:00"},
+	"Tptr":    {"2016-12-06T19:09:05+01:00"},
 }
 
 func TestBinderJSON(t *testing.T) {
@@ -89,6 +105,35 @@ func TestBinderQueryParams(t *testing.T) {
 	if assert.NoError(t, err) {
 		assert.Equal(t, 1, u.ID)
 		assert.Equal(t, "Jon Snow", u.Name)
+	}
+}
+
+func TestBinderScanner(t *testing.T) {
+	e := New()
+	req, _ := http.NewRequest(GET, "/?ts=2016-12-06T19:09:05Z", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	var result struct {
+		T Timestamp `query:"ts"`
+	}
+	err := c.Bind(&result)
+	if assert.NoError(t, err) {
+		//		assert.Equal(t, Timestamp(reflect.TypeOf(&Timestamp{}), time.Date(2016, 12, 6, 19, 9, 5, 0, time.UTC)), result.T)
+		assert.Equal(t, Timestamp(time.Date(2016, 12, 6, 19, 9, 5, 0, time.UTC)), result.T)
+	}
+}
+
+func TestBinderScannerPtr(t *testing.T) {
+	e := New()
+	req, _ := http.NewRequest(GET, "/?ts=2016-12-06T19:09:05Z", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	var result struct {
+		Tptr *Timestamp `query:"ts"`
+	}
+	err := c.Bind(&result)
+	if assert.NoError(t, err) {
+		assert.Equal(t, Timestamp(time.Date(2016, 12, 6, 19, 9, 5, 0, time.UTC)), *result.Tptr)
 	}
 }
 
@@ -173,6 +218,10 @@ func TestBinderSetFields(t *testing.T) {
 	}
 	if assert.NoError(t, setBoolField("", val.FieldByName("B"))) {
 		assert.Equal(t, false, ts.B)
+	}
+
+	if assert.NoError(t, unmarshalField("2016-12-06T19:09:05Z", val.FieldByName("T"))) {
+		assert.Equal(t, Timestamp(time.Date(2016, 12, 6, 19, 9, 5, 0, time.UTC)), ts.T)
 	}
 }
 
