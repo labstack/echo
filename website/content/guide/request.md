@@ -162,8 +162,8 @@ $ curl http://localhost:1323/users/Joe
 
 ## Validate Data
 
-Echo doesn't have built-in data validation capabilities, however you can set a
-custom validator using `Echo#Validator` and leverage third-party [libraries](https://github.com/avelino/awesome-go#validation).
+Echo doesn't have a built-in data validation capabilities, however, you can register
+a custom validator using `Echo#Validator` and leverage third-party [libraries](https://github.com/avelino/awesome-go#validation).
 
 Example below uses https://github.com/go-playground/validator framework for validation:
 

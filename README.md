@@ -34,10 +34,16 @@
 
 **Use issues for everything**
 
-- Report issues
-- Discuss on chat before sending a pull request
-- Suggest new features or enhancements
-- Improve/fix documentation
+- For a small change, just send a PR.
+- For bigger changes open an issue for discussion before sending a PR.
+- PR should have:
+  - Test case
+  - Documentation
+  - Recipe (If it makes sense)
+- You can also contribute by:
+  - Reporting issues
+  - Suggesting new features or enhancements
+  - Improve/fix documentation
 
 ## Credits
 - [Vishal Rana](https://github.com/vishr) - Author

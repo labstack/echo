@@ -66,9 +66,12 @@ type (
 		Validator        Validator
 		Renderer         Renderer
 		AutoTLSManager   autocert.Manager
+		ReadTimeout      time.Duration
+		WriteTimeout     time.Duration
 		ShutdownTimeout  time.Duration
 		Color            *color.Color
 		Logger           Logger
+		stdLogger        *slog.Logger
 		server           *graceful.Server
 		tlsServer        *graceful.Server
 		premiddleware    []MiddlewareFunc
@@ -249,6 +252,7 @@ func New() (e *Echo) {
 	e.HTTPErrorHandler = e.DefaultHTTPErrorHandler
 	e.Binder = &DefaultBinder{}
 	e.Logger.SetLevel(log.OFF)
+	e.stdLogger = slog.New(e.Logger.Output(), e.Logger.Prefix()+": ", 0)
 	e.pool.New = func() interface{} {
 		return e.NewContext(nil, nil)
 	}
@@ -519,7 +523,12 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // Start starts the HTTP server.
 func (e *Echo) Start(address string) error {
-	return e.StartServer(&http.Server{Addr: address})
+	return e.StartServer(&http.Server{
+		Addr:         address,
+		ReadTimeout:  e.ReadTimeout,
+		WriteTimeout: e.WriteTimeout,
+		ErrorLog:     e.stdLogger,
+	})
 }
 
 // StartTLS starts the HTTPS server.
@@ -548,8 +557,11 @@ func (e *Echo) startTLS(address string, config *tls.Config) error {
 		config.NextProtos = append(config.NextProtos, "h2")
 	}
 	return e.StartServer(&http.Server{
-		Addr:      address,
-		TLSConfig: config,
+		Addr:         address,
+		ReadTimeout:  e.ReadTimeout,
+		WriteTimeout: e.WriteTimeout,
+		TLSConfig:    config,
+		ErrorLog:     e.stdLogger,
 	})
 }
 
@@ -559,7 +571,7 @@ func (e *Echo) StartServer(s *http.Server) error {
 	gs := &graceful.Server{
 		Server:  s,
 		Timeout: e.ShutdownTimeout,
-		Logger:  slog.New(e.Logger.Output(), e.Logger.Prefix()+": ", 0),
+		Logger:  e.stdLogger,
 	}
 	if s.TLSConfig == nil {
 		e.server = gs
