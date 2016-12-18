@@ -28,8 +28,7 @@ e.Use(middleware.BodyLimit("2M"))
 
 ```go
 e := echo.New()
-e.Use(middleware.BodyLimitWithConfig(middleware.BodyLimitConfig{},
-}))
+e.Use(middleware.BodyLimitWithConfig(middleware.BodyLimitConfig{}))
 ```
 
 ## Configuration
