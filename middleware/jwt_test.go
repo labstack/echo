@@ -65,6 +65,11 @@ func TestJWT(t *testing.T) {
 			info:    "Valid JWT",
 		},
 		{
+			hdrAuth: "Token" + " " + token,
+			config:  JWTConfig{AuthScheme: "Token", SigningKey: validKey},
+			info:    "Valid JWT with custom AuthScheme",
+		},
+		{
 			hdrAuth: validAuth,
 			config: JWTConfig{
 				Claims:     &jwtCustomClaims{},
