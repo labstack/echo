@@ -14,6 +14,10 @@ import (
 type (
 	// JWTConfig defines the config for JWT middleware.
 	JWTConfig struct {
+		// AuthScheme to define custom bearer variable in the Authorization header.
+		// Optional. Default value "Bearer"
+		AuthScheme string
+
 		// Skipper defines a function to skip middleware.
 		Skipper Skipper
 
@@ -60,6 +64,7 @@ const (
 var (
 	// DefaultJWTConfig is the default JWT auth middleware config.
 	DefaultJWTConfig = JWTConfig{
+		AuthScheme:    bearer,
 		Skipper:       defaultSkipper,
 		SigningMethod: AlgorithmHS256,
 		ContextKey:    "user",
@@ -86,6 +91,9 @@ func JWT(key []byte) echo.MiddlewareFunc {
 // See: `JWT()`.
 func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	// Defaults
+	if config.AuthScheme == "" {
+		config.AuthScheme = DefaultJWTConfig.AuthScheme
+	}
 	if config.Skipper == nil {
 		config.Skipper = DefaultJWTConfig.Skipper
 	}
@@ -114,7 +122,7 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 
 	// Initialize
 	parts := strings.Split(config.TokenLookup, ":")
-	extractor := jwtFromHeader(parts[1])
+	extractor := jwtFromHeader(parts[1], config.AuthScheme)
 	switch parts[0] {
 	case "query":
 		extractor = jwtFromQuery(parts[1])
@@ -151,11 +159,11 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 }
 
 // jwtFromHeader returns a `jwtExtractor` that extracts token from request header.
-func jwtFromHeader(header string) jwtExtractor {
+func jwtFromHeader(header string, authScheme string) jwtExtractor {
 	return func(c echo.Context) (string, error) {
 		auth := c.Request().Header.Get(header)
-		l := len(bearer)
-		if len(auth) > l+1 && auth[:l] == bearer {
+		l := len(authScheme)
+		if len(auth) > l+1 && auth[:l] == authScheme {
 			return auth[l+1:], nil
 		}
 		return "", errors.New("empty or invalid jwt in request header")
