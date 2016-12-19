@@ -1,6 +1,9 @@
 package echo
 
-import "net/http"
+import (
+	"net/http"
+	"net/url"
+)
 
 type (
 
@@ -372,7 +375,12 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 			i, l := 0, len(search)
 			for ; i < l && search[i] != '/'; i++ {
 			}
-			ctx.pvalues[n] = search[:i]
+			pv, err := url.QueryUnescape(search[:i])
+			if err == nil {
+				ctx.pvalues[n] = pv
+			} else {
+				ctx.pvalues[n] = search[:i]
+			}
 			n++
 			search = search[i:]
 			continue
