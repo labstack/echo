@@ -34,6 +34,10 @@ e.Use(middleware.JWTWithConfig(middleware.JWTConfig{
 ```go
 // JWTConfig defines the config for JWT middleware.
 JWTConfig struct {
+  // AuthScheme to be used in the Authorization header.
+  // Optional. Default value "Bearer".
+  AuthScheme string
+
   // Skipper defines a function to skip middleware.
   Skipper Skipper
 

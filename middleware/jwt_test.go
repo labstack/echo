@@ -30,7 +30,7 @@ func TestJWT(t *testing.T) {
 	token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ"
 	validKey := []byte("secret")
 	invalidKey := []byte("invalid-key")
-	validAuth := bearer + " " + token
+	validAuth := DefaultJWTConfig.AuthScheme + " " + token
 
 	for _, tc := range []struct {
 		expPanic   bool

@@ -14,8 +14,8 @@ import (
 type (
 	// JWTConfig defines the config for JWT middleware.
 	JWTConfig struct {
-		// AuthScheme to define custom bearer variable in the Authorization header.
-		// Optional. Default value "Bearer"
+		// AuthScheme to be used in the Authorization header.
+		// Optional. Default value "Bearer".
 		AuthScheme string
 
 		// Skipper defines a function to skip middleware.
@@ -52,10 +52,6 @@ type (
 	jwtExtractor func(echo.Context) (string, error)
 )
 
-const (
-	bearer = "Bearer"
-)
-
 // Algorithms
 const (
 	AlgorithmHS256 = "HS256"
@@ -64,7 +60,7 @@ const (
 var (
 	// DefaultJWTConfig is the default JWT auth middleware config.
 	DefaultJWTConfig = JWTConfig{
-		AuthScheme:    bearer,
+		AuthScheme:    "Bearer",
 		Skipper:       defaultSkipper,
 		SigningMethod: AlgorithmHS256,
 		ContextKey:    "user",
