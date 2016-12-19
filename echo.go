@@ -545,7 +545,7 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	c := e.pool.Get().(*Context)
-	h, e := e.router.Find(r.Method, r.URL.Path, c)
+	h, e := e.router.Find(r.Method, r.URL.EscapedPath(), c)
 	c.reset(r, w, e)
 
 	// Chain middleware with handler in the end
