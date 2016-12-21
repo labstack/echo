@@ -90,12 +90,16 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 	}
 }
 
+func (w *gzipResponseWriter) WriteHeader(code int) {
+	if code != http.StatusNoContent { // Issue #489
+		w.ResponseWriter.Header().Set(echo.HeaderContentEncoding, gzipScheme)
+	}
+	w.ResponseWriter.WriteHeader(code)
+}
+
 func (w *gzipResponseWriter) Write(b []byte) (int, error) {
 	if w.Header().Get(echo.HeaderContentType) == "" {
 		w.Header().Set(echo.HeaderContentType, http.DetectContentType(b))
-	}
-	if w.Header().Get(echo.HeaderContentEncoding) == "" {
-		w.Header().Set(echo.HeaderContentEncoding, gzipScheme)
 	}
 	return w.Writer.Write(b)
 }

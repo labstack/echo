@@ -5,16 +5,18 @@
   <meta http-equiv="x-ua-compatible" content="ie=edge">
   <meta name="description" content="{{ if ne .URL "/" }}{{ .Description }} | {{ end }}{{ .Site.Params.description }}">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="twitter:card" content="summary">
+  <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:site" content="@echo">
+  <meta name="twitter:creator" content="@labstack">
   <meta name="twitter:title" content="{{ if ne .URL "/" }}{{ .Title }} | {{ end }}{{ .Site.Title }}">
   <meta name="twitter:description" content="{{ if ne .URL "/" }}{{ .Description }} | {{ end }}{{ .Site.Params.description }}">
-  <meta name="twitter:image" content="{{ .Site.BaseURL }}/images/logo.png">
+  <meta name="twitter:image" content="{{ .Site.BaseURL }}/images/share.png">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ .Title }}">
   <meta property="og:title" content="{{ if ne .URL "/" }}{{ .Title }} | {{ end }}{{ .Site.Title }}">
-  <meta property="og:site_name" content="echo">
   <meta property="og:description" content="{{ if ne .URL "/" }}{{ .Description }} | {{ end }}{{ .Site.Params.description }}">
   <meta property="og:url" content="{{ .Site.BaseURL }}">
-  <meta property="og:image" content="{{ .Site.BaseURL }}/images/logo.png">
+  <meta property="og:image" content="{{ .Site.BaseURL }}/images/share.png">
   <title>
     {{ if ne .URL "/" }}{{ .Title }} | {{ end }}{{ .Site.Title }}
   </title>
