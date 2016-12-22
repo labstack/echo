@@ -67,23 +67,24 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 			res := c.Response()
 			res.Header().Add(echo.HeaderVary, echo.HeaderAcceptEncoding)
 			if strings.Contains(c.Request().Header.Get(echo.HeaderAcceptEncoding), gzipScheme) {
-				rw := res.Writer()
+				rw := res.Writer
 				w, err := gzip.NewWriterLevel(rw, config.Level)
 				if err != nil {
 					return err
 				}
 				defer func() {
+
 					if res.Size == 0 {
 						// We have to reset response to it's pristine state when
 						// nothing is written to body or error is returned.
 						// See issue #424, #407.
-						res.SetWriter(rw)
+						res.Writer = rw
 						w.Reset(ioutil.Discard)
 					}
 					w.Close()
 				}()
 				grw := &gzipResponseWriter{Writer: w, ResponseWriter: rw}
-				res.SetWriter(grw)
+				res.Writer = grw
 			}
 			return next(c)
 		}
