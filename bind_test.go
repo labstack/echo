@@ -34,15 +34,23 @@ type (
 		DoesntExist string
 		T           Timestamp
 		Tptr        *Timestamp
+		SA          StringArray
 	}
 
-	Timestamp time.Time
+	Timestamp   time.Time
+	TA          []Timestamp
+	StringArray []string
 )
 
 func (t *Timestamp) UnmarshalParam(src string) error {
 	ts, err := time.Parse(time.RFC3339, src)
 	*t = Timestamp(ts)
 	return err
+}
+
+func (a *StringArray) UnmarshalParam(src string) error {
+	*a = StringArray(strings.Split(src, ","))
+	return nil
 }
 
 func (t bindTestStruct) GetCantSet() string {
@@ -107,16 +115,21 @@ func TestBindQueryParams(t *testing.T) {
 
 func TestBindUnmarshalParam(t *testing.T) {
 	e := New()
-	req, _ := http.NewRequest(GET, "/?ts=2016-12-06T19:09:05Z", nil)
+	req, _ := http.NewRequest(GET, "/?ts=2016-12-06T19:09:05Z&sa=one,two,three&ta=2016-12-06T19:09:05Z&ta=2016-12-06T19:09:05Z", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	result := struct {
-		T Timestamp `query:"ts"`
+		T  Timestamp   `query:"ts"`
+		TA []Timestamp `query:"ta"`
+		SA StringArray `query:"sa"`
 	}{}
 	err := c.Bind(&result)
+	ts := Timestamp(time.Date(2016, 12, 6, 19, 9, 5, 0, time.UTC))
 	if assert.NoError(t, err) {
 		//		assert.Equal(t, Timestamp(reflect.TypeOf(&Timestamp{}), time.Date(2016, 12, 6, 19, 9, 5, 0, time.UTC)), result.T)
-		assert.Equal(t, Timestamp(time.Date(2016, 12, 6, 19, 9, 5, 0, time.UTC)), result.T)
+		assert.Equal(t, ts, result.T)
+		assert.Equal(t, StringArray([]string{"one", "two", "three"}), result.SA)
+		assert.Equal(t, []Timestamp{ts, ts}, result.TA)
 	}
 }
 
@@ -217,7 +230,9 @@ func TestBindSetFields(t *testing.T) {
 		assert.Equal(t, false, ts.B)
 	}
 
-	if assert.NoError(t, unmarshalField("2016-12-06T19:09:05Z", val.FieldByName("T"))) {
+	ok, err := unmarshalFieldNonPtr("2016-12-06T19:09:05Z", val.FieldByName("T"))
+	if assert.NoError(t, err) {
+		assert.Equal(t, ok, true)
 		assert.Equal(t, Timestamp(time.Date(2016, 12, 6, 19, 9, 5, 0, time.UTC)), ts.T)
 	}
 }
