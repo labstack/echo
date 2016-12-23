@@ -38,6 +38,7 @@ type (
 	}
 
 	Timestamp   time.Time
+	TA          []Timestamp
 	StringArray []string
 )
 
@@ -114,18 +115,21 @@ func TestBindQueryParams(t *testing.T) {
 
 func TestBindUnmarshalParam(t *testing.T) {
 	e := New()
-	req, _ := http.NewRequest(GET, "/?ts=2016-12-06T19:09:05Z&sa=one,two,three", nil)
+	req, _ := http.NewRequest(GET, "/?ts=2016-12-06T19:09:05Z&sa=one,two,three&ta=2016-12-06T19:09:05Z&ta=2016-12-06T19:09:05Z", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	result := struct {
 		T  Timestamp   `query:"ts"`
+		TA []Timestamp `query:"ta"`
 		SA StringArray `query:"sa"`
 	}{}
 	err := c.Bind(&result)
+	ts := Timestamp(time.Date(2016, 12, 6, 19, 9, 5, 0, time.UTC))
 	if assert.NoError(t, err) {
 		//		assert.Equal(t, Timestamp(reflect.TypeOf(&Timestamp{}), time.Date(2016, 12, 6, 19, 9, 5, 0, time.UTC)), result.T)
-		assert.Equal(t, Timestamp(time.Date(2016, 12, 6, 19, 9, 5, 0, time.UTC)), result.T)
+		assert.Equal(t, ts, result.T)
 		assert.Equal(t, StringArray([]string{"one", "two", "three"}), result.SA)
+		assert.Equal(t, []Timestamp{ts, ts}, result.TA)
 	}
 }
 
