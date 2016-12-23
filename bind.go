@@ -108,6 +108,14 @@ func (b *DefaultBinder) bindData(ptr interface{}, data map[string][]string, tag 
 			continue
 		}
 
+		// Call this first, in case we're dealing with an alias to an array type
+		if ok, err := unmarshalField(typeField.Type.Kind(), inputValue[0], structField); ok {
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
 		numElems := len(inputValue)
 		if structFieldKind == reflect.Slice && numElems > 0 {
 			sliceOf := structField.Type().Elem().Kind()
@@ -128,6 +136,11 @@ func (b *DefaultBinder) bindData(ptr interface{}, data map[string][]string, tag 
 }
 
 func setWithProperType(valueKind reflect.Kind, val string, structField reflect.Value) error {
+	// But also call it here, in case we're dealing with an array of BindUnmarshalers
+	if ok, err := unmarshalField(valueKind, val, structField); ok {
+		return err
+	}
+
 	switch valueKind {
 	case reflect.Int:
 		return setIntField(val, 0, structField)
@@ -157,33 +170,40 @@ func setWithProperType(valueKind reflect.Kind, val string, structField reflect.V
 		return setFloatField(val, 64, structField)
 	case reflect.String:
 		structField.SetString(val)
-	case reflect.Ptr:
-		return unmarshalFieldPtr(val, structField)
 	default:
-		return unmarshalField(val, structField)
+		return errors.New("unknown type")
 	}
 	return nil
 }
 
-func unmarshalField(value string, field reflect.Value) error {
+func unmarshalField(valueKind reflect.Kind, val string, field reflect.Value) (bool, error) {
+	switch valueKind {
+	case reflect.Ptr:
+		return unmarshalFieldPtr(val, field)
+	default:
+		return unmarshalFieldNonPtr(val, field)
+	}
+}
+
+func unmarshalFieldNonPtr(value string, field reflect.Value) (bool, error) {
 	ptr := reflect.New(field.Type())
 	if ptr.CanInterface() {
 		iface := ptr.Interface()
 		if unmarshaler, ok := iface.(BindUnmarshaler); ok {
 			err := unmarshaler.UnmarshalParam(value)
 			field.Set(ptr.Elem())
-			return err
+			return true, err
 		}
 	}
-	return errors.New("unknown type")
+	return false, nil
 }
 
-func unmarshalFieldPtr(value string, field reflect.Value) error {
+func unmarshalFieldPtr(value string, field reflect.Value) (bool, error) {
 	if field.IsNil() {
 		// Initialize the pointer to a nil value
 		field.Set(reflect.New(field.Type().Elem()))
 	}
-	return unmarshalField(value, field.Elem())
+	return unmarshalFieldNonPtr(value, field.Elem())
 }
 
 func setIntField(value string, bitSize int, field reflect.Value) error {
