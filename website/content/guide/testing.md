@@ -152,6 +152,21 @@ q.Set("email", "jon@labstack.com")
 req, err := http.NewRequest(echo.POST, "/?"+q.Encode(), nil)
 ```
 
+## Testing with httptest
+
+```go
+e := echo.New()
+e.GET("/hello", func(c echo.Context) error {
+  return c.String(200, "World")
+})
+	
+
+server := httptest.NewServer(e)
+defer server.Close()
+
+// Do actual http request like you would with a normal httptest instance
+```
+
 ## Testing Middleware
 
 *TBD*
