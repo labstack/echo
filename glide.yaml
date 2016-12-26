@@ -20,6 +20,8 @@ import:
   - websocket
 - package: google.golang.org/appengine
 - package: gopkg.in/mgo.v2
+  subpackages:
+  - bson
 testImport:
 - package: github.com/stretchr/testify
   subpackages:

@@ -39,7 +39,7 @@ func login(c echo.Context) error {
 		if err != nil {
 			return err
 		}
-		return c.JSON(http.StatusOK, map[string]string{
+		return c.JSON(http.StatusOK, echo.Map{
 			"token": t,
 		})
 	}

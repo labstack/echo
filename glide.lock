@@ -1,5 +1,5 @@
-hash: 19ec155dd3ba25b967dd609c52b748b5302a30bede03936645c12fef7e9edd75
-updated: 2016-12-05T20:47:56.995548765-08:00
+hash: 23f3636cfa67541062f212b8285762ca142c6bb55889f243bf0574ba00e0ff92
+updated: 2016-12-25T21:41:41.108263974-08:00
 imports:
 - name: github.com/daaku/go.zipexe
   version: a5fe2436ffcb3236e175e5149162b41cd28bd27d
@@ -14,11 +14,11 @@ imports:
   subpackages:
   - proto
 - name: github.com/gorilla/websocket
-  version: e8f0f8aaa98dfb6586cbdf2978d511e3199a960a
+  version: 3ab3a8b8831546bd18fd182c20687ca853b2bb13
 - name: github.com/kardianos/osext
   version: c2c54e542fb797ad986b31721e1baedf214ca413
 - name: github.com/labstack/gommon
-  version: 447fe7433567c785af957e549aadae2bf2000071
+  version: b2765095a572012ea4828c9596fefd824c2aee72
   subpackages:
   - bytes
   - color
@@ -33,22 +33,22 @@ imports:
 - name: github.com/valyala/fasttemplate
   version: 3b874956e03f1636d171bda64b130f9135f42cff
 - name: golang.org/x/crypto
-  version: 8a549a1948fc5271eb24f36dcb0d3b47dec75a16
+  version: f6b343c37ca80bfa8ea539da67a0b621f84fab1d
   subpackages:
   - acme
   - acme/autocert
 - name: golang.org/x/net
-  version: 97edce0b2e423f6a8debb459af47f4a3cb4ff954
+  version: 45e771701b814666a7eb299e6c7a57d0b1799e91
   subpackages:
   - context
   - context/ctxhttp
   - websocket
 - name: golang.org/x/sys
-  version: ca83bd2cb9abb47839b50eb4da612f00158f5870
+  version: d75a52659825e75fff6158388dddc6a5b04f9ba5
   subpackages:
   - unix
 - name: google.golang.org/appengine
-  version: ca59ef35f409df61fa4a5f8290ff289b37eccfb8
+  version: 08a149cfaee099e6ce4be01c0113a78c85ee1dee
   subpackages:
   - internal
   - internal/app_identity
@@ -74,6 +74,6 @@ testImports:
   subpackages:
   - difflib
 - name: github.com/stretchr/testify
-  version: 18a02ba4a312f95da08ff4cfc0055750ce50ae9e
+  version: 2402e8e7a02fc811447d11f881aa9746cdc57983
   subpackages:
   - assert
