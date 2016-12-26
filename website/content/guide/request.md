@@ -11,7 +11,7 @@ description = "Handling HTTP request in Echo"
 
 To bind request body into a Go type use `Context#Bind(i interface{})`.
 The default binder supports decoding application/json, application/xml and
-application/x-www-form-urlencoded data based on the Context-Type header.
+application/x-www-form-urlencoded data based on the Content-Type header.
 
 Example below binds the request payload into `User` struct based on tags:
 
@@ -79,7 +79,7 @@ func (cb *CustomBinder) Bind(i interface{}, c echo.Context) (err error) {
 	}
 
 	// Define your custom implementation
-	
+
 	return
 }
 ```
