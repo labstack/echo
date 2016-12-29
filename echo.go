@@ -289,9 +289,9 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 		code = he.Code
 		msg = he.Message
 	} else {
-		msg = err.Error()
+		msg = http.StatusText(code)
 	}
-	if reflect.TypeOf(msg).Kind() != reflect.Ptr {
+	if _, ok := msg.(string); ok {
 		msg = Map{"message": msg}
 	}
 
