@@ -25,7 +25,7 @@ type (
 		// SetRequest sets `*http.Request`.
 		SetRequest(r *http.Request)
 
-		// Request returns `*Response`.
+		// Response returns `*Response`.
 		Response() *Response
 
 		// IsTLS returns true if HTTP connection is TLS otherwise false.
