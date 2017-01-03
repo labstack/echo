@@ -80,7 +80,6 @@ import (
 	"testing"
 
 	"github.com/labstack/echo"
-	"github.com/labstack/echo/engine/standard"
 	"github.com/stretchr/testify/assert"
 )
 
