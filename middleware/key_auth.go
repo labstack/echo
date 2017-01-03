@@ -107,15 +107,17 @@ func KeyAuthWithConfig(config KeyAuthConfig) echo.MiddlewareFunc {
 func keyFromHeader(header string, authScheme string) keyExtractor {
 	return func(c echo.Context) (string, error) {
 		auth := c.Request().Header.Get(header)
+		if auth == "" {
+			return "", errors.New("Missing key in request header")
+		}
 		if header == echo.HeaderAuthorization {
 			l := len(authScheme)
 			if len(auth) > l+1 && auth[:l] == authScheme {
 				return auth[l+1:], nil
 			}
-		} else {
-			return auth, nil
+			return "", errors.New("Invalid key in request header")
 		}
-		return "", errors.New("Missing or invalid key in request header")
+		return auth, nil
 	}
 }
 
