@@ -38,15 +38,15 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 	}
 	ctype := req.Header.Get(HeaderContentType)
 	if req.ContentLength == 0 {
-		return NewHTTPError(http.StatusBadRequest, "request body can't be empty")
+		return NewHTTPError(http.StatusBadRequest, "Request body can't be empty")
 	}
 	switch {
 	case strings.HasPrefix(ctype, MIMEApplicationJSON):
 		if err = json.NewDecoder(req.Body).Decode(i); err != nil {
 			if ute, ok := err.(*json.UnmarshalTypeError); ok {
-				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("unmarshal type error: expected=%v, got=%v, offset=%v", ute.Type, ute.Value, ute.Offset))
+				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Unmarshal type error: expected=%v, got=%v, offset=%v", ute.Type, ute.Value, ute.Offset))
 			} else if se, ok := err.(*json.SyntaxError); ok {
-				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("syntax error: offset=%v, error=%v", se.Offset, se.Error()))
+				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Syntax error: offset=%v, error=%v", se.Offset, se.Error()))
 			} else {
 				return NewHTTPError(http.StatusBadRequest, err.Error())
 			}
@@ -54,9 +54,9 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 	case strings.HasPrefix(ctype, MIMEApplicationXML):
 		if err = xml.NewDecoder(req.Body).Decode(i); err != nil {
 			if ute, ok := err.(*xml.UnsupportedTypeError); ok {
-				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("unsupported type error: type=%v, error=%v", ute.Type, ute.Error()))
+				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Unsupported type error: type=%v, error=%v", ute.Type, ute.Error()))
 			} else if se, ok := err.(*xml.SyntaxError); ok {
-				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("syntax error: line=%v, error=%v", se.Line, se.Error()))
+				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Syntax error: line=%v, error=%v", se.Line, se.Error()))
 			} else {
 				return NewHTTPError(http.StatusBadRequest, err.Error())
 			}
@@ -80,7 +80,7 @@ func (b *DefaultBinder) bindData(ptr interface{}, data map[string][]string, tag 
 	val := reflect.ValueOf(ptr).Elem()
 
 	if typ.Kind() != reflect.Struct {
-		return errors.New("binding element must be a struct")
+		return errors.New("Binding element must be a struct")
 	}
 
 	for i := 0; i < typ.NumField(); i++ {

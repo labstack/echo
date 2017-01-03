@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"encoding/base64"
+	"net/http"
 
 	"github.com/labstack/echo"
 )
@@ -36,7 +37,7 @@ var (
 //
 // For valid credentials it calls the next handler.
 // For invalid credentials, it sends "401 - Unauthorized" response.
-// For empty or invalid `Authorization` header, it sends "400 - Bad Request" response.
+// For missing or invalid `Authorization` header, it sends "400 - Bad Request" response.
 func BasicAuth(fn BasicAuthValidator) echo.MiddlewareFunc {
 	c := DefaultBasicAuthConfig
 	c.Validator = fn
@@ -48,7 +49,7 @@ func BasicAuth(fn BasicAuthValidator) echo.MiddlewareFunc {
 func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 	// Defaults
 	if config.Validator == nil {
-		panic("basic-auth middleware requires validator function")
+		panic("basic-auth middleware requires a validator function")
 	}
 	if config.Skipper == nil {
 		config.Skipper = DefaultBasicAuthConfig.Skipper
@@ -61,6 +62,9 @@ func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 			}
 
 			auth := c.Request().Header.Get(echo.HeaderAuthorization)
+			if auth == "" {
+				return echo.NewHTTPError(http.StatusBadRequest, "Missing authorization header")
+			}
 			l := len(basic)
 
 			if len(auth) > l+1 && auth[:l] == basic {
@@ -77,7 +81,10 @@ func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 						}
 					}
 				}
+			} else {
+				return echo.NewHTTPError(http.StatusBadRequest, "Invalid authorization header")
 			}
+
 			// Need to return `401` for browsers to pop-up login box.
 			c.Response().Header().Set(echo.HeaderWWWAuthenticate, basic+" realm=Restricted")
 			return echo.ErrUnauthorized

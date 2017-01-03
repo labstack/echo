@@ -14,24 +14,20 @@ import (
 type (
 	// JWTConfig defines the config for JWT middleware.
 	JWTConfig struct {
-		// AuthScheme to be used in the Authorization header.
-		// Optional. Default value "Bearer".
-		AuthScheme string
-
 		// Skipper defines a function to skip middleware.
 		Skipper Skipper
 
 		// Signing key to validate token.
 		// Required.
-		SigningKey interface{} `json:"signing_key"`
+		SigningKey interface{}
 
 		// Signing method, used to check token signing method.
 		// Optional. Default value HS256.
-		SigningMethod string `json:"signing_method"`
+		SigningMethod string
 
 		// Context key to store user information from the token into context.
 		// Optional. Default value "user".
-		ContextKey string `json:"context_key"`
+		ContextKey string
 
 		// Claims are extendable claims data defining token content.
 		// Optional. Default value jwt.MapClaims
@@ -44,7 +40,11 @@ type (
 		// - "header:<name>"
 		// - "query:<name>"
 		// - "cookie:<name>"
-		TokenLookup string `json:"token_lookup"`
+		TokenLookup string
+
+		// AuthScheme to be used in the Authorization header.
+		// Optional. Default value "Bearer".
+		AuthScheme string
 
 		keyFunc jwt.Keyfunc
 	}
@@ -60,11 +60,11 @@ const (
 var (
 	// DefaultJWTConfig is the default JWT auth middleware config.
 	DefaultJWTConfig = JWTConfig{
-		AuthScheme:    "Bearer",
 		Skipper:       defaultSkipper,
 		SigningMethod: AlgorithmHS256,
 		ContextKey:    "user",
 		TokenLookup:   "header:" + echo.HeaderAuthorization,
+		AuthScheme:    "Bearer",
 		Claims:        jwt.MapClaims{},
 	}
 )
@@ -73,7 +73,7 @@ var (
 //
 // For valid token, it sets the user in context and calls next handler.
 // For invalid token, it returns "401 - Unauthorized" error.
-// For empty token, it returns "400 - Bad Request" error.
+// For missing token, it returns "400 - Bad Request" error.
 //
 // See: https://jwt.io/introduction
 // See `JWTConfig.TokenLookup`
@@ -87,9 +87,6 @@ func JWT(key []byte) echo.MiddlewareFunc {
 // See: `JWT()`.
 func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	// Defaults
-	if config.AuthScheme == "" {
-		config.AuthScheme = DefaultJWTConfig.AuthScheme
-	}
 	if config.Skipper == nil {
 		config.Skipper = DefaultJWTConfig.Skipper
 	}
@@ -107,6 +104,9 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	}
 	if config.TokenLookup == "" {
 		config.TokenLookup = DefaultJWTConfig.TokenLookup
+	}
+	if config.AuthScheme == "" {
+		config.AuthScheme = DefaultJWTConfig.AuthScheme
 	}
 	config.keyFunc = func(t *jwt.Token) (interface{}, error) {
 		// Check the signing method
@@ -154,7 +154,7 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	}
 }
 
-// jwtFromHeader returns a `jwtExtractor` that extracts token from request header.
+// jwtFromHeader returns a `jwtExtractor` that extracts token from the request header.
 func jwtFromHeader(header string, authScheme string) jwtExtractor {
 	return func(c echo.Context) (string, error) {
 		auth := c.Request().Header.Get(header)
@@ -162,28 +162,27 @@ func jwtFromHeader(header string, authScheme string) jwtExtractor {
 		if len(auth) > l+1 && auth[:l] == authScheme {
 			return auth[l+1:], nil
 		}
-		return "", errors.New("empty or invalid jwt in request header")
+		return "", errors.New("Missing or invalid jwt in request header")
 	}
 }
 
-// jwtFromQuery returns a `jwtExtractor` that extracts token from query string.
+// jwtFromQuery returns a `jwtExtractor` that extracts token from the query string.
 func jwtFromQuery(param string) jwtExtractor {
 	return func(c echo.Context) (string, error) {
 		token := c.QueryParam(param)
-		var err error
 		if token == "" {
-			return "", errors.New("empty jwt in query string")
+			return "", errors.New("Missing jwt in query string")
 		}
-		return token, err
+		return token, nil
 	}
 }
 
-// jwtFromCookie returns a `jwtExtractor` that extracts token from named cookie.
+// jwtFromCookie returns a `jwtExtractor` that extracts token from the named cookie.
 func jwtFromCookie(name string) jwtExtractor {
 	return func(c echo.Context) (string, error) {
 		cookie, err := c.Cookie(name)
 		if err != nil {
-			return "", errors.New("empty jwt in cookie")
+			return "", errors.New("Missing jwt in cookie")
 		}
 		return cookie.Value, nil
 	}

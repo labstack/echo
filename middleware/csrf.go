@@ -143,7 +143,7 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 					return err
 				}
 				if !validateCSRFToken(token, clientToken) {
-					return echo.NewHTTPError(http.StatusForbidden, "csrf token is invalid")
+					return echo.NewHTTPError(http.StatusForbidden, "CSRF token is invalid")
 				}
 			}
 
@@ -187,7 +187,7 @@ func csrfTokenFromForm(param string) csrfTokenExtractor {
 	return func(c echo.Context) (string, error) {
 		token := c.FormValue(param)
 		if token == "" {
-			return "", errors.New("empty csrf token in form param")
+			return "", errors.New("Missing csrf token in form param")
 		}
 		return token, nil
 	}
@@ -199,7 +199,7 @@ func csrfTokenFromQuery(param string) csrfTokenExtractor {
 	return func(c echo.Context) (string, error) {
 		token := c.QueryParam(param)
 		if token == "" {
-			return "", errors.New("empty csrf token in query param")
+			return "", errors.New("Missing csrf token in query param")
 		}
 		return token, nil
 	}
