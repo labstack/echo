@@ -62,27 +62,26 @@ func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 			}
 
 			auth := c.Request().Header.Get(echo.HeaderAuthorization)
-			if auth == "" {
-				return echo.NewHTTPError(http.StatusBadRequest, "Missing authorization header")
-			}
-			l := len(basic)
+			if auth != "" {
+				l := len(basic)
 
-			if len(auth) > l+1 && auth[:l] == basic {
-				b, err := base64.StdEncoding.DecodeString(auth[l+1:])
-				if err != nil {
-					return err
-				}
-				cred := string(b)
-				for i := 0; i < len(cred); i++ {
-					if cred[i] == ':' {
-						// Verify credentials
-						if config.Validator(cred[:i], cred[i+1:]) {
-							return next(c)
+				if len(auth) > l + 1 && auth[:l] == basic {
+					b, err := base64.StdEncoding.DecodeString(auth[l + 1:])
+					if err != nil {
+						return err
+					}
+					cred := string(b)
+					for i := 0; i < len(cred); i++ {
+						if cred[i] == ':' {
+							// Verify credentials
+							if config.Validator(cred[:i], cred[i + 1:]) {
+								return next(c)
+							}
 						}
 					}
+				} else {
+					return echo.NewHTTPError(http.StatusBadRequest, "Invalid authorization header")
 				}
-			} else {
-				return echo.NewHTTPError(http.StatusBadRequest, "Invalid authorization header")
 			}
 
 			// Need to return `401` for browsers to pop-up login box.
