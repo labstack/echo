@@ -15,7 +15,7 @@ func TestKeyAuth(t *testing.T) {
 	res := httptest.NewRecorder()
 	c := e.NewContext(req, res)
 	config := KeyAuthConfig{
-		Validator: func(key string) bool {
+		Validator: func(key string, c echo.Context) bool {
 			return key == "valid-key"
 		},
 	}
