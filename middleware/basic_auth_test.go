@@ -40,7 +40,8 @@ func TestBasicAuth(t *testing.T) {
 	// Missing Authorization header
 	req.Header.Del(echo.HeaderAuthorization)
 	he = h(c).(*echo.HTTPError)
-	assert.Equal(t, http.StatusBadRequest, he.Code)
+	assert.Equal(t, http.StatusUnauthorized, he.Code)
+	assert.Equal(t, basic+" realm=Restricted", res.Header().Get(echo.HeaderWWWAuthenticate))
 
 	// Invalid Authorization header
 	auth = base64.StdEncoding.EncodeToString([]byte("invalid"))
