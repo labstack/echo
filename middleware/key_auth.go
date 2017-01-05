@@ -115,7 +115,7 @@ func keyFromHeader(header string, authScheme string) keyExtractor {
 			if len(auth) > l+1 && auth[:l] == authScheme {
 				return auth[l+1:], nil
 			}
-			return "", errors.New("Invalid key in request header")
+			return "", errors.New("Invalid key in the request header")
 		}
 		return auth, nil
 	}
@@ -126,7 +126,7 @@ func keyFromQuery(param string) keyExtractor {
 	return func(c echo.Context) (string, error) {
 		key := c.QueryParam(param)
 		if key == "" {
-			return "", errors.New("Missing key in query string")
+			return "", errors.New("Missing key in the query string")
 		}
 		return key, nil
 	}
