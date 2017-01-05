@@ -547,5 +547,5 @@ func (c *context) Reset(r *http.Request, w http.ResponseWriter) {
 	c.store = nil
 	c.request = r
 	c.response.reset(w)
-	c.handler = NotFoundHandler
+	c.handler = c.echo.NotFoundHandler
 }

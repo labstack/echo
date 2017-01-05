@@ -187,6 +187,15 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 	}
 }
 
+func (r *Router) checkMethodNotAllowed(n *node) HandlerFunc {
+	for _, m := range methods {
+		if h := n.findHandler(m); h != nil {
+			return r.echo.MethodNotAllowedHandler
+		}
+	}
+	return r.echo.NotFoundHandler
+}
+
 func newNode(t kind, pre string, p *node, c children, mh *methodHandler, ppath string, pnames []string) *node {
 	return &node{
 		kind:          t,
@@ -277,15 +286,6 @@ func (n *node) findHandler(method string) HandlerFunc {
 	default:
 		return nil
 	}
-}
-
-func (n *node) checkMethodNotAllowed() HandlerFunc {
-	for _, m := range methods {
-		if h := n.findHandler(m); h != nil {
-			return MethodNotAllowedHandler
-		}
-	}
-	return NotFoundHandler
 }
 
 // Find lookup a handler registed for method and path. It also parses URL for path
@@ -414,7 +414,7 @@ End:
 
 	// NOTE: Slow zone...
 	if context.Handler() == nil {
-		context.SetHandler(cn.checkMethodNotAllowed())
+		context.SetHandler(r.checkMethodNotAllowed(cn))
 
 		// Dig further for any, might have an empty value for *, e.g.
 		// serving a directory. Issue #207.
@@ -424,7 +424,7 @@ End:
 		if h := cn.findHandler(method); h != nil {
 			context.SetHandler(h)
 		} else {
-			context.SetHandler(cn.checkMethodNotAllowed())
+			context.SetHandler(r.checkMethodNotAllowed(cn))
 		}
 		context.SetPath(cn.ppath)
 		context.SetParamNames(cn.pnames...)
