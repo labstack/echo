@@ -140,7 +140,7 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 				// Validate token only for requests which are not defined as 'safe' by RFC7231
 				clientToken, err := extractor(c)
 				if err != nil {
-					return err
+					return echo.NewHTTPError(http.StatusForbidden, "csrf token is missing")
 				}
 				if !validateCSRFToken(token, clientToken) {
 					return echo.NewHTTPError(http.StatusForbidden, "Invalid csrf token")
