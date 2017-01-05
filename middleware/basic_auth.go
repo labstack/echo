@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"encoding/base64"
-	"net/http"
 
 	"github.com/labstack/echo"
 )
@@ -19,7 +18,7 @@ type (
 	}
 
 	// BasicAuthValidator defines a function to validate BasicAuth credentials.
-	BasicAuthValidator func(string, string) bool
+	BasicAuthValidator func(string, string, echo.Context) bool
 )
 
 const (
@@ -36,8 +35,7 @@ var (
 // BasicAuth returns an BasicAuth middleware.
 //
 // For valid credentials it calls the next handler.
-// For invalid credentials, it sends "401 - Unauthorized" response.
-// For missing or invalid `Authorization` header, it sends "400 - Bad Request" response.
+// For missing or invalid credentials, it sends "401 - Unauthorized" response.
 func BasicAuth(fn BasicAuthValidator) echo.MiddlewareFunc {
 	c := DefaultBasicAuthConfig
 	c.Validator = fn
@@ -62,9 +60,6 @@ func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 			}
 
 			auth := c.Request().Header.Get(echo.HeaderAuthorization)
-			if auth == "" {
-				return echo.NewHTTPError(http.StatusBadRequest, "Missing authorization header")
-			}
 			l := len(basic)
 
 			if len(auth) > l+1 && auth[:l] == basic {
@@ -76,13 +71,11 @@ func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 				for i := 0; i < len(cred); i++ {
 					if cred[i] == ':' {
 						// Verify credentials
-						if config.Validator(cred[:i], cred[i+1:]) {
+						if config.Validator(cred[:i], cred[i+1:], c) {
 							return next(c)
 						}
 					}
 				}
-			} else {
-				return echo.NewHTTPError(http.StatusBadRequest, "Invalid authorization header")
 			}
 
 			// Need to return `401` for browsers to pop-up login box.

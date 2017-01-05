@@ -15,7 +15,7 @@ func TestBasicAuth(t *testing.T) {
 	req, _ := http.NewRequest(echo.GET, "/", nil)
 	res := httptest.NewRecorder()
 	c := e.NewContext(req, res)
-	f := func(u, p string) bool {
+	f := func(u, p string, c echo.Context) bool {
 		if u == "joe" && p == "secret" {
 			return true
 		}
@@ -40,11 +40,11 @@ func TestBasicAuth(t *testing.T) {
 	// Missing Authorization header
 	req.Header.Del(echo.HeaderAuthorization)
 	he = h(c).(*echo.HTTPError)
-	assert.Equal(t, http.StatusBadRequest, he.Code)
+	assert.Equal(t, http.StatusUnauthorized, he.Code)
 
 	// Invalid Authorization header
 	auth = base64.StdEncoding.EncodeToString([]byte("invalid"))
 	req.Header.Set(echo.HeaderAuthorization, auth)
 	he = h(c).(*echo.HTTPError)
-	assert.Equal(t, http.StatusBadRequest, he.Code)
+	assert.Equal(t, http.StatusUnauthorized, he.Code)
 }

@@ -10,8 +10,7 @@ description = "Basic auth middleware for Echo"
 Basic auth middleware provides an HTTP basic authentication.
 
 - For valid credentials it calls the next handler.
-- For invalid credentials, it sends "401 - Unauthorized" response.
-- For missing or invalid `Authorization` header, it sends "400 - Bad Request" response.
+- For missing or invalid credentials, it sends "401 - Unauthorized" response.
 
 *Usage*
 
