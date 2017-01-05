@@ -111,7 +111,7 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	config.keyFunc = func(t *jwt.Token) (interface{}, error) {
 		// Check the signing method
 		if t.Method.Alg() != config.SigningMethod {
-			return nil, fmt.Errorf("unexpected jwt signing method=%v", t.Header["alg"])
+			return nil, fmt.Errorf("Unexpected jwt signing method=%v", t.Header["alg"])
 		}
 		return config.SigningKey, nil
 	}
@@ -162,7 +162,7 @@ func jwtFromHeader(header string, authScheme string) jwtExtractor {
 		if len(auth) > l+1 && auth[:l] == authScheme {
 			return auth[l+1:], nil
 		}
-		return "", errors.New("Missing or invalid jwt in request header")
+		return "", errors.New("Missing or invalid jwt in the request header")
 	}
 }
 
@@ -171,7 +171,7 @@ func jwtFromQuery(param string) jwtExtractor {
 	return func(c echo.Context) (string, error) {
 		token := c.QueryParam(param)
 		if token == "" {
-			return "", errors.New("Missing jwt in query string")
+			return "", errors.New("Missing jwt in the query string")
 		}
 		return token, nil
 	}
@@ -182,7 +182,7 @@ func jwtFromCookie(name string) jwtExtractor {
 	return func(c echo.Context) (string, error) {
 		cookie, err := c.Cookie(name)
 		if err != nil {
-			return "", errors.New("Missing jwt in cookie")
+			return "", errors.New("Missing jwt in the cookie")
 		}
 		return cookie.Value, nil
 	}
