@@ -93,16 +93,20 @@ func (b *DefaultBinder) bindData(ptr interface{}, data map[string][]string, tag 
 		inputFieldName := typeField.Tag.Get(tag)
 
 		if inputFieldName == "" {
-			inputFieldName = typeField.Name
-			// If tag is nil, we inspect if the field is a struct.
-			if structFieldKind == reflect.Struct {
-				err := b.bindData(structField.Addr().Interface(), data, tag)
-				if err != nil {
-					return err
+			inputFieldName = typeField.Tag.Get("form")
+			if inputFieldName == "" {
+				inputFieldName = typeField.Name
+				// If tag is nil, we inspect if the field is a struct.
+				if structFieldKind == reflect.Struct {
+					err := b.bindData(structField.Addr().Interface(), data, tag)
+					if err != nil {
+						return err
+					}
+					continue
 				}
-				continue
 			}
 		}
+		
 		inputValue, exists := data[inputFieldName]
 		if !exists {
 			continue
