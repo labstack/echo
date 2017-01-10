@@ -1,6 +1,6 @@
 +++
 title = "Middleware"
-description = "Middleware"
+description = "Echo middleware"
 type = "middleware"
 [menu.main]
   name = "Middleware"
@@ -105,4 +105,4 @@ e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
 
 Example above skips Logger middleware when request host starts with localhost.
 
-## [Writing Custom Middleware]({{< ref "recipes/middleware.md">}})
+## [Writing Custom Middleware]({{< ref "examples/middleware.md">}})

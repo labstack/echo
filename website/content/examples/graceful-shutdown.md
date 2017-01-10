@@ -3,7 +3,7 @@ title = "Graceful Shutdown Example"
 description = "Graceful shutdown example for Echo"
 [menu.main]
   name = "Graceful Shutdown"
-  parent = "recipes"
+  parent = "examples"
   weight = 13
 +++
 

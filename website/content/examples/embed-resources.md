@@ -3,7 +3,7 @@ title = "Embed Resources Example"
 description = "Embed resources example for Echo"
 [menu.main]
   name = "Embed Resources"
-  parent = "recipes"
+  parent = "examples"
   weight = 14
 +++
 

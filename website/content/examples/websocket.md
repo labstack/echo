@@ -3,7 +3,7 @@ title = "WebSocket Example"
 description = "WebSocket example for Echo"
 [menu.main]
   name = "WebSocket"
-  parent = "recipes"
+  parent = "examples"
   weight = 5
 +++
 

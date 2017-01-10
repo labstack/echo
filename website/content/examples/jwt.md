@@ -4,7 +4,7 @@ description = "JWT example for Echo"
 [menu.main]
   name = "JWT"
   identifier = "recipe-jwt"
-  parent = "recipes"
+  parent = "examples"
   weight = 11
 +++
 

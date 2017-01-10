@@ -42,7 +42,7 @@ description = "Migration"
 - Dropped support for `fasthttp`
 - Dropped deprecated API
 - Moved `Logger` interface to root level
-- Moved website and recipes to the main repo
+- Moved website and examples to the main repo
 - Updated docs and fixed numerous issues
 
-## [Recipes](/recipes/hello-world)
+## [Examples](/examples/hello-world)

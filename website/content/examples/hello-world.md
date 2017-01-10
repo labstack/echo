@@ -3,7 +3,7 @@ title = "Hello World Example"
 description = "Hello world example for Echo"
 [menu.main]
   name = "Hello World"
-  parent = "recipes"
+  parent = "examples"
   weight = 1
 +++
 

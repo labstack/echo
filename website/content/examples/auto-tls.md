@@ -3,7 +3,7 @@ title = "Auto TLS Example"
 description = "Automatic TLS certificates from Let's Encrypt example for Echo"
 [menu.main]
   name = "Auto TLS"
-  parent = "recipes"
+  parent = "examples"
   weight = 2
 +++
 

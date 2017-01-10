@@ -3,7 +3,7 @@ title = "Twitter Like API Example"
 description = "Twitter Like API example for Echo"
 [menu.main]
   name = "Twitter"
-  parent = "recipes"
+  parent = "examples"
   weight = 2 
 +++
 

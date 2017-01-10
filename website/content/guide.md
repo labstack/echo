@@ -1,6 +1,6 @@
 +++
 title = "Guide"
-description = "Guide"
+description = "Echo guide"
 type = "guide"
 [menu.main]
   name = "Guide"

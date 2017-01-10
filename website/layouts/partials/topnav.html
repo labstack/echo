@@ -11,6 +11,8 @@
         <a{{ if or ($currentNode.HasMenuCurrent "main" .) ($currentNode.IsMenuCurrent "main" .) }} class="active"{{ end }} href="{{ .URL }}">{{ .Name }}</a>
       {{ end }}
     </span>
-    <span class="w3-xxlarge hide-large" onclick="openSidenav()">&#9776;</span>
+    <button class="hamburger hide-large" onclick="toggleSidenav()">
+      <span></span>
+    </button>
   </nav>
 </div>

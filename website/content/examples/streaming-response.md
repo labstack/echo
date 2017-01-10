@@ -3,7 +3,7 @@ title = "Streaming Response Example"
 description = "Streaming response example for Echo"
 [menu.main]
   name = "Streaming Response"
-  parent = "recipes"
+  parent = "examples"
   weight = 3
 +++
 

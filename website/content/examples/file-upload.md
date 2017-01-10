@@ -3,7 +3,7 @@ title = "File Upload Example"
 description = "File upload example for Echo"
 [menu.main]
   name = "File Upload"
-  parent = "recipes"
+  parent = "examples"
   weight = 7
 +++
 
