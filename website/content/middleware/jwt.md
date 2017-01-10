@@ -80,4 +80,4 @@ DefaultJWTConfig = JWTConfig{
 }
 ```
 
-## [Recipe]({{< ref "examples/jwt.md">}})
+## [Example]({{< ref "examples/jwt.md">}})
