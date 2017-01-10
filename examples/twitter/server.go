@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
-	"github.com/labstack/echo/recipe/twitter/handler"
+	"github.com/labstack/echo/examples/twitter/handler"
 	"github.com/labstack/gommon/log"
 	mgo "gopkg.in/mgo.v2"
 )
