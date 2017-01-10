@@ -424,3 +424,29 @@ func request(method, path string, e *Echo) (int, string) {
 	e.ServeHTTP(rec, req)
 	return rec.Code, rec.Body.String()
 }
+
+func TestCustomNotFoundHandler(t *testing.T) {
+	notFoundHandler := func(c Context) error {
+		c.Response().WriteHeader(http.StatusNotFound)
+		return nil
+	}
+
+	e := New()
+	e.NotFoundHandler = notFoundHandler
+	e.MethodNotAllowedHandler = notFoundHandler
+
+	e.POST("/ping", func(c Context) error {
+		return c.String(http.StatusOK, "pong")
+	})
+
+	{
+		code, body := request(GET, "/ping", e)
+		assert.Equal(t, http.StatusNotFound, code)
+		assert.Equal(t, "", body)
+	}
+	{
+		code, body := request(GET, "/aslkjaslkja", e)
+		assert.Equal(t, http.StatusNotFound, code)
+		assert.Equal(t, "", body)
+	}
+}

@@ -59,27 +59,29 @@ import (
 type (
 	// Echo is the top-level framework instance.
 	Echo struct {
-		DisableHTTP2     bool
-		Debug            bool
-		HTTPErrorHandler HTTPErrorHandler
-		Binder           Binder
-		Validator        Validator
-		Renderer         Renderer
-		AutoTLSManager   autocert.Manager
-		ReadTimeout      time.Duration
-		WriteTimeout     time.Duration
-		ShutdownTimeout  time.Duration
-		Color            *color.Color
-		Logger           Logger
-		stdLogger        *slog.Logger
-		server           *graceful.Server
-		tlsServer        *graceful.Server
-		premiddleware    []MiddlewareFunc
-		middleware       []MiddlewareFunc
-		maxParam         *int
-		router           *Router
-		notFoundHandler  HandlerFunc
-		pool             sync.Pool
+		DisableHTTP2            bool
+		Debug                   bool
+		HTTPErrorHandler        HTTPErrorHandler
+		NotFoundHandler         HandlerFunc
+		MethodNotAllowedHandler HandlerFunc
+		Binder                  Binder
+		Validator               Validator
+		Renderer                Renderer
+		AutoTLSManager          autocert.Manager
+		ReadTimeout             time.Duration
+		WriteTimeout            time.Duration
+		ShutdownTimeout         time.Duration
+		Color                   *color.Color
+		Logger                  Logger
+		stdLogger               *slog.Logger
+		server                  *graceful.Server
+		tlsServer               *graceful.Server
+		premiddleware           []MiddlewareFunc
+		middleware              []MiddlewareFunc
+		maxParam                *int
+		router                  *Router
+		notFoundHandler         HandlerFunc
+		pool                    sync.Pool
 	}
 
 	// Route contains a handler and information for matching against requests.
@@ -250,6 +252,8 @@ func New() (e *Echo) {
 		Color:           color.New(),
 	}
 	e.HTTPErrorHandler = e.DefaultHTTPErrorHandler
+	e.NotFoundHandler = NotFoundHandler
+	e.MethodNotAllowedHandler = MethodNotAllowedHandler
 	e.Binder = &DefaultBinder{}
 	e.Logger.SetLevel(log.OFF)
 	e.stdLogger = slog.New(e.Logger.Output(), e.Logger.Prefix()+": ", 0)
