@@ -127,7 +127,7 @@ And of course we can deploy our app to both of these platforms for easy and inex
 Depending on what your app actually does it's possible you may need to make other changes to allow
 switching between AppEngine provided service such as Datastore and alternative storage implementations
 such as MongoDB. A combination of go interfaces and build constraints can make this fairly straightforward
-but is outside the scope of this recipe.  
+but is outside the scope of this example.  
 
 ## [Source Code]({{< source "google-app-engine" >}})
 

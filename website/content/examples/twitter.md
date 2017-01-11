@@ -7,7 +7,7 @@ description = "Twitter Like API example for Echo"
   weight = 2 
 +++
 
-This recipe shows how to create a Twitter like REST API using MongoDB (Database),
+This example shows how to create a Twitter like REST API using MongoDB (Database),
 JWT (API security) and JSON (Data exchange).
 
 ## Models
