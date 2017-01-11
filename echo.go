@@ -43,6 +43,7 @@ import (
 	"fmt"
 	"io"
 	slog "log"
+	"net"
 	"net/http"
 	"path"
 	"reflect"
@@ -581,6 +582,20 @@ func (e *Echo) StartServer(s *http.Server) error {
 	e.tlsServer = gs
 	e.Color.Printf(" ⇛ https server started on %s\n", color.Green(s.Addr))
 	return gs.ListenAndServeTLSConfig(s.TLSConfig)
+}
+
+// StartListener runs a custom net listener.
+func (e *Echo) StartListener(l net.Listener) error {
+	gs := &graceful.Server{
+		Server: &http.Server{
+			Handler: e,
+		},
+		Timeout: e.ShutdownTimeout,
+		Logger:  e.stdLogger,
+	}
+	e.server = gs
+	e.Color.Printf(" ⇛ net listener started on %s\n", color.Green(l.Addr().String()))
+	return gs.Serve(l)
 }
 
 // Shutdown gracefully shutdown the HTTP server with timeout.

@@ -12,6 +12,8 @@ import (
 
 	"errors"
 
+	"net"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -403,6 +405,17 @@ func TestEchoStartTLS(t *testing.T) {
 	}()
 	time.Sleep(200 * time.Millisecond)
 	e.ShutdownTLS(1 * time.Second)
+}
+
+func TestEchoStartListener(t *testing.T) {
+	e := New()
+	go func() {
+		l, err := net.Listen("tcp4", ":0")
+		assert.NoError(t, err)
+		assert.NoError(t, e.StartListener(l))
+	}()
+	time.Sleep(200 * time.Millisecond)
+	e.Shutdown(1 * time.Second)
 }
 
 func testMethod(t *testing.T, method, path string, e *Echo) {
