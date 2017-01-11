@@ -41,31 +41,22 @@ type (
 		// Optional. Default value DefaultLoggerConfig.Fields.
 		Fields []string `json:"fields"`
 
-		// Output is a writer where logs are written.
-		// Optional. Default value os.Stdout.
-		Output io.Writer
+		// Output is where logs are written.
+		// Optional. Default value &Stream{os.Stdout}.
+		Output echo.RequestLogger
 	}
 
-	loggerFields struct {
-		// ID string `json:"id,omitempty"` (Request ID - Not implemented)
-		Time         int64             `json:"time,omitempty"`
-		RemoteIP     string            `json:"remote_ip,omitempty"`
-		URI          string            `json:"uri,omitempty"`
-		Host         string            `json:"host,omitempty"`
-		Method       string            `json:"method,omitempty"`
-		Path         string            `json:"path,omitempty"`
-		Referer      string            `json:"referer,omitempty"`
-		UserAgent    string            `json:"user_agent,omitempty"`
-		Status       int               `json:"status,omitempty"`
-		Latency      time.Duration     `json:"latency,omitempty"`
-		LatencyHuman string            `json:"latency_human,omitempty"`
-		BytesIn      int64             `json:"bytes_in,omitempty"`
-		BytesOut     int64             `json:"bytes_out,omitempty"`
-		Header       map[string]string `json:"header,omitempty"`
-		Form         map[string]string `json:"form,omitempty"`
-		Query        map[string]string `json:"query,omitempty"`
+	// Stream implements `echo.RequestLogger`.
+	Stream struct {
+		io.Writer
 	}
 )
+
+// LogRequest encodes `echo.Request` into a stream.
+func (s *Stream) LogRequest(r *echo.Request) error {
+	enc := json.NewEncoder(s)
+	return enc.Encode(r)
+}
 
 var (
 	// DefaultLoggerConfig is the default Logger middleware config.
@@ -83,7 +74,7 @@ var (
 			"bytes_in",
 			"bytes_out",
 		},
-		Output: os.Stdout,
+		Output: &Stream{os.Stdout},
 	}
 )
 
@@ -119,34 +110,34 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 				c.Error(err)
 			}
 			stop := time.Now()
-			fields := &loggerFields{
+			request := &echo.Request{
 				Header: make(map[string]string),
-				Form:   make(map[string]string),
 				Query:  make(map[string]string),
+				Form:   make(map[string]string),
 			}
 
 			for _, f := range config.Fields {
 				switch f {
 				case "time":
-					fields.Time = time.Now().Unix()
+					request.Time = time.Now().Unix()
 				case "remote_ip":
-					fields.RemoteIP = c.RealIP()
+					request.RemoteIP = c.RealIP()
 				case "host":
-					fields.Host = req.Host
+					request.Host = req.Host
 				case "uri":
-					fields.URI = req.RequestURI
+					request.URI = req.RequestURI
 				case "method":
-					fields.Method = req.Method
+					request.Method = req.Method
 				case "path":
 					p := req.URL.Path
 					if p == "" {
 						p = "/"
 					}
-					fields.Path = p
+					request.Path = p
 				case "referer":
-					fields.Referer = req.Referer()
+					request.Referer = req.Referer()
 				case "user_agent":
-					fields.UserAgent = req.UserAgent()
+					request.UserAgent = req.UserAgent()
 				case "status":
 					// n := res.Status
 					// s := config.color.Green(n)
@@ -159,38 +150,37 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 					// 	s = config.color.Cyan(n)
 					// }
 					// return w.Write([]byte(s))
-					fields.Status = res.Status
+					request.Status = res.Status
 				case "latency":
-					fields.Latency = stop.Sub(start)
+					request.Latency = stop.Sub(start)
 				case "latency_human":
-					fields.LatencyHuman = stop.Sub(start).String()
+					request.LatencyHuman = stop.Sub(start).String()
 				case "bytes_in":
 					cl := req.Header.Get(echo.HeaderContentLength)
 					if cl == "" {
 						cl = "0"
 					}
 					l, _ := strconv.ParseInt(cl, 10, 64)
-					fields.BytesIn = l
+					request.BytesIn = l
 				case "bytes_out":
-					fields.BytesOut = res.Size
+					request.BytesOut = res.Size
 				default:
 					switch {
 					case strings.HasPrefix(f, "header:"):
 						k := f[7:]
-						fields.Header[k] = c.Request().Header.Get(k)
-					case strings.HasPrefix(f, "form:"):
-						k := f[5:]
-						fields.Form[k] = c.Request().Header.Get(k)
+						request.Header[k] = c.Request().Header.Get(k)
 					case strings.HasPrefix(f, "query:"):
 						k := f[6:]
-						fields.Query[k] = c.Request().Header.Get(k)
+						request.Query[k] = c.QueryParam(k)
+					case strings.HasPrefix(f, "form:"):
+						k := f[5:]
+						request.Form[k] = c.FormValue(k)
 					}
 				}
 			}
 
 			// Write
-			enc := json.NewEncoder(config.Output)
-			return enc.Encode(fields)
+			return config.Output.LogRequest(request)
 		}
 	}
 }
