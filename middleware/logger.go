@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 
 	"github.com/labstack/echo"
+	"github.com/labstack/echo/db"
 )
 
 type (
@@ -20,7 +21,8 @@ type (
 
 		// Availabe logger fields:
 		//
-		// - time (Unix time)
+		// - time_unix
+		// - time_rfc3339
 		// - id (Request ID - Not implemented)
 		// - remote_ip
 		// - uri
@@ -43,17 +45,17 @@ type (
 
 		// Output is where logs are written.
 		// Optional. Default value &Stream{os.Stdout}.
-		Output echo.RequestLogger
+		Output db.Logger
 	}
 
-	// Stream implements `echo.RequestLogger`.
+	// Stream implements `db.Logger`.
 	Stream struct {
 		io.Writer
 	}
 )
 
-// LogRequest encodes `echo.Request` into a stream.
-func (s *Stream) LogRequest(r *echo.Request) error {
+// LogRequest encodes `db.Request` into a stream.
+func (s *Stream) Log(r *db.Request) error {
 	enc := json.NewEncoder(s)
 	return enc.Encode(r)
 }
@@ -110,7 +112,7 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 				c.Error(err)
 			}
 			stop := time.Now()
-			request := &echo.Request{
+			request := &db.Request{
 				Header: make(map[string]string),
 				Query:  make(map[string]string),
 				Form:   make(map[string]string),
@@ -119,7 +121,7 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 			for _, f := range config.Fields {
 				switch f {
 				case "time":
-					request.Time = time.Now().Unix()
+					request.Time = time.Now()
 				case "remote_ip":
 					request.RemoteIP = c.RealIP()
 				case "host":
@@ -139,17 +141,6 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 				case "user_agent":
 					request.UserAgent = req.UserAgent()
 				case "status":
-					// n := res.Status
-					// s := config.color.Green(n)
-					// switch {
-					// case n >= 500:
-					// 	s = config.color.Red(n)
-					// case n >= 400:
-					// 	s = config.color.Yellow(n)
-					// case n >= 300:
-					// 	s = config.color.Cyan(n)
-					// }
-					// return w.Write([]byte(s))
 					request.Status = res.Status
 				case "latency":
 					request.Latency = stop.Sub(start)
@@ -180,7 +171,7 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 			}
 
 			// Write
-			return config.Output.LogRequest(request)
+			return config.Output.Log(request)
 		}
 	}
 }
