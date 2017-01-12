@@ -50,7 +50,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/labstack/gommon/color"
 	"github.com/labstack/gommon/log"
 	"github.com/tylerb/graceful"
 	"golang.org/x/crypto/acme/autocert"
@@ -69,7 +68,6 @@ type (
 		ReadTimeout      time.Duration
 		WriteTimeout     time.Duration
 		ShutdownTimeout  time.Duration
-		Color            *color.Color
 		Logger           Logger
 		stdLogger        *slog.Logger
 		server           *graceful.Server
@@ -247,7 +245,6 @@ func New() (e *Echo) {
 		ShutdownTimeout: 15 * time.Second,
 		Logger:          log.New("echo"),
 		maxParam:        new(int),
-		Color:           color.New(),
 	}
 	e.HTTPErrorHandler = e.DefaultHTTPErrorHandler
 	e.Binder = &DefaultBinder{}
@@ -575,11 +572,11 @@ func (e *Echo) StartServer(s *http.Server) error {
 	}
 	if s.TLSConfig == nil {
 		e.server = gs
-		e.Color.Printf(" ⇛ http server started on %s\n", color.Green(s.Addr))
+		e.Logger.Printf("http server started on %s", s.Addr)
 		return gs.ListenAndServe()
 	}
 	e.tlsServer = gs
-	e.Color.Printf(" ⇛ https server started on %s\n", color.Green(s.Addr))
+	e.Logger.Printf(" ⇛ https server started on %s", s.Addr)
 	return gs.ListenAndServeTLSConfig(s.TLSConfig)
 }
 
