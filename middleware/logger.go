@@ -21,8 +21,7 @@ type (
 
 		// Availabe logger fields:
 		//
-		// - time_unix
-		// - time_rfc3339
+		// - time
 		// - id (Request ID - Not implemented)
 		// - remote_ip
 		// - uri
@@ -121,7 +120,8 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 			for _, f := range config.Fields {
 				switch f {
 				case "time":
-					request.Time = time.Now()
+					t := time.Now()
+					request.Time = &t
 				case "remote_ip":
 					request.RemoteIP = c.RealIP()
 				case "host":
