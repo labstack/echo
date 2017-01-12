@@ -1,16 +1,18 @@
 package middleware
 
 import (
+	"bytes"
 	"io"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
-	"encoding/json"
-
 	"github.com/labstack/echo"
-	"github.com/labstack/echo/db"
+	"github.com/labstack/gommon/color"
+	isatty "github.com/mattn/go-isatty"
+	"github.com/valyala/fasttemplate"
 )
 
 type (
@@ -19,9 +21,12 @@ type (
 		// Skipper defines a function to skip middleware.
 		Skipper Skipper
 
-		// Availabe logger fields:
+		// Tags to constructed the logger format.
 		//
-		// - time
+		// - time_unix
+		// - time_unix_nano
+		// - time_rfc3339
+		// - time_rfc3339_nano
 		// - id (Request ID - Not implemented)
 		// - remote_ip
 		// - uri
@@ -31,51 +36,39 @@ type (
 		// - referer
 		// - user_agent
 		// - status
-		// - latency (In nanosecond)
+		// - latency (In microseconds)
 		// - latency_human (Human readable)
 		// - bytes_in (Bytes received)
 		// - bytes_out (Bytes sent)
 		// - header:<name>
 		// - query:<name>
 		// - form:<name>
+		//
+		// Example "${remote_ip} ${status}"
+		//
+		// Optional. Default value DefaultLoggerConfig.Format.
+		Format string `json:"format"`
 
-		// Optional. Default value DefaultLoggerConfig.Fields.
-		Fields []string `json:"fields"`
+		// Output is a writer where logs are written.
+		// Optional. Default value os.Stdout.
+		Output io.Writer
 
-		// Output is where logs are written.
-		// Optional. Default value &Stream{os.Stdout}.
-		Output db.Logger
-	}
-
-	// Stream implements `db.Logger`.
-	Stream struct {
-		io.Writer
+		template *fasttemplate.Template
+		color    *color.Color
+		pool     sync.Pool
 	}
 )
-
-// LogRequest encodes `db.Request` into a stream.
-func (s *Stream) Log(r *db.Request) error {
-	enc := json.NewEncoder(s)
-	return enc.Encode(r)
-}
 
 var (
 	// DefaultLoggerConfig is the default Logger middleware config.
 	DefaultLoggerConfig = LoggerConfig{
 		Skipper: defaultSkipper,
-		Fields: []string{
-			"time",
-			"remote_ip",
-			"host",
-			"method",
-			"uri",
-			"status",
-			"latency",
-			"latency_human",
-			"bytes_in",
-			"bytes_out",
-		},
-		Output: &Stream{os.Stdout},
+		Format: `{"time":"${time_rfc3339_nano}","remote_ip":"${remote_ip}","host":"${host}",` +
+			`"method":"${method}","uri":"${uri}","status":${status}, "latency":${latency},` +
+			`"latency_human":"${latency_human}","bytes_in":${bytes_in},` +
+			`"bytes_out":${bytes_out}}` + "\n",
+		Output: os.Stdout,
+		color:  color.New(),
 	}
 )
 
@@ -91,11 +84,22 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 	if config.Skipper == nil {
 		config.Skipper = DefaultLoggerConfig.Skipper
 	}
-	if len(config.Fields) == 0 {
-		config.Fields = DefaultLoggerConfig.Fields
+	if config.Format == "" {
+		config.Format = DefaultLoggerConfig.Format
 	}
 	if config.Output == nil {
 		config.Output = DefaultLoggerConfig.Output
+	}
+
+	config.template = fasttemplate.New(config.Format, "${", "}")
+	config.color = color.New()
+	if w, ok := config.Output.(*os.File); !ok || !isatty.IsTerminal(w.Fd()) {
+		config.color.Disable()
+	}
+	config.pool = sync.Pool{
+		New: func() interface{} {
+			return bytes.NewBuffer(make([]byte, 256))
+		},
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -111,67 +115,79 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 				c.Error(err)
 			}
 			stop := time.Now()
-			request := &db.Request{
-				Header: make(map[string]string),
-				Query:  make(map[string]string),
-				Form:   make(map[string]string),
-			}
+			buf := config.pool.Get().(*bytes.Buffer)
+			buf.Reset()
+			defer config.pool.Put(buf)
 
-			for _, f := range config.Fields {
-				switch f {
-				case "time":
-					t := time.Now()
-					request.Time = &t
+			_, err = config.template.ExecuteFunc(buf, func(w io.Writer, tag string) (int, error) {
+				switch tag {
+				case "time_unix":
+					return buf.WriteString(strconv.FormatInt(time.Now().Unix(), 10))
+				case "time_unix_nano":
+					return buf.WriteString(strconv.FormatInt(time.Now().UnixNano(), 10))
+				case "time_rfc3339":
+					return buf.WriteString(time.Now().Format(time.RFC3339))
+				case "time_rfc3339_nano":
+					return buf.WriteString(time.Now().Format(time.RFC3339Nano))
 				case "remote_ip":
-					request.RemoteIP = c.RealIP()
+					return buf.WriteString(c.RealIP())
 				case "host":
-					request.Host = req.Host
+					return buf.WriteString(req.Host)
 				case "uri":
-					request.URI = req.RequestURI
+					return buf.WriteString(req.RequestURI)
 				case "method":
-					request.Method = req.Method
+					return buf.WriteString(req.Method)
 				case "path":
 					p := req.URL.Path
 					if p == "" {
 						p = "/"
 					}
-					request.Path = p
+					return buf.WriteString(p)
 				case "referer":
-					request.Referer = req.Referer()
+					return buf.WriteString(req.Referer())
 				case "user_agent":
-					request.UserAgent = req.UserAgent()
+					return buf.WriteString(req.UserAgent())
 				case "status":
-					request.Status = res.Status
+					n := res.Status
+					s := config.color.Green(n)
+					switch {
+					case n >= 500:
+						s = config.color.Red(n)
+					case n >= 400:
+						s = config.color.Yellow(n)
+					case n >= 300:
+						s = config.color.Cyan(n)
+					}
+					return buf.WriteString(s)
 				case "latency":
-					request.Latency = stop.Sub(start)
+					l := stop.Sub(start).Nanoseconds()
+					return buf.WriteString(strconv.FormatInt(l, 10))
 				case "latency_human":
-					request.LatencyHuman = stop.Sub(start).String()
+					return buf.WriteString(stop.Sub(start).String())
 				case "bytes_in":
 					cl := req.Header.Get(echo.HeaderContentLength)
 					if cl == "" {
 						cl = "0"
 					}
-					l, _ := strconv.ParseInt(cl, 10, 64)
-					request.BytesIn = l
+					return buf.WriteString(cl)
 				case "bytes_out":
-					request.BytesOut = res.Size
+					return buf.WriteString(strconv.FormatInt(res.Size, 10))
 				default:
 					switch {
-					case strings.HasPrefix(f, "header:"):
-						k := f[7:]
-						request.Header[k] = c.Request().Header.Get(k)
-					case strings.HasPrefix(f, "query:"):
-						k := f[6:]
-						request.Query[k] = c.QueryParam(k)
-					case strings.HasPrefix(f, "form:"):
-						k := f[5:]
-						request.Form[k] = c.FormValue(k)
+					case strings.HasPrefix(tag, "header:"):
+						return buf.Write([]byte(c.Request().Header.Get(tag[7:])))
+					case strings.HasPrefix(tag, "query:"):
+						return buf.Write([]byte(c.QueryParam(tag[6:])))
+					case strings.HasPrefix(tag, "form:"):
+						return buf.Write([]byte(c.FormValue(tag[5:])))
 					}
 				}
+				return 0, nil
+			})
+			if err == nil {
+				config.Output.Write(buf.Bytes())
 			}
-
-			// Write
-			return config.Output.Log(request)
+			return
 		}
 	}
 }
