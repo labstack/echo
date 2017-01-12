@@ -81,44 +81,54 @@ func TestLoggerIPAddress(t *testing.T) {
 	assert.Contains(t, ip, buf.String())
 }
 
-func TestLoggerTemplate(t *testing.T) {
+func TestLoggerFields(t *testing.T) {
 	buf := new(bytes.Buffer)
 
 	e := echo.New()
 	e.Use(LoggerWithConfig(LoggerConfig{
-		Format: `{"time":"${time_rfc3339}","remote_ip":"${remote_ip}","host":"${host}","user_agent":"${user_agent}",` +
-			`"method":"${method}","uri":"${uri}","status":${status}, "latency":${latency},` +
-			`"latency_human":"${latency_human}","bytes_in":${bytes_in}, "path":"${path}", "referer":"${referer}",` +
-			`"bytes_out":${bytes_out},"ch":"${header:X-Custom-Header}",` +
-			`"us":"${query:username}", "cf":"${form:username}"}` + "\n",
-		Output: buf,
+		Fields: []string{
+			"time",
+			"remote_ip",
+			"host",
+			"user_agent",
+			"method",
+			"uri",
+			"path",
+			"referer",
+			"status",
+			"latency",
+			"latency_human",
+			"bytes_in",
+			"bytes_out",
+			"header:X-Custom-Header",
+			"query:user",
+			"form:user",
+		},
+		Output: &Stream{buf},
 	}))
 
 	e.GET("/", func(c echo.Context) error {
-		return c.String(http.StatusOK, "Header Logged")
+		return c.String(http.StatusOK, "OK")
 	})
 
-	req, _ := http.NewRequest(echo.GET, "/?username=apagano-param&password=secret", nil)
+	req, _ := http.NewRequest(echo.GET, "/?user=joe", nil)
 	req.RequestURI = "/"
 	req.Header.Add(echo.HeaderXRealIP, "127.0.0.1")
 	req.Header.Add("Referer", "google.com")
-	req.Header.Add("User-Agent", "echo-tests-agent")
+	req.Header.Add("User-Agent", "test-agent")
 	req.Header.Add("X-Custom-Header", "AAA-CUSTOM-VALUE")
 	req.Form = url.Values{
-		"username": []string{"apagano-form"},
-		"password": []string{"secret-form"},
+		"user": []string{"jon"},
 	}
 
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
 	cases := map[string]bool{
-		"apagano-param":    true,
-		"apagano-form":     true,
+		"time":             true,
+		"joe":              true,
+		"jon":              true,
 		"AAA-CUSTOM-VALUE": true,
-		"BBB-CUSTOM-VALUE": false,
-		"secret-form":      false,
-		"hexvalue":         false,
 		"GET":              true,
 		"127.0.0.1":        true,
 		"\"path\":\"/\"":   true,
@@ -126,7 +136,7 @@ func TestLoggerTemplate(t *testing.T) {
 		"\"status\":200":   true,
 		"\"bytes_in\":0":   true,
 		"google.com":       true,
-		"echo-tests-agent": true,
+		"test-agent":       true,
 	}
 
 	for token, present := range cases {
