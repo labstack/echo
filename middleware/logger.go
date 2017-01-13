@@ -119,7 +119,7 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 			buf.Reset()
 			defer config.pool.Put(buf)
 
-			_, err = config.template.ExecuteFunc(buf, func(w io.Writer, tag string) (int, error) {
+			if _, err = config.template.ExecuteFunc(buf, func(w io.Writer, tag string) (int, error) {
 				switch tag {
 				case "time_unix":
 					return buf.WriteString(strconv.FormatInt(time.Now().Unix(), 10))
@@ -160,7 +160,7 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 					}
 					return buf.WriteString(s)
 				case "latency":
-					l := stop.Sub(start).Nanoseconds()
+					l := stop.Sub(start).Nanoseconds() / int64(time.Microsecond)
 					return buf.WriteString(strconv.FormatInt(l, 10))
 				case "latency_human":
 					return buf.WriteString(stop.Sub(start).String())
@@ -183,10 +183,11 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 					}
 				}
 				return 0, nil
-			})
-			if err == nil {
-				config.Output.Write(buf.Bytes())
+			}); err != nil {
+				return
 			}
+
+			_, err = config.Output.Write(buf.Bytes())
 			return
 		}
 	}
