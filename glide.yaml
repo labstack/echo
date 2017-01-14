@@ -10,7 +10,6 @@ import:
   - log
   - random
 - package: github.com/mattn/go-isatty
-- package: github.com/tylerb/graceful
 - package: github.com/valyala/fasttemplate
 - package: golang.org/x/crypto
   subpackages:
@@ -22,6 +21,7 @@ import:
 - package: gopkg.in/mgo.v2
   subpackages:
   - bson
+- package: github.com/facebookgo/grace
 testImport:
 - package: github.com/stretchr/testify
   subpackages:

@@ -43,6 +43,7 @@ import (
 	"fmt"
 	"io"
 	slog "log"
+	"net"
 	"net/http"
 	"path"
 	"reflect"
@@ -51,13 +52,16 @@ import (
 	"time"
 
 	"github.com/labstack/gommon/log"
-	"github.com/tylerb/graceful"
 	"golang.org/x/crypto/acme/autocert"
 )
 
 type (
 	// Echo is the top-level framework instance.
 	Echo struct {
+		Server           *http.Server
+		TLSServer        *http.Server
+		Listener         net.Listener
+		TLSListener      net.Listener
 		DisableHTTP2     bool
 		Debug            bool
 		HTTPErrorHandler HTTPErrorHandler
@@ -65,13 +69,8 @@ type (
 		Validator        Validator
 		Renderer         Renderer
 		AutoTLSManager   autocert.Manager
-		ReadTimeout      time.Duration
-		WriteTimeout     time.Duration
-		ShutdownTimeout  time.Duration
 		Logger           Logger
 		stdLogger        *slog.Logger
-		server           *graceful.Server
-		tlsServer        *graceful.Server
 		premiddleware    []MiddlewareFunc
 		middleware       []MiddlewareFunc
 		maxParam         *int
@@ -239,13 +238,16 @@ var (
 // New creates an instance of Echo.
 func New() (e *Echo) {
 	e = &Echo{
+		Server:    new(http.Server),
+		TLSServer: new(http.Server),
 		AutoTLSManager: autocert.Manager{
 			Prompt: autocert.AcceptTOS,
 		},
-		ShutdownTimeout: 15 * time.Second,
-		Logger:          log.New("echo"),
-		maxParam:        new(int),
+		Logger:   log.New("echo"),
+		maxParam: new(int),
 	}
+	e.Server.Handler = e
+	e.TLSServer.Handler = e
 	e.HTTPErrorHandler = e.DefaultHTTPErrorHandler
 	e.Binder = &DefaultBinder{}
 	e.Logger.SetLevel(log.OFF)
@@ -518,76 +520,64 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	e.pool.Put(c)
 }
 
-// Start starts the HTTP server.
+// Start starts an HTTP server.
 func (e *Echo) Start(address string) error {
-	return e.StartServer(&http.Server{
-		Addr:         address,
-		ReadTimeout:  e.ReadTimeout,
-		WriteTimeout: e.WriteTimeout,
-		ErrorLog:     e.stdLogger,
-	})
+	e.Server.Addr = address
+	return e.StartServer(e.Server)
 }
 
-// StartTLS starts the HTTPS server.
+// StartTLS starts an HTTPS server.
 func (e *Echo) StartTLS(address string, certFile, keyFile string) (err error) {
 	if certFile == "" || keyFile == "" {
 		return errors.New("invalid tls configuration")
 	}
-	config := new(tls.Config)
-	config.Certificates = make([]tls.Certificate, 1)
-	config.Certificates[0], err = tls.LoadX509KeyPair(certFile, keyFile)
+	s := e.TLSServer
+	s.TLSConfig = new(tls.Config)
+	s.TLSConfig.Certificates = make([]tls.Certificate, 1)
+	s.TLSConfig.Certificates[0], err = tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
 		return
 	}
-	return e.startTLS(address, config)
+	return e.startTLS(address)
 }
 
-// StartAutoTLS starts the HTTPS server using certificates automatically from https://letsencrypt.org.
+// StartAutoTLS starts an HTTPS server using certificates automatically from https://letsencrypt.org.
 func (e *Echo) StartAutoTLS(address string) error {
-	config := new(tls.Config)
-	config.GetCertificate = e.AutoTLSManager.GetCertificate
-	return e.startTLS(address, config)
+	s := e.TLSServer
+	s.TLSConfig = new(tls.Config)
+	s.TLSConfig.GetCertificate = e.AutoTLSManager.GetCertificate
+	return e.startTLS(address)
 }
 
-func (e *Echo) startTLS(address string, config *tls.Config) error {
+func (e *Echo) startTLS(address string) error {
+	s := e.TLSServer
+	s.Addr = address
 	if !e.DisableHTTP2 {
-		config.NextProtos = append(config.NextProtos, "h2")
+		s.TLSConfig.NextProtos = append(s.TLSConfig.NextProtos, "h2")
 	}
-	return e.StartServer(&http.Server{
-		Addr:         address,
-		ReadTimeout:  e.ReadTimeout,
-		WriteTimeout: e.WriteTimeout,
-		TLSConfig:    config,
-		ErrorLog:     e.stdLogger,
-	})
+	return e.StartServer(e.TLSServer)
 }
 
-// StartServer runs a custom HTTP server.
+// StartServer starts a custom http server.
 func (e *Echo) StartServer(s *http.Server) error {
 	s.Handler = e
-	gs := &graceful.Server{
-		Server:  s,
-		Timeout: e.ShutdownTimeout,
-		Logger:  e.stdLogger,
+	s.ErrorLog = e.stdLogger
+	l, err := net.Listen("tcp", s.Addr)
+	if err != nil {
+		return err
 	}
 	if s.TLSConfig == nil {
-		e.server = gs
-		e.Logger.Printf("http server started on %s", s.Addr)
-		return gs.ListenAndServe()
+		if e.Listener == nil {
+			e.Listener = tcpKeepAliveListener{l.(*net.TCPListener)}
+		}
+		e.Logger.Printf("http server started on %s", e.Server.Addr)
+		return s.Serve(e.Listener)
 	}
-	e.tlsServer = gs
-	e.Logger.Printf(" ⇛ https server started on %s", s.Addr)
-	return gs.ListenAndServeTLSConfig(s.TLSConfig)
-}
-
-// Shutdown gracefully shutdown the HTTP server with timeout.
-func (e *Echo) Shutdown(timeout time.Duration) {
-	e.server.Stop(timeout)
-}
-
-// ShutdownTLS gracefully shutdown the TLS server with timeout.
-func (e *Echo) ShutdownTLS(timeout time.Duration) {
-	e.tlsServer.Stop(timeout)
+	if e.TLSListener == nil {
+		e.TLSListener = tls.NewListener(tcpKeepAliveListener{l.(*net.TCPListener)}, s.TLSConfig)
+	}
+	e.Logger.Printf(" ⇛ https server started on %s", e.Server.Addr)
+	return s.Serve(e.TLSListener)
 }
 
 // NewHTTPError creates a new HTTPError instance.
@@ -631,4 +621,22 @@ func handlerName(h HandlerFunc) string {
 		return runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name()
 	}
 	return t.String()
+}
+
+// tcpKeepAliveListener sets TCP keep-alive timeouts on accepted
+// connections. It's used by ListenAndServe and ListenAndServeTLS so
+// dead TCP connections (e.g. closing laptop mid-download) eventually
+// go away.
+type tcpKeepAliveListener struct {
+	*net.TCPListener
+}
+
+func (ln tcpKeepAliveListener) Accept() (c net.Conn, err error) {
+	tc, err := ln.AcceptTCP()
+	if err != nil {
+		return
+	}
+	tc.SetKeepAlive(true)
+	tc.SetKeepAlivePeriod(3 * time.Minute)
+	return tc, nil
 }

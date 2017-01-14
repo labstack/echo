@@ -77,19 +77,13 @@ e.Logger.Fatal(s.ListenAndServe())
 
 ## Read Timeout
 
-`Echo#ReadTimeout` can be used to set the maximum duration before timing out read
+`Echo#*Server#ReadTimeout` can be used to set the maximum duration before timing out read
 of the request.
 
 ## Write Timeout
 
-`Echo#WriteTimeout` can be used to set the maximum duration before timing out write
+`Echo#*Server#WriteTimeout` can be used to set the maximum duration before timing out write
 of the response.
-
-## Shutdown Timeout
-
-`Echo#ShutdownTimeout` can be used to set the maximum duration to wait until killing
-active requests and stopping the server. If timeout is 0, the server never times
-out. It waits for all active requests to finish.
 
 ## Validator
 
