@@ -37,6 +37,10 @@ Default value is `OFF`. Possible values:
 Logging is implemented using `echo.Logger` interface which allows you to register
 a custom logger using `Echo#Logger`.
 
+### Hide Banner
+
+`Echo#HideBanner` can be used to hide the startup banner.
+
 ## Custom Server
 
 ### Using `Echo#StartServer()`

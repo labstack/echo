@@ -11,7 +11,6 @@ import (
 
 	"github.com/labstack/echo"
 	"github.com/labstack/gommon/color"
-	isatty "github.com/mattn/go-isatty"
 	"github.com/valyala/fasttemplate"
 )
 
@@ -54,7 +53,7 @@ type (
 		Output io.Writer
 
 		template *fasttemplate.Template
-		color    *color.Color
+		colorer  *color.Color
 		pool     sync.Pool
 	}
 )
@@ -67,8 +66,8 @@ var (
 			`"method":"${method}","uri":"${uri}","status":${status}, "latency":${latency},` +
 			`"latency_human":"${latency_human}","bytes_in":${bytes_in},` +
 			`"bytes_out":${bytes_out}}` + "\n",
-		Output: os.Stdout,
-		color:  color.New(),
+		Output:  os.Stdout,
+		colorer: color.New(),
 	}
 )
 
@@ -92,10 +91,8 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 	}
 
 	config.template = fasttemplate.New(config.Format, "${", "}")
-	config.color = color.New()
-	if w, ok := config.Output.(*os.File); !ok || !isatty.IsTerminal(w.Fd()) {
-		config.color.Disable()
-	}
+	config.colorer = color.New()
+	config.colorer.SetOutput(config.Output)
 	config.pool = sync.Pool{
 		New: func() interface{} {
 			return bytes.NewBuffer(make([]byte, 256))
@@ -149,14 +146,14 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 					return buf.WriteString(req.UserAgent())
 				case "status":
 					n := res.Status
-					s := config.color.Green(n)
+					s := config.colorer.Green(n)
 					switch {
 					case n >= 500:
-						s = config.color.Red(n)
+						s = config.colorer.Red(n)
 					case n >= 400:
-						s = config.color.Yellow(n)
+						s = config.colorer.Yellow(n)
 					case n >= 300:
-						s = config.color.Cyan(n)
+						s = config.colorer.Cyan(n)
 					}
 					return buf.WriteString(s)
 				case "latency":
