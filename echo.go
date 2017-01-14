@@ -570,13 +570,13 @@ func (e *Echo) StartServer(s *http.Server) error {
 		if e.Listener == nil {
 			e.Listener = tcpKeepAliveListener{l.(*net.TCPListener)}
 		}
-		e.Logger.Printf("http server started on %s", e.Server.Addr)
+		e.Logger.Printf("http server started on %s", s.Addr)
 		return s.Serve(e.Listener)
 	}
 	if e.TLSListener == nil {
 		e.TLSListener = tls.NewListener(tcpKeepAliveListener{l.(*net.TCPListener)}, s.TLSConfig)
 	}
-	e.Logger.Printf(" ⇛ https server started on %s", e.Server.Addr)
+	e.Logger.Printf(" ⇛ https server started on %s", s.Addr)
 	return s.Serve(e.TLSListener)
 }
 
