@@ -63,7 +63,6 @@ type (
 		TLSServer        *http.Server
 		Listener         net.Listener
 		TLSListener      net.Listener
-		HideBanner       bool
 		DisableHTTP2     bool
 		Debug            bool
 		HTTPErrorHandler HTTPErrorHandler
@@ -121,30 +120,6 @@ type (
 	i interface {
 		GET(string, HandlerFunc, ...MiddlewareFunc)
 	}
-)
-
-// Banner
-const (
-	// http://patorjk.com/software/taag/#p=display&f=Small%20Slant&t=Echo
-	banner = `
-   ____    __
-  / __/___/ /  ___
- / _// __/ _ \/ _ \
-/___/\__/_//_/\___/
-
-%s %s
-
-High performance, minimalist Go web framework
-______________________________________O/_____
-                                      O\
-
-⇛ %s server started on %s
-`
-)
-
-const (
-	website = "https://echo.labstack.com"
-	version = "3.1.0.master"
 )
 
 // HTTP methods
@@ -592,15 +567,6 @@ func (e *Echo) StartServer(s *http.Server) error {
 	e.colorer.SetOutput(e.Logger.Output())
 	s.Handler = e
 	s.ErrorLog = e.stdLogger
-	args := []interface{}{e.colorer.Blue(website), e.colorer.Red("v" + version), "http", e.colorer.Green(s.Addr)}
-	if s.TLSConfig != nil {
-		args[2] = "https"
-	}
-
-	// Banner
-	if !e.HideBanner {
-		e.colorer.Printf(banner, args...)
-	}
 
 	l, err := net.Listen("tcp", s.Addr)
 	if err != nil {
@@ -610,11 +576,13 @@ func (e *Echo) StartServer(s *http.Server) error {
 		if e.Listener == nil {
 			e.Listener = tcpKeepAliveListener{l.(*net.TCPListener)}
 		}
+		e.colorer.Printf("⇛ https server started on %s\n", e.colorer.Green(s.Addr))
 		return s.Serve(e.Listener)
 	}
 	if e.TLSListener == nil {
 		e.TLSListener = tls.NewListener(tcpKeepAliveListener{l.(*net.TCPListener)}, s.TLSConfig)
 	}
+	e.colorer.Printf("⇛ https server started on %s\n", e.colorer.Green(s.Addr))
 	return s.Serve(e.TLSListener)
 }
 
