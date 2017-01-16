@@ -40,6 +40,9 @@ type (
 	Timestamp   time.Time
 	TA          []Timestamp
 	StringArray []string
+	Struct      struct {
+		Foo string
+	}
 )
 
 func (t *Timestamp) UnmarshalParam(src string) error {
@@ -50,6 +53,13 @@ func (t *Timestamp) UnmarshalParam(src string) error {
 
 func (a *StringArray) UnmarshalParam(src string) error {
 	*a = StringArray(strings.Split(src, ","))
+	return nil
+}
+
+func (s *Struct) UnmarshalParam(src string) error {
+	*s = Struct{
+		Foo: src,
+	}
 	return nil
 }
 
@@ -75,6 +85,7 @@ var values = map[string][]string{
 	"cantSet": {"test"},
 	"T":       {"2016-12-06T19:09:05+01:00"},
 	"Tptr":    {"2016-12-06T19:09:05+01:00"},
+	"ST":      {"bar"},
 }
 
 func TestBindJSON(t *testing.T) {
@@ -115,13 +126,14 @@ func TestBindQueryParams(t *testing.T) {
 
 func TestBindUnmarshalParam(t *testing.T) {
 	e := New()
-	req, _ := http.NewRequest(GET, "/?ts=2016-12-06T19:09:05Z&sa=one,two,three&ta=2016-12-06T19:09:05Z&ta=2016-12-06T19:09:05Z", nil)
+	req, _ := http.NewRequest(GET, "/?ts=2016-12-06T19:09:05Z&sa=one,two,three&ta=2016-12-06T19:09:05Z&ta=2016-12-06T19:09:05Z&ST=baz", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	result := struct {
 		T  Timestamp   `query:"ts"`
 		TA []Timestamp `query:"ta"`
 		SA StringArray `query:"sa"`
+		ST Struct
 	}{}
 	err := c.Bind(&result)
 	ts := Timestamp(time.Date(2016, 12, 6, 19, 9, 5, 0, time.UTC))
@@ -130,6 +142,7 @@ func TestBindUnmarshalParam(t *testing.T) {
 		assert.Equal(t, ts, result.T)
 		assert.Equal(t, StringArray([]string{"one", "two", "three"}), result.SA)
 		assert.Equal(t, []Timestamp{ts, ts}, result.TA)
+		assert.Equal(t, Struct{"baz"}, result.ST)
 	}
 }
 
