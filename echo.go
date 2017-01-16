@@ -576,7 +576,7 @@ func (e *Echo) StartServer(s *http.Server) error {
 		if e.Listener == nil {
 			e.Listener = tcpKeepAliveListener{l.(*net.TCPListener)}
 		}
-		e.colorer.Printf("⇛ https server started on %s\n", e.colorer.Green(s.Addr))
+		e.colorer.Printf("⇛ http server started on %s\n", e.colorer.Green(s.Addr))
 		return s.Serve(e.Listener)
 	}
 	if e.TLSListener == nil {
