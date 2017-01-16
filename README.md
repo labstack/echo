@@ -15,7 +15,6 @@
 - Highly customizable
 - Automatic TLS via Let’s Encrypt
 - HTTP/2 support
-- Built-in graceful shutdown
 
 ## Performance
 
