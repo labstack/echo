@@ -1,9 +1,9 @@
 +++
-title = "Subdomains Example"
+title = "Subdomains"
 description = "Subdomains example for Echo"
 [menu.main]
   name = "Subdomains"
-  parent = "examples"
+  parent = "cookbook"
   weight = 10
 +++
 

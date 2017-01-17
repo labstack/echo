@@ -1,9 +1,9 @@
 +++
-title = "HTTP/2 Example"
+title = "HTTP/2"
 description = "HTTP/2 example for Echo"
 [menu.main]
   name = "HTTP/2"
-  parent = "examples"
+  parent = "cookbook"
   weight = 3
 +++
 

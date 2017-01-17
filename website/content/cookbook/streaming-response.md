@@ -1,9 +1,9 @@
 +++
-title = "Streaming Response Example"
+title = "Streaming Response"
 description = "Streaming response example for Echo"
 [menu.main]
   name = "Streaming Response"
-  parent = "examples"
+  parent = "cookbook"
   weight = 3
 +++
 

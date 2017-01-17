@@ -1,10 +1,10 @@
 +++
-title = "JWT Example"
+title = "JWT"
 description = "JWT example for Echo"
 [menu.main]
   name = "JWT"
   identifier = "example-jwt"
-  parent = "examples"
+  parent = "cookbook"
   weight = 11
 +++
 

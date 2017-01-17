@@ -1,9 +1,9 @@
 +++
-title = "Hello World Example"
+title = "Hello World"
 description = "Hello world example for Echo"
 [menu.main]
   name = "Hello World"
-  parent = "examples"
+  parent = "cookbook"
   weight = 1
 +++
 

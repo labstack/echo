@@ -14,7 +14,7 @@
 *.json  text eol=lf
 LICENSE text eol=lf
 
-# Exclude `website` and `examples` from GitHub's language statistics
+# Exclude `website` and `cookbook` from GitHub's language statistics
 # https://github.com/github/linguist#using-gitattributes
-examples/* linguist-documentation
+cookbook/* linguist-documentation
 website/* linguist-documentation

@@ -105,4 +105,4 @@ e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
 
 Example above skips Logger middleware when request host starts with localhost.
 
-## [Writing Custom Middleware]({{< ref "examples/middleware.md">}})
+## [Writing Custom Middleware]({{< ref "cookbook/middleware.md">}})

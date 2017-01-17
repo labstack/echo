@@ -1,9 +1,9 @@
 +++
-title = "Twitter Like API Example"
+title = "Twitter Like API"
 description = "Twitter Like API example for Echo"
 [menu.main]
   name = "Twitter"
-  parent = "examples"
+  parent = "cookbook"
   weight = 2 
 +++
 

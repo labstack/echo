@@ -1,9 +1,9 @@
 +++
-title = "Auto TLS Example"
+title = "Auto TLS"
 description = "Automatic TLS certificates from Let's Encrypt example for Echo"
 [menu.main]
   name = "Auto TLS"
-  parent = "examples"
+  parent = "cookbook"
   weight = 2
 +++
 

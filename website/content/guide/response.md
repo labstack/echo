@@ -129,7 +129,7 @@ func(c echo.Context) error {
 Go type into JSON and send it as JSONP payload constructed using a callback, with
 status code.
 
-[*Example*](/examples/jsonp)
+[*Example*](/cookbook/jsonp)
 
 ## Send XML
 

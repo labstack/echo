@@ -45,4 +45,4 @@ description = "Migration"
 - Moved website and examples to the main repo
 - Updated docs and fixed numerous issues
 
-## [Examples](/examples/hello-world)
+## [Cookbook](/cookbook)

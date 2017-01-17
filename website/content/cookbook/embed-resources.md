@@ -1,9 +1,9 @@
 +++
-title = "Embed Resources Example"
+title = "Embed Resources"
 description = "Embed resources example for Echo"
 [menu.main]
   name = "Embed Resources"
-  parent = "examples"
+  parent = "cookbook"
   weight = 14
 +++
 

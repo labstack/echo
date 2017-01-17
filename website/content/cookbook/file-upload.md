@@ -1,9 +1,9 @@
 +++
-title = "File Upload Example"
+title = "File Upload"
 description = "File upload example for Echo"
 [menu.main]
   name = "File Upload"
-  parent = "examples"
+  parent = "cookbook"
   weight = 7
 +++
 

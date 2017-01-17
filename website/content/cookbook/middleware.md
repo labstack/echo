@@ -1,9 +1,9 @@
 +++
-title = "Middleware Example"
+title = "Middleware"
 description = "Middleware example for Echo"
 [menu.main]
   name = "Middleware"
-  parent = "examples"
+  parent = "cookbook"
   weight = 3
 +++
 

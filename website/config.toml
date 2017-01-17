@@ -6,6 +6,6 @@ googleAnalytics = "UA-85059636-2"
 [permalinks]
   guide = "/guide/:filename"
   middleware = "/middleware/:filename"
-  examples = "/examples/:filename"
+  example = "/cookbook/:filename"
 [params]
   description = "Echo is a high performance, extensible, minimalist web framework for Go (Golang)."

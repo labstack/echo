@@ -1,10 +1,10 @@
 +++
-title = "CORS Example"
+title = "CORS"
 description = "CORS example for Echo"
 [menu.main]
   name = "CORS"
   identifier = "middleware-cors"
-  parent = "examples"
+  parent = "cookbook"
   weight = 3
 +++
 
