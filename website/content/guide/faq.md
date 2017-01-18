@@ -51,3 +51,9 @@ Q: How to run Echo on a specific IP address?
 ```go
 e.Start("<ip>:<port>")
 ```
+
+Q: How to run Echo on a random port?
+
+```go
+e.Start(":0")
+```

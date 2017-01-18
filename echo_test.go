@@ -11,6 +11,8 @@ import (
 
 	"errors"
 
+	"time"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -391,6 +393,7 @@ func TestEchoStart(t *testing.T) {
 	go func() {
 		assert.NoError(t, e.Start(":0"))
 	}()
+	time.Sleep(200 * time.Millisecond)
 }
 
 func TestEchoStartTLS(t *testing.T) {
@@ -398,6 +401,7 @@ func TestEchoStartTLS(t *testing.T) {
 	go func() {
 		assert.NoError(t, e.StartTLS(":0", "_fixture/certs/cert.pem", "_fixture/certs/key.pem"))
 	}()
+	time.Sleep(200 * time.Millisecond)
 }
 
 func testMethod(t *testing.T, method, path string, e *Echo) {

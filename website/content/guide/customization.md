@@ -52,6 +52,21 @@ s := &http.Server{
 e.Logger.Fatal(e.StartServer(s))
 ```
 
+## Custom Listener
+
+`Echo#*Listener` can be used to run a custom listener.
+
+*Example*
+
+```go
+l, err := net.Listen("tcp", ":1323")
+if err != nil {
+  e.Logger.Fatal(l)
+}
+e.Listener = l
+e.Logger.Fatal(e.Start(""))
+```
+
 ## Disable HTTP/2
 
 `Echo#DisableHTTP2` can be used disable HTTP/2 protocol.
