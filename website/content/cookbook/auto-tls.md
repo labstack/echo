@@ -15,6 +15,7 @@ message with TLS enabled on the website.
 
 > 
 - For added security you should specify host policy in auto TLS manager
+- Cache certificates to avoid issues with rate limits (https://letsencrypt.org/docs/rate-limits) 
 - To redirect HTTP traffic to HTTPS, you can use [redirect middleware](/middleware/redirect#https-redirect)
 
 ## Server

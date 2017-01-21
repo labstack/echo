@@ -48,7 +48,7 @@ type (
 		// Optional. Default value DefaultLoggerConfig.Format.
 		Format string `json:"format"`
 
-		// Output is a writer where logs are written.
+		// Output is a writer where logs in JSON format are written.
 		// Optional. Default value os.Stdout.
 		Output io.Writer
 
