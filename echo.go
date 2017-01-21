@@ -290,6 +290,8 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 	if he, ok := err.(*HTTPError); ok {
 		code = he.Code
 		msg = he.Message
+	} else if e.Debug {
+		msg = err.Error()
 	} else {
 		msg = http.StatusText(code)
 	}
