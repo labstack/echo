@@ -54,7 +54,7 @@ type (
 
 		template *fasttemplate.Template
 		colorer  *color.Color
-		pool     sync.Pool
+		pool     *sync.Pool
 	}
 )
 
@@ -93,7 +93,7 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 	config.template = fasttemplate.New(config.Format, "${", "}")
 	config.colorer = color.New()
 	config.colorer.SetOutput(config.Output)
-	config.pool = sync.Pool{
+	config.pool = &sync.Pool{
 		New: func() interface{} {
 			return bytes.NewBuffer(make([]byte, 256))
 		},
