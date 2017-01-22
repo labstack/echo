@@ -70,6 +70,7 @@ type (
 		Validator        Validator
 		Renderer         Renderer
 		AutoTLSManager   autocert.Manager
+		Mutex            sync.RWMutex
 		Logger           Logger
 		stdLogger        *slog.Logger
 		colorer          *color.Color
@@ -497,7 +498,13 @@ func (e *Echo) ReleaseContext(c Context) {
 
 // ServeHTTP implements `http.Handler` interface, which serves HTTP requests.
 func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Acquire lock
+	e.Mutex.RLock()
+	defer e.Mutex.RUnlock()
+
+	// Acquire context
 	c := e.pool.Get().(*context)
+	defer e.pool.Put(c)
 	c.Reset(r, w)
 
 	// Middleware
@@ -521,8 +528,6 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err := h(c); err != nil {
 		e.HTTPErrorHandler(err, c)
 	}
-
-	e.pool.Put(c)
 }
 
 // Start starts an HTTP server.
