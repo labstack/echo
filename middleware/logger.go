@@ -39,9 +39,9 @@ type (
 		// - latency_human (Human readable)
 		// - bytes_in (Bytes received)
 		// - bytes_out (Bytes sent)
-		// - header:<name>
-		// - query:<name>
-		// - form:<name>
+		// - header:<NAME>
+		// - query:<NAME>
+		// - form:<NAME>
 		//
 		// Example "${remote_ip} ${status}"
 		//
