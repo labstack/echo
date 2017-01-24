@@ -547,15 +547,7 @@ func (e *Echo) StartTLS(address string, certFile, keyFile string) (err error) {
 }
 
 // StartAutoTLS starts an HTTPS server using certificates automatically installed from https://letsencrypt.org.
-// Port in address must be 443.
 func (e *Echo) StartAutoTLS(address string) error {
-	_, port, err := net.SplitHostPort(address)
-	if err != nil {
-		return err
-	}
-	if port != "443" {
-		return errors.New("port for auto tls must be 443")
-	}
 	s := e.TLSServer
 	s.TLSConfig = new(tls.Config)
 	s.TLSConfig.GetCertificate = e.AutoTLSManager.GetCertificate
