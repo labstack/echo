@@ -1,5 +1,5 @@
-hash: 4a4f41416395516f7eefabd29ee5c7b065a411dec7446f6d6853d4cc28c4c644
-updated: 2017-01-21T10:20:13.866484425-08:00
+hash: 3de2a96bbdc145cce325de2a482111b0524cc330f60a4fbc781a08ed3b879e58
+updated: 2017-01-28T10:22:00.230111692-08:00
 imports:
 - name: github.com/daaku/go.zipexe
   version: a5fe2436ffcb3236e175e5149162b41cd28bd27d
@@ -17,7 +17,7 @@ imports:
 - name: github.com/facebookgo/stats
   version: 1b76add642e42c6ffba7211ad7b3939ce654526e
 - name: github.com/GeertJohan/go.rice
-  version: 9fdfd46f9806a9228aae341d65ab75c5235c383c
+  version: 4bbccbfa39e784796e483270451217d3369ecfbe
   subpackages:
   - embedded
 - name: github.com/golang/protobuf
@@ -25,7 +25,7 @@ imports:
   subpackages:
   - proto
 - name: github.com/gorilla/websocket
-  version: 2257eda00b2084c1351cd672aa5476daa9f5e463
+  version: c36f2fe5c330f0ac404b616b96c438b8616b1aaf
 - name: github.com/kardianos/osext
   version: c2c54e542fb797ad986b31721e1baedf214ca413
 - name: github.com/labstack/gommon
@@ -46,7 +46,7 @@ imports:
 - name: github.com/valyala/fasttemplate
   version: d090d65668a286d9a180d43a19dfdc5dcad8fe88
 - name: golang.org/x/crypto
-  version: b8a2a83acfe6e6770b75de42d5ff4c67596675c0
+  version: 9477e0b78b9ac3d0b03822fd95422e2fe07627cd
   subpackages:
   - acme
   - acme/autocert

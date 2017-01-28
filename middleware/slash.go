@@ -19,7 +19,7 @@ type (
 var (
 	// DefaultTrailingSlashConfig is the default TrailingSlash middleware config.
 	DefaultTrailingSlashConfig = TrailingSlashConfig{
-		Skipper: defaultSkipper,
+		Skipper: DefaultSkipper,
 	}
 )
 

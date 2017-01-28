@@ -28,7 +28,7 @@ const (
 var (
 	// DefaultBasicAuthConfig is the default BasicAuth middleware config.
 	DefaultBasicAuthConfig = BasicAuthConfig{
-		Skipper: defaultSkipper,
+		Skipper: DefaultSkipper,
 	}
 )
 

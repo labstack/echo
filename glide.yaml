@@ -2,6 +2,9 @@ package: github.com/labstack/echo
 import:
 - package: github.com/GeertJohan/go.rice
 - package: github.com/dgrijalva/jwt-go
+- package: github.com/facebookgo/grace
+  subpackages:
+  - gracehttp
 - package: github.com/gorilla/websocket
 - package: github.com/labstack/gommon
   subpackages:
@@ -9,7 +12,7 @@ import:
   - color
   - log
   - random
-- package: github.com/mattn/go-isatty
+- package: github.com/tylerb/graceful
 - package: github.com/valyala/fasttemplate
 - package: golang.org/x/crypto
   subpackages:
@@ -21,7 +24,6 @@ import:
 - package: gopkg.in/mgo.v2
   subpackages:
   - bson
-- package: github.com/facebookgo/grace
 testImport:
 - package: github.com/stretchr/testify
   subpackages:

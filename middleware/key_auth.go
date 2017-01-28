@@ -40,7 +40,7 @@ type (
 var (
 	// DefaultKeyAuthConfig is the default KeyAuth middleware config.
 	DefaultKeyAuthConfig = KeyAuthConfig{
-		Skipper:    defaultSkipper,
+		Skipper:    DefaultSkipper,
 		KeyLookup:  "header:" + echo.HeaderAuthorization,
 		AuthScheme: "Bearer",
 	}

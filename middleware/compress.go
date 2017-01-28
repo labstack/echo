@@ -36,7 +36,7 @@ const (
 var (
 	// DefaultGzipConfig is the default Gzip middleware config.
 	DefaultGzipConfig = GzipConfig{
-		Skipper: defaultSkipper,
+		Skipper: DefaultSkipper,
 		Level:   -1,
 	}
 )

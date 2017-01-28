@@ -8,7 +8,7 @@ type (
 	Skipper func(c echo.Context) bool
 )
 
-// defaultSkipper returns false which processes the middleware.
-func defaultSkipper(c echo.Context) bool {
+// DefaultSkipper returns false which processes the middleware.
+func DefaultSkipper(c echo.Context) bool {
 	return false
 }

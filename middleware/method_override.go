@@ -20,7 +20,7 @@ type (
 var (
 	// DefaultMethodOverrideConfig is the default MethodOverride middleware config.
 	DefaultMethodOverrideConfig = MethodOverrideConfig{
-		Skipper: defaultSkipper,
+		Skipper: DefaultSkipper,
 		Getter:  MethodFromHeader(echo.HeaderXHTTPMethodOverride),
 	}
 )

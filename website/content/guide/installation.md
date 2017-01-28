@@ -16,7 +16,7 @@ description = "Installing Echo"
 
 ```sh
 $ cd <project in $GOPATH>
-$ go get -u github.com/labstack/echo
+$ go get -u github.com/labstack/echo/...
 ```
 
 ## Using [glide](http://glide.sh)
