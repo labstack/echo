@@ -59,6 +59,14 @@ import (
 type (
 	// Echo is the top-level framework instance.
 	Echo struct {
+		stdLogger        *slog.Logger
+		colorer          *color.Color
+		premiddleware    []MiddlewareFunc
+		middleware       []MiddlewareFunc
+		maxParam         *int
+		router           *Router
+		notFoundHandler  HandlerFunc
+		pool             sync.Pool
 		Server           *http.Server
 		TLSServer        *http.Server
 		Listener         net.Listener
@@ -72,14 +80,6 @@ type (
 		AutoTLSManager   autocert.Manager
 		Mutex            sync.RWMutex
 		Logger           Logger
-		stdLogger        *slog.Logger
-		colorer          *color.Color
-		premiddleware    []MiddlewareFunc
-		middleware       []MiddlewareFunc
-		maxParam         *int
-		router           *Router
-		notFoundHandler  HandlerFunc
-		pool             sync.Pool
 	}
 
 	// Route contains a handler and information for matching against requests.

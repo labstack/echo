@@ -543,9 +543,9 @@ func (c *context) Logger() Logger {
 }
 
 func (c *context) Reset(r *http.Request, w http.ResponseWriter) {
-	c.query = nil
-	c.store = nil
 	c.request = r
 	c.response.reset(w)
+	c.query = nil
 	c.handler = NotFoundHandler
+	c.store = nil
 }

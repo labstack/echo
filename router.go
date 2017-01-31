@@ -297,6 +297,7 @@ func (n *node) checkMethodNotAllowed() HandlerFunc {
 // - Reset it `Context#Reset()`
 // - Return it `Echo#ReleaseContext()`.
 func (r *Router) Find(method, path string, context Context) {
+	context.SetPath(path)
 	cn := r.tree // Current node as root
 
 	var (
