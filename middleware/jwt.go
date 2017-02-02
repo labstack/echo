@@ -117,14 +117,7 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	}
 
 	// Initialize
-	parts := strings.Split(config.TokenLookup, ":")
-	extractor := jwtFromHeader(parts[1], config.AuthScheme)
-	switch parts[0] {
-	case "query":
-		extractor = jwtFromQuery(parts[1])
-	case "cookie":
-		extractor = jwtFromCookie(parts[1])
-	}
+	extractor := jwtExtractorFromTokenLookup(config.TokenLookup, config.AuthScheme)
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -152,6 +145,21 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 			return echo.ErrUnauthorized
 		}
 	}
+}
+
+// jwtExtractorFromTokenLookup returns a `jwtTokenExtractor` from the
+// provided Lookup Token
+func jwtExtractorFromTokenLookup(tokenLookup, authScheme string) jwtExtractor {
+	parts := strings.Split(tokenLookup, ":")
+	extractor := jwtFromHeader(parts[1], authScheme)
+	switch parts[0] {
+	case "query":
+		extractor = jwtFromQuery(parts[1])
+	case "cookie":
+		extractor = jwtFromCookie(parts[1])
+	}
+
+	return extractor
 }
 
 // jwtFromHeader returns a `jwtExtractor` that extracts token from the request header.

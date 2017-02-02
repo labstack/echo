@@ -107,14 +107,7 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 	}
 
 	// Initialize
-	parts := strings.Split(config.TokenLookup, ":")
-	extractor := csrfTokenFromHeader(parts[1])
-	switch parts[0] {
-	case "form":
-		extractor = csrfTokenFromForm(parts[1])
-	case "query":
-		extractor = csrfTokenFromQuery(parts[1])
-	}
+	extractor := csrfExtractorFromTokenLookup(config.TokenLookup)
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -171,6 +164,21 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 			return next(c)
 		}
 	}
+}
+
+// csrfExtractorFromTokenLookup returns a `csrfTokenExtractor` from the
+// provided Lookup Token
+func csrfExtractorFromTokenLookup(tokenLookup string) csrfTokenExtractor {
+	parts := strings.Split(tokenLookup, ":")
+	extractor := csrfTokenFromHeader(parts[1])
+	switch parts[0] {
+	case "form":
+		extractor = csrfTokenFromForm(parts[1])
+	case "query":
+		extractor = csrfTokenFromQuery(parts[1])
+	}
+
+	return extractor
 }
 
 // csrfTokenFromForm returns a `csrfTokenExtractor` that extracts token from the
