@@ -288,7 +288,7 @@ func (n *node) checkMethodNotAllowed() HandlerFunc {
 	return NotFoundHandler
 }
 
-// Find lookup a handler registed for method and path. It also parses URL for path
+// Find lookup a handler registered for method and path. It also parses URL for path
 // parameters and load them into context.
 //
 // For performance:
