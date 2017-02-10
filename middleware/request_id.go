@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"github.com/labstack/echo"
-	"github.com/labstack/echo/middleware"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -10,7 +9,7 @@ type (
 	// RequestIDConfig defines the config for RequestID middleware.
 	RequestIDConfig struct {
 		// Skipper defines a function to skip middleware.
-		Skipper middleware.Skipper
+		Skipper Skipper
 	}
 )
 
