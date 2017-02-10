@@ -5,7 +5,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/labstack/echo"
 	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
@@ -24,7 +23,6 @@ func TestRequestID(t *testing.T) {
 	h(c)
 	if assert.NotEmpty(t, rec.Header().Get("X-Request-ID")) {
 		u, err := uuid.FromString(rec.Header().Get("X-Request-ID"))
-		spew.Dump(u)
 		assert.NoError(t, err)
 		assert.Equal(t, uint(4), u.Version())
 		assert.Equal(t, uint(uuid.VariantRFC4122), u.Variant())
