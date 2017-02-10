@@ -26,7 +26,7 @@ type (
 		// - time_unix_nano
 		// - time_rfc3339
 		// - time_rfc3339_nano
-		// - id (Request ID - Not implemented)
+		// - id (Request ID)
 		// - remote_ip
 		// - uri
 		// - host
@@ -62,7 +62,7 @@ var (
 	// DefaultLoggerConfig is the default Logger middleware config.
 	DefaultLoggerConfig = LoggerConfig{
 		Skipper: DefaultSkipper,
-		Format: `{"time":"${time_rfc3339_nano}","remote_ip":"${remote_ip}","host":"${host}",` +
+		Format: `{"time":"${time_rfc3339_nano}","id":"${request_id}","remote_ip":"${remote_ip}","host":"${host}",` +
 			`"method":"${method}","uri":"${uri}","status":${status}, "latency":${latency},` +
 			`"latency_human":"${latency_human}","bytes_in":${bytes_in},` +
 			`"bytes_out":${bytes_out}}` + "\n",
@@ -169,6 +169,12 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 					return buf.WriteString(cl)
 				case "bytes_out":
 					return buf.WriteString(strconv.FormatInt(res.Size, 10))
+				case "request_id":
+					ri := req.Header.Get("X-Request-ID")
+					if ri == "" {
+						ri = res.Header().Get("X-Request-ID")
+					}
+					return w.Write([]byte(ri))
 				default:
 					switch {
 					case strings.HasPrefix(tag, "header:"):
