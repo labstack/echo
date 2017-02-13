@@ -2,15 +2,12 @@ package echo
 
 import (
 	"bytes"
+	"errors"
 	"net/http"
 	"net/http/httptest"
-	"testing"
-
 	"reflect"
 	"strings"
-
-	"errors"
-
+	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -83,6 +80,16 @@ func TestEchoStatic(t *testing.T) {
 	c, r = request(GET, "/folder", e)
 	assert.Equal(t, http.StatusOK, c)
 	assert.Equal(t, true, strings.HasPrefix(r, "<!doctype html>"))
+}
+
+func TestStaticCustomFS(t *testing.T) {
+	e := New()
+	e.FS = http.Dir("_fixture")
+
+	e.Static("/images", "images")
+	c, b := request(GET, "/images/walle.png", e)
+	assert.Equal(t, http.StatusOK, c)
+	assert.NotEmpty(t, b)
 }
 
 func TestEchoFile(t *testing.T) {

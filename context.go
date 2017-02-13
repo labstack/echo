@@ -10,7 +10,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"path/filepath"
 	"strings"
 )
@@ -472,7 +471,7 @@ func (c *context) Stream(code int, contentType string, r io.Reader) (err error) 
 }
 
 func (c *context) File(file string) error {
-	f, err := os.Open(file)
+	f, err := c.echo.FS.Open(file)
 	if err != nil {
 		return ErrNotFound
 	}
@@ -481,7 +480,7 @@ func (c *context) File(file string) error {
 	fi, _ := f.Stat()
 	if fi.IsDir() {
 		file = filepath.Join(file, indexPage)
-		f, err = os.Open(file)
+		f, err = c.echo.FS.Open(file)
 		if err != nil {
 			return ErrNotFound
 		}

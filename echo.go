@@ -45,6 +45,7 @@ import (
 	stdLog "log"
 	"net"
 	"net/http"
+	"os"
 	"path"
 	"reflect"
 	"runtime"
@@ -80,6 +81,7 @@ type (
 		AutoTLSManager   autocert.Manager
 		Mutex            sync.RWMutex
 		Logger           Logger
+		FS               http.FileSystem
 	}
 
 	// Route contains a handler and information for matching against requests.
@@ -238,6 +240,14 @@ var (
 	}
 )
 
+// FS implements http.FileSystem
+type FS struct{}
+
+// Open opens the named file for serving
+func (fs *FS) Open(name string) (http.File, error) {
+	return os.Open(name)
+}
+
 // New creates an instance of Echo.
 func New() (e *Echo) {
 	e = &Echo{
@@ -260,6 +270,7 @@ func New() (e *Echo) {
 		return e.NewContext(nil, nil)
 	}
 	e.router = NewRouter(e)
+	e.FS = &FS{}
 	return
 }
 
