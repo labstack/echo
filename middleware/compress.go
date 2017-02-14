@@ -66,6 +66,7 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 
 			res := c.Response()
 			res.Header().Add(echo.HeaderVary, echo.HeaderAcceptEncoding)
+			res.Header().Add(echo.HeaderContentEncoding, gzipScheme) // issue #806
 			if strings.Contains(c.Request().Header.Get(echo.HeaderAcceptEncoding), gzipScheme) {
 				rw := res.Writer
 				w, err := gzip.NewWriterLevel(rw, config.Level)
@@ -92,8 +93,8 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 }
 
 func (w *gzipResponseWriter) WriteHeader(code int) {
-	if code != http.StatusNoContent { // Issue #489
-		w.ResponseWriter.Header().Set(echo.HeaderContentEncoding, gzipScheme)
+	if code == http.StatusNoContent { // Issue #489
+		w.ResponseWriter.Header().Del(echo.HeaderContentEncoding)
 	}
 	w.ResponseWriter.WriteHeader(code)
 }
