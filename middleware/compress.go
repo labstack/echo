@@ -67,7 +67,7 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 			res := c.Response()
 			res.Header().Add(echo.HeaderVary, echo.HeaderAcceptEncoding)
 			if strings.Contains(c.Request().Header.Get(echo.HeaderAcceptEncoding), gzipScheme) {
-				res.Header().Add(echo.HeaderContentEncoding, gzipScheme) // issue #806
+				res.Header().Add(echo.HeaderContentEncoding, gzipScheme) // Issue #806
 				rw := res.Writer
 				w, err := gzip.NewWriterLevel(rw, config.Level)
 				if err != nil {

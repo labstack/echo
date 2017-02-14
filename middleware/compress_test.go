@@ -77,8 +77,8 @@ func TestGzipErrorReturned(t *testing.T) {
 func TestGzipWithStatic(t *testing.T) {
 	e := echo.New()
 	e.Use(Gzip())
-	e.Static("/test", "testdata/compress")
-	req, _ := http.NewRequest(echo.GET, "/test/data", nil)
+	e.Static("/test", "../_fixture/images")
+	req, _ := http.NewRequest(echo.GET, "/test/walle.png", nil)
 	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -91,7 +91,7 @@ func TestGzipWithStatic(t *testing.T) {
 	r, err := gzip.NewReader(rec.Body)
 	assert.NoError(t, err)
 	defer r.Close()
-	want, err := ioutil.ReadFile("testdata/compress/data")
+	want, err := ioutil.ReadFile("../_fixture/images/walle.png")
 	if assert.NoError(t, err) {
 		var buf bytes.Buffer
 		buf.ReadFrom(r)
