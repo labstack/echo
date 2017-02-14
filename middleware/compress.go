@@ -66,16 +66,18 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 
 			res := c.Response()
 			res.Header().Add(echo.HeaderVary, echo.HeaderAcceptEncoding)
-			res.Header().Add(echo.HeaderContentEncoding, gzipScheme) // issue #806
 			if strings.Contains(c.Request().Header.Get(echo.HeaderAcceptEncoding), gzipScheme) {
+				res.Header().Add(echo.HeaderContentEncoding, gzipScheme) // issue #806
 				rw := res.Writer
 				w, err := gzip.NewWriterLevel(rw, config.Level)
 				if err != nil {
 					return err
 				}
 				defer func() {
-
 					if res.Size == 0 {
+						if res.Header().Get(echo.HeaderContentEncoding) == gzipScheme {
+							res.Header().Del(echo.HeaderContentEncoding)
+						}
 						// We have to reset response to it's pristine state when
 						// nothing is written to body or error is returned.
 						// See issue #424, #407.
