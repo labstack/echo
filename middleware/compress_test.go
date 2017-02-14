@@ -3,6 +3,7 @@ package middleware
 import (
 	"bytes"
 	"compress/gzip"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -70,4 +71,30 @@ func TestGzipErrorReturned(t *testing.T) {
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 	assert.Empty(t, rec.Header().Get(echo.HeaderContentEncoding))
+}
+
+// Issue #806
+func TestGzipWithStatic(t *testing.T) {
+	e := echo.New()
+	e.Use(Gzip())
+	e.Static("/test", "../_fixture/images")
+	req, _ := http.NewRequest(echo.GET, "/test/walle.png", nil)
+	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	// Data is written out in chunks when Content-Length == "", so only
+	// validate the content length if it's not set.
+	if cl := rec.Header().Get("Content-Length"); cl != "" {
+		assert.Equal(t, cl, rec.Body.Len())
+	}
+	r, err := gzip.NewReader(rec.Body)
+	assert.NoError(t, err)
+	defer r.Close()
+	want, err := ioutil.ReadFile("../_fixture/images/walle.png")
+	if assert.NoError(t, err) {
+		var buf bytes.Buffer
+		buf.ReadFrom(r)
+		assert.Equal(t, want, buf.Bytes())
+	}
 }
