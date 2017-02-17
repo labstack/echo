@@ -11,7 +11,8 @@ import (
 
 func TestStatic(t *testing.T) {
 	e := echo.New()
-	req := httptest.NewRequest(echo.GET, "/", nil)
+	// TODO: Once go1.6 is dropped, use `httptest.Request()`.
+	req, _ := http.NewRequest(echo.GET, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	c.SetParamNames("*")
