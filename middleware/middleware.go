@@ -9,6 +9,6 @@ type (
 )
 
 // DefaultSkipper returns false which processes the middleware.
-func DefaultSkipper(c echo.Context) bool {
+func DefaultSkipper(echo.Context) bool {
 	return false
 }

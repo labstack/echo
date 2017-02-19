@@ -21,7 +21,7 @@ type (
 func NewStats() *Stats {
 	return &Stats{
 		Uptime:   time.Now(),
-		Statuses: make(map[string]int),
+		Statuses: map[string]int{},
 	}
 }
 

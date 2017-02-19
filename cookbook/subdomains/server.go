@@ -15,7 +15,7 @@ type (
 
 func main() {
 	// Hosts
-	hosts := make(map[string]*Host)
+	hosts := map[string]*Host{}
 
 	//-----
 	// API

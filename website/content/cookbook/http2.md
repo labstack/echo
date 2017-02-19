@@ -31,7 +31,7 @@ This will generate `cert.pem` and `key.pem` files.
 > For demo purpose, we are using a self-signed certificate. Ideally you should obtain
 a certificate from [CA](https://en.wikipedia.org/wiki/Certificate_authority).
 
-### Configure a server with `engine.Config`
+## Server
 
 `server.go`
 

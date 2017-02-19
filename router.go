@@ -47,7 +47,7 @@ func NewRouter(e *Echo) *Router {
 		tree: &node{
 			methodHandler: new(methodHandler),
 		},
-		routes: make(map[string]Route),
+		routes: map[string]Route{},
 		echo:   e,
 	}
 }
