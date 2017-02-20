@@ -42,7 +42,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	slog "log"
+	stdLog "log"
 	"net"
 	"net/http"
 	"path"
@@ -59,7 +59,7 @@ import (
 type (
 	// Echo is the top-level framework instance.
 	Echo struct {
-		stdLogger        *slog.Logger
+		stdLogger        *stdLog.Logger
 		colorer          *color.Color
 		premiddleware    []MiddlewareFunc
 		middleware       []MiddlewareFunc
@@ -255,7 +255,7 @@ func New() (e *Echo) {
 	e.HTTPErrorHandler = e.DefaultHTTPErrorHandler
 	e.Binder = &DefaultBinder{}
 	e.Logger.SetLevel(log.OFF)
-	e.stdLogger = slog.New(e.Logger.Output(), e.Logger.Prefix()+": ", 0)
+	e.stdLogger = stdLog.New(e.Logger.Output(), e.Logger.Prefix()+": ", 0)
 	e.pool.New = func() interface{} {
 		return e.NewContext(nil, nil)
 	}
