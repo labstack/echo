@@ -27,10 +27,7 @@ description = "Graceful shutdown example for Echo"
 
 {{< embed "graceful-shutdown/graceful/server.go" >}}
 
-## Source Code
-
-- [graceful]({{< source "graceful-shutdown/graceful" >}})
-- [grace]({{< source "graceful-shutdown/grace" >}})
+## [Source Code]({{< source "graceful-shutdown" >}})
 
 ## Maintainers
 

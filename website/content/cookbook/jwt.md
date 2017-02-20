@@ -57,10 +57,7 @@ curl localhost:1323/restricted -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR
 Welcome Jon Snow!
 ```
 
-## Source Code
-
-- [With default Map claims]({{< source "jwt/map-claims" >}})
-- [With custom claims]({{< source "jwt/custom-claims" >}})
+## [Source Code]({{< source "jwt" >}})
 
 ## Maintainers
 
