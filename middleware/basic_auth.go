@@ -17,7 +17,8 @@ type (
 		// Required.
 		Validator BasicAuthValidator
 
-		// Realm is a string to define realm attribute of BasicAuth
+		// Realm is a string to define realm attribute of BasicAuth.
+		// Default value "Restricted".
 		Realm string
 	}
 
@@ -87,7 +88,7 @@ func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 				}
 			}
 
-			var realm string
+			realm := ""
 			if config.Realm == defaultRealm {
 				realm = defaultRealm
 			} else {
