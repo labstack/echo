@@ -46,6 +46,7 @@ import (
 	"net"
 	"net/http"
 	"path"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"sync"
@@ -403,7 +404,8 @@ func (e *Echo) Static(prefix, root string) {
 
 func static(i i, prefix, root string) {
 	h := func(c Context) error {
-		return c.File(path.Join(root, c.Param("*")))
+		name := filepath.Join(root, path.Clean("/"+c.Param("*"))) // `/` for security
+		return c.File(name)
 	}
 	i.GET(prefix, h)
 	if prefix == "/" {

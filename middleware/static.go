@@ -3,6 +3,7 @@ package middleware
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -66,11 +67,11 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			path := c.Request().URL.Path
+			p := c.Request().URL.Path
 			if strings.HasSuffix(c.Path(), "*") { // When serving from a group, e.g. `/static*`.
-				path = c.Param("*")
+				p = c.Param("*")
 			}
-			name := filepath.Join(config.Root, path)
+			name := filepath.Join(config.Root, path.Clean("/"+p)) // "/"+ for security
 
 			fi, err := os.Stat(name)
 			if err != nil {
