@@ -11,7 +11,7 @@ import (
 
 func TestSecure(t *testing.T) {
 	e := echo.New()
-	req, _ := http.NewRequest(echo.GET, "/", nil)
+	req := httptest.NewRequest(echo.GET, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	h := func(c echo.Context) error {

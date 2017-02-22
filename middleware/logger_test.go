@@ -16,7 +16,7 @@ import (
 func TestLogger(t *testing.T) {
 	// Note: Just for the test coverage, not a real test.
 	e := echo.New()
-	req, _ := http.NewRequest(echo.GET, "/", nil)
+	req := httptest.NewRequest(echo.GET, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	h := Logger()(func(c echo.Context) error {
@@ -54,7 +54,7 @@ func TestLogger(t *testing.T) {
 
 func TestLoggerIPAddress(t *testing.T) {
 	e := echo.New()
-	req, _ := http.NewRequest(echo.GET, "/", nil)
+	req := httptest.NewRequest(echo.GET, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	buf := new(bytes.Buffer)
@@ -98,7 +98,7 @@ func TestLoggerTemplate(t *testing.T) {
 		return c.String(http.StatusOK, "Header Logged")
 	})
 
-	req, _ := http.NewRequest(echo.GET, "/?username=apagano-param&password=secret", nil)
+	req := httptest.NewRequest(echo.GET, "/?username=apagano-param&password=secret", nil)
 	req.RequestURI = "/"
 	req.Header.Add(echo.HeaderXRealIP, "127.0.0.1")
 	req.Header.Add("Referer", "google.com")

@@ -404,7 +404,7 @@ func (e *Echo) Static(prefix, root string) {
 
 func static(i i, prefix, root string) {
 	h := func(c Context) error {
-		name := filepath.Join(root, path.Clean("/"+c.Param("*"))) // `/` for security
+		name := filepath.Join(root, path.Clean("/"+c.Param("*"))) // "/"+ for security
 		return c.File(name)
 	}
 	i.GET(prefix, h)

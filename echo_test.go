@@ -42,7 +42,7 @@ const userXMLPretty = `<user>
 
 func TestEcho(t *testing.T) {
 	e := New()
-	req, _ := http.NewRequest(GET, "/", nil)
+	req := httptest.NewRequest(GET, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
@@ -164,7 +164,7 @@ func TestEchoHandler(t *testing.T) {
 
 func TestEchoWrapHandler(t *testing.T) {
 	e := New()
-	req, _ := http.NewRequest(GET, "", nil)
+	req := httptest.NewRequest(GET, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	h := WrapHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -179,7 +179,7 @@ func TestEchoWrapHandler(t *testing.T) {
 
 func TestEchoWrapMiddleware(t *testing.T) {
 	e := New()
-	req, _ := http.NewRequest(GET, "", nil)
+	req := httptest.NewRequest(GET, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	buf := new(bytes.Buffer)
@@ -364,7 +364,7 @@ func TestEchoGroup(t *testing.T) {
 
 func TestEchoNotFound(t *testing.T) {
 	e := New()
-	req, _ := http.NewRequest(GET, "/files", nil)
+	req := httptest.NewRequest(GET, "/files", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusNotFound, rec.Code)
@@ -375,7 +375,7 @@ func TestEchoMethodNotAllowed(t *testing.T) {
 	e.GET("/", func(c Context) error {
 		return c.String(http.StatusOK, "Echo!")
 	})
-	req, _ := http.NewRequest(POST, "/", nil)
+	req := httptest.NewRequest(POST, "/", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
@@ -418,7 +418,7 @@ func testMethod(t *testing.T, method, path string, e *Echo) {
 }
 
 func request(method, path string, e *Echo) (int, string) {
-	req, _ := http.NewRequest(method, path, nil)
+	req := httptest.NewRequest(method, path, nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	return rec.Code, rec.Body.String()

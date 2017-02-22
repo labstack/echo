@@ -12,7 +12,7 @@ import (
 
 func TestBasicAuth(t *testing.T) {
 	e := echo.New()
-	req, _ := http.NewRequest(echo.GET, "/", nil)
+	req := httptest.NewRequest(echo.GET, "/", nil)
 	res := httptest.NewRecorder()
 	c := e.NewContext(req, res)
 	f := func(u, p string, c echo.Context) bool {

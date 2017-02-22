@@ -14,7 +14,7 @@ import (
 func TestBodyLimit(t *testing.T) {
 	e := echo.New()
 	hw := []byte("Hello, World!")
-	req, _ := http.NewRequest(echo.POST, "/", bytes.NewReader(hw))
+	req := httptest.NewRequest(echo.POST, "/", bytes.NewReader(hw))
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	h := func(c echo.Context) error {

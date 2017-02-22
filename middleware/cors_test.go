@@ -13,7 +13,7 @@ func TestCORS(t *testing.T) {
 	e := echo.New()
 
 	// Wildcard origin
-	req, _ := http.NewRequest(echo.GET, "/", nil)
+	req := httptest.NewRequest(echo.GET, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	h := CORS()(echo.NotFoundHandler)

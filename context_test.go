@@ -32,7 +32,7 @@ func (t *Template) Render(w io.Writer, name string, data interface{}, c Context)
 
 func TestContext(t *testing.T) {
 	e := New()
-	req, _ := http.NewRequest(POST, "/", strings.NewReader(userJSON))
+	req := httptest.NewRequest(POST, "/", strings.NewReader(userJSON))
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec).(*context)
 
@@ -195,7 +195,7 @@ func TestContext(t *testing.T) {
 
 func TestContextCookie(t *testing.T) {
 	e := New()
-	req, _ := http.NewRequest(GET, "/", nil)
+	req := httptest.NewRequest(GET, "/", nil)
 	theme := "theme=light"
 	user := "user=Jon Snow"
 	req.Header.Add(HeaderCookie, theme)
@@ -255,7 +255,7 @@ func TestContextPath(t *testing.T) {
 
 func TestContextPathParam(t *testing.T) {
 	e := New()
-	req, _ := http.NewRequest(GET, "/", nil)
+	req := httptest.NewRequest(GET, "/", nil)
 	c := e.NewContext(req, nil)
 
 	// ParamNames
@@ -272,7 +272,7 @@ func TestContextPathParam(t *testing.T) {
 
 func TestContextPathParamNamesAlais(t *testing.T) {
 	e := New()
-	req, _ := http.NewRequest(GET, "/", nil)
+	req := httptest.NewRequest(GET, "/", nil)
 	c := e.NewContext(req, nil)
 
 	c.SetParamNames("id,name")
@@ -288,7 +288,7 @@ func TestContextFormValue(t *testing.T) {
 	f.Set("email", "jon@labstack.com")
 
 	e := New()
-	req, _ := http.NewRequest(POST, "/", strings.NewReader(f.Encode()))
+	req := httptest.NewRequest(POST, "/", strings.NewReader(f.Encode()))
 	req.Header.Add(HeaderContentType, MIMEApplicationForm)
 	c := e.NewContext(req, nil)
 
@@ -310,7 +310,7 @@ func TestContextQueryParam(t *testing.T) {
 	q := make(url.Values)
 	q.Set("name", "Jon Snow")
 	q.Set("email", "jon@labstack.com")
-	req, _ := http.NewRequest(GET, "/?"+q.Encode(), nil)
+	req := httptest.NewRequest(GET, "/?"+q.Encode(), nil)
 	e := New()
 	c := e.NewContext(req, nil)
 
@@ -334,7 +334,7 @@ func TestContextFormFile(t *testing.T) {
 		w.Write([]byte("test"))
 	}
 	mr.Close()
-	req, _ := http.NewRequest(POST, "/", buf)
+	req := httptest.NewRequest(POST, "/", buf)
 	req.Header.Set(HeaderContentType, mr.FormDataContentType())
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
@@ -350,7 +350,7 @@ func TestContextMultipartForm(t *testing.T) {
 	mw := multipart.NewWriter(buf)
 	mw.WriteField("name", "Jon Snow")
 	mw.Close()
-	req, _ := http.NewRequest(POST, "/", buf)
+	req := httptest.NewRequest(POST, "/", buf)
 	req.Header.Set(HeaderContentType, mw.FormDataContentType())
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
@@ -362,7 +362,7 @@ func TestContextMultipartForm(t *testing.T) {
 
 func TestContextRedirect(t *testing.T) {
 	e := New()
-	req, _ := http.NewRequest(GET, "/", nil)
+	req := httptest.NewRequest(GET, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	assert.Equal(t, nil, c.Redirect(http.StatusMovedPermanently, "http://labstack.github.io/echo"))

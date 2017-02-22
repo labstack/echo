@@ -11,11 +11,9 @@ import (
 
 func TestStatic(t *testing.T) {
 	e := echo.New()
-	// TODO: Once go1.6 is dropped, use `httptest.Request()`.
-	req, _ := http.NewRequest(echo.GET, "/", nil)
+	req := httptest.NewRequest(echo.GET, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	c.SetParamNames("*")
 	config := StaticConfig{
 		Root: "../_fixture",
 	}
@@ -27,22 +25,25 @@ func TestStatic(t *testing.T) {
 	}
 
 	// File found
-	h = StaticWithConfig(config)(echo.NotFoundHandler)
-	c.SetParamValues("/images/walle.png")
+	req = httptest.NewRequest(echo.GET, "/images/walle.png", nil)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec)
 	if assert.NoError(t, h(c)) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, rec.Header().Get(echo.HeaderContentLength), "219885")
 	}
 
 	// File not found
-	c.SetParamValues("/none")
-	rec.Body.Reset()
+	req = httptest.NewRequest(echo.GET, "/none", nil)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec)
 	he := h(c).(*echo.HTTPError)
 	assert.Equal(t, http.StatusNotFound, he.Code)
 
 	// HTML5
-	c.SetParamValues("/random")
-	rec.Body.Reset()
+	req = httptest.NewRequest(echo.GET, "/random", nil)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec)
 	config.HTML5 = true
 	static := StaticWithConfig(config)
 	h = static(echo.NotFoundHandler)
@@ -52,8 +53,9 @@ func TestStatic(t *testing.T) {
 	}
 
 	// Browse
-	c.SetParamValues("/")
-	rec.Body.Reset()
+	req = httptest.NewRequest(echo.GET, "/", nil)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec)
 	config.Browse = true
 	static = StaticWithConfig(config)
 	h = static(echo.NotFoundHandler)

@@ -18,7 +18,7 @@ func TestMethodOverride(t *testing.T) {
 	}
 
 	// Override with http header
-	req, _ := http.NewRequest(echo.POST, "/", nil)
+	req := httptest.NewRequest(echo.POST, "/", nil)
 	rec := httptest.NewRecorder()
 	req.Header.Set(echo.HeaderXHTTPMethodOverride, echo.DELETE)
 	c := e.NewContext(req, rec)

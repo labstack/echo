@@ -14,7 +14,7 @@ import (
 
 func TestGzip(t *testing.T) {
 	e := echo.New()
-	req, _ := http.NewRequest(echo.GET, "/", nil)
+	req := httptest.NewRequest(echo.GET, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
@@ -45,7 +45,7 @@ func TestGzip(t *testing.T) {
 
 func TestGzipNoContent(t *testing.T) {
 	e := echo.New()
-	req, _ := http.NewRequest(echo.GET, "/", nil)
+	req := httptest.NewRequest(echo.GET, "/", nil)
 	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
@@ -65,7 +65,7 @@ func TestGzipErrorReturned(t *testing.T) {
 	e.GET("/", func(c echo.Context) error {
 		return echo.ErrNotFound
 	})
-	req, _ := http.NewRequest(echo.GET, "/", nil)
+	req := httptest.NewRequest(echo.GET, "/", nil)
 	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -78,7 +78,7 @@ func TestGzipWithStatic(t *testing.T) {
 	e := echo.New()
 	e.Use(Gzip())
 	e.Static("/test", "../_fixture/images")
-	req, _ := http.NewRequest(echo.GET, "/test/walle.png", nil)
+	req := httptest.NewRequest(echo.GET, "/test/walle.png", nil)
 	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)

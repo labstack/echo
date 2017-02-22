@@ -11,7 +11,7 @@ import (
 
 func TestAddTrailingSlash(t *testing.T) {
 	e := echo.New()
-	req, _ := http.NewRequest(echo.GET, "/add-slash", nil)
+	req := httptest.NewRequest(echo.GET, "/add-slash", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	h := AddTrailingSlash()(func(c echo.Context) error {
@@ -37,7 +37,7 @@ func TestAddTrailingSlash(t *testing.T) {
 
 func TestRemoveTrailingSlash(t *testing.T) {
 	e := echo.New()
-	req, _ := http.NewRequest(echo.GET, "/remove-slash/", nil)
+	req := httptest.NewRequest(echo.GET, "/remove-slash/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	h := RemoveTrailingSlash()(func(c echo.Context) error {

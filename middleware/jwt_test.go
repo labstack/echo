@@ -153,7 +153,7 @@ func TestJWT(t *testing.T) {
 			tc.reqURL = "/"
 		}
 
-		req, _ := http.NewRequest(echo.GET, tc.reqURL, nil)
+		req := httptest.NewRequest(echo.GET, tc.reqURL, nil)
 		res := httptest.NewRecorder()
 		req.Header.Set(echo.HeaderAuthorization, tc.hdrAuth)
 		req.Header.Set(echo.HeaderCookie, tc.hdrCookie)
