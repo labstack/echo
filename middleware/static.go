@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/labstack/echo"
 )
@@ -53,6 +54,9 @@ func Static(root string) echo.MiddlewareFunc {
 // See `Static()`.
 func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 	// Defaults
+	if config.Root == "" {
+		config.Root = "." // For security we want to restrict to CWD.
+	}
 	if config.Skipper == nil {
 		config.Skipper = DefaultStaticConfig.Skipper
 	}
@@ -62,16 +66,19 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			p := c.Param("*")
-			name := filepath.Join(config.Root, p)
-			fi, err := os.Stat(name)
+			path := c.Request().URL.Path
+			if strings.HasSuffix(c.Path(), "*") { // When serving from a group, e.g. `/static*`.
+				path = c.Param("*")
+			}
+			name := filepath.Join(config.Root, path)
 
+			fi, err := os.Stat(name)
 			if err != nil {
 				if os.IsNotExist(err) {
 					if config.HTML5 {
 						return c.File(filepath.Join(config.Root, config.Index))
 					}
-					return echo.ErrNotFound
+					return next(c)
 				}
 				return err
 			}
