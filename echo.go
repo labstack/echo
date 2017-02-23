@@ -399,6 +399,9 @@ func (e *Echo) Match(methods []string, path string, handler HandlerFunc, middlew
 // Static registers a new route with path prefix to serve static files from the
 // provided root directory.
 func (e *Echo) Static(prefix, root string) {
+	if root == "" {
+		root = "." // For security we want to restrict to CWD.
+	}
 	static(e, prefix, root)
 }
 
