@@ -145,6 +145,8 @@ const (
 	MIMEApplicationJavaScriptCharsetUTF8 = MIMEApplicationJavaScript + "; " + charsetUTF8
 	MIMEApplicationXML                   = "application/xml"
 	MIMEApplicationXMLCharsetUTF8        = MIMEApplicationXML + "; " + charsetUTF8
+	MIMETextXML                          = "text/xml"
+	MIMETextXMLCharsetUTF8               = MIMETextXML + "; " + charsetUTF8
 	MIMEApplicationForm                  = "application/x-www-form-urlencoded"
 	MIMEApplicationProtobuf              = "application/protobuf"
 	MIMEApplicationMsgpack               = "application/msgpack"

@@ -51,7 +51,7 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 				return NewHTTPError(http.StatusBadRequest, err.Error())
 			}
 		}
-	case strings.HasPrefix(ctype, MIMEApplicationXML):
+	case strings.HasPrefix(ctype, MIMEApplicationXML), strings.HasPrefix(ctype, MIMETextXML):
 		if err = xml.NewDecoder(req.Body).Decode(i); err != nil {
 			if ute, ok := err.(*xml.UnsupportedTypeError); ok {
 				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Unsupported type error: type=%v, error=%v", ute.Type, ute.Error()))
