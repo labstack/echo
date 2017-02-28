@@ -96,6 +96,8 @@ func TestBindJSON(t *testing.T) {
 func TestBindXML(t *testing.T) {
 	testBindOkay(t, strings.NewReader(userXML), MIMEApplicationXML)
 	testBindError(t, strings.NewReader(invalidContent), MIMEApplicationXML)
+	testBindOkay(t, strings.NewReader(userXML), MIMETextXML)
+	testBindError(t, strings.NewReader(invalidContent), MIMETextXML)
 }
 
 func TestBindForm(t *testing.T) {
@@ -292,7 +294,7 @@ func testBindError(t *testing.T, r io.Reader, ctype string) {
 	err := c.Bind(u)
 
 	switch {
-	case strings.HasPrefix(ctype, MIMEApplicationJSON), strings.HasPrefix(ctype, MIMEApplicationXML),
+	case strings.HasPrefix(ctype, MIMEApplicationJSON), strings.HasPrefix(ctype, MIMEApplicationXML), strings.HasPrefix(ctype, MIMETextXML),
 		strings.HasPrefix(ctype, MIMEApplicationForm), strings.HasPrefix(ctype, MIMEMultipartForm):
 		if assert.IsType(t, new(HTTPError), err) {
 			assert.Equal(t, http.StatusBadRequest, err.(*HTTPError).Code)
