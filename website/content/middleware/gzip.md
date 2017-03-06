@@ -41,7 +41,7 @@ GzipConfig struct {
 
 ```go
 DefaultGzipConfig = GzipConfig{
-  Skipper: defaultSkipper,
+  Skipper: DefaultSkipper,
   Level:   -1,
 }
 ```

@@ -83,7 +83,7 @@ LoggerConfig struct {
 
 ```go
 DefaultLoggerConfig = LoggerConfig{
-  Skipper: defaultSkipper,
+  Skipper: DefaultSkipper,
   Format: `{"time":"${time_rfc3339_nano}","remote_ip":"${remote_ip}","host":"${host}",` +
     `"method":"${method}","uri":"${uri}","status":${status}, "latency":${latency},` +
     `"latency_human":"${latency_human}","bytes_in":${bytes_in},` +

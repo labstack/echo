@@ -52,6 +52,6 @@ BasicAuthConfig struct {
 
 ```go
 DefaultBasicAuthConfig = BasicAuthConfig{
-	Skipper: defaultSkipper,
+	Skipper: DefaultSkipper,
 }
 ```

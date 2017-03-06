@@ -59,6 +59,6 @@ TrailingSlashConfig struct {
 
 ```go
 DefaultTrailingSlashConfig = TrailingSlashConfig{
-  Skipper: defaultSkipper,
+  Skipper: DefaultSkipper,
 }
 ```

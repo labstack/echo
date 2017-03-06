@@ -1,8 +1,12 @@
 package echo
 
+import (
+	"path"
+)
+
 type (
 	// Group is a set of sub-routes for a specified route. It can be used for inner
-	// routes that share a common middlware or functionality that should be separate
+	// routes that share a common middleware or functionality that should be separate
 	// from the parent echo instance while still inheriting from it.
 	Group struct {
 		prefix     string
@@ -16,7 +20,7 @@ func (g *Group) Use(middleware ...MiddlewareFunc) {
 	g.middleware = append(g.middleware, middleware...)
 	// Allow all requests to reach the group as they might get dropped if router
 	// doesn't find a match, making none of the group middleware process.
-	g.echo.Any(g.prefix+"/*", func(c Context) error {
+	g.echo.Any(path.Clean(g.prefix+"/*"), func(c Context) error {
 		return ErrNotFound
 	}, g.middleware...)
 }

@@ -48,6 +48,6 @@ BodyLimitConfig struct {
 
 ```go
 DefaultBodyLimitConfig = BodyLimitConfig{
-  Skipper: defaultSkipper,
+  Skipper: DefaultSkipper,
 }
 ```

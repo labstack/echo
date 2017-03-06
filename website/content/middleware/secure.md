@@ -88,7 +88,7 @@ SecureConfig struct {
 
 ```go
 DefaultSecureConfig = SecureConfig{
-  Skipper:            defaultSkipper,
+  Skipper:            DefaultSkipper,
   XSSProtection:      "1; mode=block",
   ContentTypeNosniff: "nosniff",
   XFrameOptions:      "SAMEORIGIN",

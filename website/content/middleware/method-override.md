@@ -44,7 +44,7 @@ MethodOverrideConfig struct {
 
 ```go
 DefaultMethodOverrideConfig = MethodOverrideConfig{
-  Skipper: defaultSkipper,
+  Skipper: DefaultSkipper,
   Getter:  MethodFromHeader(echo.HeaderXHTTPMethodOverride),
 }
 ```

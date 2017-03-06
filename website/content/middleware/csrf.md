@@ -95,7 +95,7 @@ CSRFConfig struct {
 
 ```go
 DefaultCSRFConfig = CSRFConfig{
-  Skipper:      defaultSkipper,
+  Skipper:      DefaultSkipper,
   TokenLength:  32,
   TokenLookup:  "header:" + echo.HeaderXCSRFToken,
   ContextKey:   "csrf",

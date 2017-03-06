@@ -98,7 +98,7 @@ RedirectConfig struct {
 
 ```go
 DefaultRedirectConfig = RedirectConfig{
-  Skipper: defaultSkipper,
+  Skipper: DefaultSkipper,
   Code:    http.StatusMovedPermanently,
 }
 ```

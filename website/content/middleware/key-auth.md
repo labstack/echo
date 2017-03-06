@@ -62,7 +62,7 @@ KeyAuthConfig struct {
 
 ```go
 DefaultKeyAuthConfig = KeyAuthConfig{
-  Skipper:    defaultSkipper,
+  Skipper:    DefaultSkipper,
   KeyLookup:  "header:" + echo.HeaderAuthorization,
   AuthScheme: "Bearer",
 }
