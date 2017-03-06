@@ -183,6 +183,7 @@ const (
 	HeaderXHTTPMethodOverride           = "X-HTTP-Method-Override"
 	HeaderXForwardedFor                 = "X-Forwarded-For"
 	HeaderXRealIP                       = "X-Real-IP"
+	HeaderXRequestID                    = "X-Request-ID"
 	HeaderServer                        = "Server"
 	HeaderOrigin                        = "Origin"
 	HeaderAccessControlRequestMethod    = "Access-Control-Request-Method"

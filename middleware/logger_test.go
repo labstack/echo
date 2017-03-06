@@ -86,7 +86,7 @@ func TestLoggerTemplate(t *testing.T) {
 
 	e := echo.New()
 	e.Use(LoggerWithConfig(LoggerConfig{
-		Format: `{"time":"${time_rfc3339_nano}","id":"${request_id}","remote_ip":"${remote_ip}","host":"${host}","user_agent":"${user_agent}",` +
+		Format: `{"time":"${time_rfc3339_nano}","id":"${id}","remote_ip":"${remote_ip}","host":"${host}","user_agent":"${user_agent}",` +
 			`"method":"${method}","uri":"${uri}","status":${status}, "latency":${latency},` +
 			`"latency_human":"${latency_human}","bytes_in":${bytes_in}, "path":"${path}", "referer":"${referer}",` +
 			`"bytes_out":${bytes_out},"ch":"${header:X-Custom-Header}",` +

@@ -62,7 +62,7 @@ var (
 	// DefaultLoggerConfig is the default Logger middleware config.
 	DefaultLoggerConfig = LoggerConfig{
 		Skipper: DefaultSkipper,
-		Format: `{"time":"${time_rfc3339_nano}","id":"${request_id}","remote_ip":"${remote_ip}","host":"${host}",` +
+		Format: `{"time":"${time_rfc3339_nano}","id":"${id}","remote_ip":"${remote_ip}","host":"${host}",` +
 			`"method":"${method}","uri":"${uri}","status":${status}, "latency":${latency},` +
 			`"latency_human":"${latency_human}","bytes_in":${bytes_in},` +
 			`"bytes_out":${bytes_out}}` + "\n",
@@ -126,6 +126,12 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 					return buf.WriteString(time.Now().Format(time.RFC3339))
 				case "time_rfc3339_nano":
 					return buf.WriteString(time.Now().Format(time.RFC3339Nano))
+				case "id":
+					id := req.Header.Get(echo.HeaderXRequestID)
+					if id == "" {
+						id = res.Header().Get(echo.HeaderXRequestID)
+					}
+					return buf.WriteString(id)
 				case "remote_ip":
 					return buf.WriteString(c.RealIP())
 				case "host":
@@ -169,12 +175,6 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 					return buf.WriteString(cl)
 				case "bytes_out":
 					return buf.WriteString(strconv.FormatInt(res.Size, 10))
-				case "request_id":
-					ri := req.Header.Get("X-Request-ID")
-					if ri == "" {
-						ri = res.Header().Get("X-Request-ID")
-					}
-					return w.Write([]byte(ri))
 				default:
 					switch {
 					case strings.HasPrefix(tag, "header:"):

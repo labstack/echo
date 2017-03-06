@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"github.com/labstack/echo"
-	uuid "github.com/satori/go.uuid"
+	"github.com/labstack/gommon/random"
 )
 
 type (
@@ -10,13 +10,18 @@ type (
 	RequestIDConfig struct {
 		// Skipper defines a function to skip middleware.
 		Skipper Skipper
+
+		// Generator defines a function to generate an ID.
+		// Optional. Default value random.String(32).
+		Generator func() string
 	}
 )
 
 var (
 	// DefaultRequestIDConfig is the default RequestID middleware config.
 	DefaultRequestIDConfig = RequestIDConfig{
-		Skipper: DefaultSkipper,
+		Skipper:   DefaultSkipper,
+		Generator: generator,
 	}
 )
 
@@ -27,8 +32,12 @@ func RequestID() echo.MiddlewareFunc {
 
 // RequestIDWithConfig returns a X-Request-ID middleware with config.
 func RequestIDWithConfig(config RequestIDConfig) echo.MiddlewareFunc {
+	// Defaults
 	if config.Skipper == nil {
 		config.Skipper = DefaultRequestIDConfig.Skipper
+	}
+	if config.Generator == nil {
+		config.Generator = generator
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -39,13 +48,17 @@ func RequestIDWithConfig(config RequestIDConfig) echo.MiddlewareFunc {
 
 			req := c.Request()
 			res := c.Response()
-			rid := req.Header.Get("X-Request-ID")
+			rid := req.Header.Get(echo.HeaderXRequestID)
 			if rid == "" {
-				rid = uuid.NewV4().String()
+				rid = random.String(32)
 			}
-			res.Header().Set("X-Request-ID", rid)
+			res.Header().Set(echo.HeaderXRequestID, rid)
 
 			return next(c)
 		}
 	}
+}
+
+func generator() string {
+	return random.String(32)
 }

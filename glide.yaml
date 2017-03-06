@@ -12,7 +12,6 @@ import:
   - color
   - log
   - random
-- package: github.com/satori/go.uuid
 - package: github.com/tylerb/graceful
 - package: github.com/valyala/fasttemplate
 - package: golang.org/x/crypto
