@@ -51,7 +51,7 @@ LoggerConfig struct {
   // - time_unix_nano
   // - time_rfc3339
   // - time_rfc3339_nano
-  // - id (Request ID - Not implemented)
+  // - id (Request ID)
   // - remote_ip
   // - uri
   // - host

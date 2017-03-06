@@ -86,7 +86,7 @@ func TestLoggerTemplate(t *testing.T) {
 
 	e := echo.New()
 	e.Use(LoggerWithConfig(LoggerConfig{
-		Format: `{"time":"${time_rfc3339_nano}","remote_ip":"${remote_ip}","host":"${host}","user_agent":"${user_agent}",` +
+		Format: `{"time":"${time_rfc3339_nano}","id":"${id}","remote_ip":"${remote_ip}","host":"${host}","user_agent":"${user_agent}",` +
 			`"method":"${method}","uri":"${uri}","status":${status}, "latency":${latency},` +
 			`"latency_human":"${latency_human}","bytes_in":${bytes_in}, "path":"${path}", "referer":"${referer}",` +
 			`"bytes_out":${bytes_out},"ch":"${header:X-Custom-Header}",` +
@@ -104,6 +104,7 @@ func TestLoggerTemplate(t *testing.T) {
 	req.Header.Add("Referer", "google.com")
 	req.Header.Add("User-Agent", "echo-tests-agent")
 	req.Header.Add("X-Custom-Header", "AAA-CUSTOM-VALUE")
+	req.Header.Add("X-Request-ID", "6ba7b810-9dad-11d1-80b4-00c04fd430c8")
 	req.Form = url.Values{
 		"username": []string{"apagano-form"},
 		"password": []string{"secret-form"},
@@ -113,20 +114,21 @@ func TestLoggerTemplate(t *testing.T) {
 	e.ServeHTTP(rec, req)
 
 	cases := map[string]bool{
-		"apagano-param":    true,
-		"apagano-form":     true,
-		"AAA-CUSTOM-VALUE": true,
-		"BBB-CUSTOM-VALUE": false,
-		"secret-form":      false,
-		"hexvalue":         false,
-		"GET":              true,
-		"127.0.0.1":        true,
-		"\"path\":\"/\"":   true,
-		"\"uri\":\"/\"":    true,
-		"\"status\":200":   true,
-		"\"bytes_in\":0":   true,
-		"google.com":       true,
-		"echo-tests-agent": true,
+		"apagano-param":                        true,
+		"apagano-form":                         true,
+		"AAA-CUSTOM-VALUE":                     true,
+		"BBB-CUSTOM-VALUE":                     false,
+		"secret-form":                          false,
+		"hexvalue":                             false,
+		"GET":                                  true,
+		"127.0.0.1":                            true,
+		"\"path\":\"/\"":                       true,
+		"\"uri\":\"/\"":                        true,
+		"\"status\":200":                       true,
+		"\"bytes_in\":0":                       true,
+		"google.com":                           true,
+		"echo-tests-agent":                     true,
+		"6ba7b810-9dad-11d1-80b4-00c04fd430c8": true,
 	}
 
 	for token, present := range cases {
