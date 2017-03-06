@@ -4,7 +4,6 @@ description = "Automatic TLS certificates from Let's Encrypt example for Echo"
 [menu.main]
   name = "Auto TLS"
   parent = "cookbook"
-  weight = 2
 +++
 
 This example shows how to obtain TLS certificates for a domain automatically from

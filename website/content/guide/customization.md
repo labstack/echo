@@ -4,7 +4,6 @@ description = "Customizing Echo"
 [menu.main]
   name = "Customization"
   parent = "guide"
-  weight = 3
 +++
 
 ## Debug

@@ -4,7 +4,6 @@ description = "Routing HTTP request in Echo"
 [menu.main]
   name = "Routing"
   parent = "guide"
-  weight = 4
 +++
 
 Echo's router is based on [radix tree](http://en.wikipedia.org/wiki/Radix_tree) makings

@@ -4,7 +4,6 @@ description = "HTTP/2 example for Echo"
 [menu.main]
   name = "HTTP/2"
   parent = "cookbook"
-  weight = 3
 +++
 
 HTTP/2 (originally named HTTP/2.0) is the second major version of the HTTP network

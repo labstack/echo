@@ -4,7 +4,6 @@ description = "Sending HTTP response in Echo"
 [menu.main]
   name = "Response"
   parent = "guide"
-  weight = 6
 +++
 
 ## Send String

@@ -4,7 +4,6 @@ description = "Redirect middleware for Echo"
 [menu.main]
   name = "Redirect"
   parent = "middleware"
-  weight = 5
 +++
 
 ## HTTPS Redirect

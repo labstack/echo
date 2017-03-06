@@ -4,7 +4,6 @@ description = "File upload example for Echo"
 [menu.main]
   name = "File Upload"
   parent = "cookbook"
-  weight = 7
 +++
 
 ## How to upload single file with fields?

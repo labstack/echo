@@ -4,7 +4,6 @@ description = "CRUD (Create, read, update and delete) example for Echo"
 [menu.main]
   name = "CRUD"
   parent = "cookbook"
-  weight = 2
 +++
 
 ## Server

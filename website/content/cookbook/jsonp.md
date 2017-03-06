@@ -4,7 +4,6 @@ description = "JSONP example for Echo"
 [menu.main]
   name = "JSONP"
   parent = "cookbook"
-  weight = 6
 +++
 
 JSONP is a method that allows cross-domain server calls. You can read more about it at the JSON versus JSONP Tutorial.

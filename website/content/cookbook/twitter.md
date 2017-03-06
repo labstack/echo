@@ -4,7 +4,6 @@ description = "Twitter Like API example for Echo"
 [menu.main]
   name = "Twitter"
   parent = "cookbook"
-  weight = 2 
 +++
 
 This example shows how to create a Twitter like REST API using MongoDB (Database),

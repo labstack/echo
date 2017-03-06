@@ -4,7 +4,6 @@ description = "Embed resources example for Echo"
 [menu.main]
   name = "Embed Resources"
   parent = "cookbook"
-  weight = 14
 +++
 
 ## With go.rice

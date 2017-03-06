@@ -4,7 +4,6 @@ description = "How to use templates in Echo"
 [menu.main]
   name = "Templates"
   parent = "guide"
-  weight = 3
 +++
 
 ## Template Rendering

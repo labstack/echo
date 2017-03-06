@@ -5,7 +5,6 @@ description = "CORS example for Echo"
   name = "CORS"
   identifier = "middleware-cors"
   parent = "cookbook"
-  weight = 3
 +++
 
 ## Server

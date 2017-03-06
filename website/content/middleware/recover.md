@@ -4,7 +4,6 @@ description = "Recover middleware for Echo"
 [menu.main]
   name = "Recover"
   parent = "middleware"
-  weight = 5
 +++
 
 Recover middleware recovers from panics anywhere in the chain, prints stack trace

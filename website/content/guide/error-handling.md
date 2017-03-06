@@ -4,7 +4,6 @@ description = "Error handling in Echo"
 [menu.main]
   name = "Error Handling"
   parent = "guide"
-  weight = 8
 +++
 
 Echo advocates centralized HTTP error handling by returning error from middleware

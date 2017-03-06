@@ -4,7 +4,6 @@ description = "Installing Echo"
 [menu.main]
   name = "Installation"
   parent = "guide"
-  weight = 1
 +++
 
 ## Prerequisites

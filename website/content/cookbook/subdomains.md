@@ -4,7 +4,6 @@ description = "Subdomains example for Echo"
 [menu.main]
   name = "Subdomains"
   parent = "cookbook"
-  weight = 10
 +++
 
 `server.go`

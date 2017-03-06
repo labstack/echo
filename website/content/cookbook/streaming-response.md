@@ -4,7 +4,6 @@ description = "Streaming response example for Echo"
 [menu.main]
   name = "Streaming Response"
   parent = "cookbook"
-  weight = 3
 +++
 
 - Send data as it is produced

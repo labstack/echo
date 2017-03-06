@@ -4,7 +4,6 @@ description = "Key auth middleware for Echo"
 [menu.main]
   name = "Key Auth"
   parent = "middleware"
-  weight = 5
 +++
 
 Key auth middleware provides a key based authentication.

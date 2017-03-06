@@ -4,7 +4,6 @@ description = "Google App Engine example for Echo"
 [menu.main]
   name = "Google App Engine"
   parent = "cookbook"
-  weight = 12
 +++
 
 Google App Engine (GAE) provides a range of hosting options from pure PaaS (App Engine Classic)

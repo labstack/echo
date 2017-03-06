@@ -4,7 +4,6 @@ description = "Body limit middleware for Echo"
 [menu.main]
   name = "Body Limit"
   parent = "middleware"
-  weight = 5
 +++
 
 Body limit middleware sets the maximum allowed size for a request body, if the

@@ -5,7 +5,6 @@ description = "JWT example for Echo"
   name = "JWT"
   identifier = "example-jwt"
   parent = "cookbook"
-  weight = 11
 +++
 
 - JWT authentication using HS256 algorithm.

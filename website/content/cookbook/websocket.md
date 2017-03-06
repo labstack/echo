@@ -4,7 +4,6 @@ description = "WebSocket example for Echo"
 [menu.main]
   name = "WebSocket"
   parent = "cookbook"
-  weight = 5
 +++
 
 ## Using `net` WebSocket

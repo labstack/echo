@@ -4,7 +4,6 @@ description = "Static middleware for Echo"
 [menu.main]
   name = "Static"
   parent = "middleware"
-  weight = 5
 +++
 
 Static middleware can be used to serve static files from the provided root directory.

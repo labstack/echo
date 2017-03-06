@@ -4,7 +4,6 @@ description = "Graceful shutdown example for Echo"
 [menu.main]
   name = "Graceful Shutdown"
   parent = "cookbook"
-  weight = 13
 +++
 
 ## Using [http.Server#Shutdown()](https://golang.org/pkg/net/http/#Server.Shutdown)

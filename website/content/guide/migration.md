@@ -4,7 +4,6 @@ description = "Migration"
 [menu.main]
   name = "Migration"
   parent = "guide"
-  weight = 2
 +++
 
 ## Change Log

@@ -4,7 +4,6 @@ description = "Handling HTTP request in Echo"
 [menu.main]
   name = "Request"
   parent = "guide"
-  weight = 6
 +++
 
 ## Bind Data

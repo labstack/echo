@@ -4,7 +4,6 @@ description = "Handling cookie in Echo"
 [menu.main]
   name = "Cookies"
   parent = "guide"
-  weight = 6
 +++
 
 Cookie is a small piece of data sent from a website and stored in the user's web

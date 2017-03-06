@@ -4,7 +4,6 @@ description = "Testing handler and middleware in Echo"
 [menu.main]
   name = "Testing"
   parent = "guide"
-  weight = 9
 +++
 
 ## Testing Handler
