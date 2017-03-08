@@ -56,11 +56,12 @@ func TestStatic(t *testing.T) {
 	req = httptest.NewRequest(echo.GET, "/", nil)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
+	config.Root = "../_fixture/certs"
 	config.Browse = true
 	static = StaticWithConfig(config)
 	h = static(echo.NotFoundHandler)
 	if assert.NoError(t, h(c)) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Contains(t, rec.Body.String(), "images")
+		assert.Contains(t, rec.Body.String(), "cert.pem")
 	}
 }
