@@ -85,18 +85,20 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 			}
 
 			if fi.IsDir() {
-				if config.Browse {
-					return listDir(name, c.Response())
-				}
-				name = filepath.Join(name, config.Index)
-				fi, err = os.Stat(name)
+				index := filepath.Join(name, config.Index)
+				fi, err = os.Stat(index)
+
 				if err != nil {
+					if config.Browse {
+						return listDir(name, c.Response())
+					}
 					if os.IsNotExist(err) {
 						return next(c)
 					}
 					return err
 				}
-				return c.File(name)
+
+				return c.File(index)
 			}
 
 			return c.File(name)
