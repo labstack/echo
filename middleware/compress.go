@@ -108,8 +108,8 @@ func (w *gzipResponseWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
 }
 
-func (w *gzipResponseWriter) Flush() error {
-	return w.Writer.(*gzip.Writer).Flush()
+func (w *gzipResponseWriter) Flush() {
+	w.Writer.(*gzip.Writer).Flush()
 }
 
 func (w *gzipResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
