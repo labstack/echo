@@ -471,7 +471,12 @@ func (c *context) Stream(code int, contentType string, r io.Reader) (err error) 
 	return
 }
 
-func (c *context) File(file string) error {
+func (c *context) File(file string) (err error) {
+	file, err = url.QueryUnescape(file) // Issue #839
+	if err != nil {
+		return
+	}
+
 	f, err := os.Open(file)
 	if err != nil {
 		return ErrNotFound
@@ -487,11 +492,11 @@ func (c *context) File(file string) error {
 		}
 		defer f.Close()
 		if fi, err = f.Stat(); err != nil {
-			return err
+			return
 		}
 	}
 	http.ServeContent(c.Response(), c.Request(), fi.Name(), fi.ModTime(), f)
-	return nil
+	return
 }
 
 func (c *context) Attachment(file, name string) (err error) {
