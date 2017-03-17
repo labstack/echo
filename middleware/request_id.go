@@ -50,7 +50,7 @@ func RequestIDWithConfig(config RequestIDConfig) echo.MiddlewareFunc {
 			res := c.Response()
 			rid := req.Header.Get(echo.HeaderXRequestID)
 			if rid == "" {
-				rid = random.String(32)
+				rid = config.Generator()
 			}
 			res.Header().Set(echo.HeaderXRequestID, rid)
 
