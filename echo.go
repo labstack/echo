@@ -223,6 +223,7 @@ var (
 	ErrUnsupportedMediaType        = NewHTTPError(http.StatusUnsupportedMediaType)
 	ErrNotFound                    = NewHTTPError(http.StatusNotFound)
 	ErrUnauthorized                = NewHTTPError(http.StatusUnauthorized)
+	ErrForbidden                   = NewHTTPError(http.StatusForbidden)
 	ErrMethodNotAllowed            = NewHTTPError(http.StatusMethodNotAllowed)
 	ErrStatusRequestEntityTooLarge = NewHTTPError(http.StatusRequestEntityTooLarge)
 	ErrValidatorNotRegistered      = errors.New("Validator not registered")
