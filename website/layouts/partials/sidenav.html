@@ -5,7 +5,7 @@
   {{ $currentNode := . }}
   <div class="menu">
     {{ range .Site.Menus.main }}
-      <a{{ if or ($currentNode.HasMenuCurrent "main" .) ($currentNode.IsMenuCurrent "main" .) }} class="active"{{ end }} href="{{ .URL }}">
+      <a{{ if or ($currentNode.HasMenuCurrent "main" .) ($currentNode.IsMenuCurrent "main" .) }} class="active"{{ end }} href="{{ .URL | absLangURL }}">
         {{ .Name }}
       </a>
     {{ end }}
@@ -15,7 +15,7 @@
       {{ range where .Site.Menus.main "Identifier" .Type }}
         <h3>{{ .Pre }} {{ .Name }}</h3>
         {{ range .Children }}
-          <a{{ if $currentNode.IsMenuCurrent "main" . }} class="active"{{ end }} href="{{ .URL }}">
+          <a{{ if $currentNode.IsMenuCurrent "main" . }} class="active"{{ end }} href="{{ .URL | absLangURL }}">
             {{ .Name }}
           </a>
         {{ end }}
