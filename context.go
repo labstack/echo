@@ -519,7 +519,7 @@ func (c *context) NoContent(code int) error {
 }
 
 func (c *context) Redirect(code int, url string) error {
-	if code < http.StatusMultipleChoices || code > http.StatusTemporaryRedirect {
+	if code < 300 || code > 308 {
 		return ErrInvalidRedirectCode
 	}
 	c.response.Header().Set(HeaderLocation, url)

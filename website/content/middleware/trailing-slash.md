@@ -39,7 +39,7 @@ e.Use(middleware.AddTrailingSlashWithConfig(middleware.TrailingSlashConfig{
 }))
 ```
 
-Example above will add a trailing slash to the request URI and redirect with `308 - StatusMovedPermanently`.
+Example above will add a trailing slash to the request URI and redirect with `301 - StatusMovedPermanently`.
 
 ## Configuration
 
