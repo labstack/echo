@@ -179,7 +179,7 @@ And to create a test for it you just have to setup the echo and context.
 func TestForBatman(t *testing.T) {
 	e := echo.New()
 
-  // create request, recorder and context for the actual query
+	// create request, recorder and context for the actual query
 	r := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
 	c := e.NewContext(r, w)
@@ -191,7 +191,7 @@ func TestForBatman(t *testing.T) {
 		return c.NoContent(http.StatusNoContent)
 	}
 
-  // set the basic auth to match our test
+	// set the basic auth to match our test
 	r.SetBasicAuth("batman", "j0kEr5ux!")
 	handler := checkForBatman(next)
 
