@@ -152,6 +152,66 @@ req, err := http.NewRequest(echo.POST, "/?"+q.Encode(), nil)
 
 ## Testing Middleware
 
-*TBD*
+Middleware is declared as:
 
-For now you can look into built-in middleware [test cases](https://github.com/labstack/echo/tree/master/middleware).
+``` go
+type MiddlewareFunc func(next HandlerFunc) HandlerFunc
+type HandlerFunc func(c Context) error
+```
+
+meaning we can make a simple middleware that just checks the user's auth credentials
+
+``` go
+func checkForBatman(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		user, pass, ok := c.Request().BasicAuth()
+		if ok && pass == "j0kEr5ux!" && user == "batman" {
+			return next(c)
+		}
+		return echo.ErrUnauthorized
+	}
+}
+```
+
+And to create a test for it you just have to setup the echo and context.
+
+``` go
+func TestForBatman(t *testing.T) {
+	e := echo.New()
+
+  // create request, recorder and context for the actual query
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	c := e.NewContext(r, w)
+
+	// create an endpoint to call and flag to verify it was called
+	called := false
+	next := func(c echo.Context) error {
+		called = true
+		return c.NoContent(http.StatusNoContent)
+	}
+
+  // set the basic auth to match our test
+	r.SetBasicAuth("batman", "j0kEr5ux!")
+	handler := checkForBatman(next)
+
+	// now make the actual call with the context created above
+	assert.NoError(t, handler(c))
+
+	// test that we got back what we wanted
+	assert.True(t, called)
+	assert.Equal(t, http.StatusNoContent, w.Code)
+
+	// reset for a new call with a bad value
+	r.SetBasicAuth("joker", "batty")
+	called = false
+	err := handler(c)
+	assert.NotNil(t, err)
+	assert.Equal(t, http.StatusUnauthorized, err.(*echo.HTTPError).Code)
+
+	// validate that we didn't call through
+	assert.False(t, called)
+}
+```
+
+For more examples you can look into built-in middleware [test cases](https://github.com/labstack/echo/tree/master/middleware).
