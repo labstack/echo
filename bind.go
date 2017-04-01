@@ -31,7 +31,7 @@ type (
 func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 	req := c.Request()
 	if req.ContentLength == 0 {
-		if req.Method == GET {
+		if req.Method == GET || req.Method == DELETE {
 			if err = b.bindData(i, c.QueryParams(), "query"); err != nil {
 				return NewHTTPError(http.StatusBadRequest, err.Error())
 			}
