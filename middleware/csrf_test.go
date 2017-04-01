@@ -61,7 +61,7 @@ func TestCSRFTokenFromForm(t *testing.T) {
 	if assert.NoError(t, err) {
 		assert.Equal(t, "token", token)
 	}
-	token, err = csrfTokenFromForm("invalid")(c)
+	_, err = csrfTokenFromForm("invalid")(c)
 	assert.Error(t, err)
 }
 
@@ -76,7 +76,7 @@ func TestCSRFTokenFromQuery(t *testing.T) {
 	if assert.NoError(t, err) {
 		assert.Equal(t, "token", token)
 	}
-	token, err = csrfTokenFromQuery("invalid")(c)
+	_, err = csrfTokenFromQuery("invalid")(c)
 	assert.Error(t, err)
 	csrfTokenFromQuery("csrf")
 }
