@@ -70,7 +70,7 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 			if config.Skipper(c) {
 				return next(c)
 			}
-			
+
 			p := c.Request().URL.Path
 			if strings.HasSuffix(c.Path(), "*") { // When serving from a group, e.g. `/static*`.
 				p = c.Param("*")
@@ -80,7 +80,7 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 			fi, err := os.Stat(name)
 			if err != nil {
 				if os.IsNotExist(err) {
-					if config.HTML5 {
+					if config.HTML5 && path.Ext(p) == "" {
 						return c.File(filepath.Join(config.Root, config.Index))
 					}
 					return next(c)
