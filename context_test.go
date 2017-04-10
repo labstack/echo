@@ -190,7 +190,16 @@ func TestContext(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 
 	// Reset
+	c.SetParamNames("foo")
+	c.SetParamValues("bar")
+	c.Set("foe", "ban")
+	c.query = url.Values(map[string][]string{"fon": []string{"baz"}})
 	c.Reset(req, httptest.NewRecorder())
+	assert.Equal(t, 0, len(c.ParamValues()))
+	assert.Equal(t, 0, len(c.ParamNames()))
+	assert.Equal(t, 0, len(c.store))
+	assert.Equal(t, "", c.Path())
+	assert.Equal(t, 0, len(c.QueryParams()))
 }
 
 func TestContextCookie(t *testing.T) {

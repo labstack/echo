@@ -296,18 +296,19 @@ func (n *node) checkMethodNotAllowed() HandlerFunc {
 // - Get context from `Echo#AcquireContext()`
 // - Reset it `Context#Reset()`
 // - Return it `Echo#ReleaseContext()`.
-func (r *Router) Find(method, path string, context Context) {
-	context.SetPath(path)
+func (r *Router) Find(method, path string, c Context) {
+	ctx := c.(*context)
+	ctx.path = path
 	cn := r.tree // Current node as root
 
 	var (
 		search  = path
-		c       *node  // Child node
-		n       int    // Param counter
-		nk      kind   // Next kind
-		nn      *node  // Next node
-		ns      string // Next search
-		pvalues = context.ParamValues()
+		child   *node         // Child node
+		n       int           // Param counter
+		nk      kind          // Next kind
+		nn      *node         // Next node
+		ns      string        // Next search
+		pvalues = ctx.pvalues // Use the internal slice so the interface can keep the illusion of a dynamic slice
 	)
 
 	// Search order static > param > any
@@ -352,20 +353,20 @@ func (r *Router) Find(method, path string, context Context) {
 		}
 
 		// Static node
-		if c = cn.findChild(search[0], skind); c != nil {
+		if child = cn.findChild(search[0], skind); child != nil {
 			// Save next
 			if cn.prefix[len(cn.prefix)-1] == '/' { // Issue #623
 				nk = pkind
 				nn = cn
 				ns = search
 			}
-			cn = c
+			cn = child
 			continue
 		}
 
 		// Param node
 	Param:
-		if c = cn.findChildByKind(pkind); c != nil {
+		if child = cn.findChildByKind(pkind); child != nil {
 			// Issue #378
 			if len(pvalues) == n {
 				continue
@@ -378,7 +379,7 @@ func (r *Router) Find(method, path string, context Context) {
 				ns = search
 			}
 
-			cn = c
+			cn = child
 			i, l := 0, len(search)
 			for ; i < l && search[i] != '/'; i++ {
 			}
@@ -409,13 +410,13 @@ func (r *Router) Find(method, path string, context Context) {
 	}
 
 End:
-	context.SetHandler(cn.findHandler(method))
-	context.SetPath(cn.ppath)
-	context.SetParamNames(cn.pnames...)
+	ctx.handler = cn.findHandler(method)
+	ctx.path = cn.ppath
+	ctx.pnames = cn.pnames
 
 	// NOTE: Slow zone...
-	if context.Handler() == nil {
-		context.SetHandler(cn.checkMethodNotAllowed())
+	if ctx.handler == nil {
+		ctx.handler = cn.checkMethodNotAllowed()
 
 		// Dig further for any, might have an empty value for *, e.g.
 		// serving a directory. Issue #207.
@@ -423,12 +424,12 @@ End:
 			return
 		}
 		if h := cn.findHandler(method); h != nil {
-			context.SetHandler(h)
+			ctx.handler = h
 		} else {
-			context.SetHandler(cn.checkMethodNotAllowed())
+			ctx.handler = cn.checkMethodNotAllowed()
 		}
-		context.SetPath(cn.ppath)
-		context.SetParamNames(cn.pnames...)
+		ctx.path = cn.ppath
+		ctx.pnames = cn.pnames
 		pvalues[len(cn.pnames)-1] = ""
 	}
 
