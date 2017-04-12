@@ -33,6 +33,12 @@ JWT (API security) and JSON (Data exchange).
 
 {{< embed "twitter/handler/post.go" >}}
 
+## Server
+
+`server.go`
+
+{{< embed "twitter/server.go" >}}
+
 ## API
 
 ### Signup
