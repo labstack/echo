@@ -73,6 +73,11 @@ func TestEchoStatic(t *testing.T) {
 	c, _ = request(GET, "/images", e)
 	assert.Equal(t, http.StatusNotFound, c)
 
+	// Method not allowed
+	e.Static("/images", "_fixture/images")
+	c, _ = request(POST, "/images/walle.png", e)
+	assert.Equal(t, http.StatusMethodNotAllowed, c)
+
 	// Directory with index.html
 	e.Static("/", "_fixture")
 	c, r := request(GET, "/", e)
