@@ -15,8 +15,8 @@ Key auth middleware provides a key based authentication.
 *Usage*
 
 ```go
-e.Use(middleware.KeyAuth(func(key string) bool {
-  return key == "valid-key"
+e.Use(middleware.KeyAuth(func(key string) (error, bool) {
+  return nil, key == "valid-key"
 }))
 ```
 

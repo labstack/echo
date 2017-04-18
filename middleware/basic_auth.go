@@ -23,7 +23,7 @@ type (
 	}
 
 	// BasicAuthValidator defines a function to validate BasicAuth credentials.
-	BasicAuthValidator func(string, string, echo.Context) bool
+	BasicAuthValidator func(string, string, echo.Context) (error, bool)
 )
 
 const (
@@ -81,7 +81,10 @@ func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 				for i := 0; i < len(cred); i++ {
 					if cred[i] == ':' {
 						// Verify credentials
-						if config.Validator(cred[:i], cred[i+1:], c) {
+						err, valid := config.Validator(cred[:i], cred[i+1:], c)
+						if err != nil {
+							return err
+						} else if valid {
 							return next(c)
 						}
 					}
