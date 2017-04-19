@@ -214,11 +214,11 @@ e.Use(middleware.Recover())
 
 // Group level middleware
 g := e.Group("/admin")
-g.Use(middleware.BasicAuth(func(username, password string) bool {
-	if username == "joe" && password == "secret" {
-		return true
-	}
-	return false
+g.Use(middleware.BasicAuth(func(username, password string, c echo.Context) (error, bool) {
+  if username == "joe" && password == "secret" {
+    return nil, true
+  }
+  return nil, false
 }))
 
 // Route level middleware
