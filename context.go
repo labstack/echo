@@ -231,7 +231,7 @@ func (c *context) Scheme() string {
 func (c *context) RealIP() string {
 	ra := c.request.RemoteAddr
 	if ip := c.request.Header.Get(HeaderXForwardedFor); ip != "" {
-		ra = ip
+		ra = strings.Split(ip, ", ")[0]
 	} else if ip := c.request.Header.Get(HeaderXRealIP); ip != "" {
 		ra = ip
 	} else {
