@@ -4,35 +4,37 @@
   <div class="hide-large">
     {{ partial "sidenav.html" . }}
   </div>
-	<div class="w3-container w3-content main">
-    {{ partial "ad.html" }}
-	  <div class="w3-row">
-			<div class="w3-col s12 m10 l10">
-        <div class="hero">
-          <h1>{{ .Site.Data.index.heading }}</h1>
-          <h2>{{ .Site.Data.index.description }}</h2>
-          <p>
-            <img style="width: 100%;" src="/images/terminal.png" alt="Echo">
-          </p>
-        </div>
+	<div class="w3-content">
+	  <div class="main">
+      {{ partial "ad.html" }}
+      <div class="w3-row-padding">
+        <div class="w3-col s12 m10 l10">
+          <div class="hero">
+            <h1>{{ .Site.Data.index.heading }}</h1>
+            <h2>{{ .Site.Data.index.description }}</h2>
+            <p>
+              <img style="width: 100%;" src="/images/terminal.png" alt="Echo">
+            </p>
+          </div>
 
-        <div class="w3-padding-32 w3-center">
-          <a class="w3-btn w3-theme w3-round w3-xlarge" href="/guide">Get Started</a>
-          <a class="w3-btn w3-black w3-round w3-xlarge w3-margin-left" href="https://github.com/labstack/echo" target="_blank">GitHub</a>
-        </div>
+          <div class="w3-padding-32 w3-center">
+            <a class="w3-btn w3-theme w3-round w3-xlarge" href="/guide">Get Started</a>
+            <a class="w3-btn w3-black w3-round w3-xlarge w3-margin-left" href="https://github.com/labstack/echo" target="_blank">GitHub</a>
+          </div>
 
-        <div class="features">
-          {{ range .Site.Data.index.features }}
-            <div class="feature">
-              <img src="https://cdn.labstack.com/images/icons/{{  .icon }}.svg">
-              <h3>
-                {{ .title }}
-              </h3>
-              <p>
-                {{ .text | safeHTML }}
-              </p>
-            </div>
-          {{ end }}
+          <div class="features">
+            {{ range .Site.Data.index.features }}
+              <div class="feature">
+                <img src="https://cdn.labstack.com/images/icons/{{  .icon }}.svg">
+                <h3>
+                  {{ .title }}
+                </h3>
+                <p>
+                  {{ .text | safeHTML }}
+                </p>
+              </div>
+            {{ end }}
+          </div>
         </div>
 			</div>
 	  </div>
