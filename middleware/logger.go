@@ -3,6 +3,7 @@ package middleware
 import (
 	"bytes"
 	"io"
+	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -101,12 +102,24 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) (err error) {
+			var body []byte
+			var ioerr error
+
 			if config.Skipper(c) {
 				return next(c)
 			}
 
 			req := c.Request()
 			res := c.Response()
+
+			if req.Method == echo.PUT || req.Method == echo.POST {
+				body, ioerr = ioutil.ReadAll(req.Body)
+				if ioerr == nil {
+					// re-read
+					c.Request().Body = ioutil.NopCloser(bytes.NewBuffer(body))
+				}
+			}
+
 			start := time.Now()
 			if err = next(c); err != nil {
 				c.Error(err)
@@ -175,6 +188,10 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 					return buf.WriteString(cl)
 				case "bytes_out":
 					return buf.WriteString(strconv.FormatInt(res.Size, 10))
+				case "body":
+					if (req.Method == echo.PUT || req.Method == echo.POST) && ioerr == nil {
+						return buf.Write(body)
+					}
 				default:
 					switch {
 					case strings.HasPrefix(tag, "header:"):

@@ -90,15 +90,15 @@ func TestLoggerTemplate(t *testing.T) {
 			`"method":"${method}","uri":"${uri}","status":${status}, "latency":${latency},` +
 			`"latency_human":"${latency_human}","bytes_in":${bytes_in}, "path":"${path}", "referer":"${referer}",` +
 			`"bytes_out":${bytes_out},"ch":"${header:X-Custom-Header}",` +
-			`"us":"${query:username}", "cf":"${form:username}"}` + "\n",
+			`"us":"${query:username}", "cf":"${form:username}", "body":"${body}" }` + "\n",
 		Output: buf,
 	}))
 
-	e.GET("/", func(c echo.Context) error {
+	e.POST("/", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Header Logged")
 	})
 
-	req := httptest.NewRequest(echo.GET, "/?username=apagano-param&password=secret", nil)
+	req := httptest.NewRequest(echo.POST, "/?username=apagano-param&password=secret", bytes.NewReader([]byte("example_body")))
 	req.RequestURI = "/"
 	req.Header.Add(echo.HeaderXRealIP, "127.0.0.1")
 	req.Header.Add("Referer", "google.com")
@@ -120,7 +120,7 @@ func TestLoggerTemplate(t *testing.T) {
 		"BBB-CUSTOM-VALUE":                     false,
 		"secret-form":                          false,
 		"hexvalue":                             false,
-		"GET":                                  true,
+		"POST":                                 true,
 		"127.0.0.1":                            true,
 		"\"path\":\"/\"":                       true,
 		"\"uri\":\"/\"":                        true,
