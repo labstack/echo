@@ -31,13 +31,13 @@ const (
 )
 
 const userJSONPretty = `{
-	"id": 1,
-	"name": "Jon Snow"
+  "id": 1,
+  "name": "Jon Snow"
 }`
 
 const userXMLPretty = `<user>
-	<id>1</id>
-	<name>Jon Snow</name>
+  <id>1</id>
+  <name>Jon Snow</name>
 </user>`
 
 func TestEcho(t *testing.T) {
