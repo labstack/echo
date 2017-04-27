@@ -142,6 +142,8 @@ func setWithProperType(valueKind reflect.Kind, val string, structField reflect.V
 	}
 
 	switch valueKind {
+	case reflect.Ptr:
+		return setWithProperType(structField.Elem().Kind(), val, structField.Elem())
 	case reflect.Int:
 		return setIntField(val, 0, structField)
 	case reflect.Int8:
