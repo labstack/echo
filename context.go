@@ -385,10 +385,8 @@ func (c *context) String(code int, s string) (err error) {
 }
 
 func (c *context) JSON(code int, i interface{}) (err error) {
-	query := c.request.URL.Query()
-	_, isPretty := query["pretty"]
-
-	if c.echo.Debug || isPretty {
+	_, pretty := c.request.URL.Query()["pretty"]
+	if c.echo.Debug || pretty {
 		return c.JSONPretty(code, i, "  ")
 	}
 	b, err := json.Marshal(i)
@@ -432,10 +430,8 @@ func (c *context) JSONPBlob(code int, callback string, b []byte) (err error) {
 }
 
 func (c *context) XML(code int, i interface{}) (err error) {
-	query := c.request.URL.Query()
-	_, isPretty := query["pretty"]
-
-	if c.echo.Debug || isPretty {
+	_, pretty := c.request.URL.Query()["pretty"]
+	if c.echo.Debug || pretty {
 		return c.XMLPretty(code, i, "  ")
 	}
 	b, err := xml.Marshal(i)
