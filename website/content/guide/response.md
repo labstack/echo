@@ -108,6 +108,33 @@ func(c echo.Context) error {
 }
 ```
 
+Today, `Context#JSON(code int, i interface{})` also can output a pretty printed JSON
+(indented with spaces) when a querystring `?pretty` is attached in request URL.
+
+*Example*
+
+```go
+func(c echo.Context) error {
+  u := &User{
+    Name:  "Jon",
+    Email: "joe@labstack.com",
+  }
+  return c.JSON(http.StatusOK, u)
+}
+```
+
+```bash
+curl -fSL http://127.0.0.1:8080/v1/users/123?pretty
+```
+
+```js
+{
+  "email": "joe@labstack.com",
+  "name": "Jon"
+}
+```
+
+
 ### JSON Blob
 
 `Context#JSONBlob(code int, b []byte)` can be used to send pre-encoded JSON blob directly
@@ -181,6 +208,33 @@ func(c echo.Context) error {
   }
   return c.XMLPretty(http.StatusOK, u, "  ")
 }
+```
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<User>
+  <Name>Jon</Name>
+  <Email>joe@labstack.com</Email>
+</User>
+```
+
+Today, `Context#XML(code int, i interface{})` also can output a pretty printed XML
+(indented with spaces) when a querystring `?pretty` is attached in request URL.
+
+*Example*
+
+```go
+func(c echo.Context) error {
+  u := &User{
+    Name:  "Jon",
+    Email: "joe@labstack.com",
+  }
+  return c.XML(http.StatusOK, u)
+}
+```
+
+```bash
+curl -fSL http://127.0.0.1:8080/v1/users/123?pretty
 ```
 
 ```xml

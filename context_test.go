@@ -73,10 +73,22 @@ func TestContext(t *testing.T) {
 		assert.Equal(t, userJSON, rec.Body.String())
 	}
 
+	// JSON with "?pretty"
+	req = httptest.NewRequest(GET, "/?pretty", nil)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec).(*context)
+	err = c.JSON(http.StatusOK, user{1, "Jon Snow"})
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, userJSONPretty, rec.Body.String())
+	}
+	req = httptest.NewRequest(GET, "/", nil) // reset
+
 	// JSONPretty
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec).(*context)
-	err = c.JSONPretty(http.StatusOK, user{1, "Jon Snow"}, "\t")
+	err = c.JSONPretty(http.StatusOK, user{1, "Jon Snow"}, "  ")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
@@ -110,6 +122,18 @@ func TestContext(t *testing.T) {
 		assert.Equal(t, xml.Header+userXML, rec.Body.String())
 	}
 
+	// XML with "?pretty"
+	req = httptest.NewRequest(GET, "/?pretty", nil)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec).(*context)
+	err = c.XML(http.StatusOK, user{1, "Jon Snow"})
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, MIMEApplicationXMLCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, xml.Header+userXMLPretty, rec.Body.String())
+	}
+	req = httptest.NewRequest(GET, "/", nil)
+
 	// XML (error)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec).(*context)
@@ -119,7 +143,7 @@ func TestContext(t *testing.T) {
 	// XMLPretty
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec).(*context)
-	err = c.XMLPretty(http.StatusOK, user{1, "Jon Snow"}, "\t")
+	err = c.XMLPretty(http.StatusOK, user{1, "Jon Snow"}, "  ")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, MIMEApplicationXMLCharsetUTF8, rec.Header().Get(HeaderContentType))
