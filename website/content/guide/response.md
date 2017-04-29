@@ -87,7 +87,7 @@ func(c echo.Context) error {
 ### JSON Pretty
 
 `Context#JSONPretty(code int, i interface{}, indent string)` can be used to a send
-a JSON response which is pretty printed based on indent, which could spaces or tabs.
+a JSON response which is pretty printed based on indent, which could be spaces or tabs.
 
 Example below sends a pretty print JSON indented with spaces:
 
@@ -108,32 +108,14 @@ func(c echo.Context) error {
 }
 ```
 
-Today, `Context#JSON(code int, i interface{})` also can output a pretty printed JSON
-(indented with spaces) when a querystring `?pretty` is attached in request URL.
+> You can also use `Context#JSON()` to output a pretty printed JSON (indented with spaces)
+by appending `pretty` in the request URL query string.
 
 *Example*
 
-```go
-func(c echo.Context) error {
-  u := &User{
-    Name:  "Jon",
-    Email: "joe@labstack.com",
-  }
-  return c.JSON(http.StatusOK, u)
-}
+```sh
+curl http://localhost:1323/users/1?pretty
 ```
-
-```bash
-curl -fSL http://127.0.0.1:8080/v1/users/123?pretty
-```
-
-```js
-{
-  "email": "joe@labstack.com",
-  "name": "Jon"
-}
-```
-
 
 ### JSON Blob
 
@@ -196,7 +178,7 @@ func(c echo.Context) error {
 ### XML Pretty
 
 `Context#XMLPretty(code int, i interface{}, indent string)` can be used to a send
-an XML response which is pretty printed based on indent, which could spaces or tabs.
+an XML response which is pretty printed based on indent, which could be spaces or tabs.
 
 Example below sends a pretty print XML indented with spaces:
 
@@ -218,31 +200,13 @@ func(c echo.Context) error {
 </User>
 ```
 
-Today, `Context#XML(code int, i interface{})` also can output a pretty printed XML
-(indented with spaces) when a querystring `?pretty` is attached in request URL.
+> You can also use `Context#XML()` to output a pretty printed XML (indented with spaces) by appending
+`pretty` in the request URL query string.
 
 *Example*
 
-```go
-func(c echo.Context) error {
-  u := &User{
-    Name:  "Jon",
-    Email: "joe@labstack.com",
-  }
-  return c.XML(http.StatusOK, u)
-}
-```
-
-```bash
-curl -fSL http://127.0.0.1:8080/v1/users/123?pretty
-```
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<User>
-  <Name>Jon</Name>
-  <Email>joe@labstack.com</Email>
-</User>
+```sh
+curl http://localhost:1323/users/1?pretty
 ```
 
 ### XML Blob
@@ -312,9 +276,6 @@ func(c echo.Context) (err error) {
 	return c.Blob(http.StatusOK, "text/csv", data)
 }
 ```
-
-// Stream sends a streaming response with status code and content type.
-		Stream(code int, contentType string, r io.Reader) error
 
 ## Send Stream
 
