@@ -183,6 +183,11 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 						return buf.Write([]byte(c.QueryParam(tag[6:])))
 					case strings.HasPrefix(tag, "form:"):
 						return buf.Write([]byte(c.FormValue(tag[5:])))
+					case strings.HasPrefix(tag, "cookie:"):
+						cookie, err := c.Cookie(tag[7:])
+						if err == nil {
+							return buf.Write([]byte(cookie.Value))
+						}
 					}
 				}
 				return 0, nil
