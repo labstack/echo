@@ -53,6 +53,7 @@ type (
 		// Optional. Default value os.Stdout.
 		Output io.Writer
 
+		LogBody  bool
 		template *fasttemplate.Template
 		colorer  *color.Color
 		pool     *sync.Pool
@@ -69,6 +70,7 @@ var (
 			`"bytes_out":${bytes_out}}` + "\n",
 		Output:  os.Stdout,
 		colorer: color.New(),
+		LogBody: false,
 	}
 )
 
@@ -112,7 +114,7 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 			req := c.Request()
 			res := c.Response()
 
-			if req.Method == echo.PUT || req.Method == echo.POST {
+			if config.LogBody && (req.Method == echo.PUT || req.Method == echo.POST) {
 				body, ioerr = ioutil.ReadAll(req.Body)
 				if ioerr == nil {
 					// re-read
@@ -189,7 +191,7 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 				case "bytes_out":
 					return buf.WriteString(strconv.FormatInt(res.Size, 10))
 				case "body":
-					if (req.Method == echo.PUT || req.Method == echo.POST) && ioerr == nil {
+					if config.LogBody && ioerr == nil && (req.Method == echo.PUT || req.Method == echo.POST) {
 						return buf.Write(body)
 					}
 				default:
