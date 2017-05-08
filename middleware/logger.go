@@ -3,6 +3,7 @@ package middleware
 import (
 	"bytes"
 	"io"
+	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -52,6 +53,7 @@ type (
 		// Optional. Default value os.Stdout.
 		Output io.Writer
 
+		LogBody  bool
 		template *fasttemplate.Template
 		colorer  *color.Color
 		pool     *sync.Pool
@@ -68,6 +70,7 @@ var (
 			`"bytes_out":${bytes_out}}` + "\n",
 		Output:  os.Stdout,
 		colorer: color.New(),
+		LogBody: false,
 	}
 )
 
@@ -101,12 +104,24 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) (err error) {
+			var body []byte
+			var ioerr error
+
 			if config.Skipper(c) {
 				return next(c)
 			}
 
 			req := c.Request()
 			res := c.Response()
+
+			if config.LogBody && (req.Method == echo.PUT || req.Method == echo.POST) {
+				body, ioerr = ioutil.ReadAll(req.Body)
+				if ioerr == nil {
+					// re-read
+					c.Request().Body = ioutil.NopCloser(bytes.NewBuffer(body))
+				}
+			}
+
 			start := time.Now()
 			if err = next(c); err != nil {
 				c.Error(err)
@@ -175,6 +190,10 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 					return buf.WriteString(cl)
 				case "bytes_out":
 					return buf.WriteString(strconv.FormatInt(res.Size, 10))
+				case "body":
+					if config.LogBody && ioerr == nil && (req.Method == echo.PUT || req.Method == echo.POST) {
+						return buf.Write(body)
+					}
 				default:
 					switch {
 					case strings.HasPrefix(tag, "header:"):
