@@ -90,7 +90,7 @@ func TestLoggerTemplate(t *testing.T) {
 			`"method":"${method}","uri":"${uri}","status":${status}, "latency":${latency},` +
 			`"latency_human":"${latency_human}","bytes_in":${bytes_in}, "path":"${path}", "referer":"${referer}",` +
 			`"bytes_out":${bytes_out},"ch":"${header:X-Custom-Header}",` +
-			`"us":"${query:username}", "cf":"${form:username}"}` + "\n",
+			`"us":"${query:username}", "cf":"${form:username}", "session":"${cookie:session}"}` + "\n",
 		Output: buf,
 	}))
 
@@ -105,6 +105,7 @@ func TestLoggerTemplate(t *testing.T) {
 	req.Header.Add("User-Agent", "echo-tests-agent")
 	req.Header.Add("X-Custom-Header", "AAA-CUSTOM-VALUE")
 	req.Header.Add("X-Request-ID", "6ba7b810-9dad-11d1-80b4-00c04fd430c8")
+	req.Header.Add("Cookie", "_ga=GA1.2.000000000.0000000000; session=ac08034cd216a647fc2eb62f2bcf7b810")
 	req.Form = url.Values{
 		"username": []string{"apagano-form"},
 		"password": []string{"secret-form"},
@@ -129,6 +130,7 @@ func TestLoggerTemplate(t *testing.T) {
 		"google.com":                           true,
 		"echo-tests-agent":                     true,
 		"6ba7b810-9dad-11d1-80b4-00c04fd430c8": true,
+		"ac08034cd216a647fc2eb62f2bcf7b810":    true,
 	}
 
 	for token, present := range cases {
