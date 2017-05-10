@@ -15,7 +15,7 @@ type = "guide"
 ### Installation
 
 ```sh
-$ go get -u github.com/labstack/echo
+$ go get -u github.com/labstack/echo/...
 ```
 
 ### Hello, World!
