@@ -20,7 +20,7 @@ var (
 
 func init() {
 	users = map[string]user{
-		"1": user{
+		"1": {
 			ID:   "1",
 			Name: "Wreck-It Ralph",
 		},
