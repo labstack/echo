@@ -5,10 +5,10 @@ go:
     - tip
 install:
     - go get golang.org/x/tools/cmd/cover
-    - go get github.com/Masterminds/glide
+    - go get -u github.com/golang/dep/...
     - go get github.com/mattn/goveralls
     - go get github.com/modocache/gover
-    - glide install
+    - dep ensure -update
 script:
     - go test -coverprofile=echo.coverprofile
     - go test -coverprofile=middleware.coverprofile ./middleware
