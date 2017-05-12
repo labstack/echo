@@ -112,7 +112,7 @@ func TestGetUser(t *testing.T) {
 	e := echo.New()
 	req := new(http.Request)
 	rec := httptest.NewRecorder()
-  c := e.NewContext(req, rec)
+	c := e.NewContext(req, rec)
 	c.SetPath("/users/:email")
 	c.SetParamNames("email")
 	c.SetParamValues("jon@labstack.com")
