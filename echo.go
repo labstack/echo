@@ -74,6 +74,7 @@ type (
 		TLSListener      net.Listener
 		DisableHTTP2     bool
 		Debug            bool
+		HideBanner       bool
 		HTTPErrorHandler HTTPErrorHandler
 		Binder           Binder
 		Validator        Validator
@@ -202,6 +203,22 @@ const (
 	HeaderXFrameOptions           = "X-Frame-Options"
 	HeaderContentSecurityPolicy   = "Content-Security-Policy"
 	HeaderXCSRFToken              = "X-CSRF-Token"
+)
+
+const (
+	version = "3.1.0"
+	website = "https://echo.labstack.com"
+	// http://patorjk.com/software/taag/#p=display&f=Small%20Slant&t=Echo
+	banner = `
+   ____    __
+  / __/___/ /  ___
+ / _// __/ _ \/ _ \
+/___/\__/_//_/\___/ %s
+High performance, minimalist Go web framework
+%s
+____________________________________O/_______
+                                    O\
+`
 )
 
 var (
@@ -581,6 +598,7 @@ func (e *Echo) startTLS(address string) error {
 }
 
 // StartServer starts a custom http server.
+
 func (e *Echo) StartServer(s *http.Server) (err error) {
 	// Setup
 	e.colorer.SetOutput(e.Logger.Output())
@@ -590,6 +608,10 @@ func (e *Echo) StartServer(s *http.Server) (err error) {
 		e.Logger.SetLevel(log.DEBUG)
 	}
 
+	if !e.HideBanner {
+		e.colorer.Printf(banner, e.colorer.Red("v"+version), e.colorer.Blue(website))
+	}
+
 	if s.TLSConfig == nil {
 		if e.Listener == nil {
 			e.Listener, err = newListener(s.Addr)
@@ -597,7 +619,9 @@ func (e *Echo) StartServer(s *http.Server) (err error) {
 				return err
 			}
 		}
-		e.colorer.Printf("⇛ http server started on %s\n", e.colorer.Green(e.Listener.Addr()))
+		if !e.HideBanner {
+			e.colorer.Printf("🚀  http server started on %s\n", e.colorer.Green(e.Listener.Addr()))
+		}
 		return s.Serve(e.Listener)
 	}
 	if e.TLSListener == nil {
@@ -607,7 +631,9 @@ func (e *Echo) StartServer(s *http.Server) (err error) {
 		}
 		e.TLSListener = tls.NewListener(l, s.TLSConfig)
 	}
-	e.colorer.Printf("⇛ https server started on %s\n", e.colorer.Green(e.TLSListener.Addr()))
+	if !e.HideBanner {
+		e.colorer.Printf("🚀  https server started on %s\n", e.colorer.Green(e.TLSListener.Addr()))
+	}
 	return s.Serve(e.TLSListener)
 }
 
