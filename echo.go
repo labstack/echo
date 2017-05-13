@@ -80,8 +80,8 @@ type (
 		Validator        Validator
 		Renderer         Renderer
 		AutoTLSManager   autocert.Manager
-		Mutex            sync.RWMutex
-		Logger           Logger
+		// Mutex            sync.RWMutex
+		Logger Logger
 	}
 
 	// Route contains a handler and information for matching against requests.
@@ -525,8 +525,8 @@ func (e *Echo) ReleaseContext(c Context) {
 // ServeHTTP implements `http.Handler` interface, which serves HTTP requests.
 func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Acquire lock
-	e.Mutex.RLock()
-	defer e.Mutex.RUnlock()
+	// e.Mutex.RLock()
+	// defer e.Mutex.RUnlock()
 
 	// Acquire context
 	c := e.pool.Get().(*context)
@@ -598,7 +598,6 @@ func (e *Echo) startTLS(address string) error {
 }
 
 // StartServer starts a custom http server.
-
 func (e *Echo) StartServer(s *http.Server) (err error) {
 	// Setup
 	e.colorer.SetOutput(e.Logger.Output())
@@ -620,7 +619,7 @@ func (e *Echo) StartServer(s *http.Server) (err error) {
 			}
 		}
 		if !e.HideBanner {
-			e.colorer.Printf("🚀  http server started on %s\n", e.colorer.Green(e.Listener.Addr()))
+			e.colorer.Printf("⇨ http server started on %s\n", e.colorer.Green(e.Listener.Addr()))
 		}
 		return s.Serve(e.Listener)
 	}
@@ -632,7 +631,7 @@ func (e *Echo) StartServer(s *http.Server) (err error) {
 		e.TLSListener = tls.NewListener(l, s.TLSConfig)
 	}
 	if !e.HideBanner {
-		e.colorer.Printf("🚀  https server started on %s\n", e.colorer.Green(e.TLSListener.Addr()))
+		e.colorer.Printf("⇨ https server started on %s\n", e.colorer.Green(e.TLSListener.Addr()))
 	}
 	return s.Serve(e.TLSListener)
 }
