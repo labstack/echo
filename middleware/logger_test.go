@@ -43,7 +43,7 @@ func TestLogger(t *testing.T) {
 	h(c)
 
 	// Status 5xx with empty path
-	req, _ = http.NewRequest(echo.GET, "/", nil)
+	req = httptest.NewRequest(echo.GET, "/", nil)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	h = Logger()(func(c echo.Context) error {

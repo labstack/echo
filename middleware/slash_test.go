@@ -22,7 +22,7 @@ func TestAddTrailingSlash(t *testing.T) {
 	assert.Equal(t, "/add-slash/", req.RequestURI)
 
 	// With config
-	req, _ = http.NewRequest(echo.GET, "/add-slash?key=value", nil)
+	req = httptest.NewRequest(echo.GET, "/add-slash?key=value", nil)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	h = AddTrailingSlashWithConfig(TrailingSlashConfig{
@@ -48,7 +48,7 @@ func TestRemoveTrailingSlash(t *testing.T) {
 	assert.Equal(t, "/remove-slash", req.RequestURI)
 
 	// With config
-	req, _ = http.NewRequest(echo.GET, "/remove-slash/?key=value", nil)
+	req = httptest.NewRequest(echo.GET, "/remove-slash/?key=value", nil)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	h = RemoveTrailingSlashWithConfig(TrailingSlashConfig{
@@ -61,7 +61,7 @@ func TestRemoveTrailingSlash(t *testing.T) {
 	assert.Equal(t, "/remove-slash?key=value", rec.Header().Get(echo.HeaderLocation))
 
 	// With bare URL
-	req, _ = http.NewRequest(echo.GET, "http://localhost", nil)
+	req = httptest.NewRequest(echo.GET, "http://localhost", nil)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	h = RemoveTrailingSlash()(func(c echo.Context) error {

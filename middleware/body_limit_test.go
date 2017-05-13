@@ -36,7 +36,7 @@ func TestBodyLimit(t *testing.T) {
 	assert.Equal(t, http.StatusRequestEntityTooLarge, he.Code)
 
 	// Based on content read (within limit)
-	req, _ = http.NewRequest(echo.POST, "/", bytes.NewReader(hw))
+	req = httptest.NewRequest(echo.POST, "/", bytes.NewReader(hw))
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	if assert.NoError(t, BodyLimit("2M")(h)(c)) {
@@ -45,7 +45,7 @@ func TestBodyLimit(t *testing.T) {
 	}
 
 	// Based on content read (overlimit)
-	req, _ = http.NewRequest(echo.POST, "/", bytes.NewReader(hw))
+	req = httptest.NewRequest(echo.POST, "/", bytes.NewReader(hw))
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	he = BodyLimit("2B")(h)(c).(*echo.HTTPError)

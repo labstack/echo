@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"net/http"
 	"net/http/httptest"
 	"testing"
 
@@ -21,7 +20,7 @@ func TestCORS(t *testing.T) {
 	assert.Equal(t, "*", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
 
 	// Allow origins
-	req, _ = http.NewRequest(echo.GET, "/", nil)
+	req = httptest.NewRequest(echo.GET, "/", nil)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	h = CORSWithConfig(CORSConfig{
@@ -32,7 +31,7 @@ func TestCORS(t *testing.T) {
 	assert.Equal(t, "localhost", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
 
 	// Preflight request
-	req, _ = http.NewRequest(echo.OPTIONS, "/", nil)
+	req = httptest.NewRequest(echo.OPTIONS, "/", nil)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	req.Header.Set(echo.HeaderOrigin, "localhost")

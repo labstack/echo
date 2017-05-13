@@ -29,13 +29,13 @@ func TestCSRF(t *testing.T) {
 	assert.Contains(t, rec.Header().Get(echo.HeaderSetCookie), "_csrf")
 
 	// Without CSRF cookie
-	req, _ = http.NewRequest(echo.POST, "/", nil)
+	req = httptest.NewRequest(echo.POST, "/", nil)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	assert.Error(t, h(c))
 
 	// Empty/invalid CSRF token
-	req, _ = http.NewRequest(echo.POST, "/", nil)
+	req = httptest.NewRequest(echo.POST, "/", nil)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	req.Header.Set(echo.HeaderXCSRFToken, "")

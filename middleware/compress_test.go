@@ -27,7 +27,7 @@ func TestGzip(t *testing.T) {
 	assert.Equal(t, "test", rec.Body.String())
 
 	// Gzip
-	req, _ = http.NewRequest(echo.GET, "/", nil)
+	req = httptest.NewRequest(echo.GET, "/", nil)
 	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
