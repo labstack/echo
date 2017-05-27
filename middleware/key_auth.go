@@ -32,7 +32,7 @@ type (
 	}
 
 	// KeyAuthValidator defines a function to validate KeyAuth credentials.
-	KeyAuthValidator func(string, echo.Context) (error, bool)
+	KeyAuthValidator func(string, echo.Context) (bool, error)
 
 	keyExtractor func(echo.Context) (string, error)
 )
@@ -94,7 +94,7 @@ func KeyAuthWithConfig(config KeyAuthConfig) echo.MiddlewareFunc {
 			if err != nil {
 				return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 			}
-			err, valid := config.Validator(key, c)
+			valid, err := config.Validator(key, c)
 			if err != nil {
 				return err
 			} else if valid {
