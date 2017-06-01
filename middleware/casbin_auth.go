@@ -12,7 +12,7 @@
 // 	e := echo.New()
 //
 // 	// mediate the access for every request
-// 	e.Use(middleware.CasbinAuth(casbin.NewEnforcer("CasbinAuth_model.conf", "CasbinAuth_policy.csv")))
+// 	e.Use(middleware.CasbinAuth(casbin.NewEnforcer("casbin_auth_model.conf", "casbin_auth_policy.csv")))
 //
 // 	e.Logger.Fatal(e.Start(":1323"))
 // }
@@ -20,7 +20,7 @@
 // Advanced Usage:
 //
 //	func main(){
-//		ce := casbin.NewEnforcer("CasbinAuth_model.conf", "")
+//		ce := casbin.NewEnforcer("casbin_auth_model.conf", "")
 //		ce.AddRoleForUser("alice", "admin")
 //		ce.AddPolicy(...)
 //
