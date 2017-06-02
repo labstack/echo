@@ -1,6 +1,13 @@
 
 ## Gopkg.toml example (these lines may be deleted)
 
+## "metadata" defines metadata about the project that could be used by other independent
+## systems. The metadata defined here will be ignored by dep.
+# [metadata]
+# key1 = "value that convey data to other systems"
+# system1-data = "value that is used by a system"
+# system2-data = "value that is used by another system"
+
 ## "required" lists a set of packages (not projects) that must be included in
 ## Gopkg.lock. This list is merged with the set of packages imported by the current
 ## project. Use it when your project needs a package it doesn't explicitly import -
@@ -12,9 +19,10 @@
 ## or in a dependency.
 # ignored = ["github.com/user/project/badpkg"]
 
-## Dependencies define constraints on dependent projects. They are respected by
+## Constraints are rules for how directly imported projects
+## may be incorporated into the depgraph. They are respected by
 ## dep whether coming from the Gopkg.toml of the current project or a dependency.
-# [[dependencies]]
+# [[constraint]]
 ## Required: the root import path of the project being constrained.
 # name = "github.com/user/project"
 #
@@ -26,18 +34,25 @@
 #
 ## Optional: an alternate location (URL or import path) for the project's source.
 # source = "https://github.com/myfork/package.git"
+#
+## "metadata" defines metadata about the dependency or override that could be used
+## by other independent systems. The metadata defined here will be ignored by dep.
+# [metadata]
+# key1 = "value that convey data to other systems"
+# system1-data = "value that is used by a system"
+# system2-data = "value that is used by another system"
 
-## Overrides have the same structure as [[dependencies]], but supercede all
-## [[dependencies]] declarations from all projects. Only the current project's
-## [[overrides]] are applied.
+## Overrides have the same structure as [[constraint]], but supersede all
+## [[constraint]] declarations from all projects. Only [[override]] from
+## the current project's are applied.
 ##
 ## Overrides are a sledgehammer. Use them only as a last resort.
-# [[overrides]]
+# [[override]]
 ## Required: the root import path of the project being constrained.
 # name = "github.com/user/project"
 #
 ## Optional: specifying a version constraint override will cause all other
-## constraints on this project to be ignored; only the overriden constraint
+## constraints on this project to be ignored; only the overridden constraint
 ## need be satisfied.
 ## Again, only one of "branch", "version" or "revision" can be specified.
 # version = "1.0.0"
@@ -51,22 +66,22 @@
 
 
 
-[[dependencies]]
+[[constraint]]
   name = "github.com/dgrijalva/jwt-go"
-  version = "^3.0.0"
+  version = "3.0.0"
 
-[[dependencies]]
+[[constraint]]
   name = "github.com/labstack/gommon"
-  version = ">=0.2.1, <1.0.0"
+  version = "0.2.1"
 
-[[dependencies]]
+[[constraint]]
   name = "github.com/stretchr/testify"
-  version = "^1.1.4"
+  version = "1.1.4"
 
-[[dependencies]]
+[[constraint]]
   branch = "master"
   name = "github.com/valyala/fasttemplate"
 
-[[dependencies]]
+[[constraint]]
   branch = "master"
   name = "golang.org/x/crypto"
