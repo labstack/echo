@@ -227,6 +227,9 @@ func (c *context) Scheme() string {
 	}
 	if scheme := c.request.Header.Get(HeaderXForwardedProto); scheme != "" {
 		return scheme
+	}	
+	if ssl := c.request.Header.Get(HeaderXForwardedSsl); ssl == "on" {
+		return "https"
 	}
 	return "http"
 }
