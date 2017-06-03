@@ -91,7 +91,7 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 		config.Skipper = DefaultJWTConfig.Skipper
 	}
 	if config.SigningKey == nil {
-		panic("jwt middleware requires signing key")
+		panic("echo: jwt middleware requires signing key")
 	}
 	if config.SigningMethod == "" {
 		config.SigningMethod = DefaultJWTConfig.SigningMethod
