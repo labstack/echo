@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"net/url"
+
 	"github.com/labstack/echo"
 	"github.com/stretchr/testify/assert"
 )
@@ -38,18 +40,24 @@ func TestProxy(t *testing.T) {
 		fmt.Fprint(w, "target 1")
 	}))
 	defer t1.Close()
+	url1, _ := url.Parse(t1.URL)
 	t2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "target 2")
 	}))
 	defer t2.Close()
+	url2, _ := url.Parse(t2.URL)
+
+	targets := []*ProxyTarget{
+		&ProxyTarget{
+			URL: url1,
+		},
+		&ProxyTarget{
+			URL: url2,
+		},
+	}
 	config := ProxyConfig{
-		Targets: []*ProxyTarget{
-			&ProxyTarget{
-				URL: t1.URL,
-			},
-			&ProxyTarget{
-				URL: t2.URL,
-			},
+		Balancer: &RandomBalancer{
+			Targets: targets,
 		},
 	}
 
@@ -60,16 +68,18 @@ func TestProxy(t *testing.T) {
 	rec := newCloseNotifyRecorder()
 	e.ServeHTTP(rec, req)
 	body := rec.Body.String()
-	targets := map[string]bool{
+	expected := map[string]bool{
 		"target 1": true,
 		"target 2": true,
 	}
 	assert.Condition(t, func() bool {
-		return targets[body]
+		return expected[body]
 	})
 
 	// Round-robin
-	config.Balance = "round-robin"
+	config.Balancer = &RoundRobinBalancer{
+		Targets: targets,
+	}
 	e = echo.New()
 	e.Use(Proxy(config))
 	rec = newCloseNotifyRecorder()
