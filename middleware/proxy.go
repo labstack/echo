@@ -15,6 +15,8 @@ import (
 	"github.com/labstack/echo"
 )
 
+// TODO: Handle TLS proxy
+
 type (
 	// ProxyConfig defines the config for Proxy middleware.
 	ProxyConfig struct {
@@ -63,17 +65,16 @@ func proxyRaw(t *ProxyTarget, c echo.Context) http.Handler {
 			c.Error(errors.New("proxy raw, not a hijacker"))
 			return
 		}
-
 		in, _, err := h.Hijack()
 		if err != nil {
-			c.Error(fmt.Errorf("proxy raw hijack error=%v, url=%s", r.URL, err))
+			c.Error(fmt.Errorf("proxy raw, hijack error=%v, url=%s", r.URL, err))
 			return
 		}
 		defer in.Close()
 
 		out, err := net.Dial("tcp", t.URL.Host)
 		if err != nil {
-			he := echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("proxy raw dial error=%v, url=%s", r.URL, err))
+			he := echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("proxy raw, dial error=%v, url=%s", r.URL, err))
 			c.Error(he)
 			return
 		}
@@ -81,7 +82,7 @@ func proxyRaw(t *ProxyTarget, c echo.Context) http.Handler {
 
 		err = r.Write(out)
 		if err != nil {
-			he := echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("proxy raw request copy error=%v, url=%s", r.URL, err))
+			he := echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("proxy raw, request copy error=%v, url=%s", r.URL, err))
 			c.Error(he)
 			return
 		}
@@ -96,7 +97,7 @@ func proxyRaw(t *ProxyTarget, c echo.Context) http.Handler {
 		go cp(in, out)
 		err = <-errc
 		if err != nil && err != io.EOF {
-			c.Logger().Errorf("proxy raw error=%v, url=%s", r.URL, err)
+			c.Logger().Errorf("proxy raw, error=%v, url=%s", r.URL, err)
 		}
 	})
 }
@@ -131,18 +132,26 @@ func Proxy(config ProxyConfig) echo.MiddlewareFunc {
 		return func(c echo.Context) (err error) {
 			req := c.Request()
 			res := c.Response()
-			t := config.Balancer.Next()
+			tgt := config.Balancer.Next()
+
+			// Fix header
+			if req.Header.Get(echo.HeaderXRealIP) == "" {
+				req.Header.Set(echo.HeaderXRealIP, c.RealIP())
+			}
+			if req.Header.Get(echo.HeaderXForwardedProto) == "" {
+				req.Header.Set(echo.HeaderXForwardedProto, c.Scheme())
+			}
+			if c.IsWebSocket() && req.Header.Get(echo.HeaderXForwardedFor) == "" { // For HTTP, it is automatically set by Go HTTP reverse proxy.
+				req.Header.Set(echo.HeaderXForwardedFor, c.RealIP())
+			}
 
 			// Proxy
-			upgrade := req.Header.Get(echo.HeaderUpgrade)
-			accept := req.Header.Get(echo.HeaderAccept)
-
 			switch {
-			case upgrade == "websocket" || upgrade == "Websocket":
-				proxyRaw(t, c).ServeHTTP(res, req)
-			case accept == "text/event-stream":
+			case c.IsWebSocket():
+				proxyRaw(tgt, c).ServeHTTP(res, req)
+			case req.Header.Get(echo.HeaderAccept) == "text/event-stream":
 			default:
-				proxyHTTP(t).ServeHTTP(res, req)
+				proxyHTTP(tgt).ServeHTTP(res, req)
 			}
 
 			return

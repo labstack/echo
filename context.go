@@ -31,6 +31,9 @@ type (
 		// IsTLS returns true if HTTP connection is TLS otherwise false.
 		IsTLS() bool
 
+		// IsWebSocket returns true if HTTP connection is WebSocket otherwise false.
+		IsWebSocket() bool
+
 		// Scheme returns the HTTP protocol scheme, `http` or `https`.
 		Scheme() string
 
@@ -219,6 +222,11 @@ func (c *context) IsTLS() bool {
 	return c.request.TLS != nil
 }
 
+func (c *context) IsWebSocket() bool {
+	upgrade := c.request.Header.Get(HeaderUpgrade)
+	return upgrade == "websocket" || upgrade == "Websocket"
+}
+
 func (c *context) Scheme() string {
 	// Can't use `r.Request.URL.Scheme`
 	// See: https://groups.google.com/forum/#!topic/golang-nuts/pMUkBlQBDF0
@@ -227,9 +235,15 @@ func (c *context) Scheme() string {
 	}
 	if scheme := c.request.Header.Get(HeaderXForwardedProto); scheme != "" {
 		return scheme
-	}	
+	}
+	if scheme := c.request.Header.Get(HeaderXForwardedProtocol); scheme != "" {
+		return scheme
+	}
 	if ssl := c.request.Header.Get(HeaderXForwardedSsl); ssl == "on" {
 		return "https"
+	}
+	if scheme := c.request.Header.Get(HeaderXUrlScheme); scheme != "" {
+		return scheme
 	}
 	return "http"
 }
