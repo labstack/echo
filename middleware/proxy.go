@@ -21,11 +21,11 @@ type (
 		// Skipper defines a function to skip middleware.
 		Skipper Skipper
 
-		// Balance defines a load balancing technique.
+		// Balancer defines a load balancing technique.
 		// Required.
 		// Possible values:
-		// - ProxyRandom
-		// - ProxyRoundRobin
+		// - RandomBalancer
+		// - RoundRobinBalancer
 		Balancer ProxyBalancer
 	}
 
@@ -34,16 +34,19 @@ type (
 		URL *url.URL
 	}
 
+	// RandomBalancer implements a random load balancing technique.
 	RandomBalancer struct {
 		Targets []*ProxyTarget
 		random  *rand.Rand
 	}
 
+	// RoundRobinBalancer implements a round-robin load balancing technique.
 	RoundRobinBalancer struct {
 		Targets []*ProxyTarget
 		i       uint32
 	}
 
+	// ProxyBalancer defines an interface to implement a load balancing technique.
 	ProxyBalancer interface {
 		Next() *ProxyTarget
 	}
@@ -98,6 +101,7 @@ func proxyRaw(t *ProxyTarget, c echo.Context) http.Handler {
 	})
 }
 
+// Next randomly returns an upstream target.
 func (r *RandomBalancer) Next() *ProxyTarget {
 	if r.random == nil {
 		r.random = rand.New(rand.NewSource(int64(time.Now().Nanosecond())))
@@ -105,6 +109,7 @@ func (r *RandomBalancer) Next() *ProxyTarget {
 	return r.Targets[r.random.Intn(len(r.Targets))]
 }
 
+// Next returns an upstream target using round-robin technique.
 func (r *RoundRobinBalancer) Next() *ProxyTarget {
 	r.i = r.i % uint32(len(r.Targets))
 	t := r.Targets[r.i]

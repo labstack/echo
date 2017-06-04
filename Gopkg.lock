@@ -63,12 +63,6 @@
 
 [[projects]]
   branch = "master"
-  name = "golang.org/x/net"
-  packages = ["websocket"]
-  revision = "e4fa1c5465ad6111f206fc92186b8c83d64adbe1"
-
-[[projects]]
-  branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
   revision = "b90f89a1e7a9c1f6b918820b3daa7f08488c8594"
@@ -76,6 +70,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e6ecdde9a4df2afdf849e47fd5a0680122ec991fbadea0a59e54d36b52e8f681"
+  inputs-digest = "5f74a2a2ba5b07475ad0faa1b4c021b973ad40b2ae749e3d94e15fe839bb440e"
   solver-name = "gps-cdcl"
   solver-version = 1
