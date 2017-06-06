@@ -494,11 +494,6 @@ func (c *context) Stream(code int, contentType string, r io.Reader) (err error) 
 }
 
 func (c *context) File(file string) (err error) {
-	file, err = url.QueryUnescape(file) // Issue #839
-	if err != nil {
-		return
-	}
-
 	f, err := os.Open(file)
 	if err != nil {
 		return ErrNotFound
