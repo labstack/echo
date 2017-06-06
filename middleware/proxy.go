@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -60,29 +59,25 @@ func proxyHTTP(t *ProxyTarget) http.Handler {
 
 func proxyRaw(t *ProxyTarget, c echo.Context) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		h, ok := w.(http.Hijacker)
-		if !ok {
-			c.Error(errors.New("proxy raw, not a hijacker"))
-			return
-		}
-		in, _, err := h.Hijack()
+		in, _, err := c.Response().Hijack()
 		if err != nil {
-			c.Error(fmt.Errorf("proxy raw, hijack error=%v, url=%s", r.URL, err))
+			c.Error(fmt.Errorf("proxy raw, hijack error=%v, url=%s", t.URL, err))
 			return
 		}
 		defer in.Close()
 
 		out, err := net.Dial("tcp", t.URL.Host)
 		if err != nil {
-			he := echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("proxy raw, dial error=%v, url=%s", r.URL, err))
+			he := echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("proxy raw, dial error=%v, url=%s", t.URL, err))
 			c.Error(he)
 			return
 		}
 		defer out.Close()
 
+		// Write header
 		err = r.Write(out)
 		if err != nil {
-			he := echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("proxy raw, request copy error=%v, url=%s", r.URL, err))
+			he := echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("proxy raw, request header copy error=%v, url=%s", t.URL, err))
 			c.Error(he)
 			return
 		}
@@ -97,7 +92,7 @@ func proxyRaw(t *ProxyTarget, c echo.Context) http.Handler {
 		go cp(in, out)
 		err = <-errc
 		if err != nil && err != io.EOF {
-			c.Logger().Errorf("proxy raw, error=%v, url=%s", r.URL, err)
+			c.Logger().Errorf("proxy raw, copy body error=%v, url=%s", t.URL, err)
 		}
 	})
 }
