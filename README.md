@@ -26,7 +26,7 @@
 
 - :star: the project
 - [Donate](https://echo.labstack.com/support-echo)
-- :earth_americas: spread the word
+- :earth_americas: spread the world
 - [Contribute](#contribute) to the project
 
 ## Contribute
