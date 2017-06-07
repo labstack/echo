@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -74,6 +75,12 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 			p := c.Request().URL.Path
 			if strings.HasSuffix(c.Path(), "*") { // When serving from a group, e.g. `/static*`.
 				p = c.Param("*")
+			}
+
+			var err error
+			p, err = url.PathUnescape(p)
+			if err != nil {
+				return err
 			}
 			name := filepath.Join(config.Root, path.Clean("/"+p)) // "/"+ for security
 
