@@ -45,6 +45,7 @@ import (
 	stdLog "log"
 	"net"
 	"net/http"
+	"net/url"
 	"path"
 	"path/filepath"
 	"reflect"
@@ -434,7 +435,11 @@ func (e *Echo) Static(prefix, root string) {
 
 func static(i i, prefix, root string) {
 	h := func(c Context) error {
-		name := filepath.Join(root, path.Clean("/"+c.Param("*"))) // "/"+ for security
+		p, err := url.PathUnescape(c.Param("*"))
+		if err != nil {
+			return err
+		}
+		name := filepath.Join(root, path.Clean("/"+p)) // "/"+ for security
 		return c.File(name)
 	}
 	i.GET(prefix, h)
@@ -542,7 +547,10 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Middleware
 	h := func(c Context) error {
 		method := r.Method
-		path := r.URL.Path
+		path := r.URL.RawPath
+		if path == "" {
+			path = r.URL.Path
+		}
 		e.router.Find(method, path, c)
 		h := c.Handler()
 		for i := len(e.middleware) - 1; i >= 0; i-- {

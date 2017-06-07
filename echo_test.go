@@ -304,6 +304,17 @@ func TestEchoRoutes(t *testing.T) {
 	}
 }
 
+func TestEchoEncodedPath(t *testing.T) {
+	e := New()
+	e.GET("/:id", func(c Context) error {
+		return c.NoContent(http.StatusOK)
+	})
+	req := httptest.NewRequest(GET, "/with%2Fslash", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
 func TestEchoGroup(t *testing.T) {
 	e := New()
 	buf := new(bytes.Buffer)
