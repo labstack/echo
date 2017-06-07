@@ -45,7 +45,6 @@ import (
 	stdLog "log"
 	"net"
 	"net/http"
-	"net/url"
 	"path"
 	"path/filepath"
 	"reflect"
@@ -435,7 +434,7 @@ func (e *Echo) Static(prefix, root string) {
 
 func static(i i, prefix, root string) {
 	h := func(c Context) error {
-		p, err := url.PathUnescape(c.Param("*"))
+		p, err := PathUnescape(c.Param("*"))
 		if err != nil {
 			return err
 		}
