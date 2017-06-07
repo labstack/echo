@@ -1,19 +1,14 @@
 language: go
 go:
-    - 1.7
-    - 1.8
-    - tip
+  - 1.7
+  - 1.8
+  - tip
 install:
-    - go get golang.org/x/tools/cmd/cover
-    - go get -u github.com/golang/dep/...
-    - go get github.com/mattn/goveralls
-    - go get github.com/modocache/gover
-    - dep ensure -update
+  - make dependency
 script:
-    - go test -coverprofile=echo.coverprofile
-    - go test -coverprofile=middleware.coverprofile ./middleware
-    - gover
-    - goveralls -coverprofile=gover.coverprofile -service=travis-ci
+  - make test
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
 matrix:
   allow_failures:
     - go: tip
