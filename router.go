@@ -405,6 +405,9 @@ func (r *Router) Find(method, path string, c Context) {
 			// Not found
 			return
 		}
+		if len(pvalues) < len(cn.pnames) {
+			continue
+		}
 		pvalues[len(cn.pnames)-1] = search
 		goto End
 	}
