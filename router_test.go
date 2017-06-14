@@ -584,6 +584,33 @@ func TestRouterMatchAny(t *testing.T) {
 	assert.Equal(t, "joe", c.Param("*"))
 }
 
+func TestRouterMatchAnyMultiLevel(t *testing.T) {
+	e := New()
+	r := e.router
+	handler := func(c Context) error {
+		c.Set("path", c.Path())
+		return nil
+	}
+
+	// Routes
+	r.Add(GET, "/api/users/jack", handler)
+	r.Add(GET, "/api/users/jill", handler)
+	r.Add(GET, "/*", handler)
+
+	c := e.NewContext(nil, nil).(*context)
+	r.Find(GET, "/api/users/jack", c)
+	c.handler(c)
+	assert.Equal(t, "/api/users/jack", c.Get("path"))
+
+	r.Find(GET, "/api/users/jill", c)
+	c.handler(c)
+	assert.Equal(t, "/api/users/jill", c.Get("path"))
+
+	r.Find(GET, "/api/users/joe", c)
+	c.handler(c)
+	assert.Equal(t, "/*", c.Get("path"))
+}
+
 func TestRouterMicroParam(t *testing.T) {
 	e := New()
 	r := e.router

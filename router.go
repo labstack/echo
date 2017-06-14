@@ -394,7 +394,7 @@ func (r *Router) Find(method, path string, c Context) {
 		if cn = cn.findChildByKind(akind); cn == nil {
 			if nn != nil {
 				cn = nn
-				nn = nil // Next
+				nn = cn.parent // Next (Issue #954)
 				search = ns
 				if nk == pkind {
 					goto Param

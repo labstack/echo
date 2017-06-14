@@ -2,3 +2,5 @@
 coverage.txt
 _test
 vendor
+.idea
+*.iml
