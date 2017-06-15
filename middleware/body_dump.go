@@ -50,7 +50,7 @@ func BodyDump(handler BodyDumpHandler) echo.MiddlewareFunc {
 }
 
 // BodyDumpWithConfig returns a BodyDump middleware with config.
-// See: `BodyConfig()`.
+// See: `BodyDump()`.
 func BodyDumpWithConfig(config BodyDumpConfig) echo.MiddlewareFunc {
 	// Defaults
 	if config.Handler == nil {

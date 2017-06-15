@@ -53,6 +53,13 @@ type (
 	}
 )
 
+var (
+	// DefaultProxyConfig is the default Proxy middleware config.
+	DefaultProxyConfig = ProxyConfig{
+		Skipper: DefaultSkipper,
+	}
+)
+
 func proxyHTTP(t *ProxyTarget) http.Handler {
 	return httputil.NewSingleHostReverseProxy(t.URL)
 }
@@ -113,8 +120,18 @@ func (r *RoundRobinBalancer) Next() *ProxyTarget {
 	return t
 }
 
-// Proxy returns an HTTP/WebSocket reverse proxy middleware.
-func Proxy(config ProxyConfig) echo.MiddlewareFunc {
+// Proxy returns a Proxy middleware.
+//
+// Proxy middleware forwards a request to upstream server using a configured load balancing technique.
+func Proxy(balancer ProxyBalancer) echo.MiddlewareFunc {
+	c := DefaultProxyConfig
+	c.Balancer = balancer
+	return ProxyWithConfig(c)
+}
+
+// ProxyWithConfig returns a Proxy middleware with config.
+// See: `Proxy()`
+func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 	// Defaults
 	if config.Skipper == nil {
 		config.Skipper = DefaultLoggerConfig.Skipper

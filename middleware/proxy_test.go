@@ -55,15 +55,13 @@ func TestProxy(t *testing.T) {
 			URL: url2,
 		},
 	}
-	config := ProxyConfig{
-		Balancer: &RandomBalancer{
-			Targets: targets,
-		},
+	rb := &RandomBalancer{
+		Targets: targets,
 	}
 
 	// Random
 	e := echo.New()
-	e.Use(Proxy(config))
+	e.Use(Proxy(rb))
 	req := httptest.NewRequest(echo.GET, "/", nil)
 	rec := newCloseNotifyRecorder()
 	e.ServeHTTP(rec, req)
@@ -77,11 +75,11 @@ func TestProxy(t *testing.T) {
 	})
 
 	// Round-robin
-	config.Balancer = &RoundRobinBalancer{
+	rrb := &RoundRobinBalancer{
 		Targets: targets,
 	}
 	e = echo.New()
-	e.Use(Proxy(config))
+	e.Use(Proxy(rrb))
 	rec = newCloseNotifyRecorder()
 	e.ServeHTTP(rec, req)
 	body = rec.Body.String()
