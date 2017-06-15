@@ -1,4 +1,6 @@
-### Description
+## Please use [forum](https://forum.labstack.com) to ask questions
+
+### Issue Description
 
 ### Checklist
 
