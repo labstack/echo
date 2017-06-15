@@ -122,7 +122,7 @@ func (r *RoundRobinBalancer) Next() *ProxyTarget {
 
 // Proxy returns a Proxy middleware.
 //
-// Proxy middleware forwards a request to upstream server using a configured load balancing technique.
+// Proxy middleware forwards the request to upstream server using a configured load balancing technique.
 func Proxy(balancer ProxyBalancer) echo.MiddlewareFunc {
 	c := DefaultProxyConfig
 	c.Balancer = balancer
