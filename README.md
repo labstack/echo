@@ -1,4 +1,4 @@
-# [Echo](https://echo.labstack.com)
+<a href="https://echo.labstack.com"><img class="logo" height="40" src="https://echo.labstack.com/images/logo.png"></a>
 
 [![Sourcegraph](https://sourcegraph.com/github.com/labstack/echo/-/badge.svg?style=flat-square)](https://sourcegraph.com/github.com/labstack/echo?badge)
 [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/labstack/echo)
