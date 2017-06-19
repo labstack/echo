@@ -77,7 +77,7 @@ var (
 //
 // See: https://jwt.io/introduction
 // See `JWTConfig.TokenLookup`
-func JWT(key []byte) echo.MiddlewareFunc {
+func JWT(key interface{}) echo.MiddlewareFunc {
 	c := DefaultJWTConfig
 	c.SigningKey = key
 	return JWTWithConfig(c)
