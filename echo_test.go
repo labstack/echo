@@ -278,7 +278,7 @@ func TestEchoURL(t *testing.T) {
 
 func TestEchoRoutes(t *testing.T) {
 	e := New()
-	routes := []Route{
+	routes := []*Route{
 		{GET, "/users/:user/events", ""},
 		{GET, "/users/:user/events/public", ""},
 		{POST, "/repos/:owner/:repo/git/refs", ""},
@@ -290,16 +290,18 @@ func TestEchoRoutes(t *testing.T) {
 		})
 	}
 
-	for _, r := range e.Routes() {
-		found := false
-		for _, rr := range routes {
-			if r.Method == rr.Method && r.Path == rr.Path {
-				found = true
-				break
+	if assert.Equal(t, len(routes), len(e.Routes())) {
+		for _, r := range e.Routes() {
+			found := false
+			for _, rr := range routes {
+				if r.Method == rr.Method && r.Path == rr.Path {
+					found = true
+					break
+				}
 			}
-		}
-		if !found {
-			t.Errorf("Route %s : %s not found", r.Method, r.Path)
+			if !found {
+				t.Errorf("Route %s %s not found", r.Method, r.Path)
+			}
 		}
 	}
 }
@@ -423,9 +425,7 @@ func testMethod(t *testing.T, method, path string, e *Echo) {
 	i := interface{}(e)
 	reflect.ValueOf(i).MethodByName(method).Call([]reflect.Value{p, h})
 	_, body := request(method, path, e)
-	if body != method {
-		t.Errorf("expected body `%s`, got %s", method, body)
-	}
+	assert.Equal(t, method, body)
 }
 
 func request(method, path string, e *Echo) (int, string) {
@@ -433,4 +433,11 @@ func request(method, path string, e *Echo) (int, string) {
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	return rec.Code, rec.Body.String()
+}
+
+func TestHTTPError(t *testing.T) {
+	err := NewHTTPError(400, map[string]interface{}{
+		"code": 12,
+	})
+	assert.Equal(t, "code=400, message=map[code:12]", err.Error())
 }
