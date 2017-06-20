@@ -434,3 +434,13 @@ func request(method, path string, e *Echo) (int, string) {
 	e.ServeHTTP(rec, req)
 	return rec.Code, rec.Body.String()
 }
+
+func TestHTTPError(t *testing.T) {
+	err := NewHTTPError(400, map[string]interface{}{
+		"code": 12,
+	})
+	expected := "code=400, message=map[code:12]"
+	if expected != err.Error() {
+		t.Errorf("expected body %s,got %s", expected, err.Error())
+	}
+}
