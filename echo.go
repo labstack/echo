@@ -212,7 +212,7 @@ const (
 )
 
 const (
-	version = "3.1.0"
+	version = "3.2.1"
 	website = "https://echo.labstack.com"
 	// http://patorjk.com/software/taag/#p=display&f=Small%20Slant&t=Echo
 	banner = `
