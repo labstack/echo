@@ -409,30 +409,34 @@ func (e *Echo) TRACE(path string, h HandlerFunc, m ...MiddlewareFunc) *Route {
 
 // Any registers a new route for all HTTP methods and path with matching handler
 // in the router with optional route-level middleware.
-func (e *Echo) Any(path string, handler HandlerFunc, middleware ...MiddlewareFunc) {
+func (e *Echo) Any(path string, handler HandlerFunc, middleware ...MiddlewareFunc) []*Route {
+	routes := make([]*Route, 0)
 	for _, m := range methods {
-		e.add(m, path, handler, middleware...)
+		routes = append(routes, e.add(m, path, handler, middleware...))
 	}
+	return routes
 }
 
 // Match registers a new route for multiple HTTP methods and path with matching
 // handler in the router with optional route-level middleware.
-func (e *Echo) Match(methods []string, path string, handler HandlerFunc, middleware ...MiddlewareFunc) {
+func (e *Echo) Match(methods []string, path string, handler HandlerFunc, middleware ...MiddlewareFunc) []*Route {
+	routes := make([]*Route, 0)
 	for _, m := range methods {
-		e.add(m, path, handler, middleware...)
+		routes = append(routes, e.add(m, path, handler, middleware...))
 	}
+	return routes
 }
 
 // Static registers a new route with path prefix to serve static files from the
 // provided root directory.
-func (e *Echo) Static(prefix, root string) {
+func (e *Echo) Static(prefix, root string) *Route {
 	if root == "" {
 		root = "." // For security we want to restrict to CWD.
 	}
-	static(e, prefix, root)
+	return static(e, prefix, root)
 }
 
-func static(i i, prefix, root string) {
+func static(i i, prefix, root string) *Route {
 	h := func(c Context) error {
 		p, err := PathUnescape(c.Param("*"))
 		if err != nil {
@@ -443,15 +447,15 @@ func static(i i, prefix, root string) {
 	}
 	i.GET(prefix, h)
 	if prefix == "/" {
-		i.GET(prefix+"*", h)
-	} else {
-		i.GET(prefix+"/*", h)
+		return i.GET(prefix+"*", h)
 	}
+
+	return i.GET(prefix+"/*", h)
 }
 
 // File registers a new route with path to serve a static file.
-func (e *Echo) File(path, file string) {
-	e.GET(path, func(c Context) error {
+func (e *Echo) File(path, file string) *Route {
+	return e.GET(path, func(c Context) error {
 		return c.File(file)
 	})
 }
