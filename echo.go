@@ -86,9 +86,9 @@ type (
 
 	// Route contains a handler and information for matching against requests.
 	Route struct {
-		Method  string `json:"method"`
-		Path    string `json:"path"`
-		Handler string `json:"handler"`
+		Method string `json:"method"`
+		Path   string `json:"path"`
+		Name   string `json:"name"`
 	}
 
 	// HTTPError represents an error that occurred while handling a request.
@@ -467,9 +467,9 @@ func (e *Echo) add(method, path string, handler HandlerFunc, middleware ...Middl
 		return h(c)
 	})
 	r := &Route{
-		Method:  method,
-		Path:    path,
-		Handler: name,
+		Method: method,
+		Path:   path,
+		Name:   name,
 	}
 	e.router.routes[method+path] = r
 	return r
@@ -499,7 +499,7 @@ func (e *Echo) Reverse(name string, params ...interface{}) string {
 	ln := len(params)
 	n := 0
 	for _, r := range e.router.routes {
-		if r.Handler == name {
+		if r.Name == name {
 			for i, l := 0, len(r.Path); i < l; i++ {
 				if r.Path[i] == ':' && n < ln {
 					for ; i < l && r.Path[i] != '/'; i++ {
