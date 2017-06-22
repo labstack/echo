@@ -121,7 +121,7 @@ type (
 
 	// i is the interface for Echo and Group.
 	i interface {
-		GET(string, HandlerFunc, ...MiddlewareFunc)
+		GET(string, HandlerFunc, ...MiddlewareFunc) *Route
 	}
 )
 
@@ -355,56 +355,56 @@ func (e *Echo) Use(middleware ...MiddlewareFunc) {
 
 // CONNECT registers a new CONNECT route for a path with matching handler in the
 // router with optional route-level middleware.
-func (e *Echo) CONNECT(path string, h HandlerFunc, m ...MiddlewareFunc) {
-	e.add(CONNECT, path, h, m...)
+func (e *Echo) CONNECT(path string, h HandlerFunc, m ...MiddlewareFunc) *Route {
+	return e.add(CONNECT, path, h, m...)
 }
 
 // DELETE registers a new DELETE route for a path with matching handler in the router
 // with optional route-level middleware.
-func (e *Echo) DELETE(path string, h HandlerFunc, m ...MiddlewareFunc) {
-	e.add(DELETE, path, h, m...)
+func (e *Echo) DELETE(path string, h HandlerFunc, m ...MiddlewareFunc) *Route {
+	return e.add(DELETE, path, h, m...)
 }
 
 // GET registers a new GET route for a path with matching handler in the router
 // with optional route-level middleware.
-func (e *Echo) GET(path string, h HandlerFunc, m ...MiddlewareFunc) {
-	e.add(GET, path, h, m...)
+func (e *Echo) GET(path string, h HandlerFunc, m ...MiddlewareFunc) *Route {
+	return e.add(GET, path, h, m...)
 }
 
 // HEAD registers a new HEAD route for a path with matching handler in the
 // router with optional route-level middleware.
-func (e *Echo) HEAD(path string, h HandlerFunc, m ...MiddlewareFunc) {
-	e.add(HEAD, path, h, m...)
+func (e *Echo) HEAD(path string, h HandlerFunc, m ...MiddlewareFunc) *Route {
+	return e.add(HEAD, path, h, m...)
 }
 
 // OPTIONS registers a new OPTIONS route for a path with matching handler in the
 // router with optional route-level middleware.
-func (e *Echo) OPTIONS(path string, h HandlerFunc, m ...MiddlewareFunc) {
-	e.add(OPTIONS, path, h, m...)
+func (e *Echo) OPTIONS(path string, h HandlerFunc, m ...MiddlewareFunc) *Route {
+	return e.add(OPTIONS, path, h, m...)
 }
 
 // PATCH registers a new PATCH route for a path with matching handler in the
 // router with optional route-level middleware.
-func (e *Echo) PATCH(path string, h HandlerFunc, m ...MiddlewareFunc) {
-	e.add(PATCH, path, h, m...)
+func (e *Echo) PATCH(path string, h HandlerFunc, m ...MiddlewareFunc) *Route {
+	return e.add(PATCH, path, h, m...)
 }
 
 // POST registers a new POST route for a path with matching handler in the
 // router with optional route-level middleware.
-func (e *Echo) POST(path string, h HandlerFunc, m ...MiddlewareFunc) {
-	e.add(POST, path, h, m...)
+func (e *Echo) POST(path string, h HandlerFunc, m ...MiddlewareFunc) *Route {
+	return e.add(POST, path, h, m...)
 }
 
 // PUT registers a new PUT route for a path with matching handler in the
 // router with optional route-level middleware.
-func (e *Echo) PUT(path string, h HandlerFunc, m ...MiddlewareFunc) {
-	e.add(PUT, path, h, m...)
+func (e *Echo) PUT(path string, h HandlerFunc, m ...MiddlewareFunc) *Route {
+	return e.add(PUT, path, h, m...)
 }
 
 // TRACE registers a new TRACE route for a path with matching handler in the
 // router with optional route-level middleware.
-func (e *Echo) TRACE(path string, h HandlerFunc, m ...MiddlewareFunc) {
-	e.add(TRACE, path, h, m...)
+func (e *Echo) TRACE(path string, h HandlerFunc, m ...MiddlewareFunc) *Route {
+	return e.add(TRACE, path, h, m...)
 }
 
 // Any registers a new route for all HTTP methods and path with matching handler
@@ -456,7 +456,7 @@ func (e *Echo) File(path, file string) {
 	})
 }
 
-func (e *Echo) add(method, path string, handler HandlerFunc, middleware ...MiddlewareFunc) {
+func (e *Echo) add(method, path string, handler HandlerFunc, middleware ...MiddlewareFunc) *Route {
 	name := handlerName(handler)
 	e.router.Add(method, path, func(c Context) error {
 		h := handler
@@ -472,6 +472,7 @@ func (e *Echo) add(method, path string, handler HandlerFunc, middleware ...Middl
 		Handler: name,
 	}
 	e.router.routes[method+path] = r
+	return r
 }
 
 // Group creates a new router group with prefix and optional group-level middleware.
@@ -483,10 +484,20 @@ func (e *Echo) Group(prefix string, m ...MiddlewareFunc) (g *Group) {
 
 // URI generates a URI from handler.
 func (e *Echo) URI(handler HandlerFunc, params ...interface{}) string {
+	name := handlerName(handler)
+	return e.Reverse(name, params...)
+}
+
+// URL is an alias for `URI` function.
+func (e *Echo) URL(h HandlerFunc, params ...interface{}) string {
+	return e.URI(h, params...)
+}
+
+// Reverse generates an URL from route name and provided parameters
+func (e *Echo) Reverse(name string, params ...interface{}) string {
 	uri := new(bytes.Buffer)
 	ln := len(params)
 	n := 0
-	name := handlerName(handler)
 	for _, r := range e.router.routes {
 		if r.Handler == name {
 			for i, l := 0, len(r.Path); i < l; i++ {
@@ -504,11 +515,6 @@ func (e *Echo) URI(handler HandlerFunc, params ...interface{}) string {
 		}
 	}
 	return uri.String()
-}
-
-// URL is an alias for `URI` function.
-func (e *Echo) URL(h HandlerFunc, params ...interface{}) string {
-	return e.URI(h, params...)
 }
 
 // Routes returns the registered routes.
