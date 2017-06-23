@@ -60,7 +60,7 @@ func BodyLimitWithConfig(config BodyLimitConfig) echo.MiddlewareFunc {
 
 	limit, err := bytes.Parse(config.Limit)
 	if err != nil {
-		panic(fmt.Errorf("invalid body-limit=%s", config.Limit))
+		panic(fmt.Errorf("echo: invalid body-limit=%s", config.Limit))
 	}
 	config.limit = limit
 	pool := limitedReaderPool(config)

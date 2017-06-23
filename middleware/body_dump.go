@@ -54,7 +54,7 @@ func BodyDump(handler BodyDumpHandler) echo.MiddlewareFunc {
 func BodyDumpWithConfig(config BodyDumpConfig) echo.MiddlewareFunc {
 	// Defaults
 	if config.Handler == nil {
-		panic("body-dump middleware requires a handler function")
+		panic("echo: body-dump middleware requires a handler function")
 	}
 	if config.Skipper == nil {
 		config.Skipper = DefaultBodyDumpConfig.Skipper
