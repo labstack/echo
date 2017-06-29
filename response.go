@@ -11,18 +11,18 @@ type (
 	// by an HTTP handler to construct an HTTP response.
 	// See: https://golang.org/pkg/net/http/#ResponseWriter
 	Response struct {
-		Writer    http.ResponseWriter
-		Status    int
-		Size      int64
-		Committed bool
-		echo      *Echo
+		context     Context
+		beforeFuncs []BeforeResponseFunc
+		Writer      http.ResponseWriter
+		Status      int
+		Size        int64
+		Committed   bool
 	}
-)
 
-// NewResponse creates a new instance of Response.
-func NewResponse(w http.ResponseWriter, e *Echo) (r *Response) {
-	return &Response{Writer: w, echo: e}
-}
+	// BeforeResponseFunc defines a function which is called just before writing the
+	// response.
+	BeforeResponseFunc func(Context)
+)
 
 // Header returns the header map for the writer that will be sent by
 // WriteHeader. Changing the header after a call to WriteHeader (or Write) has
@@ -34,15 +34,23 @@ func (r *Response) Header() http.Header {
 	return r.Writer.Header()
 }
 
+// Before registers a function which is called just before the response is written.
+func (r *Response) Before(fn BeforeResponseFunc) {
+	r.beforeFuncs = append(r.beforeFuncs, fn)
+}
+
 // WriteHeader sends an HTTP response header with status code. If WriteHeader is
 // not called explicitly, the first call to Write will trigger an implicit
 // WriteHeader(http.StatusOK). Thus explicit calls to WriteHeader are mainly
 // used to send error codes.
 func (r *Response) WriteHeader(code int) {
 	if r.Committed {
-		r.echo.Logger.Warn("response already committed")
+		r.context.Logger().Warn("response already committed")
 		return
 	}
+	// for _, fn := range r.beforeFuncs {
+	// 	fn(r.context)
+	// }
 	r.Status = code
 	r.Writer.WriteHeader(code)
 	r.Committed = true
