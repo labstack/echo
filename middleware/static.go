@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"path"
 	"path/filepath"
@@ -77,19 +78,23 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 			}
 			p, err = echo.PathUnescape(p)
 			if err != nil {
-				return err
+				return
 			}
 			name := filepath.Join(config.Root, path.Clean("/"+p)) // "/"+ for security
 
 			fi, err := os.Stat(name)
 			if err != nil {
 				if os.IsNotExist(err) {
-					if config.HTML5 && path.Ext(p) != "" {
-						return c.File(filepath.Join(config.Root, config.Index))
+					if err = next(c); err != nil {
+						if he, ok := err.(*echo.HTTPError); ok {
+							if config.HTML5 && he.Code == http.StatusNotFound {
+								return c.File(filepath.Join(config.Root, config.Index))
+							}
+						}
+						return
 					}
-					return next(c)
 				}
-				return err
+				return
 			}
 
 			if fi.IsDir() {
@@ -103,7 +108,7 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 					if os.IsNotExist(err) {
 						return next(c)
 					}
-					return err
+					return
 				}
 
 				return c.File(index)
@@ -114,20 +119,20 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 	}
 }
 
-func listDir(name string, res *echo.Response) error {
+func listDir(name string, res *echo.Response) (err error) {
 	dir, err := os.Open(name)
 	if err != nil {
-		return err
+		return
 	}
 	dirs, err := dir.Readdir(-1)
 	if err != nil {
-		return err
+		return
 	}
 
 	// Create a directory index
 	res.Header().Set(echo.HeaderContentType, echo.MIMETextHTMLCharsetUTF8)
 	if _, err = fmt.Fprintf(res, "<pre>\n"); err != nil {
-		return err
+		return
 	}
 	for _, d := range dirs {
 		name := d.Name()
@@ -137,9 +142,9 @@ func listDir(name string, res *echo.Response) error {
 			name += "/"
 		}
 		if _, err = fmt.Fprintf(res, "<a href=\"%s\" style=\"color: %s;\">%s</a>\n", name, color, name); err != nil {
-			return err
+			return
 		}
 	}
 	_, err = fmt.Fprintf(res, "</pre>\n")
-	return err
+	return
 }

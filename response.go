@@ -48,9 +48,9 @@ func (r *Response) WriteHeader(code int) {
 		r.context.Logger().Warn("response already committed")
 		return
 	}
-	// for _, fn := range r.beforeFuncs {
-	// 	fn(r.context)
-	// }
+	for _, fn := range r.beforeFuncs {
+		fn(r.context)
+	}
 	r.Status = code
 	r.Writer.WriteHeader(code)
 	r.Committed = true

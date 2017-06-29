@@ -4,3 +4,4 @@ _test
 vendor
 .idea
 *.iml
+*.out
