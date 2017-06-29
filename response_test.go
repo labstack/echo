@@ -12,10 +12,10 @@ func TestResponse(t *testing.T) {
 	req := httptest.NewRequest(GET, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	res := &Response{context: c, Writer: rec}
+	res := &Response{echo: e, Writer: rec}
 
 	// Before
-	res.Before(func(c Context) {
+	res.Before(func() {
 		c.Response().Header().Set(HeaderServer, "echo")
 	})
 	res.Write([]byte("test"))

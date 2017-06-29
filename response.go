@@ -11,17 +11,13 @@ type (
 	// by an HTTP handler to construct an HTTP response.
 	// See: https://golang.org/pkg/net/http/#ResponseWriter
 	Response struct {
-		context     Context
-		beforeFuncs []BeforeResponseFunc
+		echo        *Echo
+		beforeFuncs []func()
 		Writer      http.ResponseWriter
 		Status      int
 		Size        int64
 		Committed   bool
 	}
-
-	// BeforeResponseFunc defines a function which is called just before writing the
-	// response.
-	BeforeResponseFunc func(Context)
 )
 
 // Header returns the header map for the writer that will be sent by
@@ -35,7 +31,7 @@ func (r *Response) Header() http.Header {
 }
 
 // Before registers a function which is called just before the response is written.
-func (r *Response) Before(fn BeforeResponseFunc) {
+func (r *Response) Before(fn func()) {
 	r.beforeFuncs = append(r.beforeFuncs, fn)
 }
 
@@ -45,11 +41,11 @@ func (r *Response) Before(fn BeforeResponseFunc) {
 // used to send error codes.
 func (r *Response) WriteHeader(code int) {
 	if r.Committed {
-		r.context.Logger().Warn("response already committed")
+		r.echo.Logger.Warn("response already committed")
 		return
 	}
 	for _, fn := range r.beforeFuncs {
-		fn(r.context)
+		fn()
 	}
 	r.Status = code
 	r.Writer.WriteHeader(code)

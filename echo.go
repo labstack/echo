@@ -293,16 +293,14 @@ func New() (e *Echo) {
 
 // NewContext returns a Context instance.
 func (e *Echo) NewContext(r *http.Request, w http.ResponseWriter) Context {
-	c := &context{
+	return &context{
 		request:  r,
-		response: &Response{Writer: w},
+		response: &Response{echo: e, Writer: w},
 		store:    make(Map),
 		echo:     e,
 		pvalues:  make([]string, *e.maxParam),
 		handler:  NotFoundHandler,
 	}
-	c.response.context = c
-	return c
 }
 
 // Router returns router.
