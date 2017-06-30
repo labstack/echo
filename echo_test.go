@@ -285,7 +285,7 @@ func TestEchoRoutes(t *testing.T) {
 		{POST, "/repos/:owner/:repo/git/tags", ""},
 	}
 	for _, r := range routes {
-		e.add(r.Method, r.Path, func(c Context) error {
+		e.Add(r.Method, r.Path, func(c Context) error {
 			return c.String(http.StatusOK, "OK")
 		})
 	}
