@@ -109,5 +109,5 @@ func (g *Group) add(method, path string, handler HandlerFunc, middleware ...Midd
 	m := []MiddlewareFunc{}
 	m = append(m, g.middleware...)
 	m = append(m, middleware...)
-	return g.echo.add(method, g.prefix+path, handler, m...)
+	return g.echo.Add(method, g.prefix+path, handler, m...)
 }
