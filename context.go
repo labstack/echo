@@ -531,6 +531,9 @@ func (c *context) contentDisposition(file, name, dispositionType string) (err er
 }
 
 func (c *context) NoContent(code int) error {
+	// library will try to determinate the content type if the header is not set
+	// even when the content is nil , it still costly to do that, so set it to make it more effecient
+	c.response.Header().Set(HeaderContentType, MIMETextPlainCharsetUTF8)
 	c.response.WriteHeader(code)
 	return nil
 }
