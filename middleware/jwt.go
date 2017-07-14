@@ -141,7 +141,8 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 			if _, ok := config.Claims.(jwt.MapClaims); ok {
 				token, err = jwt.Parse(auth, config.keyFunc)
 			} else {
-				claims := reflect.ValueOf(config.Claims).Interface().(jwt.Claims)
+				t := reflect.ValueOf(config.Claims).Type().Elem()
+				claims := reflect.New(t).Interface().(jwt.Claims)
 				token, err = jwt.ParseWithClaims(auth, claims, config.keyFunc)
 			}
 			if err == nil && token.Valid {
