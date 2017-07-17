@@ -367,7 +367,7 @@ func TestContextDefaultQueryParam(t *testing.T) {
 	c := e.NewContext(req, nil)
 
 	// QueryParam
-	assert.Equal(t, "Huy Huynh", c.QueryParam("name"))
+	assert.Equal(t, "Huy Huynh", c.DefaultQueryParam("name","John Wick"))
 	assert.Equal(t, "huyhvq@deptrai.com", c.DefaultQueryParam("email","huyhvq@deptrai.com"))
 
 	// QueryParams
