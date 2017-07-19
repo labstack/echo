@@ -496,7 +496,7 @@ func (c *context) Stream(code int, contentType string, r io.Reader) (err error) 
 func (c *context) File(file string) (err error) {
 	f, err := os.Open(file)
 	if err != nil {
-		return ErrNotFound
+		return NotFoundHandler(c)
 	}
 	defer f.Close()
 
@@ -505,7 +505,7 @@ func (c *context) File(file string) (err error) {
 		file = filepath.Join(file, indexPage)
 		f, err = os.Open(file)
 		if err != nil {
-			return ErrNotFound
+			return NotFoundHandler(c)
 		}
 		defer f.Close()
 		if fi, err = f.Stat(); err != nil {

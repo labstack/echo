@@ -21,7 +21,7 @@ func (g *Group) Use(middleware ...MiddlewareFunc) {
 	// Allow all requests to reach the group as they might get dropped if router
 	// doesn't find a match, making none of the group middleware process.
 	g.echo.Any(path.Clean(g.prefix+"/*"), func(c Context) error {
-		return ErrNotFound
+		return NotFoundHandler(c)
 	}, g.middleware...)
 }
 
