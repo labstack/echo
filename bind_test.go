@@ -140,6 +140,23 @@ func TestBindForm(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestBindRouteParam(t *testing.T) {
+	e := New()
+	r := strings.NewReader(userJSONOnlyName)
+	req := httptest.NewRequest(POST, "/", r)
+	req.Header.Set(HeaderContentType, MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetParamNames("id")
+	c.SetParamValues("5")
+	u := new(user)
+	err := c.Bind(u)
+	if assert.NoError(t, err) {
+		assert.Equal(t, 5, u.ID)
+		assert.Equal(t, "Jon Snow", u.Name)
+	}
+}
+
 func TestBindQueryParams(t *testing.T) {
 	e := New()
 	req := httptest.NewRequest(GET, "/?id=1&name=Jon+Snow", nil)
