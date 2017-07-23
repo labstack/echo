@@ -65,3 +65,25 @@ func TestStatic(t *testing.T) {
 		assert.Contains(t, rec.Body.String(), "cert.pem")
 	}
 }
+
+func request(method, path string, e *echo.Echo) (int, string) {
+	req := httptest.NewRequest(method, path, nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	return rec.Code, rec.Body.String()
+}
+
+func TestMultipleStaticDirectory(t *testing.T) {
+	e := echo.New()
+	e.Use(Static("../_fixture"))
+	e.Use(Static("../_fixture/images"))
+
+	code, _ := request(echo.GET, "/walle.png", e) // Served from  ../_fixture/images
+	assert.Equal(t, 200, code)
+
+	code, _ = request(echo.GET, "/favicon.ico", e) // served from ../_fixture
+	assert.Equal(t, 200, code)
+
+	code, _ = request(echo.GET, "/missing.file", e)
+	assert.Equal(t, 404, code)
+}

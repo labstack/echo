@@ -3,6 +3,8 @@ package echo
 import (
 	"testing"
 
+	"net/http"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -63,4 +65,24 @@ func TestGroupRouteMiddleware(t *testing.T) {
 	assert.Equal(t, 404, c)
 	c, _ = request(GET, "/group/405", e)
 	assert.Equal(t, 405, c)
+}
+
+func TestGroupMiddlewareNotCalledIfRouteNotInGroup(t *testing.T) {
+	// Ensure that group middlewares are not called for routes that are not part of the group
+
+	m := func(next HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			return c.String(http.StatusOK, "BODY")
+		}
+	}
+
+	e := New()
+	g := e.Group("", m)
+	g.GET("/route", func(Context) error { return nil })
+
+	_, b := request(GET, "/route", e)
+	assert.Equal(t, "BODY", b)
+
+	_, b = request(GET, "/other", e)
+	assert.Equal(t, "{\"message\":\"Not Found\"}", b)
 }
