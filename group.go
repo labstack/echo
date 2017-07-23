@@ -15,6 +15,11 @@ type (
 	}
 )
 
+// WrapUse implements `Echo#Use()` for sub-routes within the Group.
+func (g *Group) WrapUse(middleware ...MiddlewareFunc) {
+	g.middleware = append(g.middleware, middleware...)
+}
+
 // Use implements `Echo#Use()` for sub-routes within the Group.
 func (g *Group) Use(middleware ...MiddlewareFunc) {
 	g.middleware = append(g.middleware, middleware...)
@@ -96,6 +101,16 @@ func (g *Group) Group(prefix string, middleware ...MiddlewareFunc) *Group {
 	m = append(m, g.middleware...)
 	m = append(m, middleware...)
 	return g.echo.Group(g.prefix+prefix, m...)
+}
+
+// Wrap creates a new sub-group.
+func (g *Group) Wrap(middleware ...MiddlewareFunc) *Group {
+	m := []MiddlewareFunc{}
+	m = append(m, g.middleware...)
+	m = append(m, middleware...)
+	subGroup := g.echo.Group(g.prefix)
+	subGroup.WrapUse(m...)
+	return subGroup
 }
 
 // Static implements `Echo#Static()` for sub-routes within the Group.

@@ -1,6 +1,7 @@
 package echo
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -63,4 +64,70 @@ func TestGroupRouteMiddleware(t *testing.T) {
 	assert.Equal(t, 404, c)
 	c, _ = request(GET, "/group/405", e)
 	assert.Equal(t, 405, c)
+}
+
+func TestWrapMiddlewareNotCalledForRoutesNotInGroup(t *testing.T) {
+	// Ensure that wrap middlewares are not called for routes that are not wrapped
+
+	m := func(next HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			return c.String(http.StatusOK, "Middleware")
+		}
+	}
+
+	e := New()
+	w := e.Wrap(m)
+	w.GET("/exists", func(Context) error { return nil })
+
+	_, b := request(GET, "/exists", e)
+	assert.Equal(t, "Middleware", b)
+
+	_, b = request(GET, "/does_not_exists", e)
+	assert.Equal(t, "{\"message\":\"Not Found\"}", b)
+}
+
+func TestGroupMiddlewareCatchAllRoutes(t *testing.T) {
+	// Ensure group middlewares are called for all possible sub routes.
+
+	m := func(next HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			return c.String(http.StatusOK, "Middleware")
+		}
+	}
+
+	e := New()
+	g := e.Group("/proxy", m)
+	g.GET("/proxy/exists", func(Context) error { return nil })
+
+	_, b := request(GET, "/proxy/exists", e)
+	assert.Equal(t, "Middleware", b)
+
+	_, b = request(GET, "/proxy/does_not_exists", e)
+	assert.Equal(t, "Middleware", b)
+}
+
+func TestWrapWorksInsideAGroup(t *testing.T) {
+	// Ensure wrap works properly inside a group
+
+	m := func(next HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			return c.String(http.StatusOK, "Middleware")
+		}
+	}
+
+	e := New()
+	g := e.Group("/prefix")
+	g.GET("/route", func(Context) error { return nil })
+
+	w := g.Wrap(m)
+	w.GET("/wrapped", func(Context) error { return nil })
+
+	_, b := request(GET, "/prefix/wrapped", e)
+	assert.Equal(t, "Middleware", b)
+
+	_, b = request(GET, "/prefix/route", e)
+	assert.Equal(t, "", b)
+
+	_, b = request(GET, "/profix/other", e)
+	assert.Equal(t, "{\"message\":\"Not Found\"}", b)
 }

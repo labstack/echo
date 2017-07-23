@@ -495,6 +495,13 @@ func (e *Echo) Group(prefix string, m ...MiddlewareFunc) (g *Group) {
 	return
 }
 
+// Wrap wraps a defined set of routes with middlewares.
+func (e *Echo) Wrap(m ...MiddlewareFunc) (g *Group) {
+	g = &Group{echo: e}
+	g.WrapUse(m...)
+	return
+}
+
 // URI generates a URI from handler.
 func (e *Echo) URI(handler HandlerFunc, params ...interface{}) string {
 	name := handlerName(handler)
