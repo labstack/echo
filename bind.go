@@ -39,7 +39,7 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 		}
 		return NewHTTPError(http.StatusBadRequest, "Request body can't be empty")
 	}
-	if err = b.bindRouteData(i, c); err != nil {
+	if err = b.bindPathData(i, c); err != nil {
 		return NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 	ctype := req.Header.Get(HeaderContentType)
@@ -78,7 +78,7 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 	return
 }
 
-func (b *DefaultBinder) bindRouteData(ptr interface{}, c Context) error {
+func (b *DefaultBinder) bindPathData(ptr interface{}, c Context) error {
 	m := make(map[string][]string)
 	for _, key := range c.ParamNames() {
 		m[key] = []string{c.Param(key)}
