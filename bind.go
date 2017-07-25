@@ -39,6 +39,9 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 		}
 		return NewHTTPError(http.StatusBadRequest, "Request body can't be empty")
 	}
+	if err = b.bindPathData(i, c); err != nil {
+		return NewHTTPError(http.StatusBadRequest, err.Error())
+	}
 	ctype := req.Header.Get(HeaderContentType)
 	switch {
 	case strings.HasPrefix(ctype, MIMEApplicationJSON):
@@ -73,6 +76,19 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 		return ErrUnsupportedMediaType
 	}
 	return
+}
+
+func (b *DefaultBinder) bindPathData(ptr interface{}, c Context) error {
+	m := make(map[string][]string)
+	for _, key := range c.ParamNames() {
+		m[key] = []string{c.Param(key)}
+	}
+	if len(m) >= 0 {
+		if err := b.bindData(ptr, m, "param"); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (b *DefaultBinder) bindData(ptr interface{}, data map[string][]string, tag string) error {

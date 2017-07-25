@@ -18,16 +18,17 @@ import (
 
 type (
 	user struct {
-		ID   int    `json:"id" xml:"id" form:"id" query:"id"`
+		ID   int    `json:"id" xml:"id" form:"id" query:"id" param:"id"`
 		Name string `json:"name" xml:"name" form:"name" query:"name"`
 	}
 )
 
 const (
-	userJSON       = `{"id":1,"name":"Jon Snow"}`
-	userXML        = `<user><id>1</id><name>Jon Snow</name></user>`
-	userForm       = `id=1&name=Jon Snow`
-	invalidContent = "invalid content"
+	userJSON         = `{"id":1,"name":"Jon Snow"}`
+	userJSONOnlyName = `{"name":"Jon Snow"}`
+	userXML          = `<user><id>1</id><name>Jon Snow</name></user>`
+	userForm         = `id=1&name=Jon Snow`
+	invalidContent   = "invalid content"
 )
 
 const userJSONPretty = `{
