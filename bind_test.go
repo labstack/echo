@@ -118,6 +118,7 @@ var values = map[string][]string{
 func TestBindJSON(t *testing.T) {
 	testBindOkay(t, strings.NewReader(userJSON), MIMEApplicationJSON)
 	testBindError(t, strings.NewReader(invalidContent), MIMEApplicationJSON)
+	testBindSliceOkay(t, strings.NewReader(userJSONMulti), MIMEApplicationJSON)
 }
 
 func TestBindXML(t *testing.T) {
@@ -314,6 +315,12 @@ func assertBindTestStruct(t *testing.T, ts *bindTestStruct) {
 	assert.Equal(t, "", ts.GetCantSet())
 }
 
+func assertUsers(t *testing.T, ts users) {
+	us := users{user{1, "Jon Snow"}, user{2, "John Smith"}}
+	assert.Equal(t, us[0], ts[0])
+	assert.Equal(t, us[1], ts[1])
+}
+
 func testBindOkay(t *testing.T, r io.Reader, ctype string) {
 	e := New()
 	req := httptest.NewRequest(POST, "/", r)
@@ -325,6 +332,19 @@ func testBindOkay(t *testing.T, r io.Reader, ctype string) {
 	if assert.NoError(t, err) {
 		assert.Equal(t, 1, u.ID)
 		assert.Equal(t, "Jon Snow", u.Name)
+	}
+}
+
+func testBindSliceOkay(t *testing.T, r io.Reader, ctype string) {
+	e := New()
+	req := httptest.NewRequest(POST, "/", r)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	req.Header.Set(HeaderContentType, ctype)
+	us := new(users)
+	err := c.Bind(us)
+	if assert.NoError(t, err) {
+		assertUsers(t, *us)
 	}
 }
 

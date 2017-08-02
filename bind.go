@@ -39,8 +39,12 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 		}
 		return NewHTTPError(http.StatusBadRequest, "Request body can't be empty")
 	}
-	if err = b.bindPathData(i, c); err != nil {
-		return NewHTTPError(http.StatusBadRequest, err.Error())
+	// Slice Don't Bind the route parameter
+	typ := reflect.TypeOf(i).Elem()
+	if typ.Kind() != reflect.Slice {
+		if err = b.bindPathData(i, c); err != nil {
+			return NewHTTPError(http.StatusBadRequest, err.Error())
+		}
 	}
 	ctype := req.Header.Get(HeaderContentType)
 	switch {
