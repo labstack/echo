@@ -42,9 +42,6 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 	if err = b.bindPathData(i, c); err != nil {
 		return NewHTTPError(http.StatusBadRequest, err.Error())
 	}
-	if err = b.bindPathData(i, c); err != nil {
-		return NewHTTPError(http.StatusBadRequest, err.Error())
-	}
 	ctype := req.Header.Get(HeaderContentType)
 	switch {
 	case strings.HasPrefix(ctype, MIMEApplicationJSON):
