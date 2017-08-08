@@ -20,6 +20,7 @@ type (
 		// Possible values:
 		// - "header:<name>"
 		// - "query:<name>"
+		// - "form:<name>"
 		KeyLookup string `json:"key_lookup"`
 
 		// AuthScheme to be used in the Authorization header.
@@ -81,6 +82,8 @@ func KeyAuthWithConfig(config KeyAuthConfig) echo.MiddlewareFunc {
 	switch parts[0] {
 	case "query":
 		extractor = keyFromQuery(parts[1])
+	case "form":
+		extractor = keyFromForm(parts[1])
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -130,6 +133,17 @@ func keyFromQuery(param string) keyExtractor {
 		key := c.QueryParam(param)
 		if key == "" {
 			return "", errors.New("Missing key in the query string")
+		}
+		return key, nil
+	}
+}
+
+// keyFromForm returns a `keyExtractor` that extracts key from the form.
+func keyFromForm(param string) keyExtractor {
+	return func(c echo.Context) (string, error) {
+		key := c.FormValue(param)
+		if key == "" {
+			return "", errors.New("Missing key in the form")
 		}
 		return key, nil
 	}
