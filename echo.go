@@ -118,11 +118,6 @@ type (
 
 	// Map defines a generic map of type `map[string]interface{}`.
 	Map map[string]interface{}
-
-	// i is the interface for Echo and Group.
-	i interface {
-		GET(string, HandlerFunc, ...MiddlewareFunc) *Route
-	}
 )
 
 // HTTP methods
@@ -436,7 +431,7 @@ func (e *Echo) Static(prefix, root string) *Route {
 	return static(e, prefix, root)
 }
 
-func static(i i, prefix, root string) *Route {
+func static(i Register, prefix, root string) *Route {
 	h := func(c Context) error {
 		p, err := PathUnescape(c.Param("*"))
 		if err != nil {
