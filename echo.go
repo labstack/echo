@@ -119,9 +119,25 @@ type (
 	// Map defines a generic map of type `map[string]interface{}`.
 	Map map[string]interface{}
 
-	// i is the interface for Echo and Group.
-	i interface {
-		GET(string, HandlerFunc, ...MiddlewareFunc) *Route
+	// Register is the interface for Echo and Group.
+	Register interface {
+		Use(middleware ...MiddlewareFunc)
+
+		CONNECT(path string, h HandlerFunc, m ...MiddlewareFunc) *Route
+		DELETE(path string, h HandlerFunc, m ...MiddlewareFunc) *Route
+		GET(path string, h HandlerFunc, m ...MiddlewareFunc) *Route
+		HEAD(path string, h HandlerFunc, m ...MiddlewareFunc) *Route
+		OPTIONS(path string, h HandlerFunc, m ...MiddlewareFunc) *Route
+		PATCH(path string, h HandlerFunc, m ...MiddlewareFunc) *Route
+		POST(path string, h HandlerFunc, m ...MiddlewareFunc) *Route
+		PUT(path string, h HandlerFunc, m ...MiddlewareFunc) *Route
+		TRACE(path string, h HandlerFunc, m ...MiddlewareFunc) *Route
+
+		Add(method, path string, handler HandlerFunc, middleware ...MiddlewareFunc) *Route
+		Any(path string, handler HandlerFunc, middleware ...MiddlewareFunc) []*Route
+		Match(methods []string, path string, handler HandlerFunc, middleware ...MiddlewareFunc) []*Route
+		Static(prefix, root string) *Route
+		File(path, file string) *Route
 	}
 )
 
@@ -436,7 +452,7 @@ func (e *Echo) Static(prefix, root string) *Route {
 	return static(e, prefix, root)
 }
 
-func static(i i, prefix, root string) *Route {
+func static(i Register, prefix, root string) *Route {
 	h := func(c Context) error {
 		p, err := PathUnescape(c.Param("*"))
 		if err != nil {

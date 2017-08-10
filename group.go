@@ -71,17 +71,21 @@ func (g *Group) TRACE(path string, h HandlerFunc, m ...MiddlewareFunc) *Route {
 }
 
 // Any implements `Echo#Any()` for sub-routes within the Group.
-func (g *Group) Any(path string, handler HandlerFunc, middleware ...MiddlewareFunc) {
+func (g *Group) Any(path string, handler HandlerFunc, middleware ...MiddlewareFunc) []*Route {
+	routes := make([]*Route, 0, len(methods))
 	for _, m := range methods {
-		g.Add(m, path, handler, middleware...)
+		routes = append(routes, g.Add(m, path, handler, middleware...))
 	}
+	return routes
 }
 
 // Match implements `Echo#Match()` for sub-routes within the Group.
-func (g *Group) Match(methods []string, path string, handler HandlerFunc, middleware ...MiddlewareFunc) {
+func (g *Group) Match(methods []string, path string, handler HandlerFunc, middleware ...MiddlewareFunc) []*Route {
+	routes := make([]*Route, 0, len(methods))
 	for _, m := range methods {
-		g.Add(m, path, handler, middleware...)
+		routes = append(routes, g.Add(m, path, handler, middleware...))
 	}
+	return routes
 }
 
 // Group creates a new sub-group with prefix and optional sub-group-level middleware.
@@ -93,13 +97,13 @@ func (g *Group) Group(prefix string, middleware ...MiddlewareFunc) *Group {
 }
 
 // Static implements `Echo#Static()` for sub-routes within the Group.
-func (g *Group) Static(prefix, root string) {
-	static(g, prefix, root)
+func (g *Group) Static(prefix, root string) *Route {
+	return static(g, prefix, root)
 }
 
 // File implements `Echo#File()` for sub-routes within the Group.
-func (g *Group) File(path, file string) {
-	g.echo.File(g.prefix+path, file)
+func (g *Group) File(path, file string) *Route {
+	return g.echo.File(g.prefix+path, file)
 }
 
 // Add implements `Echo#Add()` for sub-routes within the Group.
