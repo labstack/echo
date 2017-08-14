@@ -86,7 +86,7 @@ func (b *DefaultBinder) bindPathData(ptr interface{}, c Context) error {
 	for _, key := range c.ParamNames() {
 		m[key] = []string{c.Param(key)}
 	}
-	if len(m) >= 0 {
+	if len(m) > 0 {
 		if err := b.bindData(ptr, m, "param"); err != nil {
 			return err
 		}

@@ -158,6 +158,20 @@ func TestBindRouteParam(t *testing.T) {
 	}
 }
 
+func TestBindMapString(t *testing.T) {
+	e := New()
+	r := strings.NewReader(userJSONOnlyName)
+	req := httptest.NewRequest(POST, "/", r)
+	req.Header.Set(HeaderContentType, MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	u := map[string]interface{}{}
+	err := c.Bind(&u)
+	if assert.NoError(t, err) {
+		assert.Equal(t, "Jon Snow", u["name"])
+	}
+}
+
 func TestBindQueryParams(t *testing.T) {
 	e := New()
 	req := httptest.NewRequest(GET, "/?id=1&name=Jon+Snow", nil)
