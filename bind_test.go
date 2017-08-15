@@ -118,7 +118,6 @@ var values = map[string][]string{
 func TestBindJSON(t *testing.T) {
 	testBindOkay(t, strings.NewReader(userJSON), MIMEApplicationJSON)
 	testBindError(t, strings.NewReader(invalidContent), MIMEApplicationJSON)
-	testBindSlice(t, strings.NewReader(userJSONArray), MIMEApplicationJSON)
 }
 
 func TestBindXML(t *testing.T) {
@@ -139,23 +138,6 @@ func TestBindForm(t *testing.T) {
 	obj := []struct{ Field string }{}
 	err := c.Bind(&obj)
 	assert.Error(t, err)
-}
-
-func TestBindRouteParam(t *testing.T) {
-	e := New()
-	r := strings.NewReader(userJSONOnlyName)
-	req := httptest.NewRequest(POST, "/", r)
-	req.Header.Set(HeaderContentType, MIMEApplicationJSON)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	c.SetParamNames("id")
-	c.SetParamValues("5")
-	u := new(user)
-	err := c.Bind(u)
-	if assert.NoError(t, err) {
-		assert.Equal(t, 5, u.ID)
-		assert.Equal(t, "Jon Snow", u.Name)
-	}
 }
 
 func TestBindQueryParams(t *testing.T) {
@@ -348,21 +330,5 @@ func testBindError(t *testing.T, r io.Reader, ctype string) {
 		if assert.IsType(t, new(HTTPError), err) {
 			assert.Equal(t, ErrUnsupportedMediaType, err)
 		}
-	}
-}
-
-func testBindSlice(t *testing.T, r io.Reader, ctype string) {
-	e := New()
-	req := httptest.NewRequest(POST, "/", r)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	req.Header.Set(HeaderContentType, ctype)
-	us := []user{}
-	err := c.Bind(&us)
-	if assert.NoError(t, err) {
-		assert.Equal(t, 1, us[0].ID)
-		assert.Equal(t, "Jon Snow", us[0].Name)
-		assert.Equal(t, 2, us[1].ID)
-		assert.Equal(t, "Arya Stark", us[1].Name)
 	}
 }
