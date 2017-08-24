@@ -525,7 +525,7 @@ func (c *context) Inline(file, name string) (err error) {
 }
 
 func (c *context) contentDisposition(file, name, dispositionType string) (err error) {
-	c.response.Header().Set(HeaderContentDisposition, fmt.Sprintf("%s; filename=%s", dispositionType, name))
+	c.response.Header().Set(HeaderContentDisposition, fmt.Sprintf("%s; filename=%q", dispositionType, name))
 	c.File(file)
 	return
 }
