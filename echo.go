@@ -295,7 +295,7 @@ func New() (e *Echo) {
 func (e *Echo) NewContext(r *http.Request, w http.ResponseWriter) Context {
 	return &context{
 		request:  r,
-		response: &Response{echo: e, Writer: w},
+		response: NewResponse(w, e),
 		store:    make(Map),
 		echo:     e,
 		pvalues:  make([]string, *e.maxParam),
