@@ -57,6 +57,11 @@ const (
 	AlgorithmHS256 = "HS256"
 )
 
+// Errors
+var (
+	ErrJWTMissing = errors.New("Missing jwt in the request")
+)
+
 var (
 	// DefaultJWTConfig is the default JWT auth middleware config.
 	DefaultJWTConfig = JWTConfig{
@@ -150,7 +155,7 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 				c.Set(config.ContextKey, token)
 				return next(c)
 			}
-			return echo.ErrUnauthorized
+			return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
 		}
 	}
 }
@@ -163,7 +168,7 @@ func jwtFromHeader(header string, authScheme string) jwtExtractor {
 		if len(auth) > l+1 && auth[:l] == authScheme {
 			return auth[l+1:], nil
 		}
-		return "", errors.New("Missing or invalid jwt in the request header")
+		return "", ErrJWTMissing
 	}
 }
 
@@ -172,7 +177,7 @@ func jwtFromQuery(param string) jwtExtractor {
 	return func(c echo.Context) (string, error) {
 		token := c.QueryParam(param)
 		if token == "" {
-			return "", errors.New("Missing jwt in the query string")
+			return "", ErrJWTMissing
 		}
 		return token, nil
 	}
@@ -183,7 +188,7 @@ func jwtFromCookie(name string) jwtExtractor {
 	return func(c echo.Context) (string, error) {
 		cookie, err := c.Cookie(name)
 		if err != nil {
-			return "", errors.New("Missing jwt in the cookie")
+			return "", ErrJWTMissing
 		}
 		return cookie.Value, nil
 	}
