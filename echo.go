@@ -95,6 +95,7 @@ type (
 	HTTPError struct {
 		Code    int
 		Message interface{}
+		Inner   error // Stores the error returned by an external dependency
 	}
 
 	// MiddlewareFunc defines a function to process middleware.
@@ -321,6 +322,9 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 		msg = he.Message
 	} else if e.Debug {
 		msg = err.Error()
+		if he.Inner != nil {
+			msg = fmt.Sprintf("%v, %v", err, he.Inner)
+		}
 	} else {
 		msg = http.StatusText(code)
 	}
@@ -330,16 +334,15 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 
 	if !c.Response().Committed {
 		if c.Request().Method == HEAD { // Issue #608
-			if err := c.NoContent(code); err != nil {
-				goto ERROR
-			}
+			err = c.NoContent(code)
 		} else {
-			if err := c.JSON(code, msg); err != nil {
-				goto ERROR
-			}
+			err = c.JSON(code, msg)
+		}
+		if err != nil {
+			e.Logger.Error(err)
 		}
 	}
-ERROR:
+
 	e.Logger.Error(err)
 }
 
