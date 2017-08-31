@@ -58,7 +58,8 @@ const (
 
 // Errors
 var (
-	ErrJWTInvalid = echo.NewHTTPError(http.StatusBadRequest, "Missing or invalid jwt")
+	ErrJWTMissing = echo.NewHTTPError(http.StatusBadRequest, "Missing or malformed jwt")
+	ErrJWTInvalid = echo.NewHTTPError(http.StatusUnauthorized, "Invalid or expired jwt")
 )
 
 var (
@@ -154,9 +155,11 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 				c.Set(config.ContextKey, token)
 				return next(c)
 			}
-			he := echo.NewHTTPError(http.StatusUnauthorized, "Invalid or expired jwt")
-			he.Inner = err
-			return he
+			return &echo.HTTPError{
+				Code:    ErrJWTInvalid.Code,
+				Message: ErrJWTInvalid.Message,
+				Inner:   err,
+			}
 		}
 	}
 }
@@ -169,7 +172,7 @@ func jwtFromHeader(header string, authScheme string) jwtExtractor {
 		if len(auth) > l+1 && auth[:l] == authScheme {
 			return auth[l+1:], nil
 		}
-		return "", ErrJWTInvalid
+		return "", ErrJWTMissing
 	}
 }
 
@@ -178,7 +181,7 @@ func jwtFromQuery(param string) jwtExtractor {
 	return func(c echo.Context) (string, error) {
 		token := c.QueryParam(param)
 		if token == "" {
-			return "", ErrJWTInvalid
+			return "", ErrJWTMissing
 		}
 		return token, nil
 	}
@@ -189,7 +192,7 @@ func jwtFromCookie(name string) jwtExtractor {
 	return func(c echo.Context) (string, error) {
 		cookie, err := c.Cookie(name)
 		if err != nil {
-			return "", ErrJWTInvalid
+			return "", ErrJWTMissing
 		}
 		return cookie.Value, nil
 	}
