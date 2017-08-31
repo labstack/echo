@@ -47,6 +47,14 @@ type (
 		AuthScheme string
 
 		keyFunc jwt.Keyfunc
+		
+		// Posible error responses
+		// that should be returned
+		// if json web token wans't
+		// sended by user.
+		MissingJwtHeader string
+		MissingJwtCookie string
+		MissingJwtQuery  string
 	}
 
 	jwtExtractor func(echo.Context) (string, error)
@@ -66,6 +74,9 @@ var (
 		TokenLookup:   "header:" + echo.HeaderAuthorization,
 		AuthScheme:    "Bearer",
 		Claims:        jwt.MapClaims{},
+		MissingJwtHeader: "Missing or invalid jwt in the request header",
+		MissingJwtCookie: "Missing jwt in the cookie",
+		MissingJwtQuery: "Missing jwt in the query string",
 	}
 )
 
@@ -108,6 +119,15 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	if config.AuthScheme == "" {
 		config.AuthScheme = DefaultJWTConfig.AuthScheme
 	}
+	if config.MissingJwtHeader == "" {
+		config.MissingJwtHeader = DefaultJWTConfig.MissingJwtHeader
+	}
+	if config.MissingJwtCookie == "" {
+		config.MissingJwtCookie = DefaultJWTConfig.MissingJwtCookie
+	}
+	if config.MissingJwtQuery == "" {
+		config.MissingJwtQuery = DefaultJWTConfig.MissingJwtQuery
+	}
 	config.keyFunc = func(t *jwt.Token) (interface{}, error) {
 		// Check the signing method
 		if t.Method.Alg() != config.SigningMethod {
@@ -118,12 +138,12 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 
 	// Initialize
 	parts := strings.Split(config.TokenLookup, ":")
-	extractor := jwtFromHeader(parts[1], config.AuthScheme)
+	extractor := jwtFromHeader(parts[1], config)
 	switch parts[0] {
 	case "query":
-		extractor = jwtFromQuery(parts[1])
+		extractor = jwtFromQuery(parts[1], config)
 	case "cookie":
-		extractor = jwtFromCookie(parts[1])
+		extractor = jwtFromCookie(parts[1], config)
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -156,34 +176,34 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 }
 
 // jwtFromHeader returns a `jwtExtractor` that extracts token from the request header.
-func jwtFromHeader(header string, authScheme string) jwtExtractor {
+func jwtFromHeader(header string, config JWTConfig) jwtExtractor {
 	return func(c echo.Context) (string, error) {
 		auth := c.Request().Header.Get(header)
-		l := len(authScheme)
-		if len(auth) > l+1 && auth[:l] == authScheme {
+		l := len(config.AuthScheme)
+		if len(auth) > l+1 && auth[:l] == config.AuthScheme {
 			return auth[l+1:], nil
 		}
-		return "", errors.New("Missing or invalid jwt in the request header")
+		return "", errors.New(config.MissingJwtHeader)
 	}
 }
 
 // jwtFromQuery returns a `jwtExtractor` that extracts token from the query string.
-func jwtFromQuery(param string) jwtExtractor {
+func jwtFromQuery(param string, config JWTConfig) jwtExtractor {
 	return func(c echo.Context) (string, error) {
 		token := c.QueryParam(param)
 		if token == "" {
-			return "", errors.New("Missing jwt in the query string")
+			return "", errors.New(config.MissingJwtQuery)
 		}
 		return token, nil
 	}
 }
 
 // jwtFromCookie returns a `jwtExtractor` that extracts token from the named cookie.
-func jwtFromCookie(name string) jwtExtractor {
+func jwtFromCookie(name string, config JWTConfig) jwtExtractor {
 	return func(c echo.Context) (string, error) {
 		cookie, err := c.Cookie(name)
 		if err != nil {
-			return "", errors.New("Missing jwt in the cookie")
+			return "", errors.New(config.MissingJwtCookie)
 		}
 		return cookie.Value, nil
 	}
