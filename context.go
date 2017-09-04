@@ -247,17 +247,26 @@ func (c *context) Scheme() string {
 	}
 	return "http"
 }
-
-func (c *context) RealIP() string {
-	ra := c.request.RemoteAddr
-	if ip := c.request.Header.Get(HeaderXForwardedFor); ip != "" {
-		ra = strings.Split(ip, ", ")[0]
-	} else if ip := c.request.Header.Get(HeaderXRealIP); ip != "" {
-		ra = ip
-	} else {
-		ra, _, _ = net.SplitHostPort(ra)
+func getIPAddr(hostport string) string {
+	ra, _, err := net.SplitHostPort(hostport)
+	if nil != err {
+		if ae, ok := err.(*net.AddrError); ok {
+			if ae.Err == "missing port in address" {
+				return hostport
+			}
+		}
 	}
 	return ra
+}
+func (c *context) RealIP() string {
+	if ip := c.request.Header.Get(HeaderXForwardedFor); ip != "" {
+		return getIPAddr(ip)
+	}
+	if ip := c.request.Header.Get(HeaderXRealIP); ip != "" {
+		return getIPAddr(ip)
+	}
+	addr := c.request.RemoteAddr
+	return getIPAddr(addr)
 }
 
 func (c *context) Path() string {
