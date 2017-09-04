@@ -20,6 +20,11 @@ type (
 	}
 )
 
+// NewResponse creates a new instance of Response.
+func NewResponse(w http.ResponseWriter, e *Echo) (r *Response) {
+	return &Response{Writer: w, echo: e}
+}
+
 // Header returns the header map for the writer that will be sent by
 // WriteHeader. Changing the header after a call to WriteHeader (or Write) has
 // no effect unless the modified headers were declared as trailers by setting

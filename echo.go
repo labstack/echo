@@ -95,6 +95,7 @@ type (
 	HTTPError struct {
 		Code    int
 		Message interface{}
+		Inner   error // Stores the error returned by an external dependency
 	}
 
 	// MiddlewareFunc defines a function to process middleware.
@@ -282,7 +283,7 @@ func New() (e *Echo) {
 	e.TLSServer.Handler = e
 	e.HTTPErrorHandler = e.DefaultHTTPErrorHandler
 	e.Binder = &DefaultBinder{}
-	e.Logger.SetLevel(log.OFF)
+	e.Logger.SetLevel(log.ERROR)
 	e.stdLogger = stdLog.New(e.Logger.Output(), e.Logger.Prefix()+": ", 0)
 	e.pool.New = func() interface{} {
 		return e.NewContext(nil, nil)
@@ -295,7 +296,7 @@ func New() (e *Echo) {
 func (e *Echo) NewContext(r *http.Request, w http.ResponseWriter) Context {
 	return &context{
 		request:  r,
-		response: &Response{echo: e, Writer: w},
+		response: NewResponse(w, e),
 		store:    make(Map),
 		echo:     e,
 		pvalues:  make([]string, *e.maxParam),
@@ -321,6 +322,9 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 		msg = he.Message
 	} else if e.Debug {
 		msg = err.Error()
+		if he.Inner != nil {
+			msg = fmt.Sprintf("%v, %v", err, he.Inner)
+		}
 	} else {
 		msg = http.StatusText(code)
 	}
@@ -330,16 +334,15 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 
 	if !c.Response().Committed {
 		if c.Request().Method == HEAD { // Issue #608
-			if err := c.NoContent(code); err != nil {
-				goto ERROR
-			}
+			err = c.NoContent(code)
 		} else {
-			if err := c.JSON(code, msg); err != nil {
-				goto ERROR
-			}
+			err = c.JSON(code, msg)
+		}
+		if err != nil {
+			e.Logger.Error(err)
 		}
 	}
-ERROR:
+
 	e.Logger.Error(err)
 }
 
