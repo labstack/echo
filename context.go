@@ -250,11 +250,7 @@ func (c *context) Scheme() string {
 func getIPAddr(hostport string) string {
 	ra, _, err := net.SplitHostPort(hostport)
 	if nil != err {
-		if ae, ok := err.(*net.AddrError); ok {
-			if ae.Err == "missing port in address" {
-				return hostport
-			}
-		}
+		return hostport
 	}
 	return ra
 }
