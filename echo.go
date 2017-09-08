@@ -332,6 +332,9 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 		msg = Map{"message": msg}
 	}
 
+	e.Logger.Error(err)
+
+	// Send response
 	if !c.Response().Committed {
 		if c.Request().Method == HEAD { // Issue #608
 			err = c.NoContent(code)
@@ -342,8 +345,6 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 			e.Logger.Error(err)
 		}
 	}
-
-	e.Logger.Error(err)
 }
 
 // Pre adds middleware to the chain which is run before router.
