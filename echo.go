@@ -333,6 +333,7 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 	}
 
 	if !c.Response().Committed {
+		var err error
 		if c.Request().Method == HEAD { // Issue #608
 			err = c.NoContent(code)
 		} else {
