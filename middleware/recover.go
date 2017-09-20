@@ -57,14 +57,13 @@ func RecoverWithConfig(config RecoverConfig) echo.MiddlewareFunc {
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
+		return func(c echo.Context) (err error) {
 			if config.Skipper(c) {
 				return next(c)
 			}
 
 			defer func() {
 				if r := recover(); r != nil {
-					var err error
 					switch r := r.(type) {
 					case error:
 						err = r
