@@ -1,6 +1,6 @@
 dependency:
 	go get -u github.com/golang/dep/cmd/dep
-	dep ensure -update
+	dep ensure
 
 test:
 	echo "" > coverage.txt
