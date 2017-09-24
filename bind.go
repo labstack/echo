@@ -25,7 +25,21 @@ type (
 		// UnmarshalParam decodes and assigns a value from an form or query param.
 		UnmarshalParam(param string) error
 	}
+	// BinderFunc defines a function to bind certain data types.
+	BinderFunc func(string) (interface{}, error)
 )
+
+var bindersMap map[string]BinderFunc
+
+// AddBinderFunc registers a new BinderFunc for a type name.
+// It should be only used to bind types from 3rd party packages that you can not
+// simply satisfy BindUnmarshaler interface for.
+func AddBinderFunc(typeName string, binderFunc BinderFunc) {
+	if bindersMap == nil {
+		bindersMap = make(map[string]BinderFunc)
+	}
+	bindersMap[typeName] = binderFunc
+}
 
 // Bind implements the `Binder#Bind` function.
 func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
@@ -205,7 +219,19 @@ func unmarshalFieldNonPtr(value string, field reflect.Value) (bool, error) {
 		field.Set(reflect.ValueOf(unmarshaler).Elem())
 		return true, err
 	}
+
+	if binderFunc, ok := consultBindersMap(field); ok {
+		parsed, err := binderFunc(value)
+		field.Set(reflect.ValueOf(parsed))
+		return true, err
+	}
+
 	return false, nil
+}
+
+func consultBindersMap(field reflect.Value) (BinderFunc, bool) {
+	binderFunc, ok := bindersMap[field.Type().String()]
+	return binderFunc, ok
 }
 
 func unmarshalFieldPtr(value string, field reflect.Value) (bool, error) {
