@@ -30,7 +30,7 @@ type (
 )
 
 var (
-	// DefaultBodyLimitConfig is the default Gzip middleware config.
+	// DefaultBodyLimitConfig is the default BodyLimit middleware config.
 	DefaultBodyLimitConfig = BodyLimitConfig{
 		Skipper: DefaultSkipper,
 	}

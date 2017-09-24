@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -55,6 +54,12 @@ type (
 // Algorithms
 const (
 	AlgorithmHS256 = "HS256"
+)
+
+// Errors
+var (
+	ErrJWTMissing = echo.NewHTTPError(http.StatusBadRequest, "Missing or malformed jwt")
+	ErrJWTInvalid = echo.NewHTTPError(http.StatusUnauthorized, "Invalid or expired jwt")
 )
 
 var (
@@ -134,7 +139,7 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 
 			auth, err := extractor(c)
 			if err != nil {
-				return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+				return err
 			}
 			token := new(jwt.Token)
 			// Issue #647, #656
@@ -150,7 +155,11 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 				c.Set(config.ContextKey, token)
 				return next(c)
 			}
-			return echo.ErrUnauthorized
+			return &echo.HTTPError{
+				Code:    ErrJWTInvalid.Code,
+				Message: ErrJWTInvalid.Message,
+				Inner:   err,
+			}
 		}
 	}
 }
@@ -163,7 +172,7 @@ func jwtFromHeader(header string, authScheme string) jwtExtractor {
 		if len(auth) > l+1 && auth[:l] == authScheme {
 			return auth[l+1:], nil
 		}
-		return "", errors.New("Missing or invalid jwt in the request header")
+		return "", ErrJWTMissing
 	}
 }
 
@@ -172,7 +181,7 @@ func jwtFromQuery(param string) jwtExtractor {
 	return func(c echo.Context) (string, error) {
 		token := c.QueryParam(param)
 		if token == "" {
-			return "", errors.New("Missing jwt in the query string")
+			return "", ErrJWTMissing
 		}
 		return token, nil
 	}
@@ -183,7 +192,7 @@ func jwtFromCookie(name string) jwtExtractor {
 	return func(c echo.Context) (string, error) {
 		cookie, err := c.Cookie(name)
 		if err != nil {
-			return "", errors.New("Missing jwt in the cookie")
+			return "", ErrJWTMissing
 		}
 		return cookie.Value, nil
 	}

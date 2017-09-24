@@ -187,7 +187,7 @@ func TestContext(t *testing.T) {
 	err = c.Attachment("_fixture/images/walle.png", "walle.png")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, "attachment; filename=walle.png", rec.Header().Get(HeaderContentDisposition))
+		assert.Equal(t, "attachment; filename=\"walle.png\"", rec.Header().Get(HeaderContentDisposition))
 		assert.Equal(t, 219885, rec.Body.Len())
 	}
 
@@ -197,7 +197,7 @@ func TestContext(t *testing.T) {
 	err = c.Inline("_fixture/images/walle.png", "walle.png")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, "inline; filename=walle.png", rec.Header().Get(HeaderContentDisposition))
+		assert.Equal(t, "inline; filename=\"walle.png\"", rec.Header().Get(HeaderContentDisposition))
 		assert.Equal(t, 219885, rec.Body.Len())
 	}
 
