@@ -50,6 +50,9 @@ type (
 		Tptr        *Timestamp
 		SA          StringArray
 	}
+	limitReader struct {
+		Data string
+	}
 	Timestamp   time.Time
 	TA          []Timestamp
 	StringArray []string
@@ -57,6 +60,14 @@ type (
 		Foo string
 	}
 )
+
+func (r *limitReader) Read(b []byte) (n int, err error) {
+	return 0, ErrStatusRequestEntityTooLarge
+}
+
+func (r *limitReader) Close() error {
+	return nil
+}
 
 func (t *Timestamp) UnmarshalParam(src string) error {
 	ts, err := time.Parse(time.RFC3339, src)
@@ -200,6 +211,17 @@ func TestBindMultipartForm(t *testing.T) {
 
 func TestBindUnsupportedMediaType(t *testing.T) {
 	testBindError(t, strings.NewReader(invalidContent), MIMEApplicationJSON)
+}
+
+func TestBindWithBodyLimitMiddleware(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(POST, "/", &limitReader{"\"JSON too large\""})
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	req.Header.Set(HeaderContentType, MIMEApplicationJSON)
+	result := ""
+	err := c.Bind(&result)
+	assert.Equal(t, http.StatusRequestEntityTooLarge, err.(*HTTPError).Code)
 }
 
 func TestBindbindData(t *testing.T) {

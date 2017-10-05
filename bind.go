@@ -47,6 +47,8 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Unmarshal type error: expected=%v, got=%v, offset=%v", ute.Type, ute.Value, ute.Offset))
 			} else if se, ok := err.(*json.SyntaxError); ok {
 				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Syntax error: offset=%v, error=%v", se.Offset, se.Error()))
+			} else if _, ok := err.(*HTTPError); ok {
+				return err
 			} else {
 				return NewHTTPError(http.StatusBadRequest, err.Error())
 			}
@@ -57,6 +59,8 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Unsupported type error: type=%v, error=%v", ute.Type, ute.Error()))
 			} else if se, ok := err.(*xml.SyntaxError); ok {
 				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Syntax error: line=%v, error=%v", se.Line, se.Error()))
+			} else if _, ok := err.(*HTTPError); ok {
+				return err
 			} else {
 				return NewHTTPError(http.StatusBadRequest, err.Error())
 			}
@@ -64,6 +68,9 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 	case strings.HasPrefix(ctype, MIMEApplicationForm), strings.HasPrefix(ctype, MIMEMultipartForm):
 		params, err := c.FormParams()
 		if err != nil {
+			if _, ok := err.(*HTTPError); ok {
+				return err
+			}
 			return NewHTTPError(http.StatusBadRequest, err.Error())
 		}
 		if err = b.bindData(i, params, "form"); err != nil {
