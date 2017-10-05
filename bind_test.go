@@ -214,14 +214,20 @@ func TestBindUnsupportedMediaType(t *testing.T) {
 }
 
 func TestBindWithBodyLimitMiddleware(t *testing.T) {
-	e := New()
-	req := httptest.NewRequest(POST, "/", &limitReader{"\"JSON too large\""})
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	req.Header.Set(HeaderContentType, MIMEApplicationJSON)
-	result := ""
-	err := c.Bind(&result)
-	assert.Equal(t, http.StatusRequestEntityTooLarge, err.(*HTTPError).Code)
+	cases := map[string]string{
+		MIMEApplicationJSON: "\"JSON too large\"",
+		MIMEApplicationXML:  "<xml>too large</xml>",
+	}
+	for ctype, body := range cases {
+		e := New()
+		req := httptest.NewRequest(POST, "/", &limitReader{body})
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		req.Header.Set(HeaderContentType, ctype)
+		result := ""
+		err := c.Bind(&result)
+		assert.Equal(t, http.StatusRequestEntityTooLarge, err.(*HTTPError).Code)
+	}
 }
 
 func TestBindbindData(t *testing.T) {
