@@ -458,10 +458,10 @@ func static(i i, prefix, root string) *Route {
 }
 
 // File registers a new route with path to serve a static file.
-func (e *Echo) File(path, file string) *Route {
+func (e *Echo) File(path, file string, m ...MiddlewareFunc) *Route {
 	return e.GET(path, func(c Context) error {
 		return c.File(file)
-	})
+	}, m...)
 }
 
 // Add registers a new route for an HTTP method and path with matching handler
