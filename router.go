@@ -18,21 +18,10 @@ type (
 		children      children
 		ppath         string
 		pnames        []string
-		methodHandler *methodHandler
+		methodHandler *map[string]HandlerFunc
 	}
-	kind          uint8
-	children      []*node
-	methodHandler struct {
-		connect HandlerFunc
-		delete  HandlerFunc
-		get     HandlerFunc
-		head    HandlerFunc
-		options HandlerFunc
-		patch   HandlerFunc
-		post    HandlerFunc
-		put     HandlerFunc
-		trace   HandlerFunc
-	}
+	kind uint8
+	children []*node
 )
 
 const (
@@ -43,10 +32,9 @@ const (
 
 // NewRouter returns a new Router instance.
 func NewRouter(e *Echo) *Router {
+	mh := make(map[string]HandlerFunc)
 	return &Router{
-		tree: &node{
-			methodHandler: new(methodHandler),
-		},
+		tree:   &node{methodHandler: &mh},
 		routes: map[string]*Route{},
 		echo:   e,
 	}
@@ -137,7 +125,7 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 			cn.label = cn.prefix[0]
 			cn.prefix = cn.prefix[:l]
 			cn.children = nil
-			cn.methodHandler = new(methodHandler)
+			cn.initMethodHandler()
 			cn.ppath = ""
 			cn.pnames = nil
 
@@ -150,8 +138,9 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 				cn.ppath = ppath
 				cn.pnames = pnames
 			} else {
+				mh := make(map[string]HandlerFunc)
 				// Create child node
-				n = newNode(t, search[l:], cn, nil, new(methodHandler), ppath, pnames)
+				n = newNode(t, search[l:], cn, nil, &mh, ppath, pnames)
 				n.addHandler(method, h)
 				cn.addChild(n)
 			}
@@ -164,7 +153,8 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 				continue
 			}
 			// Create child node
-			n := newNode(t, search, cn, nil, new(methodHandler), ppath, pnames)
+			mh := make(map[string]HandlerFunc)
+			n := newNode(t, search, cn, nil, &mh, ppath, pnames)
 			n.addHandler(method, h)
 			cn.addChild(n)
 		} else {
@@ -187,7 +177,7 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 	}
 }
 
-func newNode(t kind, pre string, p *node, c children, mh *methodHandler, ppath string, pnames []string) *node {
+func newNode(t kind, pre string, p *node, c children, mh *map[string]HandlerFunc, ppath string, pnames []string) *node {
 	return &node{
 		kind:          t,
 		label:         pre[0],
@@ -231,52 +221,18 @@ func (n *node) findChildByKind(t kind) *node {
 	return nil
 }
 
+func (n *node) initMethodHandler() *node {
+	mh := make(map[string]HandlerFunc)
+	n.methodHandler = &mh
+	return n
+}
+
 func (n *node) addHandler(method string, h HandlerFunc) {
-	switch method {
-	case GET:
-		n.methodHandler.get = h
-	case POST:
-		n.methodHandler.post = h
-	case PUT:
-		n.methodHandler.put = h
-	case DELETE:
-		n.methodHandler.delete = h
-	case PATCH:
-		n.methodHandler.patch = h
-	case OPTIONS:
-		n.methodHandler.options = h
-	case HEAD:
-		n.methodHandler.head = h
-	case CONNECT:
-		n.methodHandler.connect = h
-	case TRACE:
-		n.methodHandler.trace = h
-	}
+	(*n.methodHandler)[method] = h
 }
 
 func (n *node) findHandler(method string) HandlerFunc {
-	switch method {
-	case GET:
-		return n.methodHandler.get
-	case POST:
-		return n.methodHandler.post
-	case PUT:
-		return n.methodHandler.put
-	case DELETE:
-		return n.methodHandler.delete
-	case PATCH:
-		return n.methodHandler.patch
-	case OPTIONS:
-		return n.methodHandler.options
-	case HEAD:
-		return n.methodHandler.head
-	case CONNECT:
-		return n.methodHandler.connect
-	case TRACE:
-		return n.methodHandler.trace
-	default:
-		return nil
-	}
+	return (*n.methodHandler)[method]
 }
 
 func (n *node) checkMethodNotAllowed() HandlerFunc {
