@@ -6,13 +6,14 @@ import (
 )
 
 // TraceContextKey is the key sets to context
-const TraceContextKey = "echo_context_traceback"
+const TraceContextKey = "echo_traceback"
 
 type (
 	// Tracer interface allows custom traceback
 	// function to be implemented
 	Tracer interface {
 		Trace(c Context)
+		Format(b []byte) []string
 	}
 
 	// DefaultTracer offers basic traceback
@@ -26,8 +27,8 @@ type (
 // traceback size sets to 2MB and Full trace to false
 func NewDefaultTracer() *DefaultTracer {
 	t := &DefaultTracer{
-		Full: false,
-		Size: 1024 * 2,
+		Full: true,
+		Size: 1024 * 8,
 	}
 	return t
 }
@@ -35,7 +36,7 @@ func NewDefaultTracer() *DefaultTracer {
 // Trace run the stack trace
 func (t *DefaultTracer) Trace(c Context) {
 	rawStack := make([]byte, t.Size)
-	runtime.Stack(rawStack, t.Full)
+	rawStack = rawStack[:runtime.Stack(rawStack, t.Full)]
 
 	stack := t.Format(rawStack)
 	c.Set(TraceContextKey, stack)
