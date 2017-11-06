@@ -18,12 +18,23 @@ type (
 	// DefaultTracer offers basic traceback
 	DefaultTracer struct {
 		Full bool
+		Size int
 	}
 )
 
+// NewDefaultTracer creates a new DefaultTracer with
+// traceback size sets to 2MB and Full trace to false
+func NewDefaultTracer() *DefaultTracer {
+	t := &DefaultTracer{
+		Full: false,
+		Size: 1024 * 2,
+	}
+	return t
+}
+
 // Trace run the stack trace
 func (t *DefaultTracer) Trace(c Context) {
-	rawStack := []byte{}
+	rawStack := make([]byte, t.Size)
 	runtime.Stack(rawStack, t.Full)
 
 	stack := t.Format(rawStack)
