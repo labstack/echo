@@ -82,6 +82,7 @@ type (
 		Renderer         Renderer
 		// Mutex            sync.RWMutex
 		Logger Logger
+		Tracer Tracer
 	}
 
 	// Route contains a handler and information for matching against requests.
@@ -289,6 +290,7 @@ func New() (e *Echo) {
 		return e.NewContext(nil, nil)
 	}
 	e.router = NewRouter(e)
+	e.Tracer = &DefaultTracer{}
 	return
 }
 
@@ -581,6 +583,10 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Execute chain
 	if err := h(c); err != nil {
+		if e.Tracer != nil {
+			e.Tracer.Trace(c)
+		}
+
 		e.HTTPErrorHandler(err, c)
 	}
 }
