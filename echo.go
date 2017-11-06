@@ -290,7 +290,7 @@ func New() (e *Echo) {
 		return e.NewContext(nil, nil)
 	}
 	e.router = NewRouter(e)
-	e.Tracer = &DefaultTracer{}
+	e.Tracer = NewDefaultTracer()
 	return
 }
 
