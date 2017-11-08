@@ -3,6 +3,7 @@ package middleware
 import (
 	"encoding/base64"
 	"strconv"
+	"strings"
 
 	"github.com/labstack/echo"
 )
@@ -78,15 +79,14 @@ func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 					return err
 				}
 				cred := string(b)
-				for i := 0; i < len(cred); i++ {
-					if cred[i] == ':' {
-						// Verify credentials
-						valid, err := config.Validator(cred[:i], cred[i+1:], c)
-						if err != nil {
-							return err
-						} else if valid {
-							return next(c)
-						}
+				if strings.Contains(cred, ":") {
+					userwithpassword := strings.Split(cred, ":")
+					// Verify credentials
+					valid, err := config.Validator(userwithpassword[0], userwithpassword[1], c)
+					if err != nil {
+						return err
+					} else if valid {
+						return next(c)
 					}
 				}
 			}
