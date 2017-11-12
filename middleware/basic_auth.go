@@ -47,7 +47,7 @@ func BasicAuth(fn BasicAuthValidator) echo.MiddlewareFunc {
 	c := DefaultBasicAuthConfig
 	c.Validator = fn
 	return BasicAuthWithConfig(c)
-}
+ }
 
 // BasicAuthWithConfig returns an BasicAuth middleware with config.
 // See `BasicAuth()`.
@@ -86,6 +86,8 @@ func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 							return err
 						} else if valid {
 							return next(c)
+						} else {
+						  break;
 						}
 					}
 				}
