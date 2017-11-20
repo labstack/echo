@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/labstack/echo"
@@ -27,6 +28,11 @@ func TestBasicAuth(t *testing.T) {
 
 	// Valid credentials
 	auth := basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:secret"))
+	req.Header.Set(echo.HeaderAuthorization, auth)
+	assert.NoError(t, h(c))
+
+	// Case-insensitive header scheme
+	auth = strings.ToUpper(basic) + " " + base64.StdEncoding.EncodeToString([]byte("joe:secret"))
 	req.Header.Set(echo.HeaderAuthorization, auth)
 	assert.NoError(t, h(c))
 
