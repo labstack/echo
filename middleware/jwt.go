@@ -84,16 +84,11 @@ var (
 		TokenLookup:   "header:" + echo.HeaderAuthorization,
 		AuthScheme:    "Bearer",
 		Claims:        jwt.MapClaims{},
-		OnSuccess:     func(c echo.Context) {
-			return
-		},
-		BeforeAuth:    func(c echo.Context) {
-			return
-		},
+		OnSuccess:     func(c echo.Context) {},
+		BeforeAuth:    func(c echo.Context) {},
 		ErrorHandler:  func(code int, message ...interface{}) *echo.HTTPError {
 			return echo.NewHTTPError(code, message...)
 		},
-
 	}
 )
 
