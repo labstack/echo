@@ -21,10 +21,10 @@ type (
 		SigningKey interface{}
 
 		// Callback action on success
-		onSuccess func(c echo.Context)
+		OnSuccess func(c echo.Context)
 
 		// Callback action before auth checks
-		beforeAuth func(c echo.Context)
+		BeforeAuth func(c echo.Context)
 
 		// The function that will be called when there's an error validating the token
 		ErrorHandler func(code int, message ...interface{}) *echo.HTTPError
@@ -84,8 +84,12 @@ var (
 		TokenLookup:   "header:" + echo.HeaderAuthorization,
 		AuthScheme:    "Bearer",
 		Claims:        jwt.MapClaims{},
-		onSuccess:     func(c echo.Context) {return},
-		beforeAuth:    func(c echo.Context) {return},
+		OnSuccess:     func(c echo.Context) {
+			return
+		},
+		BeforeAuth:    func(c echo.Context) {
+			return
+		},
 		ErrorHandler:  func(code int, message ...interface{}) *echo.HTTPError {
 			return echo.NewHTTPError(code, message...)
 		},
@@ -132,11 +136,11 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	if config.AuthScheme == "" {
 		config.AuthScheme = DefaultJWTConfig.AuthScheme
 	}
-	if config.onSuccess == nil {
-		config.onSuccess = DefaultJWTConfig.onSuccess
+	if config.OnSuccess == nil {
+		config.OnSuccess = DefaultJWTConfig.OnSuccess
 	}
-	if config.beforeAuth == nil {
-		config.beforeAuth = DefaultJWTConfig.beforeAuth
+	if config.BeforeAuth == nil {
+		config.BeforeAuth = DefaultJWTConfig.BeforeAuth
 	}
 	if config.ErrorHandler == nil {
 		config.ErrorHandler = DefaultJWTConfig.ErrorHandler
@@ -161,7 +165,7 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			config.beforeAuth(c)
+			config.BeforeAuth(c)
 			if config.Skipper(c) {
 				return next(c)
 			}
@@ -186,7 +190,7 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 			if err == nil && token.Valid {
 				// Store user information from token into context.
 				c.Set(config.ContextKey, token)
-				config.onSuccess(c)
+				config.OnSuccess(c)
 				return next(c)
 			}
 			return config.ErrorHandler (ErrJWTInvalid.Code, ErrJWTInvalid.Message, err)
