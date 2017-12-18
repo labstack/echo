@@ -76,6 +76,7 @@ type (
 		DisableHTTP2     bool
 		Debug            bool
 		HideBanner       bool
+		HidePort         bool
 		HTTPErrorHandler HTTPErrorHandler
 		Binder           Binder
 		Validator        Validator
@@ -644,7 +645,7 @@ func (e *Echo) StartServer(s *http.Server) (err error) {
 				return err
 			}
 		}
-		if !e.HideBanner {
+		if !e.HidePort {
 			e.colorer.Printf("⇨ http server started on %s\n", e.colorer.Green(e.Listener.Addr()))
 		}
 		return s.Serve(e.Listener)
@@ -656,7 +657,7 @@ func (e *Echo) StartServer(s *http.Server) (err error) {
 		}
 		e.TLSListener = tls.NewListener(l, s.TLSConfig)
 	}
-	if !e.HideBanner {
+	if !e.HidePort {
 		e.colorer.Printf("⇨ https server started on %s\n", e.colorer.Green(e.TLSListener.Addr()))
 	}
 	return s.Serve(e.TLSListener)
