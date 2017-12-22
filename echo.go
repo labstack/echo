@@ -414,9 +414,9 @@ func (e *Echo) TRACE(path string, h HandlerFunc, m ...MiddlewareFunc) *Route {
 // Any registers a new route for all HTTP methods and path with matching handler
 // in the router with optional route-level middleware.
 func (e *Echo) Any(path string, handler HandlerFunc, middleware ...MiddlewareFunc) []*Route {
-	routes := make([]*Route, 0)
-	for _, m := range methods {
-		routes = append(routes, e.Add(m, path, handler, middleware...))
+	routes := make([]*Route, len(methods))
+	for i, m := range methods {
+		routes[i] = e.Add(m, path, handler, middleware...)
 	}
 	return routes
 }
@@ -424,9 +424,9 @@ func (e *Echo) Any(path string, handler HandlerFunc, middleware ...MiddlewareFun
 // Match registers a new route for multiple HTTP methods and path with matching
 // handler in the router with optional route-level middleware.
 func (e *Echo) Match(methods []string, path string, handler HandlerFunc, middleware ...MiddlewareFunc) []*Route {
-	routes := make([]*Route, 0)
-	for _, m := range methods {
-		routes = append(routes, e.Add(m, path, handler, middleware...))
+	routes := make([]*Route, len(methods))
+	for i, m := range methods {
+		routes[i] = e.Add(m, path, handler, middleware...)
 	}
 	return routes
 }

@@ -71,17 +71,21 @@ func (g *Group) TRACE(path string, h HandlerFunc, m ...MiddlewareFunc) *Route {
 }
 
 // Any implements `Echo#Any()` for sub-routes within the Group.
-func (g *Group) Any(path string, handler HandlerFunc, middleware ...MiddlewareFunc) {
-	for _, m := range methods {
-		g.Add(m, path, handler, middleware...)
+func (g *Group) Any(path string, handler HandlerFunc, middleware ...MiddlewareFunc) []*Route {
+	routes := make([]*Route, len(methods))
+	for i, m := range methods {
+		routes[i] = g.Add(m, path, handler, middleware...)
 	}
+	return routes
 }
 
 // Match implements `Echo#Match()` for sub-routes within the Group.
-func (g *Group) Match(methods []string, path string, handler HandlerFunc, middleware ...MiddlewareFunc) {
-	for _, m := range methods {
-		g.Add(m, path, handler, middleware...)
+func (g *Group) Match(methods []string, path string, handler HandlerFunc, middleware ...MiddlewareFunc) []*Route {
+	routes := make([]*Route, len(methods))
+	for i, m := range methods {
+		routes[i] = g.Add(m, path, handler, middleware...)
 	}
+	return routes
 }
 
 // Group creates a new sub-group with prefix and optional sub-group-level middleware.
