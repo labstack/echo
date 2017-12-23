@@ -20,9 +20,11 @@ func (g *Group) Use(middleware ...MiddlewareFunc) {
 	g.middleware = append(g.middleware, middleware...)
 	// Allow all requests to reach the group as they might get dropped if router
 	// doesn't find a match, making none of the group middleware process.
-	g.echo.Any(path.Clean(g.prefix+"/*"), func(c Context) error {
-		return NotFoundHandler(c)
-	}, g.middleware...)
+	for _, p := range []string{"", "/*"} {
+		g.echo.Any(path.Clean(g.prefix+p), func(c Context) error {
+			return NotFoundHandler(c)
+		}, g.middleware...)
+	}
 }
 
 // CONNECT implements `Echo#CONNECT()` for sub-routes within the Group.
