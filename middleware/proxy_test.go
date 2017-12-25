@@ -55,9 +55,7 @@ func TestProxy(t *testing.T) {
 			URL: url2,
 		},
 	}
-	rb := &RandomBalancer{
-		Targets: targets,
-	}
+	rb := NewRandomBalancer(targets)
 
 	// Random
 	e := echo.New()
@@ -75,9 +73,7 @@ func TestProxy(t *testing.T) {
 	})
 
 	// Round-robin
-	rrb := &RoundRobinBalancer{
-		Targets: targets,
-	}
+	rrb := NewRoundRobinBalancer(targets)
 	e = echo.New()
 	e.Use(Proxy(rrb))
 	rec = newCloseNotifyRecorder()

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -24,32 +25,37 @@ type (
 
 		// Balancer defines a load balancing technique.
 		// Required.
-		// Possible values:
-		// - RandomBalancer
-		// - RoundRobinBalancer
 		Balancer ProxyBalancer
 	}
 
 	// ProxyTarget defines the upstream target.
 	ProxyTarget struct {
-		URL *url.URL
-	}
-
-	// RandomBalancer implements a random load balancing technique.
-	RandomBalancer struct {
-		Targets []*ProxyTarget
-		random  *rand.Rand
-	}
-
-	// RoundRobinBalancer implements a round-robin load balancing technique.
-	RoundRobinBalancer struct {
-		Targets []*ProxyTarget
-		i       uint32
+		Name string
+		URL  *url.URL
 	}
 
 	// ProxyBalancer defines an interface to implement a load balancing technique.
 	ProxyBalancer interface {
+		AddTarget(*ProxyTarget) bool
+		RemoveTarget(string) bool
 		Next() *ProxyTarget
+	}
+
+	commonBalancer struct {
+		targets []*ProxyTarget
+		mutex   sync.RWMutex
+	}
+
+	// RandomBalancer implements a random load balancing technique.
+	randomBalancer struct {
+		*commonBalancer
+		random *rand.Rand
+	}
+
+	// RoundRobinBalancer implements a round-robin load balancing technique.
+	roundRobinBalancer struct {
+		*commonBalancer
+		i uint32
 	}
 )
 
@@ -104,19 +110,61 @@ func proxyRaw(t *ProxyTarget, c echo.Context) http.Handler {
 	})
 }
 
-// Next randomly returns an upstream target.
-func (r *RandomBalancer) Next() *ProxyTarget {
-	if r.random == nil {
-		r.random = rand.New(rand.NewSource(int64(time.Now().Nanosecond())))
+// NewRandomBalancer returns a random proxy balancer.
+func NewRandomBalancer(targets []*ProxyTarget) ProxyBalancer {
+	b := &randomBalancer{commonBalancer: new(commonBalancer)}
+	b.targets = targets
+	return b
+}
+
+// NewRoundRobinBalancer returns a round-robin proxy balancer.
+func NewRoundRobinBalancer(targets []*ProxyTarget) ProxyBalancer {
+	b := &roundRobinBalancer{commonBalancer: new(commonBalancer)}
+	b.targets = targets
+	return b
+}
+
+// AddTarget adds an upstream target to the list.
+func (b *commonBalancer) AddTarget(target *ProxyTarget) bool {
+	for _, t := range b.targets {
+		if t.Name == target.Name {
+			return false
+		}
 	}
-	return r.Targets[r.random.Intn(len(r.Targets))]
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	b.targets = append(b.targets, target)
+	return true
+}
+
+// RemoveTarget removes an upstream target from the list.
+func (b *commonBalancer) RemoveTarget(name string) bool {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	for i, t := range b.targets {
+		if t.Name == name {
+			b.targets = append(b.targets[:i], b.targets[i+1:]...)
+			return true
+		}
+	}
+	return false
+}
+
+// Next randomly returns an upstream target.
+func (b *randomBalancer) Next() *ProxyTarget {
+	if b.random == nil {
+		b.random = rand.New(rand.NewSource(int64(time.Now().Nanosecond())))
+	}
+	b.mutex.RLock()
+	defer b.mutex.RUnlock()
+	return b.targets[b.random.Intn(len(b.targets))]
 }
 
 // Next returns an upstream target using round-robin technique.
-func (r *RoundRobinBalancer) Next() *ProxyTarget {
-	r.i = r.i % uint32(len(r.Targets))
-	t := r.Targets[r.i]
-	atomic.AddUint32(&r.i, 1)
+func (b *roundRobinBalancer) Next() *ProxyTarget {
+	b.i = b.i % uint32(len(b.targets))
+	t := b.targets[b.i]
+	atomic.AddUint32(&b.i, 1)
 	return t
 }
 
