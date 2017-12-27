@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"regexp"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -26,6 +28,17 @@ type (
 		// Balancer defines a load balancing technique.
 		// Required.
 		Balancer ProxyBalancer
+
+		// Rewrite defines URL path rewrite rules. The values captured in asterisk can be
+		// retrieved by index e.g. $1, $2 and so on.
+		// Examples:
+		// "/old":              "/new",
+		// "/api/*":            "/$1",
+		// "/js/*":             "/public/javascripts/$1",
+		// "/users/*/orders/*": "/user/$1/order/$2",
+		Rewrite map[string]string
+
+		rewriteRegex map[*regexp.Regexp]string
 	}
 
 	// ProxyTarget defines the upstream target.
@@ -187,6 +200,13 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 	if config.Balancer == nil {
 		panic("echo: proxy middleware requires balancer")
 	}
+	config.rewriteRegex = map[*regexp.Regexp]string{}
+
+	// Initialize
+	for k, v := range config.Rewrite {
+		k = strings.Replace(k, "*", "(\\S*)", -1)
+		config.rewriteRegex[regexp.MustCompile(k)] = v
+	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) (err error) {
@@ -197,6 +217,14 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 			req := c.Request()
 			res := c.Response()
 			tgt := config.Balancer.Next()
+
+			// Rewrite
+			for k, v := range config.rewriteRegex {
+				replacer := captureTokens(k, req.URL.Path)
+				if replacer != nil {
+					req.URL.Path = replacer.Replace(v)
+				}
+			}
 
 			// Fix header
 			if req.Header.Get(echo.HeaderXRealIP) == "" {
