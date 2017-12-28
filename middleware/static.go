@@ -19,20 +19,20 @@ type (
 
 		// Root directory from where the static content is served.
 		// Required.
-		Root string `json:"root"`
+		Root string `yaml:"root"`
 
 		// Index file for serving a directory.
 		// Optional. Default value "index.html".
-		Index string `json:"index"`
+		Index string `yaml:"index"`
 
 		// Enable HTML5 mode by forwarding all not-found requests to root so that
 		// SPA (single-page application) can handle the routing.
 		// Optional. Default value false.
-		HTML5 bool `json:"html5"`
+		HTML5 bool `yaml:"html5"`
 
 		// Enable directory browsing.
 		// Optional. Default value false.
-		Browse bool `json:"browse"`
+		Browse bool `yaml:"browse"`
 	}
 )
 

@@ -87,7 +87,7 @@ func TestProxy(t *testing.T) {
 
 	// Rewrite
 	e = echo.New()
-	e.Pre(ProxyWithConfig(ProxyConfig{
+	e.Use(ProxyWithConfig(ProxyConfig{
 		Balancer: rrb,
 		Rewrite: map[string]string{
 			"/old":              "/new",

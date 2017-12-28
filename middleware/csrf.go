@@ -18,7 +18,7 @@ type (
 		Skipper Skipper
 
 		// TokenLength is the length of the generated token.
-		TokenLength uint8 `json:"token_length"`
+		TokenLength uint8 `yaml:"token_length"`
 		// Optional. Default value 32.
 
 		// TokenLookup is a string in the form of "<source>:<key>" that is used
@@ -28,35 +28,35 @@ type (
 		// - "header:<name>"
 		// - "form:<name>"
 		// - "query:<name>"
-		TokenLookup string `json:"token_lookup"`
+		TokenLookup string `yaml:"token_lookup"`
 
 		// Context key to store generated CSRF token into context.
 		// Optional. Default value "csrf".
-		ContextKey string `json:"context_key"`
+		ContextKey string `yaml:"context_key"`
 
 		// Name of the CSRF cookie. This cookie will store CSRF token.
 		// Optional. Default value "csrf".
-		CookieName string `json:"cookie_name"`
+		CookieName string `yaml:"cookie_name"`
 
 		// Domain of the CSRF cookie.
 		// Optional. Default value none.
-		CookieDomain string `json:"cookie_domain"`
+		CookieDomain string `yaml:"cookie_domain"`
 
 		// Path of the CSRF cookie.
 		// Optional. Default value none.
-		CookiePath string `json:"cookie_path"`
+		CookiePath string `yaml:"cookie_path"`
 
 		// Max age (in seconds) of the CSRF cookie.
 		// Optional. Default value 86400 (24hr).
-		CookieMaxAge int `json:"cookie_max_age"`
+		CookieMaxAge int `yaml:"cookie_max_age"`
 
 		// Indicates if CSRF cookie is secure.
 		// Optional. Default value false.
-		CookieSecure bool `json:"cookie_secure"`
+		CookieSecure bool `yaml:"cookie_secure"`
 
 		// Indicates if CSRF cookie is HTTP only.
 		// Optional. Default value false.
-		CookieHTTPOnly bool `json:"cookie_http_only"`
+		CookieHTTPOnly bool `yaml:"cookie_http_only"`
 	}
 
 	// csrfTokenExtractor defines a function that takes `echo.Context` and returns

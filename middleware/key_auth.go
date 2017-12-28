@@ -21,7 +21,7 @@ type (
 		// - "header:<name>"
 		// - "query:<name>"
 		// - "form:<name>"
-		KeyLookup string `json:"key_lookup"`
+		KeyLookup string `yaml:"key_lookup"`
 
 		// AuthScheme to be used in the Authorization header.
 		// Optional. Default value "Bearer".
