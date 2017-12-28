@@ -56,4 +56,15 @@ func TestKeyAuth(t *testing.T) {
 	q.Add("key", "valid-key")
 	req.URL.RawQuery = q.Encode()
 	assert.NoError(t, h(c))
+	
+	// Key from form string
+	config.KeyLookup = "form:formkey"
+	h = KeyAuthWithConfig(config)(func(c echo.Context) error {
+		return c.String(http.StatusOK, "test")
+	})
+	q := req.URL.Query()
+	q.Add("formkey", "valid-key")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.URL.RawQuery = q.Encode()
+	assert.NoError(t, h(c))
 }
