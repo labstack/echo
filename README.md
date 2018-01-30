@@ -26,11 +26,11 @@
 
 ## Performance
 
-![Performance](https://i.imgur.com/F2V7TfO.png)
+<img src="https://api.labstack.com/chart/bar?values=20015,39584,7282,11276&labels=Static,GitHub%20API,Parse%20API,Google%20Plus%20API&x_title=Route&y_title=Time%20(ns/op)&colors=c" width=600 height=400>
 
 ## [Guide](https://echo.labstack.com/guide)
 
-## Example
+### Example
 
 ```go
 package main
