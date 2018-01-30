@@ -28,11 +28,11 @@
 
 ![Performance](https://i.imgur.com/F2V7TfO.png)
 
-## [Get Started](https://echo.labstack.com/guide)
+## [Guide](https://echo.labstack.com/guide)
 
-### Example:
+## Example
 
-```
+```go
 package main
 
 import (
@@ -45,11 +45,14 @@ import (
 func main() {
 	// Echo instance
 	e := echo.New()
+
 	// Middleware
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+
 	// Routes
 	e.GET("/", hello)
+
 	// Start server
 	e.Logger.Fatal(e.Start(":1323"))
 }
@@ -58,7 +61,6 @@ func main() {
 func hello(c echo.Context) error {
 	return c.String(http.StatusOK, "Hello, World!")
 }
-
 ```
 
 ## Support Us
