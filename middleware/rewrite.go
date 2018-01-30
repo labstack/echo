@@ -77,7 +77,7 @@ func RewriteWithConfig(config RewriteConfig) echo.MiddlewareFunc {
 				}
 			}
 
-			return
+			return next(c)
 		}
 	}
 }
