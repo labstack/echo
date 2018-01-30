@@ -88,6 +88,7 @@ func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 						} else if valid {
 							return next(c)
 						}
+						break
 					}
 				}
 			}

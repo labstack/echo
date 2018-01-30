@@ -40,8 +40,8 @@ func HTTPSRedirect() echo.MiddlewareFunc {
 // HTTPSRedirectWithConfig returns an HTTPSRedirect middleware with config.
 // See `HTTPSRedirect()`.
 func HTTPSRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
-	return redirect(config, func(isTLS bool, _, host, uri string) (ok bool, url string) {
-		if ok = !isTLS; ok {
+	return redirect(config, func(tls bool, _, host, uri string) (ok bool, url string) {
+		if ok = !tls; ok {
 			url = "https://" + host + uri
 		}
 		return
@@ -59,8 +59,8 @@ func HTTPSWWWRedirect() echo.MiddlewareFunc {
 // HTTPSWWWRedirectWithConfig returns an HTTPSRedirect middleware with config.
 // See `HTTPSWWWRedirect()`.
 func HTTPSWWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
-	return redirect(config, func(isTLS bool, _, host, uri string) (ok bool, url string) {
-		if ok = !isTLS && host[:3] != www; ok {
+	return redirect(config, func(tls bool, _, host, uri string) (ok bool, url string) {
+		if ok = !tls && host[:3] != www; ok {
 			url = "https://www." + host + uri
 		}
 		return
@@ -78,8 +78,8 @@ func HTTPSNonWWWRedirect() echo.MiddlewareFunc {
 // HTTPSNonWWWRedirectWithConfig returns an HTTPSRedirect middleware with config.
 // See `HTTPSNonWWWRedirect()`.
 func HTTPSNonWWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
-	return redirect(config, func(isTLS bool, _, host, uri string) (ok bool, url string) {
-		if ok = !isTLS; ok {
+	return redirect(config, func(tls bool, _, host, uri string) (ok bool, url string) {
+		if ok = !tls; ok {
 			if host[:3] == www {
 				host = host[4:]
 			}
@@ -119,7 +119,7 @@ func NonWWWRedirect() echo.MiddlewareFunc {
 // NonWWWRedirectWithConfig returns an HTTPSRedirect middleware with config.
 // See `NonWWWRedirect()`.
 func NonWWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
-	return redirect(config, func(isTLS bool, scheme, host, uri string) (ok bool, url string) {
+	return redirect(config, func(tls bool, scheme, host, uri string) (ok bool, url string) {
 		if ok = host[:3] == www; ok {
 			url = scheme + "://" + host[4:] + uri
 		}
