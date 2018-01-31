@@ -45,6 +45,10 @@ type (
 		// Optional. Default value "Bearer".
 		AuthScheme string
 
+		// DisableAuthScheme set true when auth scheme is not required.
+		// Optional. Default value false.
+		DisableAuthScheme bool
+
 		keyFunc jwt.Keyfunc
 	}
 
@@ -65,12 +69,13 @@ var (
 var (
 	// DefaultJWTConfig is the default JWT auth middleware config.
 	DefaultJWTConfig = JWTConfig{
-		Skipper:       DefaultSkipper,
-		SigningMethod: AlgorithmHS256,
-		ContextKey:    "user",
-		TokenLookup:   "header:" + echo.HeaderAuthorization,
-		AuthScheme:    "Bearer",
-		Claims:        jwt.MapClaims{},
+		Skipper:           DefaultSkipper,
+		SigningMethod:     AlgorithmHS256,
+		ContextKey:        "user",
+		TokenLookup:       "header:" + echo.HeaderAuthorization,
+		AuthScheme:        "Bearer",
+		DisableAuthScheme: false,
+		Claims:            jwt.MapClaims{},
 	}
 )
 
@@ -113,6 +118,7 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	if config.AuthScheme == "" {
 		config.AuthScheme = DefaultJWTConfig.AuthScheme
 	}
+
 	config.keyFunc = func(t *jwt.Token) (interface{}, error) {
 		// Check the signing method
 		if t.Method.Alg() != config.SigningMethod {
@@ -123,7 +129,7 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 
 	// Initialize
 	parts := strings.Split(config.TokenLookup, ":")
-	extractor := jwtFromHeader(parts[1], config.AuthScheme)
+	extractor := jwtFromHeader(parts[1], config.AuthScheme, config.DisableAuthScheme)
 	switch parts[0] {
 	case "query":
 		extractor = jwtFromQuery(parts[1])
@@ -165,9 +171,12 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 }
 
 // jwtFromHeader returns a `jwtExtractor` that extracts token from the request header.
-func jwtFromHeader(header string, authScheme string) jwtExtractor {
+func jwtFromHeader(header string, authScheme string, disableAuthScheme bool) jwtExtractor {
 	return func(c echo.Context) (string, error) {
 		auth := c.Request().Header.Get(header)
+		if disableAuthScheme {
+			return auth, nil
+		}
 		l := len(authScheme)
 		if len(auth) > l+1 && auth[:l] == authScheme {
 			return auth[l+1:], nil
