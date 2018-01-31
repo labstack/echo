@@ -16,10 +16,10 @@ type RedirectConfig struct {
 	Code int `yaml:"code"`
 }
 
-// redirectLogic represents a function that given a tls flag, host and uri
+// redirectLogic represents a function that given a scheme, host and uri
 // can both: 1) determine if redirect is needed (will set ok accordingly) and
 // 2) return the appropriate redirect url.
-type redirectLogic func(tls bool, scheme, host, uri string) (ok bool, url string)
+type redirectLogic func(scheme, host, uri string) (ok bool, url string)
 
 const www = "www"
 
@@ -40,8 +40,8 @@ func HTTPSRedirect() echo.MiddlewareFunc {
 // HTTPSRedirectWithConfig returns an HTTPSRedirect middleware with config.
 // See `HTTPSRedirect()`.
 func HTTPSRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
-	return redirect(config, func(tls bool, _, host, uri string) (ok bool, url string) {
-		if ok = !tls; ok {
+	return redirect(config, func(scheme, host, uri string) (ok bool, url string) {
+		if ok = scheme != "https"; ok {
 			url = "https://" + host + uri
 		}
 		return
@@ -59,8 +59,8 @@ func HTTPSWWWRedirect() echo.MiddlewareFunc {
 // HTTPSWWWRedirectWithConfig returns an HTTPSRedirect middleware with config.
 // See `HTTPSWWWRedirect()`.
 func HTTPSWWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
-	return redirect(config, func(tls bool, _, host, uri string) (ok bool, url string) {
-		if ok = !tls && host[:3] != www; ok {
+	return redirect(config, func(scheme, host, uri string) (ok bool, url string) {
+		if ok = scheme != "https" && host[:3] != www; ok {
 			url = "https://www." + host + uri
 		}
 		return
@@ -78,8 +78,8 @@ func HTTPSNonWWWRedirect() echo.MiddlewareFunc {
 // HTTPSNonWWWRedirectWithConfig returns an HTTPSRedirect middleware with config.
 // See `HTTPSNonWWWRedirect()`.
 func HTTPSNonWWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
-	return redirect(config, func(tls bool, _, host, uri string) (ok bool, url string) {
-		if ok = !tls; ok {
+	return redirect(config, func(scheme, host, uri string) (ok bool, url string) {
+		if ok = scheme != "https"; ok {
 			if host[:3] == www {
 				host = host[4:]
 			}
@@ -100,7 +100,7 @@ func WWWRedirect() echo.MiddlewareFunc {
 // WWWRedirectWithConfig returns an HTTPSRedirect middleware with config.
 // See `WWWRedirect()`.
 func WWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
-	return redirect(config, func(_ bool, scheme, host, uri string) (ok bool, url string) {
+	return redirect(config, func(scheme, host, uri string) (ok bool, url string) {
 		if ok = host[:3] != www; ok {
 			url = scheme + "://www." + host + uri
 		}
@@ -119,7 +119,7 @@ func NonWWWRedirect() echo.MiddlewareFunc {
 // NonWWWRedirectWithConfig returns an HTTPSRedirect middleware with config.
 // See `NonWWWRedirect()`.
 func NonWWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
-	return redirect(config, func(tls bool, scheme, host, uri string) (ok bool, url string) {
+	return redirect(config, func(scheme, host, uri string) (ok bool, url string) {
 		if ok = host[:3] == www; ok {
 			url = scheme + "://" + host[4:] + uri
 		}
@@ -143,7 +143,7 @@ func redirect(config RedirectConfig, cb redirectLogic) echo.MiddlewareFunc {
 
 			req, scheme := c.Request(), c.Scheme()
 			host := req.Host
-			if ok, url := cb(c.IsTLS(), scheme, host, req.RequestURI); ok {
+			if ok, url := cb(scheme, host, req.RequestURI); ok {
 				return c.Redirect(config.Code, url)
 			}
 
