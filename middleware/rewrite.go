@@ -15,7 +15,7 @@ type (
 
 		// Rules defines the URL path rewrite rules. The values captured in asterisk can be
 		// retrieved by index e.g. $1, $2 and so on.
-		// Examples:
+		// Example:
 		// "/old":              "/new",
 		// "/api/*":            "/$1",
 		// "/js/*":             "/public/javascripts/$1",
