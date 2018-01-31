@@ -274,13 +274,6 @@ func (c *context) Param(name string) string {
 			if n == name {
 				return c.pvalues[i]
 			}
-
-			// Param name with aliases
-			for _, p := range strings.Split(n, ",") {
-				if p == name {
-					return c.pvalues[i]
-				}
-			}
 		}
 	}
 	return ""
