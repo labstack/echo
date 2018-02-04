@@ -26,7 +26,7 @@
 
 ## Performance
 
-<img src="https://api.labstack.com/chart/bar?values=20015,39584,7282,11276&labels=Static,GitHub%20API,Parse%20API,Google%20Plus%20API&x_title=Route&y_title=Time%20(ns/op)&colors=c" width=500 height=400>
+<img src="https://api.labstack.com/chart/bar?values=20015,39584,7282,11276&labels=Static,GitHub%20API,Parse%20API,Google%20Plus%20API&x_title=Route&y_title=Time%20(ns/op)&colors=c&dpi=100">
 
 ## [Guide](https://echo.labstack.com/guide)
 
