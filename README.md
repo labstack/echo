@@ -65,12 +65,10 @@ func hello(c echo.Context) error {
 }
 ```
 
-## Support Us
+## Help
 
-- :star: the project
-- [Donate](https://echo.labstack.com/support-echo)
-- :earth_americas: spread the word
-- [Contribute](#contribute) to the project
+- [Forum](https://forum.labstack.com)
+- [Chat](https://gitter.im/labstack/echo)
 
 ## Contribute
 
