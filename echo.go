@@ -251,10 +251,10 @@ var (
 	ErrForbidden                   = NewHTTPError(http.StatusForbidden)
 	ErrMethodNotAllowed            = NewHTTPError(http.StatusMethodNotAllowed)
 	ErrStatusRequestEntityTooLarge = NewHTTPError(http.StatusRequestEntityTooLarge)
-	ErrValidatorNotRegistered      = errors.New("Validator not registered")
-	ErrRendererNotRegistered       = errors.New("Renderer not registered")
-	ErrInvalidRedirectCode         = errors.New("Invalid redirect status code")
-	ErrCookieNotFound              = errors.New("Cookie not found")
+	ErrValidatorNotRegistered      = errors.New("validator not registered")
+	ErrRendererNotRegistered       = errors.New("renderer not registered")
+	ErrInvalidRedirectCode         = errors.New("invalid redirect status code")
+	ErrCookieNotFound              = errors.New("cookie not found")
 )
 
 // Error handlers
@@ -506,7 +506,7 @@ func (e *Echo) URL(h HandlerFunc, params ...interface{}) string {
 
 // Reverse generates an URL from route name and provided parameters.
 func (e *Echo) Reverse(name string, params ...interface{}) string {
-	uri := new(bytes.Buffer)
+	uri := bytes.NewBuffer(nil)
 	ln := len(params)
 	n := 0
 	for _, r := range e.router.routes {
@@ -530,7 +530,7 @@ func (e *Echo) Reverse(name string, params ...interface{}) string {
 
 // Routes returns the registered routes.
 func (e *Echo) Routes() []*Route {
-	routes := []*Route{}
+	routes := make([]*Route, 0, len(e.router.routes))
 	for _, v := range e.router.routes {
 		routes = append(routes, v)
 	}
@@ -563,11 +563,11 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Middleware
 	h := func(c Context) error {
 		method := r.Method
-		path := r.URL.RawPath
-		if path == "" {
-			path = r.URL.Path
+		rawPath := r.URL.RawPath
+		if rawPath == "" {
+			rawPath = r.URL.Path
 		}
-		e.router.Find(method, path, c)
+		e.router.Find(method, rawPath, c)
 		h := c.Handler()
 		for i := len(e.middleware) - 1; i >= 0; i-- {
 			h = e.middleware[i](h)

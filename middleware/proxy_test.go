@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"testing"
-
 	"net/url"
+	"testing"
 
 	"github.com/labstack/echo"
 	"github.com/stretchr/testify/assert"
@@ -48,10 +47,10 @@ func TestProxy(t *testing.T) {
 	url2, _ := url.Parse(t2.URL)
 
 	targets := []*ProxyTarget{
-		&ProxyTarget{
+		{
 			URL: url1,
 		},
-		&ProxyTarget{
+		{
 			URL: url2,
 		},
 	}

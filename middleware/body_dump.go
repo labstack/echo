@@ -3,11 +3,10 @@ package middleware
 import (
 	"bufio"
 	"bytes"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
-
-	"io"
 
 	"github.com/labstack/echo"
 )
@@ -67,7 +66,7 @@ func BodyDumpWithConfig(config BodyDumpConfig) echo.MiddlewareFunc {
 			}
 
 			// Request
-			reqBody := []byte{}
+			var reqBody []byte
 			if c.Request().Body != nil { // Read
 				reqBody, _ = ioutil.ReadAll(c.Request().Body)
 			}

@@ -124,7 +124,7 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 
 			req := c.Request()
 			k, err := c.Cookie(config.CookieName)
-			token := ""
+			var token string
 
 			if err != nil {
 				// Generate token
