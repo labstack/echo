@@ -9,8 +9,11 @@ import (
 	"strings"
 	"testing"
 
+	"encoding/json"
 	"github.com/labstack/echo"
 	"github.com/stretchr/testify/assert"
+	"time"
+	"unsafe"
 )
 
 func TestLogger(t *testing.T) {
@@ -136,4 +139,35 @@ func TestLoggerTemplate(t *testing.T) {
 	for token, present := range cases {
 		assert.True(t, strings.Contains(buf.String(), token) == present, "Case: "+token)
 	}
+}
+
+func TestLoggerCustomTimestamp(t *testing.T) {
+	buf := new(bytes.Buffer)
+	customTimestampFormat := "2006-01-02 15:04:05.00000"
+	e := echo.New()
+	e.Use(LoggerWithConfig(LoggerConfig{
+		Format: `{"time":"${time_custom}","id":"${id}","remote_ip":"${remote_ip}","host":"${host}","user_agent":"${user_agent}",` +
+			`"method":"${method}","uri":"${uri}","status":${status}, "latency":${latency},` +
+			`"latency_human":"${latency_human}","bytes_in":${bytes_in}, "path":"${path}", "referer":"${referer}",` +
+			`"bytes_out":${bytes_out},"ch":"${header:X-Custom-Header}",` +
+			`"us":"${query:username}", "cf":"${form:username}", "session":"${cookie:session}"}` + "\n",
+		CustomTimestampFormat: customTimestampFormat,
+		Output:                buf,
+	}))
+
+	e.GET("/", func(c echo.Context) error {
+		return c.String(http.StatusOK, "custom time stamp test")
+	})
+
+	req := httptest.NewRequest(echo.GET, "/", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	var objs map[string]*json.RawMessage
+	if err := json.Unmarshal([]byte(buf.String()), &objs); err != nil {
+		panic(err)
+	}
+	loggedTime := *(*string)(unsafe.Pointer(objs["time"]))
+	_, err := time.Parse(customTimestampFormat, loggedTime)
+	assert.Error(t, err)
 }

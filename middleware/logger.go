@@ -46,7 +46,8 @@ type (
 		// Example "${remote_ip} ${status}"
 		//
 		// Optional. Default value DefaultLoggerConfig.Format.
-		Format string `yaml:"format"`
+		Format                string `yaml:"format"`
+		CustomTimestampFormat string `yaml:"custom_timestamp_format"`
 
 		// Output is a writer where logs in JSON format are written.
 		// Optional. Default value os.Stdout.
@@ -126,6 +127,8 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 					return buf.WriteString(time.Now().Format(time.RFC3339))
 				case "time_rfc3339_nano":
 					return buf.WriteString(time.Now().Format(time.RFC3339Nano))
+				case "time_custom":
+					return buf.WriteString(time.Now().Format(config.CustomTimestampFormat))
 				case "id":
 					id := req.Header.Get(echo.HeaderXRequestID)
 					if id == "" {
