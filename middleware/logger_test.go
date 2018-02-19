@@ -143,7 +143,7 @@ func TestLoggerTemplate(t *testing.T) {
 
 func TestLoggerCustomTimestamp(t *testing.T) {
 	buf := new(bytes.Buffer)
-	customTimestampFormat := "2006-01-02 15:04:05.00000"
+	customTimeFormat := "2006-01-02 15:04:05.00000"
 	e := echo.New()
 	e.Use(LoggerWithConfig(LoggerConfig{
 		Format: `{"time":"${time_custom}","id":"${id}","remote_ip":"${remote_ip}","host":"${host}","user_agent":"${user_agent}",` +
@@ -151,7 +151,7 @@ func TestLoggerCustomTimestamp(t *testing.T) {
 			`"latency_human":"${latency_human}","bytes_in":${bytes_in}, "path":"${path}", "referer":"${referer}",` +
 			`"bytes_out":${bytes_out},"ch":"${header:X-Custom-Header}",` +
 			`"us":"${query:username}", "cf":"${form:username}", "session":"${cookie:session}"}` + "\n",
-		CustomTimestampFormat: customTimestampFormat,
+		CustomTimeFormat: customTimeFormat,
 		Output:                buf,
 	}))
 
@@ -168,6 +168,6 @@ func TestLoggerCustomTimestamp(t *testing.T) {
 		panic(err)
 	}
 	loggedTime := *(*string)(unsafe.Pointer(objs["time"]))
-	_, err := time.Parse(customTimestampFormat, loggedTime)
+	_, err := time.Parse(customTimeFormat, loggedTime)
 	assert.Error(t, err)
 }
