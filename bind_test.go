@@ -135,7 +135,7 @@ func TestBindForm(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	req.Header.Set(HeaderContentType, MIMEApplicationForm)
-	var obj []struct{ Field string }
+	obj := []struct{ Field string }{}
 	err := c.Bind(&obj)
 	assert.Error(t, err)
 }
