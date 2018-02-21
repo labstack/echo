@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"testing"
-
 	"net/url"
+	"testing"
 
 	"github.com/labstack/echo"
 	"github.com/stretchr/testify/assert"
@@ -48,14 +47,25 @@ func TestProxy(t *testing.T) {
 	url2, _ := url.Parse(t2.URL)
 
 	targets := []*ProxyTarget{
-		&ProxyTarget{
-			URL: url1,
+		{
+			Name: "target 1",
+			URL:  url1,
 		},
-		&ProxyTarget{
-			URL: url2,
+		{
+			Name: "target 2",
+			URL:  url2,
 		},
 	}
-	rb := NewRandomBalancer(targets)
+	rb := NewRandomBalancer(nil)
+	// must add targets:
+	for _, target := range targets {
+		assert.True(t, rb.AddTarget(target))
+	}
+
+	// must ignore duplicates:
+	for _, target := range targets {
+		assert.False(t, rb.AddTarget(target))
+	}
 
 	// Random
 	e := echo.New()
@@ -71,6 +81,12 @@ func TestProxy(t *testing.T) {
 	assert.Condition(t, func() bool {
 		return expected[body]
 	})
+
+	for _, target := range targets {
+		assert.True(t, rb.RemoveTarget(target.Name))
+	}
+
+	assert.False(t, rb.RemoveTarget("unknown target"))
 
 	// Round-robin
 	rrb := NewRoundRobinBalancer(targets)

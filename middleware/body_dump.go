@@ -3,11 +3,10 @@ package middleware
 import (
 	"bufio"
 	"bytes"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
-
-	"io"
 
 	"github.com/labstack/echo"
 )

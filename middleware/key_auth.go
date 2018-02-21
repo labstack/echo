@@ -114,14 +114,14 @@ func keyFromHeader(header string, authScheme string) keyExtractor {
 	return func(c echo.Context) (string, error) {
 		auth := c.Request().Header.Get(header)
 		if auth == "" {
-			return "", errors.New("Missing key in request header")
+			return "", errors.New("missing key in request header")
 		}
 		if header == echo.HeaderAuthorization {
 			l := len(authScheme)
 			if len(auth) > l+1 && auth[:l] == authScheme {
 				return auth[l+1:], nil
 			}
-			return "", errors.New("Invalid key in the request header")
+			return "", errors.New("invalid key in the request header")
 		}
 		return auth, nil
 	}
@@ -132,7 +132,7 @@ func keyFromQuery(param string) keyExtractor {
 	return func(c echo.Context) (string, error) {
 		key := c.QueryParam(param)
 		if key == "" {
-			return "", errors.New("Missing key in the query string")
+			return "", errors.New("missing key in the query string")
 		}
 		return key, nil
 	}
@@ -143,7 +143,7 @@ func keyFromForm(param string) keyExtractor {
 	return func(c echo.Context) (string, error) {
 		key := c.FormValue(param)
 		if key == "" {
-			return "", errors.New("Missing key in the form")
+			return "", errors.New("missing key in the form")
 		}
 		return key, nil
 	}

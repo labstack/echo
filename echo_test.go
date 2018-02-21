@@ -2,15 +2,12 @@ package echo
 
 import (
 	"bytes"
+	"errors"
 	"net/http"
 	"net/http/httptest"
-	"testing"
-
 	"reflect"
 	"strings"
-
-	"errors"
-
+	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
