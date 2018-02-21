@@ -66,7 +66,7 @@ func BodyDumpWithConfig(config BodyDumpConfig) echo.MiddlewareFunc {
 			}
 
 			// Request
-			var reqBody []byte
+			reqBody := []byte{}
 			if c.Request().Body != nil { // Read
 				reqBody, _ = ioutil.ReadAll(c.Request().Body)
 			}
