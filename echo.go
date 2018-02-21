@@ -563,7 +563,7 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Middleware
 	h := func(c Context) error {
 		method := r.Method
-		rpath := r.URL.RawPath // raw path
+		rpath := r.URL.RawPath // Raw path
 		if rpath == "" {
 			rpath = r.URL.Path
 		}

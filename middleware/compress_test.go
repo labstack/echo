@@ -93,7 +93,7 @@ func TestGzipWithStatic(t *testing.T) {
 	defer r.Close()
 	want, err := ioutil.ReadFile("../_fixture/images/walle.png")
 	if assert.NoError(t, err) {
-		var buf bytes.Buffer
+		buf := new(bytes.Buffer)
 		buf.ReadFrom(r)
 		assert.Equal(t, want, buf.Bytes())
 	}

@@ -124,8 +124,7 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 
 			req := c.Request()
 			k, err := c.Cookie(config.CookieName)
-
-			var token string
+			token := ""
 
 			// Generate token
 			if err != nil {
@@ -144,7 +143,7 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 					return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 				}
 				if !validateCSRFToken(token, clientToken) {
-					return echo.NewHTTPError(http.StatusForbidden, "Invalid csrf token")
+					return echo.NewHTTPError(http.StatusForbidden, "invalid csrf token")
 				}
 			}
 
