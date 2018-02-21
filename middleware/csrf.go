@@ -187,7 +187,7 @@ func csrfTokenFromForm(param string) csrfTokenExtractor {
 	return func(c echo.Context) (string, error) {
 		token := c.FormValue(param)
 		if token == "" {
-			return "", errors.New("Missing csrf token in the form parameter")
+			return "", errors.New("missing csrf token in the form parameter")
 		}
 		return token, nil
 	}
@@ -199,7 +199,7 @@ func csrfTokenFromQuery(param string) csrfTokenExtractor {
 	return func(c echo.Context) (string, error) {
 		token := c.QueryParam(param)
 		if token == "" {
-			return "", errors.New("Missing csrf token in the query string")
+			return "", errors.New("missing csrf token in the query string")
 		}
 		return token, nil
 	}

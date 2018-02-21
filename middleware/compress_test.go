@@ -37,7 +37,7 @@ func TestGzip(t *testing.T) {
 	r, err := gzip.NewReader(rec.Body)
 	defer r.Close()
 	if assert.NoError(t, err) {
-		buf := new(bytes.Buffer)
+		buf := bytes.NewBuffer(nil)
 		buf.ReadFrom(r)
 		assert.Equal(t, "test", buf.String())
 	}

@@ -108,15 +108,15 @@ func proxyRaw(t *ProxyTarget, c echo.Context) http.Handler {
 			return
 		}
 
-		errChan := make(chan error, 2)
+		errCh := make(chan error, 2)
 		cp := func(dst io.Writer, src io.Reader) {
 			_, errCopy := io.Copy(dst, src)
-			errChan <- errCopy
+			errCh <- errCopy
 		}
 
 		go cp(out, in)
 		go cp(in, out)
-		err = <-errChan
+		err = <-errCh
 		if err != nil && err != io.EOF {
 			c.Logger().Errorf("proxy raw, copy body error=%v, url=%s", t.URL, err)
 		}

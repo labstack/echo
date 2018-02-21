@@ -190,7 +190,7 @@ func TestBindUnmarshalParamPtr(t *testing.T) {
 }
 
 func TestBindMultipartForm(t *testing.T) {
-	body := new(bytes.Buffer)
+	body := bytes.NewBuffer(nil)
 	mw := multipart.NewWriter(body)
 	mw.WriteField("id", "1")
 	mw.WriteField("name", "Jon Snow")

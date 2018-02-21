@@ -57,7 +57,7 @@ func TestLoggerIPAddress(t *testing.T) {
 	req := httptest.NewRequest(echo.GET, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	buf := new(bytes.Buffer)
+	buf := bytes.NewBuffer(nil)
 	e.Logger.SetOutput(buf)
 	ip := "127.0.0.1"
 	h := Logger()(func(c echo.Context) error {
@@ -82,7 +82,7 @@ func TestLoggerIPAddress(t *testing.T) {
 }
 
 func TestLoggerTemplate(t *testing.T) {
-	buf := new(bytes.Buffer)
+	buf := bytes.NewBuffer(nil)
 
 	e := echo.New()
 	e.Use(LoggerWithConfig(LoggerConfig{

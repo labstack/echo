@@ -80,7 +80,7 @@ func (b *DefaultBinder) bindData(ptr interface{}, data map[string][]string, tag 
 	val := reflect.ValueOf(ptr).Elem()
 
 	if typ.Kind() != reflect.Struct {
-		return errors.New("Binding element must be a struct")
+		return errors.New("binding element must be a struct")
 	}
 
 	for i := 0; i < typ.NumField(); i++ {
