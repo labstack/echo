@@ -124,14 +124,13 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 
 			req := c.Request()
 			k, err := c.Cookie(config.CookieName)
-			var token string
 
+			// Reuse token
+			token := k.Value
+
+			// Generate token
 			if err != nil {
-				// Generate token
 				token = random.String(config.TokenLength)
-			} else {
-				// Reuse token
-				token = k.Value
 			}
 
 			switch req.Method {
