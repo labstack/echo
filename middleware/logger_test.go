@@ -2,18 +2,18 @@ package middleware
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
-
-	"encoding/json"
-	"github.com/labstack/echo"
-	"github.com/stretchr/testify/assert"
 	"time"
 	"unsafe"
+
+	"github.com/labstack/echo"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestLogger(t *testing.T) {
@@ -152,7 +152,7 @@ func TestLoggerCustomTimestamp(t *testing.T) {
 			`"bytes_out":${bytes_out},"ch":"${header:X-Custom-Header}",` +
 			`"us":"${query:username}", "cf":"${form:username}", "session":"${cookie:session}"}` + "\n",
 		CustomTimeFormat: customTimeFormat,
-		Output:                buf,
+		Output:           buf,
 	}))
 
 	e.GET("/", func(c echo.Context) error {
