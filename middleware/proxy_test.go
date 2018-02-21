@@ -48,13 +48,18 @@ func TestProxy(t *testing.T) {
 
 	targets := []*ProxyTarget{
 		{
-			URL: url1,
+			Name: "target 1",
+			URL:  url1,
 		},
 		{
-			URL: url2,
+			Name: "target 2",
+			URL:  url2,
 		},
 	}
-	rb := NewRandomBalancer(targets)
+	rb := NewRandomBalancer(nil)
+	for _, target := range targets {
+		assert.True(t, rb.AddTarget(target))
+	}
 
 	// Random
 	e := echo.New()
@@ -70,6 +75,12 @@ func TestProxy(t *testing.T) {
 	assert.Condition(t, func() bool {
 		return expected[body]
 	})
+
+	for _, target := range targets {
+		assert.True(t, rb.RemoveTarget(target.Name))
+	}
+
+	assert.False(t, rb.RemoveTarget("unknown target"))
 
 	// Round-robin
 	rrb := NewRoundRobinBalancer(targets)
