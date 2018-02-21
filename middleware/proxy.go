@@ -110,8 +110,8 @@ func proxyRaw(t *ProxyTarget, c echo.Context) http.Handler {
 
 		errCh := make(chan error, 2)
 		cp := func(dst io.Writer, src io.Reader) {
-			_, errCopy := io.Copy(dst, src)
-			errCh <- errCopy
+			_, err = io.Copy(dst, src)
+			errCh <- err
 		}
 
 		go cp(out, in)
