@@ -60,7 +60,7 @@ func (r *Router) Add(method, path string, h HandlerFunc) {
 		path = "/" + path
 	}
 	ppath := path       // Pristine path
-	var pNames []string // Param names
+	var pnames []string // Param names
 
 	for i, l := 0, len(path); i < l; i++ {
 		if path[i] == ':' {
@@ -70,24 +70,24 @@ func (r *Router) Add(method, path string, h HandlerFunc) {
 			for ; i < l && path[i] != '/'; i++ {
 			}
 
-			pNames = append(pNames, path[j:i])
+			pnames = append(pnames, path[j:i])
 			path = path[:j] + path[i:]
 			i, l = j, len(path)
 
 			if i == l {
-				r.insert(method, path[:i], h, pkind, ppath, pNames)
+				r.insert(method, path[:i], h, pkind, ppath, pnames)
 				return
 			}
-			r.insert(method, path[:i], nil, pkind, ppath, pNames)
+			r.insert(method, path[:i], nil, pkind, ppath, pnames)
 		} else if path[i] == '*' {
 			r.insert(method, path[:i], nil, skind, "", nil)
-			pNames = append(pNames, "*")
-			r.insert(method, path[:i+1], h, akind, ppath, pNames)
+			pnames = append(pnames, "*")
+			r.insert(method, path[:i+1], h, akind, ppath, pnames)
 			return
 		}
 	}
 
-	r.insert(method, path, h, skind, ppath, pNames)
+	r.insert(method, path, h, skind, ppath, pnames)
 }
 
 func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string, pnames []string) {
