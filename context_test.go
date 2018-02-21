@@ -345,7 +345,7 @@ func TestContextQueryParam(t *testing.T) {
 
 func TestContextFormFile(t *testing.T) {
 	e := New()
-	buf := bytes.NewBuffer(nil)
+	buf := new(bytes.Buffer)
 	mr := multipart.NewWriter(buf)
 	w, err := mr.CreateFormFile("file", "test")
 	if assert.NoError(t, err) {
@@ -364,7 +364,7 @@ func TestContextFormFile(t *testing.T) {
 
 func TestContextMultipartForm(t *testing.T) {
 	e := New()
-	buf := bytes.NewBuffer(nil)
+	buf := new(bytes.Buffer)
 	mw := multipart.NewWriter(buf)
 	mw.WriteField("name", "Jon Snow")
 	mw.Close()
@@ -399,7 +399,7 @@ func TestContextStore(t *testing.T) {
 func TestContextHandler(t *testing.T) {
 	e := New()
 	r := e.Router()
-	b := bytes.NewBuffer(nil)
+	b := new(bytes.Buffer)
 
 	r.Add(GET, "/handler", func(Context) error {
 		_, err := b.Write([]byte("handler"))

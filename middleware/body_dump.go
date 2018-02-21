@@ -73,7 +73,7 @@ func BodyDumpWithConfig(config BodyDumpConfig) echo.MiddlewareFunc {
 			c.Request().Body = ioutil.NopCloser(bytes.NewBuffer(reqBody)) // Reset
 
 			// Response
-			resBody := bytes.NewBuffer(nil)
+			resBody := new(bytes.Buffer)
 			mw := io.MultiWriter(c.Response().Writer, resBody)
 			writer := &bodyDumpResponseWriter{Writer: mw, ResponseWriter: c.Response().Writer}
 			c.Response().Writer = writer

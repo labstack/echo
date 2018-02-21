@@ -378,7 +378,7 @@ func (c *context) Render(code int, name string, data interface{}) (err error) {
 	if c.echo.Renderer == nil {
 		return ErrRendererNotRegistered
 	}
-	buf := bytes.NewBuffer(nil)
+	buf := new(bytes.Buffer)
 	if err = c.echo.Renderer.Render(buf, name, data, c); err != nil {
 		return
 	}

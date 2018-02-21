@@ -36,7 +36,7 @@ func TestGzip(t *testing.T) {
 	assert.Contains(t, rec.Header().Get(echo.HeaderContentType), echo.MIMETextPlain)
 	r, err := gzip.NewReader(rec.Body)
 	if assert.NoError(t, err) {
-		buf := bytes.NewBuffer(nil)
+		buf := new(bytes.Buffer)
 		defer r.Close()
 		buf.ReadFrom(r)
 		assert.Equal(t, "test", buf.String())

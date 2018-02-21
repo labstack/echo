@@ -92,7 +92,7 @@ func TestEchoFile(t *testing.T) {
 
 func TestEchoMiddleware(t *testing.T) {
 	e := New()
-	buf := bytes.NewBuffer(nil)
+	buf := new(bytes.Buffer)
 
 	e.Pre(func(next HandlerFunc) HandlerFunc {
 		return func(c Context) error {
@@ -179,7 +179,7 @@ func TestEchoWrapMiddleware(t *testing.T) {
 	req := httptest.NewRequest(GET, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	buf := bytes.NewBuffer(nil)
+	buf := new(bytes.Buffer)
 	mw := WrapMiddleware(func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			buf.Write([]byte("mw"))
@@ -316,7 +316,7 @@ func TestEchoEncodedPath(t *testing.T) {
 
 func TestEchoGroup(t *testing.T) {
 	e := New()
-	buf := bytes.NewBuffer(nil)
+	buf := new(bytes.Buffer)
 	e.Use(MiddlewareFunc(func(next HandlerFunc) HandlerFunc {
 		return func(c Context) error {
 			buf.WriteString("0")

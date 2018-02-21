@@ -12,7 +12,7 @@ import (
 
 func TestRecover(t *testing.T) {
 	e := echo.New()
-	buf := bytes.NewBuffer(nil)
+	buf := new(bytes.Buffer)
 	e.Logger.SetOutput(buf)
 	req := httptest.NewRequest(echo.GET, "/", nil)
 	rec := httptest.NewRecorder()
