@@ -563,11 +563,11 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Middleware
 	h := func(c Context) error {
 		method := r.Method
-		rawPath := r.URL.RawPath
-		if rawPath == "" {
-			rawPath = r.URL.Path
+		rpath := r.URL.RawPath // raw path
+		if rpath == "" {
+			rpath = r.URL.Path
 		}
-		e.router.Find(method, rawPath, c)
+		e.router.Find(method, rpath, c)
 		h := c.Handler()
 		for i := len(e.middleware) - 1; i >= 0; i-- {
 			h = e.middleware[i](h)
