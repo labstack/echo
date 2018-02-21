@@ -31,6 +31,19 @@ func TestBasicAuth(t *testing.T) {
 	req.Header.Set(echo.HeaderAuthorization, auth)
 	assert.NoError(t, h(c))
 
+	h = BasicAuthWithConfig(BasicAuthConfig{
+		Skipper:   nil,
+		Validator: f,
+		Realm:     "someRealm",
+	})(func(c echo.Context) error {
+		return c.String(http.StatusOK, "test")
+	})
+
+	// Valid credentials
+	auth = basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:secret"))
+	req.Header.Set(echo.HeaderAuthorization, auth)
+	assert.NoError(t, h(c))
+
 	// Case-insensitive header scheme
 	auth = strings.ToUpper(basic) + " " + base64.StdEncoding.EncodeToString([]byte("joe:secret"))
 	req.Header.Set(echo.HeaderAuthorization, auth)
@@ -41,7 +54,7 @@ func TestBasicAuth(t *testing.T) {
 	req.Header.Set(echo.HeaderAuthorization, auth)
 	he := h(c).(*echo.HTTPError)
 	assert.Equal(t, http.StatusUnauthorized, he.Code)
-	assert.Equal(t, basic+" realm=Restricted", res.Header().Get(echo.HeaderWWWAuthenticate))
+	assert.Equal(t, basic+` realm="someRealm"`, res.Header().Get(echo.HeaderWWWAuthenticate))
 
 	// Missing Authorization header
 	req.Header.Del(echo.HeaderAuthorization)
