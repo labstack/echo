@@ -57,8 +57,14 @@ func TestProxy(t *testing.T) {
 		},
 	}
 	rb := NewRandomBalancer(nil)
+	// must add targets:
 	for _, target := range targets {
 		assert.True(t, rb.AddTarget(target))
+	}
+
+	// must ignore duplicates:
+	for _, target := range targets {
+		assert.False(t, rb.AddTarget(target))
 	}
 
 	// Random
