@@ -58,8 +58,8 @@ const (
 
 // Errors
 var (
-	ErrJWTMissing = echo.NewHTTPError(http.StatusBadRequest, "Missing or malformed jwt")
-	ErrJWTInvalid = echo.NewHTTPError(http.StatusUnauthorized, "Invalid or expired jwt")
+	ErrJWTMissing = echo.NewHTTPError(http.StatusBadRequest, "missing or malformed jwt")
+	ErrJWTInvalid = echo.NewHTTPError(http.StatusUnauthorized, "invalid or expired jwt")
 )
 
 var (
