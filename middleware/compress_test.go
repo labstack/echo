@@ -89,7 +89,9 @@ func TestGzipWithStatic(t *testing.T) {
 		assert.Equal(t, cl, rec.Body.Len())
 	}
 	r, err := gzip.NewReader(rec.Body)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
 	defer r.Close()
 	want, err := ioutil.ReadFile("../_fixture/images/walle.png")
 	if assert.NoError(t, err) {
