@@ -409,9 +409,32 @@ func TestEchoStart(t *testing.T) {
 func TestEchoStartTLS(t *testing.T) {
 	e := New()
 	go func() {
-		assert.NoError(t, e.StartTLS(":0", "_fixture/certs/cert.pem", "_fixture/certs/key.pem"))
+		err := e.StartTLS(":0", "_fixture/certs/cert.pem", "_fixture/certs/key.pem")
+		// Prevent the test to fail after closing the servers
+		if err != http.ErrServerClosed {
+			assert.NoError(t, err)
+		}
 	}()
 	time.Sleep(200 * time.Millisecond)
+
+	e.Close()
+}
+
+func TestEchoStartAutoTLS(t *testing.T) {
+	e := New()
+	errChan := make(chan error, 0)
+
+	go func() {
+		errChan <- e.StartAutoTLS(":0")
+	}()
+	time.Sleep(200 * time.Millisecond)
+
+	select {
+	case err := <-errChan:
+		assert.NoError(t, err)
+	default:
+		assert.NoError(t, e.Close())
+	}
 }
 
 func testMethod(t *testing.T, method, path string, e *Echo) {
