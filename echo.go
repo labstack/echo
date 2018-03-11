@@ -52,9 +52,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang/crypto/acme/autocert"
 	"github.com/labstack/gommon/color"
 	"github.com/labstack/gommon/log"
-	"golang.org/x/crypto/acme/autocert"
 )
 
 type (
