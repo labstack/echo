@@ -129,15 +129,16 @@ type (
 
 // HTTP methods
 const (
-	CONNECT = "CONNECT"
-	DELETE  = "DELETE"
-	GET     = "GET"
-	HEAD    = "HEAD"
-	OPTIONS = "OPTIONS"
-	PATCH   = "PATCH"
-	POST    = "POST"
-	PUT     = "PUT"
-	TRACE   = "TRACE"
+	CONNECT  = "CONNECT"
+	DELETE   = "DELETE"
+	GET      = "GET"
+	HEAD     = "HEAD"
+	OPTIONS  = "OPTIONS"
+	PATCH    = "PATCH"
+	POST     = "POST"
+	PROPFIND = "PROPFIND"
+	PUT      = "PUT"
+	TRACE    = "TRACE"
 )
 
 // MIME types
@@ -239,6 +240,7 @@ var (
 		OPTIONS,
 		PATCH,
 		POST,
+		PROPFIND,
 		PUT,
 		TRACE,
 	}
