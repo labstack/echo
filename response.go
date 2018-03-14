@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"net"
 	"net/http"
-	"strconv"
 )
 
 type (
@@ -12,14 +11,13 @@ type (
 	// by an HTTP handler to construct an HTTP response.
 	// See: https://golang.org/pkg/net/http/#ResponseWriter
 	Response struct {
-		echo          *Echo
-		contentLength int64
-		beforeFuncs   []func()
-		afterFuncs    []func()
-		Writer        http.ResponseWriter
-		Status        int
-		Size          int64
-		Committed     bool
+		echo        *Echo
+		beforeFuncs []func()
+		afterFuncs  []func()
+		Writer      http.ResponseWriter
+		Status      int
+		Size        int64
+		Committed   bool
 	}
 )
 
@@ -64,7 +62,6 @@ func (r *Response) WriteHeader(code int) {
 	r.Status = code
 	r.Writer.WriteHeader(code)
 	r.Committed = true
-	r.contentLength, _ = strconv.ParseInt(r.Header().Get(HeaderContentLength), 10, 0)
 }
 
 // Write writes the data to the connection as part of an HTTP reply.
@@ -74,10 +71,8 @@ func (r *Response) Write(b []byte) (n int, err error) {
 	}
 	n, err = r.Writer.Write(b)
 	r.Size += int64(n)
-	if r.Size == r.contentLength {
-		for _, fn := range r.afterFuncs {
-			fn()
-		}
+	for _, fn := range r.afterFuncs {
+		fn()
 	}
 	return
 }
@@ -106,7 +101,6 @@ func (r *Response) CloseNotify() <-chan bool {
 }
 
 func (r *Response) reset(w http.ResponseWriter) {
-	r.contentLength = 0
 	r.beforeFuncs = nil
 	r.afterFuncs = nil
 	r.Writer = w
