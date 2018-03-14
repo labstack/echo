@@ -560,7 +560,6 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Acquire context
 	c := e.pool.Get().(*context)
-	defer e.pool.Put(c)
 	c.Reset(r, w)
 
 	// Middleware
@@ -587,6 +586,9 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err := h(c); err != nil {
 		e.HTTPErrorHandler(err, c)
 	}
+
+	// Release context
+	e.pool.Put(c)
 }
 
 // Start starts an HTTP server.
