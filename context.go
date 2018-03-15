@@ -213,7 +213,7 @@ var (
 
 func (c *context) writeContentType(value string) {
 	header := c.Response().Header()
-	if header.Get(HeaderContentType) != "" {
+	if header.Get(HeaderContentType) == "" {
 		header.Set(HeaderContentType, value)
 	}
 }
