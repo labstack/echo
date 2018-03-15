@@ -81,8 +81,7 @@ type (
 		Binder           Binder
 		Validator        Validator
 		Renderer         Renderer
-		// Mutex            sync.RWMutex
-		Logger Logger
+		Logger           Logger
 	}
 
 	// Route contains a handler and information for matching against requests.
@@ -554,10 +553,6 @@ func (e *Echo) ReleaseContext(c Context) {
 
 // ServeHTTP implements `http.Handler` interface, which serves HTTP requests.
 func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// Acquire lock
-	// e.Mutex.RLock()
-	// defer e.Mutex.RUnlock()
-
 	// Acquire context
 	c := e.pool.Get().(*context)
 	c.Reset(r, w)
@@ -565,11 +560,11 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Middleware
 	h := func(c Context) error {
 		method := r.Method
-		rpath := r.URL.RawPath // Raw path
-		if rpath == "" {
-			rpath = r.URL.Path
+		path := r.URL.RawPath
+		if path == "" {
+			path = r.URL.Path
 		}
-		e.router.Find(method, rpath, c)
+		e.router.Find(method, path, c)
 		h := c.Handler()
 		for i := len(e.middleware) - 1; i >= 0; i-- {
 			h = e.middleware[i](h)
