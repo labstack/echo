@@ -26,9 +26,11 @@
 - Automatic TLS via Let’s Encrypt
 - HTTP/2 support
 
-## Performance
+## Benchmarks
 
-<img src="https://api.labstack.com/chart/bar?values=20015,39584,7282,11276&labels=Static,GitHub%20API,Parse%20API,Google%20Plus%20API&x_title=Route&y_title=Time%20(ns/op)&colors=c&dpi=100">
+<img src="https://api.labstack.com/chart/bar?values=37223,55382,2985,5265|42013,59865,3350,6424&labels=Static,GitHub%20API,Parse%20API,Gplus%20API&titles=Echo,Gin&colors=lightseagreen,goldenrod&x_title=Routes&y_title=ns/op">
+
+Less is better
 
 ## [Guide](https://echo.labstack.com/guide)
 
