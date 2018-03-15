@@ -28,11 +28,11 @@
 
 ## Benchmarks
 
-2018/03/15 based on https://github.com/vishr/web-framework-benchmark
+Date: 2018/03/15<br>
+Source: https://github.com/vishr/web-framework-benchmark<br>
+Less is better!
 
 <img src="https://api.labstack.com/chart/bar?values=37223,55382,2985,5265|42013,59865,3350,6424&labels=Static,GitHub%20API,Parse%20API,Gplus%20API&titles=Echo,Gin&colors=lightseagreen,goldenrod&x_title=Routes&y_title=ns/op">
-
-Less is better
 
 ## [Guide](https://echo.labstack.com/guide)
 
