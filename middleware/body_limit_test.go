@@ -51,3 +51,33 @@ func TestBodyLimit(t *testing.T) {
 	he = BodyLimit("2B")(h)(c).(*echo.HTTPError)
 	assert.Equal(t, http.StatusRequestEntityTooLarge, he.Code)
 }
+
+func TestBodyLimitReader(t *testing.T) {
+	hw := []byte("Hello, World!")
+	e := echo.New()
+	req := httptest.NewRequest(echo.POST, "/", bytes.NewReader(hw))
+	rec := httptest.NewRecorder()
+
+	config := BodyLimitConfig{
+		Skipper: DefaultSkipper,
+		Limit:   "2B",
+		limit:   2,
+	}
+	reader := &limitedReader{
+		BodyLimitConfig: config,
+		reader:          ioutil.NopCloser(bytes.NewReader(hw)),
+		context:         e.NewContext(req, rec),
+	}
+
+	// read all should return ErrStatusRequestEntityTooLarge
+	_, err := ioutil.ReadAll(reader)
+	he := err.(*echo.HTTPError)
+	assert.Equal(t, http.StatusRequestEntityTooLarge, he.Code)
+
+	// reset reader and read two bytes must succeed
+	bt := make([]byte, 2)
+	reader.Reset(ioutil.NopCloser(bytes.NewReader(hw)), e.NewContext(req, rec))
+	n, err := reader.Read(bt)
+	assert.Equal(t, 2, n)
+	assert.Equal(t, nil, err)
+}
