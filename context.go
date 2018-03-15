@@ -211,6 +211,13 @@ var (
 	jsoni = jsoniter.ConfigCompatibleWithStandardLibrary
 )
 
+func (c *context) writeContentType(value string) {
+	header := c.Response().Header()
+	if header.Get(HeaderContentType) != "" {
+		header.Set(HeaderContentType, value)
+	}
+}
+
 func (c *context) Request() *http.Request {
 	return c.request
 }
@@ -435,7 +442,7 @@ func (c *context) JSONP(code int, callback string, i interface{}) (err error) {
 }
 
 func (c *context) JSONPBlob(code int, callback string, b []byte) (err error) {
-	c.response.Header().Set(HeaderContentType, MIMEApplicationJavaScriptCharsetUTF8)
+	c.writeContentType(MIMEApplicationJavaScriptCharsetUTF8)
 	c.response.WriteHeader(code)
 	if _, err = c.response.Write([]byte(callback + "(")); err != nil {
 		return
@@ -468,7 +475,7 @@ func (c *context) XMLPretty(code int, i interface{}, indent string) (err error) 
 }
 
 func (c *context) XMLBlob(code int, b []byte) (err error) {
-	c.response.Header().Set(HeaderContentType, MIMEApplicationXMLCharsetUTF8)
+	c.writeContentType(MIMEApplicationXMLCharsetUTF8)
 	c.response.WriteHeader(code)
 	if _, err = c.response.Write([]byte(xml.Header)); err != nil {
 		return
@@ -478,14 +485,14 @@ func (c *context) XMLBlob(code int, b []byte) (err error) {
 }
 
 func (c *context) Blob(code int, contentType string, b []byte) (err error) {
-	c.response.Header().Set(HeaderContentType, contentType)
+	c.writeContentType(contentType)
 	c.response.WriteHeader(code)
 	_, err = c.response.Write(b)
 	return
 }
 
 func (c *context) Stream(code int, contentType string, r io.Reader) (err error) {
-	c.response.Header().Set(HeaderContentType, contentType)
+	c.writeContentType(contentType)
 	c.response.WriteHeader(code)
 	_, err = io.Copy(c.response, r)
 	return
