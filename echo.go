@@ -557,24 +557,31 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c := e.pool.Get().(*context)
 	c.Reset(r, w)
 
-	// Middleware
-	h := func(c Context) error {
-		method := r.Method
-		path := r.URL.RawPath
-		if path == "" {
-			path = r.URL.Path
-		}
+	method := r.Method
+	path := r.URL.RawPath
+	if path == "" {
+		path = r.URL.Path
+	}
+	h := NotFoundHandler
+
+	if e.premiddleware == nil {
 		e.router.Find(method, path, c)
-		h := c.Handler()
+		h = c.Handler()
 		for i := len(e.middleware) - 1; i >= 0; i-- {
 			h = e.middleware[i](h)
 		}
-		return h(c)
-	}
-
-	// Premiddleware
-	for i := len(e.premiddleware) - 1; i >= 0; i-- {
-		h = e.premiddleware[i](h)
+	} else {
+		h = func(c Context) error {
+			e.router.Find(method, path, c)
+			h := c.Handler()
+			for i := len(e.middleware) - 1; i >= 0; i-- {
+				h = e.middleware[i](h)
+			}
+			return h(c)
+		}
+		for i := len(e.premiddleware) - 1; i >= 0; i-- {
+			h = e.premiddleware[i](h)
+		}
 	}
 
 	// Execute chain
