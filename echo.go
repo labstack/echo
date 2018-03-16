@@ -558,13 +558,13 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c.Reset(r, w)
 
 	method := r.Method
-	path := r.URL.RawPath
-	if path == "" {
-		path = r.URL.Path
-	}
 	h := NotFoundHandler
 
 	if e.premiddleware == nil {
+		path := r.URL.RawPath
+		if path == "" {
+			path = r.URL.Path
+		}
 		e.router.Find(method, path, c)
 		h = c.Handler()
 		for i := len(e.middleware) - 1; i >= 0; i-- {
@@ -572,6 +572,10 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		h = func(c Context) error {
+			path := r.URL.RawPath
+			if path == "" {
+				path = r.URL.Path
+			}
 			e.router.Find(method, path, c)
 			h := c.Handler()
 			for i := len(e.middleware) - 1; i >= 0; i-- {
