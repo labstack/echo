@@ -2,6 +2,7 @@ package echo
 
 import (
 	"bytes"
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -12,8 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/json-iterator/go"
 )
 
 type (
@@ -205,10 +204,6 @@ type (
 const (
 	defaultMemory = 32 << 20 // 32 MB
 	indexPage     = "index.html"
-)
-
-var (
-	jsoni = jsoniter.ConfigCompatibleWithStandardLibrary
 )
 
 func (c *context) writeContentType(value string) {
@@ -414,7 +409,7 @@ func (c *context) JSON(code int, i interface{}) (err error) {
 	if c.echo.Debug || pretty {
 		return c.JSONPretty(code, i, "  ")
 	}
-	b, err := jsoni.Marshal(i)
+	b, err := json.Marshal(i)
 	if err != nil {
 		return
 	}
@@ -422,7 +417,7 @@ func (c *context) JSON(code int, i interface{}) (err error) {
 }
 
 func (c *context) JSONPretty(code int, i interface{}, indent string) (err error) {
-	b, err := jsoni.MarshalIndent(i, "", indent)
+	b, err := json.MarshalIndent(i, "", indent)
 	if err != nil {
 		return
 	}
@@ -434,7 +429,7 @@ func (c *context) JSONBlob(code int, b []byte) (err error) {
 }
 
 func (c *context) JSONP(code int, callback string, i interface{}) (err error) {
-	b, err := jsoni.Marshal(i)
+	b, err := json.Marshal(i)
 	if err != nil {
 		return
 	}
