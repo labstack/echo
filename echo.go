@@ -557,7 +557,7 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c := e.pool.Get().(*context)
 	c.Reset(r, w)
 
-	method := r.Method
+	m := r.Method
 	h := NotFoundHandler
 
 	if e.premiddleware == nil {
@@ -565,7 +565,7 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if path == "" {
 			path = r.URL.Path
 		}
-		e.router.Find(method, path, c)
+		e.router.Find(m, getPath(r), c)
 		h = c.Handler()
 		for i := len(e.middleware) - 1; i >= 0; i-- {
 			h = e.middleware[i](h)
@@ -576,7 +576,7 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if path == "" {
 				path = r.URL.Path
 			}
-			e.router.Find(method, path, c)
+			e.router.Find(m, getPath(r), c)
 			h := c.Handler()
 			for i := len(e.middleware) - 1; i >= 0; i-- {
 				h = e.middleware[i](h)
@@ -711,6 +711,14 @@ func WrapMiddleware(m func(http.Handler) http.Handler) MiddlewareFunc {
 			return
 		}
 	}
+}
+
+func getPath(r *http.Request) string {
+	path := r.URL.RawPath
+	if path == "" {
+		path = r.URL.Path
+	}
+	return path
 }
 
 func handlerName(h HandlerFunc) string {

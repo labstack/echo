@@ -34,7 +34,7 @@ func TestRewrite(t *testing.T) {
 	assert.Equal(t, "/user/jack/order/1", req.URL.Path)
 }
 
-//Issue #1086
+// Issue #1086
 func TestEchoRewritePreMiddleware(t *testing.T) {
 	e := echo.New()
 	r := e.Router()
