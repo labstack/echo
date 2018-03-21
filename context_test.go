@@ -2,6 +2,7 @@ package echo
 
 import (
 	"bytes"
+	stdcontext "context"
 	"encoding/xml"
 	"errors"
 	"io"
@@ -409,4 +410,13 @@ func TestContextHandler(t *testing.T) {
 	r.Find(GET, "/handler", c)
 	c.Handler()(c)
 	assert.Equal(t, "handler", b.String())
+}
+
+func TestContextImplementsStdContext(t *testing.T) {
+	var _ stdcontext.Context = New().NewContext(nil, nil)
+	e := New()
+	c := e.NewContext(httptest.NewRequest("GET", "/", nil), nil)
+	c.WithValue("key", "red")
+	c.Value("key")
+	c.Value("notkey")
 }

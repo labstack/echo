@@ -2,6 +2,7 @@ package echo
 
 import (
 	"bytes"
+	stdcontext "context"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type (
@@ -186,6 +188,12 @@ type (
 		// with `Echo#AcquireContext()` and `Echo#ReleaseContext()`.
 		// See `Echo#ServeHTTP()`
 		Reset(r *http.Request, w http.ResponseWriter)
+
+		// WithValue sets a value with the given key by replacing the Request context with
+		// a new context.
+		WithValue(key, val interface{})
+
+		stdcontext.Context
 	}
 
 	context struct {
@@ -573,4 +581,24 @@ func (c *context) Reset(r *http.Request, w http.ResponseWriter) {
 	c.pnames = nil
 	// NOTE: Don't reset because it has to have length c.echo.maxParam at all times
 	// c.pvalues = nil
+}
+
+func (c *context) Deadline() (deadline time.Time, ok bool) {
+	return c.request.Context().Deadline()
+}
+
+func (c *context) Done() <-chan struct{} {
+	return c.request.Context().Done()
+}
+
+func (c *context) Err() error {
+	return c.request.Context().Err()
+}
+
+func (c *context) Value(key interface{}) interface{} {
+	return c.request.Context().Value(key)
+}
+
+func (c *context) WithValue(key, val interface{}) {
+	c.request = c.request.WithContext(stdcontext.WithValue(c.request.Context(), key, val))
 }
