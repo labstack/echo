@@ -65,6 +65,10 @@ type (
 		// QueryParam returns the query param for the provided name.
 		QueryParam(name string) string
 
+		// DefaultQueryParam returns the query param for the provided name if it exists,
+		// otherwise it returns the specified defaultValue string.
+		DefaultQueryParam(name, defaultValue string) string
+
 		// QueryParams returns the query parameters as `url.Values`.
 		QueryParams() url.Values
 
@@ -307,6 +311,13 @@ func (c *context) QueryParam(name string) string {
 		c.query = c.request.URL.Query()
 	}
 	return c.query.Get(name)
+}
+
+func (c *context) DefaultQueryParam(name, defaultValue string) string {
+	if value := c.QueryParam(name); len(value) > 0 {
+		return c.QueryParam(name)
+	}
+	return defaultValue
 }
 
 func (c *context) QueryParams() url.Values {
