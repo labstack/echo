@@ -215,7 +215,7 @@ const (
 )
 
 const (
-	version = "3.3.0"
+	Version = "3.3.0"
 	website = "https://echo.labstack.com"
 	// http://patorjk.com/software/taag/#p=display&f=Small%20Slant&t=Echo
 	banner = `
@@ -650,7 +650,7 @@ func (e *Echo) StartServer(s *http.Server) (err error) {
 	}
 
 	if !e.HideBanner {
-		e.colorer.Printf(banner, e.colorer.Red("v"+version), e.colorer.Blue(website))
+		e.colorer.Printf(banner, e.colorer.Red("v"+Version), e.colorer.Blue(website))
 	}
 
 	if s.TLSConfig == nil {
