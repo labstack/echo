@@ -2,6 +2,8 @@ package echo
 
 import (
 	"bytes"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lucas-clemente/quic-go/h2quic"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -434,6 +437,48 @@ func TestEchoStartAutoTLS(t *testing.T) {
 		assert.NoError(t, err)
 	default:
 		assert.NoError(t, e.Close())
+	}
+}
+
+func TestEchoStartQuic(t *testing.T) {
+	e := New()
+	errChan := make(chan error, 0)
+
+	s := e.TLSServer
+	s.TLSConfig = new(tls.Config)
+	s.TLSConfig.Certificates = make([]tls.Certificate, 1)
+	s.TLSConfig.Certificates[0] = *serverCert
+
+	e.Quic = true
+
+	go func() {
+		errChan <- e.startTLS("localhost:4430")
+	}()
+	time.Sleep(200 * time.Millisecond)
+
+	select {
+	case err := <-errChan:
+		assert.NoError(t, err)
+	default:
+		assert.NoError(t, e.Close())
+	}
+
+	cliCertPool := x509.NewCertPool()
+	cliCertPool.AddCert(xcaCert)
+	cliCertPool.AddCert(xserverCert)
+
+	cli := &http.Client{
+		Transport: &h2quic.RoundTripper{
+			TLSClientConfig: &tls.Config{
+				RootCAs: cliCertPool,
+				// InsecureSkipVerify: true,
+			},
+		},
+	}
+
+	_, respErr := cli.Get("https://localhost:4430/")
+	if respErr != nil {
+		assert.NoError(t, respErr)
 	}
 }
 

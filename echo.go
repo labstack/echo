@@ -645,7 +645,7 @@ func (e *Echo) startTLS(address string) error {
 	if !e.DisableHTTP2 {
 		s.TLSConfig.NextProtos = append(s.TLSConfig.NextProtos, "h2")
 		if e.Quic {
-			udpListener, openPacketErr := e.OpenQuicUDP()
+			udpListener, openPacketErr := e.OpenQuicUDP(address)
 			if openPacketErr != nil {
 				return openPacketErr
 			}
@@ -672,8 +672,7 @@ func (e *Echo) startTLS(address string) error {
 }
 
 // OpenQuicUDP creates udp connection for QUIC if it is enabled,
-func (e *Echo) OpenQuicUDP() (net.PacketConn, error) {
-	add := e.Server.Addr
+func (e *Echo) OpenQuicUDP(add string) (net.PacketConn, error) {
 	if add == "" {
 		add = ":443"
 	}
