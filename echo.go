@@ -54,6 +54,7 @@ import (
 
 	"github.com/labstack/gommon/color"
 	"github.com/labstack/gommon/log"
+	"github.com/lucas-clemente/quic-go/h2quic"
 	"golang.org/x/crypto/acme/autocert"
 )
 
@@ -70,6 +71,7 @@ type (
 		pool             sync.Pool
 		Server           *http.Server
 		TLSServer        *http.Server
+		QuicServer       *h2quic.Server
 		Listener         net.Listener
 		TLSListener      net.Listener
 		AutoTLSManager   autocert.Manager
@@ -77,6 +79,7 @@ type (
 		Debug            bool
 		HideBanner       bool
 		HidePort         bool
+		Quic             bool
 		HTTPErrorHandler HTTPErrorHandler
 		Binder           Binder
 		Validator        Validator
@@ -618,11 +621,17 @@ func (e *Echo) StartTLS(address string, certFile, keyFile string) (err error) {
 	return e.startTLS(address)
 }
 
-// StartAutoTLS starts an HTTPS server using certificates automatically installed from https://letsencrypt.org.
-func (e *Echo) StartAutoTLS(address string) error {
+func (e *Echo) startAutoTLSHTTPServer() {
 	if e.Listener == nil {
 		go http.ListenAndServe(":http", e.AutoTLSManager.HTTPHandler(nil))
+	} else {
+		log.Fatalf("HTTP server already running. Can't handle the HTTP-01 challenge")
 	}
+}
+
+// StartAutoTLS starts an HTTPS server using certificates automatically installed from https://letsencrypt.org.
+func (e *Echo) StartAutoTLS(address string) error {
+	e.startAutoTLSHTTPServer()
 
 	s := e.TLSServer
 	s.TLSConfig = new(tls.Config)
@@ -635,8 +644,45 @@ func (e *Echo) startTLS(address string) error {
 	s.Addr = address
 	if !e.DisableHTTP2 {
 		s.TLSConfig.NextProtos = append(s.TLSConfig.NextProtos, "h2")
+		if e.Quic {
+			udpListener, openPacketErr := e.OpenQuicUDP()
+			if openPacketErr != nil {
+				return openPacketErr
+			}
+
+			e.QuicServer = &h2quic.Server{Server: s}
+
+			e.Pre(func(next HandlerFunc) HandlerFunc {
+				return func(c Context) error {
+					e.QuicServer.SetQuicHeaders(c.Response().Writer.Header())
+					return next(c)
+				}
+			})
+
+			go func() {
+				if !e.HidePort {
+					e.colorer.Printf("⇨ quic server started on %s\n", e.colorer.Green(udpListener.LocalAddr()))
+				}
+				err := e.QuicServer.Serve(udpListener)
+				log.Fatalf("QUIC server failed to start: %s", err.Error())
+			}()
+		}
 	}
 	return e.StartServer(e.TLSServer)
+}
+
+// OpenQuicUDP creates udp connection for QUIC if it is enabled,
+func (e *Echo) OpenQuicUDP() (net.PacketConn, error) {
+	add := e.Server.Addr
+	if add == "" {
+		add = ":443"
+	}
+
+	udpAddr, err := net.ResolveUDPAddr("udp", add)
+	if err != nil {
+		return nil, err
+	}
+	return net.ListenUDP("udp", udpAddr)
 }
 
 // StartServer starts a custom http server.
