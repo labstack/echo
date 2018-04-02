@@ -282,7 +282,9 @@ func (c *context) ParamArray(name string) []string {
 	for i, n := range c.pnames {
 		if i < len(c.pvalues) {
 			if n == name {
-				return c.pvalues[i]
+				if c.pvalues[i] != nil {
+					return c.pvalues[i]
+				}
 			}
 		}
 	}

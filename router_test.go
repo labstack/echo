@@ -539,6 +539,19 @@ func TestRouterTwoParam(t *testing.T) {
 	assert.Equal(t, "1", c.Param("fid"))
 }
 
+func TestRouterParamArray(t *testing.T) {
+	e := New()
+	r := e.router
+	r.Add(GET, "/users/:uid/files/:fid", func(Context) error {
+		return nil
+	})
+	c := e.NewContext(nil, nil).(*context)
+
+	r.Find(GET, "/users/1/files/1", c)
+	assert.Equal(t, "1", c.ParamArray("uid")[0])
+	assert.Equal(t, "1", c.ParamArray("fid")[0])
+}
+
 // Issue #378
 func TestRouterParamWithSlash(t *testing.T) {
 	e := New()

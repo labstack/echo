@@ -343,6 +343,20 @@ func TestContextQueryParam(t *testing.T) {
 	}, c.QueryParams())
 }
 
+func TestContextParamArray(t *testing.T) {
+	q := make(url.Values)
+	q.Set("name", "Jon")
+	q.Add("name", "Snow")
+	req := httptest.NewRequest(GET, "/?"+q.Encode(), nil)
+	e := New()
+	c := e.NewContext(req, nil)
+
+	// QueryParams
+	assert.Equal(t, url.Values{
+		"name":  []string{"Jon", "Snow"},
+	}, c.QueryParams())
+}
+
 func TestContextFormFile(t *testing.T) {
 	e := New()
 	buf := new(bytes.Buffer)
