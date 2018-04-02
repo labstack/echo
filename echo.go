@@ -297,12 +297,16 @@ func New() (e *Echo) {
 
 // NewContext returns a Context instance.
 func (e *Echo) NewContext(r *http.Request, w http.ResponseWriter) Context {
+	pvalues := make([][]string, *e.maxParam)
+	for i, _ := range pvalues {
+		pvalues[i] = make([]string, 1)
+	}
 	return &context{
 		request:  r,
 		response: NewResponse(w, e),
 		store:    make(Map),
 		echo:     e,
-		pvalues:  make([]string, *e.maxParam),
+		pvalues:  pvalues,
 		handler:  NotFoundHandler,
 	}
 }

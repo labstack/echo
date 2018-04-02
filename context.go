@@ -47,6 +47,9 @@ type (
 		// SetPath sets the registered path for the handler.
 		SetPath(p string)
 
+		// ParamArray returns path array parameter by name.
+		ParamArray(name string) []string
+
 		// Param returns path parameter by name.
 		Param(name string) string
 
@@ -193,7 +196,7 @@ type (
 		response *Response
 		path     string
 		pnames   []string
-		pvalues  []string
+		pvalues  [][]string
 		query    url.Values
 		handler  HandlerFunc
 		store    Map
@@ -275,11 +278,22 @@ func (c *context) SetPath(p string) {
 	c.path = p
 }
 
-func (c *context) Param(name string) string {
+func (c *context) ParamArray(name string) []string {
 	for i, n := range c.pnames {
 		if i < len(c.pvalues) {
 			if n == name {
 				return c.pvalues[i]
+			}
+		}
+	}
+	return nil
+}
+
+func (c *context) Param(name string) string {
+	for i, n := range c.pnames {
+		if i < len(c.pvalues) {
+			if n == name {
+				return c.pvalues[i][0]
 			}
 		}
 	}
@@ -295,11 +309,22 @@ func (c *context) SetParamNames(names ...string) {
 }
 
 func (c *context) ParamValues() []string {
-	return c.pvalues[:len(c.pnames)]
+	aux := c.pvalues[:len(c.pnames)]
+	var values []string
+
+	for _, item := range aux {
+		values = append(values, item[0])
+	}
+
+	return values
 }
 
 func (c *context) SetParamValues(values ...string) {
-	c.pvalues = values
+	c.pvalues = make([][]string, len(values))
+	for i, value := range values {
+		c.pvalues[i] = make([]string, 1)
+		c.pvalues[i][0] = value
+	}
 }
 
 func (c *context) QueryParam(name string) string {

@@ -380,7 +380,7 @@ func (r *Router) Find(method, path string, c Context) {
 			i, l := 0, len(search)
 			for ; i < l && search[i] != '/'; i++ {
 			}
-			pvalues[n] = search[:i]
+			pvalues[n][0] = search[:i]
 			n++
 			search = search[i:]
 			continue
@@ -402,7 +402,7 @@ func (r *Router) Find(method, path string, c Context) {
 			// Not found
 			return
 		}
-		pvalues[len(cn.pnames)-1] = search
+		pvalues[len(cn.pnames)-1][0] = search
 		goto End
 	}
 
@@ -427,7 +427,7 @@ End:
 		}
 		ctx.path = cn.ppath
 		ctx.pnames = cn.pnames
-		pvalues[len(cn.pnames)-1] = ""
+		pvalues[len(cn.pnames)-1][0] = ""
 	}
 
 	return
