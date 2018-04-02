@@ -455,13 +455,6 @@ func TestEchoStartQuic(t *testing.T) {
 	}()
 	time.Sleep(200 * time.Millisecond)
 
-	select {
-	case err := <-errChan:
-		assert.NoError(t, err)
-	default:
-		assert.NoError(t, e.Close())
-	}
-
 	cli := &http.Client{
 		Transport: &h2quic.RoundTripper{
 			TLSClientConfig: &tls.Config{
@@ -473,6 +466,14 @@ func TestEchoStartQuic(t *testing.T) {
 	_, respErr := cli.Get("https://localhost:4430/")
 	if respErr != nil {
 		assert.NoError(t, respErr)
+		return
+	}
+
+	select {
+	case err := <-errChan:
+		assert.NoError(t, err)
+	default:
+		assert.NoError(t, e.Close())
 	}
 }
 
