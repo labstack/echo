@@ -13,8 +13,7 @@ import (
 )
 
 var (
-	xcaCert, xserverCert *x509.Certificate
-
+	xcaCert            *x509.Certificate
 	caCert, serverCert *tls.Certificate
 )
 
@@ -43,12 +42,6 @@ func makeCerts() (*tls.Certificate, *tls.Certificate) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	tmpServerCert, getServerCert := x509.ParseCertificate(certDER)
-	if getServerCert != nil {
-		log.Fatal(getServerCert)
-	}
-	xserverCert = tmpServerCert
 
 	return getCert(key, certDER), getCert(serverKey, serverCertDER)
 }

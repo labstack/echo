@@ -3,7 +3,6 @@ package echo
 import (
 	"bytes"
 	"crypto/tls"
-	"crypto/x509"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -463,15 +462,10 @@ func TestEchoStartQuic(t *testing.T) {
 		assert.NoError(t, e.Close())
 	}
 
-	cliCertPool := x509.NewCertPool()
-	cliCertPool.AddCert(xcaCert)
-	cliCertPool.AddCert(xserverCert)
-
 	cli := &http.Client{
 		Transport: &h2quic.RoundTripper{
 			TLSClientConfig: &tls.Config{
-				RootCAs: cliCertPool,
-				// InsecureSkipVerify: true,
+				InsecureSkipVerify: true,
 			},
 		},
 	}
