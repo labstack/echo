@@ -447,7 +447,7 @@ func (e *Echo) Static(prefix, root string) *Route {
 
 func static(i i, prefix, root string) *Route {
 	h := func(c Context) error {
-		p, err := PathUnescape(c.Param("*"))
+		p, err := url.PathUnescape(c.Param("*"))
 		if err != nil {
 			return err
 		}
@@ -749,10 +749,10 @@ func handlerName(h HandlerFunc) string {
 	return t.String()
 }
 
-// PathUnescape is wraps `url.PathUnescape`
-func PathUnescape(s string) (string, error) {
-	return url.PathUnescape(s)
-}
+// // PathUnescape is wraps `url.PathUnescape`
+// func PathUnescape(s string) (string, error) {
+// 	return url.PathUnescape(s)
+// }
 
 // tcpKeepAliveListener sets TCP keep-alive timeouts on accepted
 // connections. It's used by ListenAndServe and ListenAndServeTLS so
