@@ -3,6 +3,7 @@ package middleware
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -76,7 +77,7 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 			if strings.HasSuffix(c.Path(), "*") { // When serving from a group, e.g. `/static*`.
 				p = c.Param("*")
 			}
-			p, err = echo.PathUnescape(p)
+			p, err = url.PathUnescape(p)
 			if err != nil {
 				return
 			}
