@@ -697,13 +697,17 @@ func (e *Echo) StartServer(s *http.Server) (err error) {
 		}
 		return s.Serve(e.Listener)
 	}
-	if e.TLSListener == nil && !e.Quic {
+
+	// This will never be touch if HTTP is called
+	if e.TLSListener == nil {
 		l, err := newListener(s.Addr)
 		if err != nil {
 			return err
 		}
 		e.TLSListener = tls.NewListener(l, s.TLSConfig)
 	}
+
+	quicOrTLCErr := make(chan error, 0)
 	if e.Quic {
 		udpListener, openPacketErr := e.OpenQuicUDP(s.Addr)
 		if openPacketErr != nil {
@@ -712,13 +716,21 @@ func (e *Echo) StartServer(s *http.Server) (err error) {
 		if !e.HidePort {
 			e.colorer.Printf("⇨ quic server started on %s\n", e.colorer.Green(s.Addr))
 		}
-		return e.QuicServer.Serve(udpListener)
+		go func() {
+			err := e.QuicServer.Serve(udpListener)
+			quicOrTLCErr <- err
+		}()
 	}
 
 	if !e.HidePort {
 		e.colorer.Printf("⇨ https server started on %s\n", e.colorer.Green(e.TLSListener.Addr()))
 	}
-	return s.Serve(e.TLSListener)
+	go func() {
+		err := s.Serve(e.TLSListener)
+		quicOrTLCErr <- err
+	}()
+
+	return <-quicOrTLCErr
 }
 
 // NewHTTPError creates a new HTTPError instance.
