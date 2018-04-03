@@ -645,11 +645,6 @@ func (e *Echo) startTLS(address string) error {
 	if !e.DisableHTTP2 {
 		s.TLSConfig.NextProtos = append(s.TLSConfig.NextProtos, "h2")
 		if e.Quic {
-			udpListener, openPacketErr := e.OpenQuicUDP(address)
-			if openPacketErr != nil {
-				return openPacketErr
-			}
-
 			e.QuicServer = &h2quic.Server{Server: s}
 
 			e.Pre(func(next HandlerFunc) HandlerFunc {
@@ -658,14 +653,6 @@ func (e *Echo) startTLS(address string) error {
 					return next(c)
 				}
 			})
-
-			go func() {
-				if !e.HidePort {
-					e.colorer.Printf("⇨ quic server started on %s\n", e.colorer.Green(udpListener.LocalAddr()))
-				}
-				err := e.QuicServer.Serve(udpListener)
-				log.Fatalf("QUIC server failed to start: %s", err.Error())
-			}()
 		}
 	}
 	return e.StartServer(e.TLSServer)
@@ -710,13 +697,24 @@ func (e *Echo) StartServer(s *http.Server) (err error) {
 		}
 		return s.Serve(e.Listener)
 	}
-	if e.TLSListener == nil {
+	if e.TLSListener == nil && !e.Quic {
 		l, err := newListener(s.Addr)
 		if err != nil {
 			return err
 		}
 		e.TLSListener = tls.NewListener(l, s.TLSConfig)
 	}
+	if e.Quic {
+		udpListener, openPacketErr := e.OpenQuicUDP(s.Addr)
+		if openPacketErr != nil {
+			return openPacketErr
+		}
+		if !e.HidePort {
+			e.colorer.Printf("⇨ quic server started on %s\n", e.colorer.Green(s.Addr))
+		}
+		return e.QuicServer.Serve(udpListener)
+	}
+
 	if !e.HidePort {
 		e.colorer.Printf("⇨ https server started on %s\n", e.colorer.Green(e.TLSListener.Addr()))
 	}

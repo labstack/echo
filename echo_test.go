@@ -2,7 +2,6 @@ package echo
 
 import (
 	"bytes"
-	"crypto/tls"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -440,28 +439,14 @@ func TestEchoStartAutoTLS(t *testing.T) {
 
 func TestEchoStartQuic(t *testing.T) {
 	e := New()
-	errChan := make(chan error, 0)
-
-	s := e.TLSServer
-	s.TLSConfig = new(tls.Config)
-	s.TLSConfig.Certificates = make([]tls.Certificate, 1)
-	s.TLSConfig.Certificates[0] = *serverCert
-
 	e.Quic = true
 
+	errChan := make(chan error, 0)
+
 	go func() {
-		errChan <- e.startTLS(":0")
-		// errChan <- e.startTLS("localhost:4430")
+		errChan <- e.StartTLS(":0", "_fixture/certs/cert.pem", "_fixture/certs/key.pem")
 	}()
 	time.Sleep(200 * time.Millisecond)
-
-	// cli := &http.Client{
-	// 	Transport: &h2quic.RoundTripper{
-	// 		TLSClientConfig: &tls.Config{
-	// 			InsecureSkipVerify: true,
-	// 		},
-	// 	},
-	// }
 
 	select {
 	case err := <-errChan:
@@ -469,12 +454,6 @@ func TestEchoStartQuic(t *testing.T) {
 	default:
 		assert.NoError(t, e.Close())
 	}
-
-	// _, respErr := cli.Get("https://localhost:4430/")
-	// if respErr != nil {
-	// 	assert.NoError(t, respErr)
-	// 	return
-	// }
 }
 
 func testMethod(t *testing.T, method, path string, e *Echo) {
