@@ -444,7 +444,7 @@ func TestEchoStartQuic(t *testing.T) {
 	errChan := make(chan error, 0)
 
 	go func() {
-		errChan <- e.StartTLS(":0", "_fixture/certs/cert.pem", "_fixture/certs/key.pem")
+		errChan <- e.StartTLS(":31540", "_fixture/certs/cert.pem", "_fixture/certs/key.pem")
 	}()
 	time.Sleep(200 * time.Millisecond)
 
