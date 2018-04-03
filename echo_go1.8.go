@@ -10,23 +10,23 @@ import (
 // Close immediately stops the server.
 // It internally calls `http.Server#Close()`.
 func (e *Echo) Close() error {
-	cumuledErr := fmt.Errorf("on close:\n")
+	cumuledErr := fmt.Errorf("on close:")
 	ok := true
 	if e.Quic {
 		if err := e.QuicServer.Close(); err != nil {
 			ok = false
-			cumuledErr = fmt.Errorf("QUIC: %s\n", err.Error())
+			cumuledErr = fmt.Errorf("\nQUIC: %s", err.Error())
 			e.QuicServer.Close()
 		}
 	}
 	if err := e.TLSServer.Close(); err != nil {
 		ok = false
-		cumuledErr = fmt.Errorf("TLS: %s\n", err.Error())
+		cumuledErr = fmt.Errorf("\nTLS: %s", err.Error())
 		return err
 	}
 	if err := e.Server.Close(); err != nil {
 		ok = false
-		cumuledErr = fmt.Errorf("HTTP: %s\n", err.Error())
+		cumuledErr = fmt.Errorf("\nHTTP: %s", err.Error())
 		return err
 	}
 

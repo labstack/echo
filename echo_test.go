@@ -2,6 +2,7 @@ package echo
 
 import (
 	"bytes"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lucas-clemente/quic-go/h2quic"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -456,9 +458,21 @@ func TestEchoStartQuic(t *testing.T) {
 		assert.NoError(t, err)
 	default:
 		// This resolve the RACE issue (at least localy at this point)
-		fmt.Println("ASK CLOSE")
-		assert.NoError(t, e.Close())
+		fmt.Println("OK")
 	}
+
+	cli := &http.Client{
+		Transport: &h2quic.RoundTripper{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		},
+	}
+
+	_, getErr := cli.Get("https://localhost:31540/")
+	assert.NoError(t, getErr)
+
+	assert.NoError(t, e.Close())
 }
 
 func testMethod(t *testing.T, method, path string, e *Echo) {
