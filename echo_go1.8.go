@@ -39,7 +39,7 @@ func (e *Echo) Close() error {
 // Shutdown stops server the gracefully.
 // It internally calls `http.Server#Shutdown()`.
 func (e *Echo) Shutdown(ctx stdContext.Context) error {
-	cumuledErr := fmt.Errorf("on close:")
+	cumuledErr := fmt.Errorf("on shutdown:")
 	ok := true
 	if e.Quic {
 		if err := e.QuicServer.Shutdown(ctx); err != nil {

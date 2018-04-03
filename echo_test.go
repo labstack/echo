@@ -3,6 +3,7 @@ package echo
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -444,6 +445,8 @@ func TestEchoStartQuic(t *testing.T) {
 	errChan := make(chan error, 0)
 
 	go func() {
+		// This resolve the RACE issue (at least localy at this point)
+		fmt.Println("START!!!")
 		errChan <- e.StartTLS(":31540", "_fixture/certs/cert.pem", "_fixture/certs/key.pem")
 	}()
 	time.Sleep(200 * time.Millisecond)
@@ -452,6 +455,8 @@ func TestEchoStartQuic(t *testing.T) {
 	case err := <-errChan:
 		assert.NoError(t, err)
 	default:
+		// This resolve the RACE issue (at least localy at this point)
+		fmt.Println("ASK CLOSE")
 		assert.NoError(t, e.Close())
 	}
 }
