@@ -378,7 +378,7 @@ func (r *Router) Find(method, path string, c Context) {
 
 			cn = child
 			i, l := 0, len(search)
-			for ; i < l && search[i] != '/'; i++ {
+			for ; i < l && search[i] != '/' && search[i] != '.'; i++ {
 			}
 			pvalues[n] = search[:i]
 			n++
