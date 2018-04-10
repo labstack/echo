@@ -156,9 +156,9 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 				return next(c)
 			}
 			return &echo.HTTPError{
-				Code:    ErrJWTInvalid.Code,
-				Message: ErrJWTInvalid.Message,
-				Inner:   err,
+				Code:     ErrJWTInvalid.Code,
+				Message:  ErrJWTInvalid.Message,
+				Internal: err,
 			}
 		}
 	}
