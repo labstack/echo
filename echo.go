@@ -95,9 +95,9 @@ type (
 
 	// HTTPError represents an error that occurred while handling a request.
 	HTTPError struct {
-		Code    int
-		Message interface{}
-		Inner   error // Stores the error returned by an external dependency
+		Code     int
+		Message  interface{}
+		Internal error // Stores the error returned by an external dependency
 	}
 
 	// MiddlewareFunc defines a function to process middleware.
@@ -325,8 +325,8 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 	if he, ok := err.(*HTTPError); ok {
 		code = he.Code
 		msg = he.Message
-		if he.Inner != nil {
-			msg = fmt.Sprintf("%v, %v", err, he.Inner)
+		if he.Internal != nil {
+			msg = fmt.Sprintf("%v, %v", err, he.Internal)
 		}
 	} else if e.Debug {
 		msg = err.Error()
