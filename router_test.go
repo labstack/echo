@@ -847,6 +847,45 @@ func TestRouterStaticDynamicConflict(t *testing.T) {
 	assert.Equal(t, 3, c.Get("c"))
 }
 
+// Issue #1108
+func TestDotsInParameter(t *testing.T) {
+	e := New()
+	r := e.router
+
+	r.Add(GET, "/versions/:version", func(c Context) error {
+		return nil
+	})
+	r.Add(GET, "/users/:id.json", func(c Context) error {
+		return nil
+	})
+	r.Add(GET, "/users/:id", func(c Context) error {
+		return nil
+	})
+	c := e.NewContext(nil, nil).(*context)
+
+	r.Find(GET, "/versions/1.2.3", c)
+	c.handler(c)
+	if assert.Len(t, c.pnames, 1) {
+		assert.Equal(t, "version", c.pnames[0])
+		assert.Equal(t, "1.2.3", c.Param("version"))
+	}
+
+	c = e.NewContext(nil, nil).(*context)
+	r.Find(GET, "/users/123.json", c)
+	c.handler(c)
+	if assert.Len(t, c.pnames, 1) {
+		assert.Equal(t, "id", c.pnames[0])
+		assert.Equal(t, "123", c.Param("id"))
+	}
+	c = e.NewContext(nil, nil).(*context)
+	r.Find(GET, "/users/456", c)
+	c.handler(c)
+	if assert.Len(t, c.pnames, 1) {
+		assert.Equal(t, "id", c.pnames[0])
+		assert.Equal(t, "456", c.Param("id"))
+	}
+}
+
 func testRouterAPI(t *testing.T, api []*Route) {
 	e := New()
 	r := e.router
