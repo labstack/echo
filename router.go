@@ -68,7 +68,7 @@ func (r *Router) Add(method, path string, h HandlerFunc) {
 			j := i + 1
 
 			r.insert(method, path[:i], nil, skind, "", nil)
-			for ; i < l && path[i] != '/' && path[i] != '.'; i++ {
+			for ; i < l && path[i] != '/'; i++ {
 			}
 
 			pnames = append(pnames, path[j:i])
