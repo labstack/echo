@@ -784,9 +784,6 @@ func TestRouterParamNames(t *testing.T) {
 	r.Add(GET, "/users/:id", func(c Context) error {
 		return nil
 	})
-	r.Add(GET, "/companies/:id.json", func(c Context) error {
-		return nil
-	})
 	r.Add(GET, "/users/:uid/files/:fid", func(c Context) error {
 		return nil
 	})
@@ -799,11 +796,6 @@ func TestRouterParamNames(t *testing.T) {
 
 	// Route > /users/:id
 	r.Find(GET, "/users/1", c)
-	assert.Equal(t, "id", c.pnames[0])
-	assert.Equal(t, "1", c.Param("id"))
-
-	// Route -> /companies/:id.json
-	r.Find(GET, "/companies/1.json", c)
 	assert.Equal(t, "id", c.pnames[0])
 	assert.Equal(t, "1", c.Param("id"))
 
