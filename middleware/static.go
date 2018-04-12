@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"fmt"
+	"html/template"
 	"net/http"
 	"net/url"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/labstack/echo"
+	"github.com/labstack/gommon/bytes"
 )
 
 type (
@@ -36,6 +38,78 @@ type (
 		Browse bool `yaml:"browse"`
 	}
 )
+
+const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>{{ .Name }}</title>
+  <style>
+    body {
+			font-family: Menlo, Consolas, monospace;
+			padding: 48px;
+		}
+		header {
+			padding: 4px 16px;
+			font-size: 24px;
+		}
+    ul {
+			list-style-type: none;
+			margin: 0;
+    	padding: 20px 0 0 0;
+			display: flex;
+			flex-wrap: wrap;
+    }
+    li {
+			width: 300px;
+			padding: 16px;
+		}
+		li a {
+			display: block;
+			overflow: hidden;
+			white-space: nowrap;
+			text-overflow: ellipsis;
+			text-decoration: none;
+			transition: opacity 0.25s;
+		}
+		li span {
+			color: #707070; 
+			font-size: 12px;
+		}
+		li a:hover {
+			opacity: 0.50;
+		}
+		.dir {
+			color: #E91E63;
+		}
+		.file {
+			color: #673AB7;
+		}
+  </style>
+</head>
+<body>
+	<header>
+		{{ .Name }}
+	</header>
+	<ul>
+		{{ range .Files }}
+		<li>
+		{{ if .Dir }}
+			{{ $name := print .Name "/" }}
+			<a class="dir" href="{{ $name }}">{{ $name }}</a>
+			{{ else }}
+			<a class="file" href="{{ .Name }}">{{ .Name }}</a>
+			<span>{{ .Size }}</span>
+		{{ end }}
+		</li>
+		{{ end }}
+  </ul>
+</body>
+</html>
+`
 
 var (
 	// DefaultStaticConfig is the default Static middleware config.
@@ -65,6 +139,12 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 	}
 	if config.Index == "" {
 		config.Index = DefaultStaticConfig.Index
+	}
+
+	// Index template
+	t, err := template.New("index").Parse(html)
+	if err != nil {
+		panic(fmt.Sprintf("echo: %v", err))
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -104,7 +184,7 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 
 				if err != nil {
 					if config.Browse {
-						return listDir(name, c.Response())
+						return listDir(t, name, c.Response())
 					}
 					if os.IsNotExist(err) {
 						return next(c)
@@ -120,32 +200,30 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 	}
 }
 
-func listDir(name string, res *echo.Response) (err error) {
-	dir, err := os.Open(name)
+func listDir(t *template.Template, name string, res *echo.Response) (err error) {
+	file, err := os.Open(name)
 	if err != nil {
 		return
 	}
-	dirs, err := dir.Readdir(-1)
+	files, err := file.Readdir(-1)
 	if err != nil {
 		return
 	}
 
-	// Create a directory index
+	// Create directory index
 	res.Header().Set(echo.HeaderContentType, echo.MIMETextHTMLCharsetUTF8)
-	if _, err = fmt.Fprintf(res, "<pre>\n"); err != nil {
-		return
+	data := struct {
+		Name  string
+		Files []interface{}
+	}{
+		Name: name,
 	}
-	for _, d := range dirs {
-		name := d.Name()
-		color := "#212121"
-		if d.IsDir() {
-			color = "#e91e63"
-			name += "/"
-		}
-		if _, err = fmt.Fprintf(res, "<a href=\"%s\" style=\"color: %s;\">%s</a>\n", name, color, name); err != nil {
-			return
-		}
+	for _, f := range files {
+		data.Files = append(data.Files, struct {
+			Name string
+			Dir  bool
+			Size string
+		}{f.Name(), f.IsDir(), bytes.Format(f.Size())})
 	}
-	_, err = fmt.Fprintf(res, "</pre>\n")
-	return
+	return t.Execute(res, data)
 }
