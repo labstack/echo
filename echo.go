@@ -337,8 +337,6 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 		msg = Map{"message": msg}
 	}
 
-	e.Logger.Error(err)
-
 	// Send response
 	if !c.Response().Committed {
 		if c.Request().Method == HEAD { // Issue #608
