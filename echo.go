@@ -457,7 +457,7 @@ func static(i i, prefix, root string) *Route {
 	return i.GET(prefix+"/*", h)
 }
 
-// File registers a new route with path to serve a static file.
+// File registers a new route with path to serve a static file with optional route-level middleware.
 func (e *Echo) File(path, file string, m ...MiddlewareFunc) *Route {
 	return e.GET(path, func(c Context) error {
 		return c.File(file)
