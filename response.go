@@ -15,6 +15,7 @@ type (
 		beforeFuncs []func()
 		afterFuncs  []func()
 		Writer      http.ResponseWriter
+		request     *http.Request
 		Status      int
 		Size        int64
 		Committed   bool
@@ -22,8 +23,8 @@ type (
 )
 
 // NewResponse creates a new instance of Response.
-func NewResponse(w http.ResponseWriter, e *Echo) (r *Response) {
-	return &Response{Writer: w, echo: e}
+func NewResponse(w http.ResponseWriter, request *http.Request, e *Echo) (r *Response) {
+	return &Response{Writer: w, request: request, echo: e}
 }
 
 // Header returns the header map for the writer that will be sent by
@@ -53,7 +54,7 @@ func (r *Response) After(fn func()) {
 // used to send error codes.
 func (r *Response) WriteHeader(code int) {
 	if r.Committed {
-		r.echo.Logger.Warn("response already committed with status %d, cannot apply status %d", r.Status, code)
+		r.echo.Logger.Warn("response already committed on URI '%s' with status %d, cannot apply status %d", r.request.RequestURI, r.Status, code)
 		return
 	}
 	for _, fn := range r.beforeFuncs {
