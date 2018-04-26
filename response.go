@@ -53,7 +53,7 @@ func (r *Response) After(fn func()) {
 // used to send error codes.
 func (r *Response) WriteHeader(code int) {
 	if r.Committed {
-		r.echo.Logger.Warn("response already committed")
+		r.echo.Logger.Warn("response already committed with status %d, cannot apply status %d", r.Status, code)
 		return
 	}
 	for _, fn := range r.beforeFuncs {
