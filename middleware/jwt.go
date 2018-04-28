@@ -46,6 +46,9 @@ type (
 		AuthScheme string
 
 		keyFunc jwt.Keyfunc
+
+		// HTTPErrorCustom defines a function to make a custom HTTPError
+		HTTPErrorCustom func(error) echo.HTTPError
 	}
 
 	jwtExtractor func(echo.Context) (string, error)
@@ -139,6 +142,10 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 
 			auth, err := extractor(c)
 			if err != nil {
+				if config.HTTPErrorCustom != nil {
+					httpError := config.HTTPErrorCustom(err)
+					return &httpError
+				}
 				return err
 			}
 			token := new(jwt.Token)
@@ -154,6 +161,10 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 				// Store user information from token into context.
 				c.Set(config.ContextKey, token)
 				return next(c)
+			}
+			if config.HTTPErrorCustom != nil {
+				httpError := config.HTTPErrorCustom(err)
+				return &httpError
 			}
 			return &echo.HTTPError{
 				Code:     ErrJWTInvalid.Code,
