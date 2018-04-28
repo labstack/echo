@@ -74,7 +74,7 @@ func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 			l := len(basic)
 
 			if len(auth) > l+1 && strings.ToLower(auth[:l]) == basic {
-				b, err := base64.StdEncoding.DecodeString(auth[l+1:])
+				b, err := base64.StdEncoding.DecodeString(auth[l:])
 				if err != nil {
 					return err
 				}
