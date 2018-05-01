@@ -208,6 +208,23 @@ func TestBindbindData(t *testing.T) {
 	assertBindTestStruct(t, ts)
 }
 
+func TestBindUnmarshalTypeError(t *testing.T) {
+	body := bytes.NewBufferString(`{ "id": "text" }`)
+	e := New()
+	req := httptest.NewRequest(POST, "/", body)
+	req.Header.Set(HeaderContentType, MIMEApplicationJSON)
+
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	u := new(user)
+
+	err := c.Bind(u)
+
+	he := &HTTPError{Code: http.StatusBadRequest, Message: "Unmarshal type error: expected=int, got=string, field=id, offset=14"}
+
+	assert.Equal(t, he, err)
+}
+
 func TestBindSetWithProperType(t *testing.T) {
 	ts := new(bindTestStruct)
 	typ := reflect.TypeOf(ts).Elem()
