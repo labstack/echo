@@ -299,9 +299,14 @@ func New() (e *Echo) {
 
 // NewContext returns a Context instance.
 func (e *Echo) NewContext(r *http.Request, w http.ResponseWriter) Context {
+	response := NewResponse(w, e)
+
+	// request is injected to add more context in the warning messages
+	response.request = r
+
 	return &context{
 		request:  r,
-		response: NewResponse(w, r, e),
+		response: response,
 		store:    make(Map),
 		echo:     e,
 		pvalues:  make([]string, *e.maxParam),

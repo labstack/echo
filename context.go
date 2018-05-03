@@ -566,6 +566,7 @@ func (c *context) Logger() Logger {
 func (c *context) Reset(r *http.Request, w http.ResponseWriter) {
 	c.request = r
 	c.response.reset(w)
+	c.response.request = r
 	c.query = nil
 	c.handler = NotFoundHandler
 	c.store = nil

@@ -2,6 +2,7 @@ package echo
 
 import (
 	"bufio"
+	"fmt"
 	"net"
 	"net/http"
 )
@@ -14,8 +15,8 @@ type (
 		echo        *Echo
 		beforeFuncs []func()
 		afterFuncs  []func()
-		Writer      http.ResponseWriter
 		request     *http.Request
+		Writer      http.ResponseWriter
 		Status      int
 		Size        int64
 		Committed   bool
@@ -23,8 +24,8 @@ type (
 )
 
 // NewResponse creates a new instance of Response.
-func NewResponse(w http.ResponseWriter, request *http.Request, e *Echo) (r *Response) {
-	return &Response{Writer: w, request: request, echo: e}
+func NewResponse(w http.ResponseWriter, e *Echo) (r *Response) {
+	return &Response{Writer: w, echo: e}
 }
 
 // Header returns the header map for the writer that will be sent by
@@ -54,7 +55,14 @@ func (r *Response) After(fn func()) {
 // used to send error codes.
 func (r *Response) WriteHeader(code int) {
 	if r.Committed {
-		r.echo.Logger.Warn("response already committed on URI '%s' with status %d, cannot apply status %d", r.request.RequestURI, r.Status, code)
+		// request is optional in the response
+		var requestURI string
+		if r.request != nil {
+			requestURI = fmt.Sprintf(" on URI '%s'", r.request.RequestURI)
+		}
+
+		message := fmt.Sprintf("response already committed%s with status %d, cannot apply status %d", requestURI, r.Status, code)
+		r.echo.Logger.Warn(message)
 		return
 	}
 	for _, fn := range r.beforeFuncs {
@@ -104,6 +112,7 @@ func (r *Response) CloseNotify() <-chan bool {
 func (r *Response) reset(w http.ResponseWriter) {
 	r.beforeFuncs = nil
 	r.afterFuncs = nil
+	r.request = nil
 	r.Writer = w
 	r.Size = 0
 	r.Status = http.StatusOK
