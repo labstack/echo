@@ -26,9 +26,6 @@ type (
 		// Callback action before auth checks
 		BeforeFunc func(c echo.Context)
 
-		// The function that will be called when there's an error validating the token
-		ErrorHandler func(code int, message ...interface{}) *echo.HTTPError
-
 		// A boolean indicating if the credentials are required or not
 		// Default value: false
 		CredentialsOptional bool
@@ -134,9 +131,6 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	if config.BeforeFunc == nil {
 		config.BeforeFunc = DefaultJWTConfig.BeforeFunc
 	}
-	if config.ErrorHandler == nil {
-		config.ErrorHandler = DefaultJWTConfig.ErrorHandler
-	}
 	config.keyFunc = func(t *jwt.Token) (interface{}, error) {
 		// Check the signing method
 		if t.Method.Alg() != config.SigningMethod {
@@ -168,7 +162,7 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 				if auth == "" && config.CredentialsOptional{
 					return next(c)
 				}
-				return config.ErrorHandler (ErrJWTMissing.Code, ErrJWTMissing.Message, err)
+				return err
 			}
 			token := new(jwt.Token)
 			// Issue #647, #656
