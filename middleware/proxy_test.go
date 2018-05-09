@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"testing"
-
 	"net/url"
+	"testing"
 
 	"github.com/labstack/echo"
 	"github.com/stretchr/testify/assert"
@@ -48,15 +47,24 @@ func TestProxy(t *testing.T) {
 	url2, _ := url.Parse(t2.URL)
 
 	targets := []*ProxyTarget{
-		&ProxyTarget{
-			URL: url1,
+		{
+			Name: "target 1",
+			URL:  url1,
 		},
-		&ProxyTarget{
-			URL: url2,
+		{
+			Name: "target 2",
+			URL:  url2,
 		},
 	}
-	rb := &RandomBalancer{
-		Targets: targets,
+	rb := NewRandomBalancer(nil)
+	// must add targets:
+	for _, target := range targets {
+		assert.True(t, rb.AddTarget(target))
+	}
+
+	// must ignore duplicates:
+	for _, target := range targets {
+		assert.False(t, rb.AddTarget(target))
 	}
 
 	// Random
@@ -74,10 +82,14 @@ func TestProxy(t *testing.T) {
 		return expected[body]
 	})
 
-	// Round-robin
-	rrb := &RoundRobinBalancer{
-		Targets: targets,
+	for _, target := range targets {
+		assert.True(t, rb.RemoveTarget(target.Name))
 	}
+
+	assert.False(t, rb.RemoveTarget("unknown target"))
+
+	// Round-robin
+	rrb := NewRoundRobinBalancer(targets)
 	e = echo.New()
 	e.Use(Proxy(rrb))
 	rec = newCloseNotifyRecorder()
@@ -88,4 +100,28 @@ func TestProxy(t *testing.T) {
 	e.ServeHTTP(rec, req)
 	body = rec.Body.String()
 	assert.Equal(t, "target 2", body)
+
+	// Rewrite
+	e = echo.New()
+	e.Use(ProxyWithConfig(ProxyConfig{
+		Balancer: rrb,
+		Rewrite: map[string]string{
+			"/old":              "/new",
+			"/api/*":            "/$1",
+			"/js/*":             "/public/javascripts/$1",
+			"/users/*/orders/*": "/user/$1/order/$2",
+		},
+	}))
+	req.URL.Path = "/api/users"
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, "/users", req.URL.Path)
+	req.URL.Path = "/js/main.js"
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, "/public/javascripts/main.js", req.URL.Path)
+	req.URL.Path = "/old"
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, "/new", req.URL.Path)
+	req.URL.Path = "/users/jack/orders/1"
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, "/user/jack/order/1", req.URL.Path)
 }

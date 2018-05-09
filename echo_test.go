@@ -2,15 +2,13 @@ package echo
 
 import (
 	"bytes"
+	stdContext "context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
-	"testing"
-
 	"reflect"
 	"strings"
-
-	"errors"
-
+	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -412,9 +410,32 @@ func TestEchoStart(t *testing.T) {
 func TestEchoStartTLS(t *testing.T) {
 	e := New()
 	go func() {
-		assert.NoError(t, e.StartTLS(":0", "_fixture/certs/cert.pem", "_fixture/certs/key.pem"))
+		err := e.StartTLS(":0", "_fixture/certs/cert.pem", "_fixture/certs/key.pem")
+		// Prevent the test to fail after closing the servers
+		if err != http.ErrServerClosed {
+			assert.NoError(t, err)
+		}
 	}()
 	time.Sleep(200 * time.Millisecond)
+
+	e.Close()
+}
+
+func TestEchoStartAutoTLS(t *testing.T) {
+	e := New()
+	errChan := make(chan error, 0)
+
+	go func() {
+		errChan <- e.StartAutoTLS(":0")
+	}()
+	time.Sleep(200 * time.Millisecond)
+
+	select {
+	case err := <-errChan:
+		assert.NoError(t, err)
+	default:
+		assert.NoError(t, e.Close())
+	}
 }
 
 func testMethod(t *testing.T, method, path string, e *Echo) {
@@ -440,4 +461,46 @@ func TestHTTPError(t *testing.T) {
 		"code": 12,
 	})
 	assert.Equal(t, "code=400, message=map[code:12]", err.Error())
+}
+
+func TestEchoClose(t *testing.T) {
+	e := New()
+	errCh := make(chan error)
+
+	go func() {
+		errCh <- e.Start(":0")
+	}()
+
+	time.Sleep(200 * time.Millisecond)
+
+	if err := e.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	assert.NoError(t, e.Close())
+
+	err := <-errCh
+	assert.Equal(t, err.Error(), "http: Server closed")
+}
+
+func TestEchoShutdown(t *testing.T) {
+	e := New()
+	errCh := make(chan error)
+
+	go func() {
+		errCh <- e.Start(":0")
+	}()
+
+	time.Sleep(200 * time.Millisecond)
+
+	if err := e.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := stdContext.WithTimeout(stdContext.Background(), 10*time.Second)
+	defer cancel()
+	assert.NoError(t, e.Shutdown(ctx))
+
+	err := <-errCh
+	assert.Equal(t, err.Error(), "http: Server closed")
 }

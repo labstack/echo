@@ -15,16 +15,16 @@ type (
 
 		// Size of the stack to be printed.
 		// Optional. Default value 4KB.
-		StackSize int `json:"stack_size"`
+		StackSize int `yaml:"stack_size"`
 
 		// DisableStackAll disables formatting stack traces of all other goroutines
 		// into buffer after the trace for the current goroutine.
 		// Optional. Default value false.
-		DisableStackAll bool `json:"disable_stack_all"`
+		DisableStackAll bool `yaml:"disable_stack_all"`
 
 		// DisablePrintStack disables printing stack trace.
 		// Optional. Default value as false.
-		DisablePrintStack bool `json:"disable_print_stack"`
+		DisablePrintStack bool `yaml:"disable_print_stack"`
 	}
 )
 

@@ -26,6 +26,7 @@ type (
 		// - time_unix_nano
 		// - time_rfc3339
 		// - time_rfc3339_nano
+		// - time_custom
 		// - id (Request ID)
 		// - remote_ip
 		// - uri
@@ -46,7 +47,10 @@ type (
 		// Example "${remote_ip} ${status}"
 		//
 		// Optional. Default value DefaultLoggerConfig.Format.
-		Format string `json:"format"`
+		Format string `yaml:"format"`
+
+		// Optional. Default value DefaultLoggerConfig.CustomTimeFormat.
+		CustomTimeFormat string `yaml:"custom_time_format"`
 
 		// Output is a writer where logs in JSON format are written.
 		// Optional. Default value os.Stdout.
@@ -66,8 +70,9 @@ var (
 			`"method":"${method}","uri":"${uri}","status":${status}, "latency":${latency},` +
 			`"latency_human":"${latency_human}","bytes_in":${bytes_in},` +
 			`"bytes_out":${bytes_out}}` + "\n",
-		Output:  os.Stdout,
-		colorer: color.New(),
+		CustomTimeFormat: "2006-01-02 15:04:05.00000",
+		Output:           os.Stdout,
+		colorer:          color.New(),
 	}
 )
 
@@ -126,6 +131,8 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 					return buf.WriteString(time.Now().Format(time.RFC3339))
 				case "time_rfc3339_nano":
 					return buf.WriteString(time.Now().Format(time.RFC3339Nano))
+				case "time_custom":
+					return buf.WriteString(time.Now().Format(config.CustomTimeFormat))
 				case "id":
 					id := req.Header.Get(echo.HeaderXRequestID)
 					if id == "" {

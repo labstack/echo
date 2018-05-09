@@ -3,11 +3,10 @@ package middleware
 import (
 	"bufio"
 	"bytes"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
-
-	"io"
 
 	"github.com/labstack/echo"
 )
@@ -33,7 +32,7 @@ type (
 )
 
 var (
-	// DefaultBodyDumpConfig is the default Gzip middleware config.
+	// DefaultBodyDumpConfig is the default BodyDump middleware config.
 	DefaultBodyDumpConfig = BodyDumpConfig{
 		Skipper: DefaultSkipper,
 	}

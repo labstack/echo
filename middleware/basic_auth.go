@@ -88,14 +88,13 @@ func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 						} else if valid {
 							return next(c)
 						}
+						break
 					}
 				}
 			}
 
-			realm := ""
-			if config.Realm == defaultRealm {
-				realm = defaultRealm
-			} else {
+			realm := defaultRealm
+			if config.Realm != defaultRealm {
 				realm = strconv.Quote(config.Realm)
 			}
 

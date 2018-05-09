@@ -21,10 +21,10 @@ type (
 		SigningKey interface{}
 
 		// Callback action on success
-		OnSuccess func(c echo.Context)
+		SuccessHandler func(c echo.Context)
 
 		// Callback action before auth checks
-		BeforeAuth func(c echo.Context)
+		BeforeFunc func(c echo.Context)
 
 		// The function that will be called when there's an error validating the token
 		ErrorHandler func(code int, message ...interface{}) *echo.HTTPError
@@ -71,24 +71,21 @@ const (
 
 // Errors
 var (
-	ErrJWTMissing = echo.NewHTTPError(http.StatusBadRequest, "Missing or malformed jwt")
-	ErrJWTInvalid = echo.NewHTTPError(http.StatusUnauthorized, "Invalid or expired jwt")
+	ErrJWTMissing = echo.NewHTTPError(http.StatusBadRequest, "missing or malformed jwt")
+	ErrJWTInvalid = echo.NewHTTPError(http.StatusUnauthorized, "invalid or expired jwt")
 )
 
 var (
 	// DefaultJWTConfig is the default JWT auth middleware config.
 	DefaultJWTConfig = JWTConfig{
-		Skipper:       DefaultSkipper,
-		SigningMethod: AlgorithmHS256,
-		ContextKey:    "user",
-		TokenLookup:   "header:" + echo.HeaderAuthorization,
-		AuthScheme:    "Bearer",
-		Claims:        jwt.MapClaims{},
-		OnSuccess:     func(c echo.Context) {},
-		BeforeAuth:    func(c echo.Context) {},
-		ErrorHandler:  func(code int, message ...interface{}) *echo.HTTPError {
-			return echo.NewHTTPError(code, message...)
-		},
+		Skipper:        DefaultSkipper,
+		SigningMethod:  AlgorithmHS256,
+		ContextKey:     "user",
+		TokenLookup:    "header:" + echo.HeaderAuthorization,
+		AuthScheme:     "Bearer",
+		Claims:         jwt.MapClaims{},
+		SuccessHandler: func(c echo.Context) {},
+		BeforeFunc:     func(c echo.Context) {},
 	}
 )
 
@@ -131,11 +128,11 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	if config.AuthScheme == "" {
 		config.AuthScheme = DefaultJWTConfig.AuthScheme
 	}
-	if config.OnSuccess == nil {
-		config.OnSuccess = DefaultJWTConfig.OnSuccess
+	if config.SuccessHandler == nil {
+		config.SuccessHandler = DefaultJWTConfig.SuccessHandler
 	}
-	if config.BeforeAuth == nil {
-		config.BeforeAuth = DefaultJWTConfig.BeforeAuth
+	if config.BeforeFunc == nil {
+		config.BeforeFunc = DefaultJWTConfig.BeforeFunc
 	}
 	if config.ErrorHandler == nil {
 		config.ErrorHandler = DefaultJWTConfig.ErrorHandler
@@ -143,7 +140,7 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	config.keyFunc = func(t *jwt.Token) (interface{}, error) {
 		// Check the signing method
 		if t.Method.Alg() != config.SigningMethod {
-			return nil, fmt.Errorf("Unexpected jwt signing method=%v", t.Header["alg"])
+			return nil, fmt.Errorf("unexpected jwt signing method=%v", t.Header["alg"])
 		}
 		return config.SigningKey, nil
 	}
@@ -160,7 +157,7 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			config.BeforeAuth(c)
+			config.BeforeFunc(c)
 			if config.Skipper(c) {
 				return next(c)
 			}
@@ -185,10 +182,15 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 			if err == nil && token.Valid {
 				// Store user information from token into context.
 				c.Set(config.ContextKey, token)
-				config.OnSuccess(c)
+				config.SuccessHandler(c)
 				return next(c)
 			}
-			return config.ErrorHandler (ErrJWTInvalid.Code, ErrJWTInvalid.Message, err)
+
+			return &echo.HTTPError{
+				Code:     ErrJWTInvalid.Code,
+				Message:  ErrJWTInvalid.Message,
+				Internal: err,
+			}
 		}
 	}
 }

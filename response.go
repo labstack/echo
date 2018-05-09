@@ -13,6 +13,7 @@ type (
 	Response struct {
 		echo        *Echo
 		beforeFuncs []func()
+		afterFuncs  []func()
 		Writer      http.ResponseWriter
 		Status      int
 		Size        int64
@@ -40,6 +41,12 @@ func (r *Response) Before(fn func()) {
 	r.beforeFuncs = append(r.beforeFuncs, fn)
 }
 
+// After registers a function which is called just after the response is written.
+// If the `Content-Length` is unknown, none of the after function is executed.
+func (r *Response) After(fn func()) {
+	r.afterFuncs = append(r.afterFuncs, fn)
+}
+
 // WriteHeader sends an HTTP response header with status code. If WriteHeader is
 // not called explicitly, the first call to Write will trigger an implicit
 // WriteHeader(http.StatusOK). Thus explicit calls to WriteHeader are mainly
@@ -64,6 +71,9 @@ func (r *Response) Write(b []byte) (n int, err error) {
 	}
 	n, err = r.Writer.Write(b)
 	r.Size += int64(n)
+	for _, fn := range r.afterFuncs {
+		fn()
+	}
 	return
 }
 
@@ -91,6 +101,8 @@ func (r *Response) CloseNotify() <-chan bool {
 }
 
 func (r *Response) reset(w http.ResponseWriter) {
+	r.beforeFuncs = nil
+	r.afterFuncs = nil
 	r.Writer = w
 	r.Size = 0
 	r.Status = http.StatusOK

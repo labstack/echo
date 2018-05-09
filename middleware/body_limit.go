@@ -17,7 +17,7 @@ type (
 
 		// Maximum allowed size for a request body, it can be specified
 		// as `4x` or `4xB`, where x is one of the multiple from K, M, G, T or P.
-		Limit string `json:"limit"`
+		Limit string `yaml:"limit"`
 		limit int64
 	}
 
@@ -105,6 +105,7 @@ func (r *limitedReader) Close() error {
 func (r *limitedReader) Reset(reader io.ReadCloser, context echo.Context) {
 	r.reader = reader
 	r.context = context
+	r.read = 0
 }
 
 func limitedReaderPool(c BodyLimitConfig) sync.Pool {

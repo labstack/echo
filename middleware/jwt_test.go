@@ -237,10 +237,10 @@ func TestJWTOptional(t *testing.T) {
 	h := JWTWithConfig(JWTConfig{
 		SigningKey: validKey,
 		CredentialsOptional: true,
-		OnSuccess: func(c echo.Context) {
+		SuccessHandler: func(c echo.Context) {
 			c.Set ("AUTHORISED", true)
 		},
-		BeforeAuth: func(c echo.Context) {
+		BeforeFunc: func(c echo.Context) {
 			c.Set ("AUTHORISED", false)
 		},
 	})(handler)

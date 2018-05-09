@@ -20,7 +20,7 @@ type (
 
 		// Gzip compression level.
 		// Optional. Default value -1.
-		Level int `json:"level"`
+		Level int `yaml:"level"`
 	}
 
 	gzipResponseWriter struct {

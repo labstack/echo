@@ -135,8 +135,7 @@ func TestBindForm(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	req.Header.Set(HeaderContentType, MIMEApplicationForm)
-	obj := []struct{ Field string }{}
-	err := c.Bind(&obj)
+	err := c.Bind(&[]struct{ Field string }{})
 	assert.Error(t, err)
 }
 
@@ -207,6 +206,23 @@ func TestBindbindData(t *testing.T) {
 	b := new(DefaultBinder)
 	b.bindData(ts, values, "form")
 	assertBindTestStruct(t, ts)
+}
+
+func TestBindUnmarshalTypeError(t *testing.T) {
+	body := bytes.NewBufferString(`{ "id": "text" }`)
+	e := New()
+	req := httptest.NewRequest(POST, "/", body)
+	req.Header.Set(HeaderContentType, MIMEApplicationJSON)
+
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	u := new(user)
+
+	err := c.Bind(u)
+
+	he := &HTTPError{Code: http.StatusBadRequest, Message: "Unmarshal type error: expected=int, got=string, field=id, offset=14"}
+
+	assert.Equal(t, he, err)
 }
 
 func TestBindSetWithProperType(t *testing.T) {

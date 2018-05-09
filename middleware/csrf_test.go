@@ -69,8 +69,9 @@ func TestCSRFTokenFromQuery(t *testing.T) {
 	q := make(url.Values)
 	q.Set("csrf", "token")
 	e := echo.New()
-	req := httptest.NewRequest(echo.GET, "/?"+q.Encode(), nil)
+	req := httptest.NewRequest(echo.GET, "/", nil)
 	req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationForm)
+	req.URL.RawQuery = q.Encode()
 	c := e.NewContext(req, nil)
 	token, err := csrfTokenFromQuery("csrf")(c)
 	if assert.NoError(t, err) {
