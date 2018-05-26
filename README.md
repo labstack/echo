@@ -1,8 +1,8 @@
 <a href="https://echo.labstack.com"><img height="80" src="https://cdn.labstack.com/images/echo-logo.svg"></a>
 
-[![Sourcegraph](https://sourcegraph.com/github.com/labstack/echo/-/badge.svg?style=flat-square)](https://sourcegraph.com/github.com/labstack/echo?badge)
-[![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/labstack/echo)
-[![Go Report Card](https://goreportcard.com/badge/github.com/labstack/echo?style=flat-square)](https://goreportcard.com/report/github.com/labstack/echo)
+[![Sourcegraph](https://sourcegraph.com/github.com/wangjia184/echo/-/badge.svg?style=flat-square)](https://sourcegraph.com/github.com/wangjia184/echo?badge)
+[![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/wangjia184/echo)
+[![Go Report Card](https://goreportcard.com/badge/github.com/wangjia184/echo?style=flat-square)](https://goreportcard.com/report/github.com/wangjia184/echo)
 [![Build Status](http://img.shields.io/travis/labstack/echo.svg?style=flat-square)](https://travis-ci.org/labstack/echo)
 [![Codecov](https://img.shields.io/codecov/c/github/labstack/echo.svg?style=flat-square)](https://codecov.io/gh/labstack/echo) 
 [![Join the chat at https://gitter.im/labstack/echo](https://img.shields.io/badge/gitter-join%20chat-brightgreen.svg?style=flat-square)](https://gitter.im/labstack/echo)
@@ -44,8 +44,8 @@ package main
 import (
 	"net/http"
 
-	"github.com/labstack/echo"
-	"github.com/labstack/echo/middleware"
+	"github.com/wangjia184/echo"
+	"github.com/wangjia184/echo/middleware"
 )
 
 func main() {
@@ -92,8 +92,8 @@ func hello(c echo.Context) error {
 ## Credits
 - [Vishal Rana](https://github.com/vishr) - Author
 - [Nitin Rana](https://github.com/nr17) - Consultant
-- [Contributors](https://github.com/labstack/echo/graphs/contributors)
+- [Contributors](https://github.com/wangjia184/echo/graphs/contributors)
 
 ## License
 
-[MIT](https://github.com/labstack/echo/blob/master/LICENSE)
+[MIT](https://github.com/wangjia184/echo/blob/master/LICENSE)

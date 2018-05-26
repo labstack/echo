@@ -12,7 +12,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/labstack/echo"
+	"github.com/wangjia184/echo"
 	"github.com/stretchr/testify/assert"
 )
 
