@@ -14,7 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/labstack/echo"
+	"github.com/wangjia184/echo"
 )
 
 // TODO: Handle TLS proxy
@@ -51,7 +51,7 @@ type (
 	ProxyBalancer interface {
 		AddTarget(*ProxyTarget) bool
 		RemoveTarget(string) bool
-		Next() *ProxyTarget
+		Next(*http.Request) *ProxyTarget
 	}
 
 	commonBalancer struct {
@@ -164,7 +164,7 @@ func (b *commonBalancer) RemoveTarget(name string) bool {
 }
 
 // Next randomly returns an upstream target.
-func (b *randomBalancer) Next() *ProxyTarget {
+func (b *randomBalancer) Next(_ *http.Request) *ProxyTarget {
 	if b.random == nil {
 		b.random = rand.New(rand.NewSource(int64(time.Now().Nanosecond())))
 	}
@@ -174,7 +174,7 @@ func (b *randomBalancer) Next() *ProxyTarget {
 }
 
 // Next returns an upstream target using round-robin technique.
-func (b *roundRobinBalancer) Next() *ProxyTarget {
+func (b *roundRobinBalancer) Next(_ *http.Request) *ProxyTarget {
 	b.i = b.i % uint32(len(b.targets))
 	t := b.targets[b.i]
 	atomic.AddUint32(&b.i, 1)
@@ -216,7 +216,7 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 
 			req := c.Request()
 			res := c.Response()
-			tgt := config.Balancer.Next()
+			tgt := config.Balancer.Next(req)
 
 			// Rewrite
 			for k, v := range config.rewriteRegex {
@@ -238,14 +238,13 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 			}
 
 			// Proxy
-			switch {
-			case c.IsWebSocket():
+			if c.IsWebSocket() ||
+				(c.Request() != nil && strings.EqualFold(c.Request().RequestURI, "/cluster")) {
 				proxyRaw(tgt, c).ServeHTTP(res, req)
-			case req.Header.Get(echo.HeaderAccept) == "text/event-stream":
-			default:
+			} else {
 				proxyHTTP(tgt).ServeHTTP(res, req)
 			}
-
+			
 			return
 		}
 	}

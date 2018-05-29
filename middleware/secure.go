@@ -3,7 +3,7 @@ package middleware
 import (
 	"fmt"
 
-	"github.com/labstack/echo"
+	"github.com/wangjia184/echo"
 )
 
 type (
