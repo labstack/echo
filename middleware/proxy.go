@@ -238,14 +238,13 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 			}
 
 			// Proxy
-			switch {
-			case c.IsWebSocket():
+			if c.IsWebSocket() ||
+				(c.Request() != nil && strings.EqualFold(c.Request().RequestURI, "/cluster")) {
 				proxyRaw(tgt, c).ServeHTTP(res, req)
-			case req.Header.Get(echo.HeaderAccept) == "text/event-stream":
-			default:
+			} else {
 				proxyHTTP(tgt).ServeHTTP(res, req)
 			}
-
+			
 			return
 		}
 	}
