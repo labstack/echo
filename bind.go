@@ -20,12 +20,25 @@ type (
 	// DefaultBinder is the default implementation of the Binder interface.
 	DefaultBinder struct{}
 
+	// ValidateBinder calls context.Validate after bind.
+	ValidateBinder struct {
+		binder DefaultBinder
+	}
+
 	// BindUnmarshaler is the interface used to wrap the UnmarshalParam method.
 	BindUnmarshaler interface {
 		// UnmarshalParam decodes and assigns a value from an form or query param.
 		UnmarshalParam(param string) error
 	}
 )
+
+// Bind implements the `Binder#Bind` function.
+func (b *ValidateBinder) Bind(i interface{}, c Context) (err error) {
+	if err = b.binder.Bind(i, c); err != nil {
+		return
+	}
+	return c.Validate(i)
+}
 
 // Bind implements the `Binder#Bind` function.
 func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
@@ -72,6 +85,7 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 	default:
 		return ErrUnsupportedMediaType
 	}
+
 	return
 }
 

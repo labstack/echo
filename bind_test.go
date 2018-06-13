@@ -2,6 +2,7 @@ package echo
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -315,6 +316,10 @@ func assertBindTestStruct(t *testing.T, ts *bindTestStruct) {
 
 func testBindOkay(t *testing.T, r io.Reader, ctype string) {
 	e := New()
+	e.testBindOkay(t, r, ctype)
+}
+
+func (e *Echo) testBindOkay(t *testing.T, r io.Reader, ctype string) {
 	req := httptest.NewRequest(POST, "/", r)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
@@ -329,6 +334,10 @@ func testBindOkay(t *testing.T, r io.Reader, ctype string) {
 
 func testBindError(t *testing.T, r io.Reader, ctype string) {
 	e := New()
+	e.testBindError(t, r, ctype)
+}
+
+func (e *Echo) testBindError(t *testing.T, r io.Reader, ctype string) {
 	req := httptest.NewRequest(POST, "/", r)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
@@ -347,4 +356,77 @@ func testBindError(t *testing.T, r io.Reader, ctype string) {
 			assert.Equal(t, ErrUnsupportedMediaType, err)
 		}
 	}
+}
+
+func (e *Echo) testBindValidateError(t *testing.T, r io.Reader, ctype string) {
+	req := httptest.NewRequest(POST, "/", r)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	req.Header.Set(HeaderContentType, ctype)
+	u := new(user)
+	err := c.Bind(u)
+
+	switch {
+	case strings.HasPrefix(ctype, MIMEApplicationJSON), strings.HasPrefix(ctype, MIMEApplicationXML), strings.HasPrefix(ctype, MIMETextXML),
+		strings.HasPrefix(ctype, MIMEApplicationForm), strings.HasPrefix(ctype, MIMEMultipartForm):
+		if assert.IsType(t, new(HTTPError), err) {
+			assert.Equal(t, http.StatusBadRequest, err.(*HTTPError).Code)
+		}
+	default:
+		if assert.IsType(t, new(HTTPError), err) {
+			assert.Equal(t, ErrUnsupportedMediaType, err)
+		}
+	}
+}
+
+func TestBindValidateWithoutValidator(t *testing.T) {
+	e := New()
+	e.Binder = &ValidateBinder{}
+
+	req := httptest.NewRequest(POST, "/", strings.NewReader(userJSON))
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	req.Header.Set(HeaderContentType, MIMEApplicationJSON)
+	u := new(user)
+	err := c.Bind(u)
+	assert.Error(t, err)
+}
+
+func TestBindWithValidateJSON(t *testing.T) {
+	testBindValidateOkay(t, strings.NewReader(userJSON), MIMEApplicationJSON)
+	testBindValidateBindError(t, strings.NewReader(invalidContent), MIMEApplicationJSON)
+	testBindValidateError(t, strings.NewReader(userJSON), MIMEApplicationJSON)
+}
+
+type testPassingValidator struct{}
+
+func (v testPassingValidator) Validate(i interface{}) error {
+	return nil
+}
+
+type testFailingValidator struct{}
+
+func (v testFailingValidator) Validate(i interface{}) error {
+	return NewHTTPError(http.StatusBadRequest, errors.New("oh no"))
+}
+
+func testBindValidateOkay(t *testing.T, r io.Reader, ctype string) {
+	e := New()
+	e.Binder = &ValidateBinder{}
+	e.Validator = &testPassingValidator{}
+	e.testBindOkay(t, r, ctype)
+}
+
+func testBindValidateBindError(t *testing.T, r io.Reader, ctype string) {
+	e := New()
+	e.Binder = &ValidateBinder{}
+	e.Validator = &testPassingValidator{}
+	e.testBindError(t, r, ctype)
+}
+
+func testBindValidateError(t *testing.T, r io.Reader, ctype string) {
+	e := New()
+	e.Binder = &ValidateBinder{}
+	e.Validator = &testFailingValidator{}
+	e.testBindError(t, r, ctype)
 }
