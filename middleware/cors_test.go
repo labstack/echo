@@ -47,4 +47,22 @@ func TestCORS(t *testing.T) {
 	assert.NotEmpty(t, rec.Header().Get(echo.HeaderAccessControlAllowMethods))
 	assert.Equal(t, "true", rec.Header().Get(echo.HeaderAccessControlAllowCredentials))
 	assert.Equal(t, "3600", rec.Header().Get(echo.HeaderAccessControlMaxAge))
+
+	// Preflight request with `AllowOrigins` *
+	req = httptest.NewRequest(echo.OPTIONS, "/", nil)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec)
+	req.Header.Set(echo.HeaderOrigin, "localhost")
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	cors := CORSWithConfig(CORSConfig{
+		AllowOrigins:     []string{"*"},
+		AllowCredentials: true,
+		MaxAge:           3600,
+	})
+	h = cors(echo.NotFoundHandler)
+	h(c)
+	assert.Equal(t, "localhost", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
+	assert.NotEmpty(t, rec.Header().Get(echo.HeaderAccessControlAllowMethods))
+	assert.Equal(t, "true", rec.Header().Get(echo.HeaderAccessControlAllowCredentials))
+	assert.Equal(t, "3600", rec.Header().Get(echo.HeaderAccessControlMaxAge))
 }
