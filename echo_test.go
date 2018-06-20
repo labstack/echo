@@ -504,3 +504,39 @@ func TestEchoShutdown(t *testing.T) {
 	err := <-errCh
 	assert.Equal(t, err.Error(), "http: Server closed")
 }
+
+type CustomHandler struct{}
+
+func (ch CustomHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+}
+
+func TestEchoCustomHttpHandler(t *testing.T) {
+	e := New()
+	e.Server.Handler = &CustomHandler{}
+	go func() {
+		assert.NoError(t, e.Start(":0"))
+		assert.Equal(t, reflect.TypeOf(e.Server.Handler), reflect.TypeOf(&CustomHandler{}))
+	}()
+	time.Sleep(200 * time.Millisecond)
+}
+
+func TestEchoDefaultHttpHandler(t *testing.T) {
+	e := New()
+	go func() {
+		assert.NoError(t, e.Start(":0"))
+		assert.Equal(t, reflect.TypeOf(e.Server.Handler), reflect.TypeOf(e))
+	}()
+	time.Sleep(200 * time.Millisecond)
+}
+
+func TestEchoSetHttpHandler(t *testing.T) {
+	e := New()
+
+	server := &http.Server{}
+
+	go func() {
+		assert.NoError(t, e.StartServer(server))
+		assert.Equal(t, reflect.TypeOf(e.Server.Handler), reflect.TypeOf(e))
+	}()
+	time.Sleep(200 * time.Millisecond)
+}
