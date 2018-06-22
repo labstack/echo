@@ -9,6 +9,7 @@ import (
 type (
 	// Logger defines the logging interface.
 	Logger interface {
+		SetHeader(h string)
 		Output() io.Writer
 		SetOutput(w io.Writer)
 		Prefix() string
