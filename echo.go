@@ -658,11 +658,13 @@ func (e *Echo) StartServer(s *http.Server) (err error) {
 		return s.Serve(e.Listener)
 	}
 	if e.TLSListener == nil {
-		l, err := newListener(s.Addr)
-		if err != nil {
-			return err
+		if e.Listener == nil {
+			e.Listener, err = newListener(s.Addr)
+			if err != nil {
+				return err
+			}
 		}
-		e.TLSListener = tls.NewListener(l, s.TLSConfig)
+		e.TLSListener = tls.NewListener(e.Listener, s.TLSConfig)
 	}
 	if !e.HidePort {
 		e.colorer.Printf("⇨ https server started on %s\n", e.colorer.Green(e.TLSListener.Addr()))
