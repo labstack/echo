@@ -32,6 +32,9 @@ func TestRewrite(t *testing.T) {
 	req.URL.Path = "/users/jack/orders/1"
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "/user/jack/order/1", req.URL.Path)
+	req.URL.Path = "/api/new users"
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, "/new users", req.URL.Path)
 }
 
 // Issue #1086

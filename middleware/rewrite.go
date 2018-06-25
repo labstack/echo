@@ -57,7 +57,7 @@ func RewriteWithConfig(config RewriteConfig) echo.MiddlewareFunc {
 
 	// Initialize
 	for k, v := range config.Rules {
-		k = strings.Replace(k, "*", "(\\S*)", -1)
+		k = strings.Replace(k, "*", "(.*)", -1)
 		config.rulesRegex[regexp.MustCompile(k)] = v
 	}
 
