@@ -14,7 +14,7 @@ import (
 type (
 	// Binder is the interface that wraps the Bind method.
 	Binder interface {
-		Bind(i interface{}, c Context) error
+		Bind(i interface{}, c Context, strict bool) error
 	}
 
 	// DefaultBinder is the default implementation of the Binder interface.
@@ -28,7 +28,7 @@ type (
 )
 
 // Bind implements the `Binder#Bind` function.
-func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
+func (b *DefaultBinder) Bind(i interface{}, c Context, strict bool) (err error) {
 	req := c.Request()
 	if req.ContentLength == 0 {
 		if req.Method == GET || req.Method == DELETE {
@@ -42,7 +42,11 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 	ctype := req.Header.Get(HeaderContentType)
 	switch {
 	case strings.HasPrefix(ctype, MIMEApplicationJSON):
-		if err = json.NewDecoder(req.Body).Decode(i); err != nil {
+		d := json.NewDecoder(req.Body)
+		if strict {
+			d.DisallowUnknownFields()
+		}
+		if err = d.Decode(i); err != nil {
 			if ute, ok := err.(*json.UnmarshalTypeError); ok {
 				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Unmarshal type error: expected=%v, got=%v, field=%v, offset=%v", ute.Type, ute.Value, ute.Field, ute.Offset))
 			} else if se, ok := err.(*json.SyntaxError); ok {
