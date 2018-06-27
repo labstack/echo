@@ -20,6 +20,16 @@ type (
 		// Required.
 		SigningKey interface{}
 
+		// Callback action on success
+		SuccessHandler func(c echo.Context)
+
+		// Callback action before auth checks
+		BeforeFunc func(c echo.Context)
+
+		// A boolean indicating if the credentials are required or not
+		// Default value: false
+		CredentialsOptional bool
+
 		// Signing method, used to check token signing method.
 		// Optional. Default value HS256.
 		SigningMethod string
@@ -65,12 +75,14 @@ var (
 var (
 	// DefaultJWTConfig is the default JWT auth middleware config.
 	DefaultJWTConfig = JWTConfig{
-		Skipper:       DefaultSkipper,
-		SigningMethod: AlgorithmHS256,
-		ContextKey:    "user",
-		TokenLookup:   "header:" + echo.HeaderAuthorization,
-		AuthScheme:    "Bearer",
-		Claims:        jwt.MapClaims{},
+		Skipper:        DefaultSkipper,
+		SigningMethod:  AlgorithmHS256,
+		ContextKey:     "user",
+		TokenLookup:    "header:" + echo.HeaderAuthorization,
+		AuthScheme:     "Bearer",
+		Claims:         jwt.MapClaims{},
+		SuccessHandler: func(c echo.Context) {},
+		BeforeFunc:     func(c echo.Context) {},
 	}
 )
 
@@ -113,6 +125,12 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	if config.AuthScheme == "" {
 		config.AuthScheme = DefaultJWTConfig.AuthScheme
 	}
+	if config.SuccessHandler == nil {
+		config.SuccessHandler = DefaultJWTConfig.SuccessHandler
+	}
+	if config.BeforeFunc == nil {
+		config.BeforeFunc = DefaultJWTConfig.BeforeFunc
+	}
 	config.keyFunc = func(t *jwt.Token) (interface{}, error) {
 		// Check the signing method
 		if t.Method.Alg() != config.SigningMethod {
@@ -133,12 +151,17 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			config.BeforeFunc(c)
 			if config.Skipper(c) {
 				return next(c)
 			}
 
 			auth, err := extractor(c)
 			if err != nil {
+				// Skip this step if  no authorisation required
+				if auth == "" && config.CredentialsOptional{
+					return next(c)
+				}
 				return err
 			}
 			token := new(jwt.Token)
@@ -153,8 +176,10 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 			if err == nil && token.Valid {
 				// Store user information from token into context.
 				c.Set(config.ContextKey, token)
+				config.SuccessHandler(c)
 				return next(c)
 			}
+
 			return &echo.HTTPError{
 				Code:     ErrJWTInvalid.Code,
 				Message:  ErrJWTInvalid.Message,

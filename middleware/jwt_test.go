@@ -224,3 +224,41 @@ func TestJWT(t *testing.T) {
 		}
 	}
 }
+
+func TestJWTOptional(t *testing.T) {
+	e := echo.New()
+	handler := func(c echo.Context) error {
+		return c.String(http.StatusOK, "test")
+	}
+
+	token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ"
+	validKey := []byte("secret")
+
+	h := JWTWithConfig(JWTConfig{
+		SigningKey: validKey,
+		CredentialsOptional: true,
+		SuccessHandler: func(c echo.Context) {
+			c.Set ("AUTHORISED", true)
+		},
+		BeforeFunc: func(c echo.Context) {
+			c.Set ("AUTHORISED", false)
+		},
+	})(handler)
+
+	makeReq := func(token string) echo.Context {
+		req := httptest.NewRequest(echo.GET, "/", nil)
+		res := httptest.NewRecorder()
+		if token != "" {
+			req.Header.Set(echo.HeaderAuthorization, DefaultJWTConfig.AuthScheme+" "+token)
+		}
+		c := e.NewContext(req, res)
+		assert.NoError(t, h(c))
+		return c
+	}
+
+	c := makeReq("")
+	assert.Equal(t, c.Get ("AUTHORISED"), false)
+
+	c = makeReq(token)
+	assert.Equal(t, c.Get ("AUTHORISED"), true)
+}
