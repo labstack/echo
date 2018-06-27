@@ -19,13 +19,19 @@ type (
 		ID   int    `json:"id" xml:"id" form:"id" query:"id"`
 		Name string `json:"name" xml:"name" form:"name" query:"name"`
 	}
+
+	userInvalid struct {
+		IDD   int    `json:"idd" xml:"idd" form:"idd" query:"idd"`
+		UName string `json:"uname" xml:"uname" form:"uname" query:"uname"`
+	}
 )
 
 const (
-	userJSON       = `{"id":1,"name":"Jon Snow"}`
-	userXML        = `<user><id>1</id><name>Jon Snow</name></user>`
-	userForm       = `id=1&name=Jon Snow`
-	invalidContent = "invalid content"
+	userJSON        = `{"id":1,"name":"Jon Snow"}`
+	userInvalidJSON = `{"idd": 1, "uname": "Linux"}`
+	userXML         = `<user><id>1</id><name>Jon Snow</name></user>`
+	userForm        = `id=1&name=Jon Snow`
+	invalidContent  = "invalid content"
 )
 
 const userJSONPretty = `{

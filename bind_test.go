@@ -116,20 +116,24 @@ var values = map[string][]string{
 }
 
 func TestBindJSON(t *testing.T) {
-	testBindOkay(t, strings.NewReader(userJSON), MIMEApplicationJSON)
-	testBindError(t, strings.NewReader(invalidContent), MIMEApplicationJSON)
+	testBindOkay(t, strings.NewReader(userJSON), MIMEApplicationJSON, user{}, false)
+	testBindError(t, strings.NewReader(invalidContent), MIMEApplicationJSON, user{}, false)
+
+	testBindError(t, strings.NewReader(userInvalidJSON), MIMEApplicationJSON, user{}, false)
+	testBindOkay(t, strings.NewReader(userInvalidJSON), MIMEApplicationJSON, userInvalid{}, true)
+	testBindError(t, strings.NewReader(userInvalidJSON), MIMEApplicationJSON, user{}, true)
 }
 
 func TestBindXML(t *testing.T) {
-	testBindOkay(t, strings.NewReader(userXML), MIMEApplicationXML)
-	testBindError(t, strings.NewReader(invalidContent), MIMEApplicationXML)
-	testBindOkay(t, strings.NewReader(userXML), MIMETextXML)
-	testBindError(t, strings.NewReader(invalidContent), MIMETextXML)
+	testBindOkay(t, strings.NewReader(userXML), MIMEApplicationXML, user{}, false)
+	testBindError(t, strings.NewReader(invalidContent), MIMEApplicationXML, user{}, false)
+	testBindOkay(t, strings.NewReader(userXML), MIMETextXML, user{}, false)
+	testBindError(t, strings.NewReader(invalidContent), MIMETextXML, user{}, false)
 }
 
 func TestBindForm(t *testing.T) {
-	testBindOkay(t, strings.NewReader(userForm), MIMEApplicationForm)
-	testBindError(t, nil, MIMEApplicationForm)
+	testBindOkay(t, strings.NewReader(userForm), MIMEApplicationForm, user{}, false)
+	testBindError(t, nil, MIMEApplicationForm, user{}, false)
 	e := New()
 	req := httptest.NewRequest(POST, "/", strings.NewReader(userForm))
 	rec := httptest.NewRecorder()
@@ -194,11 +198,11 @@ func TestBindMultipartForm(t *testing.T) {
 	mw.WriteField("id", "1")
 	mw.WriteField("name", "Jon Snow")
 	mw.Close()
-	testBindOkay(t, body, mw.FormDataContentType())
+	testBindOkay(t, body, mw.FormDataContentType(), user{}, false)
 }
 
 func TestBindUnsupportedMediaType(t *testing.T) {
-	testBindError(t, strings.NewReader(invalidContent), MIMEApplicationJSON)
+	testBindError(t, strings.NewReader(invalidContent), MIMEApplicationJSON, user{}, false)
 }
 
 func TestBindbindData(t *testing.T) {
@@ -313,28 +317,49 @@ func assertBindTestStruct(t *testing.T, ts *bindTestStruct) {
 	assert.Equal(t, "", ts.GetCantSet())
 }
 
-func testBindOkay(t *testing.T, r io.Reader, ctype string) {
+func testBindOkay(t *testing.T, r io.Reader, ctype string, s interface{}, strict bool) {
 	e := New()
 	req := httptest.NewRequest(POST, "/", r)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	req.Header.Set(HeaderContentType, ctype)
-	u := new(user)
-	err := c.Bind(u)
+	var err error
+	var u *user
+	var ui *userInvalid
+	if strict {
+		c.StrictBind()
+	}
+	switch s.(type) {
+	case user:
+		u = &user{}
+		err = c.Bind(u)
+	case userInvalid:
+		ui = &userInvalid{}
+		err = c.Bind(ui)
+	}
+
 	if assert.NoError(t, err) {
-		assert.Equal(t, 1, u.ID)
-		assert.Equal(t, "Jon Snow", u.Name)
+		switch s.(type) {
+		case user:
+			assert.Equal(t, 1, u.ID)
+			assert.Equal(t, "Jon Snow", u.Name)
+		case userInvalid:
+			assert.Equal(t, 1, ui.IDD)
+			assert.Equal(t, "Linux", ui.UName)
+		}
 	}
 }
 
-func testBindError(t *testing.T, r io.Reader, ctype string) {
+func testBindError(t *testing.T, r io.Reader, ctype string, s interface{}, strict bool) {
 	e := New()
 	req := httptest.NewRequest(POST, "/", r)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	req.Header.Set(HeaderContentType, ctype)
-	u := new(user)
-	err := c.Bind(u)
+	if strict {
+		c.StrictBind()
+	}
+	err := c.Bind(s)
 
 	switch {
 	case strings.HasPrefix(ctype, MIMEApplicationJSON), strings.HasPrefix(ctype, MIMEApplicationXML), strings.HasPrefix(ctype, MIMETextXML),

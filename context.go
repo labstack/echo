@@ -102,6 +102,10 @@ type (
 		// does it based on Content-Type header.
 		Bind(i interface{}) error
 
+		// StrictBind signaling to Bind() to use strict mode whenever
+		// possible.
+		StrictBind()
+
 		// Validate validates provided `i`. It is usually called after `Context#Bind()`.
 		// Validator must be registered using `Echo#Validator`.
 		Validate(i interface{}) error
@@ -189,15 +193,16 @@ type (
 	}
 
 	context struct {
-		request  *http.Request
-		response *Response
-		path     string
-		pnames   []string
-		pvalues  []string
-		query    url.Values
-		handler  HandlerFunc
-		store    Map
-		echo     *Echo
+		request    *http.Request
+		response   *Response
+		path       string
+		pnames     []string
+		pvalues    []string
+		query      url.Values
+		handler    HandlerFunc
+		store      Map
+		echo       *Echo
+		strictBind bool
 	}
 )
 
@@ -371,8 +376,10 @@ func (c *context) Set(key string, val interface{}) {
 }
 
 func (c *context) Bind(i interface{}) error {
-	return c.echo.Binder.Bind(i, c)
+	return c.echo.Binder.Bind(i, c, c.strictBind)
 }
+
+func (c *context) StrictBind() { c.strictBind = true }
 
 func (c *context) Validate(i interface{}) error {
 	if c.echo.Validator == nil {
@@ -573,4 +580,5 @@ func (c *context) Reset(r *http.Request, w http.ResponseWriter) {
 	c.pnames = nil
 	// NOTE: Don't reset because it has to have length c.echo.maxParam at all times
 	// c.pvalues = nil
+	c.strictBind = false
 }
