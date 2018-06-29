@@ -36,6 +36,7 @@ type (
 		// - referer
 		// - user_agent
 		// - status
+		// - error
 		// - latency (In nanoseconds)
 		// - latency_human (Human readable)
 		// - bytes_in (Bytes received)
@@ -67,7 +68,7 @@ var (
 	DefaultLoggerConfig = LoggerConfig{
 		Skipper: DefaultSkipper,
 		Format: `{"time":"${time_rfc3339_nano}","id":"${id}","remote_ip":"${remote_ip}","host":"${host}",` +
-			`"method":"${method}","uri":"${uri}","status":${status}, "latency":${latency},` +
+			`"method":"${method}","uri":"${uri}","status":${status},"error":"${error}","latency":${latency},` +
 			`"latency_human":"${latency_human}","bytes_in":${bytes_in},` +
 			`"bytes_out":${bytes_out}}` + "\n",
 		CustomTimeFormat: "2006-01-02 15:04:05.00000",
@@ -169,6 +170,10 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 						s = config.colorer.Cyan(n)
 					}
 					return buf.WriteString(s)
+				case "error":
+					if err != nil {
+						return buf.WriteString(err.Error())
+					}
 				case "latency":
 					l := stop.Sub(start)
 					return buf.WriteString(strconv.FormatInt(int64(l), 10))
