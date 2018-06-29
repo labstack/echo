@@ -16,6 +16,15 @@ type (
 		// Skipper defines a function to skip middleware.
 		Skipper Skipper
 
+		// BeforeFunc defines a function which is executed just before the middleware.
+		BeforeFunc BeforeFunc
+
+		// SuccessHandler defines a function which is executed for a valid token.
+		SuccessHandler JWTSuccessHandler
+
+		// ErrorHandler defines a function which is executed for an invalid token.
+		ErrorHandler JWTErrorHandler
+
 		// Signing key to validate token.
 		// Required.
 		SigningKey interface{}
@@ -47,6 +56,12 @@ type (
 
 		keyFunc jwt.Keyfunc
 	}
+
+	// JWTSuccessHandler defines a function which is executed for a valid token.
+	JWTSuccessHandler func(echo.Context)
+
+	// JWTErrorHandler defines a function which is executed for an invalid token.
+	JWTErrorHandler func(echo.Context, echo.HandlerFunc) error
 
 	jwtExtractor func(echo.Context) (string, error)
 )
@@ -137,6 +152,10 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 				return next(c)
 			}
 
+			if config.BeforeFunc != nil {
+				config.BeforeFunc(c)
+			}
+
 			auth, err := extractor(c)
 			if err != nil {
 				return err
@@ -153,7 +172,13 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 			if err == nil && token.Valid {
 				// Store user information from token into context.
 				c.Set(config.ContextKey, token)
+				if config.SuccessHandler != nil {
+					config.SuccessHandler(c)
+				}
 				return next(c)
+			}
+			if config.ErrorHandler != nil {
+				return config.ErrorHandler(c, next)
 			}
 			return &echo.HTTPError{
 				Code:     ErrJWTInvalid.Code,
