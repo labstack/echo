@@ -11,7 +11,10 @@ import (
 type (
 	// Skipper defines a function to skip middleware. Returning true skips processing
 	// the middleware.
-	Skipper func(c echo.Context) bool
+	Skipper func(echo.Context) bool
+
+	// BeforeFunc defines a function which is executed just before the middleware.
+	BeforeFunc func(echo.Context)
 )
 
 func captureTokens(pattern *regexp.Regexp, input string) *strings.Replacer {
