@@ -54,7 +54,7 @@ func TestCORS(t *testing.T) {
 	c = e.NewContext(req, rec)
 	req.Header.Set(echo.HeaderOrigin, "localhost")
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	cors := CORSWithConfig(CORSConfig{
+	cors = CORSWithConfig(CORSConfig{
 		AllowOrigins:     []string{"*"},
 		AllowCredentials: true,
 		MaxAge:           3600,
