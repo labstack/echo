@@ -119,6 +119,9 @@ type (
 		// String sends a string response with status code.
 		String(code int, s string) error
 
+		// Send sends a JSON or XML response with status code, based on request Accept header.
+		Send(code int, i interface{}) error
+
 		// JSON sends a JSON response with status code.
 		JSON(code int, i interface{}) error
 
@@ -532,6 +535,16 @@ func (c *context) contentDisposition(file, name, dispositionType string) error {
 func (c *context) NoContent(code int) error {
 	c.response.WriteHeader(code)
 	return nil
+}
+
+func (c *context) Send(code int, i interface{}) error {
+	accept := c.request.Header.Get(HeaderAccept)
+
+	if strings.Contains(strings.ToLower(accept), MIMEApplicationXML) {
+		return c.XML(code, i)
+	}
+
+	return c.JSON(code, i)
 }
 
 func (c *context) Redirect(code int, url string) error {

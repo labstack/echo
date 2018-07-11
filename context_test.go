@@ -60,6 +60,28 @@ func TestContext(t *testing.T) {
 	err = c.Render(http.StatusOK, "hello", "Jon Snow")
 	assert.Error(t, err)
 
+	// Send with JSON
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec).(*context)
+	c.request.Header.Set(HeaderAccept, MIMEApplicationJSON)
+	err = c.Send(http.StatusOK, user{1, "Jon Snow"})
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, userJSON, rec.Body.String())
+	}
+
+	// Send with XML
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec).(*context)
+	c.request.Header.Set(HeaderAccept, MIMEApplicationXML)
+	err = c.Send(http.StatusOK, user{1, "Jon Snow"})
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, MIMEApplicationXMLCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, xml.Header+userXML, rec.Body.String())
+	}
+
 	// JSON
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec).(*context)
