@@ -12,6 +12,7 @@ import (
 	"github.com/labstack/echo"
 	"github.com/labstack/gommon/color"
 	"github.com/valyala/fasttemplate"
+	"encoding/json"
 )
 
 type (
@@ -190,6 +191,14 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 					return buf.WriteString(cl)
 				case "bytes_out":
 					return buf.WriteString(strconv.FormatInt(res.Size, 10))
+				case "form":
+					form, err := c.FormParams()
+					if err == nil {
+						formData, marshalErr := json.Marshal(form)
+						if marshalErr == nil {
+							return buf.WriteString([]byte(formData))
+						}
+					}
 				default:
 					switch {
 					case strings.HasPrefix(tag, "header:"):
