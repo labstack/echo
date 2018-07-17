@@ -93,7 +93,7 @@ func TestLoggerTemplate(t *testing.T) {
 			`"method":"${method}","uri":"${uri}","status":${status}, "latency":${latency},` +
 			`"latency_human":"${latency_human}","bytes_in":${bytes_in}, "path":"${path}", "referer":"${referer}",` +
 			`"bytes_out":${bytes_out},"ch":"${header:X-Custom-Header}", "protocol":"${protocol}"` +
-			`"us":"${query:username}", "cf":"${form:username}", "form":"${form}", "session":"${cookie:session}"}` + "\n",
+			`"us":"${query:username}", "cf":"${form:username}", "post_form":"${post_form}", "session":"${cookie:session}"}` + "\n",
 		Output: buf,
 	}))
 
@@ -109,10 +109,16 @@ func TestLoggerTemplate(t *testing.T) {
 	req.Header.Add("X-Custom-Header", "AAA-CUSTOM-VALUE")
 	req.Header.Add("X-Request-ID", "6ba7b810-9dad-11d1-80b4-00c04fd430c8")
 	req.Header.Add("Cookie", "_ga=GA1.2.000000000.0000000000; session=ac08034cd216a647fc2eb62f2bcf7b810")
+	req.PostForm = url.Values{
+		"username": []string{"apagano-form"},
+		"password": []string{"secret-form"},
+	}
 	req.Form = url.Values{
 		"username": []string{"apagano-form"},
 		"password": []string{"secret-form"},
 	}
+
+
 
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -150,7 +156,7 @@ func TestLoggerCustomTimestamp(t *testing.T) {
 			`"method":"${method}","uri":"${uri}","status":${status}, "latency":${latency},` +
 			`"latency_human":"${latency_human}","bytes_in":${bytes_in}, "path":"${path}", "referer":"${referer}",` +
 			`"bytes_out":${bytes_out},"ch":"${header:X-Custom-Header}",` +
-			`"us":"${query:username}", "cf":"${form:username}", "form":"${form}", "session":"${cookie:session}"}` + "\n",
+			`"us":"${query:username}", "cf":"${form:username}", "post_form":"${post_form}", "session":"${cookie:session}"}` + "\n",
 		CustomTimeFormat: customTimeFormat,
 		Output:           buf,
 	}))

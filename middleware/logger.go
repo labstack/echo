@@ -191,7 +191,7 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 					return buf.WriteString(cl)
 				case "bytes_out":
 					return buf.WriteString(strconv.FormatInt(res.Size, 10))
-				case "form":
+				case "post_form":
 					form, err := c.FormParams()
 					if err == nil {
 						formData, marshalErr := json.Marshal(form)
