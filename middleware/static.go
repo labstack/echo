@@ -179,6 +179,10 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 			}
 
 			if fi.IsDir() {
+				if !strings.HasSuffix(p, "/") {
+					return c.Redirect(http.StatusMovedPermanently, p+"/")
+				}
+
 				index := filepath.Join(name, config.Index)
 				fi, err = os.Stat(index)
 
