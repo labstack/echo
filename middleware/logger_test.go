@@ -14,6 +14,7 @@ import (
 
 	"github.com/labstack/echo"
 	"github.com/stretchr/testify/assert"
+	"fmt"
 )
 
 func TestLogger(t *testing.T) {
@@ -143,6 +144,7 @@ func TestLoggerTemplate(t *testing.T) {
 		"{\"username\":[\"apagano-form\"], \"password\":[\"secret-form\"]}" : true,
 	}
 
+	fmt.Println(buf.String())
 	for token, present := range cases {
 		assert.True(t, strings.Contains(buf.String(), token) == present, "Case: "+token)
 	}
