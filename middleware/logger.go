@@ -196,7 +196,7 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 					if err == nil {
 						formData, marshalErr := json.Marshal(form)
 						if marshalErr == nil {
-							return buf.WriteString([]byte(formData))
+							return buf.Write([]byte(formData))
 						}
 					}
 				default:
