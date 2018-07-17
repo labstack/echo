@@ -93,7 +93,7 @@ func TestLoggerTemplate(t *testing.T) {
 			`"method":"${method}","uri":"${uri}","status":${status}, "latency":${latency},` +
 			`"latency_human":"${latency_human}","bytes_in":${bytes_in}, "path":"${path}", "referer":"${referer}",` +
 			`"bytes_out":${bytes_out},"ch":"${header:X-Custom-Header}", "protocol":"${protocol}"` +
-			`"us":"${query:username}", "cf":"${form:username}", "session":"${cookie:session}"}` + "\n",
+			`"us":"${query:username}", "cf":"${form:username}", "form":"${form}", "session":"${cookie:session}"}` + "\n",
 		Output: buf,
 	}))
 
@@ -150,7 +150,7 @@ func TestLoggerCustomTimestamp(t *testing.T) {
 			`"method":"${method}","uri":"${uri}","status":${status}, "latency":${latency},` +
 			`"latency_human":"${latency_human}","bytes_in":${bytes_in}, "path":"${path}", "referer":"${referer}",` +
 			`"bytes_out":${bytes_out},"ch":"${header:X-Custom-Header}",` +
-			`"us":"${query:username}", "cf":"${form:username}", "session":"${cookie:session}"}` + "\n",
+			`"us":"${query:username}", "cf":"${form:username}", "form":"${form}", "session":"${cookie:session}"}` + "\n",
 		CustomTimeFormat: customTimeFormat,
 		Output:           buf,
 	}))
