@@ -111,8 +111,8 @@ func TestLoggerTemplate(t *testing.T) {
 	req.Header.Add("X-Request-ID", "6ba7b810-9dad-11d1-80b4-00c04fd430c8")
 	req.Header.Add("Cookie", "_ga=GA1.2.000000000.0000000000; session=ac08034cd216a647fc2eb62f2bcf7b810")
 	req.PostForm = url.Values{
-		"password": []string{"secret-form"},
 		"username": []string{"apagano-form"},
+		"password": []string{"secret-form"},
 	}
 	req.Form = url.Values{
 		"username": []string{"apagano-form"},
@@ -141,7 +141,7 @@ func TestLoggerTemplate(t *testing.T) {
 		"echo-tests-agent":                     true,
 		"6ba7b810-9dad-11d1-80b4-00c04fd430c8": true,
 		"ac08034cd216a647fc2eb62f2bcf7b810":    true,
-		"{\"username\":[\"apagano-form\"], \"password\":[\"secret-form\"]}" : true,
+		"{\"password\":[\"secret-form\"], \"username\":[\"apagano-form\"]}" : true,
 	}
 
 	fmt.Println(buf.String())
