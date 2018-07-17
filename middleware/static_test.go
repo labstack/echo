@@ -29,7 +29,7 @@ func TestStatic(t *testing.T) {
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	if assert.NoError(t, h(c)) {
-		assert.Equal(t, http.StatusMovedPermanently, rec.Code)
+		assert.Equal(t, http.StatusFound, rec.Code)
 	}
 
 	// File found

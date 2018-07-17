@@ -179,8 +179,9 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 			}
 
 			if fi.IsDir() {
+				// Redirect when missing trailing slash
 				if !strings.HasSuffix(p, "/") {
-					return c.Redirect(http.StatusMovedPermanently, p+"/")
+					return c.Redirect(http.StatusFound, p+"/")
 				}
 
 				index := filepath.Join(name, config.Index)
