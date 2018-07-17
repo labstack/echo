@@ -144,7 +144,6 @@ func TestLoggerTemplate(t *testing.T) {
 		"{\"password\":[\"secret-form\"],\"username\":[\"apagano-form\"]}" : true,
 	}
 
-	fmt.Println(buf.String())
 	for token, present := range cases {
 		assert.True(t, strings.Contains(buf.String(), token) == present, "Case: "+token)
 	}
