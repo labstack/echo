@@ -14,7 +14,6 @@ import (
 
 	"github.com/labstack/echo"
 	"github.com/stretchr/testify/assert"
-	"fmt"
 )
 
 func TestLogger(t *testing.T) {
