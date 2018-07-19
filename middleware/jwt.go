@@ -8,6 +8,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo"
+	"encoding/json"
 )
 
 type (
@@ -144,6 +145,8 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 		extractor = jwtFromQuery(parts[1])
 	case "cookie":
 		extractor = jwtFromCookie(parts[1])
+	case "body":
+		extractor = jwtFromBody(parts[1])
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -223,5 +226,18 @@ func jwtFromCookie(name string) jwtExtractor {
 			return "", ErrJWTMissing
 		}
 		return cookie.Value, nil
+	}
+}
+
+// jwtFromBody returns a `jwtExtractor` that extracts token from the request body.
+func jwtFromBody(name string) jwtExtractor {
+	return func(c echo.Context) (string, error) {
+		body := c.Request().Body
+		jsonBody := map[string]string{}
+		err := json.NewDecoder(body).Decode(&jsonBody)
+		if err != nil || len(jsonBody[name]) == 0 {
+			return "", ErrJWTMissing
+		}
+		return jsonBody[name], nil
 	}
 }
