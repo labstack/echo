@@ -12,7 +12,6 @@ import (
 	"github.com/labstack/echo"
 	"github.com/labstack/gommon/color"
 	"github.com/valyala/fasttemplate"
-	"encoding/json"
 )
 
 type (
@@ -194,10 +193,7 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 				case "post_form":
 					form, err := c.FormParams()
 					if err == nil {
-						formData, marshalErr := json.Marshal(form)
-						if marshalErr == nil {
-							return buf.Write([]byte(formData))
-						}
+						return buf.WriteString(form.Encode())
 					}
 				default:
 					switch {
