@@ -140,7 +140,7 @@ func TestLoggerTemplate(t *testing.T) {
 		"echo-tests-agent":                     true,
 		"6ba7b810-9dad-11d1-80b4-00c04fd430c8": true,
 		"ac08034cd216a647fc2eb62f2bcf7b810":    true,
-		"{\"password\":[\"secret-form\"],\"username\":[\"apagano-form\"]}" : true,
+		"password=secret-form&username=apagano-form" : true,
 	}
 
 	for token, present := range cases {
