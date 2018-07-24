@@ -30,6 +30,19 @@ type (
 // Bind implements the `Binder#Bind` function.
 func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 	req := c.Request()
+
+	paramNames := c.ParamNames()
+	paramValues := c.ParamValues()
+	paramVars := make(map[string][]string)
+	for in, name := range paramNames {
+		// Fix for an echo bug where a param name would show up which dont exist if its name contains "id" e.g. "userid"
+		names := strings.Split(name, ",")
+		for _, n := range names {
+			paramVars[n] = append(paramVars[name], paramValues[in])
+		}
+	}
+	b.bindData(i, paramVars, "param")
+
 	if req.ContentLength == 0 {
 		if req.Method == GET || req.Method == DELETE {
 			if err = b.bindData(i, c.QueryParams(), "query"); err != nil {

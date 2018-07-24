@@ -234,6 +234,36 @@ func TestBindbindData(t *testing.T) {
 	assertBindTestStruct(t, ts)
 }
 
+func TestBindParam(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(GET, "/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetPath("/users/:id/:name")
+	c.SetParamNames("id", "name")
+	c.SetParamValues("1", "Jon Snow")
+
+	u := new(user)
+	err := c.Bind(u)
+	if assert.NoError(t, err) {
+		assert.Equal(t, 1, u.ID)
+		assert.Equal(t, "Jon Snow", u.Name)
+	}
+
+	// Second test for the absence of a param
+	c2 := e.NewContext(req, rec)
+	c2.SetPath("/users/:id")
+	c2.SetParamNames("id")
+	c2.SetParamValues("1")
+
+	u = new(user)
+	err = c2.Bind(u)
+	if assert.NoError(t, err) {
+		assert.Equal(t, 1, u.ID)
+		assert.Equal(t, "", u.Name)
+	}
+}
+
 func TestBindUnmarshalTypeError(t *testing.T) {
 	body := bytes.NewBufferString(`{ "id": "text" }`)
 	e := New()
