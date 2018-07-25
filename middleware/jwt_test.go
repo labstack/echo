@@ -1,6 +1,9 @@
 package middleware
 
 import (
+	"bytes"
+	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -75,6 +78,7 @@ func TestJWT(t *testing.T) {
 		reqURL     string // "/" if empty
 		hdrAuth    string
 		hdrCookie  string // test.Request doesn't provide SetCookie(); use name=val
+		hdrBody    io.Reader
 		info       string
 	}{
 		{
@@ -184,12 +188,37 @@ func TestJWT(t *testing.T) {
 			expErrCode: http.StatusBadRequest,
 			info:       "Empty cookie",
 		},
+		{
+			config: JWTConfig{
+				SigningKey:  validKey,
+				TokenLookup: "body:jwt",
+			},
+			hdrBody: createBody("jwt", token),
+			info:    "Valid body method",
+		},
+		{
+			config: JWTConfig{
+				SigningKey:  validKey,
+				TokenLookup: "body:jwt",
+			},
+			expErrCode: http.StatusUnauthorized,
+			hdrBody:    createBody("jwt", "invalid"),
+			info:       "Invalid token with body method",
+		},
+		{
+			config: JWTConfig{
+				SigningKey:  validKey,
+				TokenLookup: "body:jwt",
+			},
+			expErrCode: http.StatusBadRequest,
+			info:       "Empty body",
+		},
 	} {
 		if tc.reqURL == "" {
 			tc.reqURL = "/"
 		}
 
-		req := httptest.NewRequest(echo.GET, tc.reqURL, nil)
+		req := httptest.NewRequest(echo.GET, tc.reqURL, tc.hdrBody)
 		res := httptest.NewRecorder()
 		req.Header.Set(echo.HeaderAuthorization, tc.hdrAuth)
 		req.Header.Set(echo.HeaderCookie, tc.hdrCookie)
@@ -223,4 +252,9 @@ func TestJWT(t *testing.T) {
 			}
 		}
 	}
+}
+
+func createBody(name, token string) io.Reader {
+	jsonBody, _ := json.Marshal(map[string]string{name: token})
+	return bytes.NewReader(jsonBody)
 }
