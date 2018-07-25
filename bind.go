@@ -33,15 +33,15 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 
 	paramNames := c.ParamNames()
 	paramValues := c.ParamValues()
-	paramVars := make(map[string][]string)
-	for in, name := range paramNames {
+	params := make(map[string][]string)
+	for i, name := range paramNames {
 		// Fix for an echo bug where a param name would show up which dont exist if its name contains "id" e.g. "userid"
 		names := strings.Split(name, ",")
 		for _, n := range names {
-			paramVars[n] = append(paramVars[name], paramValues[in])
+			params[n] = append(params[name], paramValues[i])
 		}
 	}
-	b.bindData(i, paramVars, "param")
+	b.bindData(i, params, "param")
 
 	if req.ContentLength == 0 {
 		if req.Method == GET || req.Method == DELETE {
