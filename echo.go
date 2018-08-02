@@ -326,7 +326,7 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 		code = he.Code
 		msg = he.Message
 		if he.Internal != nil {
-			msg = fmt.Sprintf("%v, %v", err, he.Internal)
+			err = fmt.Errorf("%v, %v", err, he.Internal)
 		}
 	} else if e.Debug {
 		msg = err.Error()
