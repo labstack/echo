@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"reflect"
 	"strings"
+	"io/ioutil"
+	"bytes"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo"
@@ -232,12 +234,13 @@ func jwtFromCookie(name string) jwtExtractor {
 // jwtFromBody returns a `jwtExtractor` that extracts token from the request body.
 func jwtFromBody(name string) jwtExtractor {
 	return func(c echo.Context) (string, error) {
-		body := c.Request().Body
+		reqBody, _ := ioutil.ReadAll(c.Request().Body)
 		jsonBody := map[string]string{}
-		err := json.NewDecoder(body).Decode(&jsonBody)
+		err := json.Unmarshal(reqBody, &jsonBody)
 		if err != nil || len(jsonBody[name]) == 0 {
 			return "", ErrJWTMissing
 		}
+		c.Request().Body = ioutil.NopCloser(bytes.NewBuffer(reqBody))
 		return jsonBody[name], nil
 	}
 }
