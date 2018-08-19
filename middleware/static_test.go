@@ -24,6 +24,14 @@ func TestStatic(t *testing.T) {
 		assert.Contains(t, rec.Body.String(), "Echo")
 	}
 
+	// Directory-redirecting
+	req = httptest.NewRequest(echo.GET, "/folder", nil)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec)
+	if assert.NoError(t, h(c)) {
+		assert.Equal(t, http.StatusFound, rec.Code)
+	}
+
 	// File found
 	req = httptest.NewRequest(echo.GET, "/images/walle.png", nil)
 	rec = httptest.NewRecorder()
