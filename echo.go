@@ -34,7 +34,7 @@ Example:
 
 Learn more at https://echo.labstack.com
 */
-package echo
+package echo // import "github.com/labstack/echo"
 
 import (
 	"bytes"
