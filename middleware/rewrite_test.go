@@ -53,7 +53,6 @@ func TestEchoRewritePreMiddleware(t *testing.T) {
 	// Route
 	r.Add(echo.GET, "/new", func(c echo.Context) error {
 		return c.NoContent(200)
-		return nil
 	})
 
 	req := httptest.NewRequest(echo.GET, "/old", nil)

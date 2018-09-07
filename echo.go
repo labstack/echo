@@ -216,6 +216,7 @@ const (
 	HeaderXCSRFToken              = "X-CSRF-Token"
 )
 
+// Echo details
 const (
 	Version = "3.3.dev"
 	website = "https://echo.labstack.com"
@@ -648,7 +649,7 @@ func (e *Echo) StartServer(s *http.Server) (err error) {
 		if e.Listener == nil {
 			e.Listener, err = newListener(s.Addr)
 			if err != nil {
-				return err
+				return
 			}
 		}
 		if !e.HidePort {
@@ -723,11 +724,10 @@ func WrapMiddleware(m func(http.Handler) http.Handler) MiddlewareFunc {
 }
 
 func getPath(r *http.Request) string {
-	path := r.URL.RawPath
-	if path == "" {
-		path = r.URL.Path
+	if r.URL.RawPath != "" {
+		return r.URL.RawPath
 	}
-	return path
+	return r.URL.Path
 }
 
 func handlerName(h HandlerFunc) string {

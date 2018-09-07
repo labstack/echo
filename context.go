@@ -325,16 +325,15 @@ func (c *context) FormValue(name string) string {
 }
 
 func (c *context) FormParams() (url.Values, error) {
-	if strings.HasPrefix(c.request.Header.Get(HeaderContentType), MIMEMultipartForm) {
-		if err := c.request.ParseMultipartForm(defaultMemory); err != nil {
+	req := c.Request()
+	if strings.HasPrefix(req.Header.Get(HeaderContentType), MIMEMultipartForm) {
+		if err := req.ParseMultipartForm(defaultMemory); err != nil {
 			return nil, err
 		}
-	} else {
-		if err := c.request.ParseForm(); err != nil {
-			return nil, err
-		}
+	} else if err := req.ParseForm(); err != nil {
+		return nil, err
 	}
-	return c.request.Form, nil
+	return req.Form, nil
 }
 
 func (c *context) FormFile(name string) (*multipart.FileHeader, error) {
