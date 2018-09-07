@@ -47,9 +47,8 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Unmarshal type error: expected=%v, got=%v, field=%v, offset=%v", ute.Type, ute.Value, ute.Field, ute.Offset))
 			} else if se, ok := err.(*json.SyntaxError); ok {
 				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Syntax error: offset=%v, error=%v", se.Offset, se.Error()))
-			} else {
-				return NewHTTPError(http.StatusBadRequest, err.Error())
 			}
+			return NewHTTPError(http.StatusBadRequest, err.Error())
 		}
 	case strings.HasPrefix(ctype, MIMEApplicationXML), strings.HasPrefix(ctype, MIMETextXML):
 		if err = xml.NewDecoder(req.Body).Decode(i); err != nil {
@@ -57,9 +56,8 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Unsupported type error: type=%v, error=%v", ute.Type, ute.Error()))
 			} else if se, ok := err.(*xml.SyntaxError); ok {
 				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Syntax error: line=%v, error=%v", se.Line, se.Error()))
-			} else {
-				return NewHTTPError(http.StatusBadRequest, err.Error())
 			}
+			return NewHTTPError(http.StatusBadRequest, err.Error())
 		}
 	case strings.HasPrefix(ctype, MIMEApplicationForm), strings.HasPrefix(ctype, MIMEMultipartForm):
 		params, err := c.FormParams()
@@ -96,8 +94,7 @@ func (b *DefaultBinder) bindData(ptr interface{}, data map[string][]string, tag 
 			inputFieldName = typeField.Name
 			// If tag is nil, we inspect if the field is a struct.
 			if _, ok := bindUnmarshaler(structField); !ok && structFieldKind == reflect.Struct {
-				err := b.bindData(structField.Addr().Interface(), data, tag)
-				if err != nil {
+				if err := b.bindData(structField.Addr().Interface(), data, tag); err != nil {
 					return err
 				}
 				continue
@@ -142,10 +139,9 @@ func (b *DefaultBinder) bindData(ptr interface{}, data map[string][]string, tag 
 				}
 			}
 			val.Field(i).Set(slice)
-		} else {
-			if err := setWithProperType(typeField.Type.Kind(), inputValue[0], structField); err != nil {
-				return err
-			}
+		} else if err := setWithProperType(typeField.Type.Kind(), inputValue[0], structField); err != nil {
+			return err
+
 		}
 	}
 	return nil
