@@ -409,11 +409,7 @@ func (c *context) JSON(code int, i interface{}) (err error) {
 	if c.echo.Debug || pretty {
 		return c.JSONPretty(code, i, "  ")
 	}
-	b, err := json.Marshal(i)
-	if err != nil {
-		return
-	}
-	return c.JSONBlob(code, b)
+	return c.jsonBlob(code, i)
 }
 
 func (c *context) JSONPretty(code int, i interface{}, indent string) (err error) {
@@ -426,6 +422,12 @@ func (c *context) JSONPretty(code int, i interface{}, indent string) (err error)
 
 func (c *context) JSONBlob(code int, b []byte) (err error) {
 	return c.Blob(code, MIMEApplicationJSONCharsetUTF8, b)
+}
+
+func (c *context) jsonBlob(code int, i interface{}) (err error) {
+	c.writeContentType(MIMEApplicationJSONCharsetUTF8)
+	c.response.WriteHeader(code)
+	return json.NewEncoder(c.response).Encode(i)
 }
 
 func (c *context) JSONP(code int, callback string, i interface{}) (err error) {
