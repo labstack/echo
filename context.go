@@ -262,8 +262,7 @@ func (c *context) RealIP() string {
 	if ip := c.request.Header.Get(HeaderXRealIP); ip != "" {
 		return ip
 	}
-	ra := c.request.RemoteAddr
-	ra, _, _ = net.SplitHostPort(ra)
+	ra, _, _ := net.SplitHostPort(c.request.RemoteAddr)
 	return ra
 }
 
