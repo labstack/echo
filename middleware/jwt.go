@@ -77,7 +77,9 @@ const (
 
 // Errors
 var (
-	ErrJWTMissing = echo.NewHTTPError(http.StatusBadRequest, "missing or malformed jwt")
+	ErrJWTMissing   = echo.NewHTTPError(http.StatusBadRequest, "missing or malformed jwt")
+	ErrJWTReadBody  = echo.NewHTTPError(http.StatusInternalServerError, "cannot read jwt body")
+	ErrJWTUnmarshal = echo.NewHTTPError(http.StatusInternalServerError, "cannot unmarshal jwt")
 )
 
 var (
@@ -234,10 +236,16 @@ func jwtFromCookie(name string) jwtExtractor {
 // jwtFromBody returns a `jwtExtractor` that extracts token from the request body.
 func jwtFromBody(name string) jwtExtractor {
 	return func(c echo.Context) (string, error) {
-		reqBody, _ := ioutil.ReadAll(c.Request().Body)
+		reqBody, err := ioutil.ReadAll(c.Request().Body)
+		if err != nil {
+			return "", ErrJWTReadBody
+		}
 		jsonBody := map[string]string{}
-		err := json.Unmarshal(reqBody, &jsonBody)
-		if err != nil || len(jsonBody[name]) == 0 {
+		err = json.Unmarshal(reqBody, &jsonBody)
+		if err != nil {
+			return "", ErrJWTUnmarshal
+		}
+		if len(jsonBody[name]) == 0 {
 			return "", ErrJWTMissing
 		}
 		c.Request().Body = ioutil.NopCloser(bytes.NewBuffer(reqBody))
