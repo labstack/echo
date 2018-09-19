@@ -1,16 +1,16 @@
 package middleware
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"reflect"
 	"strings"
-	"io/ioutil"
-	"bytes"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo"
-	"encoding/json"
 )
 
 type (
