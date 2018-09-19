@@ -210,7 +210,7 @@ func TestJWT(t *testing.T) {
 				SigningKey:  validKey,
 				TokenLookup: "body:jwt",
 			},
-			expErrCode: http.StatusBadRequest,
+			expErrCode: http.StatusInternalServerError,
 			info:       "Empty body",
 		},
 	} {
