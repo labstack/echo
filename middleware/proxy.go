@@ -6,7 +6,6 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 	"regexp"
 	"strings"
@@ -82,23 +81,6 @@ var (
 		Skipper: DefaultSkipper,
 	}
 )
-
-func proxyHTTP(t *ProxyTarget, c echo.Context, config ProxyConfig) http.Handler {
-	proxy := httputil.NewSingleHostReverseProxy(t.URL)
-	proxy.ErrorHandler = func(resp http.ResponseWriter, req *http.Request, err error) {
-		descr := t.URL.String()
-		if len(t.Name) > 0 {
-			descr = fmt.Sprintf("%s(%s)", t.Name, t.URL.String())
-		}
-		c.Logger().Warnf("remote %s unreachable, could not forward: %v", descr, err)
-		c.Error(echo.NewHTTPError(
-			http.StatusServiceUnavailable,
-			http.StatusText(http.StatusServiceUnavailable),
-		))
-	}
-	proxy.Transport = config.Transport
-	return proxy
-}
 
 func proxyRaw(t *ProxyTarget, c echo.Context) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
