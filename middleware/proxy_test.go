@@ -124,4 +124,14 @@ func TestProxy(t *testing.T) {
 	req.URL.Path = "/users/jack/orders/1"
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "/user/jack/order/1", req.URL.Path)
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	// Remote unreachable
+	rec = newCloseNotifyRecorder()
+	t1.Close()
+	t2.Close()
+	req.URL.Path = "/api/users"
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, "/users", req.URL.Path)
+	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
 }

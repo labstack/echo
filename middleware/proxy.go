@@ -38,6 +38,10 @@ type (
 		// "/users/*/orders/*": "/user/$1/order/$2",
 		Rewrite map[string]string
 
+		// To customize the transport to remote.
+		// Examples: If custom TLS certificates are required.
+		Transport http.RoundTripper
+
 		rewriteRegex map[*regexp.Regexp]string
 	}
 
@@ -79,8 +83,21 @@ var (
 	}
 )
 
-func proxyHTTP(t *ProxyTarget) http.Handler {
-	return httputil.NewSingleHostReverseProxy(t.URL)
+func proxyHTTP(t *ProxyTarget, c echo.Context, config ProxyConfig) http.Handler {
+	proxy := httputil.NewSingleHostReverseProxy(t.URL)
+	proxy.ErrorHandler = func(resp http.ResponseWriter, req *http.Request, err error) {
+		descr := t.URL.String()
+		if len(t.Name) > 0 {
+			descr = fmt.Sprintf("%s(%s)", t.Name, t.URL.String())
+		}
+		c.Logger().Warnf("remote %s unreachable, could not forward: %v", descr, err)
+		c.Error(echo.NewHTTPError(
+			http.StatusServiceUnavailable,
+			http.StatusText(http.StatusServiceUnavailable),
+		))
+	}
+	proxy.Transport = config.Transport
+	return proxy
 }
 
 func proxyRaw(t *ProxyTarget, c echo.Context) http.Handler {
@@ -243,7 +260,7 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 				proxyRaw(tgt, c).ServeHTTP(res, req)
 			case req.Header.Get(echo.HeaderAccept) == "text/event-stream":
 			default:
-				proxyHTTP(tgt).ServeHTTP(res, req)
+				proxyHTTP(tgt, c, config).ServeHTTP(res, req)
 			}
 
 			return
