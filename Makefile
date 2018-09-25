@@ -1,4 +1,4 @@
-DEP_VERSION=0.4.1
+DEP_VERSION=0.5.0
 
 dependency:
 	curl -fsSL -o ${GOPATH}/bin/dep https://github.com/golang/dep/releases/download/v${DEP_VERSION}/dep-linux-amd64

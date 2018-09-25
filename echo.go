@@ -103,7 +103,7 @@ type (
 	// MiddlewareFunc defines a function to process middleware.
 	MiddlewareFunc func(HandlerFunc) HandlerFunc
 
-	// HandlerFunc defines a function to server HTTP requests.
+	// HandlerFunc defines a function to serve HTTP requests.
 	HandlerFunc func(Context) error
 
 	// HTTPErrorHandler is a centralized HTTP error handler.
@@ -326,7 +326,7 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 		code = he.Code
 		msg = he.Message
 		if he.Internal != nil {
-			msg = fmt.Sprintf("%v, %v", err, he.Internal)
+			err = fmt.Errorf("%v, %v", err, he.Internal)
 		}
 	} else if e.Debug {
 		msg = err.Error()
@@ -557,18 +557,17 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c := e.pool.Get().(*context)
 	c.Reset(r, w)
 
-	m := r.Method
 	h := NotFoundHandler
 
 	if e.premiddleware == nil {
-		e.router.Find(m, getPath(r), c)
+		e.router.Find(r.Method, getPath(r), c)
 		h = c.Handler()
 		for i := len(e.middleware) - 1; i >= 0; i-- {
 			h = e.middleware[i](h)
 		}
 	} else {
 		h = func(c Context) error {
-			e.router.Find(m, getPath(r), c)
+			e.router.Find(r.Method, getPath(r), c)
 			h := c.Handler()
 			for i := len(e.middleware) - 1; i >= 0; i-- {
 				h = e.middleware[i](h)
