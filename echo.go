@@ -62,7 +62,7 @@ import (
 type (
 	// Echo is the top-level framework instance.
 	Echo struct {
-		stdLogger        *stdLog.Logger
+		StdLogger        *stdLog.Logger
 		colorer          *color.Color
 		premiddleware    []MiddlewareFunc
 		middleware       []MiddlewareFunc
@@ -289,7 +289,7 @@ func New() (e *Echo) {
 	e.HTTPErrorHandler = e.DefaultHTTPErrorHandler
 	e.Binder = &DefaultBinder{}
 	e.Logger.SetLevel(log.ERROR)
-	e.stdLogger = stdLog.New(e.Logger.Output(), e.Logger.Prefix()+": ", 0)
+	e.StdLogger = stdLog.New(e.Logger.Output(), e.Logger.Prefix()+": ", 0)
 	e.pool.New = func() interface{} {
 		return e.NewContext(nil, nil)
 	}
@@ -634,7 +634,7 @@ func (e *Echo) startTLS(address string) error {
 func (e *Echo) StartServer(s *http.Server) (err error) {
 	// Setup
 	e.colorer.SetOutput(e.Logger.Output())
-	s.ErrorLog = e.stdLogger
+	s.ErrorLog = e.StdLogger
 	s.Handler = e
 	if e.Debug {
 		e.Logger.SetLevel(log.DEBUG)
