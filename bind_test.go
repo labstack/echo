@@ -2,11 +2,15 @@ package echo
 
 import (
 	"bytes"
+	"encoding/json"
+	"encoding/xml"
+	"errors"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -117,19 +121,24 @@ var values = map[string][]string{
 
 func TestBindJSON(t *testing.T) {
 	testBindOkay(t, strings.NewReader(userJSON), MIMEApplicationJSON)
-	testBindError(t, strings.NewReader(invalidContent), MIMEApplicationJSON)
+	testBindError(t, strings.NewReader(invalidContent), MIMEApplicationJSON, &json.SyntaxError{})
+	testBindError(t, strings.NewReader(userJSONInvalidType), MIMEApplicationJSON, &json.UnmarshalTypeError{})
 }
 
 func TestBindXML(t *testing.T) {
 	testBindOkay(t, strings.NewReader(userXML), MIMEApplicationXML)
-	testBindError(t, strings.NewReader(invalidContent), MIMEApplicationXML)
+	testBindError(t, strings.NewReader(invalidContent), MIMEApplicationXML, errors.New(""))
+	testBindError(t, strings.NewReader(userXMLConvertNumberError), MIMEApplicationXML, &strconv.NumError{})
+	testBindError(t, strings.NewReader(userXMLUnsupportedTypeError), MIMEApplicationXML, &xml.SyntaxError{})
 	testBindOkay(t, strings.NewReader(userXML), MIMETextXML)
-	testBindError(t, strings.NewReader(invalidContent), MIMETextXML)
+	testBindError(t, strings.NewReader(invalidContent), MIMETextXML, errors.New(""))
+	testBindError(t, strings.NewReader(userXMLConvertNumberError), MIMETextXML, &strconv.NumError{})
+	testBindError(t, strings.NewReader(userXMLUnsupportedTypeError), MIMETextXML, &xml.SyntaxError{})
 }
 
 func TestBindForm(t *testing.T) {
 	testBindOkay(t, strings.NewReader(userForm), MIMEApplicationForm)
-	testBindError(t, nil, MIMEApplicationForm)
+	testBindError(t, nil, MIMEApplicationForm, nil)
 	e := New()
 	req := httptest.NewRequest(POST, "/", strings.NewReader(userForm))
 	rec := httptest.NewRecorder()
@@ -224,7 +233,7 @@ func TestBindMultipartForm(t *testing.T) {
 }
 
 func TestBindUnsupportedMediaType(t *testing.T) {
-	testBindError(t, strings.NewReader(invalidContent), MIMEApplicationJSON)
+	testBindError(t, strings.NewReader(invalidContent), MIMEApplicationJSON, &json.SyntaxError{})
 }
 
 func TestBindbindData(t *testing.T) {
@@ -246,7 +255,7 @@ func TestBindUnmarshalTypeError(t *testing.T) {
 
 	err := c.Bind(u)
 
-	he := &HTTPError{Code: http.StatusBadRequest, Message: "Unmarshal type error: expected=int, got=string, field=id, offset=14"}
+	he := &HTTPError{Code: http.StatusBadRequest, Message: "Unmarshal type error: expected=int, got=string, field=id, offset=14", Internal: err.(*HTTPError).Internal}
 
 	assert.Equal(t, he, err)
 }
@@ -353,7 +362,7 @@ func testBindOkay(t *testing.T, r io.Reader, ctype string) {
 	}
 }
 
-func testBindError(t *testing.T, r io.Reader, ctype string) {
+func testBindError(t *testing.T, r io.Reader, ctype string, expectedInternal error) {
 	e := New()
 	req := httptest.NewRequest(POST, "/", r)
 	rec := httptest.NewRecorder()
@@ -367,10 +376,12 @@ func testBindError(t *testing.T, r io.Reader, ctype string) {
 		strings.HasPrefix(ctype, MIMEApplicationForm), strings.HasPrefix(ctype, MIMEMultipartForm):
 		if assert.IsType(t, new(HTTPError), err) {
 			assert.Equal(t, http.StatusBadRequest, err.(*HTTPError).Code)
+			assert.IsType(t, expectedInternal, err.(*HTTPError).Internal)
 		}
 	default:
 		if assert.IsType(t, new(HTTPError), err) {
 			assert.Equal(t, ErrUnsupportedMediaType, err)
+			assert.IsType(t, expectedInternal, err.(*HTTPError).Internal)
 		}
 	}
 }

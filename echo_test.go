@@ -22,10 +22,13 @@ type (
 )
 
 const (
-	userJSON       = `{"id":1,"name":"Jon Snow"}`
-	userXML        = `<user><id>1</id><name>Jon Snow</name></user>`
-	userForm       = `id=1&name=Jon Snow`
-	invalidContent = "invalid content"
+	userJSON                    = `{"id":1,"name":"Jon Snow"}`
+	userXML                     = `<user><id>1</id><name>Jon Snow</name></user>`
+	userForm                    = `id=1&name=Jon Snow`
+	invalidContent              = "invalid content"
+	userJSONInvalidType         = `{"id":"1","name":"Jon Snow"}`
+	userXMLConvertNumberError   = `<user><id>Number one</id><name>Jon Snow</name></user>`
+	userXMLUnsupportedTypeError = `<user><>Number one</><name>Jon Snow</name></user>`
 )
 
 const userJSONPretty = `{
