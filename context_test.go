@@ -160,7 +160,7 @@ func TestContext(t *testing.T) {
 		assert.Equal(t, userJSON, rec.Body.String())
 	}
 
-	// Legacy JSONP
+	// Legacy JSONPBlob
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec).(*context)
 	callback = "callback"
@@ -173,7 +173,7 @@ func TestContext(t *testing.T) {
 		assert.Equal(t, callback+"("+userJSON+");", rec.Body.String())
 	}
 
-	// Legacy XML
+	// Legacy XMLBlob
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec).(*context)
 	data, err = xml.Marshal(user{1, "Jon Snow"})
