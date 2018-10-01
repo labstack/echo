@@ -403,24 +403,52 @@ func (c *context) String(code int, s string) (err error) {
 	return c.Blob(code, MIMETextPlainCharsetUTF8, []byte(s))
 }
 
-func (c *context) JSON(code int, i interface{}) (err error) {
+func (c *context) jsonPBlob(code int, callback string, i interface{}) (err error) {
+	buf := new(bytes.Buffer)
+	enc := json.NewEncoder(buf)
 	_, pretty := c.QueryParams()["pretty"]
 	if c.echo.Debug || pretty {
-		return c.JSONPretty(code, i, "  ")
+		enc.SetIndent("", "  ")
 	}
-	b, err := json.Marshal(i)
-	if err != nil {
+	c.writeContentType(MIMEApplicationJavaScriptCharsetUTF8)
+	c.response.WriteHeader(code)
+	if _, err = buf.WriteString(callback + "("); err != nil {
+
+	}
+	if err = enc.Encode(i); err != nil {
 		return
 	}
-	return c.JSONBlob(code, b)
+	if _, err = buf.WriteString(");"); err != nil {
+		return
+	}
+	_, err = buf.WriteTo(c.response)
+	return
+}
+
+func (c *context) jsonBlob(code int, i interface{}, pretty bool, indent string) error {
+	enc := json.NewEncoder(c.response)
+	if pretty {
+		enc.SetIndent("", indent)
+	}
+	c.writeContentType(MIMEApplicationJSONCharsetUTF8)
+	c.response.WriteHeader(code)
+	return enc.Encode(i)
+}
+
+func (c *context) JSON(code int, i interface{}) (err error) {
+	var (
+		pretty bool
+		indent string
+	)
+	if _, pretty = c.QueryParams()["pretty"]; c.echo.Debug || pretty {
+		pretty = true
+		indent = "  "
+	}
+	return c.jsonBlob(code, i, pretty, indent)
 }
 
 func (c *context) JSONPretty(code int, i interface{}, indent string) (err error) {
-	b, err := json.MarshalIndent(i, "", indent)
-	if err != nil {
-		return
-	}
-	return c.JSONBlob(code, b)
+	return c.jsonBlob(code, i, true, indent)
 }
 
 func (c *context) JSONBlob(code int, b []byte) (err error) {
@@ -428,11 +456,7 @@ func (c *context) JSONBlob(code int, b []byte) (err error) {
 }
 
 func (c *context) JSONP(code int, callback string, i interface{}) (err error) {
-	b, err := json.Marshal(i)
-	if err != nil {
-		return
-	}
-	return c.JSONPBlob(code, callback, b)
+	return c.jsonPBlob(code, callback, i)
 }
 
 func (c *context) JSONPBlob(code int, callback string, b []byte) (err error) {
@@ -448,24 +472,33 @@ func (c *context) JSONPBlob(code int, callback string, b []byte) (err error) {
 	return
 }
 
-func (c *context) XML(code int, i interface{}) (err error) {
-	_, pretty := c.QueryParams()["pretty"]
-	if c.echo.Debug || pretty {
-		return c.XMLPretty(code, i, "  ")
+func (c *context) xmlBlob(code int, i interface{}, pretty bool, indent string) (err error) {
+	c.writeContentType(MIMEApplicationXMLCharsetUTF8)
+	c.response.WriteHeader(code)
+	enc := xml.NewEncoder(c.response)
+	if pretty {
+		enc.Indent("", "  ")
 	}
-	b, err := xml.Marshal(i)
-	if err != nil {
+	if _, err = c.response.Write([]byte(xml.Header)); err != nil {
 		return
 	}
-	return c.XMLBlob(code, b)
+	return enc.Encode(i)
+}
+
+func (c *context) XML(code int, i interface{}) (err error) {
+	var (
+		pretty bool
+		indent string
+	)
+	if _, pretty = c.QueryParams()["pretty"]; c.echo.Debug || pretty {
+		pretty = true
+		indent = "  "
+	}
+	return c.xmlBlob(code, i, pretty, indent)
 }
 
 func (c *context) XMLPretty(code int, i interface{}, indent string) (err error) {
-	b, err := xml.MarshalIndent(i, "", indent)
-	if err != nil {
-		return
-	}
-	return c.XMLBlob(code, b)
+	return c.xmlBlob(code, i, true, indent)
 }
 
 func (c *context) XMLBlob(code int, b []byte) (err error) {

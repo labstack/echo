@@ -67,7 +67,7 @@ func TestContext(t *testing.T) {
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
-		assert.Equal(t, userJSON, rec.Body.String())
+		assert.Equal(t, userJSON+"\n", rec.Body.String())
 	}
 
 	// JSON with "?pretty"
@@ -78,7 +78,7 @@ func TestContext(t *testing.T) {
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
-		assert.Equal(t, userJSONPretty, rec.Body.String())
+		assert.Equal(t, userJSONPretty+"\n", rec.Body.String())
 	}
 	req = httptest.NewRequest(GET, "/", nil) // reset
 
@@ -89,7 +89,7 @@ func TestContext(t *testing.T) {
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
-		assert.Equal(t, userJSONPretty, rec.Body.String())
+		assert.Equal(t, userJSONPretty+"\n", rec.Body.String())
 	}
 
 	// JSON (error)
@@ -106,7 +106,7 @@ func TestContext(t *testing.T) {
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, MIMEApplicationJavaScriptCharsetUTF8, rec.Header().Get(HeaderContentType))
-		assert.Equal(t, callback+"("+userJSON+");", rec.Body.String())
+		assert.Equal(t, callback+"("+userJSON+"\n);", rec.Body.String())
 	}
 
 	// XML
