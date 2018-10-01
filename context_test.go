@@ -2,6 +2,7 @@ package echo
 
 import (
 	"bytes"
+	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"io"
@@ -145,6 +146,43 @@ func TestContext(t *testing.T) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, MIMEApplicationXMLCharsetUTF8, rec.Header().Get(HeaderContentType))
 		assert.Equal(t, xml.Header+userXMLPretty, rec.Body.String())
+	}
+
+	// Legacy JSONBlob
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec).(*context)
+	data, err := json.Marshal(user{1, "Jon Snow"})
+	assert.NoError(t, err)
+	err = c.JSONBlob(http.StatusOK, data)
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, userJSON, rec.Body.String())
+	}
+
+	// Legacy JSONP
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec).(*context)
+	callback = "callback"
+	data, err = json.Marshal(user{1, "Jon Snow"})
+	assert.NoError(t, err)
+	err = c.JSONPBlob(http.StatusOK, callback, data)
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, MIMEApplicationJavaScriptCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, callback+"("+userJSON+");", rec.Body.String())
+	}
+
+	// Legacy XML
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec).(*context)
+	data, err = xml.Marshal(user{1, "Jon Snow"})
+	assert.NoError(t, err)
+	err = c.XMLBlob(http.StatusOK, data)
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, MIMEApplicationXMLCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, xml.Header+userXML, rec.Body.String())
 	}
 
 	// String
