@@ -404,24 +404,22 @@ func (c *context) String(code int, s string) (err error) {
 }
 
 func (c *context) jsonPBlob(code int, callback string, i interface{}) (err error) {
-	buf := new(bytes.Buffer)
-	enc := json.NewEncoder(buf)
+	enc := json.NewEncoder(c.response)
 	_, pretty := c.QueryParams()["pretty"]
 	if c.echo.Debug || pretty {
 		enc.SetIndent("", "  ")
 	}
 	c.writeContentType(MIMEApplicationJavaScriptCharsetUTF8)
 	c.response.WriteHeader(code)
-	if _, err = buf.WriteString(callback + "("); err != nil {
-
+	if _, err = c.response.Write([]byte(callback + "(")); err != nil {
+		return
 	}
 	if err = enc.Encode(i); err != nil {
 		return
 	}
-	if _, err = buf.WriteString(");"); err != nil {
+	if _, err = c.response.Write([]byte(");")); err != nil {
 		return
 	}
-	_, err = buf.WriteTo(c.response)
 	return
 }
 
