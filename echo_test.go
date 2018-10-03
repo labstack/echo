@@ -22,10 +22,13 @@ type (
 )
 
 const (
-	userJSON       = `{"id":1,"name":"Jon Snow"}`
-	userXML        = `<user><id>1</id><name>Jon Snow</name></user>`
-	userForm       = `id=1&name=Jon Snow`
-	invalidContent = "invalid content"
+	userJSON                    = `{"id":1,"name":"Jon Snow"}`
+	userXML                     = `<user><id>1</id><name>Jon Snow</name></user>`
+	userForm                    = `id=1&name=Jon Snow`
+	invalidContent              = "invalid content"
+	userJSONInvalidType         = `{"id":"1","name":"Jon Snow"}`
+	userXMLConvertNumberError   = `<user><id>Number one</id><name>Jon Snow</name></user>`
+	userXMLUnsupportedTypeError = `<user><>Number one</><name>Jon Snow</name></user>`
 )
 
 const userJSONPretty = `{
@@ -457,7 +460,7 @@ func request(method, path string, e *Echo) (int, string) {
 }
 
 func TestHTTPError(t *testing.T) {
-	err := NewHTTPError(400, map[string]interface{}{
+	err := NewHTTPError(http.StatusBadRequest, map[string]interface{}{
 		"code": 12,
 	})
 	assert.Equal(t, "code=400, message=map[code:12]", err.Error())

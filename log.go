@@ -15,6 +15,7 @@ type (
 		SetPrefix(p string)
 		Level() log.Lvl
 		SetLevel(v log.Lvl)
+		SetHeader(h string)
 		Print(i ...interface{})
 		Printf(format string, args ...interface{})
 		Printj(j log.JSON)
