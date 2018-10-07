@@ -79,7 +79,7 @@ func (r *Router) Add(method, path string, h HandlerFunc) {
 				r.insert(method, path[:i], h, pkind, ppath, pnames)
 				return
 			}
-			r.insert(method, path[:i], nil, pkind, ppath, pnames)
+			r.insert(method, path[:i], nil, pkind, "", nil)
 		} else if path[i] == '*' {
 			r.insert(method, path[:i], nil, skind, "", nil)
 			pnames = append(pnames, "*")
