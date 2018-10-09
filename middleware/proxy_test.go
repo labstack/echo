@@ -129,7 +129,7 @@ func TestProxy(t *testing.T) {
 	contextObserver := func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) (err error) {
 			next(c)
-			assert.Contains(t, targets, c.Get("proxyTarget"), "proxyTarget is not set in context")
+			assert.Contains(t, targets, c.Get("target"), "target is not set in context")
 			return nil
 		}
 	}

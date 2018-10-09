@@ -39,7 +39,7 @@ type (
 		Rewrite map[string]string
 
 		// Context key to store selected ProxyTarget into context.
-		// Optional. Default value "proxyTarget".
+		// Optional. Default value "target".
 		ContextKey string
 
 		rewriteRegex map[*regexp.Regexp]string
@@ -81,7 +81,7 @@ var (
 	// DefaultProxyConfig is the default Proxy middleware config.
 	DefaultProxyConfig = ProxyConfig{
 		Skipper:    DefaultSkipper,
-		ContextKey: "proxyTarget",
+		ContextKey: "target",
 	}
 )
 
