@@ -1,7 +1,7 @@
 package echo
 
 import (
-	"encoding/json"
+	"github.com/labstack/echo/json"
 	"encoding/xml"
 	"errors"
 	"fmt"

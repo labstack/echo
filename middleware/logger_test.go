@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"bytes"
-	"encoding/json"
+	"github.com/labstack/echo/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"

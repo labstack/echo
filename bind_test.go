@@ -2,7 +2,7 @@ package echo
 
 import (
 	"bytes"
-	"encoding/json"
+	"github.com/labstack/echo/json"
 	"encoding/xml"
 	"errors"
 	"io"
@@ -255,9 +255,10 @@ func TestBindUnmarshalTypeError(t *testing.T) {
 
 	err := c.Bind(u)
 
-	he := &HTTPError{Code: http.StatusBadRequest, Message: "Unmarshal type error: expected=int, got=string, field=id, offset=14", Internal: err.(*HTTPError).Internal}
-
-	assert.Equal(t, he, err)
+	if json.PKG == json.STDJSON {
+		he := &HTTPError{Code: http.StatusBadRequest, Message: "Unmarshal type error: expected=int, got=string, field=id, offset=14", Internal: err.(*HTTPError).Internal}
+		assert.Equal(t, he, err)
+	}
 }
 
 func TestBindSetWithProperType(t *testing.T) {

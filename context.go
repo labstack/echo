@@ -2,7 +2,7 @@ package echo
 
 import (
 	"bytes"
-	"encoding/json"
+	"github.com/labstack/echo/json"
 	"encoding/xml"
 	"fmt"
 	"io"

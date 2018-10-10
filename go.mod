@@ -3,9 +3,12 @@ module github.com/labstack/echo
 require (
 	github.com/davecgh/go-spew v1.1.0 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/json-iterator/go v1.1.5 // indirect
 	github.com/labstack/gommon v0.2.7
 	github.com/mattn/go-colorable v0.0.9 // indirect
 	github.com/mattn/go-isatty v0.0.3 // indirect
+	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
+	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/stretchr/testify v1.2.1
 	github.com/valyala/bytebufferpool v0.0.0-20160817181652-e746df99fe4a // indirect
