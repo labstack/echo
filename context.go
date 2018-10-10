@@ -206,6 +206,8 @@ const (
 	indexPage     = "index.html"
 )
 
+var defaultIndent = "  "
+
 func (c *context) writeContentType(value string) {
 	header := c.Response().Header()
 	if header.Get(HeaderContentType) == "" {
@@ -423,10 +425,10 @@ func (c *context) jsonPBlob(code int, callback string, i interface{}) (err error
 	return
 }
 
-func (c *context) jsonBlob(code int, i interface{}, indent string) error {
+func (c *context) jsonBlob(code int, i interface{}, indent *string) error {
 	enc := json.NewEncoder(c.response)
-	if indent != "" {
-		enc.SetIndent("", indent)
+	if indent != nil {
+		enc.SetIndent("", *indent)
 	}
 	c.writeContentType(MIMEApplicationJSONCharsetUTF8)
 	c.response.WriteHeader(code)
@@ -434,18 +436,15 @@ func (c *context) jsonBlob(code int, i interface{}, indent string) error {
 }
 
 func (c *context) JSON(code int, i interface{}) (err error) {
-	var (
-		pretty bool
-		indent string
-	)
-	if _, pretty = c.QueryParams()["pretty"]; c.echo.Debug || pretty {
-		indent = "  "
+	var indent *string
+	if _, pretty := c.QueryParams()["pretty"]; c.echo.Debug || pretty {
+		indent = &defaultIndent
 	}
 	return c.jsonBlob(code, i, indent)
 }
 
 func (c *context) JSONPretty(code int, i interface{}, indent string) (err error) {
-	return c.jsonBlob(code, i, indent)
+	return c.jsonBlob(code, i, &indent)
 }
 
 func (c *context) JSONBlob(code int, b []byte) (err error) {
@@ -469,12 +468,12 @@ func (c *context) JSONPBlob(code int, callback string, b []byte) (err error) {
 	return
 }
 
-func (c *context) xmlBlob(code int, i interface{}, indent string) (err error) {
+func (c *context) xmlBlob(code int, i interface{}, indent *string) (err error) {
 	c.writeContentType(MIMEApplicationXMLCharsetUTF8)
 	c.response.WriteHeader(code)
 	enc := xml.NewEncoder(c.response)
-	if indent != "" {
-		enc.Indent("", "  ")
+	if indent != nil {
+		enc.Indent("", *indent)
 	}
 	if _, err = c.response.Write([]byte(xml.Header)); err != nil {
 		return
@@ -483,18 +482,15 @@ func (c *context) xmlBlob(code int, i interface{}, indent string) (err error) {
 }
 
 func (c *context) XML(code int, i interface{}) (err error) {
-	var (
-		pretty bool
-		indent string
-	)
-	if _, pretty = c.QueryParams()["pretty"]; c.echo.Debug || pretty {
-		indent = "  "
+	var indent *string
+	if _, pretty := c.QueryParams()["pretty"]; c.echo.Debug || pretty {
+		indent = &defaultIndent
 	}
 	return c.xmlBlob(code, i, indent)
 }
 
 func (c *context) XMLPretty(code int, i interface{}, indent string) (err error) {
-	return c.xmlBlob(code, i, indent)
+	return c.xmlBlob(code, i, &indent)
 }
 
 func (c *context) XMLBlob(code int, b []byte) (err error) {

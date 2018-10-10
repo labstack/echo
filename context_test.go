@@ -24,6 +24,50 @@ type (
 	}
 )
 
+var testUser = user{1, "Jon Snow"}
+
+func BenchmarkAllocJSONP(b *testing.B) {
+	e := New()
+	req := httptest.NewRequest(POST, "/", strings.NewReader(userJSON))
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec).(*context)
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		c.JSONP(http.StatusOK, "callback", testUser)
+	}
+}
+
+func BenchmarkAllocJSON(b *testing.B) {
+	e := New()
+	req := httptest.NewRequest(POST, "/", strings.NewReader(userJSON))
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec).(*context)
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		c.JSON(http.StatusOK, testUser)
+	}
+}
+
+func BenchmarkAllocXML(b *testing.B) {
+	e := New()
+	req := httptest.NewRequest(POST, "/", strings.NewReader(userJSON))
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec).(*context)
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		c.XML(http.StatusOK, testUser)
+	}
+}
+
 func (t *Template) Render(w io.Writer, name string, data interface{}, c Context) error {
 	return t.templates.ExecuteTemplate(w, name, data)
 }
@@ -43,9 +87,9 @@ func TestContext(t *testing.T) {
 	// Response
 	assert.NotNil(t, c.Response())
 
-	//--------
+	// --------
 	// Render
-	//--------
+	// --------
 
 	tmpl := &Template{
 		templates: template.Must(template.New("hello").Parse("Hello, {{.}}!")),
@@ -147,6 +191,48 @@ func TestContext(t *testing.T) {
 		assert.Equal(t, MIMEApplicationXMLCharsetUTF8, rec.Header().Get(HeaderContentType))
 		assert.Equal(t, xml.Header+userXMLPretty, rec.Body.String())
 	}
+
+	t.Run("empty indent", func(t *testing.T) {
+		var (
+			u           = user{1, "Jon Snow"}
+			buf         = new(bytes.Buffer)
+			emptyIndent = ""
+		)
+
+		t.Run("json", func(t *testing.T) {
+			buf.Reset()
+
+			// New JSONBlob with empty indent
+			rec = httptest.NewRecorder()
+			c = e.NewContext(req, rec).(*context)
+			enc := json.NewEncoder(buf)
+			enc.SetIndent(emptyIndent, emptyIndent)
+			err = enc.Encode(u)
+			err = c.jsonBlob(http.StatusOK, user{1, "Jon Snow"}, &emptyIndent)
+			if assert.NoError(t, err) {
+				assert.Equal(t, http.StatusOK, rec.Code)
+				assert.Equal(t, MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
+				assert.Equal(t, buf.String(), rec.Body.String())
+			}
+		})
+
+		t.Run("xml", func(t *testing.T) {
+			buf.Reset()
+
+			// New XMLBlob with empty indent
+			rec = httptest.NewRecorder()
+			c = e.NewContext(req, rec).(*context)
+			enc := xml.NewEncoder(buf)
+			enc.Indent(emptyIndent, emptyIndent)
+			err = enc.Encode(u)
+			err = c.xmlBlob(http.StatusOK, user{1, "Jon Snow"}, &emptyIndent)
+			if assert.NoError(t, err) {
+				assert.Equal(t, http.StatusOK, rec.Code)
+				assert.Equal(t, MIMEApplicationXMLCharsetUTF8, rec.Header().Get(HeaderContentType))
+				assert.Equal(t, xml.Header+buf.String(), rec.Body.String())
+			}
+		})
+	})
 
 	// Legacy JSONBlob
 	rec = httptest.NewRecorder()
