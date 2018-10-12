@@ -874,6 +874,42 @@ func TestRouterParamAlias(t *testing.T) {
 	testRouterAPI(t, api)
 }
 
+// Issue #1052
+func TestRouterParamOrdering(t *testing.T) {
+	api := []*Route{
+		{GET, "/:a/:b/:c/:id", ""},
+		{GET, "/:a/:id", ""},
+		{GET, "/:a/:e/:id", ""},
+	}
+	testRouterAPI(t, api)
+	api2 := []*Route{
+		{GET, "/:a/:id", ""},
+		{GET, "/:a/:e/:id", ""},
+		{GET, "/:a/:b/:c/:id", ""},
+	}
+	testRouterAPI(t, api2)
+	api3 := []*Route{
+		{GET, "/:a/:b/:c/:id", ""},
+		{GET, "/:a/:e/:id", ""},
+		{GET, "/:a/:id", ""},
+	}
+	testRouterAPI(t, api3)
+}
+
+// Issue #1139
+func TestRouterMixedParams(t *testing.T) {
+	api := []*Route{
+		{GET, "/teacher/:tid/room/suggestions", ""},
+		{GET, "/teacher/:id", ""},
+	}
+	testRouterAPI(t, api)
+	api2 := []*Route{
+		{GET, "/teacher/:id", ""},
+		{GET, "/teacher/:tid/room/suggestions", ""},
+	}
+	testRouterAPI(t, api2)
+}
+
 func benchmarkRouterRoutes(b *testing.B, routes []*Route) {
 	e := New()
 	r := e.router
@@ -914,7 +950,7 @@ func BenchmarkRouterGooglePlusAPI(b *testing.B) {
 
 func (n *node) printTree(pfx string, tail bool) {
 	p := prefix(tail, pfx, "└── ", "├── ")
-	fmt.Printf("%s%s, %p: type=%d, parent=%p, handler=%v\n", p, n.prefix, n, n.kind, n.parent, n.methodHandler)
+	fmt.Printf("%s%s, %p: type=%d, parent=%p, handler=%v, pnames=%v\n", p, n.prefix, n, n.kind, n.parent, n.methodHandler, n.pnames)
 
 	children := n.children
 	l := len(children)

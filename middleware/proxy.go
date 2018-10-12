@@ -37,7 +37,11 @@ type (
 		// "/users/*/orders/*": "/user/$1/order/$2",
 		Rewrite map[string]string
 
-		// To customize the transport to remote.
+    // Context key to store selected ProxyTarget into context.
+		// Optional. Default value "target".
+		ContextKey string
+
+    // To customize the transport to remote.
 		// Examples: If custom TLS certificates are required.
 		Transport http.RoundTripper
 
@@ -48,13 +52,14 @@ type (
 	ProxyTarget struct {
 		Name string
 		URL  *url.URL
+		Meta echo.Map
 	}
 
 	// ProxyBalancer defines an interface to implement a load balancing technique.
 	ProxyBalancer interface {
 		AddTarget(*ProxyTarget) bool
 		RemoveTarget(string) bool
-		Next() *ProxyTarget
+		Next(echo.Context) *ProxyTarget
 	}
 
 	commonBalancer struct {
@@ -78,7 +83,8 @@ type (
 var (
 	// DefaultProxyConfig is the default Proxy middleware config.
 	DefaultProxyConfig = ProxyConfig{
-		Skipper: DefaultSkipper,
+		Skipper:    DefaultSkipper,
+		ContextKey: "target",
 	}
 )
 
@@ -163,7 +169,7 @@ func (b *commonBalancer) RemoveTarget(name string) bool {
 }
 
 // Next randomly returns an upstream target.
-func (b *randomBalancer) Next() *ProxyTarget {
+func (b *randomBalancer) Next(c echo.Context) *ProxyTarget {
 	if b.random == nil {
 		b.random = rand.New(rand.NewSource(int64(time.Now().Nanosecond())))
 	}
@@ -173,7 +179,7 @@ func (b *randomBalancer) Next() *ProxyTarget {
 }
 
 // Next returns an upstream target using round-robin technique.
-func (b *roundRobinBalancer) Next() *ProxyTarget {
+func (b *roundRobinBalancer) Next(c echo.Context) *ProxyTarget {
 	b.i = b.i % uint32(len(b.targets))
 	t := b.targets[b.i]
 	atomic.AddUint32(&b.i, 1)
@@ -215,7 +221,8 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 
 			req := c.Request()
 			res := c.Response()
-			tgt := config.Balancer.Next()
+			tgt := config.Balancer.Next(c)
+			c.Set(config.ContextKey, tgt)
 
 			// Rewrite
 			for k, v := range config.rewriteRegex {
