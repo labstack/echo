@@ -1,6 +1,7 @@
 package echo
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
@@ -9,7 +10,7 @@ import (
 
 func TestResponse(t *testing.T) {
 	e := New()
-	req := httptest.NewRequest(GET, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	res := &Response{echo: e, Writer: rec}

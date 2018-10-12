@@ -1,6 +1,7 @@
 package echo
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,7 +21,7 @@ func TestGroup(t *testing.T) {
 	g.PUT("/", h)
 	g.TRACE("/", h)
 	g.Any("/", h)
-	g.Match([]string{GET, POST}, "/", h)
+	g.Match([]string{http.MethodGet, http.MethodPost}, "/", h)
 	g.Static("/static", "/tmp")
 	g.File("/walle", "_fixture/images//walle.png")
 }
@@ -59,8 +60,8 @@ func TestGroupRouteMiddleware(t *testing.T) {
 	g.GET("/404", h, m4)
 	g.GET("/405", h, m5)
 
-	c, _ := request(GET, "/group/404", e)
+	c, _ := request(http.MethodGet, "/group/404", e)
 	assert.Equal(t, 404, c)
-	c, _ = request(GET, "/group/405", e)
+	c, _ = request(http.MethodGet, "/group/405", e)
 	assert.Equal(t, 405, c)
 }
