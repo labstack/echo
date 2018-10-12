@@ -260,6 +260,7 @@ var (
 	ErrBadGateway                  = NewHTTPError(http.StatusBadGateway)
 	ErrInternalServerError         = NewHTTPError(http.StatusInternalServerError)
 	ErrRequestTimeout              = NewHTTPError(http.StatusRequestTimeout)
+	ErrServiceUnavailable          = NewHTTPError(http.StatusServiceUnavailable)
 	ErrValidatorNotRegistered      = errors.New("validator not registered")
 	ErrRendererNotRegistered       = errors.New("renderer not registered")
 	ErrInvalidRedirectCode         = errors.New("invalid redirect status code")
