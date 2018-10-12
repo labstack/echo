@@ -20,17 +20,20 @@ func TestStatic(t *testing.T) {
 
 	// Directory
 	h := StaticWithConfig(config)(echo.NotFoundHandler)
-	if assert.NoError(t, h(c)) {
-		assert.Contains(t, rec.Body.String(), "Echo")
+
+	assert := assert.New(t)
+
+	if assert.NoError(h(c)) {
+		assert.Contains(rec.Body.String(), "Echo")
 	}
 
 	// File found
 	req = httptest.NewRequest(echo.GET, "/images/walle.png", nil)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
-	if assert.NoError(t, h(c)) {
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, rec.Header().Get(echo.HeaderContentLength), "219885")
+	if assert.NoError(h(c)) {
+		assert.Equal(http.StatusOK, rec.Code)
+		assert.Equal(rec.Header().Get(echo.HeaderContentLength), "219885")
 	}
 
 	// File not found
@@ -38,7 +41,7 @@ func TestStatic(t *testing.T) {
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	he := h(c).(*echo.HTTPError)
-	assert.Equal(t, http.StatusNotFound, he.Code)
+	assert.Equal(http.StatusNotFound, he.Code)
 
 	// HTML5
 	req = httptest.NewRequest(echo.GET, "/random", nil)
@@ -47,9 +50,9 @@ func TestStatic(t *testing.T) {
 	config.HTML5 = true
 	static := StaticWithConfig(config)
 	h = static(echo.NotFoundHandler)
-	if assert.NoError(t, h(c)) {
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Contains(t, rec.Body.String(), "Echo")
+	if assert.NoError(h(c)) {
+		assert.Equal(http.StatusOK, rec.Code)
+		assert.Contains(rec.Body.String(), "Echo")
 	}
 
 	// Browse
@@ -60,8 +63,8 @@ func TestStatic(t *testing.T) {
 	config.Browse = true
 	static = StaticWithConfig(config)
 	h = static(echo.NotFoundHandler)
-	if assert.NoError(t, h(c)) {
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Contains(t, rec.Body.String(), "cert.pem")
+	if assert.NoError(h(c)) {
+		assert.Equal(http.StatusOK, rec.Code)
+		assert.Contains(rec.Body.String(), "cert.pem")
 	}
 }

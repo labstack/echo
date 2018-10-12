@@ -26,10 +26,12 @@ func TestBasicAuth(t *testing.T) {
 		return c.String(http.StatusOK, "test")
 	})
 
+	assert := assert.New(t)
+
 	// Valid credentials
 	auth := basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:secret"))
 	req.Header.Set(echo.HeaderAuthorization, auth)
-	assert.NoError(t, h(c))
+	assert.NoError(h(c))
 
 	h = BasicAuthWithConfig(BasicAuthConfig{
 		Skipper:   nil,
@@ -42,28 +44,28 @@ func TestBasicAuth(t *testing.T) {
 	// Valid credentials
 	auth = basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:secret"))
 	req.Header.Set(echo.HeaderAuthorization, auth)
-	assert.NoError(t, h(c))
+	assert.NoError(h(c))
 
 	// Case-insensitive header scheme
 	auth = strings.ToUpper(basic) + " " + base64.StdEncoding.EncodeToString([]byte("joe:secret"))
 	req.Header.Set(echo.HeaderAuthorization, auth)
-	assert.NoError(t, h(c))
+	assert.NoError(h(c))
 
 	// Invalid credentials
 	auth = basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:invalid-password"))
 	req.Header.Set(echo.HeaderAuthorization, auth)
 	he := h(c).(*echo.HTTPError)
-	assert.Equal(t, http.StatusUnauthorized, he.Code)
-	assert.Equal(t, basic+` realm="someRealm"`, res.Header().Get(echo.HeaderWWWAuthenticate))
+	assert.Equal(http.StatusUnauthorized, he.Code)
+	assert.Equal(basic+` realm="someRealm"`, res.Header().Get(echo.HeaderWWWAuthenticate))
 
 	// Missing Authorization header
 	req.Header.Del(echo.HeaderAuthorization)
 	he = h(c).(*echo.HTTPError)
-	assert.Equal(t, http.StatusUnauthorized, he.Code)
+	assert.Equal(http.StatusUnauthorized, he.Code)
 
 	// Invalid Authorization header
 	auth = base64.StdEncoding.EncodeToString([]byte("invalid"))
 	req.Header.Set(echo.HeaderAuthorization, auth)
 	he = h(c).(*echo.HTTPError)
-	assert.Equal(t, http.StatusUnauthorized, he.Code)
+	assert.Equal(http.StatusUnauthorized, he.Code)
 }

@@ -24,7 +24,10 @@ func TestGzip(t *testing.T) {
 		return nil
 	})
 	h(c)
-	assert.Equal(t, "test", rec.Body.String())
+
+	assert := assert.New(t)
+
+	assert.Equal("test", rec.Body.String())
 
 	// Gzip
 	req = httptest.NewRequest(echo.GET, "/", nil)
@@ -32,14 +35,14 @@ func TestGzip(t *testing.T) {
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	h(c)
-	assert.Equal(t, gzipScheme, rec.Header().Get(echo.HeaderContentEncoding))
-	assert.Contains(t, rec.Header().Get(echo.HeaderContentType), echo.MIMETextPlain)
+	assert.Equal(gzipScheme, rec.Header().Get(echo.HeaderContentEncoding))
+	assert.Contains(rec.Header().Get(echo.HeaderContentType), echo.MIMETextPlain)
 	r, err := gzip.NewReader(rec.Body)
-	if assert.NoError(t, err) {
+	if assert.NoError(err) {
 		buf := new(bytes.Buffer)
 		defer r.Close()
 		buf.ReadFrom(r)
-		assert.Equal(t, "test", buf.String())
+		assert.Equal("test", buf.String())
 	}
 }
 

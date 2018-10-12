@@ -33,14 +33,16 @@ func TestContext(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec).(*context)
 
+	assert := assert.New(t)
+
 	// Echo
-	assert.Equal(t, e, c.Echo())
+	assert.Equal(e, c.Echo())
 
 	// Request
-	assert.NotNil(t, c.Request())
+	assert.NotNil(c.Request())
 
 	// Response
-	assert.NotNil(t, c.Response())
+	assert.NotNil(c.Response())
 
 	//--------
 	// Render
@@ -51,23 +53,23 @@ func TestContext(t *testing.T) {
 	}
 	c.echo.Renderer = tmpl
 	err := c.Render(http.StatusOK, "hello", "Jon Snow")
-	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, "Hello, Jon Snow!", rec.Body.String())
+	if assert.NoError(err) {
+		assert.Equal(http.StatusOK, rec.Code)
+		assert.Equal("Hello, Jon Snow!", rec.Body.String())
 	}
 
 	c.echo.Renderer = nil
 	err = c.Render(http.StatusOK, "hello", "Jon Snow")
-	assert.Error(t, err)
+	assert.Error(err)
 
 	// JSON
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec).(*context)
 	err = c.JSON(http.StatusOK, user{1, "Jon Snow"})
-	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
-		assert.Equal(t, userJSON, rec.Body.String())
+	if assert.NoError(err) {
+		assert.Equal(http.StatusOK, rec.Code)
+		assert.Equal(MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(userJSON, rec.Body.String())
 	}
 
 	// JSON with "?pretty"
@@ -75,10 +77,10 @@ func TestContext(t *testing.T) {
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec).(*context)
 	err = c.JSON(http.StatusOK, user{1, "Jon Snow"})
-	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
-		assert.Equal(t, userJSONPretty, rec.Body.String())
+	if assert.NoError(err) {
+		assert.Equal(http.StatusOK, rec.Code)
+		assert.Equal(MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(userJSONPretty, rec.Body.String())
 	}
 	req = httptest.NewRequest(GET, "/", nil) // reset
 
@@ -86,37 +88,37 @@ func TestContext(t *testing.T) {
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec).(*context)
 	err = c.JSONPretty(http.StatusOK, user{1, "Jon Snow"}, "  ")
-	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
-		assert.Equal(t, userJSONPretty, rec.Body.String())
+	if assert.NoError(err) {
+		assert.Equal(http.StatusOK, rec.Code)
+		assert.Equal(MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(userJSONPretty, rec.Body.String())
 	}
 
 	// JSON (error)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec).(*context)
 	err = c.JSON(http.StatusOK, make(chan bool))
-	assert.Error(t, err)
+	assert.Error(err)
 
 	// JSONP
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec).(*context)
 	callback := "callback"
 	err = c.JSONP(http.StatusOK, callback, user{1, "Jon Snow"})
-	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, MIMEApplicationJavaScriptCharsetUTF8, rec.Header().Get(HeaderContentType))
-		assert.Equal(t, callback+"("+userJSON+");", rec.Body.String())
+	if assert.NoError(err) {
+		assert.Equal(http.StatusOK, rec.Code)
+		assert.Equal(MIMEApplicationJavaScriptCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(callback+"("+userJSON+");", rec.Body.String())
 	}
 
 	// XML
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec).(*context)
 	err = c.XML(http.StatusOK, user{1, "Jon Snow"})
-	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, MIMEApplicationXMLCharsetUTF8, rec.Header().Get(HeaderContentType))
-		assert.Equal(t, xml.Header+userXML, rec.Body.String())
+	if assert.NoError(err) {
+		assert.Equal(http.StatusOK, rec.Code)
+		assert.Equal(MIMEApplicationXMLCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(xml.Header+userXML, rec.Body.String())
 	}
 
 	// XML with "?pretty"
@@ -124,10 +126,10 @@ func TestContext(t *testing.T) {
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec).(*context)
 	err = c.XML(http.StatusOK, user{1, "Jon Snow"})
-	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, MIMEApplicationXMLCharsetUTF8, rec.Header().Get(HeaderContentType))
-		assert.Equal(t, xml.Header+userXMLPretty, rec.Body.String())
+	if assert.NoError(err) {
+		assert.Equal(http.StatusOK, rec.Code)
+		assert.Equal(MIMEApplicationXMLCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(xml.Header+userXMLPretty, rec.Body.String())
 	}
 	req = httptest.NewRequest(GET, "/", nil)
 
@@ -135,36 +137,36 @@ func TestContext(t *testing.T) {
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec).(*context)
 	err = c.XML(http.StatusOK, make(chan bool))
-	assert.Error(t, err)
+	assert.Error(err)
 
 	// XMLPretty
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec).(*context)
 	err = c.XMLPretty(http.StatusOK, user{1, "Jon Snow"}, "  ")
-	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, MIMEApplicationXMLCharsetUTF8, rec.Header().Get(HeaderContentType))
-		assert.Equal(t, xml.Header+userXMLPretty, rec.Body.String())
+	if assert.NoError(err) {
+		assert.Equal(http.StatusOK, rec.Code)
+		assert.Equal(MIMEApplicationXMLCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(xml.Header+userXMLPretty, rec.Body.String())
 	}
 
 	// String
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec).(*context)
 	err = c.String(http.StatusOK, "Hello, World!")
-	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, MIMETextPlainCharsetUTF8, rec.Header().Get(HeaderContentType))
-		assert.Equal(t, "Hello, World!", rec.Body.String())
+	if assert.NoError(err) {
+		assert.Equal(http.StatusOK, rec.Code)
+		assert.Equal(MIMETextPlainCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal("Hello, World!", rec.Body.String())
 	}
 
 	// HTML
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec).(*context)
 	err = c.HTML(http.StatusOK, "Hello, <strong>World!</strong>")
-	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, MIMETextHTMLCharsetUTF8, rec.Header().Get(HeaderContentType))
-		assert.Equal(t, "Hello, <strong>World!</strong>", rec.Body.String())
+	if assert.NoError(err) {
+		assert.Equal(http.StatusOK, rec.Code)
+		assert.Equal(MIMETextHTMLCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal("Hello, <strong>World!</strong>", rec.Body.String())
 	}
 
 	// Stream
@@ -172,43 +174,43 @@ func TestContext(t *testing.T) {
 	c = e.NewContext(req, rec).(*context)
 	r := strings.NewReader("response from a stream")
 	err = c.Stream(http.StatusOK, "application/octet-stream", r)
-	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, "application/octet-stream", rec.Header().Get(HeaderContentType))
-		assert.Equal(t, "response from a stream", rec.Body.String())
+	if assert.NoError(err) {
+		assert.Equal(http.StatusOK, rec.Code)
+		assert.Equal("application/octet-stream", rec.Header().Get(HeaderContentType))
+		assert.Equal("response from a stream", rec.Body.String())
 	}
 
 	// Attachment
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec).(*context)
 	err = c.Attachment("_fixture/images/walle.png", "walle.png")
-	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, "attachment; filename=\"walle.png\"", rec.Header().Get(HeaderContentDisposition))
-		assert.Equal(t, 219885, rec.Body.Len())
+	if assert.NoError(err) {
+		assert.Equal(http.StatusOK, rec.Code)
+		assert.Equal("attachment; filename=\"walle.png\"", rec.Header().Get(HeaderContentDisposition))
+		assert.Equal(219885, rec.Body.Len())
 	}
 
 	// Inline
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec).(*context)
 	err = c.Inline("_fixture/images/walle.png", "walle.png")
-	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, "inline; filename=\"walle.png\"", rec.Header().Get(HeaderContentDisposition))
-		assert.Equal(t, 219885, rec.Body.Len())
+	if assert.NoError(err) {
+		assert.Equal(http.StatusOK, rec.Code)
+		assert.Equal("inline; filename=\"walle.png\"", rec.Header().Get(HeaderContentDisposition))
+		assert.Equal(219885, rec.Body.Len())
 	}
 
 	// NoContent
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec).(*context)
 	c.NoContent(http.StatusOK)
-	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(http.StatusOK, rec.Code)
 
 	// Error
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec).(*context)
 	c.Error(errors.New("error"))
-	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Equal(http.StatusInternalServerError, rec.Code)
 
 	// Reset
 	c.SetParamNames("foo")
@@ -216,11 +218,11 @@ func TestContext(t *testing.T) {
 	c.Set("foe", "ban")
 	c.query = url.Values(map[string][]string{"fon": {"baz"}})
 	c.Reset(req, httptest.NewRecorder())
-	assert.Equal(t, 0, len(c.ParamValues()))
-	assert.Equal(t, 0, len(c.ParamNames()))
-	assert.Equal(t, 0, len(c.store))
-	assert.Equal(t, "", c.Path())
-	assert.Equal(t, 0, len(c.QueryParams()))
+	assert.Equal(0, len(c.ParamValues()))
+	assert.Equal(0, len(c.ParamNames()))
+	assert.Equal(0, len(c.store))
+	assert.Equal("", c.Path())
+	assert.Equal(0, len(c.QueryParams()))
 }
 
 func TestContextCookie(t *testing.T) {
@@ -233,20 +235,22 @@ func TestContextCookie(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec).(*context)
 
+	assert := assert.New(t)
+
 	// Read single
 	cookie, err := c.Cookie("theme")
-	if assert.NoError(t, err) {
-		assert.Equal(t, "theme", cookie.Name)
-		assert.Equal(t, "light", cookie.Value)
+	if assert.NoError(err) {
+		assert.Equal("theme", cookie.Name)
+		assert.Equal("light", cookie.Value)
 	}
 
 	// Read multiple
 	for _, cookie := range c.Cookies() {
 		switch cookie.Name {
 		case "theme":
-			assert.Equal(t, "light", cookie.Value)
+			assert.Equal("light", cookie.Value)
 		case "user":
-			assert.Equal(t, "Jon Snow", cookie.Value)
+			assert.Equal("Jon Snow", cookie.Value)
 		}
 	}
 
@@ -261,11 +265,11 @@ func TestContextCookie(t *testing.T) {
 		HttpOnly: true,
 	}
 	c.SetCookie(cookie)
-	assert.Contains(t, rec.Header().Get(HeaderSetCookie), "SSID")
-	assert.Contains(t, rec.Header().Get(HeaderSetCookie), "Ap4PGTEq")
-	assert.Contains(t, rec.Header().Get(HeaderSetCookie), "labstack.com")
-	assert.Contains(t, rec.Header().Get(HeaderSetCookie), "Secure")
-	assert.Contains(t, rec.Header().Get(HeaderSetCookie), "HttpOnly")
+	assert.Contains(rec.Header().Get(HeaderSetCookie), "SSID")
+	assert.Contains(rec.Header().Get(HeaderSetCookie), "Ap4PGTEq")
+	assert.Contains(rec.Header().Get(HeaderSetCookie), "labstack.com")
+	assert.Contains(rec.Header().Get(HeaderSetCookie), "Secure")
+	assert.Contains(rec.Header().Get(HeaderSetCookie), "HttpOnly")
 }
 
 func TestContextPath(t *testing.T) {
@@ -275,12 +279,15 @@ func TestContextPath(t *testing.T) {
 	r.Add(GET, "/users/:id", nil)
 	c := e.NewContext(nil, nil)
 	r.Find(GET, "/users/1", c)
-	assert.Equal(t, "/users/:id", c.Path())
+
+	assert := assert.New(t)
+
+	assert.Equal("/users/:id", c.Path())
 
 	r.Add(GET, "/users/:uid/files/:fid", nil)
 	c = e.NewContext(nil, nil)
 	r.Find(GET, "/users/1/files/1", c)
-	assert.Equal(t, "/users/:uid/files/:fid", c.Path())
+	assert.Equal("/users/:uid/files/:fid", c.Path())
 }
 
 func TestContextPathParam(t *testing.T) {
