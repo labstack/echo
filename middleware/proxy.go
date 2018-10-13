@@ -6,7 +6,6 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 	"regexp"
 	"strings"
@@ -38,9 +37,13 @@ type (
 		// "/users/*/orders/*": "/user/$1/order/$2",
 		Rewrite map[string]string
 
-		// Context key to store selected ProxyTarget into context.
+    // Context key to store selected ProxyTarget into context.
 		// Optional. Default value "target".
 		ContextKey string
+
+    // To customize the transport to remote.
+		// Examples: If custom TLS certificates are required.
+		Transport http.RoundTripper
 
 		rewriteRegex map[*regexp.Regexp]string
 	}
@@ -84,10 +87,6 @@ var (
 		ContextKey: "target",
 	}
 )
-
-func proxyHTTP(t *ProxyTarget) http.Handler {
-	return httputil.NewSingleHostReverseProxy(t.URL)
-}
 
 func proxyRaw(t *ProxyTarget, c echo.Context) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -250,7 +249,7 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 				proxyRaw(tgt, c).ServeHTTP(res, req)
 			case req.Header.Get(echo.HeaderAccept) == "text/event-stream":
 			default:
-				proxyHTTP(tgt).ServeHTTP(res, req)
+				proxyHTTP(tgt, c, config).ServeHTTP(res, req)
 			}
 
 			return

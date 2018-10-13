@@ -124,6 +124,7 @@ func TestProxy(t *testing.T) {
 	req.URL.Path = "/users/jack/orders/1"
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "/user/jack/order/1", req.URL.Path)
+	assert.Equal(t, http.StatusOK, rec.Code)
 
 	// ProxyTarget is set in context
 	contextObserver := func(next echo.HandlerFunc) echo.HandlerFunc {
