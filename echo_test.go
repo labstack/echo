@@ -58,32 +58,34 @@ func TestEcho(t *testing.T) {
 func TestEchoStatic(t *testing.T) {
 	e := New()
 
+	assert := assert.New(t)
+
 	// OK
 	e.Static("/images", "_fixture/images")
 	c, b := request(GET, "/images/walle.png", e)
-	assert.Equal(t, http.StatusOK, c)
-	assert.NotEmpty(t, b)
+	assert.Equal(http.StatusOK, c)
+	assert.NotEmpty(b)
 
 	// No file
 	e.Static("/images", "_fixture/scripts")
 	c, _ = request(GET, "/images/bolt.png", e)
-	assert.Equal(t, http.StatusNotFound, c)
+	assert.Equal(http.StatusNotFound, c)
 
 	// Directory
 	e.Static("/images", "_fixture/images")
 	c, _ = request(GET, "/images", e)
-	assert.Equal(t, http.StatusNotFound, c)
+	assert.Equal(http.StatusNotFound, c)
 
 	// Directory with index.html
 	e.Static("/", "_fixture")
 	c, r := request(GET, "/", e)
-	assert.Equal(t, http.StatusOK, c)
-	assert.Equal(t, true, strings.HasPrefix(r, "<!doctype html>"))
+	assert.Equal(http.StatusOK, c)
+	assert.Equal(true, strings.HasPrefix(r, "<!doctype html>"))
 
 	// Sub-directory with index.html
 	c, r = request(GET, "/folder", e)
-	assert.Equal(t, http.StatusOK, c)
-	assert.Equal(t, true, strings.HasPrefix(r, "<!doctype html>"))
+	assert.Equal(http.StatusOK, c)
+	assert.Equal(true, strings.HasPrefix(r, "<!doctype html>"))
 }
 
 func TestEchoFile(t *testing.T) {
@@ -270,11 +272,13 @@ func TestEchoURL(t *testing.T) {
 	g := e.Group("/group")
 	g.GET("/users/:uid/files/:fid", getFile)
 
-	assert.Equal(t, "/static/file", e.URL(static))
-	assert.Equal(t, "/users/:id", e.URL(getUser))
-	assert.Equal(t, "/users/1", e.URL(getUser, "1"))
-	assert.Equal(t, "/group/users/1/files/:fid", e.URL(getFile, "1"))
-	assert.Equal(t, "/group/users/1/files/1", e.URL(getFile, "1", "1"))
+	assert := assert.New(t)
+
+	assert.Equal("/static/file", e.URL(static))
+	assert.Equal("/users/:id", e.URL(getUser))
+	assert.Equal("/users/1", e.URL(getUser, "1"))
+	assert.Equal("/group/users/1/files/:fid", e.URL(getFile, "1"))
+	assert.Equal("/group/users/1/files/1", e.URL(getFile, "1", "1"))
 }
 
 func TestEchoRoutes(t *testing.T) {
