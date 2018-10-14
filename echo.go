@@ -217,6 +217,7 @@ const (
 )
 
 const (
+	// Version represents Echo version
 	Version = "3.3.dev"
 	website = "https://echo.labstack.com"
 	// http://patorjk.com/software/taag/#p=display&f=Small%20Slant&t=Echo
@@ -707,6 +708,7 @@ func (he *HTTPError) Error() string {
 	return fmt.Sprintf("code=%d, message=%v", he.Code, he.Message)
 }
 
+// SetInternal sets internal error
 func (he *HTTPError) SetInternal(err error) *HTTPError {
 	he.Internal = err
 	return he
