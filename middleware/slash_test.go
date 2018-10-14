@@ -18,8 +18,10 @@ func TestAddTrailingSlash(t *testing.T) {
 		return nil
 	})
 	h(c)
-	assert.Equal(t, "/add-slash/", req.URL.Path)
-	assert.Equal(t, "/add-slash/", req.RequestURI)
+
+	assert := assert.New(t)
+	assert.Equal("/add-slash/", req.URL.Path)
+	assert.Equal("/add-slash/", req.RequestURI)
 
 	// With config
 	req = httptest.NewRequest(echo.GET, "/add-slash?key=value", nil)
@@ -31,8 +33,8 @@ func TestAddTrailingSlash(t *testing.T) {
 		return nil
 	})
 	h(c)
-	assert.Equal(t, http.StatusMovedPermanently, rec.Code)
-	assert.Equal(t, "/add-slash/?key=value", rec.Header().Get(echo.HeaderLocation))
+	assert.Equal(http.StatusMovedPermanently, rec.Code)
+	assert.Equal("/add-slash/?key=value", rec.Header().Get(echo.HeaderLocation))
 }
 
 func TestRemoveTrailingSlash(t *testing.T) {
@@ -44,8 +46,11 @@ func TestRemoveTrailingSlash(t *testing.T) {
 		return nil
 	})
 	h(c)
-	assert.Equal(t, "/remove-slash", req.URL.Path)
-	assert.Equal(t, "/remove-slash", req.RequestURI)
+
+	assert := assert.New(t)
+
+	assert.Equal("/remove-slash", req.URL.Path)
+	assert.Equal("/remove-slash", req.RequestURI)
 
 	// With config
 	req = httptest.NewRequest(echo.GET, "/remove-slash/?key=value", nil)
@@ -57,8 +62,8 @@ func TestRemoveTrailingSlash(t *testing.T) {
 		return nil
 	})
 	h(c)
-	assert.Equal(t, http.StatusMovedPermanently, rec.Code)
-	assert.Equal(t, "/remove-slash?key=value", rec.Header().Get(echo.HeaderLocation))
+	assert.Equal(http.StatusMovedPermanently, rec.Code)
+	assert.Equal("/remove-slash?key=value", rec.Header().Get(echo.HeaderLocation))
 
 	// With bare URL
 	req = httptest.NewRequest(echo.GET, "http://localhost", nil)
@@ -68,5 +73,5 @@ func TestRemoveTrailingSlash(t *testing.T) {
 		return nil
 	})
 	h(c)
-	assert.Equal(t, "", req.URL.Path)
+	assert.Equal("", req.URL.Path)
 }
