@@ -145,7 +145,7 @@ func TestBindForm(t *testing.T) {
 	testBindOkay(assert, strings.NewReader(userForm), MIMEApplicationForm)
 	testBindError(assert, nil, MIMEApplicationForm, nil)
 	e := New()
-	req := httptest.NewRequest(POST, "/", strings.NewReader(userForm))
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userForm))
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	req.Header.Set(HeaderContentType, MIMEApplicationForm)
@@ -155,7 +155,7 @@ func TestBindForm(t *testing.T) {
 
 func TestBindQueryParams(t *testing.T) {
 	e := New()
-	req := httptest.NewRequest(GET, "/?id=1&name=Jon+Snow", nil)
+	req := httptest.NewRequest(http.MethodGet, "/?id=1&name=Jon+Snow", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	u := new(user)
@@ -168,7 +168,7 @@ func TestBindQueryParams(t *testing.T) {
 
 func TestBindQueryParamsCaseInsensitive(t *testing.T) {
 	e := New()
-	req := httptest.NewRequest(GET, "/?ID=1&NAME=Jon+Snow", nil)
+	req := httptest.NewRequest(http.MethodGet, "/?ID=1&NAME=Jon+Snow", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	u := new(user)
@@ -181,7 +181,7 @@ func TestBindQueryParamsCaseInsensitive(t *testing.T) {
 
 func TestBindQueryParamsCaseSensitivePrioritized(t *testing.T) {
 	e := New()
-	req := httptest.NewRequest(GET, "/?id=1&ID=2&NAME=Jon+Snow&name=Jon+Doe", nil)
+	req := httptest.NewRequest(http.MethodGet, "/?id=1&ID=2&NAME=Jon+Snow&name=Jon+Doe", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	u := new(user)
@@ -194,7 +194,7 @@ func TestBindQueryParamsCaseSensitivePrioritized(t *testing.T) {
 
 func TestBindUnmarshalParam(t *testing.T) {
 	e := New()
-	req := httptest.NewRequest(GET, "/?ts=2016-12-06T19:09:05Z&sa=one,two,three&ta=2016-12-06T19:09:05Z&ta=2016-12-06T19:09:05Z&ST=baz", nil)
+	req := httptest.NewRequest(http.MethodGet, "/?ts=2016-12-06T19:09:05Z&sa=one,two,three&ta=2016-12-06T19:09:05Z&ta=2016-12-06T19:09:05Z&ST=baz", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	result := struct {
@@ -218,7 +218,7 @@ func TestBindUnmarshalParam(t *testing.T) {
 
 func TestBindUnmarshalParamPtr(t *testing.T) {
 	e := New()
-	req := httptest.NewRequest(GET, "/?ts=2016-12-06T19:09:05Z", nil)
+	req := httptest.NewRequest(http.MethodGet, "/?ts=2016-12-06T19:09:05Z", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	result := struct {
@@ -257,7 +257,7 @@ func TestBindbindData(t *testing.T) {
 func TestBindUnmarshalTypeError(t *testing.T) {
 	body := bytes.NewBufferString(`{ "id": "text" }`)
 	e := New()
-	req := httptest.NewRequest(POST, "/", body)
+	req := httptest.NewRequest(http.MethodPost, "/", body)
 	req.Header.Set(HeaderContentType, MIMEApplicationJSON)
 
 	rec := httptest.NewRecorder()
@@ -364,7 +364,7 @@ func assertBindTestStruct(a *assert.Assertions, ts *bindTestStruct) {
 
 func testBindOkay(assert *assert.Assertions, r io.Reader, ctype string) {
 	e := New()
-	req := httptest.NewRequest(POST, "/", r)
+	req := httptest.NewRequest(http.MethodPost, "/", r)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	req.Header.Set(HeaderContentType, ctype)
@@ -378,7 +378,7 @@ func testBindOkay(assert *assert.Assertions, r io.Reader, ctype string) {
 
 func testBindError(assert *assert.Assertions, r io.Reader, ctype string, expectedInternal error) {
 	e := New()
-	req := httptest.NewRequest(POST, "/", r)
+	req := httptest.NewRequest(http.MethodPost, "/", r)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	req.Header.Set(HeaderContentType, ctype)

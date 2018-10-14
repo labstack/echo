@@ -3,12 +3,13 @@
 package middleware
 
 import (
-	"github.com/labstack/echo"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
+
+	"github.com/labstack/echo"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestProxy_1_11(t *testing.T) {
@@ -40,7 +41,7 @@ func TestProxy_1_11(t *testing.T) {
 	// Random
 	e := echo.New()
 	e.Use(Proxy(rb))
-	req := httptest.NewRequest(echo.GET, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := newCloseNotifyRecorder()
 
 	// Remote unreachable

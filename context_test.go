@@ -29,7 +29,7 @@ func (t *Template) Render(w io.Writer, name string, data interface{}, c Context)
 
 func TestContext(t *testing.T) {
 	e := New()
-	req := httptest.NewRequest(POST, "/", strings.NewReader(userJSON))
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userJSON))
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec).(*context)
 
@@ -73,7 +73,7 @@ func TestContext(t *testing.T) {
 	}
 
 	// JSON with "?pretty"
-	req = httptest.NewRequest(GET, "/?pretty", nil)
+	req = httptest.NewRequest(http.MethodGet, "/?pretty", nil)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec).(*context)
 	err = c.JSON(http.StatusOK, user{1, "Jon Snow"})
@@ -82,7 +82,7 @@ func TestContext(t *testing.T) {
 		assert.Equal(MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
 		assert.Equal(userJSONPretty, rec.Body.String())
 	}
-	req = httptest.NewRequest(GET, "/", nil) // reset
+	req = httptest.NewRequest(http.MethodGet, "/", nil) // reset
 
 	// JSONPretty
 	rec = httptest.NewRecorder()
@@ -122,7 +122,7 @@ func TestContext(t *testing.T) {
 	}
 
 	// XML with "?pretty"
-	req = httptest.NewRequest(GET, "/?pretty", nil)
+	req = httptest.NewRequest(http.MethodGet, "/?pretty", nil)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec).(*context)
 	err = c.XML(http.StatusOK, user{1, "Jon Snow"})
@@ -131,7 +131,7 @@ func TestContext(t *testing.T) {
 		assert.Equal(MIMEApplicationXMLCharsetUTF8, rec.Header().Get(HeaderContentType))
 		assert.Equal(xml.Header+userXMLPretty, rec.Body.String())
 	}
-	req = httptest.NewRequest(GET, "/", nil)
+	req = httptest.NewRequest(http.MethodGet, "/", nil)
 
 	// XML (error)
 	rec = httptest.NewRecorder()
@@ -227,7 +227,7 @@ func TestContext(t *testing.T) {
 
 func TestContextCookie(t *testing.T) {
 	e := New()
-	req := httptest.NewRequest(GET, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	theme := "theme=light"
 	user := "user=Jon Snow"
 	req.Header.Add(HeaderCookie, theme)
@@ -276,23 +276,23 @@ func TestContextPath(t *testing.T) {
 	e := New()
 	r := e.Router()
 
-	r.Add(GET, "/users/:id", nil)
+	r.Add(http.MethodGet, "/users/:id", nil)
 	c := e.NewContext(nil, nil)
-	r.Find(GET, "/users/1", c)
+	r.Find(http.MethodGet, "/users/1", c)
 
 	assert := assert.New(t)
 
 	assert.Equal("/users/:id", c.Path())
 
-	r.Add(GET, "/users/:uid/files/:fid", nil)
+	r.Add(http.MethodGet, "/users/:uid/files/:fid", nil)
 	c = e.NewContext(nil, nil)
-	r.Find(GET, "/users/1/files/1", c)
+	r.Find(http.MethodGet, "/users/1/files/1", c)
 	assert.Equal("/users/:uid/files/:fid", c.Path())
 }
 
 func TestContextPathParam(t *testing.T) {
 	e := New()
-	req := httptest.NewRequest(GET, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	c := e.NewContext(req, nil)
 
 	// ParamNames
@@ -313,7 +313,7 @@ func TestContextFormValue(t *testing.T) {
 	f.Set("email", "jon@labstack.com")
 
 	e := New()
-	req := httptest.NewRequest(POST, "/", strings.NewReader(f.Encode()))
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(f.Encode()))
 	req.Header.Add(HeaderContentType, MIMEApplicationForm)
 	c := e.NewContext(req, nil)
 
@@ -335,7 +335,7 @@ func TestContextQueryParam(t *testing.T) {
 	q := make(url.Values)
 	q.Set("name", "Jon Snow")
 	q.Set("email", "jon@labstack.com")
-	req := httptest.NewRequest(GET, "/?"+q.Encode(), nil)
+	req := httptest.NewRequest(http.MethodGet, "/?"+q.Encode(), nil)
 	e := New()
 	c := e.NewContext(req, nil)
 
@@ -359,7 +359,7 @@ func TestContextFormFile(t *testing.T) {
 		w.Write([]byte("test"))
 	}
 	mr.Close()
-	req := httptest.NewRequest(POST, "/", buf)
+	req := httptest.NewRequest(http.MethodPost, "/", buf)
 	req.Header.Set(HeaderContentType, mr.FormDataContentType())
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
@@ -375,7 +375,7 @@ func TestContextMultipartForm(t *testing.T) {
 	mw := multipart.NewWriter(buf)
 	mw.WriteField("name", "Jon Snow")
 	mw.Close()
-	req := httptest.NewRequest(POST, "/", buf)
+	req := httptest.NewRequest(http.MethodPost, "/", buf)
 	req.Header.Set(HeaderContentType, mw.FormDataContentType())
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
@@ -387,7 +387,7 @@ func TestContextMultipartForm(t *testing.T) {
 
 func TestContextRedirect(t *testing.T) {
 	e := New()
-	req := httptest.NewRequest(GET, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	assert.Equal(t, nil, c.Redirect(http.StatusMovedPermanently, "http://labstack.github.io/echo"))
@@ -408,12 +408,12 @@ func TestContextHandler(t *testing.T) {
 	r := e.Router()
 	b := new(bytes.Buffer)
 
-	r.Add(GET, "/handler", func(Context) error {
+	r.Add(http.MethodGet, "/handler", func(Context) error {
 		_, err := b.Write([]byte("handler"))
 		return err
 	})
 	c := e.NewContext(nil, nil)
-	r.Find(GET, "/handler", c)
+	r.Find(http.MethodGet, "/handler", c)
 	c.Handler()(c)
 	assert.Equal(t, "handler", b.String())
 }

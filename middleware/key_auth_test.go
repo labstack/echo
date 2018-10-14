@@ -13,7 +13,7 @@ import (
 
 func TestKeyAuth(t *testing.T) {
 	e := echo.New()
-	req := httptest.NewRequest(echo.GET, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	config := KeyAuthConfig{
@@ -68,7 +68,7 @@ func TestKeyAuth(t *testing.T) {
 	})
 	f := make(url.Values)
 	f.Set("key", "valid-key")
-	req = httptest.NewRequest(echo.POST, "/", strings.NewReader(f.Encode()))
+	req = httptest.NewRequest(http.MethodPost, "/", strings.NewReader(f.Encode()))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationForm)
 	c = e.NewContext(req, rec)
 	assert.NoError(h(c))

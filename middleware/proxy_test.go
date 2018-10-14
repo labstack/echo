@@ -70,7 +70,7 @@ func TestProxy(t *testing.T) {
 	// Random
 	e := echo.New()
 	e.Use(Proxy(rb))
-	req := httptest.NewRequest(echo.GET, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := newCloseNotifyRecorder()
 	e.ServeHTTP(rec, req)
 	body := rec.Body.String()

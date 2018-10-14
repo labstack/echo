@@ -37,7 +37,7 @@ func TestJWTRace(t *testing.T) {
 	})(handler)
 
 	makeReq := func(token string) echo.Context {
-		req := httptest.NewRequest(echo.GET, "/", nil)
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
 		res := httptest.NewRecorder()
 		req.Header.Set(echo.HeaderAuthorization, DefaultJWTConfig.AuthScheme+" "+token)
 		c := e.NewContext(req, res)
@@ -189,7 +189,7 @@ func TestJWT(t *testing.T) {
 			tc.reqURL = "/"
 		}
 
-		req := httptest.NewRequest(echo.GET, tc.reqURL, nil)
+		req := httptest.NewRequest(http.MethodGet, tc.reqURL, nil)
 		res := httptest.NewRecorder()
 		req.Header.Set(echo.HeaderAuthorization, tc.hdrAuth)
 		req.Header.Set(echo.HeaderCookie, tc.hdrCookie)
