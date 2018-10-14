@@ -11,7 +11,7 @@ import (
 
 func TestStatic(t *testing.T) {
 	e := echo.New()
-	req := httptest.NewRequest(echo.GET, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	config := StaticConfig{
@@ -28,7 +28,7 @@ func TestStatic(t *testing.T) {
 	}
 
 	// File found
-	req = httptest.NewRequest(echo.GET, "/images/walle.png", nil)
+	req = httptest.NewRequest(http.MethodGet, "/images/walle.png", nil)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	if assert.NoError(h(c)) {
@@ -37,14 +37,14 @@ func TestStatic(t *testing.T) {
 	}
 
 	// File not found
-	req = httptest.NewRequest(echo.GET, "/none", nil)
+	req = httptest.NewRequest(http.MethodGet, "/none", nil)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	he := h(c).(*echo.HTTPError)
 	assert.Equal(http.StatusNotFound, he.Code)
 
 	// HTML5
-	req = httptest.NewRequest(echo.GET, "/random", nil)
+	req = httptest.NewRequest(http.MethodGet, "/random", nil)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	config.HTML5 = true
@@ -56,7 +56,7 @@ func TestStatic(t *testing.T) {
 	}
 
 	// Browse
-	req = httptest.NewRequest(echo.GET, "/", nil)
+	req = httptest.NewRequest(http.MethodGet, "/", nil)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	config.Root = "../_fixture/certs"

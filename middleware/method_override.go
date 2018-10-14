@@ -1,6 +1,10 @@
 package middleware
 
-import "github.com/labstack/echo"
+import (
+	"net/http"
+
+	"github.com/labstack/echo"
+)
 
 type (
 	// MethodOverrideConfig defines the config for MethodOverride middleware.
@@ -52,7 +56,7 @@ func MethodOverrideWithConfig(config MethodOverrideConfig) echo.MiddlewareFunc {
 			}
 
 			req := c.Request()
-			if req.Method == echo.POST {
+			if req.Method == http.MethodPost {
 				m := config.Getter(c)
 				if m != "" {
 					req.Method = m

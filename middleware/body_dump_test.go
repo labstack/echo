@@ -15,7 +15,7 @@ import (
 func TestBodyDump(t *testing.T) {
 	e := echo.New()
 	hw := "Hello, World!"
-	req := httptest.NewRequest(echo.POST, "/", strings.NewReader(hw))
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(hw))
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	h := func(c echo.Context) error {
@@ -55,7 +55,7 @@ func TestBodyDump(t *testing.T) {
 func TestBodyDumpFails(t *testing.T) {
 	e := echo.New()
 	hw := "Hello, World!"
-	req := httptest.NewRequest(echo.POST, "/", strings.NewReader(hw))
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(hw))
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	h := func(c echo.Context) error {
