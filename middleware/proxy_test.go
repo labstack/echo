@@ -70,7 +70,7 @@ func TestProxy(t *testing.T) {
 	// Random
 	e := echo.New()
 	e.Use(Proxy(rb))
-	req := httptest.NewRequest(echo.GET, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := newCloseNotifyRecorder()
 	e.ServeHTTP(rec, req)
 	body := rec.Body.String()
@@ -124,4 +124,20 @@ func TestProxy(t *testing.T) {
 	req.URL.Path = "/users/jack/orders/1"
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "/user/jack/order/1", req.URL.Path)
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	// ProxyTarget is set in context
+	contextObserver := func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) (err error) {
+			next(c)
+			assert.Contains(t, targets, c.Get("target"), "target is not set in context")
+			return nil
+		}
+	}
+	rrb1 := NewRoundRobinBalancer(targets)
+	e = echo.New()
+	e.Use(contextObserver)
+	e.Use(Proxy(rrb1))
+	rec = newCloseNotifyRecorder()
+	e.ServeHTTP(rec, req)
 }

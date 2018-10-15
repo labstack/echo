@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"io/ioutil"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
@@ -19,7 +20,7 @@ func TestRewrite(t *testing.T) {
 			"/users/*/orders/*": "/user/$1/order/$2",
 		},
 	}))
-	req := httptest.NewRequest(echo.GET, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	req.URL.Path = "/api/users"
 	e.ServeHTTP(rec, req)
@@ -51,12 +52,11 @@ func TestEchoRewritePreMiddleware(t *testing.T) {
 	}))
 
 	// Route
-	r.Add(echo.GET, "/new", func(c echo.Context) error {
+	r.Add(http.MethodGet, "/new", func(c echo.Context) error {
 		return c.NoContent(200)
-		return nil
 	})
 
-	req := httptest.NewRequest(echo.GET, "/old", nil)
+	req := httptest.NewRequest(http.MethodGet, "/old", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "/new", req.URL.Path)
@@ -75,15 +75,15 @@ func TestRewriteWithConfigPreMiddleware_Issue1143(t *testing.T) {
 		},
 	}))
 
-	r.Add(echo.GET, "/api/:version/hosts/:name", func(c echo.Context) error {
+	r.Add(http.MethodGet, "/api/:version/hosts/:name", func(c echo.Context) error {
 		return c.String(200, "hosts")
 	})
-	r.Add(echo.GET, "/api/:version/eng", func(c echo.Context) error {
+	r.Add(http.MethodGet, "/api/:version/eng", func(c echo.Context) error {
 		return c.String(200, "eng")
 	})
 
 	for i := 0; i < 100; i++ {
-		req := httptest.NewRequest(echo.GET, "/api/v1/mgmt/proj/test/agt", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/mgmt/proj/test/agt", nil)
 		rec := httptest.NewRecorder()
 		e.ServeHTTP(rec, req)
 		assert.Equal(t, "/api/v1/hosts/test", req.URL.Path)

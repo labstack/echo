@@ -11,7 +11,7 @@ import (
 
 func TestRequestID(t *testing.T) {
 	e := echo.New()
-	req := httptest.NewRequest(echo.GET, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	handler := func(c echo.Context) error {

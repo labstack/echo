@@ -1,5 +1,7 @@
 package echo
 
+import "net/http"
+
 type (
 	// Router is the registry of all registered routes for an `Echo` instance for
 	// request matching and URL path parameter parsing.
@@ -79,7 +81,7 @@ func (r *Router) Add(method, path string, h HandlerFunc) {
 				r.insert(method, path[:i], h, pkind, ppath, pnames)
 				return
 			}
-			r.insert(method, path[:i], nil, pkind, ppath, pnames)
+			r.insert(method, path[:i], nil, pkind, "", nil)
 		} else if path[i] == '*' {
 			r.insert(method, path[:i], nil, skind, "", nil)
 			pnames = append(pnames, "*")
@@ -226,50 +228,50 @@ func (n *node) findChildByKind(t kind) *node {
 
 func (n *node) addHandler(method string, h HandlerFunc) {
 	switch method {
-	case CONNECT:
+	case http.MethodConnect:
 		n.methodHandler.connect = h
-	case DELETE:
+	case http.MethodDelete:
 		n.methodHandler.delete = h
-	case GET:
+	case http.MethodGet:
 		n.methodHandler.get = h
-	case HEAD:
+	case http.MethodHead:
 		n.methodHandler.head = h
-	case OPTIONS:
+	case http.MethodOptions:
 		n.methodHandler.options = h
-	case PATCH:
+	case http.MethodPatch:
 		n.methodHandler.patch = h
-	case POST:
+	case http.MethodPost:
 		n.methodHandler.post = h
 	case PROPFIND:
 		n.methodHandler.propfind = h
-	case PUT:
+	case http.MethodPut:
 		n.methodHandler.put = h
-	case TRACE:
+	case http.MethodTrace:
 		n.methodHandler.trace = h
 	}
 }
 
 func (n *node) findHandler(method string) HandlerFunc {
 	switch method {
-	case CONNECT:
+	case http.MethodConnect:
 		return n.methodHandler.connect
-	case DELETE:
+	case http.MethodDelete:
 		return n.methodHandler.delete
-	case GET:
+	case http.MethodGet:
 		return n.methodHandler.get
-	case HEAD:
+	case http.MethodHead:
 		return n.methodHandler.head
-	case OPTIONS:
+	case http.MethodOptions:
 		return n.methodHandler.options
-	case PATCH:
+	case http.MethodPatch:
 		return n.methodHandler.patch
-	case POST:
+	case http.MethodPost:
 		return n.methodHandler.post
 	case PROPFIND:
 		return n.methodHandler.propfind
-	case PUT:
+	case http.MethodPut:
 		return n.methodHandler.put
-	case TRACE:
+	case http.MethodTrace:
 		return n.methodHandler.trace
 	default:
 		return nil
@@ -311,7 +313,7 @@ func (r *Router) Find(method, path string, c Context) {
 	// Search order static > param > any
 	for {
 		if search == "" {
-			goto End
+			break
 		}
 
 		pl := 0 // Prefix length
@@ -346,7 +348,7 @@ func (r *Router) Find(method, path string, c Context) {
 		}
 
 		if search == "" {
-			goto End
+			break
 		}
 
 		// Static node
@@ -403,10 +405,9 @@ func (r *Router) Find(method, path string, c Context) {
 			return
 		}
 		pvalues[len(cn.pnames)-1] = search
-		goto End
+		break
 	}
 
-End:
 	ctx.handler = cn.findHandler(method)
 	ctx.path = cn.ppath
 	ctx.pnames = cn.pnames
