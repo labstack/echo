@@ -313,7 +313,7 @@ func (r *Router) Find(method, path string, c Context) {
 	// Search order static > param > any
 	for {
 		if search == "" {
-			goto End
+			break
 		}
 
 		pl := 0 // Prefix length
@@ -348,7 +348,7 @@ func (r *Router) Find(method, path string, c Context) {
 		}
 
 		if search == "" {
-			goto End
+			break
 		}
 
 		// Static node
@@ -405,10 +405,9 @@ func (r *Router) Find(method, path string, c Context) {
 			return
 		}
 		pvalues[len(cn.pnames)-1] = search
-		goto End
+		break
 	}
 
-End:
 	ctx.handler = cn.findHandler(method)
 	ctx.path = cn.ppath
 	ctx.pnames = cn.pnames
