@@ -128,6 +128,21 @@ type (
 	}
 )
 
+// HTTP methods
+// NOTE: Deprecated, please use the stdlib constants directly instead.
+const (
+	CONNECT = http.MethodConnect
+	DELETE  = http.MethodDelete
+	GET     = http.MethodGet
+	HEAD    = http.MethodHead
+	OPTIONS = http.MethodOptions
+	PATCH   = http.MethodPatch
+	POST    = http.MethodPost
+	//PROPFIND = "PROPFIND"
+	PUT   = http.MethodPut
+	TRACE = http.MethodTrace
+)
+
 // MIME types
 const (
 	MIMEApplicationJSON                  = "application/json"
