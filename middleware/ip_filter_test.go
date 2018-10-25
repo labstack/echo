@@ -1,11 +1,12 @@
 package middleware
 
 import (
-	"github.com/labstack/echo"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/labstack/echo"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestIpFilterWithConfig(t *testing.T) {
@@ -27,7 +28,7 @@ func TestIpFilterWithConfig(t *testing.T) {
 					},
 				},
 			},
-			Ip: "123.123.123.123",
+			Ip: "123.123.123.123:1234",
 			// Blocked by IpFilters.
 			Expect: echo.ErrForbidden,
 		},
@@ -45,7 +46,7 @@ func TestIpFilterWithConfig(t *testing.T) {
 					"123.123.123.123",
 				},
 			},
-			Ip: "223.123.123.123",
+			Ip: "223.123.123.123:1234",
 			// Blocked by WhiteList.
 			Expect: echo.ErrForbidden,
 		},
@@ -63,7 +64,7 @@ func TestIpFilterWithConfig(t *testing.T) {
 					"223.123.123.123",
 				},
 			},
-			Ip: "223.123.123.123",
+			Ip: "223.123.123.123:1234",
 			// Not blocked.
 			Expect: nil,
 		},
@@ -81,7 +82,7 @@ func TestIpFilterWithConfig(t *testing.T) {
 					"223.123.123.0/24",
 				},
 			},
-			Ip: "223.123.123.230",
+			Ip: "223.123.123.230:1234",
 			// Not blocked.
 			Expect: nil,
 		},
@@ -102,7 +103,7 @@ func TestIpFilterWithConfig(t *testing.T) {
 					"223.123.123.230",
 				},
 			},
-			Ip: "223.123.123.230",
+			Ip: "223.123.123.230:1234",
 			// Blocked by BlackList.
 			Expect: echo.ErrForbidden,
 		},
@@ -110,7 +111,7 @@ func TestIpFilterWithConfig(t *testing.T) {
 			// It will be DefaultIpFilterConfig.
 			Config: IpFilterConfig{},
 			// Blocked by WhiteList.
-			Ip: "123.123.123.123",
+			Ip: "123.123.123.123:1234",
 			Expect: echo.ErrForbidden,
 		},
 	}
