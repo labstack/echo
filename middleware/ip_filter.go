@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net"
+	"net/http"
 	"strings"
 
 	"github.com/labstack/echo"
@@ -121,7 +122,10 @@ func IpFilterWithConfig(config IpFilterConfig) echo.MiddlewareFunc {
 				return next(c)
 			}
 
-			ip := c.Request().RemoteAddr
+			ip, _, err := net.SplitHostPort(c.Request().RemoteAddr)
+			if err != nil {
+				return echo.NewHTTPError(http.StatusBadRequest, err)
+			}
 
 			for _, filter := range config.IpFilters {
 				if filter(ip) {
