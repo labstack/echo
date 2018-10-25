@@ -93,7 +93,7 @@ func IpFilterWithConfig(config IpFilterConfig) echo.MiddlewareFunc {
 				panic(err)
 			}
 
-			whiteList = append(whiteList, ipNet)
+			blackList = append(blackList, ipNet)
 		} else {
 			ipNet := &net.IPNet{
 				IP: net.ParseIP(disallowed),
@@ -111,7 +111,7 @@ func IpFilterWithConfig(config IpFilterConfig) echo.MiddlewareFunc {
 				panic((&net.ParseError{Type: "IP address", Text: disallowed}).Error())
 			}
 
-			whiteList = append(whiteList, ipNet)
+			blackList = append(blackList, ipNet)
 		}
 	}
 
@@ -121,7 +121,7 @@ func IpFilterWithConfig(config IpFilterConfig) echo.MiddlewareFunc {
 				return next(c)
 			}
 
-			ip := c.RealIP()
+			ip := c.Request().RemoteAddr
 
 			for _, filter := range config.IpFilters {
 				if filter(ip) {
