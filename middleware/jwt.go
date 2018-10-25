@@ -59,7 +59,7 @@ type (
 	}
 
 	// JWTSuccessHandler defines a function which is executed for a valid token.
-	JWTSuccessHandler func(echo.Context)
+	JWTSuccessHandler func(echo.Context) error
 
 	// JWTErrorHandler defines a function which is executed for an invalid token.
 	JWTErrorHandler func(error) error
@@ -176,7 +176,9 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 				// Store user information from token into context.
 				c.Set(config.ContextKey, token)
 				if config.SuccessHandler != nil {
-					config.SuccessHandler(c)
+					if err = config.SuccessHandler(c); err != nil {
+						return config.ErrorHandler(err)
+					}
 				}
 				return next(c)
 			}
