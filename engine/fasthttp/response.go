@@ -8,7 +8,7 @@ import (
 
 	"github.com/labstack/echo/engine"
 	"github.com/labstack/echo/log"
-	"github.com/valyala/fasthttp"
+	"github.com/trafficstars/fasthttp"
 )
 
 type (

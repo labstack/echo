@@ -2,7 +2,7 @@
 
 package fasthttp
 
-import "github.com/valyala/fasthttp"
+import "github.com/trafficstars/fasthttp"
 
 type (
 	// URL implements `engine.URL`.

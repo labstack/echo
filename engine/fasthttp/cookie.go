@@ -3,7 +3,7 @@ package fasthttp
 import (
 	"time"
 
-	"github.com/valyala/fasthttp"
+	"github.com/trafficstars/fasthttp"
 )
 
 type (

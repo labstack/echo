@@ -2,7 +2,7 @@ package fasthttp
 
 import (
 	"github.com/labstack/echo/engine/test"
-	fast "github.com/valyala/fasthttp"
+	fast "github.com/trafficstars/fasthttp"
 	"testing"
 	"time"
 )
