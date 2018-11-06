@@ -294,6 +294,7 @@ func New() (e *Echo) {
 	}
 	e.Server.Handler = e
 	e.TLSServer.Handler = e
+	e.TLSServer.TLSConfig = new(tls.Config)
 	e.HTTPErrorHandler = e.DefaultHTTPErrorHandler
 	e.Binder = &DefaultBinder{}
 	e.Logger.SetLevel(log.ERROR)
@@ -608,7 +609,6 @@ func (e *Echo) StartTLS(address string, certFile, keyFile string) (err error) {
 		return errors.New("invalid tls configuration")
 	}
 	s := e.TLSServer
-	s.TLSConfig = new(tls.Config)
 	s.TLSConfig.Certificates = make([]tls.Certificate, 1)
 	s.TLSConfig.Certificates[0], err = tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
@@ -624,7 +624,6 @@ func (e *Echo) StartAutoTLS(address string) error {
 	}
 
 	s := e.TLSServer
-	s.TLSConfig = new(tls.Config)
 	s.TLSConfig.GetCertificate = e.AutoTLSManager.GetCertificate
 	return e.startTLS(address)
 }
