@@ -25,6 +25,10 @@ type (
 		// DisablePrintStack disables printing stack trace.
 		// Optional. Default value as false.
 		DisablePrintStack bool `yaml:"disable_print_stack"`
+
+		// RawStackFormat enable output stack call in raw format.
+		// Optional. Default value as false.
+		RawStackFormat bool `yaml:"raw_stack_format"`
 	}
 )
 
@@ -35,6 +39,7 @@ var (
 		StackSize:         4 << 10, // 4 KB
 		DisableStackAll:   false,
 		DisablePrintStack: false,
+		RawStackFormat:    false,
 	}
 )
 
@@ -70,7 +75,11 @@ func RecoverWithConfig(config RecoverConfig) echo.MiddlewareFunc {
 					stack := make([]byte, config.StackSize)
 					length := runtime.Stack(stack, !config.DisableStackAll)
 					if !config.DisablePrintStack {
-						c.Logger().Printf("[PANIC RECOVER] %v %s\n", err, stack[:length])
+						if config.RawStackFormat {
+							fmt.Printf("[PANIC RECOVER] %v %s\n", err, stack[:length])
+						} else {
+							c.Logger().Printf("[PANIC RECOVER] %v %s\n", err, stack[:length])
+						}
 					}
 					c.Error(err)
 				}
