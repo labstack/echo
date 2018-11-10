@@ -1,13 +1,11 @@
 language: go
 go:
-  - 1.9.x
-  - 1.10.x
   - 1.11.x
   - tip
-install:
-  - make dependency
+env:
+  - GO111MODULE=on
 script:
-  - make test
+  - go test -race -coverprofile=coverage.txt -covermode=atomic ./...
 after_success:
   - bash <(curl -s https://codecov.io/bash)
 matrix:
