@@ -307,6 +307,21 @@ func TestContextPathParam(t *testing.T) {
 	assert.Equal(t, "501", c.Param("fid"))
 }
 
+func TestContextPathIntParam(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	c := e.NewContext(req, nil)
+
+	c.SetParamNames("id", "dir", "notint")
+	c.SetParamValues("1", "-1", "1a")
+
+	// IntParam
+	assert.Equal(t, 1, c.IntParam("id"))
+	assert.Equal(t, -1, c.IntParam("dir"))
+	assert.Equal(t, 0, c.IntParam("notint"))
+	assert.Equal(t, 0, c.IntParam("notset"))
+}
+
 func TestContextFormValue(t *testing.T) {
 	f := make(url.Values)
 	f.Set("name", "Jon Snow")

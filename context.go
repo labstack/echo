@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -49,6 +50,10 @@ type (
 
 		// Param returns path parameter by name.
 		Param(name string) string
+
+		// IntParam returns integer value of path parameter by name.
+		// 0 is returned if parameter value cannot be converted to an int.
+		IntParam(name string) int
 
 		// ParamNames returns path parameter names.
 		ParamNames() []string
@@ -283,6 +288,11 @@ func (c *context) Param(name string) string {
 		}
 	}
 	return ""
+}
+
+func (c *context) IntParam(name string) int {
+	val, _ := strconv.Atoi(c.Param(name))
+	return val
 }
 
 func (c *context) ParamNames() []string {
