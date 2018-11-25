@@ -70,6 +70,9 @@ type (
 
 		// QueryString returns the URL query string.
 		QueryString() string
+		
+		// QueryBytes returns the URL query string as `[]byte`.
+		QueryBytes() []byte
 
 		// FormValue returns the form field value for the provided name.
 		FormValue(name string) string
@@ -317,6 +320,10 @@ func (c *context) QueryParams() url.Values {
 
 func (c *context) QueryString() string {
 	return c.request.URL.RawQuery
+}
+
+func (c *context) QueryBytes() []byte {
+	return []byte(c.request.URL.RawQuery)
 }
 
 func (c *context) FormValue(name string) string {
