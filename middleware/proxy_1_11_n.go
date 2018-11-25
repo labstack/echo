@@ -3,11 +3,14 @@
 package middleware
 
 import (
-	"github.com/labstack/echo"
 	"net/http"
 	"net/http/httputil"
+
+	"github.com/labstack/echo"
 )
 
 func proxyHTTP(t *ProxyTarget, c echo.Context, config ProxyConfig) http.Handler {
-	return httputil.NewSingleHostReverseProxy(t.URL)
+	proxy := httputil.NewSingleHostReverseProxy(t.URL)
+	proxy.Transport = config.Transport
+	return proxy
 }
