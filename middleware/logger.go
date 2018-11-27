@@ -108,16 +108,17 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) (err error) {
-			if config.Skipper(c) {
-				return next(c)
-			}
-
 			req := c.Request()
 			res := c.Response()
 			start := time.Now()
 			if err = next(c); err != nil {
 				c.Error(err)
 			}
+
+			if config.Skipper(c) {
+				return
+			}
+
 			stop := time.Now()
 			buf := config.pool.Get().(*bytes.Buffer)
 			buf.Reset()
