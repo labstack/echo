@@ -349,7 +349,7 @@ func TestContextQueryParam(t *testing.T) {
 		"email": []string{"jon@labstack.com"},
 	}, c.QueryParams())
 	
-	assert.Equal(t, []byte("email=jon%40labstack.com&name=Jon+Snow"), c.QueryBytes())
+	assert.Equal(t, []byte("email=jon%%40labstack.com&name=Jon+Snow"), c.QueryBytes())
 }
 
 func TestContextFormFile(t *testing.T) {
