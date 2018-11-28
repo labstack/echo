@@ -51,9 +51,9 @@ type (
 		// Param returns path parameter by name.
 		Param(name string) string
 
-		// IntParam returns integer value of path parameter by name.
-		// 0 is returned if parameter value cannot be converted to an int.
-		IntParam(name string) int
+		// IntParam returns integer value of path parameter by name
+		// and a boolean to indicate if a valid integer was found.
+		IntParam(name string) (int, bool)
 
 		// ParamNames returns path parameter names.
 		ParamNames() []string
@@ -290,9 +290,9 @@ func (c *context) Param(name string) string {
 	return ""
 }
 
-func (c *context) IntParam(name string) int {
-	val, _ := strconv.Atoi(c.Param(name))
-	return val
+func (c *context) IntParam(name string) (int, bool) {
+	val, err := strconv.Atoi(c.Param(name))
+	return val, err == nil
 }
 
 func (c *context) ParamNames() []string {

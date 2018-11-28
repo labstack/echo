@@ -315,11 +315,38 @@ func TestContextPathIntParam(t *testing.T) {
 	c.SetParamNames("id", "dir", "notint")
 	c.SetParamValues("1", "-1", "1a")
 
-	// IntParam
-	assert.Equal(t, 1, c.IntParam("id"))
-	assert.Equal(t, -1, c.IntParam("dir"))
-	assert.Equal(t, 0, c.IntParam("notint"))
-	assert.Equal(t, 0, c.IntParam("notset"))
+	tests := []struct {
+		Param         string
+		ExpectedValue int
+		ExpectedOK    bool
+	}{
+		{
+			Param:         "id",
+			ExpectedValue: 1,
+			ExpectedOK:    true,
+		},
+		{
+			Param:         "dir",
+			ExpectedValue: -1,
+			ExpectedOK:    true,
+		},
+		{
+			Param:         "notint",
+			ExpectedValue: 0,
+			ExpectedOK:    false,
+		},
+		{
+			Param:         "notset",
+			ExpectedValue: 0,
+			ExpectedOK:    false,
+		},
+	}
+
+	for _, test := range tests {
+		val, ok := c.IntParam(test.Param)
+		assert.Equal(t, test.ExpectedValue, val)
+		assert.Equal(t, test.ExpectedOK, ok)
+	}
 }
 
 func TestContextFormValue(t *testing.T) {
