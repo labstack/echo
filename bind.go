@@ -41,7 +41,9 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 			params[n] = append(params[name], paramValues[i])
 		}
 	}
-	b.bindData(i, params, "param")
+	if err := b.bindData(i, params, "param"); err != nil {
+		return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
+	}
 
 	if req.ContentLength == 0 {
 		if req.Method == http.MethodGet || req.Method == http.MethodDelete {
