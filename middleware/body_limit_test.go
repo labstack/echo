@@ -14,7 +14,7 @@ import (
 func TestBodyLimit(t *testing.T) {
 	e := echo.New()
 	hw := []byte("Hello, World!")
-	req := httptest.NewRequest(echo.POST, "/", bytes.NewReader(hw))
+	req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(hw))
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	h := func(c echo.Context) error {
@@ -25,37 +25,39 @@ func TestBodyLimit(t *testing.T) {
 		return c.String(http.StatusOK, string(body))
 	}
 
+	assert := assert.New(t)
+
 	// Based on content length (within limit)
-	if assert.NoError(t, BodyLimit("2M")(h)(c)) {
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, hw, rec.Body.Bytes())
+	if assert.NoError(BodyLimit("2M")(h)(c)) {
+		assert.Equal(http.StatusOK, rec.Code)
+		assert.Equal(hw, rec.Body.Bytes())
 	}
 
 	// Based on content read (overlimit)
 	he := BodyLimit("2B")(h)(c).(*echo.HTTPError)
-	assert.Equal(t, http.StatusRequestEntityTooLarge, he.Code)
+	assert.Equal(http.StatusRequestEntityTooLarge, he.Code)
 
 	// Based on content read (within limit)
-	req = httptest.NewRequest(echo.POST, "/", bytes.NewReader(hw))
+	req = httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(hw))
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
-	if assert.NoError(t, BodyLimit("2M")(h)(c)) {
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, "Hello, World!", rec.Body.String())
+	if assert.NoError(BodyLimit("2M")(h)(c)) {
+		assert.Equal(http.StatusOK, rec.Code)
+		assert.Equal("Hello, World!", rec.Body.String())
 	}
 
 	// Based on content read (overlimit)
-	req = httptest.NewRequest(echo.POST, "/", bytes.NewReader(hw))
+	req = httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(hw))
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	he = BodyLimit("2B")(h)(c).(*echo.HTTPError)
-	assert.Equal(t, http.StatusRequestEntityTooLarge, he.Code)
+	assert.Equal(http.StatusRequestEntityTooLarge, he.Code)
 }
 
 func TestBodyLimitReader(t *testing.T) {
 	hw := []byte("Hello, World!")
 	e := echo.New()
-	req := httptest.NewRequest(echo.POST, "/", bytes.NewReader(hw))
+	req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(hw))
 	rec := httptest.NewRecorder()
 
 	config := BodyLimitConfig{

@@ -19,7 +19,7 @@ import (
 func TestLogger(t *testing.T) {
 	// Note: Just for the test coverage, not a real test.
 	e := echo.New()
-	req := httptest.NewRequest(echo.GET, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	h := Logger()(func(c echo.Context) error {
@@ -46,7 +46,7 @@ func TestLogger(t *testing.T) {
 	h(c)
 
 	// Status 5xx with empty path
-	req = httptest.NewRequest(echo.GET, "/", nil)
+	req = httptest.NewRequest(http.MethodGet, "/", nil)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	h = Logger()(func(c echo.Context) error {
@@ -57,7 +57,7 @@ func TestLogger(t *testing.T) {
 
 func TestLoggerIPAddress(t *testing.T) {
 	e := echo.New()
-	req := httptest.NewRequest(echo.GET, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	buf := new(bytes.Buffer)
@@ -101,7 +101,7 @@ func TestLoggerTemplate(t *testing.T) {
 		return c.String(http.StatusOK, "Header Logged")
 	})
 
-	req := httptest.NewRequest(echo.GET, "/?username=apagano-param&password=secret", nil)
+	req := httptest.NewRequest(http.MethodGet, "/?username=apagano-param&password=secret", nil)
 	req.RequestURI = "/"
 	req.Header.Add(echo.HeaderXRealIP, "127.0.0.1")
 	req.Header.Add("Referer", "google.com")
@@ -159,7 +159,7 @@ func TestLoggerCustomTimestamp(t *testing.T) {
 		return c.String(http.StatusOK, "custom time stamp test")
 	})
 
-	req := httptest.NewRequest(echo.GET, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 

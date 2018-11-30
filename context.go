@@ -256,14 +256,13 @@ func (c *context) Scheme() string {
 }
 
 func (c *context) RealIP() string {
-	ra := c.request.RemoteAddr
 	if ip := c.request.Header.Get(HeaderXForwardedFor); ip != "" {
-		ra = strings.Split(ip, ", ")[0]
-	} else if ip := c.request.Header.Get(HeaderXRealIP); ip != "" {
-		ra = ip
-	} else {
-		ra, _, _ = net.SplitHostPort(ra)
+		return strings.Split(ip, ", ")[0]
 	}
+	if ip := c.request.Header.Get(HeaderXRealIP); ip != "" {
+		return ip
+	}
+	ra, _, _ := net.SplitHostPort(c.request.RemoteAddr)
 	return ra
 }
 

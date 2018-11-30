@@ -22,10 +22,13 @@ type (
 )
 
 const (
-	userJSON       = `{"id":1,"name":"Jon Snow"}`
-	userXML        = `<user><id>1</id><name>Jon Snow</name></user>`
-	userForm       = `id=1&name=Jon Snow`
-	invalidContent = "invalid content"
+	userJSON                    = `{"id":1,"name":"Jon Snow"}`
+	userXML                     = `<user><id>1</id><name>Jon Snow</name></user>`
+	userForm                    = `id=1&name=Jon Snow`
+	invalidContent              = "invalid content"
+	userJSONInvalidType         = `{"id":"1","name":"Jon Snow"}`
+	userXMLConvertNumberError   = `<user><id>Number one</id><name>Jon Snow</name></user>`
+	userXMLUnsupportedTypeError = `<user><>Number one</><name>Jon Snow</name></user>`
 )
 
 const userJSONPretty = `{
@@ -40,7 +43,7 @@ const userXMLPretty = `<user>
 
 func TestEcho(t *testing.T) {
 	e := New()
-	req := httptest.NewRequest(GET, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
@@ -55,38 +58,40 @@ func TestEcho(t *testing.T) {
 func TestEchoStatic(t *testing.T) {
 	e := New()
 
+	assert := assert.New(t)
+
 	// OK
 	e.Static("/images", "_fixture/images")
-	c, b := request(GET, "/images/walle.png", e)
-	assert.Equal(t, http.StatusOK, c)
-	assert.NotEmpty(t, b)
+	c, b := request(http.MethodGet, "/images/walle.png", e)
+	assert.Equal(http.StatusOK, c)
+	assert.NotEmpty(b)
 
 	// No file
 	e.Static("/images", "_fixture/scripts")
-	c, _ = request(GET, "/images/bolt.png", e)
-	assert.Equal(t, http.StatusNotFound, c)
+	c, _ = request(http.MethodGet, "/images/bolt.png", e)
+	assert.Equal(http.StatusNotFound, c)
 
 	// Directory
 	e.Static("/images", "_fixture/images")
-	c, _ = request(GET, "/images", e)
-	assert.Equal(t, http.StatusNotFound, c)
+	c, _ = request(http.MethodGet, "/images", e)
+	assert.Equal(http.StatusNotFound, c)
 
 	// Directory with index.html
 	e.Static("/", "_fixture")
-	c, r := request(GET, "/", e)
-	assert.Equal(t, http.StatusOK, c)
-	assert.Equal(t, true, strings.HasPrefix(r, "<!doctype html>"))
+	c, r := request(http.MethodGet, "/", e)
+	assert.Equal(http.StatusOK, c)
+	assert.Equal(true, strings.HasPrefix(r, "<!doctype html>"))
 
 	// Sub-directory with index.html
-	c, r = request(GET, "/folder", e)
-	assert.Equal(t, http.StatusOK, c)
-	assert.Equal(t, true, strings.HasPrefix(r, "<!doctype html>"))
+	c, r = request(http.MethodGet, "/folder", e)
+	assert.Equal(http.StatusOK, c)
+	assert.Equal(true, strings.HasPrefix(r, "<!doctype html>"))
 }
 
 func TestEchoFile(t *testing.T) {
 	e := New()
 	e.File("/walle", "_fixture/images/walle.png")
-	c, b := request(GET, "/walle", e)
+	c, b := request(http.MethodGet, "/walle", e)
 	assert.Equal(t, http.StatusOK, c)
 	assert.NotEmpty(t, b)
 }
@@ -129,7 +134,7 @@ func TestEchoMiddleware(t *testing.T) {
 		return c.String(http.StatusOK, "OK")
 	})
 
-	c, b := request(GET, "/", e)
+	c, b := request(http.MethodGet, "/", e)
 	assert.Equal(t, "-1123", buf.String())
 	assert.Equal(t, http.StatusOK, c)
 	assert.Equal(t, "OK", b)
@@ -143,7 +148,7 @@ func TestEchoMiddlewareError(t *testing.T) {
 		}
 	})
 	e.GET("/", NotFoundHandler)
-	c, _ := request(GET, "/", e)
+	c, _ := request(http.MethodGet, "/", e)
 	assert.Equal(t, http.StatusInternalServerError, c)
 }
 
@@ -155,14 +160,14 @@ func TestEchoHandler(t *testing.T) {
 		return c.String(http.StatusOK, "OK")
 	})
 
-	c, b := request(GET, "/ok", e)
+	c, b := request(http.MethodGet, "/ok", e)
 	assert.Equal(t, http.StatusOK, c)
 	assert.Equal(t, "OK", b)
 }
 
 func TestEchoWrapHandler(t *testing.T) {
 	e := New()
-	req := httptest.NewRequest(GET, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	h := WrapHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -177,7 +182,7 @@ func TestEchoWrapHandler(t *testing.T) {
 
 func TestEchoWrapMiddleware(t *testing.T) {
 	e := New()
-	req := httptest.NewRequest(GET, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	buf := new(bytes.Buffer)
@@ -199,47 +204,47 @@ func TestEchoWrapMiddleware(t *testing.T) {
 
 func TestEchoConnect(t *testing.T) {
 	e := New()
-	testMethod(t, CONNECT, "/", e)
+	testMethod(t, http.MethodConnect, "/", e)
 }
 
 func TestEchoDelete(t *testing.T) {
 	e := New()
-	testMethod(t, DELETE, "/", e)
+	testMethod(t, http.MethodDelete, "/", e)
 }
 
 func TestEchoGet(t *testing.T) {
 	e := New()
-	testMethod(t, GET, "/", e)
+	testMethod(t, http.MethodGet, "/", e)
 }
 
 func TestEchoHead(t *testing.T) {
 	e := New()
-	testMethod(t, HEAD, "/", e)
+	testMethod(t, http.MethodHead, "/", e)
 }
 
 func TestEchoOptions(t *testing.T) {
 	e := New()
-	testMethod(t, OPTIONS, "/", e)
+	testMethod(t, http.MethodOptions, "/", e)
 }
 
 func TestEchoPatch(t *testing.T) {
 	e := New()
-	testMethod(t, PATCH, "/", e)
+	testMethod(t, http.MethodPatch, "/", e)
 }
 
 func TestEchoPost(t *testing.T) {
 	e := New()
-	testMethod(t, POST, "/", e)
+	testMethod(t, http.MethodPost, "/", e)
 }
 
 func TestEchoPut(t *testing.T) {
 	e := New()
-	testMethod(t, PUT, "/", e)
+	testMethod(t, http.MethodPut, "/", e)
 }
 
 func TestEchoTrace(t *testing.T) {
 	e := New()
-	testMethod(t, TRACE, "/", e)
+	testMethod(t, http.MethodTrace, "/", e)
 }
 
 func TestEchoAny(t *testing.T) { // JFC
@@ -251,7 +256,7 @@ func TestEchoAny(t *testing.T) { // JFC
 
 func TestEchoMatch(t *testing.T) { // JFC
 	e := New()
-	e.Match([]string{GET, POST}, "/", func(c Context) error {
+	e.Match([]string{http.MethodGet, http.MethodPost}, "/", func(c Context) error {
 		return c.String(http.StatusOK, "Match")
 	})
 }
@@ -267,20 +272,22 @@ func TestEchoURL(t *testing.T) {
 	g := e.Group("/group")
 	g.GET("/users/:uid/files/:fid", getFile)
 
-	assert.Equal(t, "/static/file", e.URL(static))
-	assert.Equal(t, "/users/:id", e.URL(getUser))
-	assert.Equal(t, "/users/1", e.URL(getUser, "1"))
-	assert.Equal(t, "/group/users/1/files/:fid", e.URL(getFile, "1"))
-	assert.Equal(t, "/group/users/1/files/1", e.URL(getFile, "1", "1"))
+	assert := assert.New(t)
+
+	assert.Equal("/static/file", e.URL(static))
+	assert.Equal("/users/:id", e.URL(getUser))
+	assert.Equal("/users/1", e.URL(getUser, "1"))
+	assert.Equal("/group/users/1/files/:fid", e.URL(getFile, "1"))
+	assert.Equal("/group/users/1/files/1", e.URL(getFile, "1", "1"))
 }
 
 func TestEchoRoutes(t *testing.T) {
 	e := New()
 	routes := []*Route{
-		{GET, "/users/:user/events", ""},
-		{GET, "/users/:user/events/public", ""},
-		{POST, "/repos/:owner/:repo/git/refs", ""},
-		{POST, "/repos/:owner/:repo/git/tags", ""},
+		{http.MethodGet, "/users/:user/events", ""},
+		{http.MethodGet, "/users/:user/events/public", ""},
+		{http.MethodPost, "/repos/:owner/:repo/git/refs", ""},
+		{http.MethodPost, "/repos/:owner/:repo/git/tags", ""},
 	}
 	for _, r := range routes {
 		e.Add(r.Method, r.Path, func(c Context) error {
@@ -309,7 +316,7 @@ func TestEchoEncodedPath(t *testing.T) {
 	e.GET("/:id", func(c Context) error {
 		return c.NoContent(http.StatusOK)
 	})
-	req := httptest.NewRequest(GET, "/with%2Fslash", nil)
+	req := httptest.NewRequest(http.MethodGet, "/with%2Fslash", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -361,21 +368,21 @@ func TestEchoGroup(t *testing.T) {
 	})
 	g3.GET("", h)
 
-	request(GET, "/users", e)
+	request(http.MethodGet, "/users", e)
 	assert.Equal(t, "0", buf.String())
 
 	buf.Reset()
-	request(GET, "/group1", e)
+	request(http.MethodGet, "/group1", e)
 	assert.Equal(t, "01", buf.String())
 
 	buf.Reset()
-	request(GET, "/group2/group3", e)
+	request(http.MethodGet, "/group2/group3", e)
 	assert.Equal(t, "023", buf.String())
 }
 
 func TestEchoNotFound(t *testing.T) {
 	e := New()
-	req := httptest.NewRequest(GET, "/files", nil)
+	req := httptest.NewRequest(http.MethodGet, "/files", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusNotFound, rec.Code)
@@ -386,7 +393,7 @@ func TestEchoMethodNotAllowed(t *testing.T) {
 	e.GET("/", func(c Context) error {
 		return c.String(http.StatusOK, "Echo!")
 	})
-	req := httptest.NewRequest(POST, "/", nil)
+	req := httptest.NewRequest(http.MethodPost, "/", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
@@ -457,7 +464,7 @@ func request(method, path string, e *Echo) (int, string) {
 }
 
 func TestHTTPError(t *testing.T) {
-	err := NewHTTPError(400, map[string]interface{}{
+	err := NewHTTPError(http.StatusBadRequest, map[string]interface{}{
 		"code": 12,
 	})
 	assert.Equal(t, "code=400, message=map[code:12]", err.Error())
