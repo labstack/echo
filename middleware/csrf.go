@@ -135,7 +135,7 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 			}
 
 			switch req.Method {
-			case echo.GET, echo.HEAD, echo.OPTIONS, echo.TRACE:
+			case http.MethodGet, http.MethodHead, http.MethodOptions, http.MethodTrace:
 			default:
 				// Validate token only for requests which are not defined as 'safe' by RFC7231
 				clientToken, err := extractor(c)

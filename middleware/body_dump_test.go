@@ -15,7 +15,7 @@ import (
 func TestBodyDump(t *testing.T) {
 	e := echo.New()
 	hw := "Hello, World!"
-	req := httptest.NewRequest(echo.POST, "/", strings.NewReader(hw))
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(hw))
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	h := func(c echo.Context) error {
@@ -33,11 +33,13 @@ func TestBodyDump(t *testing.T) {
 		responseBody = string(resBody)
 	})
 
-	if assert.NoError(t, mw(h)(c)) {
-		assert.Equal(t, requestBody, hw)
-		assert.Equal(t, responseBody, hw)
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, hw, rec.Body.String())
+	assert := assert.New(t)
+
+	if assert.NoError(mw(h)(c)) {
+		assert.Equal(requestBody, hw)
+		assert.Equal(responseBody, hw)
+		assert.Equal(http.StatusOK, rec.Code)
+		assert.Equal(hw, rec.Body.String())
 	}
 
 	// Must set default skipper
@@ -53,19 +55,14 @@ func TestBodyDump(t *testing.T) {
 func TestBodyDumpFails(t *testing.T) {
 	e := echo.New()
 	hw := "Hello, World!"
-	req := httptest.NewRequest(echo.POST, "/", strings.NewReader(hw))
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(hw))
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	h := func(c echo.Context) error {
 		return errors.New("some error")
 	}
 
-	requestBody := ""
-	responseBody := ""
-	mw := BodyDump(func(c echo.Context, reqBody, resBody []byte) {
-		requestBody = string(reqBody)
-		responseBody = string(resBody)
-	})
+	mw := BodyDump(func(c echo.Context, reqBody, resBody []byte) {})
 
 	if !assert.Error(t, mw(h)(c)) {
 		t.FailNow()
@@ -84,8 +81,6 @@ func TestBodyDumpFails(t *testing.T) {
 				return true
 			},
 			Handler: func(c echo.Context, reqBody, resBody []byte) {
-				requestBody = string(reqBody)
-				responseBody = string(resBody)
 			},
 		})
 
