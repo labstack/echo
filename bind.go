@@ -30,7 +30,13 @@ type (
 // Bind implements the `Binder#Bind` function.
 func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 	req := c.Request()
-	if req.ContentLength == 0 {
+
+	// Some web frontend library such as
+	// [`Simplified HTTP request client`](https://github.com/request/request/blob/b3926a3a57a61c117295731e4be64005cb88259e/request.js#L419)
+	// would set Content-Length = 2 even though the body is empty.
+	// Such a small body is meaningless both in `JSON` and `XML` and even `form`.
+	// So we could ignore the content.
+	if req.ContentLength <= 2 {
 		if req.Method == http.MethodGet || req.Method == http.MethodDelete {
 			if err = b.bindData(i, c.QueryParams(), "query"); err != nil {
 				return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
@@ -39,6 +45,7 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 		}
 		return NewHTTPError(http.StatusBadRequest, "Request body can't be empty")
 	}
+
 	ctype := req.Header.Get(HeaderContentType)
 	switch {
 	case strings.HasPrefix(ctype, MIMEApplicationJSON):
