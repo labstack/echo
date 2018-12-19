@@ -50,7 +50,6 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 			} else {
 				return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
 			}
-			return NewHTTPError(http.StatusBadRequest, err.Error())
 		}
 	case strings.HasPrefix(ctype, MIMEApplicationXML), strings.HasPrefix(ctype, MIMETextXML):
 		if err = xml.NewDecoder(req.Body).Decode(i); err != nil {
@@ -61,7 +60,6 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 			} else {
 				return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
 			}
-			return NewHTTPError(http.StatusBadRequest, err.Error())
 		}
 	case strings.HasPrefix(ctype, MIMEApplicationForm), strings.HasPrefix(ctype, MIMEMultipartForm):
 		params, err := c.FormParams()
