@@ -732,11 +732,7 @@ func WrapMiddleware(m func(http.Handler) http.Handler) MiddlewareFunc {
 }
 
 func getPath(r *http.Request) string {
-	path := r.URL.RawPath
-	if path == "" {
-		path = r.URL.Path
-	}
-	return path
+	return r.URL.Path
 }
 
 func handlerName(h HandlerFunc) string {

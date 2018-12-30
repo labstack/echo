@@ -319,7 +319,7 @@ func TestEchoEncodedPath(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/with%2Fslash", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
-	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, http.StatusNotFound, rec.Code)
 }
 
 func TestEchoGroup(t *testing.T) {
