@@ -37,11 +37,11 @@ type (
 		// "/users/*/orders/*": "/user/$1/order/$2",
 		Rewrite map[string]string
 
-    // Context key to store selected ProxyTarget into context.
+		// Context key to store selected ProxyTarget into context.
 		// Optional. Default value "target".
 		ContextKey string
 
-    // To customize the transport to remote.
+		// To customize the transport to remote.
 		// Examples: If custom TLS certificates are required.
 		Transport http.RoundTripper
 
@@ -247,7 +247,6 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 			switch {
 			case c.IsWebSocket():
 				proxyRaw(tgt, c).ServeHTTP(res, req)
-			case req.Header.Get(echo.HeaderAccept) == "text/event-stream":
 			default:
 				proxyHTTP(tgt, c, config).ServeHTTP(res, req)
 			}
