@@ -4,7 +4,10 @@ go:
   - tip
 env:
   - GO111MODULE=on
+install:
+  - go get -v golang.org/x/lint/golint
 script:
+  - golint -set_exit_status ./...
   - go test -race -coverprofile=coverage.txt -covermode=atomic ./...
 after_success:
   - bash <(curl -s https://codecov.io/bash)

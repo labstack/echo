@@ -138,7 +138,7 @@ const (
 	OPTIONS = http.MethodOptions
 	PATCH   = http.MethodPatch
 	POST    = http.MethodPost
-	//PROPFIND = "PROPFIND"
+	// PROPFIND = "PROPFIND"
 	PUT   = http.MethodPut
 	TRACE = http.MethodTrace
 )
@@ -166,6 +166,7 @@ const (
 
 const (
 	charsetUTF8 = "charset=UTF-8"
+	// PROPFIND Method can be used on collection and property resources.
 	PROPFIND    = "PROPFIND"
 )
 
@@ -219,6 +220,7 @@ const (
 )
 
 const (
+	// Version of Echo
 	Version = "3.3.dev"
 	website = "https://echo.labstack.com"
 	// http://patorjk.com/software/taag/#p=display&f=Small%20Slant&t=Echo
@@ -705,6 +707,7 @@ func (he *HTTPError) Error() string {
 	return fmt.Sprintf("code=%d, message=%v", he.Code, he.Message)
 }
 
+// SetInternal sets error to HTTPError.Internal
 func (he *HTTPError) SetInternal(err error) *HTTPError {
 	he.Internal = err
 	return he
