@@ -138,7 +138,7 @@ const (
 	OPTIONS = http.MethodOptions
 	PATCH   = http.MethodPatch
 	POST    = http.MethodPost
-	//PROPFIND = "PROPFIND"
+	// PROPFIND = "PROPFIND"
 	PUT   = http.MethodPut
 	TRACE = http.MethodTrace
 )
@@ -220,7 +220,7 @@ const (
 )
 
 const (
-	// Version of echo
+	// Version of Echo
 	Version = "3.3.dev"
 	website = "https://echo.labstack.com"
 	// http://patorjk.com/software/taag/#p=display&f=Small%20Slant&t=Echo
