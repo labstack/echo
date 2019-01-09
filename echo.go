@@ -682,7 +682,7 @@ func (e *Echo) Close() error {
 	return e.Server.Close()
 }
 
-// Shutdown stops server the gracefully.
+// Shutdown stops the server gracefully.
 // It internally calls `http.Server#Shutdown()`.
 func (e *Echo) Shutdown(ctx stdContext.Context) error {
 	if err := e.TLSServer.Shutdown(ctx); err != nil {
