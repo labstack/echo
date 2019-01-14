@@ -2,6 +2,7 @@ package echo
 
 import (
 	"bytes"
+	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"io"
@@ -14,7 +15,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	testify "github.com/stretchr/testify/assert"
 )
 
 type (
@@ -22,6 +23,50 @@ type (
 		templates *template.Template
 	}
 )
+
+var testUser = user{1, "Jon Snow"}
+
+func BenchmarkAllocJSONP(b *testing.B) {
+	e := New()
+	req := httptest.NewRequest(POST, "/", strings.NewReader(userJSON))
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec).(*context)
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		c.JSONP(http.StatusOK, "callback", testUser)
+	}
+}
+
+func BenchmarkAllocJSON(b *testing.B) {
+	e := New()
+	req := httptest.NewRequest(POST, "/", strings.NewReader(userJSON))
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec).(*context)
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		c.JSON(http.StatusOK, testUser)
+	}
+}
+
+func BenchmarkAllocXML(b *testing.B) {
+	e := New()
+	req := httptest.NewRequest(POST, "/", strings.NewReader(userJSON))
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec).(*context)
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		c.XML(http.StatusOK, testUser)
+	}
+}
 
 func (t *Template) Render(w io.Writer, name string, data interface{}, c Context) error {
 	return t.templates.ExecuteTemplate(w, name, data)
@@ -33,7 +78,7 @@ func TestContext(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec).(*context)
 
-	assert := assert.New(t)
+	assert := testify.New(t)
 
 	// Echo
 	assert.Equal(e, c.Echo())
@@ -69,7 +114,7 @@ func TestContext(t *testing.T) {
 	if assert.NoError(err) {
 		assert.Equal(http.StatusOK, rec.Code)
 		assert.Equal(MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
-		assert.Equal(userJSON, rec.Body.String())
+		assert.Equal(userJSON+"\n", rec.Body.String())
 	}
 
 	// JSON with "?pretty"
@@ -80,7 +125,7 @@ func TestContext(t *testing.T) {
 	if assert.NoError(err) {
 		assert.Equal(http.StatusOK, rec.Code)
 		assert.Equal(MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
-		assert.Equal(userJSONPretty, rec.Body.String())
+		assert.Equal(userJSONPretty+"\n", rec.Body.String())
 	}
 	req = httptest.NewRequest(http.MethodGet, "/", nil) // reset
 
@@ -91,7 +136,7 @@ func TestContext(t *testing.T) {
 	if assert.NoError(err) {
 		assert.Equal(http.StatusOK, rec.Code)
 		assert.Equal(MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
-		assert.Equal(userJSONPretty, rec.Body.String())
+		assert.Equal(userJSONPretty+"\n", rec.Body.String())
 	}
 
 	// JSON (error)
@@ -108,7 +153,7 @@ func TestContext(t *testing.T) {
 	if assert.NoError(err) {
 		assert.Equal(http.StatusOK, rec.Code)
 		assert.Equal(MIMEApplicationJavaScriptCharsetUTF8, rec.Header().Get(HeaderContentType))
-		assert.Equal(callback+"("+userJSON+");", rec.Body.String())
+		assert.Equal(callback+"("+userJSON+"\n);", rec.Body.String())
 	}
 
 	// XML
@@ -147,6 +192,87 @@ func TestContext(t *testing.T) {
 		assert.Equal(http.StatusOK, rec.Code)
 		assert.Equal(MIMEApplicationXMLCharsetUTF8, rec.Header().Get(HeaderContentType))
 		assert.Equal(xml.Header+userXMLPretty, rec.Body.String())
+	}
+
+	t.Run("empty indent", func(t *testing.T) {
+		var (
+			u           = user{1, "Jon Snow"}
+			buf         = new(bytes.Buffer)
+			emptyIndent = ""
+		)
+
+		t.Run("json", func(t *testing.T) {
+			buf.Reset()
+			assert := testify.New(t)
+
+			// New JSONBlob with empty indent
+			rec = httptest.NewRecorder()
+			c = e.NewContext(req, rec).(*context)
+			enc := json.NewEncoder(buf)
+			enc.SetIndent(emptyIndent, emptyIndent)
+			err = enc.Encode(u)
+			err = c.jsonBlob(http.StatusOK, user{1, "Jon Snow"}, &emptyIndent)
+			if assert.NoError(err) {
+				assert.Equal(http.StatusOK, rec.Code)
+				assert.Equal(MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
+				assert.Equal(buf.String(), rec.Body.String())
+			}
+		})
+
+		t.Run("xml", func(t *testing.T) {
+			buf.Reset()
+			assert := testify.New(t)
+
+			// New XMLBlob with empty indent
+			rec = httptest.NewRecorder()
+			c = e.NewContext(req, rec).(*context)
+			enc := xml.NewEncoder(buf)
+			enc.Indent(emptyIndent, emptyIndent)
+			err = enc.Encode(u)
+			err = c.xmlBlob(http.StatusOK, user{1, "Jon Snow"}, &emptyIndent)
+			if assert.NoError(err) {
+				assert.Equal(http.StatusOK, rec.Code)
+				assert.Equal(MIMEApplicationXMLCharsetUTF8, rec.Header().Get(HeaderContentType))
+				assert.Equal(xml.Header+buf.String(), rec.Body.String())
+			}
+		})
+	})
+
+	// Legacy JSONBlob
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec).(*context)
+	data, err := json.Marshal(user{1, "Jon Snow"})
+	assert.NoError(err)
+	err = c.JSONBlob(http.StatusOK, data)
+	if assert.NoError(err) {
+		assert.Equal(http.StatusOK, rec.Code)
+		assert.Equal(MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(userJSON, rec.Body.String())
+	}
+
+	// Legacy JSONPBlob
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec).(*context)
+	callback = "callback"
+	data, err = json.Marshal(user{1, "Jon Snow"})
+	assert.NoError(err)
+	err = c.JSONPBlob(http.StatusOK, callback, data)
+	if assert.NoError(err) {
+		assert.Equal(http.StatusOK, rec.Code)
+		assert.Equal(MIMEApplicationJavaScriptCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(callback+"("+userJSON+");", rec.Body.String())
+	}
+
+	// Legacy XMLBlob
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec).(*context)
+	data, err = xml.Marshal(user{1, "Jon Snow"})
+	assert.NoError(err)
+	err = c.XMLBlob(http.StatusOK, data)
+	if assert.NoError(err) {
+		assert.Equal(http.StatusOK, rec.Code)
+		assert.Equal(MIMEApplicationXMLCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(xml.Header+userXML, rec.Body.String())
 	}
 
 	// String
@@ -235,7 +361,7 @@ func TestContextCookie(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec).(*context)
 
-	assert := assert.New(t)
+	assert := testify.New(t)
 
 	// Read single
 	cookie, err := c.Cookie("theme")
@@ -280,7 +406,7 @@ func TestContextPath(t *testing.T) {
 	c := e.NewContext(nil, nil)
 	r.Find(http.MethodGet, "/users/1", c)
 
-	assert := assert.New(t)
+	assert := testify.New(t)
 
 	assert.Equal("/users/:id", c.Path())
 
@@ -297,14 +423,14 @@ func TestContextPathParam(t *testing.T) {
 
 	// ParamNames
 	c.SetParamNames("uid", "fid")
-	assert.EqualValues(t, []string{"uid", "fid"}, c.ParamNames())
+	testify.EqualValues(t, []string{"uid", "fid"}, c.ParamNames())
 
 	// ParamValues
 	c.SetParamValues("101", "501")
-	assert.EqualValues(t, []string{"101", "501"}, c.ParamValues())
+	testify.EqualValues(t, []string{"101", "501"}, c.ParamValues())
 
 	// Param
-	assert.Equal(t, "501", c.Param("fid"))
+	testify.Equal(t, "501", c.Param("fid"))
 }
 
 func TestContextFormValue(t *testing.T) {
@@ -318,13 +444,13 @@ func TestContextFormValue(t *testing.T) {
 	c := e.NewContext(req, nil)
 
 	// FormValue
-	assert.Equal(t, "Jon Snow", c.FormValue("name"))
-	assert.Equal(t, "jon@labstack.com", c.FormValue("email"))
+	testify.Equal(t, "Jon Snow", c.FormValue("name"))
+	testify.Equal(t, "jon@labstack.com", c.FormValue("email"))
 
 	// FormParams
 	params, err := c.FormParams()
-	if assert.NoError(t, err) {
-		assert.Equal(t, url.Values{
+	if testify.NoError(t, err) {
+		testify.Equal(t, url.Values{
 			"name":  []string{"Jon Snow"},
 			"email": []string{"jon@labstack.com"},
 		}, params)
@@ -340,11 +466,11 @@ func TestContextQueryParam(t *testing.T) {
 	c := e.NewContext(req, nil)
 
 	// QueryParam
-	assert.Equal(t, "Jon Snow", c.QueryParam("name"))
-	assert.Equal(t, "jon@labstack.com", c.QueryParam("email"))
+	testify.Equal(t, "Jon Snow", c.QueryParam("name"))
+	testify.Equal(t, "jon@labstack.com", c.QueryParam("email"))
 
 	// QueryParams
-	assert.Equal(t, url.Values{
+	testify.Equal(t, url.Values{
 		"name":  []string{"Jon Snow"},
 		"email": []string{"jon@labstack.com"},
 	}, c.QueryParams())
@@ -355,7 +481,7 @@ func TestContextFormFile(t *testing.T) {
 	buf := new(bytes.Buffer)
 	mr := multipart.NewWriter(buf)
 	w, err := mr.CreateFormFile("file", "test")
-	if assert.NoError(t, err) {
+	if testify.NoError(t, err) {
 		w.Write([]byte("test"))
 	}
 	mr.Close()
@@ -364,8 +490,8 @@ func TestContextFormFile(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	f, err := c.FormFile("file")
-	if assert.NoError(t, err) {
-		assert.Equal(t, "test", f.Filename)
+	if testify.NoError(t, err) {
+		testify.Equal(t, "test", f.Filename)
 	}
 }
 
@@ -380,8 +506,8 @@ func TestContextMultipartForm(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	f, err := c.MultipartForm()
-	if assert.NoError(t, err) {
-		assert.NotNil(t, f)
+	if testify.NoError(t, err) {
+		testify.NotNil(t, f)
 	}
 }
 
@@ -390,17 +516,17 @@ func TestContextRedirect(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	assert.Equal(t, nil, c.Redirect(http.StatusMovedPermanently, "http://labstack.github.io/echo"))
-	assert.Equal(t, http.StatusMovedPermanently, rec.Code)
-	assert.Equal(t, "http://labstack.github.io/echo", rec.Header().Get(HeaderLocation))
-	assert.Error(t, c.Redirect(310, "http://labstack.github.io/echo"))
+	testify.Equal(t, nil, c.Redirect(http.StatusMovedPermanently, "http://labstack.github.io/echo"))
+	testify.Equal(t, http.StatusMovedPermanently, rec.Code)
+	testify.Equal(t, "http://labstack.github.io/echo", rec.Header().Get(HeaderLocation))
+	testify.Error(t, c.Redirect(310, "http://labstack.github.io/echo"))
 }
 
 func TestContextStore(t *testing.T) {
 	var c Context
 	c = new(context)
 	c.Set("name", "Jon Snow")
-	assert.Equal(t, "Jon Snow", c.Get("name"))
+	testify.Equal(t, "Jon Snow", c.Get("name"))
 }
 
 func TestContextHandler(t *testing.T) {
@@ -415,5 +541,5 @@ func TestContextHandler(t *testing.T) {
 	c := e.NewContext(nil, nil)
 	r.Find(http.MethodGet, "/handler", c)
 	c.Handler()(c)
-	assert.Equal(t, "handler", b.String())
+	testify.Equal(t, "handler", b.String())
 }
