@@ -211,7 +211,7 @@ func TestContext(t *testing.T) {
 			enc := json.NewEncoder(buf)
 			enc.SetIndent(emptyIndent, emptyIndent)
 			err = enc.Encode(u)
-			err = c.jsonBlob(http.StatusOK, user{1, "Jon Snow"}, &emptyIndent)
+			err = c.json(http.StatusOK, user{1, "Jon Snow"}, emptyIndent)
 			if assert.NoError(err) {
 				assert.Equal(http.StatusOK, rec.Code)
 				assert.Equal(MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
@@ -229,7 +229,7 @@ func TestContext(t *testing.T) {
 			enc := xml.NewEncoder(buf)
 			enc.Indent(emptyIndent, emptyIndent)
 			err = enc.Encode(u)
-			err = c.xmlBlob(http.StatusOK, user{1, "Jon Snow"}, &emptyIndent)
+			err = c.xml(http.StatusOK, user{1, "Jon Snow"}, emptyIndent)
 			if assert.NoError(err) {
 				assert.Equal(http.StatusOK, rec.Code)
 				assert.Equal(MIMEApplicationXMLCharsetUTF8, rec.Header().Get(HeaderContentType))
@@ -543,3 +543,4 @@ func TestContextHandler(t *testing.T) {
 	c.Handler()(c)
 	testify.Equal(t, "handler", b.String())
 }
+
