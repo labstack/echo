@@ -41,6 +41,15 @@ func TestRedirectHTTPSWWWRedirectBehindTLSTerminationProxy(t *testing.T) {
 	assert.Equal(t, http.StatusOK, res.Code)
 }
 
+func TestRedirectHTTPSHTTPSWWWRedirect(t *testing.T) {
+	header := http.Header{}
+	header.Set(echo.HeaderXForwardedSsl, "on")
+	res := redirectTest(HTTPSHTTPSWWWRedirect, "labstack.com", header)
+
+	assert.Equal(t, http.StatusMovedPermanently, res.Code)
+	assert.Equal(t, "https://www.labstack.com/", res.Header().Get(echo.HeaderLocation))
+}
+
 func TestRedirectHTTPSNonWWWRedirect(t *testing.T) {
 	res := redirectTest(HTTPSNonWWWRedirect, "www.labstack.com", nil)
 

@@ -67,6 +67,25 @@ func HTTPSWWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 	})
 }
 
+// HTTPSHTTPSWWWRedirect redirects http requests to https www.
+// For example, https://labstack.com will be redirected to https://www.labstack.com.
+//
+// Usage `Echo#Pre(HTTPSHTTPSWWWRedirect())`
+func HTTPSHTTPSWWWRedirect() echo.MiddlewareFunc {
+	return HTTPSHTTPSWWWRedirectWithConfig(DefaultRedirectConfig)
+}
+
+// HTTPSWWWRedirectWithConfig returns an HTTPSRedirect middleware with config.
+// See `HTTPSWWWRedirect()`.
+func HTTPSHTTPSWWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
+	return redirect(config, func(scheme, host, uri string) (ok bool, url string) {
+		if ok = scheme == "https" && host[:3] != www; ok {
+			url = "https://www." + host + uri
+		}
+		return
+	})
+}
+
 // HTTPSNonWWWRedirect redirects http requests to https non www.
 // For example, http://www.labstack.com will be redirect to https://labstack.com.
 //
