@@ -75,7 +75,7 @@ func HTTPSHTTPSWWWRedirect() echo.MiddlewareFunc {
 	return HTTPSHTTPSWWWRedirectWithConfig(DefaultRedirectConfig)
 }
 
-// HTTPSWWWRedirectWithConfig returns an HTTPSRedirect middleware with config.
+// HTTPSHTTPSWWWRedirectWithConfig returns an HTTPSRedirect middleware with config.
 // See `HTTPSWWWRedirect()`.
 func HTTPSHTTPSWWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 	return redirect(config, func(scheme, host, uri string) (ok bool, url string) {
