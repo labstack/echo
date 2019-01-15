@@ -3,7 +3,7 @@ package middleware
 import (
 	"net/http"
 
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v3"
 )
 
 // RedirectConfig defines the config for Redirect middleware.

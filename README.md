@@ -44,8 +44,8 @@ package main
 import (
 	"net/http"
 
-	"github.com/labstack/echo"
-	"github.com/labstack/echo/middleware"
+	"github.com/labstack/echo/v3"
+	"github.com/labstack/echo/v3/middleware"
 )
 
 func main() {
