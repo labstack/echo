@@ -167,7 +167,7 @@ const (
 const (
 	charsetUTF8 = "charset=UTF-8"
 	// PROPFIND Method can be used on collection and property resources.
-	PROPFIND    = "PROPFIND"
+	PROPFIND = "PROPFIND"
 )
 
 // Headers
@@ -567,26 +567,17 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c := e.pool.Get().(*context)
 	c.Reset(r, w)
 
-	h := NotFoundHandler
-
-	if e.premiddleware == nil {
+	h := func(c Context) error {
 		e.router.Find(r.Method, getPath(r), c)
-		h = c.Handler()
+		h := c.Handler()
 		for i := len(e.middleware) - 1; i >= 0; i-- {
 			h = e.middleware[i](h)
 		}
-	} else {
-		h = func(c Context) error {
-			e.router.Find(r.Method, getPath(r), c)
-			h := c.Handler()
-			for i := len(e.middleware) - 1; i >= 0; i-- {
-				h = e.middleware[i](h)
-			}
-			return h(c)
-		}
-		for i := len(e.premiddleware) - 1; i >= 0; i-- {
-			h = e.premiddleware[i](h)
-		}
+		return h(c)
+	}
+
+	for i := len(e.premiddleware) - 1; i >= 0; i-- {
+		h = e.premiddleware[i](h)
 	}
 
 	// Execute chain
