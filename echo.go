@@ -8,8 +8,8 @@ Example:
   import (
     "net/http"
 
-    "github.com/labstack/echo"
-    "github.com/labstack/echo/middleware"
+    "github.com/labstack/echo/v4"
+    "github.com/labstack/echo/v4/middleware"
   )
 
   // Handler
@@ -167,7 +167,7 @@ const (
 const (
 	charsetUTF8 = "charset=UTF-8"
 	// PROPFIND Method can be used on collection and property resources.
-	PROPFIND    = "PROPFIND"
+	PROPFIND = "PROPFIND"
 )
 
 // Headers
@@ -221,7 +221,7 @@ const (
 
 const (
 	// Version of Echo
-	Version = "3.3.dev"
+	Version = "4.0.0"
 	website = "https://echo.labstack.com"
 	// http://patorjk.com/software/taag/#p=display&f=Small%20Slant&t=Echo
 	banner = `

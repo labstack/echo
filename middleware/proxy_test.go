@@ -7,31 +7,9 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
-
-type (
-	closeNotifyRecorder struct {
-		*httptest.ResponseRecorder
-		closed chan bool
-	}
-)
-
-func newCloseNotifyRecorder() *closeNotifyRecorder {
-	return &closeNotifyRecorder{
-		httptest.NewRecorder(),
-		make(chan bool, 1),
-	}
-}
-
-func (c *closeNotifyRecorder) close() {
-	c.closed <- true
-}
-
-func (c *closeNotifyRecorder) CloseNotify() <-chan bool {
-	return c.closed
-}
 
 func TestProxy(t *testing.T) {
 	// Setup
@@ -71,7 +49,7 @@ func TestProxy(t *testing.T) {
 	e := echo.New()
 	e.Use(Proxy(rb))
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	rec := newCloseNotifyRecorder()
+	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	body := rec.Body.String()
 	expected := map[string]bool{
@@ -92,11 +70,11 @@ func TestProxy(t *testing.T) {
 	rrb := NewRoundRobinBalancer(targets)
 	e = echo.New()
 	e.Use(Proxy(rrb))
-	rec = newCloseNotifyRecorder()
+	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	body = rec.Body.String()
 	assert.Equal(t, "target 1", body)
-	rec = newCloseNotifyRecorder()
+	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	body = rec.Body.String()
 	assert.Equal(t, "target 2", body)
@@ -138,6 +116,6 @@ func TestProxy(t *testing.T) {
 	e = echo.New()
 	e.Use(contextObserver)
 	e.Use(Proxy(rrb1))
-	rec = newCloseNotifyRecorder()
+	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 }
