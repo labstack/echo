@@ -8,7 +8,7 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 )
 
 type (
@@ -104,8 +104,4 @@ func (w *bodyDumpResponseWriter) Flush() {
 
 func (w *bodyDumpResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return w.ResponseWriter.(http.Hijacker).Hijack()
-}
-
-func (w *bodyDumpResponseWriter) CloseNotify() <-chan bool {
-	return w.ResponseWriter.(http.CloseNotifier).CloseNotify()
 }
