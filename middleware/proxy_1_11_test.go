@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -42,10 +42,10 @@ func TestProxy_1_11(t *testing.T) {
 	e := echo.New()
 	e.Use(Proxy(rb))
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	rec := newCloseNotifyRecorder()
+	rec := httptest.NewRecorder()
 
 	// Remote unreachable
-	rec = newCloseNotifyRecorder()
+	rec = httptest.NewRecorder()
 	req.URL.Path = "/api/users"
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "/api/users", req.URL.Path)

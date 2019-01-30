@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/bytes"
 )
 
@@ -76,7 +76,7 @@ const html = `
 			transition: opacity 0.25s;
 		}
 		li span {
-			color: #707070; 
+			color: #707070;
 			font-size: 12px;
 		}
 		li a:hover {
