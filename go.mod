@@ -10,4 +10,5 @@ require (
 	github.com/valyala/fasttemplate v0.0.0-20170224212429-dcecefd839c4
 	golang.org/x/crypto v0.0.0-20190130090550-b01c7a725664
 	golang.org/x/sys v0.0.0-20190129075346-302c3dd5f1cc // indirect
+	gopkg.in/yaml.v2 v2.2.2
 )

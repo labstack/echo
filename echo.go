@@ -162,6 +162,7 @@ const (
 	MIMETextPlainCharsetUTF8             = MIMETextPlain + "; " + charsetUTF8
 	MIMEMultipartForm                    = "multipart/form-data"
 	MIMEOctetStream                      = "application/octet-stream"
+	MIMEApplicationYAML                  = "application/x-yaml"
 )
 
 const (

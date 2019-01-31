@@ -9,6 +9,8 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+
+	yaml "gopkg.in/yaml.v2"
 )
 
 type (
@@ -48,6 +50,10 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 			} else if se, ok := err.(*json.SyntaxError); ok {
 				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Syntax error: offset=%v, error=%v", se.Offset, se.Error())).SetInternal(err)
 			}
+			return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
+		}
+	case strings.HasPrefix(ctype, MIMEApplicationYAML):
+		if err = yaml.NewDecoder(req.Body).Decode(i); err != nil {
 			return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
 		}
 	case strings.HasPrefix(ctype, MIMEApplicationXML), strings.HasPrefix(ctype, MIMETextXML):
