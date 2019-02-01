@@ -764,13 +764,14 @@ type tcpKeepAliveListener struct {
 }
 
 func (ln tcpKeepAliveListener) Accept() (c net.Conn, err error) {
-	tc, err := ln.AcceptTCP()
-	if err != nil {
+	if c, err = ln.AcceptTCP(); err != nil {
+		return
+	} else if err = c.(*net.TCPConn).SetKeepAlive(true); err != nil {
+		return
+	} else if err = c.(*net.TCPConn).SetKeepAlivePeriod(3 * time.Minute); err != nil {
 		return
 	}
-	tc.SetKeepAlive(true)
-	tc.SetKeepAlivePeriod(3 * time.Minute)
-	return tc, nil
+	return
 }
 
 func newListener(address string) (*tcpKeepAliveListener, error) {
