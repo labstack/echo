@@ -10,6 +10,7 @@ import (
 )
 
 func TestAddTrailingSlash(t *testing.T) {
+	is := assert.New(t)
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/add-slash", nil)
 	rec := httptest.NewRecorder()
@@ -17,11 +18,9 @@ func TestAddTrailingSlash(t *testing.T) {
 	h := AddTrailingSlash()(func(c echo.Context) error {
 		return nil
 	})
-	h(c)
-
-	assert := assert.New(t)
-	assert.Equal("/add-slash/", req.URL.Path)
-	assert.Equal("/add-slash/", req.RequestURI)
+	is.NoError(h(c))
+	is.Equal("/add-slash/", req.URL.Path)
+	is.Equal("/add-slash/", req.RequestURI)
 
 	// With config
 	req = httptest.NewRequest(http.MethodGet, "/add-slash?key=value", nil)
@@ -32,12 +31,13 @@ func TestAddTrailingSlash(t *testing.T) {
 	})(func(c echo.Context) error {
 		return nil
 	})
-	h(c)
-	assert.Equal(http.StatusMovedPermanently, rec.Code)
-	assert.Equal("/add-slash/?key=value", rec.Header().Get(echo.HeaderLocation))
+	is.NoError(h(c))
+	is.Equal(http.StatusMovedPermanently, rec.Code)
+	is.Equal("/add-slash/?key=value", rec.Header().Get(echo.HeaderLocation))
 }
 
 func TestRemoveTrailingSlash(t *testing.T) {
+	is := assert.New(t)
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/remove-slash/", nil)
 	rec := httptest.NewRecorder()
@@ -45,12 +45,9 @@ func TestRemoveTrailingSlash(t *testing.T) {
 	h := RemoveTrailingSlash()(func(c echo.Context) error {
 		return nil
 	})
-	h(c)
-
-	assert := assert.New(t)
-
-	assert.Equal("/remove-slash", req.URL.Path)
-	assert.Equal("/remove-slash", req.RequestURI)
+	is.NoError(h(c))
+	is.Equal("/remove-slash", req.URL.Path)
+	is.Equal("/remove-slash", req.RequestURI)
 
 	// With config
 	req = httptest.NewRequest(http.MethodGet, "/remove-slash/?key=value", nil)
@@ -61,9 +58,9 @@ func TestRemoveTrailingSlash(t *testing.T) {
 	})(func(c echo.Context) error {
 		return nil
 	})
-	h(c)
-	assert.Equal(http.StatusMovedPermanently, rec.Code)
-	assert.Equal("/remove-slash?key=value", rec.Header().Get(echo.HeaderLocation))
+	is.NoError(h(c))
+	is.Equal(http.StatusMovedPermanently, rec.Code)
+	is.Equal("/remove-slash?key=value", rec.Header().Get(echo.HeaderLocation))
 
 	// With bare URL
 	req = httptest.NewRequest(http.MethodGet, "http://localhost", nil)
@@ -72,6 +69,6 @@ func TestRemoveTrailingSlash(t *testing.T) {
 	h = RemoveTrailingSlash()(func(c echo.Context) error {
 		return nil
 	})
-	h(c)
-	assert.Equal("", req.URL.Path)
+	is.NoError(h(c))
+	is.Equal("", req.URL.Path)
 }
