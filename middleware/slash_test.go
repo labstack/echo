@@ -22,6 +22,17 @@ func TestAddTrailingSlash(t *testing.T) {
 	is.Equal("/add-slash/", req.URL.Path)
 	is.Equal("/add-slash/", req.RequestURI)
 
+	// Method Connect must not fail:
+	req = httptest.NewRequest(http.MethodConnect, "", nil)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec)
+	h = AddTrailingSlash()(func(c echo.Context) error {
+		return nil
+	})
+	is.NoError(h(c))
+	is.Equal("/", req.URL.Path)
+	is.Equal("/", req.RequestURI)
+
 	// With config
 	req = httptest.NewRequest(http.MethodGet, "/add-slash?key=value", nil)
 	rec = httptest.NewRecorder()
@@ -48,6 +59,17 @@ func TestRemoveTrailingSlash(t *testing.T) {
 	is.NoError(h(c))
 	is.Equal("/remove-slash", req.URL.Path)
 	is.Equal("/remove-slash", req.RequestURI)
+
+	// Method Connect must not fail:
+	req = httptest.NewRequest(http.MethodConnect, "", nil)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec)
+	h = RemoveTrailingSlash()(func(c echo.Context) error {
+		return nil
+	})
+	is.NoError(h(c))
+	is.Equal("", req.URL.Path)
+	is.Equal("", req.RequestURI)
 
 	// With config
 	req = httptest.NewRequest(http.MethodGet, "/remove-slash/?key=value", nil)
