@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"strings"
+
 	"github.com/labstack/echo/v4"
 )
 
@@ -49,7 +51,7 @@ func AddTrailingSlashWithConfig(config TrailingSlashConfig) echo.MiddlewareFunc 
 			url := req.URL
 			path := url.Path
 			qs := c.QueryString()
-			if path != "/" && path[len(path)-1] != '/' {
+			if !strings.HasSuffix(path, "/") {
 				path += "/"
 				uri := path
 				if qs != "" {
@@ -97,7 +99,7 @@ func RemoveTrailingSlashWithConfig(config TrailingSlashConfig) echo.MiddlewareFu
 			path := url.Path
 			qs := c.QueryString()
 			l := len(path) - 1
-			if l >= 0 && path != "/" && path[l] == '/' {
+			if l > 0 && strings.HasSuffix(path, "/") {
 				path = path[:l]
 				uri := path
 				if qs != "" {
