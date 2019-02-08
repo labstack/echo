@@ -614,7 +614,7 @@ func (e *Echo) StartTLS(address string, certFile, keyFile string) (err error) {
 	s.TLSConfig.Certificates = make([]tls.Certificate, 1)
 	s.TLSConfig.Certificates[0], err = tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
-		return
+		return err
 	}
 	return e.startTLS(address)
 }
