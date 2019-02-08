@@ -43,6 +43,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	stdLog "log"
 	"net"
 	"net/http"
@@ -269,6 +270,7 @@ var (
 	ErrRendererNotRegistered       = errors.New("renderer not registered")
 	ErrInvalidRedirectCode         = errors.New("invalid redirect status code")
 	ErrCookieNotFound              = errors.New("cookie not found")
+	ErrInvalidCertOrKeyType        = errors.New("invalid cert or key type, must be string or []byte")
 )
 
 // Error handlers
@@ -605,18 +607,38 @@ func (e *Echo) Start(address string) error {
 }
 
 // StartTLS starts an HTTPS server.
-func (e *Echo) StartTLS(address string, certFile, keyFile string) (err error) {
-	if certFile == "" || keyFile == "" {
-		return errors.New("invalid tls configuration")
+// If `certFile` or `keyFile` is `string` the values are treated as file paths.
+// If `certFile` or `keyFile` is `[]byte` the values are treated as the certificate or key as-is.
+func (e *Echo) StartTLS(address string, certFile, keyFile interface{}) (err error) {
+	var cert []byte
+	if cert, err = filepathOrContent(certFile); err != nil {
+		return
 	}
+
+	var key []byte
+	if key, err = filepathOrContent(keyFile); err != nil {
+		return
+	}
+
 	s := e.TLSServer
 	s.TLSConfig = new(tls.Config)
 	s.TLSConfig.Certificates = make([]tls.Certificate, 1)
-	s.TLSConfig.Certificates[0], err = tls.LoadX509KeyPair(certFile, keyFile)
-	if err != nil {
+	if s.TLSConfig.Certificates[0], err = tls.X509KeyPair(cert, key); err != nil {
 		return
 	}
+
 	return e.startTLS(address)
+}
+
+func filepathOrContent(fileOrContent interface{}) (content []byte, err error) {
+	switch v := fileOrContent.(type) {
+	case string:
+		return ioutil.ReadFile(v)
+	case []byte:
+		return v, nil
+	default:
+		return nil, ErrInvalidCertOrKeyType
+	}
 }
 
 // StartAutoTLS starts an HTTPS server using certificates automatically installed from https://letsencrypt.org.
