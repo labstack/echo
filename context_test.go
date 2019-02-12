@@ -581,3 +581,19 @@ func TestContext_Path(t *testing.T) {
 	c.SetPath(path)
 	testify.Equal(t, path, c.Path())
 }
+
+type validator struct{}
+
+func (*validator) Validate(i interface{}) error {
+	return nil
+}
+
+func TestContext_Validate(t *testing.T) {
+	e := New()
+	c := e.NewContext(nil, nil)
+
+	testify.Error(t, c.Validate(struct{}{}))
+
+	e.Validator = &validator{}
+	testify.NoError(t, c.Validate(struct{}{}))
+}
