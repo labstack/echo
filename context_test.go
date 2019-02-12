@@ -555,8 +555,9 @@ func TestContextHandler(t *testing.T) {
 	})
 	c := e.NewContext(nil, nil)
 	r.Find(http.MethodGet, "/handler", c)
-	c.Handler()(c)
+	err := c.Handler()(c)
 	testify.Equal(t, "handler", b.String())
+	testify.NoError(t, err)
 }
 
 func TestContext_SetHandler(t *testing.T) {
