@@ -431,6 +431,7 @@ func TestContextPathParam(t *testing.T) {
 
 	// Param
 	testify.Equal(t, "501", c.Param("fid"))
+	testify.Equal(t, "", c.Param("undefined"))
 }
 
 func TestContextFormValue(t *testing.T) {
