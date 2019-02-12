@@ -750,3 +750,10 @@ func TestContext_Bind(t *testing.T) {
 	testify.NoError(t, err)
 	testify.Equal(t, &user{1, "Jon Snow"}, u)
 }
+
+func TestContext_Logger(t *testing.T) {
+	e := New()
+	c := e.NewContext(nil, nil)
+
+	testify.NotNil(t, c.Logger())
+}
