@@ -458,6 +458,14 @@ func TestContextFormValue(t *testing.T) {
 			"email": []string{"jon@labstack.com"},
 		}, params)
 	}
+
+	// Multipart FormParams error
+	req = httptest.NewRequest(http.MethodPost, "/", strings.NewReader(f.Encode()))
+	req.Header.Add(HeaderContentType, MIMEMultipartForm)
+	c = e.NewContext(req, nil)
+	params, err = c.FormParams()
+	testify.Nil(t, params)
+	testify.Error(t, err)
 }
 
 func TestContextQueryParam(t *testing.T) {
