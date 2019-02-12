@@ -559,6 +559,18 @@ func TestContextHandler(t *testing.T) {
 	testify.Equal(t, "handler", b.String())
 }
 
+func TestContext_SetHandler(t *testing.T) {
+	var c Context
+	c = new(context)
+
+	testify.Nil(t, c.Handler())
+
+	c.SetHandler(func(c Context) error {
+		return nil
+	})
+	testify.NotNil(t, c.Handler())
+}
+
 func TestContext_Path(t *testing.T) {
 	path := "/pa/th"
 
