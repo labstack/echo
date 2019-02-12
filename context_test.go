@@ -597,3 +597,14 @@ func TestContext_Validate(t *testing.T) {
 	e.Validator = &validator{}
 	testify.NoError(t, c.Validate(struct{}{}))
 }
+
+func TestContext_QueryString(t *testing.T) {
+	e := New()
+
+	queryString := "query=string&var=val"
+
+	req := httptest.NewRequest(GET, "/?"+queryString, nil)
+	c := e.NewContext(req, nil)
+
+	testify.Equal(t, queryString, c.QueryString())
+}
