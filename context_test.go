@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"errors"
+	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -678,5 +679,49 @@ func TestContext_Scheme(t *testing.T) {
 
 	for _, tt := range tests {
 		testify.Equal(t, tt.s, tt.c.Scheme())
+	}
+}
+
+func TestContext_IsWebSocket(t *testing.T) {
+	tests := []struct {
+		c  Context
+		ws testify.BoolAssertionFunc
+	}{
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderUpgrade: []string{"websocket"}},
+				},
+			},
+			testify.True,
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderUpgrade: []string{"Websocket"}},
+				},
+			},
+			testify.True,
+		},
+		{
+			&context{
+				request: &http.Request{},
+			},
+			testify.False,
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderUpgrade: []string{"other"}},
+				},
+			},
+			testify.False,
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(fmt.Sprintf("test %d", i+1), func(t *testing.T) {
+			tt.ws(t, tt.c.IsWebSocket())
+		})
 	}
 }
