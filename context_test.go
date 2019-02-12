@@ -733,3 +733,20 @@ func TestContext_IsWebSocket(t *testing.T) {
 		})
 	}
 }
+
+func TestContext_Bind(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(POST, "/", strings.NewReader(userJSON))
+	c := e.NewContext(req, nil)
+
+	var u *user
+
+	err := c.Bind(u)
+	testify.Error(t, err)
+	testify.Nil(t, u)
+
+	req.Header.Add(HeaderContentType, MIMEApplicationJSON)
+	err = c.Bind(&u)
+	testify.NoError(t, err)
+	testify.Equal(t, &user{1, "Jon Snow"}, u)
+}
