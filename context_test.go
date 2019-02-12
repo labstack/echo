@@ -2,6 +2,7 @@ package echo
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
@@ -620,4 +621,62 @@ func TestContext_Request(t *testing.T) {
 	c.SetRequest(req)
 
 	testify.Equal(t, req, c.Request())
+}
+
+func TestContext_Scheme(t *testing.T) {
+	tests := []struct {
+		c Context
+		s string
+	}{
+		{
+			&context{
+				request: &http.Request{
+					TLS: &tls.ConnectionState{},
+				},
+			},
+			"https",
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderXForwardedProto: []string{"https"}},
+				},
+			},
+			"https",
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderXForwardedProtocol: []string{"http"}},
+				},
+			},
+			"http",
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderXForwardedSsl: []string{"on"}},
+				},
+			},
+			"https",
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderXUrlScheme: []string{"https"}},
+				},
+			},
+			"https",
+		},
+		{
+			&context{
+				request: &http.Request{},
+			},
+			"http",
+		},
+	}
+
+	for _, tt := range tests {
+		testify.Equal(t, tt.s, tt.c.Scheme())
+	}
 }
