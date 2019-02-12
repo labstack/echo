@@ -529,6 +529,21 @@ func TestContextStore(t *testing.T) {
 	testify.Equal(t, "Jon Snow", c.Get("name"))
 }
 
+func BenchmarkContext_Store(b *testing.B) {
+	e := &Echo{}
+
+	c := &context{
+		echo: e,
+	}
+
+	for n := 0; n < b.N; n++ {
+		c.Set("name", "Jon Snow")
+		if c.Get("name") != "Jon Snow" {
+			b.Fail()
+		}
+	}
+}
+
 func TestContextHandler(t *testing.T) {
 	e := New()
 	r := e.Router()
@@ -543,4 +558,3 @@ func TestContextHandler(t *testing.T) {
 	c.Handler()(c)
 	testify.Equal(t, "handler", b.String())
 }
-
