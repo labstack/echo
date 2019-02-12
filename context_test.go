@@ -609,3 +609,15 @@ func TestContext_QueryString(t *testing.T) {
 
 	testify.Equal(t, queryString, c.QueryString())
 }
+
+func TestContext_Request(t *testing.T) {
+	var c Context
+	c = new(context)
+
+	testify.Nil(t, c.Request())
+
+	req := httptest.NewRequest(GET, "/path", nil)
+	c.SetRequest(req)
+
+	testify.Equal(t, req, c.Request())
+}
