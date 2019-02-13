@@ -74,6 +74,21 @@ func (t *Template) Render(w io.Writer, name string, data interface{}, c Context)
 	return t.templates.ExecuteTemplate(w, name, data)
 }
 
+type responseWriterErr struct {
+}
+
+func (responseWriterErr) Header() http.Header {
+	return http.Header{}
+}
+
+func (responseWriterErr) Write([]byte) (int, error) {
+	return 0, errors.New("err")
+}
+
+func (responseWriterErr) WriteHeader(statusCode int) {
+
+}
+
 func TestContext(t *testing.T) {
 	e := New()
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userJSON))
@@ -185,6 +200,12 @@ func TestContext(t *testing.T) {
 	c = e.NewContext(req, rec).(*context)
 	err = c.XML(http.StatusOK, make(chan bool))
 	assert.Error(err)
+
+	// XML response write error
+	c = e.NewContext(req, rec).(*context)
+	c.response.Writer = responseWriterErr{}
+	err = c.XML(0, 0)
+	testify.Error(t, err)
 
 	// XMLPretty
 	rec = httptest.NewRecorder()
