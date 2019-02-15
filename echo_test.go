@@ -4,6 +4,7 @@ import (
 	"bytes"
 	stdContext "context"
 	"errors"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type (
@@ -426,6 +428,71 @@ func TestEchoStartTLS(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	e.Close()
+}
+
+func TestEchoStartTLSByteString(t *testing.T) {
+	cert, err := ioutil.ReadFile("_fixture/certs/cert.pem")
+	require.NoError(t, err)
+	key, err := ioutil.ReadFile("_fixture/certs/key.pem")
+	require.NoError(t, err)
+
+	testCases := []struct {
+		cert        interface{}
+		key         interface{}
+		expectedErr error
+		name        string
+	}{
+		{
+			cert:        "_fixture/certs/cert.pem",
+			key:         "_fixture/certs/key.pem",
+			expectedErr: nil,
+			name:        `ValidCertAndKeyFilePath`,
+		},
+		{
+			cert:        cert,
+			key:         key,
+			expectedErr: nil,
+			name:        `ValidCertAndKeyByteString`,
+		},
+		{
+			cert:        cert,
+			key:         1,
+			expectedErr: ErrInvalidCertOrKeyType,
+			name:        `InvalidKeyType`,
+		},
+		{
+			cert:        0,
+			key:         key,
+			expectedErr: ErrInvalidCertOrKeyType,
+			name:        `InvalidCertType`,
+		},
+		{
+			cert:        0,
+			key:         1,
+			expectedErr: ErrInvalidCertOrKeyType,
+			name:        `InvalidCertAndKeyTypes`,
+		},
+	}
+
+	for _, test := range testCases {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			e := New()
+			e.HideBanner = true
+
+			go func() {
+				err := e.StartTLS(":0", test.cert, test.key)
+				if test.expectedErr != nil {
+					require.EqualError(t, err, test.expectedErr.Error())
+				} else if err != http.ErrServerClosed { // Prevent the test to fail after closing the servers
+					require.NoError(t, err)
+				}
+			}()
+			time.Sleep(200 * time.Millisecond)
+
+			require.NoError(t, e.Close())
+		})
+	}
 }
 
 func TestEchoStartAutoTLS(t *testing.T) {
