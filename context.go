@@ -93,6 +93,9 @@ type (
 		// Cookies returns the HTTP cookies sent with the request.
 		Cookies() []*http.Cookie
 
+		// Exists checks data in the context.
+		Exists(key string) bool
+
 		// Get retrieves data from the context.
 		Get(key string) interface{}
 
@@ -359,6 +362,14 @@ func (c *context) SetCookie(cookie *http.Cookie) {
 
 func (c *context) Cookies() []*http.Cookie {
 	return c.request.Cookies()
+}
+
+func (c *context) Exists(key string) bool {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+	_, ok := c.store[key]
+
+	return ok
 }
 
 func (c *context) Get(key string) interface{} {

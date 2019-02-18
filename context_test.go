@@ -527,6 +527,8 @@ func TestContextStore(t *testing.T) {
 	c = new(context)
 	c.Set("name", "Jon Snow")
 	testify.Equal(t, "Jon Snow", c.Get("name"))
+	testify.True(t, c.Exists("name"))
+	testify.False(t, c.Exists("test"))
 }
 
 func BenchmarkContext_Store(b *testing.B) {
