@@ -2,9 +2,11 @@ package echo
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
+	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -70,6 +72,21 @@ func BenchmarkAllocXML(b *testing.B) {
 
 func (t *Template) Render(w io.Writer, name string, data interface{}, c Context) error {
 	return t.templates.ExecuteTemplate(w, name, data)
+}
+
+type responseWriterErr struct {
+}
+
+func (responseWriterErr) Header() http.Header {
+	return http.Header{}
+}
+
+func (responseWriterErr) Write([]byte) (int, error) {
+	return 0, errors.New("err")
+}
+
+func (responseWriterErr) WriteHeader(statusCode int) {
+
 }
 
 func TestContext(t *testing.T) {
@@ -183,6 +200,12 @@ func TestContext(t *testing.T) {
 	c = e.NewContext(req, rec).(*context)
 	err = c.XML(http.StatusOK, make(chan bool))
 	assert.Error(err)
+
+	// XML response write error
+	c = e.NewContext(req, rec).(*context)
+	c.response.Writer = responseWriterErr{}
+	err = c.XML(0, 0)
+	testify.Error(t, err)
 
 	// XMLPretty
 	rec = httptest.NewRecorder()
@@ -431,6 +454,7 @@ func TestContextPathParam(t *testing.T) {
 
 	// Param
 	testify.Equal(t, "501", c.Param("fid"))
+	testify.Equal(t, "", c.Param("undefined"))
 }
 
 func TestContextFormValue(t *testing.T) {
@@ -455,6 +479,14 @@ func TestContextFormValue(t *testing.T) {
 			"email": []string{"jon@labstack.com"},
 		}, params)
 	}
+
+	// Multipart FormParams error
+	req = httptest.NewRequest(http.MethodPost, "/", strings.NewReader(f.Encode()))
+	req.Header.Add(HeaderContentType, MIMEMultipartForm)
+	c = e.NewContext(req, nil)
+	params, err = c.FormParams()
+	testify.Nil(t, params)
+	testify.Error(t, err)
 }
 
 func TestContextQueryParam(t *testing.T) {
@@ -555,6 +587,232 @@ func TestContextHandler(t *testing.T) {
 	})
 	c := e.NewContext(nil, nil)
 	r.Find(http.MethodGet, "/handler", c)
-	c.Handler()(c)
+	err := c.Handler()(c)
 	testify.Equal(t, "handler", b.String())
+	testify.NoError(t, err)
+}
+
+func TestContext_SetHandler(t *testing.T) {
+	var c Context
+	c = new(context)
+
+	testify.Nil(t, c.Handler())
+
+	c.SetHandler(func(c Context) error {
+		return nil
+	})
+	testify.NotNil(t, c.Handler())
+}
+
+func TestContext_Path(t *testing.T) {
+	path := "/pa/th"
+
+	var c Context
+	c = new(context)
+
+	c.SetPath(path)
+	testify.Equal(t, path, c.Path())
+}
+
+type validator struct{}
+
+func (*validator) Validate(i interface{}) error {
+	return nil
+}
+
+func TestContext_Validate(t *testing.T) {
+	e := New()
+	c := e.NewContext(nil, nil)
+
+	testify.Error(t, c.Validate(struct{}{}))
+
+	e.Validator = &validator{}
+	testify.NoError(t, c.Validate(struct{}{}))
+}
+
+func TestContext_QueryString(t *testing.T) {
+	e := New()
+
+	queryString := "query=string&var=val"
+
+	req := httptest.NewRequest(GET, "/?"+queryString, nil)
+	c := e.NewContext(req, nil)
+
+	testify.Equal(t, queryString, c.QueryString())
+}
+
+func TestContext_Request(t *testing.T) {
+	var c Context
+	c = new(context)
+
+	testify.Nil(t, c.Request())
+
+	req := httptest.NewRequest(GET, "/path", nil)
+	c.SetRequest(req)
+
+	testify.Equal(t, req, c.Request())
+}
+
+func TestContext_Scheme(t *testing.T) {
+	tests := []struct {
+		c Context
+		s string
+	}{
+		{
+			&context{
+				request: &http.Request{
+					TLS: &tls.ConnectionState{},
+				},
+			},
+			"https",
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderXForwardedProto: []string{"https"}},
+				},
+			},
+			"https",
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderXForwardedProtocol: []string{"http"}},
+				},
+			},
+			"http",
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderXForwardedSsl: []string{"on"}},
+				},
+			},
+			"https",
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderXUrlScheme: []string{"https"}},
+				},
+			},
+			"https",
+		},
+		{
+			&context{
+				request: &http.Request{},
+			},
+			"http",
+		},
+	}
+
+	for _, tt := range tests {
+		testify.Equal(t, tt.s, tt.c.Scheme())
+	}
+}
+
+func TestContext_IsWebSocket(t *testing.T) {
+	tests := []struct {
+		c  Context
+		ws testify.BoolAssertionFunc
+	}{
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderUpgrade: []string{"websocket"}},
+				},
+			},
+			testify.True,
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderUpgrade: []string{"Websocket"}},
+				},
+			},
+			testify.True,
+		},
+		{
+			&context{
+				request: &http.Request{},
+			},
+			testify.False,
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderUpgrade: []string{"other"}},
+				},
+			},
+			testify.False,
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(fmt.Sprintf("test %d", i+1), func(t *testing.T) {
+			tt.ws(t, tt.c.IsWebSocket())
+		})
+	}
+}
+
+func TestContext_Bind(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(POST, "/", strings.NewReader(userJSON))
+	c := e.NewContext(req, nil)
+
+	var u *user
+
+	err := c.Bind(u)
+	testify.Error(t, err)
+	testify.Nil(t, u)
+
+	req.Header.Add(HeaderContentType, MIMEApplicationJSON)
+	err = c.Bind(&u)
+	testify.NoError(t, err)
+	testify.Equal(t, &user{1, "Jon Snow"}, u)
+}
+
+func TestContext_Logger(t *testing.T) {
+	e := New()
+	c := e.NewContext(nil, nil)
+
+	testify.NotNil(t, c.Logger())
+}
+
+func TestContext_RealIP(t *testing.T) {
+	tests := []struct {
+		c Context
+		s string
+	}{
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderXForwardedFor: []string{"127.0.0.1, 127.0.1.1, "}},
+				},
+			},
+			"127.0.0.1",
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{
+						"X-Real-Ip": []string{"192.168.0.1"},
+					},
+				},
+			},
+			"192.168.0.1",
+		},
+		{
+			&context{
+				request: &http.Request{
+					RemoteAddr: "89.89.89.89:1654",
+				},
+			},
+			"89.89.89.89",
+		},
+	}
+
+	for _, tt := range tests {
+		testify.Equal(t, tt.s, tt.c.RealIP())
+	}
 }
