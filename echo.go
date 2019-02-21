@@ -223,9 +223,10 @@ const (
 const (
 	// Version of Echo
 	Version = "4.0.0"
-	website = "https://echo.labstack.com"
-	// http://patorjk.com/software/taag/#p=display&f=Small%20Slant&t=Echo
-	banner = `
+	// Website - Echo
+	Website = "https://echo.labstack.com"
+	// Banner - http://patorjk.com/software/taag/#p=display&f=Small%20Slant&t=Echo
+	Banner = `
    ____    __
   / __/___/ /  ___
  / _// __/ _ \/ _ \
@@ -669,7 +670,7 @@ func (e *Echo) StartServer(s *http.Server) (err error) {
 	}
 
 	if !e.HideBanner {
-		e.colorer.Printf(banner, e.colorer.Red("v"+Version), e.colorer.Blue(website))
+		e.colorer.Printf(Banner, e.colorer.Red("v"+Version), e.colorer.Blue(Website))
 	}
 
 	if s.TLSConfig == nil {

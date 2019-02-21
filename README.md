@@ -109,6 +109,32 @@ func hello(c echo.Context) error {
 - [Nitin Rana](https://github.com/nr17) - Consultant
 - [Contributors](https://github.com/labstack/echo/graphs/contributors)
 
+## Installing `echo_server`
+
+```sh
+$ go install github.com/labstack/echo/cmd/...
+$ which echo_server
+/Users/mbana/go/bin/echo_server
+$ echo_server -h
+
+   ____    __
+  / __/___/ /  ___
+ / _// __/ _ \/ _ \
+/___/\__/_//_/\___/ v4.0.0
+High performance, minimalist Go web framework
+https://echo.labstack.com
+____________________________________O/_______
+                                    O\
+
+Usage:
+  echo_server [flags]
+
+Flags:
+  -h, --help          help for echo_server
+      --host string   host to listen on (default "0.0.0.0")
+  -p, --port int      port to listen on (default 8080)
+```
+
 ## License
 
 [MIT](https://github.com/labstack/echo/blob/master/LICENSE)
