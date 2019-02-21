@@ -85,6 +85,7 @@ type (
 		Validator        Validator
 		Renderer         Renderer
 		Logger           Logger
+		CustomBanner     string
 	}
 
 	// Route contains a handler and information for matching against requests.
@@ -669,7 +670,11 @@ func (e *Echo) StartServer(s *http.Server) (err error) {
 	}
 
 	if !e.HideBanner {
-		e.colorer.Printf(banner, e.colorer.Red("v"+Version), e.colorer.Blue(website))
+		if e.CustomBanner == "" {
+			e.colorer.Printf(banner, e.colorer.Red("v"+Version), e.colorer.Blue(website))
+		} else {
+			e.colorer.Println(e.CustomBanner)
+		}
 	}
 
 	if s.TLSConfig == nil {
