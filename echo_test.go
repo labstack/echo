@@ -578,3 +578,27 @@ func TestEchoShutdown(t *testing.T) {
 	err := <-errCh
 	assert.Equal(t, err.Error(), "http: Server closed")
 }
+
+func TestCustomBanner(t *testing.T) {
+	tt := []struct {
+		name         string
+		customBanner string
+	}{
+		{
+			name:         "With custom banner provided",
+			customBanner: "CUSTOM BANNER",
+		},
+		{
+			name: "Without any custom banner",
+		},
+	}
+
+	for _, tc := range tt {
+		e := New()
+		e.CustomBanner = tc.customBanner
+		go func() {
+			assert.NoError(t, e.Start(":0"))
+		}()
+		time.Sleep(200 * time.Millisecond)
+	}
+}
