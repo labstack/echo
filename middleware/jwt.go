@@ -26,9 +26,13 @@ type (
 		// It may be used to define a custom JWT error.
 		ErrorHandler JWTErrorHandler
 
-		// Signing key to validate token.
-		// Required.
+		// Signing key to validate token. Used as fallback if SigningKeys has length 0.
+		// Required. This or SigningKeys.
 		SigningKey interface{}
+
+		// Map of signing keys to validate token with kid field usage.
+		// Required. This or SigningKey.
+		SigningKeys map[string]interface{}
 
 		// Signing method, used to check token signing method.
 		// Optional. Default value HS256.
@@ -110,7 +114,7 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	if config.Skipper == nil {
 		config.Skipper = DefaultJWTConfig.Skipper
 	}
-	if config.SigningKey == nil {
+	if config.SigningKey == nil && len(config.SigningKeys) == 0 {
 		panic("echo: jwt middleware requires signing key")
 	}
 	if config.SigningMethod == "" {
@@ -133,6 +137,15 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 		if t.Method.Alg() != config.SigningMethod {
 			return nil, fmt.Errorf("unexpected jwt signing method=%v", t.Header["alg"])
 		}
+		if len(config.SigningKeys) > 0 {
+			if kid, ok := t.Header["kid"].(string); ok {
+				if key, ok := config.SigningKeys[kid]; ok {
+					return key, nil
+				}
+			}
+			return nil, fmt.Errorf("unexpected jwt key id=%v", t.Header["kid"])
+		}
+
 		return config.SigningKey, nil
 	}
 
