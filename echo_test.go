@@ -5,6 +5,7 @@ import (
 	stdContext "context"
 	"errors"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -558,23 +559,85 @@ func TestEchoClose(t *testing.T) {
 }
 
 func TestEchoShutdown(t *testing.T) {
-	e := New()
-	errCh := make(chan error)
+	t.Run("default", func(t *testing.T) {
+		e := New()
+		errCh := make(chan error)
 
-	go func() {
-		errCh <- e.Start(":0")
-	}()
+		go func() {
+			errCh <- e.Start(":0")
+		}()
 
-	time.Sleep(200 * time.Millisecond)
+		time.Sleep(200 * time.Millisecond)
 
-	if err := e.Close(); err != nil {
-		t.Fatal(err)
+		if err := e.Close(); err != nil {
+			t.Fatal(err)
+		}
+
+		ctx, cancel := stdContext.WithTimeout(stdContext.Background(), 10*time.Second)
+		defer cancel()
+		assert.NoError(t, e.Shutdown(ctx))
+
+		err := <-errCh
+		assert.Equal(t, err.Error(), "http: Server closed")
+	})
+
+	t.Run("with custom server", func(t *testing.T) {
+		e := New()
+		s := &http.Server{Addr: ":0"}
+		errCh := make(chan error)
+
+		go func() {
+			errCh <- e.StartServer(s)
+		}()
+
+		time.Sleep(200 * time.Millisecond)
+
+		if err := e.Close(); err != nil {
+			t.Fatal(err)
+		}
+
+		ctx, cancel := stdContext.WithTimeout(stdContext.Background(), 10*time.Second)
+		defer cancel()
+		assert.NoError(t, e.Shutdown(ctx))
+
+		err := <-errCh
+		assert.Equal(t, err.Error(), "http: Server closed")
+	})
+
+	t.Run("with custom server without e.Close()", func(t *testing.T) {
+		e := New()
+		addr := fetchAddress()
+		s := &http.Server{Addr: addr}
+		errCh := make(chan error)
+
+		go func() {
+			errCh <- e.StartServer(s)
+		}()
+
+		time.Sleep(200 * time.Millisecond)
+
+		_, err := http.Get("http://" + addr)
+		assert.Nil(t, err)
+
+		ctx, cancel := stdContext.WithTimeout(stdContext.Background(), 10*time.Second)
+		defer cancel()
+
+		assert.NoError(t, e.Shutdown(ctx))
+
+		err = <-errCh
+		assert.Equal(t, err.Error(), "http: Server closed")
+
+		// Server really closed
+		_, err = http.Get("http://" + addr)
+		assert.Error(t, err)
+	})
+}
+
+func fetchAddress() string {
+	l, err := net.Listen("tcp", ":0")
+	if err != nil {
+		return ""
 	}
-
-	ctx, cancel := stdContext.WithTimeout(stdContext.Background(), 10*time.Second)
-	defer cancel()
-	assert.NoError(t, e.Shutdown(ctx))
-
-	err := <-errCh
-	assert.Equal(t, err.Error(), "http: Server closed")
+	defer l.Close()
+	return l.Addr().String()
 }

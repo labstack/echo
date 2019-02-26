@@ -53,6 +53,7 @@ import (
 	"reflect"
 	"runtime"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/labstack/gommon/color"
@@ -65,6 +66,7 @@ type (
 	// Echo is the top-level framework instance.
 	Echo struct {
 		common
+		stopped          *int32
 		StdLogger        *stdLog.Logger
 		colorer          *color.Color
 		premiddleware    []MiddlewareFunc
@@ -74,11 +76,10 @@ type (
 		routers          map[string]*Router
 		notFoundHandler  HandlerFunc
 		pool             sync.Pool
-		Server           *http.Server
-		TLSServer        *http.Server
-		Listener         net.Listener
-		TLSListener      net.Listener
-		AutoTLSManager   autocert.Manager
+		smux             *sync.Mutex
+		serve            *http.Server
+		lis              net.Listener
+		autoTLSManager   autocert.Manager
 		DisableHTTP2     bool
 		Debug            bool
 		HideBanner       bool
@@ -293,17 +294,17 @@ var (
 // New creates an instance of Echo.
 func New() (e *Echo) {
 	e = &Echo{
-		Server:    new(http.Server),
-		TLSServer: new(http.Server),
-		AutoTLSManager: autocert.Manager{
+		stopped: new(int32),
+		smux:    new(sync.Mutex),
+		serve:   new(http.Server),
+		autoTLSManager: autocert.Manager{
 			Prompt: autocert.AcceptTOS,
 		},
 		Logger:   log.New("echo"),
 		colorer:  color.New(),
 		maxParam: new(int),
 	}
-	e.Server.Handler = e
-	e.TLSServer.Handler = e
+	e.serve.Handler = e
 	e.HTTPErrorHandler = e.DefaultHTTPErrorHandler
 	e.Binder = &DefaultBinder{}
 	e.Logger.SetLevel(log.ERROR)
@@ -627,8 +628,10 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // Start starts an HTTP server.
 func (e *Echo) Start(address string) error {
-	e.Server.Addr = address
-	return e.StartServer(e.Server)
+	e.smux.Lock()
+	e.serve.Addr = address
+	e.smux.Unlock()
+	return e.startServer()
 }
 
 // StartTLS starts an HTTPS server.
@@ -645,10 +648,13 @@ func (e *Echo) StartTLS(address string, certFile, keyFile interface{}) (err erro
 		return
 	}
 
-	s := e.TLSServer
-	s.TLSConfig = new(tls.Config)
-	s.TLSConfig.Certificates = make([]tls.Certificate, 1)
-	if s.TLSConfig.Certificates[0], err = tls.X509KeyPair(cert, key); err != nil {
+	e.smux.Lock()
+	e.serve.TLSConfig = new(tls.Config)
+	e.serve.TLSConfig.Certificates = make([]tls.Certificate, 1)
+	e.serve.TLSConfig.Certificates[0], err = tls.X509KeyPair(cert, key)
+	e.smux.Unlock()
+
+	if err != nil {
 		return
 	}
 
@@ -668,28 +674,27 @@ func filepathOrContent(fileOrContent interface{}) (content []byte, err error) {
 
 // StartAutoTLS starts an HTTPS server using certificates automatically installed from https://letsencrypt.org.
 func (e *Echo) StartAutoTLS(address string) error {
-	s := e.TLSServer
-	s.TLSConfig = new(tls.Config)
-	s.TLSConfig.GetCertificate = e.AutoTLSManager.GetCertificate
-	s.TLSConfig.NextProtos = append(s.TLSConfig.NextProtos, acme.ALPNProto)
+	e.smux.Lock()
+	e.serve.TLSConfig = new(tls.Config)
+	e.serve.TLSConfig.GetCertificate = e.autoTLSManager.GetCertificate
+	e.serve.TLSConfig.NextProtos = append(e.serve.TLSConfig.NextProtos, acme.ALPNProto)
+	e.smux.Unlock()
 	return e.startTLS(address)
 }
 
 func (e *Echo) startTLS(address string) error {
-	s := e.TLSServer
-	s.Addr = address
+	e.serve.Addr = address
 	if !e.DisableHTTP2 {
-		s.TLSConfig.NextProtos = append(s.TLSConfig.NextProtos, "h2")
+		e.serve.TLSConfig.NextProtos = append(e.serve.TLSConfig.NextProtos, "h2")
 	}
-	return e.StartServer(e.TLSServer)
+	return e.startServer()
 }
 
-// StartServer starts a custom http server.
-func (e *Echo) StartServer(s *http.Server) (err error) {
+func (e *Echo) startServer() (err error) {
 	// Setup
 	e.colorer.SetOutput(e.Logger.Output())
-	s.ErrorLog = e.StdLogger
-	s.Handler = e
+	e.serve.ErrorLog = e.StdLogger
+	e.serve.Handler = e
 	if e.Debug {
 		e.Logger.SetLevel(log.DEBUG)
 	}
@@ -698,47 +703,62 @@ func (e *Echo) StartServer(s *http.Server) (err error) {
 		e.colorer.Printf(banner, e.colorer.Red("v"+Version), e.colorer.Blue(website))
 	}
 
-	if s.TLSConfig == nil {
-		if e.Listener == nil {
-			e.Listener, err = newListener(s.Addr)
+	if e.serve.TLSConfig == nil {
+		if e.lis == nil {
+			e.lis, err = newListener(e.serve.Addr)
 			if err != nil {
 				return err
 			}
 		}
 		if !e.HidePort {
-			e.colorer.Printf("⇨ http server started on %s\n", e.colorer.Green(e.Listener.Addr()))
+			e.colorer.Printf("⇨ http server started on %s\n", e.colorer.Green(e.lis.Addr()))
 		}
-		return s.Serve(e.Listener)
+		return e.serve.Serve(e.lis)
 	}
-	if e.TLSListener == nil {
-		l, err := newListener(s.Addr)
+	if e.lis == nil {
+		l, err := newListener(e.serve.Addr)
 		if err != nil {
 			return err
 		}
-		e.TLSListener = tls.NewListener(l, s.TLSConfig)
+		e.lis = tls.NewListener(l, e.serve.TLSConfig)
 	}
 	if !e.HidePort {
-		e.colorer.Printf("⇨ https server started on %s\n", e.colorer.Green(e.TLSListener.Addr()))
+		e.colorer.Printf("⇨ https server started on %s\n", e.colorer.Green(e.lis.Addr()))
 	}
-	return s.Serve(e.TLSListener)
+	return e.serve.Serve(e.lis)
+}
+
+// StartServer starts a custom http server.
+func (e *Echo) StartServer(s *http.Server) error {
+	if atomic.LoadInt32(e.stopped) == 1 {
+		return nil
+	}
+	e.smux.Lock()
+	e.serve = s
+	e.smux.Unlock()
+	return e.startServer()
 }
 
 // Close immediately stops the server.
 // It internally calls `http.Server#Close()`.
 func (e *Echo) Close() error {
-	if err := e.TLSServer.Close(); err != nil {
-		return err
+	if !atomic.CompareAndSwapInt32(e.stopped, 0, 1) {
+		return nil
 	}
-	return e.Server.Close()
+	e.smux.Lock()
+	defer e.smux.Unlock()
+	return e.serve.Close()
 }
 
 // Shutdown stops the server gracefully.
 // It internally calls `http.Server#Shutdown()`.
 func (e *Echo) Shutdown(ctx stdContext.Context) error {
-	if err := e.TLSServer.Shutdown(ctx); err != nil {
-		return err
+	if !atomic.CompareAndSwapInt32(e.stopped, 0, 1) {
+		return nil
 	}
-	return e.Server.Shutdown(ctx)
+	e.smux.Lock()
+	defer e.smux.Unlock()
+	return e.serve.Shutdown(ctx)
 }
 
 // NewHTTPError creates a new HTTPError instance.
