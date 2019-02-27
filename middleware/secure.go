@@ -53,6 +53,13 @@ type (
 		// trusted web page context.
 		// Optional. Default value "".
 		ContentSecurityPolicy string `yaml:"content_security_policy"`
+
+		// CSPReportOnly would use the `Content-Security-Policy-Report-Only` header instead
+		// of the `Content-Security-Policy` header. This allows iterative updates of the
+		// content security policy by only reporting the violations that would
+		// have occurred instead of blocking the resource.
+		// Optional. Default value false.
+		CSPReportOnly bool `yaml:"csp_report_only"`
 	}
 )
 
@@ -108,7 +115,11 @@ func SecureWithConfig(config SecureConfig) echo.MiddlewareFunc {
 				res.Header().Set(echo.HeaderStrictTransportSecurity, fmt.Sprintf("max-age=%d%s", config.HSTSMaxAge, subdomains))
 			}
 			if config.ContentSecurityPolicy != "" {
-				res.Header().Set(echo.HeaderContentSecurityPolicy, config.ContentSecurityPolicy)
+				if config.CSPReportOnly {
+					res.Header().Set(echo.HeaderContentSecurityPolicyReportOnly, config.ContentSecurityPolicy)
+				} else {
+					res.Header().Set(echo.HeaderContentSecurityPolicy, config.ContentSecurityPolicy)
+				}
 			}
 			return next(c)
 		}
