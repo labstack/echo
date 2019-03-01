@@ -162,6 +162,14 @@ func TestJWT(t *testing.T) {
 		{
 			config: JWTConfig{
 				SigningKey:  validKey,
+				TokenLookup: "param:jwt",
+			},
+			reqURL: "/" + token,
+			info:   "Valid param method",
+		},
+		{
+			config: JWTConfig{
+				SigningKey:  validKey,
 				TokenLookup: "cookie:jwt",
 			},
 			hdrCookie: "jwt=" + token,
@@ -194,6 +202,11 @@ func TestJWT(t *testing.T) {
 		req.Header.Set(echo.HeaderAuthorization, tc.hdrAuth)
 		req.Header.Set(echo.HeaderCookie, tc.hdrCookie)
 		c := e.NewContext(req, res)
+
+		if tc.reqURL == "/" + token {
+			c.SetParamNames("jwt")
+			c.SetParamValues(token)
+		}
 
 		if tc.expPanic {
 			assert.Panics(t, func() {
