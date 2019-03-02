@@ -234,7 +234,7 @@ func (c *context) IsTLS() bool {
 
 func (c *context) IsWebSocket() bool {
 	upgrade := c.request.Header.Get(HeaderUpgrade)
-	return upgrade == "websocket" || upgrade == "Websocket"
+	return strings.ToLower(upgrade) == "websocket"
 }
 
 func (c *context) Scheme() string {
