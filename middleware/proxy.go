@@ -200,7 +200,7 @@ func Proxy(balancer ProxyBalancer) echo.MiddlewareFunc {
 func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 	// Defaults
 	if config.Skipper == nil {
-		config.Skipper = DefaultLoggerConfig.Skipper
+		config.Skipper = DefaultProxyConfig.Skipper
 	}
 	if config.Balancer == nil {
 		panic("echo: proxy middleware requires balancer")
