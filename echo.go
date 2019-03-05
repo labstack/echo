@@ -575,21 +575,15 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if e.premiddleware == nil {
 		e.router.Find(r.Method, getPath(r), c)
 		h = c.Handler()
-		for i := len(e.middleware) - 1; i >= 0; i-- {
-			h = e.middleware[i](h)
-		}
+		h = applyMiddleware(h, e.middleware...)
 	} else {
 		h = func(c Context) error {
 			e.router.Find(r.Method, getPath(r), c)
 			h := c.Handler()
-			for i := len(e.middleware) - 1; i >= 0; i-- {
-				h = e.middleware[i](h)
-			}
+			h = applyMiddleware(h, e.middleware...)
 			return h(c)
 		}
-		for i := len(e.premiddleware) - 1; i >= 0; i-- {
-			h = e.premiddleware[i](h)
-		}
+		h = applyMiddleware(h, e.premiddleware...)
 	}
 
 	// Execute chain
@@ -803,4 +797,11 @@ func newListener(address string) (*tcpKeepAliveListener, error) {
 		return nil, err
 	}
 	return &tcpKeepAliveListener{l.(*net.TCPListener)}, nil
+}
+
+func applyMiddleware(h HandlerFunc, middleware ...MiddlewareFunc) HandlerFunc {
+	for i := len(middleware) - 1; i >= 0; i-- {
+		h = middleware[i](h)
+	}
+	return h
 }
