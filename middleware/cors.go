@@ -102,11 +102,9 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 					allowOrigin = o
 					break
 				}
-				if o != "*" && strings.Contains(o, "*"){
-					if ss := strings.Split(o, "*"); len(ss) == 2 && strings.HasPrefix(origin,ss[0]) && strings.HasSuffix(origin,ss[1]) {
-						allowOrigin = origin
-						break
-					}
+				if o != "*" && equalScheme(origin, o) && isSubDomain(origin, o) {
+					allowOrigin = origin
+					break
 				}
 			}
 
