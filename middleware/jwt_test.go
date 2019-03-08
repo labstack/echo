@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/dgrijalva/jwt-go"
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
@@ -183,6 +183,14 @@ func TestJWT(t *testing.T) {
 			},
 			expErrCode: http.StatusBadRequest,
 			info:       "Empty cookie",
+		},
+		{
+			config: JWTConfig{
+				SigningKey:    validKey,
+				SigningMethod: "RS256",
+			},
+			expErrCode: http.StatusBadRequest,
+			info:       "Invalid algorithm",
 		},
 	} {
 		if tc.reqURL == "" {

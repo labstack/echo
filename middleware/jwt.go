@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/dgrijalva/jwt-go"
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo/v4"
 )
 
@@ -55,7 +55,7 @@ type (
 		// Optional. Default value "Bearer".
 		AuthScheme string
 
-		keyFunc jwt.Keyfunc
+		KeyFunc jwt.Keyfunc
 	}
 
 	// JWTSuccessHandler defines a function which is executed for a valid token.
@@ -110,8 +110,12 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	if config.Skipper == nil {
 		config.Skipper = DefaultJWTConfig.Skipper
 	}
-	if config.SigningKey == nil {
+	if config.SigningKey == nil && config.KeyFunc == nil {
 		panic("echo: jwt middleware requires signing key")
+	}
+
+	if config.SigningKey != nil && config.KeyFunc == nil {
+		config.KeyFunc = config.staticKeyFetch
 	}
 	if config.SigningMethod == "" {
 		config.SigningMethod = DefaultJWTConfig.SigningMethod
@@ -127,13 +131,6 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	}
 	if config.AuthScheme == "" {
 		config.AuthScheme = DefaultJWTConfig.AuthScheme
-	}
-	config.keyFunc = func(t *jwt.Token) (interface{}, error) {
-		// Check the signing method
-		if t.Method.Alg() != config.SigningMethod {
-			return nil, fmt.Errorf("unexpected jwt signing method=%v", t.Header["alg"])
-		}
-		return config.SigningKey, nil
 	}
 
 	// Initialize
@@ -166,11 +163,11 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 			token := new(jwt.Token)
 			// Issue #647, #656
 			if _, ok := config.Claims.(jwt.MapClaims); ok {
-				token, err = jwt.Parse(auth, config.keyFunc)
+				token, err = jwt.Parse(auth, config.KeyFunc)
 			} else {
 				t := reflect.ValueOf(config.Claims).Type().Elem()
 				claims := reflect.New(t).Interface().(jwt.Claims)
-				token, err = jwt.ParseWithClaims(auth, claims, config.keyFunc)
+				token, err = jwt.ParseWithClaims(auth, claims, config.KeyFunc)
 			}
 			if err == nil && token.Valid {
 				// Store user information from token into context.
@@ -224,4 +221,13 @@ func jwtFromCookie(name string) jwtExtractor {
 		}
 		return cookie.Value, nil
 	}
+}
+
+// staticKeyFetch
+func (config *JWTConfig) staticKeyFetch(t *jwt.Token) (interface{}, error) {
+	// Check the signing method
+	if t.Method.Alg() != config.SigningMethod {
+		return nil, fmt.Errorf("unexpected jwt signing method=%v", t.Header["alg"])
+	}
+	return config.SigningKey, nil
 }
