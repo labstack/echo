@@ -82,6 +82,11 @@ func Test_isSubDomain(t *testing.T) {
 			pattern:  "http://*.example.com",
 			expected: false,
 		},
+		{
+			domain:   "http://ccc.bbb.example.com",
+			pattern:  "http://example.com",
+			expected: false,
+		},
 	}
 
 	for _, v := range tests {

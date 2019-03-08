@@ -36,6 +36,9 @@ func isSubDomain(domain, pattern string) bool {
 	}
 
 	for i, v := range domComp {
+		if len(patComp) <= i {
+			return false
+		}
 		p := patComp[i]
 		if p == "*" {
 			return true
