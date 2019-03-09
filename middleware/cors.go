@@ -102,6 +102,10 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 					allowOrigin = o
 					break
 				}
+				if matchSubdomain(origin, o) {
+					allowOrigin = origin
+					break
+				}
 			}
 
 			// Simple request
