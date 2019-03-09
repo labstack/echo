@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_equalScheme(t *testing.T) {
+func Test_matchScheme(t *testing.T) {
 	tests := []struct {
 		domain, pattern string
 		expected        bool
@@ -34,11 +34,11 @@ func Test_equalScheme(t *testing.T) {
 	}
 
 	for _, v := range tests {
-		assert.Equal(t, v.expected, equalScheme(v.domain, v.pattern))
+		assert.Equal(t, v.expected, matchScheme(v.domain, v.pattern))
 	}
 }
 
-func Test_isSubDomain(t *testing.T) {
+func Test_matchSubdomain(t *testing.T) {
 	tests := []struct {
 		domain, pattern string
 		expected        bool
@@ -90,6 +90,6 @@ func Test_isSubDomain(t *testing.T) {
 	}
 
 	for _, v := range tests {
-		assert.Equal(t, v.expected, isSubDomain(v.domain, v.pattern))
+		assert.Equal(t, v.expected, matchSubdomain(v.domain, v.pattern))
 	}
 }

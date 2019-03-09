@@ -4,14 +4,17 @@ import (
 	"strings"
 )
 
-func equalScheme(domain, pattern string) bool {
+func matchScheme(domain, pattern string) bool {
 	didx := strings.Index(domain, ":")
 	pidx := strings.Index(pattern, ":")
 	return didx != -1 && pidx != -1 && domain[:didx] == pattern[:pidx]
 }
 
-// isSubDomain compares authority with wildcard
-func isSubDomain(domain, pattern string) bool {
+// matchSubdomain compares authority with wildcard
+func matchSubdomain(domain, pattern string) bool {
+	if !matchScheme(domain, pattern) {
+		return false
+	}
 	didx := strings.Index(domain, "://")
 	pidx := strings.Index(pattern, "://")
 	if didx == -1 || pidx == -1 {
