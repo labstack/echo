@@ -57,6 +57,7 @@ import (
 
 	"github.com/labstack/gommon/color"
 	"github.com/labstack/gommon/log"
+	"golang.org/x/crypto/acme"
 	"golang.org/x/crypto/acme/autocert"
 )
 
@@ -641,6 +642,7 @@ func (e *Echo) StartAutoTLS(address string) error {
 	s := e.TLSServer
 	s.TLSConfig = new(tls.Config)
 	s.TLSConfig.GetCertificate = e.AutoTLSManager.GetCertificate
+	s.TLSConfig.NextProtos = append(s.TLSConfig.NextProtos, acme.ALPNProto)
 	return e.startTLS(address)
 }
 
