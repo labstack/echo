@@ -118,4 +118,25 @@ func TestProxy(t *testing.T) {
 	e.Use(Proxy(rrb1))
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
+
+	// ProxyTarget RelativePath
+	target := []*ProxyTarget{
+		{
+			Name: "target 1",
+			URL:  url1,
+		},
+	}
+	rrb2 := NewRoundRobinBalancer(target)
+	e = echo.New()
+	e.Use(Proxy(rrb2))
+	rec = httptest.NewRecorder()
+	data := map[string]string{
+		url1.String() + "/test": "/test",
+		"test/subtest":          "test/subtest",
+	}
+	for inpPath, relPath := range data {
+		req.URL.Path = inpPath
+		e.ServeHTTP(rec, req)
+		assert.Equal(t, relPath, req.URL.Path)
+	}
 }

@@ -232,6 +232,8 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 				}
 			}
 
+			req.URL.Path = tgt.relativePath(req.URL.Path)
+
 			// Fix header
 			if req.Header.Get(echo.HeaderXRealIP) == "" {
 				req.Header.Set(echo.HeaderXRealIP, c.RealIP())
@@ -255,4 +257,8 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 			return
 		}
 	}
+}
+
+func (p *ProxyTarget) relativePath(path string) string {
+	return strings.Replace(path, p.URL.String(), "", 1)
 }
