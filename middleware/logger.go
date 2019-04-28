@@ -20,7 +20,7 @@ type (
 		// Skipper defines a function to skip middleware.
 		Skipper Skipper
 
-		// Tags to constructed the logger format.
+		// Tags to construct the logger format.
 		//
 		// - time_unix
 		// - time_unix_nano
