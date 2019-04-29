@@ -93,11 +93,13 @@ func (g *Group) Match(methods []string, path string, handler HandlerFunc, middle
 }
 
 // Group creates a new sub-group with prefix and optional sub-group-level middleware.
-func (g *Group) Group(prefix string, middleware ...MiddlewareFunc) *Group {
+func (g *Group) Group(prefix string, middleware ...MiddlewareFunc) (sg *Group) {
 	m := make([]MiddlewareFunc, 0, len(g.middleware)+len(middleware))
 	m = append(m, g.middleware...)
 	m = append(m, middleware...)
-	return g.echo.Group(g.prefix+prefix, m...)
+	sg = g.echo.Group(g.prefix+prefix, m...)
+	sg.host = g.host
+	return
 }
 
 // Static implements `Echo#Static()` for sub-routes within the Group.
