@@ -463,7 +463,7 @@ func (e *Echo) Static(prefix, root string) *Route {
 	return e.static(prefix, root, e.GET)
 }
 
-func (_ common) static(prefix, root string, get func(string, HandlerFunc, ...MiddlewareFunc) *Route) *Route {
+func (common) static(prefix, root string, get func(string, HandlerFunc, ...MiddlewareFunc) *Route) *Route {
 	h := func(c Context) error {
 		p, err := url.PathUnescape(c.Param("*"))
 		if err != nil {
@@ -480,7 +480,7 @@ func (_ common) static(prefix, root string, get func(string, HandlerFunc, ...Mid
 	return get(prefix+"/*", h)
 }
 
-func (_ common) file(path, file string, get func(string, HandlerFunc, ...MiddlewareFunc) *Route,
+func (common) file(path, file string, get func(string, HandlerFunc, ...MiddlewareFunc) *Route,
 	m ...MiddlewareFunc) *Route {
 	return get(path, func(c Context) error {
 		return c.File(file)
