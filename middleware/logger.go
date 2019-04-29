@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"os"
 	"strconv"
@@ -175,7 +176,10 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 					return buf.WriteString(s)
 				case "error":
 					if err != nil {
-						return buf.WriteString(err.Error())
+						// Error may contain invalid JSON e.g. `"`
+						b, _ := json.Marshal(err.Error())
+						b = b[1 : len(b)-1]
+						return buf.Write(b)
 					}
 				case "latency":
 					l := stop.Sub(start)
