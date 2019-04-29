@@ -325,9 +325,14 @@ func (e *Echo) NewContext(r *http.Request, w http.ResponseWriter) Context {
 	}
 }
 
-// Router returns router.
+// Router returns the default router.
 func (e *Echo) Router() *Router {
 	return e.router
+}
+
+// Routers returns the map of host => router.
+func (e *Echo) Routers() map[string]*Router {
+	return e.routers
 }
 
 // DefaultHTTPErrorHandler is the default HTTP error handler. It sends a JSON response
