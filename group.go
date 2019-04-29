@@ -2,7 +2,6 @@ package echo
 
 import (
 	"net/http"
-	"path"
 )
 
 type (
@@ -21,12 +20,15 @@ type (
 // Use implements `Echo#Use()` for sub-routes within the Group.
 func (g *Group) Use(middleware ...MiddlewareFunc) {
 	g.middleware = append(g.middleware, middleware...)
+	if len(g.middleware) == 0 {
+		return
+	}
 	// Allow all requests to reach the group as they might get dropped if router
 	// doesn't find a match, making none of the group middleware process.
 	for _, p := range []string{"", "/*"} {
-		g.Any(path.Clean(g.prefix+p), func(c Context) error {
+		g.Any(p, func(c Context) error {
 			return NotFoundHandler(c)
-		}, g.middleware...)
+		})
 	}
 }
 

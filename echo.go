@@ -224,7 +224,7 @@ const (
 
 const (
 	// Version of Echo
-	Version = "4.1.3"
+	Version = "4.1.4"
 	website = "https://echo.labstack.com"
 	// http://patorjk.com/software/taag/#p=display&f=Small%20Slant&t=Echo
 	banner = `
@@ -472,11 +472,9 @@ func (common) static(prefix, root string, get func(string, HandlerFunc, ...Middl
 		name := filepath.Join(root, path.Clean("/"+p)) // "/"+ for security
 		return c.File(name)
 	}
-	get(prefix, h)
 	if prefix == "/" {
 		return get(prefix+"*", h)
 	}
-
 	return get(prefix+"/*", h)
 }
 
