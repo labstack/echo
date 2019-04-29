@@ -10,6 +10,7 @@ type (
 	// routes that share a common middleware or functionality that should be separate
 	// from the parent echo instance while still inheriting from it.
 	Group struct {
+		host       string
 		prefix     string
 		middleware []MiddlewareFunc
 		echo       *Echo
@@ -117,5 +118,5 @@ func (g *Group) Add(method, path string, handler HandlerFunc, middleware ...Midd
 	m := make([]MiddlewareFunc, 0, len(g.middleware)+len(middleware))
 	m = append(m, g.middleware...)
 	m = append(m, middleware...)
-	return g.echo.Add(method, g.prefix+path, handler, m...)
+	return g.echo.add(g.host, method, g.prefix+path, handler, m...)
 }
