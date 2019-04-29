@@ -10,6 +10,7 @@ type (
 	// routes that share a common middleware or functionality that should be separate
 	// from the parent echo instance while still inheriting from it.
 	Group struct {
+		common
 		host       string
 		prefix     string
 		middleware []MiddlewareFunc
@@ -23,7 +24,7 @@ func (g *Group) Use(middleware ...MiddlewareFunc) {
 	// Allow all requests to reach the group as they might get dropped if router
 	// doesn't find a match, making none of the group middleware process.
 	for _, p := range []string{"", "/*"} {
-		g.echo.Any(path.Clean(g.prefix+p), func(c Context) error {
+		g.Any(path.Clean(g.prefix+p), func(c Context) error {
 			return NotFoundHandler(c)
 		}, g.middleware...)
 	}
@@ -104,12 +105,12 @@ func (g *Group) Group(prefix string, middleware ...MiddlewareFunc) (sg *Group) {
 
 // Static implements `Echo#Static()` for sub-routes within the Group.
 func (g *Group) Static(prefix, root string) {
-	static(g, prefix, root)
+	g.static(prefix, root, g.GET)
 }
 
 // File implements `Echo#File()` for sub-routes within the Group.
 func (g *Group) File(path, file string) {
-	g.echo.File(g.prefix+path, file)
+	g.file(g.prefix+path, file, g.GET)
 }
 
 // Add implements `Echo#Add()` for sub-routes within the Group.

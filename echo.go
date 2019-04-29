@@ -64,6 +64,7 @@ import (
 type (
 	// Echo is the top-level framework instance.
 	Echo struct {
+		common
 		StdLogger        *stdLog.Logger
 		colorer          *color.Color
 		premiddleware    []MiddlewareFunc
@@ -125,10 +126,8 @@ type (
 	// Map defines a generic map of type `map[string]interface{}`.
 	Map map[string]interface{}
 
-	// i is the interface for Echo and Group.
-	i interface {
-		GET(string, HandlerFunc, ...MiddlewareFunc) *Route
-	}
+	// Common struct for Echo & Group.
+	common struct{}
 )
 
 // HTTP methods
@@ -225,7 +224,7 @@ const (
 
 const (
 	// Version of Echo
-	Version = "4.1.2"
+	Version = "4.1.3"
 	website = "https://echo.labstack.com"
 	// http://patorjk.com/software/taag/#p=display&f=Small%20Slant&t=Echo
 	banner = `
@@ -461,10 +460,10 @@ func (e *Echo) Static(prefix, root string) *Route {
 	if root == "" {
 		root = "." // For security we want to restrict to CWD.
 	}
-	return static(e, prefix, root)
+	return e.static(prefix, root, e.GET)
 }
 
-func static(i i, prefix, root string) *Route {
+func (_ common) static(prefix, root string, get func(string, HandlerFunc, ...MiddlewareFunc) *Route) *Route {
 	h := func(c Context) error {
 		p, err := url.PathUnescape(c.Param("*"))
 		if err != nil {
@@ -473,19 +472,24 @@ func static(i i, prefix, root string) *Route {
 		name := filepath.Join(root, path.Clean("/"+p)) // "/"+ for security
 		return c.File(name)
 	}
-	i.GET(prefix, h)
+	get(prefix, h)
 	if prefix == "/" {
-		return i.GET(prefix+"*", h)
+		return get(prefix+"*", h)
 	}
 
-	return i.GET(prefix+"/*", h)
+	return get(prefix+"/*", h)
+}
+
+func (_ common) file(path, file string, get func(string, HandlerFunc, ...MiddlewareFunc) *Route,
+	m ...MiddlewareFunc) *Route {
+	return get(path, func(c Context) error {
+		return c.File(file)
+	}, m...)
 }
 
 // File registers a new route with path to serve a static file with optional route-level middleware.
 func (e *Echo) File(path, file string, m ...MiddlewareFunc) *Route {
-	return e.GET(path, func(c Context) error {
-		return c.File(file)
-	}, m...)
+	return e.file(path, file, e.GET, m...)
 }
 
 func (e *Echo) add(host, method, path string, handler HandlerFunc, middleware ...MiddlewareFunc) *Route {
