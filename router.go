@@ -57,7 +57,7 @@ func NewRouter(e *Echo) *Router {
 func (r *Router) Add(method, path string, h HandlerFunc) {
 	// Validate path
 	if path == "" {
-		panic("echo: path cannot be empty")
+		path = "/"
 	}
 	if path[0] != '/' {
 		path = "/" + path
