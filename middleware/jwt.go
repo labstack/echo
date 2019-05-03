@@ -26,7 +26,7 @@ type (
 		// It may be used to define a custom JWT error.
 		ErrorHandler JWTErrorHandler
 		
-		// Same as ErrorHandler, but it's passed the current context.
+		// ErrorHandlerWithContext is almost identical to ErrorHandler, but it's passed the current context.
 		ErrorHandlerWithContext JWTErrorHandlerWithContext
 
 		// Signing key to validate token.
@@ -67,7 +67,7 @@ type (
 	// JWTErrorHandler defines a function which is executed for an invalid token.
 	JWTErrorHandler func(error) error
 
-	// Same as JWTErrorHandler, but it's passed the current context.
+	// JWTErrorHandlerWithContext is almost identical to JWTErrorHandler, but it's passed the current context.
 	JWTErrorHandlerWithContext func(error, echo.Context) error
 	
 	jwtExtractor func(echo.Context) (string, error)
