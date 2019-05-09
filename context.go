@@ -437,7 +437,7 @@ func (c *context) json(code int, i interface{}, indent string) error {
 		enc.SetIndent("", indent)
 	}
 	c.writeContentType(MIMEApplicationJSONCharsetUTF8)
-	c.response.WriteHeader(code)
+	c.response.Status = code
 	return enc.Encode(i)
 }
 
