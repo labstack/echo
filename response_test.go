@@ -22,3 +22,22 @@ func TestResponse(t *testing.T) {
 	res.Write([]byte("test"))
 	assert.Equal(t, "echo", rec.Header().Get(HeaderServer))
 }
+
+func TestResponse_Write_FallsBackToDefaultStatus(t *testing.T) {
+	e := New()
+	rec := httptest.NewRecorder()
+	res := &Response{echo: e, Writer: rec}
+
+	res.Write([]byte("test"))
+	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestResponse_Write_UsesSetResponseCode(t *testing.T) {
+	e := New()
+	rec := httptest.NewRecorder()
+	res := &Response{echo: e, Writer: rec}
+
+	res.Status = http.StatusBadRequest
+	res.Write([]byte("test"))
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
