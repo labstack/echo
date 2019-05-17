@@ -224,3 +224,93 @@ func TestJWT(t *testing.T) {
 		}
 	}
 }
+
+func TestJWTwithKID(t *testing.T) {
+	test := assert.New(t)
+
+	e := echo.New()
+	handler := func(c echo.Context) error {
+		return c.String(http.StatusOK, "test")
+	}
+	firstToken := "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImtpZCI6ImZpcnN0T25lIn0.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.w5VGpHOe0jlNgf7jMVLHzIYH_XULmpUlreJnilwSkWk"
+	secondToken := "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImtpZCI6InNlY29uZE9uZSJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.sdghDYQ85jdh0hgQ6bKbMguLI_NSPYWjkhVJkee-yZM"
+	wrongToken := "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImtpZCI6InNlY29uZE9uZSJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.RyhLybtVLpoewF6nz9YN79oXo32kAtgUxp8FNwTkb90"
+	staticToken := "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.1_-XFYUPpJfgsaGwYhgZEt7hfySMg-a3GN-nfZmbW7o"
+	validKeys := map[string]interface{}{"firstOne": []byte("first_secret"), "secondOne": []byte("second_secret")}
+	invalidKeys := map[string]interface{}{"thirdOne": []byte("third_secret")}
+	staticSecret := []byte("static_secret")
+	invalidStaticSecret := []byte("invalid_secret")
+
+	for _, tc := range []struct {
+		expErrCode int // 0 for Success
+		config     JWTConfig
+		hdrAuth    string
+		info       string
+	}{
+		{
+			hdrAuth: DefaultJWTConfig.AuthScheme + " " + firstToken,
+			config:  JWTConfig{SigningKeys: validKeys},
+			info:    "First token valid",
+		},
+		{
+			hdrAuth: DefaultJWTConfig.AuthScheme + " " + secondToken,
+			config:  JWTConfig{SigningKeys: validKeys},
+			info:    "Second token valid",
+		},
+		{
+			expErrCode: http.StatusUnauthorized,
+			hdrAuth:    DefaultJWTConfig.AuthScheme + " " + wrongToken,
+			config:     JWTConfig{SigningKeys: validKeys},
+			info:       "Wrong key id token",
+		},
+		{
+			hdrAuth: DefaultJWTConfig.AuthScheme + " " + staticToken,
+			config:  JWTConfig{SigningKey: staticSecret},
+			info:    "Valid static secret token",
+		},
+		{
+			expErrCode: http.StatusUnauthorized,
+			hdrAuth:    DefaultJWTConfig.AuthScheme + " " + staticToken,
+			config:     JWTConfig{SigningKey: invalidStaticSecret},
+			info:       "Invalid static secret",
+		},
+		{
+			expErrCode: http.StatusUnauthorized,
+			hdrAuth:    DefaultJWTConfig.AuthScheme + " " + firstToken,
+			config:     JWTConfig{SigningKeys: invalidKeys},
+			info:       "Invalid keys first token",
+		},
+		{
+			expErrCode: http.StatusUnauthorized,
+			hdrAuth:    DefaultJWTConfig.AuthScheme + " " + secondToken,
+			config:     JWTConfig{SigningKeys: invalidKeys},
+			info:       "Invalid keys second token",
+		},
+	} {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		res := httptest.NewRecorder()
+		req.Header.Set(echo.HeaderAuthorization, tc.hdrAuth)
+		c := e.NewContext(req, res)
+
+		if tc.expErrCode != 0 {
+			h := JWTWithConfig(tc.config)(handler)
+			he := h(c).(*echo.HTTPError)
+			test.Equal(tc.expErrCode, he.Code, tc.info)
+			continue
+		}
+
+		h := JWTWithConfig(tc.config)(handler)
+		if test.NoError(h(c), tc.info) {
+			user := c.Get("user").(*jwt.Token)
+			switch claims := user.Claims.(type) {
+			case jwt.MapClaims:
+				test.Equal(claims["name"], "John Doe", tc.info)
+			case *jwtCustomClaims:
+				test.Equal(claims.Name, "John Doe", tc.info)
+				test.Equal(claims.Admin, true, tc.info)
+			default:
+				panic("unexpected type of claims")
+			}
+		}
+	}
+}
