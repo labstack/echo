@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -372,6 +373,34 @@ func TestContext(t *testing.T) {
 	assert.Equal(0, len(c.store))
 	assert.Equal("", c.Path())
 	assert.Equal(0, len(c.QueryParams()))
+}
+
+func TestContext_JSON_CommitsCustomResponseCode(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec).(*context)
+	err := c.JSON(http.StatusCreated, user{1, "Jon Snow"})
+
+	assert := testify.New(t)
+	if assert.NoError(err) {
+		assert.Equal(http.StatusCreated, rec.Code)
+		assert.Equal(MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(userJSON+"\n", rec.Body.String())
+	}
+}
+
+func TestContext_JSON_DoesntCommitResponseCodePrematurely(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec).(*context)
+	err := c.JSON(http.StatusCreated, map[string]float64{"a": math.NaN()})
+
+	assert := testify.New(t)
+	if assert.Error(err) {
+		assert.False(c.response.Committed)
+	}
 }
 
 func TestContextCookie(t *testing.T) {
