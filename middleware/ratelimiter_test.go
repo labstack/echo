@@ -24,13 +24,26 @@ func TestRateLimiter(t *testing.T) {
 	// g
 	h(c)
 	assert.Contains(t, rec.Header().Get("X-Ratelimit-Remaining"), "99")
+	assert.Contains(t, rec.Header().Get("X-Ratelimit-Limit"), "100")
 
-	//
-	req = httptest.NewRequest(http.MethodPost, "/", nil)
-	rec = httptest.NewRecorder()
-	c = e.NewContext(req, rec)
-	assert.Error(t, h(c))
 
+	//ratelimit with config
+	rateLimitWithConfig = RateLimiterWithConfig(RateLimiterConfig{
+		Max:2,
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	hx := rateLimitWithConfig(func(c echo.Context) error {
+		return c.String(http.StatusOK, "test")
+	})
+	hx(c)
+	hx(c)
+	hx(c)
+
+	assert.Contains(t, rec.Header().Get("X-Ratelimit-Remaining"), "-1")
+	assert.Equal(t, http.StatusTooManyRequests, rec.Code)
 
 }
 
