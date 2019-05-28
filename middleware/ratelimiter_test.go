@@ -23,7 +23,7 @@ func TestRateLimiter(t *testing.T) {
 
 	// g
 	h(c)
-	assert.Contains(t, rec.Header().Get("X-Ratelimit-Limit"), "99")
+	assert.Contains(t, rec.Header().Get("X-Ratelimit-Remaining"), "99")
 
 	//
 	req = httptest.NewRequest(http.MethodPost, "/", nil)
