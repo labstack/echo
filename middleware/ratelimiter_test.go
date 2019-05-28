@@ -28,7 +28,7 @@ func TestRateLimiter(t *testing.T) {
 
 
 	//ratelimit with config
-	rateLimitWithConfig = RateLimiterWithConfig(RateLimiterConfig{
+	rateLimitWithConfig := RateLimiterWithConfig(RateLimiterConfig{
 		Max:2,
 	})
 
