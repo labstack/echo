@@ -32,9 +32,9 @@ func TestRateLimiter(t *testing.T) {
 		Max:2,
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
+	req = httptest.NewRequest(http.MethodGet, "/", nil)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec)
 	hx := rateLimitWithConfig(func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	})
