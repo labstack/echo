@@ -21,10 +21,9 @@ type (
 
 		// Count duration for no policy, default is 1 Minute.
 		Duration time.Duration
-		// Redis key prefix, default is "LIMIT:".
+		//key prefix, default is "LIMIT:".
 		Prefix   string
-		// Use a redis client for limiter, if omit, it will use a memory limiter.
-		Client   RedisClient
+
 	}
 
 	limiter struct {
@@ -44,11 +43,7 @@ type (
 		getLimit(key string, policy ...int) ([]interface{}, error)
 		removeLimit(key string) error
 	}
-	RedisClient interface {
-		RateDel(string) error
-		RateEvalSha(string, []string, ...interface{}) (interface{}, error)
-		RateScriptLoad(string) (string, error)
-	}
+
 )
 
 var (
@@ -58,7 +53,6 @@ var (
 		Max:100,
 		Duration: time.Minute * 1,
 		Prefix:"LIMIT",
-		Client:nil,
 	}
 	limiterImp *limiter
 )
@@ -85,12 +79,15 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 	if config.Duration <= 0 {
 		config.Duration = time.Minute *1
 	}
+	limiterImp = newMemoryLimiter(&config)
+	/*
 	if config.Client == nil {
-		limiterImp = newMemoryLimiter(&config)
+
 	}else{
 		//setup redis client
 		//limiter = newRedisLimiter(&config)
 	}
+	*/
 
 	fmt.Printf("Max:%d",config.Max)
 
@@ -332,10 +329,3 @@ func (m *memoryLimiter) cleanCache() {
 		m.clean()
 	}
 }
-
-
-
-
-
-
-
