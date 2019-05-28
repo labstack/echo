@@ -108,16 +108,13 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 			response.Header().Set("X-Ratelimit-Remaining", strconv.FormatInt(int64(result.Remaining), 10))
 			response.Header().Set("X-Ratelimit-Reset", strconv.FormatInt(result.Reset.Unix(), 10))
 
-			if result.Remaining >= 0 {
-
-				//TODO: get some logs depends on verbose level
-				return next(c)
-			} else {
+			if result.Remaining < 0 {
 
 				after := int64(result.Reset.Sub(time.Now())) / 1e9
 				response.Header().Set("Retry-After", strconv.FormatInt(after, 10))
 				return echo.NewHTTPError(http.StatusTooManyRequests, "Rate limit exceeded, retry in %d seconds.\n", after)
 			}
+			return next(c)
 		}
 	}
 }
