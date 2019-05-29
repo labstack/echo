@@ -67,7 +67,7 @@ func RateLimiter() echo.MiddlewareFunc {
 func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 	// Defaults
 	if config.Skipper == nil {
-		config.Skipper = DefaultCORSConfig.Skipper
+		config.Skipper = DefaultRateLimiterConfig.Skipper
 	}
 
 	if config.Prefix == "" {
@@ -81,6 +81,7 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 	}
 	limiterImp = newMemoryLimiter(&config)
 	/*
+	TODO: limiter storage should be conventinal.
 	if config.Client == nil {
 
 	}else{
@@ -88,8 +89,6 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 		//limiter = newRedisLimiter(&config)
 	}
 	*/
-
-	fmt.Printf("Max:%d",config.Max)
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
