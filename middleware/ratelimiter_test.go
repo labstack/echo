@@ -11,7 +11,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"time"
-
 	"sync"
 )
 
@@ -45,10 +44,10 @@ func TestRateLimiter(t *testing.T) {
 	})
 	hx(c)
 	hx(c)
-	hx(c)
+	expectedErrorStatus := hx(c).(*echo.HTTPError)
 
 	assert.Contains(t, rec.Header().Get("X-Ratelimit-Remaining"), "-1")
-	//assert.Equal(t, http.StatusTooManyRequests, rec.Code)
+	assert.Equal(t, http.StatusTooManyRequests, expectedErrorStatus.Code)
 
 }
 
