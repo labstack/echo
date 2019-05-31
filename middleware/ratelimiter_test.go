@@ -17,38 +17,70 @@ import (
 func TestRateLimiter(t *testing.T) {
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	rateLimit := RateLimiter()
 
-	h := rateLimit(func(c echo.Context) error {
-		return c.String(http.StatusOK, "test")
+	t.Run("ratelimiter middleware should return ok with x-remaining and x-limit value",func(t *testing.T){
+
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		rateLimit := RateLimiter()
+
+		h := rateLimit(func(c echo.Context) error {
+			return c.String(http.StatusOK, "test")
+		})
+		h(c)
+		assert.Contains(t, rec.Header().Get("X-Ratelimit-Remaining"), "99")
+		assert.Contains(t, rec.Header().Get("X-Ratelimit-Limit"), "100")
+
 	})
 
-	// g
-	h(c)
-	assert.Contains(t, rec.Header().Get("X-Ratelimit-Remaining"), "99")
-	assert.Contains(t, rec.Header().Get("X-Ratelimit-Limit"), "100")
+	t.Run("ratelimiter middleware should throw too many request", func(t *testing.T) {
 
+		//ratelimit with config
+		rateLimitWithConfig := RateLimiterWithConfig(RateLimiterConfig{
+			Max:2,
+		})
 
-	//ratelimit with config
-	rateLimitWithConfig := RateLimiterWithConfig(RateLimiterConfig{
-		Max:2,
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		hx := rateLimitWithConfig(func(c echo.Context) error {
+			return c.String(http.StatusOK, "test")
+		})
+		hx(c)
+		hx(c)
+		expectedErrorStatus := hx(c).(*echo.HTTPError)
+
+		assert.Contains(t, rec.Header().Get("X-Ratelimit-Remaining"), "-1")
+		assert.Equal(t, http.StatusTooManyRequests, expectedErrorStatus.Code)
+
 	})
 
-	req = httptest.NewRequest(http.MethodGet, "/", nil)
-	rec = httptest.NewRecorder()
-	c = e.NewContext(req, rec)
-	hx := rateLimitWithConfig(func(c echo.Context) error {
-		return c.String(http.StatusOK, "test")
+  t.Run("ratelimiter middleware should return status ok after to many request status expired", func(t *testing.T) {
+
+  	expectedDuration := time.Millisecond * 5
+
+		//ratelimit with config; expected result getting 429 after 5 second it should return 200
+		rateLimitWithConfig := RateLimiterWithConfig(RateLimiterConfig{
+			Max:2,
+			Duration:expectedDuration,
+		})
+
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		hx := rateLimitWithConfig(func(c echo.Context) error {
+			return c.String(http.StatusOK, "test")
+		})
+		hx(c)
+		hx(c)
+		expectedErrorStatus := hx(c).(*echo.HTTPError)
+		assert.Equal(t, http.StatusTooManyRequests, expectedErrorStatus.Code)
+		time.Sleep(expectedDuration)
+		exceptedHttpStatusOk,ok :=hx(c).(*echo.HTTPError)
+
+		if ok{
+			assert.Equal(t, http.StatusOK, exceptedHttpStatusOk.Code)
+		}
+
 	})
-	hx(c)
-	hx(c)
-	expectedErrorStatus := hx(c).(*echo.HTTPError)
-
-	assert.Contains(t, rec.Header().Get("X-Ratelimit-Remaining"), "-1")
-	assert.Equal(t, http.StatusTooManyRequests, expectedErrorStatus.Code)
-
 }
 
 func TestMemoryRateLimiter(t *testing.T) {
@@ -432,6 +464,7 @@ func TestMemoryRateLimiter(t *testing.T) {
 		assert.Equal(1, res.Remaining)
 		assert.Equal(time.Millisecond*100, res.Duration)
 	})
+
 	t.Run("limiter.Get with multi-policy situation for expired", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -548,6 +581,7 @@ func TestMemoryRateLimiter(t *testing.T) {
 		assert.Equal(time.Millisecond*150, res.Duration)
 
 	})
+
 	t.Run("limiter.Get with different policy time situation for expired", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -645,6 +679,7 @@ func TestMemoryRateLimiter(t *testing.T) {
 		assert.Equal(1, res.Remaining)
 		assert.Equal(time.Millisecond*300, res.Duration)
 	})
+
 	t.Run("limiter.Get with normal situation for expired", func(t *testing.T) {
 		assert := assert.New(t)
 

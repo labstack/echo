@@ -106,7 +106,7 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 			response.Header().Set("X-Ratelimit-Remaining", strconv.FormatInt(int64(result.Remaining), 10))
 			response.Header().Set("X-Ratelimit-Reset", strconv.FormatInt(result.Reset.Unix(), 10))
 
-			if result.Remaining < 0 {
+			if result.Remaining <= 0 {
 
 				after := int64(result.Reset.Sub(time.Now())) / 1e9
 				response.Header().Set("Retry-After", strconv.FormatInt(after, 10))
@@ -139,7 +139,7 @@ func (l *limiter) Get(id string, policy ...int) (Result, error) {
 		result.Total = res[1].(int)
 		result.Duration = res[2].(time.Duration)
 		result.Reset = res[3].(time.Time)
-	default: // result from redis limiter
+	default: // result from disteributed limiter
 		result.Remaining = int(res[0].(int64))
 		result.Total = int(res[1].(int64))
 		result.Duration = time.Duration(res[2].(int64) * 1e6)
