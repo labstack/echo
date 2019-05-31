@@ -74,10 +74,10 @@ func TestRateLimiter(t *testing.T) {
 		expectedErrorStatus := hx(c).(*echo.HTTPError)
 		assert.Equal(t, http.StatusTooManyRequests, expectedErrorStatus.Code)
 		time.Sleep(expectedDuration)
-		exceptedHttpStatusOk,ok :=hx(c).(*echo.HTTPError)
+		exceptedHTTPStatusOk,ok :=hx(c).(*echo.HTTPError)
 
 		if ok{
-			assert.Equal(t, http.StatusOK, exceptedHttpStatusOk.Code)
+			assert.Equal(t, http.StatusOK, exceptedHTTPStatusOk.Code)
 		}
 
 	})
