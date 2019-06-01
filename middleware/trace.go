@@ -49,7 +49,7 @@ func TraceWithConfig(config TraceConfig) echo.MiddlewareFunc {
 		panic("echo: trace middleware requires opentracing tracer")
 	}
 	if config.Skipper == nil {
-		config.Skipper = DefaultBodyDumpConfig.Skipper
+		config.Skipper = DefaultSkipper
 	}
 	if config.componentName == "" {
 		config.componentName = defaultComponentName
