@@ -19,7 +19,7 @@ type (
 		// OpenTracing Tracer instance which should be got before
 		tracer opentracing.Tracer
 
-		// componentName used for describing the service name
+		// componentName used for describing the tracing component name
 		componentName string
 	}
 )
