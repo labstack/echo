@@ -13,8 +13,8 @@ type (
 		SetOutput(w io.Writer)
 		Prefix() string
 		SetPrefix(p string)
-		Level() log.Lvl
-		SetLevel(v log.Lvl)
+		Level() uint32
+		SetLevel(v uint32)
 		SetHeader(h string)
 		Print(i ...interface{})
 		Printf(format string, args ...interface{})
