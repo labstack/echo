@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"sync"
 	"time"
+	"fmt"
+	"strings"
 )
 
 type (
@@ -23,6 +25,11 @@ type (
 		//key prefix, default is "LIMIT:".
 		Prefix   string
 
+		// Use a redis client for limiter, if omit, it will use a memory limiter.
+		Client   RedisClient
+
+		//If request gets a  internal limiter error, just skip the limiter and let it go to next middleware
+		SkipRateLimiterInternalError	bool
 	}
 
 	limiter struct {
@@ -43,7 +50,16 @@ type (
 		removeLimit(key string) error
 	}
 
+	//RedisClient interface
+	RedisClient interface {
+		DeleteKey(string) error
+		EvalulateSha(string, []string, ...interface{}) (interface{}, error)
+		LuaScriptLoad(string) (string, error)
+	}
+
 )
+
+
 
 var (
 	// DefaultRateLimiterConfig is the default rate limit middleware config.
@@ -52,6 +68,8 @@ var (
 		Max:100,
 		Duration: time.Minute * 1,
 		Prefix:"LIMIT",
+		Client:nil,
+		SkipRateLimiterInternalError:false,
 	}
 	limiterImp *limiter
 )
@@ -78,16 +96,15 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 	if config.Duration <= 0 {
 		config.Duration = time.Minute *1
 	}
-	limiterImp = newMemoryLimiter(&config)
-	/*
-	TODO: limiter storage should be conventinal.
-	if config.Client == nil {
 
+	//If config.Client omit, the limiter is a memory limiter
+	if config.Client == nil {
+		limiterImp = newMemoryLimiter(&config)
 	}else{
 		//setup redis client
-		//limiter = newRedisLimiter(&config)
+		limiterImp = newRedisLimiter(&config)
 	}
-	*/
+
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -95,10 +112,23 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 				return next(c)
 			}
 			response := c.Response()
+			request := c.Request()
 
-			result, err := limiterImp.Get(c.Path())
+			//policy := []int{10,1000}
+			/*custom policy will configurable like
+			[
+				{"RealIP+Method+RequestURI","Max Value","Duration"},
+				{"RealIP+Method+RequestURI","Max Value","Duration"}
+			]
+			*/
+			policy := []int{}
+			result, err := limiterImp.Get(request.RequestURI,policy...)
 
 			if err != nil {
+
+				if config.SkipRateLimiterInternalError{
+					return next(c)
+				}
 				return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 			}
 
@@ -325,3 +355,128 @@ func (m *memoryLimiter) cleanCache() {
 	}
 }
 
+
+
+// Redis limiter imp here
+type redisLimiter struct {
+	sha1, max, duration string
+	rc                  RedisClient
+}
+
+func newRedisLimiter(options *RateLimiterConfig) *limiter {
+	sha1, err := options.Client.LuaScriptLoad(LuaScriptForRedis)
+	if err != nil {
+		panic(err)
+	}
+	r := &redisLimiter{
+		rc:       options.Client,
+		sha1:     sha1,
+		max:      strconv.FormatInt(int64(options.Max), 10),
+		duration: strconv.FormatInt(int64(options.Duration/time.Millisecond), 10),
+	}
+	return &limiter{r, options.Prefix}
+}
+
+func (r *redisLimiter) removeLimit(key string) error {
+	return r.rc.DeleteKey(key)
+}
+
+func (r *redisLimiter) getLimit(key string, policy ...int) ([]interface{}, error) {
+	keys := []string{key, fmt.Sprintf("{%s}:S", key)}
+	capacity := 3
+	length := len(policy)
+	if length > 2 {
+		capacity = length + 1
+	}
+
+	//fmt.Printf("redis max limit (%s) for (%s)",r.max,key)
+	args := make([]interface{}, capacity, capacity)
+	args[0] = genTimestamp()
+	if length == 0 {
+		args[1] = r.max
+		args[2] = r.duration
+	} else {
+		for i, val := range policy {
+			if val <= 0 {
+				return nil, errors.New("ratelimiter: must be positive integer")
+			}
+			args[i+1] = strconv.FormatInt(int64(val), 10)
+		}
+	}
+
+	res, err := r.rc.EvalulateSha(r.sha1, keys, args...)
+	if err != nil && isNoScriptErr(err) {
+		// try to load lua for cluster client and ring client for nodes changing.
+		_, err = r.rc.LuaScriptLoad(LuaScriptForRedis)
+		if err == nil {
+			res, err = r.rc.EvalulateSha(r.sha1, keys, args...)
+		}
+	}
+
+	if err == nil {
+		arr, ok := res.([]interface{})
+		if ok && len(arr) == 4 {
+			return arr, nil
+		}
+		err = errors.New("Invalid result")
+	}
+	return nil, err
+}
+
+func genTimestamp() string {
+	time := time.Now().UnixNano() / 1e6
+	return strconv.FormatInt(time, 10)
+}
+func isNoScriptErr(err error) bool {
+	return strings.HasPrefix(err.Error(), "NOSCRIPT ")
+}
+
+
+const LuaScriptForRedis string = `
+-- KEYS[1] target hash key
+-- KEYS[2] target status hash key
+-- ARGV[n >= 3] current timestamp, max count, duration, max count, duration, ...
+-- HASH: KEYS[1]
+--   field:ct(count)
+--   field:lt(limit)
+--   field:dn(duration)
+--   field:rt(reset)
+local res = {}
+local policyCount = (#ARGV - 1) / 2
+local limit = redis.call('hmget', KEYS[1], 'ct', 'lt', 'dn', 'rt')
+if limit[1] then
+  res[1] = tonumber(limit[1]) - 1
+  res[2] = tonumber(limit[2])
+  res[3] = tonumber(limit[3]) or ARGV[3]
+  res[4] = tonumber(limit[4])
+  if policyCount > 1 and res[1] == -1 then
+    redis.call('incr', KEYS[2])
+    redis.call('pexpire', KEYS[2], res[3] * 2)
+    local index = tonumber(redis.call('get', KEYS[2]))
+    if index == 1 then
+      redis.call('incr', KEYS[2])
+    end
+  end
+  if res[1] >= -1 then
+    redis.call('hincrby', KEYS[1], 'ct', -1)
+  else
+    res[1] = -1
+  end
+else
+  local index = 1
+  if policyCount > 1 then
+    index = tonumber(redis.call('get', KEYS[2])) or 1
+    if index > policyCount then
+      index = policyCount
+    end
+  end
+  local total = tonumber(ARGV[index * 2])
+  res[1] = total - 1
+  res[2] = total
+  res[3] = tonumber(ARGV[index * 2 + 1])
+  res[4] = tonumber(ARGV[1]) + res[3]
+  redis.call('hmset', KEYS[1], 'ct', res[1], 'lt', res[2], 'dn', res[3], 'rt', res[4])
+  redis.call('pexpire', KEYS[1], res[3])
+end
+return res
+`

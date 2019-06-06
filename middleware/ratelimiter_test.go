@@ -12,75 +12,202 @@ import (
 	"encoding/hex"
 	"time"
 	"sync"
+	"gopkg.in/redis.v5"
+	"github.com/alicebob/miniredis"
+	"errors"
+	"fmt"
+
+
 )
 
 func TestRateLimiter(t *testing.T) {
+
+	t.Run("ratelimiter middleware", func(t *testing.T) {
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+		t.Run("should return ok with x-remaining and x-limit value", func(t *testing.T) {
+
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			rateLimit := RateLimiter()
+
+			h := rateLimit(func(c echo.Context) error {
+				return c.String(http.StatusOK, "test")
+			})
+			h(c)
+			assert.Contains(t, rec.Header().Get("X-Ratelimit-Remaining"), "99")
+			assert.Contains(t, rec.Header().Get("X-Ratelimit-Limit"), "100")
+
+		})
+
+		t.Run("should throw too many request", func(t *testing.T) {
+
+			//ratelimit with config
+			rateLimitWithConfig := RateLimiterWithConfig(RateLimiterConfig{
+				Max: 2,
+			})
+
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			hx := rateLimitWithConfig(func(c echo.Context) error {
+				return c.String(http.StatusOK, "test")
+			})
+			hx(c)
+			hx(c)
+			expectedErrorStatus := hx(c).(*echo.HTTPError)
+
+			assert.Contains(t, rec.Header().Get("X-Ratelimit-Remaining"), "-1")
+			assert.Equal(t, http.StatusTooManyRequests, expectedErrorStatus.Code)
+
+		})
+
+		t.Run("should return status ok after to many request status expired", func(t *testing.T) {
+
+			expectedDuration := time.Millisecond * 5
+
+			//ratelimit with config; expected result getting 429 after 5 second it should return 200
+			rateLimitWithConfig := RateLimiterWithConfig(RateLimiterConfig{
+				Max:      2,
+				Duration: expectedDuration,
+			})
+
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			hx := rateLimitWithConfig(func(c echo.Context) error {
+				return c.String(http.StatusOK, "test")
+			})
+			hx(c)
+			hx(c)
+			expectedErrorStatus := hx(c).(*echo.HTTPError)
+			assert.Equal(t, http.StatusTooManyRequests, expectedErrorStatus.Code)
+			time.Sleep(expectedDuration)
+			exceptedHTTPStatusOk, ok := hx(c).(*echo.HTTPError)
+
+			if ok {
+				assert.Equal(t, http.StatusOK, exceptedHTTPStatusOk.Code)
+			}
+
+		})
+
+		t.Run("should return ok even limiter throw an exception", func(t *testing.T) {
+
+			req := httptest.NewRequest(http.MethodGet, "/t", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			rateLimitWithConfig := RateLimiterWithConfig(RateLimiterConfig{
+				SkipRateLimiterInternalError:true,
+			})
+
+			h := rateLimitWithConfig(func(c echo.Context) error {
+				return c.String(http.StatusOK, "test")
+			})
+			h(c)
+			fmt.Println(rec.Result().Status)
+			assert.Contains(t, rec.Result().Status, "200 OK")
+
+		})
+	})
+}
+
+// Implements RedisClient for redis.Client
+type redisClient struct {
+	*redis.Client
+}
+func (c *redisClient) DeleteKey(key string) error {
+	return c.Del(key).Err()
+}
+
+func (c *redisClient) EvalulateSha(sha1 string, keys []string, args ...interface{}) (interface{}, error) {
+	return c.EvalSha(sha1, keys, args...).Result()
+}
+
+func (c *redisClient) LuaScriptLoad(script string) (string, error) {
+	return c.ScriptLoad(script).Result()
+}
+
+func TestRedisRatelimiter(t *testing.T) {
+
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
-	t.Run("ratelimiter middleware should return ok with x-remaining and x-limit value",func(t *testing.T){
+	s, err := miniredis.Run()
+	if err != nil {
+		panic(err)
+	}
+	defer s.Close()
 
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
-		rateLimit := RateLimiter()
+	var client = redis.NewClient(&redis.Options{
+		Addr: s.Addr(),
+	})
+	defer client.Close()
 
-		h := rateLimit(func(c echo.Context) error {
-			return c.String(http.StatusOK, "test")
+	t.Run("Redis ratelimiter middleware", func(t *testing.T) {
+
+		t.Run("FakeRedis is running as excepted", func(t *testing.T) {
+			pong, err := client.Ping().Result()
+			assert.Nil(t, err)
+			assert.Equal(t, "PONG", pong)
 		})
-		h(c)
-		assert.Contains(t, rec.Header().Get("X-Ratelimit-Remaining"), "99")
-		assert.Contains(t, rec.Header().Get("X-Ratelimit-Limit"), "100")
 
+		t.Run("New instrance running with redis option as excepted", func(t *testing.T) {
+
+			rateLimitWithConfig := RateLimiterWithConfig(RateLimiterConfig{
+				Client:&redisClient{client},
+			})
+			assert.NotNil(t,rateLimitWithConfig)
+		})
+
+		t.Run("Get method should return ok with excepted remaining and limit values", func(t *testing.T) {
+
+
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			rateLimitWithConfig := RateLimiterWithConfig(RateLimiterConfig{
+				Max:100,
+				Client:&redisClient{client},
+				Duration:time.Minute *1,
+			})
+
+			hx := rateLimitWithConfig(func(c echo.Context) error {
+				return c.String(http.StatusOK, "test")
+			})
+			hx(c)
+			assert.Contains(t, rec.Header().Get("X-Ratelimit-Remaining"), "99")
+			assert.Contains(t, rec.Header().Get("X-Ratelimit-Limit"), "100")
+
+		})
+
+		t.Run("Get method should throw too many request", func(t *testing.T) {
+
+
+			req := httptest.NewRequest(http.MethodGet, "/alper", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			xx := RateLimiterWithConfig(RateLimiterConfig{
+				Max:2,
+				Client:&redisClient{client},
+				Duration:time.Minute *1,
+			})
+
+			hx := xx(func(c echo.Context) error {
+				return c.String(http.StatusOK, "test")
+			})
+			hx(c)
+			hx(c)
+			expectedErrorStatus,ok := hx(c).(*echo.HTTPError)
+
+			if ok{
+				assert.Contains(t, rec.Header().Get("X-Ratelimit-Remaining"), "-1")
+				assert.Equal(t, http.StatusTooManyRequests, expectedErrorStatus.Code)
+			}	else {
+				assert.Error(t,errors.New("it should throw too many ruqest exception!"))
+			}
+		})
 	})
 
-	t.Run("ratelimiter middleware should throw too many request", func(t *testing.T) {
-
-		//ratelimit with config
-		rateLimitWithConfig := RateLimiterWithConfig(RateLimiterConfig{
-			Max:2,
-		})
-
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
-		hx := rateLimitWithConfig(func(c echo.Context) error {
-			return c.String(http.StatusOK, "test")
-		})
-		hx(c)
-		hx(c)
-		expectedErrorStatus := hx(c).(*echo.HTTPError)
-
-		assert.Contains(t, rec.Header().Get("X-Ratelimit-Remaining"), "-1")
-		assert.Equal(t, http.StatusTooManyRequests, expectedErrorStatus.Code)
-
-	})
-
-  t.Run("ratelimiter middleware should return status ok after to many request status expired", func(t *testing.T) {
-
-  	expectedDuration := time.Millisecond * 5
-
-		//ratelimit with config; expected result getting 429 after 5 second it should return 200
-		rateLimitWithConfig := RateLimiterWithConfig(RateLimiterConfig{
-			Max:2,
-			Duration:expectedDuration,
-		})
-
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
-		hx := rateLimitWithConfig(func(c echo.Context) error {
-			return c.String(http.StatusOK, "test")
-		})
-		hx(c)
-		hx(c)
-		expectedErrorStatus := hx(c).(*echo.HTTPError)
-		assert.Equal(t, http.StatusTooManyRequests, expectedErrorStatus.Code)
-		time.Sleep(expectedDuration)
-		exceptedHTTPStatusOk,ok :=hx(c).(*echo.HTTPError)
-
-		if ok{
-			assert.Equal(t, http.StatusOK, exceptedHTTPStatusOk.Code)
-		}
-
-	})
 }
 
 func TestMemoryRateLimiter(t *testing.T) {
