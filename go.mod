@@ -10,4 +10,6 @@ require (
 	github.com/stretchr/testify v1.3.0
 	github.com/valyala/fasttemplate v1.0.1
 	golang.org/x/crypto v0.0.0-20190426145343-a29dc8fdc734
+	github.com/alicebob/miniredis   // indirect , just fake redis for rate limiter tests
+  gopkg.in/redis.v5               // indirect , just fake redis for rate limiter tests
 )

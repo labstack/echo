@@ -364,7 +364,7 @@ type redisLimiter struct {
 }
 
 func newRedisLimiter(options *RateLimiterConfig) *limiter {
-	sha1, err := options.Client.LuaScriptLoad(LuaScriptForRedis)
+	sha1, err := options.Client.LuaScriptLoad(luaScriptForRedis)
 	if err != nil {
 		panic(err)
 	}
@@ -407,7 +407,7 @@ func (r *redisLimiter) getLimit(key string, policy ...int) ([]interface{}, error
 	res, err := r.rc.EvalulateSha(r.sha1, keys, args...)
 	if err != nil && isNoScriptErr(err) {
 		// try to load lua for cluster client and ring client for nodes changing.
-		_, err = r.rc.LuaScriptLoad(LuaScriptForRedis)
+		_, err = r.rc.LuaScriptLoad(luaScriptForRedis)
 		if err == nil {
 			res, err = r.rc.EvalulateSha(r.sha1, keys, args...)
 		}
@@ -431,8 +431,8 @@ func isNoScriptErr(err error) bool {
 	return strings.HasPrefix(err.Error(), "NOSCRIPT ")
 }
 
-
-const LuaScriptForRedis string = `
+//luaScriptForRedis
+const luaScriptForRedis string = `
 -- KEYS[1] target hash key
 -- KEYS[2] target status hash key
 -- ARGV[n >= 3] current timestamp, max count, duration, max count, duration, ...
