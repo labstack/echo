@@ -364,8 +364,9 @@ type redisLimiter struct {
 }
 
 func newRedisLimiter(options *RateLimiterConfig) *limiter {
-	sha1, err := options.Client.LuaScriptLoad(luaScriptForRedis)
+	sha1, err := options.Client.LuaScriptLoad(LuaScriptForRedis)
 	if err != nil {
+		fmt.Println("redis is not working properly. use; docker run -it -p 6379:6379 --name my-redis -d redis")
 		panic(err)
 	}
 	r := &redisLimiter{
@@ -407,7 +408,7 @@ func (r *redisLimiter) getLimit(key string, policy ...int) ([]interface{}, error
 	res, err := r.rc.EvalulateSha(r.sha1, keys, args...)
 	if err != nil && isNoScriptErr(err) {
 		// try to load lua for cluster client and ring client for nodes changing.
-		_, err = r.rc.LuaScriptLoad(luaScriptForRedis)
+		_, err = r.rc.LuaScriptLoad(LuaScriptForRedis)
 		if err == nil {
 			res, err = r.rc.EvalulateSha(r.sha1, keys, args...)
 		}
@@ -431,8 +432,10 @@ func isNoScriptErr(err error) bool {
 	return strings.HasPrefix(err.Error(), "NOSCRIPT ")
 }
 
-//luaScriptForRedis
-const luaScriptForRedis string = `
+//LuaScriptForRedis script loading for cluster client and ring client for nodes changing. based on links below
+//https://github.com/thunks/thunk-ratelimiter
+//https://github.com/thunks/thunk-ratelimiter/blob/master/ratelimite.lua
+const LuaScriptForRedis string = `
 -- KEYS[1] target hash key
 -- KEYS[2] target status hash key
 -- ARGV[n >= 3] current timestamp, max count, duration, max count, duration, ...
