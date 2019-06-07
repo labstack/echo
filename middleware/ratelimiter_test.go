@@ -219,7 +219,7 @@ func TestRedisRatelimiter(t *testing.T) {
 				assert.Contains(t, rec.Header().Get("X-Ratelimit-Remaining"), "-1")
 				assert.Equal(t, http.StatusTooManyRequests, expectedErrorStatus.Code)
 			}	else {
-				assert.Error(t,errors.New("it should throw too many ruqest exception!"))
+				assert.Error(t,errors.New("it should throw too many ruqest exception"))
 			}
 		})
 
