@@ -33,6 +33,7 @@ type (
 		propfind HandlerFunc
 		put      HandlerFunc
 		trace    HandlerFunc
+		report   HandlerFunc
 	}
 )
 
@@ -247,6 +248,8 @@ func (n *node) addHandler(method string, h HandlerFunc) {
 		n.methodHandler.put = h
 	case http.MethodTrace:
 		n.methodHandler.trace = h
+	case REPORT:
+		n.methodHandler.report = h
 	}
 }
 
@@ -272,6 +275,8 @@ func (n *node) findHandler(method string) HandlerFunc {
 		return n.methodHandler.put
 	case http.MethodTrace:
 		return n.methodHandler.trace
+	case REPORT:
+		return n.methodHandler.report
 	default:
 		return nil
 	}

@@ -170,6 +170,8 @@ const (
 	charsetUTF8 = "charset=UTF-8"
 	// PROPFIND Method can be used on collection and property resources.
 	PROPFIND = "PROPFIND"
+	// REPORT Method can be used to get information about a resource, see rfc 3253
+	REPORT = "REPORT"
 )
 
 // Headers
@@ -251,6 +253,7 @@ var (
 		PROPFIND,
 		http.MethodPut,
 		http.MethodTrace,
+		REPORT,
 	}
 )
 
