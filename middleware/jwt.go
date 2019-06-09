@@ -52,6 +52,7 @@ type (
 		// Possible values:
 		// - "header:<name>"
 		// - "query:<name>"
+		// - "param:<name>"
 		// - "cookie:<name>"
 		TokenLookup string
 
@@ -155,6 +156,8 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	switch parts[0] {
 	case "query":
 		extractor = jwtFromQuery(parts[1])
+	case "param":
+		extractor = jwtFromParam(parts[1])
 	case "cookie":
 		extractor = jwtFromCookie(parts[1])
 	}
@@ -221,6 +224,17 @@ func jwtFromHeader(header string, authScheme string) jwtExtractor {
 func jwtFromQuery(param string) jwtExtractor {
 	return func(c echo.Context) (string, error) {
 		token := c.QueryParam(param)
+		if token == "" {
+			return "", ErrJWTMissing
+		}
+		return token, nil
+	}
+}
+
+// jwtFromParam returns a `jwtExtractor` that extracts token from the url param string.
+func jwtFromParam(param string) jwtExtractor {
+	return func(c echo.Context) (string, error) {
+		token := c.Param(param)
 		if token == "" {
 			return "", ErrJWTMissing
 		}
