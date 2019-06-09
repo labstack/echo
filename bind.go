@@ -1,6 +1,7 @@
 package echo
 
 import (
+	"encoding"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
@@ -21,6 +22,8 @@ type (
 	DefaultBinder struct{}
 
 	// BindUnmarshaler is the interface used to wrap the UnmarshalParam method.
+	// Types that don't implement this, but do implement encoding.TextUnmarshaler
+	// will use that interface instead.
 	BindUnmarshaler interface {
 		// UnmarshalParam decodes and assigns a value from an form or query param.
 		UnmarshalParam(param string) error
@@ -211,12 +214,30 @@ func bindUnmarshaler(field reflect.Value) (BindUnmarshaler, bool) {
 	return nil, false
 }
 
+// textUnmarshaler attempts to unmarshal a reflect.Value into a TextUnmarshaler
+func textUnmarshaler(field reflect.Value) (encoding.TextUnmarshaler, bool) {
+	ptr := reflect.New(field.Type())
+	if ptr.CanInterface() {
+		iface := ptr.Interface()
+		if unmarshaler, ok := iface.(encoding.TextUnmarshaler); ok {
+			return unmarshaler, ok
+		}
+	}
+	return nil, false
+}
+
 func unmarshalFieldNonPtr(value string, field reflect.Value) (bool, error) {
 	if unmarshaler, ok := bindUnmarshaler(field); ok {
 		err := unmarshaler.UnmarshalParam(value)
 		field.Set(reflect.ValueOf(unmarshaler).Elem())
 		return true, err
 	}
+	if unmarshaler, ok := textUnmarshaler(field); ok {
+		err := unmarshaler.UnmarshalText([]byte(value))
+		field.Set(reflect.ValueOf(unmarshaler).Elem())
+		return true, err
+	}
+
 	return false, nil
 }
 

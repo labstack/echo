@@ -50,6 +50,8 @@ type (
 		PtrS        *string
 		cantSet     string
 		DoesntExist string
+		GoT         time.Time
+		GoTptr      *time.Time
 		T           Timestamp
 		Tptr        *Timestamp
 		SA          StringArray
@@ -116,6 +118,8 @@ var values = map[string][]string{
 	"cantSet": {"test"},
 	"T":       {"2016-12-06T19:09:05+01:00"},
 	"Tptr":    {"2016-12-06T19:09:05+01:00"},
+	"GoT":     {"2016-12-06T19:09:05+01:00"},
+	"GoTptr":  {"2016-12-06T19:09:05+01:00"},
 	"ST":      {"bar"},
 }
 
@@ -216,6 +220,28 @@ func TestBindUnmarshalParam(t *testing.T) {
 	}
 }
 
+func TestBindUnmarshalText(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(GET, "/?ts=2016-12-06T19:09:05Z&sa=one,two,three&ta=2016-12-06T19:09:05Z&ta=2016-12-06T19:09:05Z&ST=baz", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	result := struct {
+		T  time.Time   `query:"ts"`
+		TA []time.Time `query:"ta"`
+		SA StringArray `query:"sa"`
+		ST Struct
+	}{}
+	err := c.Bind(&result)
+	ts := time.Date(2016, 12, 6, 19, 9, 5, 0, time.UTC)
+	if assert.NoError(t, err) {
+		//		assert.Equal(t, Timestamp(reflect.TypeOf(&Timestamp{}), time.Date(2016, 12, 6, 19, 9, 5, 0, time.UTC)), result.T)
+		assert.Equal(t, ts, result.T)
+		assert.Equal(t, StringArray([]string{"one", "two", "three"}), result.SA)
+		assert.Equal(t, []time.Time{ts, ts}, result.TA)
+		assert.Equal(t, Struct{"baz"}, result.ST)
+	}
+}
+
 func TestBindUnmarshalParamPtr(t *testing.T) {
 	e := New()
 	req := httptest.NewRequest(http.MethodGet, "/?ts=2016-12-06T19:09:05Z", nil)
@@ -227,6 +253,20 @@ func TestBindUnmarshalParamPtr(t *testing.T) {
 	err := c.Bind(&result)
 	if assert.NoError(t, err) {
 		assert.Equal(t, Timestamp(time.Date(2016, 12, 6, 19, 9, 5, 0, time.UTC)), *result.Tptr)
+	}
+}
+
+func TestBindUnmarshalTextPtr(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(GET, "/?ts=2016-12-06T19:09:05Z", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	result := struct {
+		Tptr *time.Time `query:"ts"`
+	}{}
+	err := c.Bind(&result)
+	if assert.NoError(t, err) {
+		assert.Equal(t, time.Date(2016, 12, 6, 19, 9, 5, 0, time.UTC), *result.Tptr)
 	}
 }
 
