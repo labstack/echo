@@ -33,6 +33,17 @@ type (
 // Bind implements the `Binder#Bind` function.
 func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 	req := c.Request()
+
+	paramNames := c.ParamNames()
+	paramValues := c.ParamValues()
+	params := make(map[string][]string)
+	for i, name := range paramNames {
+		params[name] = []string{paramValues[i]}
+	}
+	if err := b.bindData(i, params, "param"); err != nil {
+		return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
+	}
+
 	if req.ContentLength == 0 {
 		if req.Method == http.MethodGet || req.Method == http.MethodDelete {
 			if err = b.bindData(i, c.QueryParams(), "query"); err != nil {

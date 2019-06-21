@@ -18,8 +18,8 @@ import (
 
 type (
 	user struct {
-		ID   int    `json:"id" xml:"id" form:"id" query:"id"`
-		Name string `json:"name" xml:"name" form:"name" query:"name"`
+		ID   int    `json:"id" xml:"id" form:"id" query:"id" param:"id"`
+		Name string `json:"name" xml:"name" form:"name" query:"name" param:"name"`
 	}
 )
 
