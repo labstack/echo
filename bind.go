@@ -38,11 +38,7 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 	paramValues := c.ParamValues()
 	params := make(map[string][]string)
 	for i, name := range paramNames {
-		// Fix for an echo bug where a param name would show up which dont exist if its name contains "id" e.g. "userid"
-		names := strings.Split(name, ",")
-		for _, n := range names {
-			params[n] = append(params[name], paramValues[i])
-		}
+		params[name] = []string{paramValues[i]}
 	}
 	if err := b.bindData(i, params, "param"); err != nil {
 		return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
