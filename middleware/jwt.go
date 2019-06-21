@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 )
 
 type (
@@ -25,10 +25,17 @@ type (
 		// ErrorHandler defines a function which is executed for an invalid token.
 		// It may be used to define a custom JWT error.
 		ErrorHandler JWTErrorHandler
+		
+		// ErrorHandlerWithContext is almost identical to ErrorHandler, but it's passed the current context.
+		ErrorHandlerWithContext JWTErrorHandlerWithContext
 
-		// Signing key to validate token.
-		// Required.
+		// Signing key to validate token. Used as fallback if SigningKeys has length 0.
+		// Required. This or SigningKeys.
 		SigningKey interface{}
+
+		// Map of signing keys to validate token with kid field usage.
+		// Required. This or SigningKey.
+		SigningKeys map[string]interface{}
 
 		// Signing method, used to check token signing method.
 		// Optional. Default value HS256.
@@ -48,6 +55,7 @@ type (
 		// Possible values:
 		// - "header:<name>"
 		// - "query:<name>"
+		// - "param:<name>"
 		// - "cookie:<name>"
 		TokenLookup string
 
@@ -64,6 +72,9 @@ type (
 	// JWTErrorHandler defines a function which is executed for an invalid token.
 	JWTErrorHandler func(error) error
 
+	// JWTErrorHandlerWithContext is almost identical to JWTErrorHandler, but it's passed the current context.
+	JWTErrorHandlerWithContext func(error, echo.Context) error
+	
 	jwtExtractor func(echo.Context) (string, error)
 )
 
@@ -110,7 +121,7 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	if config.Skipper == nil {
 		config.Skipper = DefaultJWTConfig.Skipper
 	}
-	if config.SigningKey == nil {
+	if config.SigningKey == nil && len(config.SigningKeys) == 0 {
 		panic("echo: jwt middleware requires signing key")
 	}
 	if config.SigningMethod == "" {
@@ -133,6 +144,15 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 		if t.Method.Alg() != config.SigningMethod {
 			return nil, fmt.Errorf("unexpected jwt signing method=%v", t.Header["alg"])
 		}
+		if len(config.SigningKeys) > 0 {
+			if kid, ok := t.Header["kid"].(string); ok {
+				if key, ok := config.SigningKeys[kid]; ok {
+					return key, nil
+				}
+			}
+			return nil, fmt.Errorf("unexpected jwt key id=%v", t.Header["kid"])
+		}
+
 		return config.SigningKey, nil
 	}
 
@@ -142,6 +162,8 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	switch parts[0] {
 	case "query":
 		extractor = jwtFromQuery(parts[1])
+	case "param":
+		extractor = jwtFromParam(parts[1])
 	case "cookie":
 		extractor = jwtFromCookie(parts[1])
 	}
@@ -160,6 +182,10 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 			if err != nil {
 				if config.ErrorHandler != nil {
 					return config.ErrorHandler(err)
+				}
+				
+				if config.ErrorHandlerWithContext != nil {
+					return config.ErrorHandlerWithContext(err, c)
 				}
 				return err
 			}
@@ -182,6 +208,9 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 			}
 			if config.ErrorHandler != nil {
 				return config.ErrorHandler(err)
+			}
+			if config.ErrorHandlerWithContext != nil {
+					return config.ErrorHandlerWithContext(err, c)
 			}
 			return &echo.HTTPError{
 				Code:     http.StatusUnauthorized,
@@ -208,6 +237,17 @@ func jwtFromHeader(header string, authScheme string) jwtExtractor {
 func jwtFromQuery(param string) jwtExtractor {
 	return func(c echo.Context) (string, error) {
 		token := c.QueryParam(param)
+		if token == "" {
+			return "", ErrJWTMissing
+		}
+		return token, nil
+	}
+}
+
+// jwtFromParam returns a `jwtExtractor` that extracts token from the url param string.
+func jwtFromParam(param string) jwtExtractor {
+	return func(c echo.Context) (string, error) {
+		token := c.Param(param)
 		if token == "" {
 			return "", ErrJWTMissing
 		}

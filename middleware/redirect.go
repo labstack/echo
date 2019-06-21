@@ -3,7 +3,7 @@ package middleware
 import (
 	"net/http"
 
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 )
 
 // RedirectConfig defines the config for Redirect middleware.
@@ -21,7 +21,7 @@ type RedirectConfig struct {
 // 2) return the appropriate redirect url.
 type redirectLogic func(scheme, host, uri string) (ok bool, url string)
 
-const www = "www"
+const www = "www."
 
 // DefaultRedirectConfig is the default Redirect middleware config.
 var DefaultRedirectConfig = RedirectConfig{
@@ -60,7 +60,7 @@ func HTTPSWWWRedirect() echo.MiddlewareFunc {
 // See `HTTPSWWWRedirect()`.
 func HTTPSWWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 	return redirect(config, func(scheme, host, uri string) (ok bool, url string) {
-		if ok = scheme != "https" && host[:3] != www; ok {
+		if ok = scheme != "https" && host[:4] != www; ok {
 			url = "https://www." + host + uri
 		}
 		return
@@ -80,7 +80,7 @@ func HTTPSNonWWWRedirect() echo.MiddlewareFunc {
 func HTTPSNonWWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 	return redirect(config, func(scheme, host, uri string) (ok bool, url string) {
 		if ok = scheme != "https"; ok {
-			if host[:3] == www {
+			if host[:4] == www {
 				host = host[4:]
 			}
 			url = "https://" + host + uri
@@ -101,7 +101,7 @@ func WWWRedirect() echo.MiddlewareFunc {
 // See `WWWRedirect()`.
 func WWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 	return redirect(config, func(scheme, host, uri string) (ok bool, url string) {
-		if ok = host[:3] != www; ok {
+		if ok = host[:4] != www; ok {
 			url = scheme + "://www." + host + uri
 		}
 		return
@@ -120,7 +120,7 @@ func NonWWWRedirect() echo.MiddlewareFunc {
 // See `NonWWWRedirect()`.
 func NonWWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 	return redirect(config, func(scheme, host, uri string) (ok bool, url string) {
-		if ok = host[:3] == www; ok {
+		if ok = host[:4] == www; ok {
 			url = scheme + "://" + host[4:] + uri
 		}
 		return

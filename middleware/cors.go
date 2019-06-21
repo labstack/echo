@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 )
 
 type (
@@ -24,7 +24,7 @@ type (
 		AllowMethods []string `yaml:"allow_methods"`
 
 		// AllowHeaders defines a list of request headers that can be used when
-		// making the actual request. This in response to a preflight request.
+		// making the actual request. This is in response to a preflight request.
 		// Optional. Default value []string{}.
 		AllowHeaders []string `yaml:"allow_headers"`
 
@@ -100,6 +100,10 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 				}
 				if o == "*" || o == origin {
 					allowOrigin = o
+					break
+				}
+				if matchSubdomain(origin, o) {
+					allowOrigin = origin
 					break
 				}
 			}

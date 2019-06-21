@@ -1,6 +1,7 @@
 package echo
 
 import (
+	"encoding"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
@@ -21,6 +22,8 @@ type (
 	DefaultBinder struct{}
 
 	// BindUnmarshaler is the interface used to wrap the UnmarshalParam method.
+	// Types that don't implement this, but do implement encoding.TextUnmarshaler
+	// will use that interface instead.
 	BindUnmarshaler interface {
 		// UnmarshalParam decodes and assigns a value from an form or query param.
 		UnmarshalParam(param string) error
@@ -62,10 +65,8 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Unmarshal type error: expected=%v, got=%v, field=%v, offset=%v", ute.Type, ute.Value, ute.Field, ute.Offset)).SetInternal(err)
 			} else if se, ok := err.(*json.SyntaxError); ok {
 				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Syntax error: offset=%v, error=%v", se.Offset, se.Error())).SetInternal(err)
-			} else {
-				return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
 			}
-			return NewHTTPError(http.StatusBadRequest, err.Error())
+			return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
 		}
 	case strings.HasPrefix(ctype, MIMEApplicationXML), strings.HasPrefix(ctype, MIMETextXML):
 		if err = xml.NewDecoder(req.Body).Decode(i); err != nil {
@@ -73,10 +74,8 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Unsupported type error: type=%v, error=%v", ute.Type, ute.Error())).SetInternal(err)
 			} else if se, ok := err.(*xml.SyntaxError); ok {
 				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Syntax error: line=%v, error=%v", se.Line, se.Error())).SetInternal(err)
-			} else {
-				return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
 			}
-			return NewHTTPError(http.StatusBadRequest, err.Error())
+			return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
 		}
 	case strings.HasPrefix(ctype, MIMEApplicationForm), strings.HasPrefix(ctype, MIMEMultipartForm):
 		params, err := c.FormParams()
@@ -230,12 +229,30 @@ func bindUnmarshaler(field reflect.Value) (BindUnmarshaler, bool) {
 	return nil, false
 }
 
+// textUnmarshaler attempts to unmarshal a reflect.Value into a TextUnmarshaler
+func textUnmarshaler(field reflect.Value) (encoding.TextUnmarshaler, bool) {
+	ptr := reflect.New(field.Type())
+	if ptr.CanInterface() {
+		iface := ptr.Interface()
+		if unmarshaler, ok := iface.(encoding.TextUnmarshaler); ok {
+			return unmarshaler, ok
+		}
+	}
+	return nil, false
+}
+
 func unmarshalFieldNonPtr(value string, field reflect.Value) (bool, error) {
 	if unmarshaler, ok := bindUnmarshaler(field); ok {
 		err := unmarshaler.UnmarshalParam(value)
 		field.Set(reflect.ValueOf(unmarshaler).Elem())
 		return true, err
 	}
+	if unmarshaler, ok := textUnmarshaler(field); ok {
+		err := unmarshaler.UnmarshalText([]byte(value))
+		field.Set(reflect.ValueOf(unmarshaler).Elem())
+		return true, err
+	}
+
 	return false, nil
 }
 

@@ -13,7 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 )
 
 // TODO: Handle TLS proxy
@@ -37,11 +37,11 @@ type (
 		// "/users/*/orders/*": "/user/$1/order/$2",
 		Rewrite map[string]string
 
-    // Context key to store selected ProxyTarget into context.
+		// Context key to store selected ProxyTarget into context.
 		// Optional. Default value "target".
 		ContextKey string
 
-    // To customize the transport to remote.
+		// To customize the transport to remote.
 		// Examples: If custom TLS certificates are required.
 		Transport http.RoundTripper
 
@@ -200,7 +200,7 @@ func Proxy(balancer ProxyBalancer) echo.MiddlewareFunc {
 func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 	// Defaults
 	if config.Skipper == nil {
-		config.Skipper = DefaultLoggerConfig.Skipper
+		config.Skipper = DefaultProxyConfig.Skipper
 	}
 	if config.Balancer == nil {
 		panic("echo: proxy middleware requires balancer")

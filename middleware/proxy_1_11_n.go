@@ -3,9 +3,10 @@
 package middleware
 
 import (
-	"github.com/labstack/echo"
 	"net/http"
 	"net/http/httputil"
+
+	"github.com/labstack/echo/v4"
 )
 
 func proxyHTTP(t *ProxyTarget, c echo.Context, config ProxyConfig) http.Handler {

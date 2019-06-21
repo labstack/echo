@@ -33,6 +33,7 @@ type (
 		propfind HandlerFunc
 		put      HandlerFunc
 		trace    HandlerFunc
+		report   HandlerFunc
 	}
 )
 
@@ -57,7 +58,7 @@ func NewRouter(e *Echo) *Router {
 func (r *Router) Add(method, path string, h HandlerFunc) {
 	// Validate path
 	if path == "" {
-		panic("echo: path cannot be empty")
+		path = "/"
 	}
 	if path[0] != '/' {
 		path = "/" + path
@@ -79,14 +80,13 @@ func (r *Router) Add(method, path string, h HandlerFunc) {
 
 			if i == l {
 				r.insert(method, path[:i], h, pkind, ppath, pnames)
-				return
+			} else {
+				r.insert(method, path[:i], nil, pkind, "", nil)
 			}
-			r.insert(method, path[:i], nil, pkind, "", nil)
 		} else if path[i] == '*' {
 			r.insert(method, path[:i], nil, skind, "", nil)
 			pnames = append(pnames, "*")
 			r.insert(method, path[:i+1], h, akind, ppath, pnames)
-			return
 		}
 	}
 
@@ -248,6 +248,8 @@ func (n *node) addHandler(method string, h HandlerFunc) {
 		n.methodHandler.put = h
 	case http.MethodTrace:
 		n.methodHandler.trace = h
+	case REPORT:
+		n.methodHandler.report = h
 	}
 }
 
@@ -273,6 +275,8 @@ func (n *node) findHandler(method string) HandlerFunc {
 		return n.methodHandler.put
 	case http.MethodTrace:
 		return n.methodHandler.trace
+	case REPORT:
+		return n.methodHandler.report
 	default:
 		return nil
 	}
