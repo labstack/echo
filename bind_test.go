@@ -294,6 +294,56 @@ func TestBindbindData(t *testing.T) {
 	assertBindTestStruct(assert, ts)
 }
 
+func TestBindParam(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(GET, "/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetPath("/users/:id/:name")
+	c.SetParamNames("id", "name")
+	c.SetParamValues("1", "Jon Snow")
+
+	u := new(user)
+	err := c.Bind(u)
+	if assert.NoError(t, err) {
+		assert.Equal(t, 1, u.ID)
+		assert.Equal(t, "Jon Snow", u.Name)
+	}
+
+	// Second test for the absence of a param
+	c2 := e.NewContext(req, rec)
+	c2.SetPath("/users/:id")
+	c2.SetParamNames("id")
+	c2.SetParamValues("1")
+
+	u = new(user)
+	err = c2.Bind(u)
+	if assert.NoError(t, err) {
+		assert.Equal(t, 1, u.ID)
+		assert.Equal(t, "", u.Name)
+	}
+
+	// Bind something with param and post data payload
+	body := bytes.NewBufferString(`{ "name": "Jon Snow" }`)
+	e2 := New()
+	req2 := httptest.NewRequest(POST, "/", body)
+	req2.Header.Set(HeaderContentType, MIMEApplicationJSON)
+
+	rec2 := httptest.NewRecorder()
+
+	c3 := e2.NewContext(req2, rec2)
+	c3.SetPath("/users/:id")
+	c3.SetParamNames("id")
+	c3.SetParamValues("1")
+
+	u = new(user)
+	err = c3.Bind(u)
+	if assert.NoError(t, err) {
+		assert.Equal(t, 1, u.ID)
+		assert.Equal(t, "Jon Snow", u.Name)
+	}
+}
+
 func TestBindUnmarshalTypeError(t *testing.T) {
 	body := bytes.NewBufferString(`{ "id": "text" }`)
 	e := New()
