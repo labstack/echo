@@ -72,6 +72,7 @@ type (
 		router           *Router
 		notFoundHandler  HandlerFunc
 		pool             sync.Pool
+		newCtx           func(r *http.Request, w http.ResponseWriter) Context
 		Server           *http.Server
 		TLSServer        *http.Server
 		Listener         net.Listener
@@ -311,8 +312,19 @@ func New() (e *Echo) {
 	return
 }
 
+func (e *Echo) SetNewContext(newCtx func(r *http.Request, w http.ResponseWriter) Context) {
+	e.newCtx = newCtx
+}
+
 // NewContext returns a Context instance.
 func (e *Echo) NewContext(r *http.Request, w http.ResponseWriter) Context {
+	if e.newCtx != nil {
+		return e.newCtx(r, w)
+	}
+	return e.NewNativeContext(r, w)
+}
+
+func (e *Echo) NewNativeContext(r *http.Request, w http.ResponseWriter) Context {
 	return &context{
 		request:  r,
 		response: NewResponse(w, e),
@@ -562,13 +574,14 @@ func (e *Echo) AcquireContext() Context {
 // ReleaseContext returns the `Context` instance back to the pool.
 // You must call it after `AcquireContext()`.
 func (e *Echo) ReleaseContext(c Context) {
+	c.Free()
 	e.pool.Put(c)
 }
 
 // ServeHTTP implements `http.Handler` interface, which serves HTTP requests.
 func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Acquire context
-	c := e.pool.Get().(*context)
+	c := e.pool.Get().(Context)
 	c.Reset(r, w)
 
 	h := NotFoundHandler

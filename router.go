@@ -1,6 +1,9 @@
 package echo
 
-import "net/http"
+import (
+	"errors"
+	"net/http"
+)
 
 type (
 	// Router is the registry of all registered routes for an `Echo` instance for
@@ -296,7 +299,21 @@ func (n *node) checkMethodNotAllowed() HandlerFunc {
 // - Reset it `Context#Reset()`
 // - Return it `Echo#ReleaseContext()`.
 func (r *Router) Find(method, path string, c Context) {
-	ctx := c.(*context)
+	ctx, isNativeCtx := c.(*context)
+	if !isNativeCtx {
+		for {
+			c = c.Underlying()
+			if c == nil {
+				panic(errors.New("must has underlying native context"))
+			}
+
+			ctx, isNativeCtx = c.(*context)
+			if isNativeCtx {
+				break
+			}
+		}
+	}
+
 	ctx.path = path
 	cn := r.tree // Current node as root
 

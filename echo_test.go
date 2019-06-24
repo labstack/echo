@@ -578,3 +578,54 @@ func TestEchoShutdown(t *testing.T) {
 	err := <-errCh
 	assert.Equal(t, err.Error(), "http: Server closed")
 }
+
+type MyContext struct {
+	Context
+
+	MyField1 int
+	MyField2 int
+	MyField3 int
+}
+
+func (ctx *MyContext) Underlying() Context {
+	return ctx.Context
+}
+
+func (ctx *MyContext) Free() {
+	ctx.MyField1 = 0
+	ctx.MyField2 = 0
+	ctx.MyField3 = 0
+}
+
+func TestEchoWrapContext(t *testing.T) {
+	e := New()
+	e.SetNewContext(func(r *http.Request, w http.ResponseWriter) Context {
+		return &MyContext{Context: e.NewNativeContext(r, w)}
+	})
+	toEchoFunc := func(h func(ctx *MyContext) error) HandlerFunc {
+		return func(ctx Context) error {
+			return h(ctx.(*MyContext))
+		}
+	}
+
+	e.Pre(func(next HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			ctx := c.(*MyContext)
+			ctx.MyField1 = 1
+			ctx.MyField2 = 2
+			ctx.MyField3 = 3
+			return next(c)
+		}
+	})
+
+	e.GET("/users", toEchoFunc(func(c *MyContext) error {
+		assert.Equal(t, c.MyField1, 1)
+		assert.Equal(t, c.MyField2, 2)
+		assert.Equal(t, c.MyField3, 3)
+		return c.String(http.StatusOK, "ok")
+	}))
+
+	c, b := request(http.MethodGet, "/users", e)
+	assert.Equal(t, http.StatusOK, c)
+	assert.Equal(t, "ok", b)
+}

@@ -187,6 +187,12 @@ type (
 		// with `Echo#AcquireContext()` and `Echo#ReleaseContext()`.
 		// See `Echo#ServeHTTP()`
 		Reset(r *http.Request, w http.ResponseWriter)
+
+		// Underlying returns the underlying context.
+		Underlying() Context
+
+		// release managed resources
+		Free()
 	}
 
 	context struct {
@@ -604,3 +610,9 @@ func (c *context) Reset(r *http.Request, w http.ResponseWriter) {
 	// NOTE: Don't reset because it has to have length c.echo.maxParam at all times
 	// c.pvalues = nil
 }
+
+func (c *context) Underlying() Context {
+	return nil
+}
+
+func (c *context) Free() {}
