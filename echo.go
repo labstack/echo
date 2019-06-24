@@ -64,12 +64,14 @@ import (
 type (
 	// Echo is the top-level framework instance.
 	Echo struct {
+		common
 		StdLogger        *stdLog.Logger
 		colorer          *color.Color
 		premiddleware    []MiddlewareFunc
 		middleware       []MiddlewareFunc
 		maxParam         *int
 		router           *Router
+		routers          map[string]*Router
 		notFoundHandler  HandlerFunc
 		pool             sync.Pool
 		newCtx           func(r *http.Request, w http.ResponseWriter) Context
@@ -125,10 +127,8 @@ type (
 	// Map defines a generic map of type `map[string]interface{}`.
 	Map map[string]interface{}
 
-	// i is the interface for Echo and Group.
-	i interface {
-		GET(string, HandlerFunc, ...MiddlewareFunc) *Route
-	}
+	// Common struct for Echo & Group.
+	common struct{}
 )
 
 // HTTP methods
@@ -171,6 +171,8 @@ const (
 	charsetUTF8 = "charset=UTF-8"
 	// PROPFIND Method can be used on collection and property resources.
 	PROPFIND = "PROPFIND"
+	// REPORT Method can be used to get information about a resource, see rfc 3253
+	REPORT = "REPORT"
 )
 
 // Headers
@@ -225,7 +227,7 @@ const (
 
 const (
 	// Version of Echo
-	Version = "4.0.0"
+	Version = "4.1.5"
 	website = "https://echo.labstack.com"
 	// http://patorjk.com/software/taag/#p=display&f=Small%20Slant&t=Echo
 	banner = `
@@ -252,6 +254,7 @@ var (
 		PROPFIND,
 		http.MethodPut,
 		http.MethodTrace,
+		REPORT,
 	}
 )
 
@@ -309,6 +312,7 @@ func New() (e *Echo) {
 		return e.NewContext(nil, nil)
 	}
 	e.router = NewRouter(e)
+	e.routers = map[string]*Router{}
 	return
 }
 
@@ -335,9 +339,14 @@ func (e *Echo) NewNativeContext(r *http.Request, w http.ResponseWriter) Context 
 	}
 }
 
-// Router returns router.
+// Router returns the default router.
 func (e *Echo) Router() *Router {
 	return e.router
+}
+
+// Routers returns the map of host => router.
+func (e *Echo) Routers() map[string]*Router {
+	return e.routers
 }
 
 // DefaultHTTPErrorHandler is the default HTTP error handler. It sends a JSON response
@@ -466,10 +475,10 @@ func (e *Echo) Static(prefix, root string) *Route {
 	if root == "" {
 		root = "." // For security we want to restrict to CWD.
 	}
-	return static(e, prefix, root)
+	return e.static(prefix, root, e.GET)
 }
 
-func static(i i, prefix, root string) *Route {
+func (common) static(prefix, root string, get func(string, HandlerFunc, ...MiddlewareFunc) *Route) *Route {
 	h := func(c Context) error {
 		p, err := url.PathUnescape(c.Param("*"))
 		if err != nil {
@@ -478,26 +487,28 @@ func static(i i, prefix, root string) *Route {
 		name := filepath.Join(root, path.Clean("/"+p)) // "/"+ for security
 		return c.File(name)
 	}
-	i.GET(prefix, h)
 	if prefix == "/" {
-		return i.GET(prefix+"*", h)
+		return get(prefix+"*", h)
 	}
-
-	return i.GET(prefix+"/*", h)
+	return get(prefix+"/*", h)
 }
 
-// File registers a new route with path to serve a static file with optional route-level middleware.
-func (e *Echo) File(path, file string, m ...MiddlewareFunc) *Route {
-	return e.GET(path, func(c Context) error {
+func (common) file(path, file string, get func(string, HandlerFunc, ...MiddlewareFunc) *Route,
+	m ...MiddlewareFunc) *Route {
+	return get(path, func(c Context) error {
 		return c.File(file)
 	}, m...)
 }
 
-// Add registers a new route for an HTTP method and path with matching handler
-// in the router with optional route-level middleware.
-func (e *Echo) Add(method, path string, handler HandlerFunc, middleware ...MiddlewareFunc) *Route {
+// File registers a new route with path to serve a static file with optional route-level middleware.
+func (e *Echo) File(path, file string, m ...MiddlewareFunc) *Route {
+	return e.file(path, file, e.GET, m...)
+}
+
+func (e *Echo) add(host, method, path string, handler HandlerFunc, middleware ...MiddlewareFunc) *Route {
 	name := handlerName(handler)
-	e.router.Add(method, path, func(c Context) error {
+	router := e.findRouter(host)
+	router.Add(method, path, func(c Context) error {
 		h := handler
 		// Chain middleware
 		for i := len(middleware) - 1; i >= 0; i-- {
@@ -512,6 +523,20 @@ func (e *Echo) Add(method, path string, handler HandlerFunc, middleware ...Middl
 	}
 	e.router.routes[method+path] = r
 	return r
+}
+
+// Add registers a new route for an HTTP method and path with matching handler
+// in the router with optional route-level middleware.
+func (e *Echo) Add(method, path string, handler HandlerFunc, middleware ...MiddlewareFunc) *Route {
+	return e.add("", method, path, handler, middleware...)
+}
+
+// Host creates a new router group for the provided host and optional host-level middleware.
+func (e *Echo) Host(name string, m ...MiddlewareFunc) (g *Group) {
+	e.routers[name] = NewRouter(e)
+	g = &Group{host: name, echo: e}
+	g.Use(m...)
+	return
 }
 
 // Group creates a new router group with prefix and optional group-level middleware.
@@ -587,12 +612,12 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h := NotFoundHandler
 
 	if e.premiddleware == nil {
-		e.router.Find(r.Method, getPath(r), c)
+		e.findRouter(r.Host).Find(r.Method, getPath(r), c)
 		h = c.Handler()
 		h = applyMiddleware(h, e.middleware...)
 	} else {
 		h = func(c Context) error {
-			e.router.Find(r.Method, getPath(r), c)
+			e.findRouter(r.Host).Find(r.Method, getPath(r), c)
 			h := c.Handler()
 			h = applyMiddleware(h, e.middleware...)
 			return h(c)
@@ -772,6 +797,15 @@ func getPath(r *http.Request) string {
 		path = r.URL.Path
 	}
 	return path
+}
+
+func (e *Echo) findRouter(host string) *Router {
+	if len(e.routers) > 0 {
+		if r, ok := e.routers[host]; ok {
+			return r
+		}
+	}
+	return e.router
 }
 
 func handlerName(h HandlerFunc) string {
