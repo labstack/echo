@@ -34,11 +34,11 @@ type (
 func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 	req := c.Request()
 
-	paramNames := c.ParamNames()
-	paramValues := c.ParamValues()
-	params := make(map[string][]string)
-	for i, name := range paramNames {
-		params[name] = []string{paramValues[i]}
+	names := c.ParamNames()
+	values := c.ParamValues()
+	params := map[string][]string{}
+	for i, name := range names {
+		params[name] = []string{values[i]}
 	}
 	if err := b.bindData(i, params, "param"); err != nil {
 		return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
@@ -88,6 +88,9 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 }
 
 func (b *DefaultBinder) bindData(ptr interface{}, data map[string][]string, tag string) error {
+	if len(data) == 0 {
+		return nil
+	}
 	typ := reflect.TypeOf(ptr).Elem()
 	val := reflect.ValueOf(ptr).Elem()
 
