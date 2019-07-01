@@ -226,7 +226,7 @@ const (
 
 const (
 	// Version of Echo
-	Version = "4.1.5"
+	Version = "4.1.6"
 	website = "https://echo.labstack.com"
 	// http://patorjk.com/software/taag/#p=display&f=Small%20Slant&t=Echo
 	banner = `
