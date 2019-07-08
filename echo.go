@@ -222,6 +222,7 @@ const (
 	HeaderContentSecurityPolicy           = "Content-Security-Policy"
 	HeaderContentSecurityPolicyReportOnly = "Content-Security-Policy-Report-Only"
 	HeaderXCSRFToken                      = "X-CSRF-Token"
+	HeaderReferrerPolicy                  = "Referrer-Policy"
 )
 
 const (
