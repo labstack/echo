@@ -88,7 +88,7 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 }
 
 func (b *DefaultBinder) bindData(ptr interface{}, data map[string][]string, tag string) error {
-	if len(data) == 0 {
+	if ptr == nil || len(data) == 0 {
 		return nil
 	}
 	typ := reflect.TypeOf(ptr).Elem()
