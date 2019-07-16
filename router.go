@@ -398,6 +398,9 @@ func (r *Router) Find(method, path string, c Context) {
 			if nn != nil {
 				cn = nn
 				nn = cn.parent // Next (Issue #954)
+				if nn != nil {
+					nk = nn.kind
+				}
 				search = ns
 				if nk == pkind {
 					goto Param
