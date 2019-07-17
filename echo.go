@@ -287,7 +287,7 @@ var (
 
 	MethodNotAllowedHandler = func(a []string) func(c Context) error {
 		return func(c Context) error {
-			c.Response().Header().Set("Allow", strings.Join(a, ", "))
+			c.Response().Header().Set(HeaderAllow, strings.Join(a, ", "))
 			return ErrMethodNotAllowed
 		}
 	}

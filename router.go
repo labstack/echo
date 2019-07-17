@@ -282,22 +282,9 @@ func (n *node) findHandler(method string) HandlerFunc {
 	}
 }
 
-func (n *node) findAllowedMethods() []string {
+func (n *node) listAllowedMethods() []string {
 	r := []string{}
-	cs := []string{
-		http.MethodConnect,
-		http.MethodDelete,
-		http.MethodGet,
-		http.MethodHead,
-		http.MethodOptions,
-		http.MethodPatch,
-		http.MethodPost,
-		PROPFIND,
-		http.MethodPut,
-		http.MethodTrace,
-		REPORT,
-	}
-	for _, c := range cs {
+	for _, c := range methods {
 		if n.findHandler(c) != nil {
 			r = append(r, c)
 		}
@@ -308,7 +295,7 @@ func (n *node) findAllowedMethods() []string {
 func (n *node) checkMethodNotAllowed() HandlerFunc {
 	for _, m := range methods {
 		if h := n.findHandler(m); h != nil {
-			return MethodNotAllowedHandler(n.findAllowedMethods())
+			return MethodNotAllowedHandler(n.listAllowedMethods())
 		}
 	}
 	return NotFoundHandler
