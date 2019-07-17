@@ -399,6 +399,7 @@ func TestEchoMethodNotAllowed(t *testing.T) {
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
+	assert.Equal(t, "GET", rec.Header().Get("Allow"))
 }
 
 func TestEchoContext(t *testing.T) {

@@ -52,6 +52,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -284,8 +285,11 @@ var (
 		return ErrNotFound
 	}
 
-	MethodNotAllowedHandler = func(c Context) error {
-		return ErrMethodNotAllowed
+	MethodNotAllowedHandler = func(a []string) func(c Context) error {
+		return func(c Context) error {
+			c.Response().Header().Set("Allow", strings.Join(a, ", "))
+			return ErrMethodNotAllowed
+		}
 	}
 )
 
