@@ -741,6 +741,18 @@ func TestRouterPriority(t *testing.T) {
 	assert.Equal(t, "joe/books", c.Param("*"))
 }
 
+func TestRouterIssue1348(t *testing.T) {
+	e := New()
+	r := e.router
+
+	r.Add(http.MethodGet, "/:lang/", func(c Context) error {
+		return nil
+	})
+	r.Add(http.MethodGet, "/:lang/dupa", func(c Context) error {
+		return nil
+	})
+}
+
 // Issue #372
 func TestRouterPriorityNotFound(t *testing.T) {
 	e := New()
@@ -754,12 +766,6 @@ func TestRouterPriorityNotFound(t *testing.T) {
 	})
 	r.Add(http.MethodGet, "/a/bar", func(c Context) error {
 		c.Set("b", 2)
-		return nil
-	})
-	r.Add(http.MethodGet, "/:lang/", func(c Context) error {
-		return nil
-	})
-	r.Add(http.MethodGet, "/:lang/dupa", func(c Context) error {
 		return nil
 	})
 
