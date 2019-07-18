@@ -218,6 +218,9 @@ func (n *node) findChildWithLabel(l byte) *node {
 }
 
 func (n *node) findChildByKind(t kind) *node {
+	if n == nil {
+		return nil
+	}
 	for _, c := range n.children {
 		if c.kind == t {
 			return c
