@@ -20,8 +20,8 @@ type (
 		pnames        []string
 		methodHandler *methodHandler
 	}
-	kind          uint8
-	children      []*node
+	kind uint8
+	children []*node
 	methodHandler struct {
 		connect  HandlerFunc
 		delete   HandlerFunc
@@ -336,10 +336,14 @@ func (r *Router) Find(method, path string, c Context) {
 			}
 		}
 
+
 		if l == pl {
 			// Continue search
 			search = search[l:]
 		} else {
+			if nn == nil { // Issue #1348
+				return // Not found
+			}
 			cn = nn
 			search = ns
 			if nk == pkind {
@@ -347,8 +351,6 @@ func (r *Router) Find(method, path string, c Context) {
 			} else if nk == akind {
 				goto Any
 			}
-			// Not found
-			return
 		}
 
 		if search == "" {
@@ -405,8 +407,7 @@ func (r *Router) Find(method, path string, c Context) {
 					goto Any
 				}
 			}
-			// Not found
-			return
+			return // Not found
 		}
 		pvalues[len(cn.pnames)-1] = search
 		break
