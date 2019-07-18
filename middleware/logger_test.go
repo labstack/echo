@@ -70,18 +70,18 @@ func TestLoggerIPAddress(t *testing.T) {
 	// With X-Real-IP
 	req.Header.Add(echo.HeaderXRealIP, ip)
 	h(c)
-	assert.Contains(t, ip, buf.String())
+	assert.Contains(t, buf.String(), ip)
 
 	// With X-Forwarded-For
 	buf.Reset()
 	req.Header.Del(echo.HeaderXRealIP)
 	req.Header.Add(echo.HeaderXForwardedFor, ip)
 	h(c)
-	assert.Contains(t, ip, buf.String())
+	assert.Contains(t, buf.String(), ip)
 
 	buf.Reset()
 	h(c)
-	assert.Contains(t, ip, buf.String())
+	assert.Contains(t, buf.String(), ip)
 }
 
 func TestLoggerTemplate(t *testing.T) {
