@@ -756,6 +756,12 @@ func TestRouterPriorityNotFound(t *testing.T) {
 		c.Set("b", 2)
 		return nil
 	})
+	r.Add(http.MethodGet, "/:lang/", func(c Context) error {
+		return nil
+	})
+	r.Add(http.MethodGet, "/:lang/dupa", func(c Context) error {
+		return nil
+	})
 
 	// Find
 	r.Find(http.MethodGet, "/a/foo", c)
