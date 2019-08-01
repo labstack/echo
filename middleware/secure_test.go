@@ -25,6 +25,7 @@ func TestSecure(t *testing.T) {
 	assert.Equal(t, "SAMEORIGIN", rec.Header().Get(echo.HeaderXFrameOptions))
 	assert.Equal(t, "", rec.Header().Get(echo.HeaderStrictTransportSecurity))
 	assert.Equal(t, "", rec.Header().Get(echo.HeaderContentSecurityPolicy))
+	assert.Equal(t, "", rec.Header().Get(echo.HeaderReferrerPolicy))
 
 	// Custom
 	req.Header.Set(echo.HeaderXForwardedProto, "https")
@@ -36,6 +37,7 @@ func TestSecure(t *testing.T) {
 		XFrameOptions:         "",
 		HSTSMaxAge:            3600,
 		ContentSecurityPolicy: "default-src 'self'",
+		ReferrerPolicy:        "origin",
 	})(h)(c)
 	assert.Equal(t, "", rec.Header().Get(echo.HeaderXXSSProtection))
 	assert.Equal(t, "", rec.Header().Get(echo.HeaderXContentTypeOptions))
@@ -43,6 +45,7 @@ func TestSecure(t *testing.T) {
 	assert.Equal(t, "max-age=3600; includeSubdomains", rec.Header().Get(echo.HeaderStrictTransportSecurity))
 	assert.Equal(t, "default-src 'self'", rec.Header().Get(echo.HeaderContentSecurityPolicy))
 	assert.Equal(t, "", rec.Header().Get(echo.HeaderContentSecurityPolicyReportOnly))
+	assert.Equal(t, "origin", rec.Header().Get(echo.HeaderReferrerPolicy))
 
 	// Custom with CSPReportOnly flag
 	req.Header.Set(echo.HeaderXForwardedProto, "https")
@@ -55,6 +58,7 @@ func TestSecure(t *testing.T) {
 		HSTSMaxAge:            3600,
 		ContentSecurityPolicy: "default-src 'self'",
 		CSPReportOnly:         true,
+		ReferrerPolicy:        "origin",
 	})(h)(c)
 	assert.Equal(t, "", rec.Header().Get(echo.HeaderXXSSProtection))
 	assert.Equal(t, "", rec.Header().Get(echo.HeaderXContentTypeOptions))
@@ -62,6 +66,7 @@ func TestSecure(t *testing.T) {
 	assert.Equal(t, "max-age=3600; includeSubdomains", rec.Header().Get(echo.HeaderStrictTransportSecurity))
 	assert.Equal(t, "default-src 'self'", rec.Header().Get(echo.HeaderContentSecurityPolicyReportOnly))
 	assert.Equal(t, "", rec.Header().Get(echo.HeaderContentSecurityPolicy))
+	assert.Equal(t, "origin", rec.Header().Get(echo.HeaderReferrerPolicy))
 
 	// Custom, with preload option enabled
 	req.Header.Set(echo.HeaderXForwardedProto, "https")

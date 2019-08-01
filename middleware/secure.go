@@ -66,6 +66,11 @@ type (
 		// maintained by Chrome (and used by Firefox and Safari): https://hstspreload.org/
 		// Optional.  Default value false.
 		HSTSPreloadEnabled bool `yaml:"hsts_preload_enabled"`
+
+		// ReferrerPolicy sets the `Referrer-Policy` header providing security against
+		// leaking potentially sensitive request paths to third parties.
+		// Optional. Default value "".
+		ReferrerPolicy string `yaml:"referrer_policy"`
 	}
 )
 
@@ -130,6 +135,9 @@ func SecureWithConfig(config SecureConfig) echo.MiddlewareFunc {
 				} else {
 					res.Header().Set(echo.HeaderContentSecurityPolicy, config.ContentSecurityPolicy)
 				}
+			}
+			if config.ReferrerPolicy != "" {
+				res.Header().Set(echo.HeaderReferrerPolicy, config.ReferrerPolicy)
 			}
 			return next(c)
 		}
