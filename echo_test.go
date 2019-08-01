@@ -25,6 +25,7 @@ type (
 
 const (
 	userJSON                    = `{"id":1,"name":"Jon Snow"}`
+	userJSONUnescaped           = `{"id":2,"name":"Johnson&Johnson"}`
 	userXML                     = `<user><id>1</id><name>Jon Snow</name></user>`
 	userForm                    = `id=1&name=Jon Snow`
 	invalidContent              = "invalid content"
@@ -36,6 +37,11 @@ const (
 const userJSONPretty = `{
   "id": 1,
   "name": "Jon Snow"
+}`
+
+const userJSONPrettyUnescaped = `{
+  "id": 2,
+  "name": "Johnson&Johnson"
 }`
 
 const userXMLPretty = `<user>

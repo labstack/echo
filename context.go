@@ -126,6 +126,9 @@ type (
 		// JSONPretty sends a pretty-print JSON with status code.
 		JSONPretty(code int, i interface{}, indent string) error
 
+		// JSONUnescaped sends a JSON response where non of the HTML charachers are escaped
+		JSONUnescaped(code int, i interface{}) error
+
 		// JSONBlob sends a JSON blob response with status code.
 		JSONBlob(code int, b []byte) error
 
@@ -431,10 +434,13 @@ func (c *context) jsonPBlob(code int, callback string, i interface{}) (err error
 	return
 }
 
-func (c *context) json(code int, i interface{}, indent string) error {
+func (c *context) json(code int, i interface{}, indent string, escapeJSON bool) error {
 	enc := json.NewEncoder(c.response)
 	if indent != "" {
 		enc.SetIndent("", indent)
+	}
+	if !escapeJSON {
+		enc.SetEscapeHTML(false)
 	}
 	c.writeContentType(MIMEApplicationJSONCharsetUTF8)
 	c.response.Status = code
@@ -446,11 +452,19 @@ func (c *context) JSON(code int, i interface{}) (err error) {
 	if _, pretty := c.QueryParams()["pretty"]; c.echo.Debug || pretty {
 		indent = defaultIndent
 	}
-	return c.json(code, i, indent)
+	return c.json(code, i, indent, true)
 }
 
 func (c *context) JSONPretty(code int, i interface{}, indent string) (err error) {
-	return c.json(code, i, indent)
+	return c.json(code, i, indent, true)
+}
+
+func (c *context) JSONUnescaped(code int, i interface{}) (err error) {
+	indent := ""
+	if _, pretty := c.QueryParams()["pretty"]; c.echo.Debug || pretty {
+		indent = defaultIndent
+	}
+	return c.json(code, i, indent, false)
 }
 
 func (c *context) JSONBlob(code int, b []byte) (err error) {

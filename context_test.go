@@ -147,6 +147,28 @@ func TestContext(t *testing.T) {
 	}
 	req = httptest.NewRequest(http.MethodGet, "/", nil) // reset
 
+	// JSON without escaping
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec).(*context)
+	err = c.JSONUnescaped(http.StatusOK, user{2, "Johnson&Johnson"})
+	if assert.NoError(err) {
+		assert.Equal(http.StatusOK, rec.Code)
+		assert.Equal(MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(userJSONUnescaped+"\n", rec.Body.String())
+	}
+
+	// JSON with "?pretty" and without escaping
+	req = httptest.NewRequest(http.MethodGet, "/?pretty", nil)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec).(*context)
+	err = c.JSONUnescaped(http.StatusOK, user{2, "Johnson&Johnson"})
+	if assert.NoError(err) {
+		assert.Equal(http.StatusOK, rec.Code)
+		assert.Equal(MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(userJSONPrettyUnescaped+"\n", rec.Body.String())
+	}
+	req = httptest.NewRequest(http.MethodGet, "/", nil) // reset
+
 	// JSONPretty
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec).(*context)
@@ -235,7 +257,7 @@ func TestContext(t *testing.T) {
 			enc := json.NewEncoder(buf)
 			enc.SetIndent(emptyIndent, emptyIndent)
 			err = enc.Encode(u)
-			err = c.json(http.StatusOK, user{1, "Jon Snow"}, emptyIndent)
+			err = c.json(http.StatusOK, user{1, "Jon Snow"}, emptyIndent, true)
 			if assert.NoError(err) {
 				assert.Equal(http.StatusOK, rec.Code)
 				assert.Equal(MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
