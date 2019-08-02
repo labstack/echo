@@ -99,9 +99,9 @@ type (
 
 	// HTTPError represents an error that occurred while handling a request.
 	HTTPError struct {
-		Code     int
-		Message  interface{}
-		Internal error // Stores the error returned by an external dependency
+		Code     int         `json:"code"`
+		Message  interface{} `json:"message"`
+		Internal error       `json:"-"` // Stores the error returned by an external dependency
 	}
 
 	// MiddlewareFunc defines a function to process middleware.
@@ -341,32 +341,28 @@ func (e *Echo) Routers() map[string]*Router {
 // DefaultHTTPErrorHandler is the default HTTP error handler. It sends a JSON response
 // with status code.
 func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
-	var (
-		code = http.StatusInternalServerError
-		msg  interface{}
-	)
-
-	if he, ok := err.(*HTTPError); ok {
-		code = he.Code
-		msg = he.Message
+	he, ok := err.(*HTTPError)
+	if ok {
 		if he.Internal != nil {
 			err = fmt.Errorf("%v, %v", err, he.Internal)
 		}
-	} else if e.Debug {
-		msg = err.Error()
 	} else {
-		msg = http.StatusText(code)
+		he = &HTTPError{
+			Code: http.StatusInternalServerError,
+		}
 	}
-	if _, ok := msg.(string); ok {
-		msg = Map{"message": msg}
+	if e.Debug {
+		he.Message = err.Error()
+	} else {
+		he.Message = http.StatusText(he.Code)
 	}
 
 	// Send response
 	if !c.Response().Committed {
 		if c.Request().Method == http.MethodHead { // Issue #608
-			err = c.NoContent(code)
+			err = c.NoContent(he.Code)
 		} else {
-			err = c.JSON(code, msg)
+			err = c.JSON(he.Code, he)
 		}
 		if err != nil {
 			e.Logger.Error(err)
@@ -749,7 +745,7 @@ func NewHTTPError(code int, message ...interface{}) *HTTPError {
 
 // Error makes it compatible with `error` interface.
 func (he *HTTPError) Error() string {
-	return fmt.Sprintf("code=%d, message=%v", he.Code, he.Message)
+	return fmt.Sprintf("code=%d, message=%v, internal=%v", he.Code, he.Message, he.Internal)
 }
 
 // SetInternal sets error to HTTPError.Internal
