@@ -99,7 +99,7 @@ type (
 
 	// HTTPError represents an error that occurred while handling a request.
 	HTTPError struct {
-		Code     int         `json:"code"`
+		Code     int         `json:"-"`
 		Message  interface{} `json:"message"`
 		Internal error       `json:"-"` // Stores the error returned by an external dependency
 	}
@@ -227,7 +227,7 @@ const (
 
 const (
 	// Version of Echo
-	Version = "4.1.6"
+	Version = "4.1.8"
 	website = "https://echo.labstack.com"
 	// http://patorjk.com/software/taag/#p=display&f=Small%20Slant&t=Echo
 	banner = `
@@ -349,12 +349,11 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 	} else {
 		he = &HTTPError{
 			Code: http.StatusInternalServerError,
+			Message: http.StatusText(http.StatusInternalServerError),
 		}
 	}
 	if e.Debug {
 		he.Message = err.Error()
-	} else {
-		he.Message = http.StatusText(he.Code)
 	}
 
 	// Send response
