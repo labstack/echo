@@ -67,6 +67,20 @@ func TestAddTrailingSlash(t *testing.T) {
 	is.NoError(h(c))
 	is.Equal(http.StatusMovedPermanently, rec.Code)
 	is.Equal("/add-slash/?key=value", rec.Header().Get(echo.HeaderLocation))
+
+	// With skipper
+	req = httptest.NewRequest(http.MethodGet, "///add-slash?key=value", nil)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec)
+	h = AddTrailingSlashWithConfig(TrailingSlashConfig{
+		Skipper: func(c echo.Context) bool {
+			return true
+		},
+	})(func(c echo.Context) error {
+		is.Equal("///add-slash?key=value", c.Request().RequestURI)
+		return nil
+	})
+	is.NoError(h(c))
 }
 
 func TestRemoveTrailingSlash(t *testing.T) {
@@ -137,4 +151,19 @@ func TestRemoveTrailingSlash(t *testing.T) {
 	})
 	is.NoError(h(c))
 	is.Equal("", req.URL.Path)
+
+	// With skipper
+	req = httptest.NewRequest(http.MethodGet, "///remove-slash?key=value", nil)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec)
+	h = RemoveTrailingSlashWithConfig(TrailingSlashConfig{
+		Skipper: func(c echo.Context) bool {
+			return true
+		},
+	})(func(c echo.Context) error {
+		is.Equal("///remove-slash?key=value", c.Request().RequestURI)
+		return nil
+	})
+	is.NoError(h(c))
+
 }
