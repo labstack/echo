@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"strings"
+	"path"
 
 	"github.com/labstack/echo/v4"
 )
@@ -36,40 +36,7 @@ func AddTrailingSlash() echo.MiddlewareFunc {
 // AddTrailingSlashWithConfig returns a AddTrailingSlash middleware with config.
 // See `AddTrailingSlash()`.
 func AddTrailingSlashWithConfig(config TrailingSlashConfig) echo.MiddlewareFunc {
-	// Defaults
-	if config.Skipper == nil {
-		config.Skipper = DefaultTrailingSlashConfig.Skipper
-	}
-
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			if config.Skipper(c) {
-				return next(c)
-			}
-
-			req := c.Request()
-			url := req.URL
-			path := url.Path
-			qs := c.QueryString()
-			if !strings.HasSuffix(path, "/") {
-				path += "/"
-				uri := path
-				if qs != "" {
-					uri += "?" + qs
-				}
-
-				// Redirect
-				if config.RedirectCode != 0 {
-					return c.Redirect(config.RedirectCode, uri)
-				}
-
-				// Forward
-				req.RequestURI = uri
-				url.Path = path
-			}
-			return next(c)
-		}
-	}
+	return slashNormalizerWithConfig(config, true)
 }
 
 // RemoveTrailingSlash returns a root level (before router) middleware which removes
@@ -83,6 +50,12 @@ func RemoveTrailingSlash() echo.MiddlewareFunc {
 // RemoveTrailingSlashWithConfig returns a RemoveTrailingSlash middleware with config.
 // See `RemoveTrailingSlash()`.
 func RemoveTrailingSlashWithConfig(config TrailingSlashConfig) echo.MiddlewareFunc {
+	return slashNormalizerWithConfig(config, false)
+}
+
+// A "slash normalizing" middleware that will either return path/URIs with or
+// without trailing slashes depending on the addSlash parameter.
+func slashNormalizerWithConfig(config TrailingSlashConfig, addSlash bool) echo.MiddlewareFunc {
 	// Defaults
 	if config.Skipper == nil {
 		config.Skipper = DefaultTrailingSlashConfig.Skipper
@@ -96,26 +69,41 @@ func RemoveTrailingSlashWithConfig(config TrailingSlashConfig) echo.MiddlewareFu
 
 			req := c.Request()
 			url := req.URL
-			path := url.Path
-			qs := c.QueryString()
-			l := len(path) - 1
-			if l > 0 && strings.HasSuffix(path, "/") {
-				path = path[:l]
-				uri := path
-				if qs != "" {
-					uri += "?" + qs
-				}
 
-				// Redirect
-				if config.RedirectCode != 0 {
-					return c.Redirect(config.RedirectCode, uri)
-				}
+			cleanpath, cleanURI := normalizePath(url.Path, c.QueryString(), addSlash)
 
-				// Forward
-				req.RequestURI = uri
-				url.Path = path
+			// Redirect
+			if config.RedirectCode != 0 {
+				return c.Redirect(config.RedirectCode, cleanURI)
 			}
+
+			// Forward
+			req.RequestURI = cleanURI
+			url.Path = cleanpath
+
 			return next(c)
 		}
 	}
+}
+
+// Given a potentially dirty path and a querystring (from a request),
+// return a "clean" version of the path, and a "clean" version of the whole URI.
+// If the addSlash parameter is set to true, a single trailing slash will be appended.
+func normalizePath(dirtyPath string, querystring string, addSlash bool) (string, string) {
+	cleanPath := ""
+	if len(dirtyPath) != 0 {
+		cleanPath = path.Clean(dirtyPath)
+	}
+
+	if addSlash {
+		cleanPath += "/"
+	}
+
+	cleanURI := cleanPath
+
+	if querystring != "" {
+		cleanURI += "?" + querystring
+	}
+
+	return cleanPath, cleanURI
 }

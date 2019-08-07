@@ -22,6 +22,28 @@ func TestAddTrailingSlash(t *testing.T) {
 	is.Equal("/add-slash/", req.URL.Path)
 	is.Equal("/add-slash/", req.RequestURI)
 
+	// Very dirty slash addition
+	req = httptest.NewRequest(http.MethodConnect, "/something///add-a-slash", nil)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec)
+	h = AddTrailingSlash()(func(c echo.Context) error {
+		return nil
+	})
+	is.NoError(h(c))
+	is.Equal("/something/add-a-slash/", req.URL.Path)
+	is.Equal("/something/add-a-slash/", req.RequestURI)
+
+	// Very dirty slash addition with querystring
+	req = httptest.NewRequest(http.MethodConnect, "/something///add-a-slash?key=value", nil)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec)
+	h = AddTrailingSlash()(func(c echo.Context) error {
+		return nil
+	})
+	is.NoError(h(c))
+	is.Equal("/something/add-a-slash/", req.URL.Path)
+	is.Equal("/something/add-a-slash/?key=value", req.RequestURI)
+
 	// Method Connect must not fail:
 	req = httptest.NewRequest(http.MethodConnect, "", nil)
 	rec = httptest.NewRecorder()
@@ -59,6 +81,28 @@ func TestRemoveTrailingSlash(t *testing.T) {
 	is.NoError(h(c))
 	is.Equal("/remove-slash", req.URL.Path)
 	is.Equal("/remove-slash", req.RequestURI)
+
+	// Very dirty slash removal
+	req = httptest.NewRequest(http.MethodGet, "/something//remove-slash//", nil)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec)
+	h = RemoveTrailingSlash()(func(c echo.Context) error {
+		return nil
+	})
+	is.NoError(h(c))
+	is.Equal("/something/remove-slash", req.URL.Path)
+	is.Equal("/something/remove-slash", req.RequestURI)
+
+	// Very dirty with querystring
+	req = httptest.NewRequest(http.MethodGet, "/something//remove-slash//?key=value", nil)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec)
+	h = RemoveTrailingSlash()(func(c echo.Context) error {
+		return nil
+	})
+	is.NoError(h(c))
+	is.Equal("/something/remove-slash", req.URL.Path)
+	is.Equal("/something/remove-slash?key=value", req.RequestURI)
 
 	// Method Connect must not fail:
 	req = httptest.NewRequest(http.MethodConnect, "", nil)
