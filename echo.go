@@ -771,6 +771,7 @@ func WrapMiddleware(m func(http.Handler) http.Handler) MiddlewareFunc {
 		return func(c Context) (err error) {
 			m(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				c.SetRequest(r)
+				c.SetResponse(NewResponse(w, c.Echo()))
 				err = next(c)
 			})).ServeHTTP(c.Response(), c.Request())
 			return
