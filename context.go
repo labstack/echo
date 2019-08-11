@@ -26,6 +26,9 @@ type (
 		// SetRequest sets `*http.Request`.
 		SetRequest(r *http.Request)
 
+		// SetResponse sets `*Response`.
+		SetResponse(r *Response)
+
 		// Response returns `*Response`.
 		Response() *Response
 
@@ -226,6 +229,10 @@ func (c *context) SetRequest(r *http.Request) {
 
 func (c *context) Response() *Response {
 	return c.response
+}
+
+func (c *context) SetResponse(r *Response) {
+	c.response = r
 }
 
 func (c *context) IsTLS() bool {
