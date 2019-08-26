@@ -82,7 +82,8 @@ func TestJWT(t *testing.T) {
 			info:     "No signing key provided",
 		},
 		{
-			expErrCode: http.StatusBadRequest,
+			hdrAuth:    validAuth,
+			expErrCode: http.StatusUnauthorized,
 			config: JWTConfig{
 				SigningKey:    validKey,
 				SigningMethod: "RS256",
