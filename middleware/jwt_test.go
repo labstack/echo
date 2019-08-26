@@ -90,6 +90,23 @@ func TestJWT(t *testing.T) {
 			info: "Unexpected signing method",
 		},
 		{
+			hdrAuth:    validAuth,
+			expErrCode: http.StatusUnauthorized,
+			config: JWTConfig{
+				SigningKey:     validKey,
+				SigningMethods: []string{"RS256", "ES256"},
+			},
+			info: "Unexpected signing method with SigningMethods",
+		},
+		{
+			hdrAuth: validAuth,
+			config: JWTConfig{
+				SigningKey:     validKey,
+				SigningMethods: []string{"RS256", "HS256"},
+			},
+			info: "Valid JWT with SigningMethods",
+		},
+		{
 			expErrCode: http.StatusUnauthorized,
 			hdrAuth:    validAuth,
 			config:     JWTConfig{SigningKey: invalidKey},

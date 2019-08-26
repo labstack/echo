@@ -41,6 +41,10 @@ type (
 		// Optional. Default value HS256.
 		SigningMethod string
 
+		// Signing methods, if any match the token will attempt to be validated
+		// Optional. Defaults to the default SigningMethod
+		SigningMethods []string
+
 		// Context key to store user information from the token into context.
 		// Optional. Default value "user".
 		ContextKey string
@@ -141,7 +145,11 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	}
 	config.keyFunc = func(t *jwt.Token) (interface{}, error) {
 		// Check the signing method
-		if t.Method.Alg() != config.SigningMethod {
+		if len(config.SigningMethods) > 0 {
+			if !inSlice(t.Method.Alg(), config.SigningMethods) {
+				return nil, fmt.Errorf("unexpected jwt signing method=%v", t.Header["alg"])
+			}
+		} else if t.Method.Alg() != config.SigningMethod {
 			return nil, fmt.Errorf("unexpected jwt signing method=%v", t.Header["alg"])
 		}
 		if len(config.SigningKeys) > 0 {
@@ -264,4 +272,14 @@ func jwtFromCookie(name string) jwtExtractor {
 		}
 		return cookie.Value, nil
 	}
+}
+
+// inSlice checks if a string exists in a slice of strings
+func inSlice(s string, ss []string) bool {
+	for _, str := range ss {
+		if str == s {
+			return true
+		}
+	}
+	return false
 }
