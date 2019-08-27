@@ -106,6 +106,11 @@ func TestJWT(t *testing.T) {
 			info:    "Valid JWT with custom AuthScheme",
 		},
 		{
+			hdrAuth: token,
+			config:  JWTConfig{SigningKey: validKey, NilAuthScheme: true},
+			info:    "Valid JWT with nil auth scheme",
+		},
+		{
 			hdrAuth: validAuth,
 			config: JWTConfig{
 				Claims:     &jwtCustomClaims{},
@@ -203,7 +208,7 @@ func TestJWT(t *testing.T) {
 		req.Header.Set(echo.HeaderCookie, tc.hdrCookie)
 		c := e.NewContext(req, res)
 
-		if tc.reqURL == "/" + token {
+		if tc.reqURL == "/"+token {
 			c.SetParamNames("jwt")
 			c.SetParamValues(token)
 		}

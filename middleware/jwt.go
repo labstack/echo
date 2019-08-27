@@ -25,7 +25,7 @@ type (
 		// ErrorHandler defines a function which is executed for an invalid token.
 		// It may be used to define a custom JWT error.
 		ErrorHandler JWTErrorHandler
-		
+
 		// ErrorHandlerWithContext is almost identical to ErrorHandler, but it's passed the current context.
 		ErrorHandlerWithContext JWTErrorHandlerWithContext
 
@@ -63,6 +63,10 @@ type (
 		// Optional. Default value "Bearer".
 		AuthScheme string
 
+		// NilAuthScheme indicates there's no keyword in the header storing the JWT Token.
+		// Optional. Default is false.
+		NilAuthScheme bool
+
 		keyFunc jwt.Keyfunc
 	}
 
@@ -74,7 +78,7 @@ type (
 
 	// JWTErrorHandlerWithContext is almost identical to JWTErrorHandler, but it's passed the current context.
 	JWTErrorHandlerWithContext func(error, echo.Context) error
-	
+
 	jwtExtractor func(echo.Context) (string, error)
 )
 
@@ -158,7 +162,7 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 
 	// Initialize
 	parts := strings.Split(config.TokenLookup, ":")
-	extractor := jwtFromHeader(parts[1], config.AuthScheme)
+	extractor := jwtFromHeader(parts[1], config.AuthScheme, config.NilAuthScheme)
 	switch parts[0] {
 	case "query":
 		extractor = jwtFromQuery(parts[1])
@@ -183,7 +187,7 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 				if config.ErrorHandler != nil {
 					return config.ErrorHandler(err)
 				}
-				
+
 				if config.ErrorHandlerWithContext != nil {
 					return config.ErrorHandlerWithContext(err, c)
 				}
@@ -210,7 +214,7 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 				return config.ErrorHandler(err)
 			}
 			if config.ErrorHandlerWithContext != nil {
-					return config.ErrorHandlerWithContext(err, c)
+				return config.ErrorHandlerWithContext(err, c)
 			}
 			return &echo.HTTPError{
 				Code:     http.StatusUnauthorized,
@@ -222,9 +226,13 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 }
 
 // jwtFromHeader returns a `jwtExtractor` that extracts token from the request header.
-func jwtFromHeader(header string, authScheme string) jwtExtractor {
+func jwtFromHeader(header string, authScheme string, nilAuthScheme bool) jwtExtractor {
 	return func(c echo.Context) (string, error) {
 		auth := c.Request().Header.Get(header)
+		if nilAuthScheme && len(auth) > 0 {
+			return auth, nil
+		}
+
 		l := len(authScheme)
 		if len(auth) > l+1 && auth[:l] == authScheme {
 			return auth[l+1:], nil
