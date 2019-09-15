@@ -124,15 +124,15 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 			if _, err = config.template.ExecuteFunc(buf, func(w io.Writer, tag string) (int, error) {
 				switch tag {
 				case "time_unix":
-					return buf.WriteString(strconv.FormatInt(time.Now().Unix(), 10))
+					return buf.WriteString(strconv.FormatInt(stop.Unix(), 10))
 				case "time_unix_nano":
-					return buf.WriteString(strconv.FormatInt(time.Now().UnixNano(), 10))
+					return buf.WriteString(strconv.FormatInt(stop.UnixNano(), 10))
 				case "time_rfc3339":
-					return buf.WriteString(time.Now().Format(time.RFC3339))
+					return buf.WriteString(stop.Format(time.RFC3339))
 				case "time_rfc3339_nano":
-					return buf.WriteString(time.Now().Format(time.RFC3339Nano))
+					return buf.WriteString(stop.Format(time.RFC3339Nano))
 				case "time_custom":
-					return buf.WriteString(time.Now().Format(config.CustomTimeFormat))
+					return buf.WriteString(stop.Format(config.CustomTimeFormat))
 				case "id":
 					id := req.Header.Get(echo.HeaderXRequestID)
 					if id == "" {
