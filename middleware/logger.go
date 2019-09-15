@@ -113,7 +113,6 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 
 			req := c.Request()
 			res := c.Response()
-			start := time.Now()
 			if err = next(c); err != nil {
 				c.Error(err)
 			}
@@ -180,10 +179,10 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 						return buf.Write(b)
 					}
 				case "latency":
-					l := stop.Sub(start)
+					l := stop.Sub(c.RequestTime())
 					return buf.WriteString(strconv.FormatInt(int64(l), 10))
 				case "latency_human":
-					return buf.WriteString(stop.Sub(start).String())
+					return buf.WriteString(stop.Sub(c.RequestTime()).String())
 				case "bytes_in":
 					cl := req.Header.Get(echo.HeaderContentLength)
 					if cl == "" {

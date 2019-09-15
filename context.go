@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 type (
@@ -22,6 +23,9 @@ type (
 	Context interface {
 		// Request returns `*http.Request`.
 		Request() *http.Request
+
+		// RequestTime returns time the request is received.
+		RequestTime() time.Time
 
 		// SetRequest sets `*http.Request`.
 		SetRequest(r *http.Request)
@@ -193,16 +197,17 @@ type (
 	}
 
 	context struct {
-		request  *http.Request
-		response *Response
-		path     string
-		pnames   []string
-		pvalues  []string
-		query    url.Values
-		handler  HandlerFunc
-		store    Map
-		echo     *Echo
-		lock     sync.RWMutex
+		request     *http.Request
+		requestTime time.Time
+		response    *Response
+		path        string
+		pnames      []string
+		pvalues     []string
+		query       url.Values
+		handler     HandlerFunc
+		store       Map
+		echo        *Echo
+		lock        sync.RWMutex
 	}
 )
 
@@ -221,6 +226,10 @@ func (c *context) writeContentType(value string) {
 
 func (c *context) Request() *http.Request {
 	return c.request
+}
+
+func (c *context) RequestTime() time.Time {
+	return c.requestTime
 }
 
 func (c *context) SetRequest(r *http.Request) {
@@ -602,6 +611,7 @@ func (c *context) Logger() Logger {
 
 func (c *context) Reset(r *http.Request, w http.ResponseWriter) {
 	c.request = r
+	c.requestTime = time.Now()
 	c.response.reset(w)
 	c.query = nil
 	c.handler = NotFoundHandler
