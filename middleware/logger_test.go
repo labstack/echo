@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -170,4 +171,70 @@ func TestLoggerCustomTimestamp(t *testing.T) {
 	loggedTime := *(*string)(unsafe.Pointer(objs["time"]))
 	_, err := time.Parse(customTimeFormat, loggedTime)
 	assert.Error(t, err)
+}
+
+func TestLoggerTimestampFormat(t *testing.T) {
+	tests := []struct {
+		name   string
+		cfg    LoggerConfig
+		parser func(string) (time.Time, error)
+	}{
+		{
+			"time_unix",
+			LoggerConfig{Format: `{"time": "${time_unix}"}` + "\n"},
+			func(timeRepr string) (time.Time, error) {
+				sec, err := strconv.ParseInt(timeRepr, 10, 64)
+				return time.Unix(sec, 0), err
+			},
+		}, {
+			"time_unix_nano",
+			LoggerConfig{Format: `{"time": "${time_unix_nano}"}` + "\n"},
+			func(timeRepr string) (time.Time, error) {
+				nanosec, err := strconv.ParseInt(timeRepr, 10, 64)
+				return time.Unix(0, nanosec), err
+			},
+		}, {
+			"time_tfc3339",
+			LoggerConfig{Format: `{"time": "${time_rfc3339}"}` + "\n"},
+			func(timeRepr string) (time.Time, error) {
+				return time.Parse(time.RFC3339, timeRepr)
+			},
+		}, {
+			"time_tfc3339_nano",
+			LoggerConfig{Format: `{"time": "${time_rfc3339_nano}"}` + "\n"},
+			func(timeRepr string) (time.Time, error) {
+				return time.Parse(time.RFC3339Nano, timeRepr)
+			},
+		}, {
+			"time_custom",
+			LoggerConfig{Format: `{"time": "${time_custom}"}` + "\n", CustomTimeFormat: "2006-01-02 15:04:05.00000-07:00"},
+			func(timeRepr string) (time.Time, error) {
+				return time.Parse("2006-01-02 15:04:05.00000-07:00", timeRepr)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		buf := new(bytes.Buffer)
+		e := echo.New()
+		tt.cfg.Output = buf
+		e.Use(LoggerWithConfig(tt.cfg))
+
+		e.GET("/", func(c echo.Context) error {
+			return c.String(http.StatusOK, "logger timestamp format test")
+		})
+
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+
+		var msg struct{ Time string }
+		if err := json.Unmarshal(buf.Bytes(), &msg); err != nil {
+			panic(err)
+		}
+		loggedTime, err := tt.parser(msg.Time)
+		if assert.NoError(t, err, tt.name) {
+			assert.WithinDuration(t, time.Now(), loggedTime, 1*time.Second, tt.name)
+		}
+	}
 }
