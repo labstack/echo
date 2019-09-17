@@ -1,6 +1,10 @@
 package echo
 
-import "net/http"
+import (
+	"net/http"
+	"strings"
+	"unicode"
+)
 
 type (
 	// Router is the registry of all registered routes for an `Echo` instance for
@@ -13,15 +17,19 @@ type (
 	node struct {
 		kind          kind
 		label         byte
+		labelL        byte
+		labelU        byte
 		prefix        string
+		prefixL       string
+		prefixU       string
 		parent        *node
 		children      children
 		ppath         string
 		pnames        []string
 		methodHandler *methodHandler
 	}
-	kind uint8
-	children []*node
+	kind          uint8
+	children      []*node
 	methodHandler struct {
 		connect  HandlerFunc
 		delete   HandlerFunc
@@ -123,6 +131,12 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 			// At root node
 			cn.label = search[0]
 			cn.prefix = search
+			if r.echo.EnableCaseInsensitive {
+				cn.prefixL = strings.ToLower(search)
+				cn.prefixU = strings.ToUpper(search)
+				cn.labelL = cn.prefixL[0]
+				cn.labelU = cn.prefixU[0]
+			}
 			if h != nil {
 				cn.kind = t
 				cn.addHandler(method, h)
@@ -131,12 +145,18 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 			}
 		} else if l < pl {
 			// Split node
-			n := newNode(cn.kind, cn.prefix[l:], cn, cn.children, cn.methodHandler, cn.ppath, cn.pnames)
+			n := newNode(cn.kind, cn.prefix[l:], cn, cn.children, cn.methodHandler, cn.ppath, cn.pnames, r.echo.EnableCaseInsensitive)
 
 			// Reset parent node
 			cn.kind = skind
 			cn.label = cn.prefix[0]
 			cn.prefix = cn.prefix[:l]
+			if r.echo.EnableCaseInsensitive {
+				cn.prefixL = cn.prefixL[:l]
+				cn.prefixU = cn.prefixU[:l]
+				cn.labelL = cn.prefixL[0]
+				cn.labelU = cn.prefixU[0]
+			}
 			cn.children = nil
 			cn.methodHandler = new(methodHandler)
 			cn.ppath = ""
@@ -152,20 +172,20 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 				cn.pnames = pnames
 			} else {
 				// Create child node
-				n = newNode(t, search[l:], cn, nil, new(methodHandler), ppath, pnames)
+				n = newNode(t, search[l:], cn, nil, new(methodHandler), ppath, pnames, r.echo.EnableCaseInsensitive)
 				n.addHandler(method, h)
 				cn.addChild(n)
 			}
 		} else if l < sl {
 			search = search[l:]
-			c := cn.findChildWithLabel(search[0])
+			c := cn.findChildWithLabel(search[0], r.echo.EnableCaseInsensitive)
 			if c != nil {
 				// Go deeper
 				cn = c
 				continue
 			}
 			// Create child node
-			n := newNode(t, search, cn, nil, new(methodHandler), ppath, pnames)
+			n := newNode(t, search, cn, nil, new(methodHandler), ppath, pnames, r.echo.EnableCaseInsensitive)
 			n.addHandler(method, h)
 			cn.addChild(n)
 		} else {
@@ -182,8 +202,8 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 	}
 }
 
-func newNode(t kind, pre string, p *node, c children, mh *methodHandler, ppath string, pnames []string) *node {
-	return &node{
+func newNode(t kind, pre string, p *node, c children, mh *methodHandler, ppath string, pnames []string, caseInsensitive bool) *node {
+	n := &node{
 		kind:          t,
 		label:         pre[0],
 		prefix:        pre,
@@ -193,13 +213,30 @@ func newNode(t kind, pre string, p *node, c children, mh *methodHandler, ppath s
 		pnames:        pnames,
 		methodHandler: mh,
 	}
+
+	if caseInsensitive {
+		n.labelL = byte(unicode.ToLower(rune(pre[0])))
+		n.labelU = byte(unicode.ToUpper(rune(pre[0])))
+		n.prefixL = strings.ToLower(pre)
+		n.prefixU = strings.ToUpper(pre)
+	}
+	return n
 }
 
 func (n *node) addChild(c *node) {
 	n.children = append(n.children, c)
 }
 
-func (n *node) findChild(l byte, t kind) *node {
+func (n *node) findChild(l byte, t kind, caseInsensitive bool) *node {
+	if caseInsensitive {
+		for _, c := range n.children {
+			if (c.labelL == l || c.labelU == l) && c.kind == t {
+				return c
+			}
+		}
+		return nil
+	}
+
 	for _, c := range n.children {
 		if c.label == l && c.kind == t {
 			return c
@@ -208,7 +245,16 @@ func (n *node) findChild(l byte, t kind) *node {
 	return nil
 }
 
-func (n *node) findChildWithLabel(l byte) *node {
+func (n *node) findChildWithLabel(l byte, caseInsensitive bool) *node {
+	if caseInsensitive {
+		for _, c := range n.children {
+			if c.labelU == l || c.labelL == l {
+				return c
+			}
+		}
+		return nil
+	}
+
 	for _, c := range n.children {
 		if c.label == l {
 			return c
@@ -336,7 +382,6 @@ func (r *Router) Find(method, path string, c Context) {
 			}
 		}
 
-
 		if l == pl {
 			// Continue search
 			search = search[l:]
@@ -358,7 +403,7 @@ func (r *Router) Find(method, path string, c Context) {
 		}
 
 		// Static node
-		if child = cn.findChild(search[0], skind); child != nil {
+		if child = cn.findChild(search[0], skind, r.echo.EnableCaseInsensitive); child != nil {
 			// Save next
 			if cn.prefix[len(cn.prefix)-1] == '/' { // Issue #623
 				nk = pkind

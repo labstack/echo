@@ -65,29 +65,30 @@ type (
 	// Echo is the top-level framework instance.
 	Echo struct {
 		common
-		StdLogger        *stdLog.Logger
-		colorer          *color.Color
-		premiddleware    []MiddlewareFunc
-		middleware       []MiddlewareFunc
-		maxParam         *int
-		router           *Router
-		routers          map[string]*Router
-		notFoundHandler  HandlerFunc
-		pool             sync.Pool
-		Server           *http.Server
-		TLSServer        *http.Server
-		Listener         net.Listener
-		TLSListener      net.Listener
-		AutoTLSManager   autocert.Manager
-		DisableHTTP2     bool
-		Debug            bool
-		HideBanner       bool
-		HidePort         bool
-		HTTPErrorHandler HTTPErrorHandler
-		Binder           Binder
-		Validator        Validator
-		Renderer         Renderer
-		Logger           Logger
+		StdLogger             *stdLog.Logger
+		colorer               *color.Color
+		premiddleware         []MiddlewareFunc
+		middleware            []MiddlewareFunc
+		maxParam              *int
+		router                *Router
+		routers               map[string]*Router
+		notFoundHandler       HandlerFunc
+		pool                  sync.Pool
+		Server                *http.Server
+		TLSServer             *http.Server
+		Listener              net.Listener
+		TLSListener           net.Listener
+		AutoTLSManager        autocert.Manager
+		EnableCaseInsensitive bool
+		DisableHTTP2          bool
+		Debug                 bool
+		HideBanner            bool
+		HidePort              bool
+		HTTPErrorHandler      HTTPErrorHandler
+		Binder                Binder
+		Validator             Validator
+		Renderer              Renderer
+		Logger                Logger
 	}
 
 	// Route contains a handler and information for matching against requests.
