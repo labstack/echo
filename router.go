@@ -3,7 +3,6 @@ package echo
 import (
 	"net/http"
 	"strings"
-	"unicode"
 )
 
 type (
@@ -124,7 +123,12 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 		if sl < max {
 			max = sl
 		}
-		for ; l < max && search[l] == cn.prefix[l]; l++ {
+		if !r.echo.EnableCaseInsensitive {
+			for ; l < max && search[l] == cn.prefix[l]; l++ {
+			}
+		} else {
+			for ; l < max && (search[l] == cn.prefixL[l] || search[l] == cn.prefixU[l]); l++ {
+			}
 		}
 
 		if l == 0 {
@@ -215,10 +219,10 @@ func newNode(t kind, pre string, p *node, c children, mh *methodHandler, ppath s
 	}
 
 	if caseInsensitive {
-		n.labelL = byte(unicode.ToLower(rune(pre[0])))
-		n.labelU = byte(unicode.ToUpper(rune(pre[0])))
 		n.prefixL = strings.ToLower(pre)
 		n.prefixU = strings.ToUpper(pre)
+		n.labelL = n.prefixL[0]
+		n.labelU = n.prefixU[0]
 	}
 	return n
 }
@@ -378,7 +382,12 @@ func (r *Router) Find(method, path string, c Context) {
 			if sl < max {
 				max = sl
 			}
-			for ; l < max && search[l] == cn.prefix[l]; l++ {
+			if !r.echo.EnableCaseInsensitive {
+				for ; l < max && search[l] == cn.prefix[l]; l++ {
+				}
+			} else {
+				for ; l < max && (search[l] == cn.prefixL[l] || search[l] == cn.prefixU[l]); l++ {
+				}
 			}
 		}
 
