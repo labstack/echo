@@ -135,6 +135,14 @@ func TestContext(t *testing.T) {
 		assert.Equal(userJSON+"\n", rec.Body.String())
 	}
 
+	// JSONMessage
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec).(*context)
+	err = c.JSONMessage(http.StatusOK, "Json Snow")
+	if assert.NoError(err) {
+		assert.Equal(http.StatusOK, rec.Code)
+	}
+
 	// JSON with "?pretty"
 	req = httptest.NewRequest(http.MethodGet, "/?pretty", nil)
 	rec = httptest.NewRecorder()

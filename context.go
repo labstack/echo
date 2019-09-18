@@ -140,6 +140,9 @@ type (
 		// to construct the JSONP payload.
 		JSONPBlob(code int, callback string, b []byte) error
 
+		// JSONMessage sends a JSON message response with status code
+		JSONMessage(code int, message string) error
+
 		// XML sends an XML response with status code.
 		XML(code int, i interface{}) error
 
@@ -479,6 +482,12 @@ func (c *context) JSONPBlob(code int, callback string, b []byte) (err error) {
 	}
 	_, err = c.response.Write([]byte(");"))
 	return
+}
+
+func (c *context) JSONMessage(code int, message string) (err error) {
+	return c.JSON(code, Map{
+		"message": message,
+	})
 }
 
 func (c *context) xml(code int, i interface{}, indent string) (err error) {
