@@ -1154,7 +1154,7 @@ func TestRouterParam1466(t *testing.T) {
 	assert.Equal(t, "", c.Param("username"))
 }
 
-func TestRouterCaseInsensitive(t *testing.T) {
+func TestRouterStaticCaseInsensitive(t *testing.T) {
 	e := New()
 	e.EnableCaseInsensitive = true
 	r := e.router
@@ -1174,6 +1174,27 @@ func TestRouterCaseInsensitive(t *testing.T) {
 	r.Find(http.MethodGet, pathUpper, c)
 	c.handler(c)
 	assert.Equal(t, path, c.Get("path"))
+}
+
+func TestRouterParamCaseInsensitive(t *testing.T) {
+	e := New()
+	e.EnableCaseInsensitive = true
+	r := e.router
+	r.Add(http.MethodGet, "/users/:id", func(c Context) error {
+		return nil
+	})
+
+	r.Add(http.MethodGet, "/test/:id", func(c Context) error {
+		return nil
+	})
+
+	c := e.NewContext(nil, nil).(*context)
+	r.Find(http.MethodGet, "/users/1", c)
+	assert.Equal(t, "1", c.Param("id"))
+
+	c = e.NewContext(nil, nil).(*context)
+	r.Find(http.MethodGet, "/Users/1", c)
+	assert.Equal(t, "1", c.Param("id"))
 }
 
 func benchmarkRouterRoutes(b *testing.B, routes []*Route) {
