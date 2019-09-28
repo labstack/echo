@@ -466,7 +466,8 @@ func (e *Echo) Static(prefix, root string, m ...MiddlewareFunc) *Route {
 	return e.static(prefix, root, e.GET, m...)
 }
 
-func (common) static(prefix, root string, get func(string, HandlerFunc, ...MiddlewareFunc) *Route) *Route {
+func (common) static(prefix, root string, get func(string, HandlerFunc, ...MiddlewareFunc) *Route,
+	m ...MiddlewareFunc) *Route {
 	h := func(c Context) error {
 		p, err := url.PathUnescape(c.Param("*"))
 		if err != nil {
