@@ -43,15 +43,11 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 	if err := b.bindData(i, params, "param"); err != nil {
 		return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
 	}
-
+	if err = b.bindData(i, c.QueryParams(), "query"); err != nil {
+		return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
+	}
 	if req.ContentLength == 0 {
-		if req.Method == http.MethodGet || req.Method == http.MethodDelete {
-			if err = b.bindData(i, c.QueryParams(), "query"); err != nil {
-				return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
-			}
-			return
-		}
-		return NewHTTPError(http.StatusBadRequest, "Request body can't be empty")
+		return
 	}
 	ctype := req.Header.Get(HeaderContentType)
 	switch {
