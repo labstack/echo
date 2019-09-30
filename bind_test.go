@@ -147,7 +147,6 @@ func TestBindForm(t *testing.T) {
 	assert := assert.New(t)
 
 	testBindOkay(assert, strings.NewReader(userForm), MIMEApplicationForm)
-	testBindError(assert, nil, MIMEApplicationForm, nil)
 	e := New()
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userForm))
 	rec := httptest.NewRecorder()
