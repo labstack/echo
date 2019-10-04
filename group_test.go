@@ -87,6 +87,7 @@ func TestGroupRouteMiddlewareWithMatchAny(t *testing.T) {
 	g.GET("/help", h, m2)
 	g.GET("/*", h, m2)
 	g.GET("", h, m2)
+	e.GET("unrelated", h, m2)
 	e.GET("*", h, m2)
 
 	_, m := request(http.MethodGet, "/group/help", e)
