@@ -384,7 +384,7 @@ func (e *Echo) Use(middleware ...MiddlewareFunc) {
 	e.middleware = append(e.middleware, middleware...)
 }
 
-// Use adds middleware to the chain which is run after response.
+// After adds middleware to the chain which is run after response.
 func (e *Echo) After(middleware ...MiddlewareFunc) {
 	e.aftermiddleware = append(e.aftermiddleware, middleware...)
 }
