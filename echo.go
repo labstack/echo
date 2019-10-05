@@ -69,6 +69,7 @@ type (
 		colorer          *color.Color
 		premiddleware    []MiddlewareFunc
 		middleware       []MiddlewareFunc
+		aftermiddleware  []MiddlewareFunc
 		maxParam         *int
 		router           *Router
 		routers          map[string]*Router
@@ -383,6 +384,11 @@ func (e *Echo) Use(middleware ...MiddlewareFunc) {
 	e.middleware = append(e.middleware, middleware...)
 }
 
+// Use adds middleware to the chain which is run after response.
+func (e *Echo) After(middleware ...MiddlewareFunc) {
+	e.aftermiddleware = append(e.aftermiddleware, middleware...)
+}
+
 // CONNECT registers a new CONNECT route for a path with matching handler in the
 // router with optional route-level middleware.
 func (e *Echo) CONNECT(path string, h HandlerFunc, m ...MiddlewareFunc) *Route {
@@ -600,18 +606,35 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if e.premiddleware == nil {
 		e.findRouter(r.Host).Find(r.Method, getPath(r), c)
-		h = c.Handler()
+		if e.aftermiddleware != nil {
+			h = func(c Context) error {
+				h := NotFoundHandler
+				h = applyMiddleware(h, e.aftermiddleware...)
+				h = applyMiddleware(h, c.Middleware())
+				return h(c)
+			}
+		} else {
+			h = c.Handler()
+		}
 		h = applyMiddleware(h, e.middleware...)
 	} else {
 		h = func(c Context) error {
 			e.findRouter(r.Host).Find(r.Method, getPath(r), c)
-			h := c.Handler()
+			if e.aftermiddleware != nil {
+				h = func(c Context) error {
+					h := NotFoundHandler
+					h = applyMiddleware(h, e.aftermiddleware...)
+					h = applyMiddleware(h, c.Middleware())
+					return h(c)
+				}
+			} else {
+				h = c.Handler()
+			}
 			h = applyMiddleware(h, e.middleware...)
 			return h(c)
 		}
 		h = applyMiddleware(h, e.premiddleware...)
 	}
-
 	// Execute chain
 	if err := h(c); err != nil {
 		e.HTTPErrorHandler(err, c)

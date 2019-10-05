@@ -142,6 +142,58 @@ func TestEchoMiddleware(t *testing.T) {
 	assert.Equal(t, "OK", b)
 }
 
+func TestEchoAfterMiddleware(t *testing.T) {
+	e := New()
+	buf := new(bytes.Buffer)
+
+	e.Pre(func(next HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			assert.Empty(t, c.Path())
+			buf.WriteString("-1")
+			return next(c)
+		}
+	})
+
+	e.Use(func(next HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			buf.WriteString("1")
+			return next(c)
+		}
+	})
+
+	e.Use(func(next HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			buf.WriteString("2")
+			return next(c)
+		}
+	})
+
+	e.Use(func(next HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			buf.WriteString("3")
+			return next(c)
+		}
+	})
+
+	e.After(func(next HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			buf.WriteString("5")
+			return next(c)
+		}
+	})
+
+	// Route
+	e.GET("/", func(c Context) error {
+		buf.WriteString("4")
+		return c.String(http.StatusNotFound, "Not Found")
+	})
+
+	c, b := request(http.MethodGet, "/", e)
+	assert.Equal(t, "-112345", buf.String())
+	assert.Equal(t, http.StatusNotFound, c)
+	assert.Equal(t, "Not Found", b)
+}
+
 func TestEchoMiddlewareError(t *testing.T) {
 	e := New()
 	e.Use(func(next HandlerFunc) HandlerFunc {

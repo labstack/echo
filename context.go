@@ -177,6 +177,9 @@ type (
 		// Handler returns the matched handler by router.
 		Handler() HandlerFunc
 
+		// Middleware returns the matched middleware by router.
+		Middleware() MiddlewareFunc
+
 		// SetHandler sets the matched handler by router.
 		SetHandler(h HandlerFunc)
 
@@ -590,6 +593,18 @@ func (c *context) Echo() *Echo {
 
 func (c *context) Handler() HandlerFunc {
 	return c.handler
+}
+
+func (c *context) Middleware() MiddlewareFunc {
+	return func(next HandlerFunc) HandlerFunc {
+		return func(c1 Context) error {
+			err := c.handler(c1)
+			if err != nil {
+				return err
+			}
+			return next(c1)
+		}
+	}
 }
 
 func (c *context) SetHandler(h HandlerFunc) {
