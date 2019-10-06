@@ -49,5 +49,5 @@ func TestProxy_1_11(t *testing.T) {
 	req.URL.Path = "/api/users"
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "/api/users", req.URL.Path)
-	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
+	assert.Equal(t, http.StatusBadGateway, rec.Code)
 }
