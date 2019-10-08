@@ -354,6 +354,7 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 			Message: http.StatusText(http.StatusInternalServerError),
 		}
 	}
+	defer func(message interface{}) { he.Message = message }(he.Message)
 	if e.Debug {
 		he.Message = err.Error()
 	} else if m, ok := he.Message.(string); ok {

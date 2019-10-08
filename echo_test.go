@@ -57,6 +57,24 @@ func TestEcho(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 }
 
+func TestEchoDebug(t *testing.T) {
+	e := New()
+	e.Debug = true
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	// Router
+	assert.NotNil(t, e.Router())
+
+	// DefaultHTTPErrorHandler In Debug Mode
+	// DefaultHTTPErrorHandler should not modify global vars
+	preErrMsg := ErrNotFound.Error()
+	e.DefaultHTTPErrorHandler(ErrNotFound, c)
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Equal(t, preErrMsg, ErrNotFound.Error())
+}
+
 func TestEchoStatic(t *testing.T) {
 	e := New()
 
