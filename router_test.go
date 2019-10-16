@@ -499,6 +499,15 @@ var (
 		{"GET", "/people/:userId/moments/:collection", ""},
 		{"DELETE", "/moments/:id", ""},
 	}
+
+	// handlerHelper created a function that will set a context key for assertion
+	handlerHelper = func(key string, value int) func(c Context) error {
+		return func(c Context) error {
+			c.Set(key, value)
+			c.Set("path", c.Path())
+			return nil
+		}
+	}
 )
 
 func TestRouterStatic(t *testing.T) {
@@ -631,6 +640,56 @@ func TestRouterMatchAnyMultiLevel(t *testing.T) {
 	assert.Equal(t, "/*", c.Get("path"))
 	assert.Equal(t, "noapi/users/jim", c.Param("*"))
 }
+func TestRouterMatchAnyMultiLevelWithPost(t *testing.T) {
+	e := New()
+	r := e.router
+	handler := func(c Context) error {
+		c.Set("path", c.Path())
+		return nil
+	}
+
+	// Routes
+	e.POST("/api/auth/login", handler)
+	e.POST("/api/auth/forgotPassword", handler)
+	e.Any("/api/*", handler)
+	e.Any("/*", handler)
+
+	// POST /api/auth/login shall choose login method
+	c := e.NewContext(nil, nil).(*context)
+	r.Find(http.MethodPost, "/api/auth/login", c)
+	c.handler(c)
+	assert.Equal(t, "/api/auth/login", c.Get("path"))
+	assert.Equal(t, "", c.Param("*"))
+
+	// GET /api/auth/login shall choose any route
+	// c = e.NewContext(nil, nil).(*context)
+	// r.Find(http.MethodGet, "/api/auth/login", c)
+	// c.handler(c)
+	// assert.Equal(t, "/api/*", c.Get("path"))
+	// assert.Equal(t, "auth/login", c.Param("*"))
+
+	// POST /api/auth/logout shall choose nearest any route
+	c = e.NewContext(nil, nil).(*context)
+	r.Find(http.MethodPost, "/api/auth/logout", c)
+	c.handler(c)
+	assert.Equal(t, "/api/*", c.Get("path"))
+	assert.Equal(t, "auth/logout", c.Param("*"))
+
+	// POST to /api/other/test shall choose nearest any route
+	c = e.NewContext(nil, nil).(*context)
+	r.Find(http.MethodPost, "/api/other/test", c)
+	c.handler(c)
+	assert.Equal(t, "/api/*", c.Get("path"))
+	assert.Equal(t, "other/test", c.Param("*"))
+
+	// GET to /api/other/test shall choose nearest any route
+	c = e.NewContext(nil, nil).(*context)
+	r.Find(http.MethodGet, "/api/other/test", c)
+	c.handler(c)
+	assert.Equal(t, "/api/*", c.Get("path"))
+	assert.Equal(t, "other/test", c.Param("*"))
+
+}
 
 func TestRouterMicroParam(t *testing.T) {
 	e := New()
@@ -695,74 +754,64 @@ func TestRouterPriority(t *testing.T) {
 	r := e.router
 
 	// Routes
-	r.Add(http.MethodGet, "/users", func(c Context) error {
-		c.Set("a", 1)
-		return nil
-	})
-	r.Add(http.MethodGet, "/users/new", func(c Context) error {
-		c.Set("b", 2)
-		return nil
-	})
-	r.Add(http.MethodGet, "/users/:id", func(c Context) error {
-		c.Set("c", 3)
-		return nil
-	})
-	r.Add(http.MethodGet, "/users/dew", func(c Context) error {
-		c.Set("d", 4)
-		return nil
-	})
-	r.Add(http.MethodGet, "/users/:id/files", func(c Context) error {
-		c.Set("e", 5)
-		return nil
-	})
-	r.Add(http.MethodGet, "/users/newsee", func(c Context) error {
-		c.Set("f", 6)
-		return nil
-	})
-	r.Add(http.MethodGet, "/users/*", func(c Context) error {
-		c.Set("g", 7)
-		return nil
-	})
-	r.Add(http.MethodGet, "/users/new/*", func(c Context) error {
-		c.Set("h", 8)
-		return nil
-	})
-	r.Add(http.MethodGet, "/*", func(c Context) error {
-		c.Set("i", 9)
-		return nil
-	})
-
-	c := e.NewContext(nil, nil).(*context)
+	r.Add(http.MethodGet, "/users", handlerHelper("a", 1))
+	r.Add(http.MethodGet, "/users/new", handlerHelper("b", 2))
+	r.Add(http.MethodGet, "/users/:id", handlerHelper("c", 3))
+	r.Add(http.MethodGet, "/users/dew", handlerHelper("d", 4))
+	r.Add(http.MethodGet, "/users/:id/files", handlerHelper("e", 5))
+	r.Add(http.MethodGet, "/users/newsee", handlerHelper("f", 6))
+	r.Add(http.MethodGet, "/users/*", handlerHelper("g", 7))
+	r.Add(http.MethodGet, "/users/new/*", handlerHelper("h", 8))
+	r.Add(http.MethodGet, "/*", handlerHelper("i", 9))
 
 	// Route > /users
+	c := e.NewContext(nil, nil).(*context)
 	r.Find(http.MethodGet, "/users", c)
 	c.handler(c)
 	assert.Equal(t, 1, c.Get("a"))
+	assert.Equal(t, "/users", c.Get("path"))
 
 	// Route > /users/new
+	c = e.NewContext(nil, nil).(*context)
 	r.Find(http.MethodGet, "/users/new", c)
 	c.handler(c)
 	assert.Equal(t, 2, c.Get("b"))
+	assert.Equal(t, "/users/new", c.Get("path"))
 
 	// Route > /users/:id
+	c = e.NewContext(nil, nil).(*context)
 	r.Find(http.MethodGet, "/users/1", c)
 	c.handler(c)
 	assert.Equal(t, 3, c.Get("c"))
+	assert.Equal(t, "/users/:id", c.Get("path"))
 
 	// Route > /users/dew
+	c = e.NewContext(nil, nil).(*context)
 	r.Find(http.MethodGet, "/users/dew", c)
 	c.handler(c)
 	assert.Equal(t, 4, c.Get("d"))
+	assert.Equal(t, "/users/dew", c.Get("path"))
 
 	// Route > /users/:id/files
+	c = e.NewContext(nil, nil).(*context)
 	r.Find(http.MethodGet, "/users/1/files", c)
 	c.handler(c)
 	assert.Equal(t, 5, c.Get("e"))
+	assert.Equal(t, "/users/:id/files", c.Get("path"))
 
 	// Route > /users/:id
+	c = e.NewContext(nil, nil).(*context)
 	r.Find(http.MethodGet, "/users/news", c)
 	c.handler(c)
 	assert.Equal(t, 3, c.Get("c"))
+	assert.Equal(t, "/users/:id", c.Get("path"))
+
+	// Route > /users/newsee
+	c = e.NewContext(nil, nil).(*context)
+	r.Find(http.MethodGet, "/users/newsee", c)
+	c.handler(c)
+	assert.Equal(t, 6, c.Get("f"))
+	assert.Equal(t, "/users/newsee", c.Get("path"))
 
 	// Route > /users/newsee
 	r.Find(http.MethodGet, "/users/newsee", c)
@@ -770,39 +819,52 @@ func TestRouterPriority(t *testing.T) {
 	assert.Equal(t, 6, c.Get("f"))
 
 	// Route > /users/*
+	c = e.NewContext(nil, nil).(*context)
 	r.Find(http.MethodGet, "/users/joe/books", c)
 	c.handler(c)
 	assert.Equal(t, 7, c.Get("g"))
+	assert.Equal(t, "/users/*", c.Get("path"))
 	assert.Equal(t, "joe/books", c.Param("*"))
 
 	// Route > /users/new/* should be matched
+	c = e.NewContext(nil, nil).(*context)
 	r.Find(http.MethodGet, "/users/new/someone", c)
 	c.handler(c)
 	assert.Equal(t, 8, c.Get("h"))
+	assert.Equal(t, "/users/new/*", c.Get("path"))
 	assert.Equal(t, "someone", c.Param("*"))
 
 	// Route > /users/* should be matched although /users/dew exists
+	c = e.NewContext(nil, nil).(*context)
 	r.Find(http.MethodGet, "/users/dew/someone", c)
 	c.handler(c)
 	assert.Equal(t, 7, c.Get("g"))
+	assert.Equal(t, "/users/*", c.Get("path"))
+
 	assert.Equal(t, "dew/someone", c.Param("*"))
 
 	// Route > /users/* should be matched although /users/dew exists
-	r.Find(http.MethodGet, "/users/notexists/someone/else", c)
+	c = e.NewContext(nil, nil).(*context)
+	r.Find(http.MethodGet, "/users/notexists/someone", c)
 	c.handler(c)
 	assert.Equal(t, 7, c.Get("g"))
-	assert.Equal(t, "notexists/someone/else", c.Param("*"))
+	assert.Equal(t, "/users/*", c.Get("path"))
+	assert.Equal(t, "notexists/someone", c.Param("*"))
 
 	// Route > *
+	c = e.NewContext(nil, nil).(*context)
 	r.Find(http.MethodGet, "/nousers", c)
 	c.handler(c)
 	assert.Equal(t, 9, c.Get("i"))
+	assert.Equal(t, "/*", c.Get("path"))
 	assert.Equal(t, "nousers", c.Param("*"))
 
 	// Route > *
+	c = e.NewContext(nil, nil).(*context)
 	r.Find(http.MethodGet, "/nousers/new", c)
 	c.handler(c)
 	assert.Equal(t, 9, c.Get("i"))
+	assert.Equal(t, "/*", c.Get("path"))
 	assert.Equal(t, "nousers/new", c.Param("*"))
 }
 
@@ -884,36 +946,59 @@ func TestRouterParamNames(t *testing.T) {
 	assert.Equal(t, "1", c.Param("fid"))
 }
 
-// Issue #623
+// Issue #623 and #1406
 func TestRouterStaticDynamicConflict(t *testing.T) {
 	e := New()
 	r := e.router
+
+	r.Add(http.MethodGet, "/dictionary/skills", handlerHelper("a", 1))
+	r.Add(http.MethodGet, "/dictionary/:name", handlerHelper("b", 2))
+	r.Add(http.MethodGet, "/users/new", handlerHelper("d", 4))
+	r.Add(http.MethodGet, "/users/:name", handlerHelper("e", 5))
+	r.Add(http.MethodGet, "/server", handlerHelper("c", 3))
+	r.Add(http.MethodGet, "/", handlerHelper("f", 6))
+
 	c := e.NewContext(nil, nil)
-
-	r.Add(http.MethodGet, "/dictionary/skills", func(c Context) error {
-		c.Set("a", 1)
-		return nil
-	})
-	r.Add(http.MethodGet, "/dictionary/:name", func(c Context) error {
-		c.Set("b", 2)
-		return nil
-	})
-	r.Add(http.MethodGet, "/server", func(c Context) error {
-		c.Set("c", 3)
-		return nil
-	})
-
 	r.Find(http.MethodGet, "/dictionary/skills", c)
 	c.Handler()(c)
 	assert.Equal(t, 1, c.Get("a"))
+	assert.Equal(t, "/dictionary/skills", c.Get("path"))
+
+	c = e.NewContext(nil, nil)
+	r.Find(http.MethodGet, "/dictionary/skillsnot", c)
+	c.Handler()(c)
+	assert.Equal(t, 2, c.Get("b"))
+	assert.Equal(t, "/dictionary/:name", c.Get("path"))
+
 	c = e.NewContext(nil, nil)
 	r.Find(http.MethodGet, "/dictionary/type", c)
 	c.Handler()(c)
 	assert.Equal(t, 2, c.Get("b"))
+	assert.Equal(t, "/dictionary/:name", c.Get("path"))
+
 	c = e.NewContext(nil, nil)
 	r.Find(http.MethodGet, "/server", c)
 	c.Handler()(c)
 	assert.Equal(t, 3, c.Get("c"))
+	assert.Equal(t, "/server", c.Get("path"))
+
+	c = e.NewContext(nil, nil)
+	r.Find(http.MethodGet, "/users/new", c)
+	c.Handler()(c)
+	assert.Equal(t, 4, c.Get("d"))
+	assert.Equal(t, "/users/new", c.Get("path"))
+
+	c = e.NewContext(nil, nil)
+	r.Find(http.MethodGet, "/users/new2", c)
+	c.Handler()(c)
+	assert.Equal(t, 5, c.Get("e"))
+	assert.Equal(t, "/users/:name", c.Get("path"))
+
+	c = e.NewContext(nil, nil)
+	r.Find(http.MethodGet, "/", c)
+	c.Handler()(c)
+	assert.Equal(t, 6, c.Get("f"))
+	assert.Equal(t, "/", c.Get("path"))
 }
 
 // Issue #1348
