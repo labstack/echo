@@ -609,5 +609,7 @@ func (c *context) Reset(r *http.Request, w http.ResponseWriter) {
 	c.path = ""
 	c.pnames = nil
 	// NOTE: Don't reset because it has to have length c.echo.maxParam at all times
-	// c.pvalues = nil
+	for i := 0; i < *c.echo.maxParam; i++ {
+		c.pvalues[i] = ""
+	}
 }
