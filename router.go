@@ -17,11 +17,11 @@ type (
 		parent        *node
 		children      children
 		ppath         string
-		pnames        []string
+		pnames        pnamesT
 		methodHandler *methodHandler
 	}
-	kind uint8
-	children []*node
+	kind          uint8
+	children      []*node
 	methodHandler struct {
 		connect  HandlerFunc
 		delete   HandlerFunc
@@ -35,6 +35,19 @@ type (
 		trace    HandlerFunc
 		report   HandlerFunc
 	}
+	pnamesT struct {
+		connect  []string
+		delete   []string
+		get      []string
+		head     []string
+		options  []string
+		patch    []string
+		post     []string
+		propfind []string
+		put      []string
+		trace    []string
+		report   []string
+	}
 )
 
 const (
@@ -47,6 +60,19 @@ const (
 func NewRouter(e *Echo) *Router {
 	return &Router{
 		tree: &node{
+			pnames: pnamesT{
+				connect:  make([]string, 0, 10),
+				delete:   make([]string, 0, 10),
+				get:      make([]string, 0, 10),
+				head:     make([]string, 0, 10),
+				options:  make([]string, 0, 10),
+				patch:    make([]string, 0, 10),
+				post:     make([]string, 0, 10),
+				propfind: make([]string, 0, 10),
+				put:      make([]string, 0, 10),
+				trace:    make([]string, 0, 10),
+				report:   make([]string, 0, 10),
+			},
 			methodHandler: new(methodHandler),
 		},
 		routes: map[string]*Route{},
@@ -127,7 +153,7 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 				cn.kind = t
 				cn.addHandler(method, h)
 				cn.ppath = ppath
-				cn.pnames = pnames
+				cn.setPNames(method, pnames)
 			}
 		} else if l < pl {
 			// Split node
@@ -140,7 +166,7 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 			cn.children = nil
 			cn.methodHandler = new(methodHandler)
 			cn.ppath = ""
-			cn.pnames = nil
+			cn.setPNames(method, nil)
 
 			cn.addChild(n)
 
@@ -149,11 +175,12 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 				cn.kind = t
 				cn.addHandler(method, h)
 				cn.ppath = ppath
-				cn.pnames = pnames
+				cn.setPNames(method, pnames)
 			} else {
 				// Create child node
-				n = newNode(t, search[l:], cn, nil, new(methodHandler), ppath, pnames)
+				n = newNode(t, search[l:], cn, nil, new(methodHandler), ppath, pnamesT{})
 				n.addHandler(method, h)
+				n.setPNames(method, pnames)
 				cn.addChild(n)
 			}
 		} else if l < sl {
@@ -165,16 +192,17 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 				continue
 			}
 			// Create child node
-			n := newNode(t, search, cn, nil, new(methodHandler), ppath, pnames)
+			n := newNode(t, search, cn, nil, new(methodHandler), ppath, pnamesT{})
 			n.addHandler(method, h)
+			n.setPNames(method, pnames)
 			cn.addChild(n)
 		} else {
 			// Node already exists
 			if h != nil {
 				cn.addHandler(method, h)
 				cn.ppath = ppath
-				if len(cn.pnames) == 0 { // Issue #729
-					cn.pnames = pnames
+				if len(cn.findPNames(method)) == 0 { // Issue #729
+					cn.setPNames(method, pnames)
 				}
 			}
 		}
@@ -182,7 +210,7 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 	}
 }
 
-func newNode(t kind, pre string, p *node, c children, mh *methodHandler, ppath string, pnames []string) *node {
+func newNode(t kind, pre string, p *node, c children, mh *methodHandler, ppath string, pnames pnamesT) *node {
 	return &node{
 		kind:          t,
 		label:         pre[0],
@@ -282,6 +310,62 @@ func (n *node) findHandler(method string) HandlerFunc {
 	}
 }
 
+func (n *node) findPNames(method string) []string {
+	switch method {
+	case http.MethodConnect:
+		return n.pnames.connect
+	case http.MethodDelete:
+		return n.pnames.delete
+	case http.MethodGet:
+		return n.pnames.get
+	case http.MethodHead:
+		return n.pnames.head
+	case http.MethodOptions:
+		return n.pnames.options
+	case http.MethodPatch:
+		return n.pnames.patch
+	case http.MethodPost:
+		return n.pnames.post
+	case PROPFIND:
+		return n.pnames.propfind
+	case http.MethodPut:
+		return n.pnames.put
+	case http.MethodTrace:
+		return n.pnames.trace
+	case REPORT:
+		return n.pnames.report
+	default:
+		return nil
+	}
+}
+
+func (n *node) setPNames(method string, p []string) {
+	switch method {
+	case http.MethodConnect:
+		n.pnames.connect = p
+	case http.MethodDelete:
+		n.pnames.delete = p
+	case http.MethodGet:
+		n.pnames.get = p
+	case http.MethodHead:
+		n.pnames.head = p
+	case http.MethodOptions:
+		n.pnames.options = p
+	case http.MethodPatch:
+		n.pnames.patch = p
+	case http.MethodPost:
+		n.pnames.post = p
+	case PROPFIND:
+		n.pnames.propfind = p
+	case http.MethodPut:
+		n.pnames.put = p
+	case http.MethodTrace:
+		n.pnames.trace = p
+	case REPORT:
+		n.pnames.report = p
+	}
+}
+
 func (n *node) checkMethodNotAllowed() HandlerFunc {
 	for _, m := range methods {
 		if h := n.findHandler(m); h != nil {
@@ -335,7 +419,6 @@ func (r *Router) Find(method, path string, c Context) {
 			for ; l < max && search[l] == cn.prefix[l]; l++ {
 			}
 		}
-
 
 		if l == pl {
 			// Continue search
@@ -412,13 +495,13 @@ func (r *Router) Find(method, path string, c Context) {
 			}
 			return // Not found
 		}
-		pvalues[len(cn.pnames)-1] = search
+		pvalues[len(cn.findPNames(method))-1] = search
 		break
 	}
 
 	ctx.handler = cn.findHandler(method)
 	ctx.path = cn.ppath
-	ctx.pnames = cn.pnames
+	ctx.pnames = cn.findPNames(method)
 
 	// NOTE: Slow zone...
 	if ctx.handler == nil {
@@ -435,8 +518,8 @@ func (r *Router) Find(method, path string, c Context) {
 			ctx.handler = cn.checkMethodNotAllowed()
 		}
 		ctx.path = cn.ppath
-		ctx.pnames = cn.pnames
-		pvalues[len(cn.pnames)-1] = ""
+		ctx.pnames = cn.findPNames(method)
+		pvalues[len(cn.findPNames(method))-1] = ""
 	}
 
 	return
