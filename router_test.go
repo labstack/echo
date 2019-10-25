@@ -1003,7 +1003,7 @@ func BenchmarkRouterGooglePlusAPI(b *testing.B) {
 
 func (n *node) printTree(pfx string, tail bool) {
 	p := prefix(tail, pfx, "└── ", "├── ")
-	fmt.Printf("%s%s, %p: type=%d, parent=%p, handler=%v, pnamesT=%v\n", p, n.prefix, n, n.kind, n.parent, n.methodHandler, n.pnames)
+	fmt.Printf("%s%s, %p: type=%d, parent=%p, handler=%v, pnames=%+v\n", p, n.prefix, n, n.kind, n.parent, n.methodHandler, n.pnames)
 
 	children := n.children
 	l := len(children)

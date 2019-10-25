@@ -60,19 +60,6 @@ const (
 func NewRouter(e *Echo) *Router {
 	return &Router{
 		tree: &node{
-			pnames: pnamesT{
-				connect:  make([]string, 0, 10),
-				delete:   make([]string, 0, 10),
-				get:      make([]string, 0, 10),
-				head:     make([]string, 0, 10),
-				options:  make([]string, 0, 10),
-				patch:    make([]string, 0, 10),
-				post:     make([]string, 0, 10),
-				propfind: make([]string, 0, 10),
-				put:      make([]string, 0, 10),
-				trace:    make([]string, 0, 10),
-				report:   make([]string, 0, 10),
-			},
 			methodHandler: new(methodHandler),
 		},
 		routes: map[string]*Route{},
