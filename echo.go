@@ -354,10 +354,13 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 			Message: http.StatusText(http.StatusInternalServerError),
 		}
 	}
+
+	var message interface{}
+
 	if e.Debug {
-		he.Message = err.Error()
+		message = err.Error()
 	} else if m, ok := he.Message.(string); ok {
-		he.Message = Map{"message": m}
+		message = Map{"message": m}
 	}
 
 	// Send response
@@ -365,7 +368,7 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 		if c.Request().Method == http.MethodHead { // Issue #608
 			err = c.NoContent(he.Code)
 		} else {
-			err = c.JSON(he.Code, he.Message)
+			err = c.JSON(he.Code, message)
 		}
 		if err != nil {
 			e.Logger.Error(err)
