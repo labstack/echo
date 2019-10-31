@@ -240,6 +240,9 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 			if c.IsWebSocket() && req.Header.Get(echo.HeaderXForwardedFor) == "" { // For HTTP, it is automatically set by Go HTTP reverse proxy.
 				req.Header.Set(echo.HeaderXForwardedFor, c.RealIP())
 			}
+			if strings.Count(req.Header.Get(echo.HeaderAccessControlAllowOrigin), "*") > 0 && strings.Trim(req.Header.Get(echo.HeaderAccessControlAllowOrigin), " ") != "*" {
+				req.Header.Set(echo.HeaderAccessControlAllowOrigin, "*")
+			}
 
 			// Proxy
 			switch {
