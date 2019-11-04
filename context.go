@@ -348,7 +348,9 @@ func (c *context) FormParams() (url.Values, error) {
 
 func (c *context) FormFile(name string) (*multipart.FileHeader, error) {
 	f, fh, err := c.request.FormFile(name)
-	defer f.Close()
+	if f != nil {
+		defer f.Close()
+	}
 	return fh, err
 }
 
