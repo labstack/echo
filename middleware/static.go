@@ -205,6 +205,7 @@ func listDir(t *template.Template, name string, res *echo.Response) (err error) 
 	if err != nil {
 		return
 	}
+	defer file.Close()
 	files, err := file.Readdir(-1)
 	if err != nil {
 		return
