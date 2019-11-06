@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"encoding/base64"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -68,4 +69,27 @@ func TestBasicAuth(t *testing.T) {
 	req.Header.Set(echo.HeaderAuthorization, auth)
 	he = h(c).(*echo.HTTPError)
 	assert.Equal(http.StatusUnauthorized, he.Code)
+
+	// Invalid Authorization header when decode header error
+	auth = strings.ToUpper(basic) + " invalid base64"
+	req.Header.Set(echo.HeaderAuthorization, auth)
+	err := h(c)
+	assert.Error(err, "Expected an error, but doesn't happen")
+
+	errString := "invalid auth"
+	ef := func(u, p string, c echo.Context) (bool, error) {
+		return false, errors.New(errString)
+	}
+	h = BasicAuthWithConfig(BasicAuthConfig{
+		Skipper:   nil,
+		Validator: ef,
+		Realm:     "someRealm",
+	})(func(c echo.Context) error {
+		return c.String(http.StatusOK, "test")
+	})
+	// Invalid Authorization header when validator returns error
+	auth = strings.ToUpper(basic) + " " + base64.StdEncoding.EncodeToString([]byte("joe:secret"))
+	req.Header.Set(echo.HeaderAuthorization, auth)
+	err = h(c)
+	assert.EqualError(err, errString)
 }
