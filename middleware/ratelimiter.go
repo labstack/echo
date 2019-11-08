@@ -28,7 +28,7 @@ type (
 
 		//TODO: WhiteList
 	}
-
+	// LimiterConfig defines the limitation of middleware
 	LimiterConfig struct {
 		//The max count in duration for no policy, default is 100.
 		Max      int
