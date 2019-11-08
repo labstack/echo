@@ -46,6 +46,7 @@ func TestRateLimiter(t *testing.T) {
 			rateLimitWithConfig := RateLimiterWithConfig(RateLimiterConfig{
 				LimitConfig:LimiterConfig{
 					Max: 2,
+					Strategy:"ip",
 				},
 			})
 
@@ -72,6 +73,7 @@ func TestRateLimiter(t *testing.T) {
 				LimitConfig:LimiterConfig{
 					Max: 2,
 					Duration: expectedDuration,
+					Strategy:"ip",
 				},
 			})
 
@@ -100,6 +102,9 @@ func TestRateLimiter(t *testing.T) {
 			c := e.NewContext(req, rec)
 			rateLimitWithConfig := RateLimiterWithConfig(RateLimiterConfig{
 				SkipRateLimiterInternalError:true,
+				LimitConfig:LimiterConfig{
+					Strategy:"ip",
+				},
 			})
 
 			h := rateLimitWithConfig(func(c echo.Context) error {
@@ -172,6 +177,9 @@ func TestRedisRatelimiter(t *testing.T) {
 
 			rateLimitWithConfig := RateLimiterWithConfig(RateLimiterConfig{
 				Client:&redisClient{client},
+				LimitConfig:LimiterConfig{
+					Strategy:"ip",
+				},
 			})
 			assert.NotNil(t,rateLimitWithConfig)
 		})
@@ -187,6 +195,7 @@ func TestRedisRatelimiter(t *testing.T) {
 				LimitConfig:LimiterConfig{
 					Max:100,
 					Duration:time.Minute*1,
+					Strategy:"ip",
 				},
 				Client:&redisClient{client},
 			})
@@ -212,6 +221,7 @@ func TestRedisRatelimiter(t *testing.T) {
 				LimitConfig:LimiterConfig{
 					Max:2,
 					Duration:time.Minute *1,
+					Strategy:"ip",
 				},
 			})
 
@@ -242,6 +252,7 @@ func TestRedisRatelimiter(t *testing.T) {
 			LimitConfig:LimiterConfig{
 				Max:      100,
 				Duration: duration,
+				Strategy:"ip",
 			},
 		})
 
@@ -336,6 +347,7 @@ func TestMemoryRateLimiter(t *testing.T) {
 			LimitConfig:LimiterConfig{
 				Max:100,
 				Duration:time.Minute,
+				Strategy:"ip",
 			},
 			Prefix:"Test",
 		})
@@ -361,6 +373,7 @@ func TestMemoryRateLimiter(t *testing.T) {
 			LimitConfig:LimiterConfig{
 				Max:100,
 				Duration:time.Minute,
+				Strategy:"ip",
 			},
 			Prefix:"Test",
 		})
@@ -389,6 +402,7 @@ func TestMemoryRateLimiter(t *testing.T) {
 			LimitConfig:LimiterConfig{
 				Max:100,
 				Duration:time.Minute,
+				Strategy:"ip",
 			},
 			Prefix:"Test",
 		})
@@ -421,6 +435,7 @@ func TestMemoryRateLimiter(t *testing.T) {
 			LimitConfig:LimiterConfig{
 				Max:100,
 				Duration:time.Minute,
+				Strategy:"ip",
 			},
 			Prefix:"Test",
 		})
@@ -466,6 +481,7 @@ func TestMemoryRateLimiter(t *testing.T) {
 			LimitConfig:LimiterConfig{
 				Max:100,
 				Duration:time.Minute,
+				Strategy:"ip",
 			},
 			Prefix:"Test",
 		})
@@ -489,6 +505,7 @@ func TestMemoryRateLimiter(t *testing.T) {
 			LimitConfig:LimiterConfig{
 				Max:100,
 				Duration:time.Minute,
+				Strategy:"ip",
 			},
 			Prefix:"Test",
 		})
@@ -527,6 +544,7 @@ func TestMemoryRateLimiter(t *testing.T) {
 			LimitConfig:LimiterConfig{
 				Max:100,
 				Duration:time.Minute,
+				Strategy:"ip",
 			},
 			Prefix:"Test",
 		})
@@ -587,6 +605,7 @@ func TestMemoryRateLimiter(t *testing.T) {
 			LimitConfig:LimiterConfig{
 				Max:100,
 				Duration:time.Minute,
+				Strategy:"ip",
 			},
 			Prefix:"Test",
 		})
@@ -617,6 +636,7 @@ func TestMemoryRateLimiter(t *testing.T) {
 			LimitConfig:LimiterConfig{
 				Max:100,
 				Duration:time.Minute,
+				Strategy:"ip",
 			},
 			Prefix:"Test",
 		})
@@ -738,6 +758,7 @@ func TestMemoryRateLimiter(t *testing.T) {
 			LimitConfig:LimiterConfig{
 				Max:100,
 				Duration:time.Minute,
+				Strategy:"ip",
 			},
 			Prefix:"Test",
 		})
@@ -857,6 +878,7 @@ func TestMemoryRateLimiter(t *testing.T) {
 			LimitConfig:LimiterConfig{
 				Max:100,
 				Duration:time.Minute,
+				Strategy:"ip",
 			},
 			Prefix:"Test",
 		})
@@ -957,6 +979,7 @@ func TestMemoryRateLimiter(t *testing.T) {
 			LimitConfig:LimiterConfig{
 				Max:100,
 				Duration:time.Minute,
+				Strategy:"ip",
 			},
 			Prefix:"Test",
 		})
