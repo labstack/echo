@@ -1,11 +1,10 @@
 package middleware
 
 import (
+	"github.com/labstack/echo"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 
 	"crypto/rand"
@@ -45,7 +44,9 @@ func TestRateLimiter(t *testing.T) {
 
 			//ratelimit with config
 			rateLimitWithConfig := RateLimiterWithConfig(RateLimiterConfig{
-				Max: 2,
+				LimitConfig:LimiterConfig{
+					Max: 2,
+				},
 			})
 
 			rec := httptest.NewRecorder()
@@ -68,8 +69,10 @@ func TestRateLimiter(t *testing.T) {
 
 			//ratelimit with config; expected result getting 429 after 5 second it should return 200
 			rateLimitWithConfig := RateLimiterWithConfig(RateLimiterConfig{
-				Max:      2,
-				Duration: expectedDuration,
+				LimitConfig:LimiterConfig{
+					Max: 2,
+					Duration: expectedDuration,
+				},
 			})
 
 			rec := httptest.NewRecorder()
@@ -181,9 +184,11 @@ func TestRedisRatelimiter(t *testing.T) {
 			c := e.NewContext(req, rec)
 
 			rateLimitWithConfig := RateLimiterWithConfig(RateLimiterConfig{
-				Max:100,
+				LimitConfig:LimiterConfig{
+					Max:100,
+					Duration:time.Minute*1,
+				},
 				Client:&redisClient{client},
-				Duration:time.Minute *1,
 			})
 
 			hx := rateLimitWithConfig(func(c echo.Context) error {
@@ -203,9 +208,11 @@ func TestRedisRatelimiter(t *testing.T) {
 			c := e.NewContext(req, rec)
 
 			xx := RateLimiterWithConfig(RateLimiterConfig{
-				Max:2,
 				Client:&redisClient{client},
-				Duration:time.Minute *1,
+				LimitConfig:LimiterConfig{
+					Max:2,
+					Duration:time.Minute *1,
+				},
 			})
 
 			hx := xx(func(c echo.Context) error {
@@ -232,8 +239,10 @@ func TestRedisRatelimiter(t *testing.T) {
 		redisLimiter = newRedisLimiter(&RateLimiterConfig{
 
 			Client:   &redisClient{client},
-			Max:      100,
-			Duration: duration,
+			LimitConfig:LimiterConfig{
+				Max:      100,
+				Duration: duration,
+			},
 		})
 
 		t.Run("New instance running with failedClient should be", func(t *testing.T) {
@@ -324,8 +333,10 @@ func TestMemoryRateLimiter(t *testing.T) {
 		assert := assert.New(t)
 
 		limiter := newMemoryLimiter(&RateLimiterConfig{
-			Max:100,
-			Duration:time.Minute,
+			LimitConfig:LimiterConfig{
+				Max:100,
+				Duration:time.Minute,
+			},
 			Prefix:"Test",
 		})
 
@@ -347,8 +358,10 @@ func TestMemoryRateLimiter(t *testing.T) {
 		assert := assert.New(t)
 
 		limiter := newMemoryLimiter(&RateLimiterConfig{
-			Max:100,
-			Duration:time.Minute,
+			LimitConfig:LimiterConfig{
+				Max:100,
+				Duration:time.Minute,
+			},
 			Prefix:"Test",
 		})
 
@@ -373,8 +386,10 @@ func TestMemoryRateLimiter(t *testing.T) {
 		assert := assert.New(t)
 
 		limiter := newMemoryLimiter(&RateLimiterConfig{
-			Max:100,
-			Duration:time.Minute,
+			LimitConfig:LimiterConfig{
+				Max:100,
+				Duration:time.Minute,
+			},
 			Prefix:"Test",
 		})
 		policy := []int{10, 500}
@@ -403,8 +418,10 @@ func TestMemoryRateLimiter(t *testing.T) {
 		assert := assert.New(t)
 
 		limiter := newMemoryLimiter(&RateLimiterConfig{
-			Max:100,
-			Duration:time.Minute,
+			LimitConfig:LimiterConfig{
+				Max:100,
+				Duration:time.Minute,
+			},
 			Prefix:"Test",
 		})
 		id := genID()
@@ -446,8 +463,10 @@ func TestMemoryRateLimiter(t *testing.T) {
 		assert := assert.New(t)
 
 		limiter := newMemoryLimiter(&RateLimiterConfig{
-			Max:100,
-			Duration:time.Minute,
+			LimitConfig:LimiterConfig{
+				Max:100,
+				Duration:time.Minute,
+			},
 			Prefix:"Test",
 		})
 		id := genID()
@@ -467,8 +486,10 @@ func TestMemoryRateLimiter(t *testing.T) {
 		assert := assert.New(t)
 
 		limiter := newMemoryLimiter(&RateLimiterConfig{
-			Max:100,
-			Duration:time.Minute,
+			LimitConfig:LimiterConfig{
+				Max:100,
+				Duration:time.Minute,
+			},
 			Prefix:"Test",
 		})
 		id := genID()
@@ -484,8 +505,10 @@ func TestMemoryRateLimiter(t *testing.T) {
 		assert := assert.New(t)
 
 		limiter := newMemoryLimiter(&RateLimiterConfig{
-			Max:100,
-			Duration:time.Minute,
+			LimitConfig:LimiterConfig{
+				Max:100,
+				Duration:time.Minute,
+			},
 			Prefix:"Test",
 		})
 		id := genID()
@@ -501,8 +524,10 @@ func TestMemoryRateLimiter(t *testing.T) {
 		assert := assert.New(t)
 
 		limiter := newMemoryLimiter(&RateLimiterConfig{
-			Max:100,
-			Duration:time.Minute,
+			LimitConfig:LimiterConfig{
+				Max:100,
+				Duration:time.Minute,
+			},
 			Prefix:"Test",
 		})
 		id := genID()
@@ -559,8 +584,10 @@ func TestMemoryRateLimiter(t *testing.T) {
 		assert := assert.New(t)
 
 		limiter := newMemoryLimiter(&RateLimiterConfig{
-			Max:100,
-			Duration:time.Minute,
+			LimitConfig:LimiterConfig{
+				Max:100,
+				Duration:time.Minute,
+			},
 			Prefix:"Test",
 		})
 		policy := []int{1000, 1000}
@@ -587,8 +614,10 @@ func TestMemoryRateLimiter(t *testing.T) {
 		assert := assert.New(t)
 
 		limiter := newMemoryLimiter(&RateLimiterConfig{
-			Max:100,
-			Duration:time.Minute,
+			LimitConfig:LimiterConfig{
+				Max:100,
+				Duration:time.Minute,
+			},
 			Prefix:"Test",
 		})
 
@@ -706,8 +735,10 @@ func TestMemoryRateLimiter(t *testing.T) {
 
 		var id = genID()
 		limiter := newMemoryLimiter(&RateLimiterConfig{
-			Max:100,
-			Duration:time.Minute,
+			LimitConfig:LimiterConfig{
+				Max:100,
+				Duration:time.Minute,
+			},
 			Prefix:"Test",
 		})
 		policy := []int{2, 150, 2, 200, 3, 300, 3, 400}
@@ -823,8 +854,10 @@ func TestMemoryRateLimiter(t *testing.T) {
 
 		var id = genID()
 		limiter := newMemoryLimiter(&RateLimiterConfig{
-			Max:100,
-			Duration:time.Minute,
+			LimitConfig:LimiterConfig{
+				Max:100,
+				Duration:time.Minute,
+			},
 			Prefix:"Test",
 		})
 		policy := []int{2, 300, 3, 100}
@@ -921,8 +954,10 @@ func TestMemoryRateLimiter(t *testing.T) {
 
 		var id = genID()
 		limiter := newMemoryLimiter(&RateLimiterConfig{
-			Max:100,
-			Duration:time.Minute,
+			LimitConfig:LimiterConfig{
+				Max:100,
+				Duration:time.Minute,
+			},
 			Prefix:"Test",
 		})
 		policy := []int{3, 300, 2, 200}

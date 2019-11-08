@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"errors"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo"
 	"net/http"
 	"strconv"
 	"sync"
@@ -10,18 +10,13 @@ import (
 	"fmt"
 	"strings"
 )
-
 type (
 	// RateLimiterConfig defines the config for RateLimiter middleware.
 	RateLimiterConfig struct {
 		// Skipper defines a function to skip middleware.
 		Skipper Skipper
 
-		// The max count in duration for no policy, default is 100.
-		Max      int
-
-		// Count duration for no policy, default is 1 Minute.
-		Duration time.Duration
+		LimitConfig LimiterConfig
 		//key prefix, default is "LIMIT:".
 		Prefix   string
 
@@ -30,6 +25,19 @@ type (
 
 		//If request gets a  internal limiter error, just skip the limiter and let it go to next middleware
 		SkipRateLimiterInternalError	bool
+
+		//TODO: WhiteList
+	}
+
+	LimiterConfig struct {
+		//The max count in duration for no policy, default is 100.
+		Max      int
+		//ip or header(key)
+		Strategy string
+		//Count duration for no policy, default is 1 Minute.
+		Duration time.Duration
+		//If the strategy is header which header key will be used for limits. such as Header("Client-Token")
+		Key           string
 	}
 
 	limiter struct {
@@ -59,14 +67,16 @@ type (
 
 )
 
-
-
 var (
 	// DefaultRateLimiterConfig is the default rate limit middleware config.
 	DefaultRateLimiterConfig = RateLimiterConfig{
 		Skipper:      DefaultSkipper,
-		Max:100,
-		Duration: time.Minute * 1,
+		LimitConfig:LimiterConfig{
+			Max:100,
+			Duration: time.Minute * 1,
+			Strategy:"ip",
+			Key:"",
+		},
 		Prefix:"LIMIT",
 		Client:nil,
 		SkipRateLimiterInternalError:false,
@@ -86,15 +96,17 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 	if config.Skipper == nil {
 		config.Skipper = DefaultRateLimiterConfig.Skipper
 	}
-
+	if len(config.LimitConfig.Strategy) == 0 {
+		panic("echo: rate limiter middleware requires Strategy (use ip or header(key)")
+	}
 	if config.Prefix == "" {
 		config.Prefix = "LIMIT:"
 	}
-	if config.Max <= 0 {
-		config.Max = 100
+	if config.LimitConfig.Max <= 0 {
+		config.LimitConfig.Max = 100
 	}
-	if config.Duration <= 0 {
-		config.Duration = time.Minute *1
+	if config.LimitConfig.Duration <= 0 {
+		config.LimitConfig.Duration = time.Minute *1
 	}
 
 	//If config.Client omit, the limiter is a memory limiter
@@ -105,6 +117,14 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 		limiterImp = newRedisLimiter(&config)
 	}
 
+	var tokenExtractor TokenExtractor
+
+	switch strings.ToLower(config.LimitConfig.Strategy) {
+	case "ip":
+		tokenExtractor = IPTokenExtractor()
+	case "header":
+		tokenExtractor = HeaderTokenExtractor(config.LimitConfig.Key)
+	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -112,17 +132,9 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 				return next(c)
 			}
 			response := c.Response()
-			request := c.Request()
 
-			//policy := []int{10,1000}
-			/*custom policy will configurable like
-			[
-				{"RealIP+Method+RequestURI","Max Value","Duration"},
-				{"RealIP+Method+RequestURI","Max Value","Duration"}
-			]
-			*/
 			policy := []int{}
-			result, err := limiterImp.Get(request.RequestURI,policy...)
+			result, err := limiterImp.Get(tokenExtractor(c),policy...)
 
 			if err != nil {
 
@@ -147,8 +159,21 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 	}
 }
 
-// get & remove
 
+// TokenExtractor defines the interface of the functions to use in order to extract a token for each request
+type TokenExtractor func(echo.Context) string
+
+// IPTokenExtractor extracts the IP of the request
+func IPTokenExtractor() TokenExtractor {
+	return func(c echo.Context) string { return strings.Split(c.RealIP(), ":")[0]  }
+}
+
+// HeaderTokenExtractor returns a TokenExtractor that looks for the value of the designed header
+func HeaderTokenExtractor(header string) TokenExtractor {
+	return func(c echo.Context) string { return c.Request().Header.Get(header) }
+}
+
+// get & remove
 func (l *limiter) Get(id string, policy ...int) (Result, error) {
 	var result Result
 	key := l.prefix + id
@@ -216,8 +241,8 @@ type (
 
 func newMemoryLimiter(opts *RateLimiterConfig) *limiter {
 	m := &memoryLimiter{
-		max:      opts.Max,
-		duration: opts.Duration,
+		max:      opts.LimitConfig.Max,
+		duration: opts.LimitConfig.Duration,
 		store:    make(map[string]*limiterCacheItem),
 		status:   make(map[string]*statusCacheItem),
 		ticker:   time.NewTicker(time.Second),
@@ -357,6 +382,7 @@ func (m *memoryLimiter) cleanCache() {
 
 
 
+
 // Redis limiter imp here
 type redisLimiter struct {
 	sha1, max, duration string
@@ -372,8 +398,8 @@ func newRedisLimiter(options *RateLimiterConfig) *limiter {
 	r := &redisLimiter{
 		rc:       options.Client,
 		sha1:     sha1,
-		max:      strconv.FormatInt(int64(options.Max), 10),
-		duration: strconv.FormatInt(int64(options.Duration/time.Millisecond), 10),
+		max:      strconv.FormatInt(int64(options.LimitConfig.Max), 10),
+		duration: strconv.FormatInt(int64(options.LimitConfig.Duration/time.Millisecond), 10),
 	}
 	return &limiter{r, options.Prefix}
 }
