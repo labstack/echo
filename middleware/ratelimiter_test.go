@@ -21,9 +21,50 @@ import (
 
 func TestRateLimiter(t *testing.T) {
 
+
+	t.Run("rateLimiter configuration cases", func(t *testing.T){
+
+		t.Run("should throw strategy is null or empy", func(t *testing.T) {
+
+				e :=echo.New()
+				assert.PanicsWithValue(t, "echo: rate limiter middleware requires Strategy (use ip or header(key)", func(){
+					e.Use(RateLimiterWithConfig(RateLimiterConfig{}))
+				})
+		})
+
+		t.Run("should start with default settings", func(t *testing.T) {
+
+				e:=echo.New()
+				e.Use(RateLimiter())
+		})
+	})
+
 	t.Run("ratelimiter middleware", func(t *testing.T) {
 		e := echo.New()
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+		t.Run("should return real ip adress from ip token extractor", func(t *testing.T) {
+
+			 expectedRemoteIp := "192.168.100.100"
+			 tokenExtractorHandler := IPTokenExtractor()
+			 req.RemoteAddr = expectedRemoteIp+":6666"
+			 c := e.NewContext(req,nil)
+
+			 ip := tokenExtractorHandler(c)
+			 assert.Equal(t,ip,expectedRemoteIp)
+		})
+
+		t.Run("should return tokenized header key", func(t *testing.T) {
+			headerKey :="X-User-Token"
+			expectedHeaderValue :="fffff-ffff-fffff-ffff"
+			req.Header.Add(headerKey,expectedHeaderValue)
+			tokenExtractorHandler := HeaderTokenExtractor(headerKey)
+			c := e.NewContext(req,nil)
+
+			val := tokenExtractorHandler(c)
+			assert.Equal(t,val,expectedHeaderValue)
+
+		})
 
 		t.Run("should return ok with x-remaining and x-limit value", func(t *testing.T) {
 
