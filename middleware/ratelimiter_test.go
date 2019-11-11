@@ -45,13 +45,13 @@ func TestRateLimiter(t *testing.T) {
 
 		t.Run("should return real ip adress from ip token extractor", func(t *testing.T) {
 
-			 expectedRemoteIp := "192.168.100.100"
+			expectedRemoteIP := "192.168.100.100"
 			 tokenExtractorHandler := IPTokenExtractor()
-			 req.RemoteAddr = expectedRemoteIp+":6666"
+			 req.RemoteAddr = expectedRemoteIP+":6666"
 			 c := e.NewContext(req,nil)
 
 			 ip := tokenExtractorHandler(c)
-			 assert.Equal(t,ip,expectedRemoteIp)
+			 assert.Equal(t,ip,expectedRemoteIP)
 		})
 
 		t.Run("should return tokenized header key", func(t *testing.T) {
