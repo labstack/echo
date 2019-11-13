@@ -53,8 +53,8 @@ Lower is better!
 ### Installation
 
 ```go
- // go get github.com/labstack/echo/{version}
- go get github.com/labstack/echo/v4
+// go get github.com/labstack/echo/{version}
+go get github.com/labstack/echo/v4
 ```
 
 ### Example
