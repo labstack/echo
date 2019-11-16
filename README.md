@@ -19,7 +19,7 @@ Therefore a Go version capable of understanding /vN suffixed imports is required
 - 1.10.3+
 - 1.11+
 
-Any of these versions will allow you to import Echo as `github.com/labstack/echo/v4` which is the recommended
+Any of these versions will allow you to import Echo as `github.com/rickiey/echo/v4` which is the recommended
 way of using Echo going forward.
 
 For older versions, please use the latest v3 tag.
@@ -57,8 +57,8 @@ package main
 
 import (
   "net/http"
-  "github.com/labstack/echo/v4"
-  "github.com/labstack/echo/v4/middleware"
+  "github.com/rickiey/echo/v4"
+  "github.com/rickiey/echo/v4/middleware"
 )
 
 func main() {

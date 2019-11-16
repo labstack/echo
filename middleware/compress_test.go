@@ -9,7 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/labstack/echo/v4"
+	"github.com/rickiey/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
 

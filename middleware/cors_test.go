@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/labstack/echo/v4"
+	"github.com/rickiey/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -73,7 +73,7 @@ func TestCORS(t *testing.T) {
 	c = e.NewContext(req, rec)
 	req.Header.Set(echo.HeaderOrigin, "http://aaa.example.com")
 	cors = CORSWithConfig(CORSConfig{
-		AllowOrigins:     []string{"http://*.example.com"},
+		AllowOrigins: []string{"http://*.example.com"},
 	})
 	h = cors(echo.NotFoundHandler)
 	h(c)

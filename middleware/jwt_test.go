@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/labstack/echo/v4"
+	"github.com/rickiey/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -203,7 +203,7 @@ func TestJWT(t *testing.T) {
 		req.Header.Set(echo.HeaderCookie, tc.hdrCookie)
 		c := e.NewContext(req, res)
 
-		if tc.reqURL == "/" + token {
+		if tc.reqURL == "/"+token {
 			c.SetParamNames("jwt")
 			c.SetParamValues(token)
 		}
