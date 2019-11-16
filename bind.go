@@ -87,6 +87,11 @@ func (b *DefaultBinder) bindData(ptr interface{}, data map[string][]string, tag 
 	if ptr == nil || len(data) == 0 {
 		return nil
 	}
+
+	if reflect.TypeOf(ptr).Kind() != reflect.Ptr {
+		return errors.New("binding element must be a pointer")
+	}
+
 	typ := reflect.TypeOf(ptr).Elem()
 	val := reflect.ValueOf(ptr).Elem()
 
