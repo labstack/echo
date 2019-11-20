@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/random"
@@ -157,7 +156,7 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 			if config.CookieDomain != "" {
 				cookie.Domain = config.CookieDomain
 			}
-			cookie.Expires = time.Now().Add(time.Duration(config.CookieMaxAge) * time.Second)
+			cookie.MaxAge = config.CookieMaxAge
 			cookie.Secure = config.CookieSecure
 			cookie.HttpOnly = config.CookieHTTPOnly
 			c.SetCookie(cookie)
