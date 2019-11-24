@@ -25,7 +25,7 @@ type (
 		// ErrorHandler defines a function which is executed for an invalid token.
 		// It may be used to define a custom JWT error.
 		ErrorHandler JWTErrorHandler
-		
+
 		// ErrorHandlerWithContext is almost identical to ErrorHandler, but it's passed the current context.
 		ErrorHandlerWithContext JWTErrorHandlerWithContext
 
@@ -74,7 +74,7 @@ type (
 
 	// JWTErrorHandlerWithContext is almost identical to JWTErrorHandler, but it's passed the current context.
 	JWTErrorHandlerWithContext func(error, echo.Context) error
-	
+
 	jwtExtractor func(echo.Context) (string, error)
 )
 
@@ -183,7 +183,7 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 				if config.ErrorHandler != nil {
 					return config.ErrorHandler(err)
 				}
-				
+
 				if config.ErrorHandlerWithContext != nil {
 					return config.ErrorHandlerWithContext(err, c)
 				}
@@ -210,7 +210,7 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 				return config.ErrorHandler(err)
 			}
 			if config.ErrorHandlerWithContext != nil {
-					return config.ErrorHandlerWithContext(err, c)
+				return config.ErrorHandlerWithContext(err, c)
 			}
 			return &echo.HTTPError{
 				Code:     http.StatusUnauthorized,
