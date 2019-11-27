@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"github.com/alperhankendi/echo"
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"net/http/httptest"
@@ -43,6 +44,30 @@ func TestRateLimiter(t *testing.T) {
 		e := echo.New()
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 
+		t.Run("should skip rate limiter function", func(t *testing.T) {
+
+			//ratelimit with config
+			rateLimitWithConfig := RateLimiterWithConfig(RateLimiterConfig{
+				LimitConfig:LimiterConfig{
+					Max: 1,
+					Strategy:"ip",
+				},
+				Skipper: func(c echo.Context)bool{
+					return 1==1
+				},
+			})
+
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			hx := rateLimitWithConfig(func(c echo.Context) error {
+				return c.String(http.StatusOK, "test")
+			})
+			hx(c)
+			hx(c)
+			assert.Equal(t, rec.Header().Get("X-Ratelimit-Remaining"), "", "Skip function isn't work")
+
+		})
+
 		t.Run("should return real ip adress from ip token extractor", func(t *testing.T) {
 
 			expectedRemoteIP := "192.168.100.100"
@@ -81,7 +106,7 @@ func TestRateLimiter(t *testing.T) {
 
 		})
 
-		t.Run("should throw too many request", func(t *testing.T) {
+		t.Run("should throw too many request based on ip strategy", func(t *testing.T) {
 
 			//ratelimit with config
 			rateLimitWithConfig := RateLimiterWithConfig(RateLimiterConfig{
@@ -93,6 +118,33 @@ func TestRateLimiter(t *testing.T) {
 
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
+			hx := rateLimitWithConfig(func(c echo.Context) error {
+				return c.String(http.StatusOK, "test")
+			})
+			hx(c)
+			hx(c)
+			expectedErrorStatus := hx(c).(*echo.HTTPError)
+
+			assert.Contains(t, rec.Header().Get("X-Ratelimit-Remaining"), "-1")
+			assert.Equal(t, http.StatusTooManyRequests, expectedErrorStatus.Code)
+
+		})
+
+		t.Run("should throw too many request based on header strategy", func(t *testing.T) {
+
+			//ratelimit with config
+			rateLimitWithConfig := RateLimiterWithConfig(RateLimiterConfig{
+				LimitConfig:LimiterConfig{
+					Max: 2,
+					Strategy:"header",
+					Key:"client-id",
+				},
+			})
+
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			c.Request().Header.Add("client-id","dummy-client")
+
 			hx := rateLimitWithConfig(func(c echo.Context) error {
 				return c.String(http.StatusOK, "test")
 			})
