@@ -1,7 +1,5 @@
 package middleware
-
 import (
-	"github.com/alperhankendi/echo"
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"net/http/httptest"
@@ -16,8 +14,6 @@ import (
 	"github.com/alicebob/miniredis"
 	"errors"
 	"fmt"
-
-
 )
 
 func TestRateLimiter(t *testing.T) {
