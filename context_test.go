@@ -236,6 +236,7 @@ func TestContext(t *testing.T) {
 			enc := json.NewEncoder(buf)
 			enc.SetIndent(emptyIndent, emptyIndent)
 			err = enc.Encode(u)
+			assert.Error(err)
 			err = c.json(http.StatusOK, user{1, "Jon Snow"}, emptyIndent)
 			if assert.NoError(err) {
 				assert.Equal(http.StatusOK, rec.Code)
@@ -254,6 +255,7 @@ func TestContext(t *testing.T) {
 			enc := xml.NewEncoder(buf)
 			enc.Indent(emptyIndent, emptyIndent)
 			err = enc.Encode(u)
+			assert.Error(err)
 			err = c.xml(http.StatusOK, user{1, "Jon Snow"}, emptyIndent)
 			if assert.NoError(err) {
 				assert.Equal(http.StatusOK, rec.Code)
