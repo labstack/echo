@@ -43,15 +43,11 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 	if err := b.bindData(i, params, "param"); err != nil {
 		return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
 	}
-
+	if err = b.bindData(i, c.QueryParams(), "query"); err != nil {
+		return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
+	}
 	if req.ContentLength == 0 {
-		if req.Method == http.MethodGet || req.Method == http.MethodDelete {
-			if err = b.bindData(i, c.QueryParams(), "query"); err != nil {
-				return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
-			}
-			return
-		}
-		return NewHTTPError(http.StatusBadRequest, "Request body can't be empty")
+		return
 	}
 	ctype := req.Header.Get(HeaderContentType)
 	switch {
@@ -94,13 +90,15 @@ func (b *DefaultBinder) bindData(ptr interface{}, data map[string][]string, tag 
 	typ := reflect.TypeOf(ptr).Elem()
 	val := reflect.ValueOf(ptr).Elem()
 
-	if m, ok := ptr.(*map[string]interface{}); ok {
+	// Map
+	if typ.Kind() == reflect.Map {
 		for k, v := range data {
-			(*m)[k] = v[0]
+			val.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v[0]))
 		}
 		return nil
 	}
 
+	// !struct
 	if typ.Kind() != reflect.Struct {
 		return errors.New("binding element must be a struct")
 	}

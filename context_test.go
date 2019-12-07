@@ -7,6 +7,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"github.com/labstack/gommon/log"
 	"io"
 	"math"
 	"mime/multipart"
@@ -801,7 +802,16 @@ func TestContext_Logger(t *testing.T) {
 	e := New()
 	c := e.NewContext(nil, nil)
 
-	testify.NotNil(t, c.Logger())
+	log1 := c.Logger()
+	testify.NotNil(t, log1)
+
+	log2 := log.New("echo2")
+	c.SetLogger(log2)
+	testify.Equal(t, log2, c.Logger())
+
+	// Resetting the context returns the initial logger
+	c.Reset(nil, nil)
+	testify.Equal(t, log1, c.Logger())
 }
 
 func TestContext_RealIP(t *testing.T) {
