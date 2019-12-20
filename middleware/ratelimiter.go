@@ -26,7 +26,9 @@ type (
 		//If request gets a  internal limiter error, just skip the limiter and let it go to next middleware
 		SkipRateLimiterInternalError	bool
 
-		//TODO: WhiteList
+		//callback OnRateLimit when rate limiting a client
+		OnRateLimit OnRateLimit
+
 	}
 	// LimiterConfig defines the limitation of middleware
 	LimiterConfig struct {
@@ -38,9 +40,20 @@ type (
 		Duration time.Duration
 		//If the strategy is header which header key will be used for limits. such as Header("Client-Token")
 		Key           string
-	}
 
-	limiter struct {
+		HeaderTokenExtractorHandler HeaderTokenExtractorHandler
+	}
+	//OnRateLimit defines a function which is executed when rate limiting the client
+	OnRateLimit func(echo.Context)
+
+	// TokenExtractor defines the interface of the functions to use in order to extract a token for each request
+	TokenExtractor func(echo.Context) string
+
+	//HeaderTokenExtractorHandler defines a function manipulating the extracted header value
+	HeaderTokenExtractorHandler func(headerValue string) string
+
+
+limiter struct {
 		abstractLimiter
 		prefix string
 	}
@@ -80,6 +93,7 @@ var (
 		Prefix:"LIMIT",
 		Client:nil,
 		SkipRateLimiterInternalError:false,
+		OnRateLimit:nil,
 	}
 	limiterImp *limiter
 )
@@ -123,7 +137,7 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 	case "ip":
 		tokenExtractor = IPTokenExtractor()
 	case "header":
-		tokenExtractor = HeaderTokenExtractor(config.LimitConfig.Key)
+		tokenExtractor = HeaderTokenExtractor(config.LimitConfig.Key,config.LimitConfig.HeaderTokenExtractorHandler)
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -150,9 +164,12 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 
 			if result.Remaining <= 0 {
 
+				if config.OnRateLimit!=nil{
+					config.OnRateLimit(c)
+				}
 				after := int64(result.Reset.Sub(time.Now())) / 1e9
 				response.Header().Set("Retry-After", strconv.FormatInt(after, 10))
-				return echo.NewHTTPError(http.StatusTooManyRequests, "Rate limit exceeded, retry in %d seconds.\n", after)
+				return echo.NewHTTPError(http.StatusTooManyRequests, fmt.Sprintf("Rate limit exceeded, retry in %d seconds.\n", after))
 			}
 			return next(c)
 		}
@@ -160,17 +177,22 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 }
 
 
-// TokenExtractor defines the interface of the functions to use in order to extract a token for each request
-type TokenExtractor func(echo.Context) string
-
 // IPTokenExtractor extracts the IP of the request
 func IPTokenExtractor() TokenExtractor {
 	return func(c echo.Context) string { return strings.Split(c.RealIP(), ":")[0]  }
 }
 
 // HeaderTokenExtractor returns a TokenExtractor that looks for the value of the designed header
-func HeaderTokenExtractor(header string) TokenExtractor {
-	return func(c echo.Context) string { return c.Request().Header.Get(header) }
+func HeaderTokenExtractor(header string,headerTokenExtractorHandler HeaderTokenExtractorHandler) TokenExtractor {
+	return func(c echo.Context) string {
+		v:= c.Request().Header.Get(header)
+
+		if headerTokenExtractorHandler!=nil{
+			return headerTokenExtractorHandler(v)
+		}
+		return v
+
+	}
 }
 
 // get & remove

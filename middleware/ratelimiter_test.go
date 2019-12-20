@@ -3,6 +3,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"github.com/stretchr/testify/assert"
 
@@ -79,11 +80,27 @@ func TestRateLimiter(t *testing.T) {
 			headerKey :="X-User-Token"
 			expectedHeaderValue :="fffff-ffff-fffff-ffff"
 			req.Header.Add(headerKey,expectedHeaderValue)
-			tokenExtractorHandler := HeaderTokenExtractor(headerKey)
+			tokenExtractorHandler := HeaderTokenExtractor(headerKey,nil)
 			c := e.NewContext(req,nil)
 
 			val := tokenExtractorHandler(c)
 			assert.Equal(t,val,expectedHeaderValue)
+
+		})
+		t.Run("should return manipulated header key with handler", func(t *testing.T) {
+			headerKey :="x-forwarded-for"
+			headerValue :="192.168.1.1,192.168.100.101"
+			exceptedHeaderValue :="192.168.1.1"
+
+			headerTokenExtractorHandler := func(value string) string {
+				return strings.Split(value, ",")[0]
+			}
+			req.Header.Add(headerKey,headerValue)
+			tokenExtractorHandler := HeaderTokenExtractor(headerKey,headerTokenExtractorHandler)
+			c := e.NewContext(req,nil)
+
+			val := tokenExtractorHandler(c)
+			assert.Equal(t,val,exceptedHeaderValue)
 
 		})
 
@@ -151,6 +168,28 @@ func TestRateLimiter(t *testing.T) {
 			assert.Contains(t, rec.Header().Get("X-Ratelimit-Remaining"), "-1")
 			assert.Equal(t, http.StatusTooManyRequests, expectedErrorStatus.Code)
 
+		})
+
+		t.Run("should call OnRateLimit function when rate limiting a client", func(t *testing.T) {
+
+			var onRateLimitCalled=false
+			rateLimitWithConfig := RateLimiterWithConfig(RateLimiterConfig{
+				LimitConfig:LimiterConfig{
+					Max: 1,
+					Strategy:"ip",
+				},
+				OnRateLimit: func(context echo.Context) {
+					onRateLimitCalled=true
+				},
+			})
+
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			hx := rateLimitWithConfig(func(c echo.Context) error {
+				return c.String(http.StatusOK, "test")
+			})
+			hx(c)
+			assert.Equal(t, onRateLimitCalled,true)
 		})
 
 		t.Run("should return status ok after to many request status expired", func(t *testing.T) {
