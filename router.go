@@ -136,6 +136,11 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 			// Split node
 			n := newNode(cn.kind, cn.prefix[l:], cn, cn.children, cn.methodHandler, cn.ppath, cn.pnames)
 
+			// Update parent path for all children to new node
+			for _, child := range cn.children {
+				child.parent = n
+			}
+
 			// Reset parent node
 			cn.kind = skind
 			cn.label = cn.prefix[0]
@@ -417,6 +422,10 @@ func (r *Router) Find(method, path string, c Context) {
 					if np == nil {
 						break // no further parent nodes in tree, abort
 					}
+					var str strings.Builder
+					str.WriteString(nn.prefix)
+					str.WriteString(search)
+					search = str.String()
 					nn = np
 				}
 				if cn != nil { // use the found "any" route and update path
