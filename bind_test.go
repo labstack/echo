@@ -332,6 +332,7 @@ func TestBindbindData(t *testing.T) {
 
 func TestBindParam(t *testing.T) {
 	e := New()
+	*e.maxParam = 2
 	req := httptest.NewRequest(GET, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
@@ -362,6 +363,7 @@ func TestBindParam(t *testing.T) {
 	// Bind something with param and post data payload
 	body := bytes.NewBufferString(`{ "name": "Jon Snow" }`)
 	e2 := New()
+	*e2.maxParam = 2
 	req2 := httptest.NewRequest(POST, "/", body)
 	req2.Header.Set(HeaderContentType, MIMEApplicationJSON)
 

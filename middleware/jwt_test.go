@@ -60,6 +60,8 @@ func TestJWTRace(t *testing.T) {
 
 func TestJWT(t *testing.T) {
 	e := echo.New()
+	r := e.Router()
+	r.Add("GET", "/:jwt", func(echo.Context) error { return nil })
 	handler := func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}
