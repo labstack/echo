@@ -412,6 +412,7 @@ func (r *Router) Find(method, path string, c Context) {
 				// Consider param route one level up only
 				// if no slash is remaining in search string
 				if cn = nn.findChildByKind(pkind); cn != nil && strings.IndexByte(ns, '/') == -1 {
+					pvalues[len(cn.pnames)-1] = search
 					break
 				}
 				for {
