@@ -1118,6 +1118,42 @@ func TestRouterMixedParams(t *testing.T) {
 	testRouterAPI(t, api2)
 }
 
+// Issue 1466
+func TestRouterParam1466(t *testing.T) {
+	e := New()
+	r := e.router
+
+	r.Add(http.MethodPost, "/users/signup", func(c Context) error {
+		return nil
+	})
+	r.Add(http.MethodPost, "/users/signup/bulk", func(c Context) error {
+		return nil
+	})
+	r.Add(http.MethodPost, "/users/survey", func(c Context) error {
+		return nil
+	})
+	r.Add(http.MethodGet, "/users/:username", func(c Context) error {
+		return nil
+	})
+	r.Add(http.MethodGet, "/interests/:name/users", func(c Context) error {
+		return nil
+	})
+	r.Add(http.MethodGet, "/skills/:name/users", func(c Context) error {
+		return nil
+	})
+
+	c := e.NewContext(nil, nil).(*context)
+
+	r.Find(http.MethodGet, "/users/ajitem", c)
+	assert.Equal(t, "ajitem", c.Param("username"))
+
+	r.Find(http.MethodGet, "/users/sharewithme", c)
+	assert.Equal(t, "sharewithme", c.Param("username"))
+
+	r.Find(http.MethodGet, "/users/signup", c)
+	assert.Equal(t, "", c.Param("username"))
+}
+
 func benchmarkRouterRoutes(b *testing.B, routes []*Route) {
 	e := New()
 	r := e.router
