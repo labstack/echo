@@ -1118,7 +1118,7 @@ func TestRouterMixedParams(t *testing.T) {
 	testRouterAPI(t, api2)
 }
 
-// Issue 1466
+// Issue #1466
 func TestRouterParam1466(t *testing.T) {
 	e := New()
 	r := e.router
