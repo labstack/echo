@@ -221,17 +221,12 @@ func unmarshalField(valueKind reflect.Kind, val string, field reflect.Value) (bo
 }
 
 func unmarshalFieldNonPtr(value string, field reflect.Value) (bool, error) {
-	fieldValue := reflect.New(field.Type())
-	fieldIValue := fieldValue.Interface()
+	fieldIValue := field.Addr().Interface()
 	if unmarshaler, ok := fieldIValue.(BindUnmarshaler); ok {
-		err := unmarshaler.UnmarshalParam(value)
-		field.Set(fieldValue.Elem())
-		return true, err
+		return true, unmarshaler.UnmarshalParam(value)
 	}
 	if unmarshaler, ok := fieldIValue.(encoding.TextUnmarshaler); ok {
-		err := unmarshaler.UnmarshalText([]byte(value))
-		field.Set(fieldValue.Elem())
-		return true, err
+		return true, unmarshaler.UnmarshalText([]byte(value))
 	}
 
 	return false, nil
