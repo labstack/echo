@@ -56,6 +56,43 @@ type (
 		Tptr        *Timestamp
 		SA          StringArray
 	}
+	bindTestStructWithTags struct {
+		I           int      `json:"I" form:"I"`
+		PtrI        *int     `json:"PtrI" form:"PtrI"`
+		I8          int8     `json:"I8" form:"I8"`
+		PtrI8       *int8    `json:"PtrI8" form:"PtrI8"`
+		I16         int16    `json:"I16" form:"I16"`
+		PtrI16      *int16   `json:"PtrI16" form:"PtrI16"`
+		I32         int32    `json:"I32" form:"I32"`
+		PtrI32      *int32   `json:"PtrI32" form:"PtrI32"`
+		I64         int64    `json:"I64" form:"I64"`
+		PtrI64      *int64   `json:"PtrI64" form:"PtrI64"`
+		UI          uint     `json:"UI" form:"UI"`
+		PtrUI       *uint    `json:"PtrUI" form:"PtrUI"`
+		UI8         uint8    `json:"UI8" form:"UI8"`
+		PtrUI8      *uint8   `json:"PtrUI8" form:"PtrUI8"`
+		UI16        uint16   `json:"UI16" form:"UI16"`
+		PtrUI16     *uint16  `json:"PtrUI16" form:"PtrUI16"`
+		UI32        uint32   `json:"UI32" form:"UI32"`
+		PtrUI32     *uint32  `json:"PtrUI32" form:"PtrUI32"`
+		UI64        uint64   `json:"UI64" form:"UI64"`
+		PtrUI64     *uint64  `json:"PtrUI64" form:"PtrUI64"`
+		B           bool     `json:"B" form:"B"`
+		PtrB        *bool    `json:"PtrB" form:"PtrB"`
+		F32         float32  `json:"F32" form:"F32"`
+		PtrF32      *float32 `json:"PtrF32" form:"PtrF32"`
+		F64         float64  `json:"F64" form:"F64"`
+		PtrF64      *float64 `json:"PtrF64" form:"PtrF64"`
+		S           string   `json:"S" form:"S"`
+		PtrS        *string  `json:"PtrS" form:"PtrS"`
+		cantSet     string
+		DoesntExist string      `json:"DoesntExist" form:"DoesntExist"`
+		GoT         time.Time   `json:"GoT" form:"GoT"`
+		GoTptr      *time.Time  `json:"GoTptr" form:"GoTptr"`
+		T           Timestamp   `json:"T" form:"T"`
+		Tptr        *Timestamp  `json:"Tptr" form:"Tptr"`
+		SA          StringArray `json:"SA" form:"SA"`
+	}
 	Timestamp   time.Time
 	TA          []Timestamp
 	StringArray []string
@@ -431,6 +468,34 @@ func TestBindSetFields(t *testing.T) {
 		assert.Equal(ok, true)
 		assert.Equal(Timestamp(time.Date(2016, 12, 6, 19, 9, 5, 0, time.UTC)), ts.T)
 	}
+}
+
+func BenchmarkBindbindData(b *testing.B) {
+	b.ReportAllocs()
+	assert := assert.New(b)
+	ts := new(bindTestStruct)
+	binder := new(DefaultBinder)
+	var err error
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		err = binder.bindData(ts, values, "form")
+	}
+	assert.NoError(err)
+	assertBindTestStruct(assert, ts)
+}
+
+func BenchmarkBindbindDataWithTags(b *testing.B) {
+	b.ReportAllocs()
+	assert := assert.New(b)
+	ts := new(bindTestStructWithTags)
+	binder := new(DefaultBinder)
+	var err error
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		err = binder.bindData(ts, values, "form")
+	}
+	assert.NoError(err)
+	assertBindTestStruct(assert, (*bindTestStruct)(ts))
 }
 
 func assertBindTestStruct(a *assert.Assertions, ts *bindTestStruct) {
