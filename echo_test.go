@@ -537,6 +537,12 @@ func TestHTTPError(t *testing.T) {
 	assert.Equal(t, "code=400, message=map[code:12], internal=<nil>", err.Error())
 }
 
+func TestHTTPError_Unwrap(t *testing.T) {
+	expected := errors.New("internal")
+	err := NewHTTPError(http.StatusInternalServerError).SetInternal(expected)
+	assert.EqualError(t, err.Unwrap(), expected.Error())
+}
+
 func TestEchoClose(t *testing.T) {
 	e := New()
 	errCh := make(chan error)

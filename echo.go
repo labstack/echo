@@ -761,6 +761,12 @@ func (he *HTTPError) SetInternal(err error) *HTTPError {
 	return he
 }
 
+// Unwrap provides compatibility for Go 1.13 error chains.
+// It returns HTTPError.Internal.
+func (he *HTTPError) Unwrap() error {
+	return he.Internal
+}
+
 // WrapHandler wraps `http.Handler` into `echo.HandlerFunc`.
 func WrapHandler(h http.Handler) HandlerFunc {
 	return func(c Context) error {
