@@ -414,6 +414,9 @@ func (r *Router) Find(method, path string, c Context) {
 				if cn = nn.findChildByKind(pkind); cn != nil && strings.IndexByte(ns, '/') == -1 {
 					pvalues[len(cn.pnames)-1] = search
 					break
+				} else if cn != nil && strings.IndexByte(ns, '/') != 1 {
+					cn = cn.parent
+					goto Param
 				}
 				for {
 					np = nn.parent
