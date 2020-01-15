@@ -360,11 +360,11 @@ func (c *context) FormParams() (url.Values, error) {
 
 func (c *context) FormFile(name string) (*multipart.FileHeader, error) {
 	f, fh, err := c.request.FormFile(name)
-	if err != nil {
-		return nil, err
+
+	if f != nil {
+		defer f.Close()
 	}
-	defer f.Close()
-	return fh, nil
+	return fh, err
 }
 
 func (c *context) MultipartForm() (*multipart.Form, error) {
