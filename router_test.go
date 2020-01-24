@@ -1141,6 +1141,16 @@ func TestRouterParam1466(t *testing.T) {
 	r.Add(http.MethodGet, "/skills/:name/users", func(c Context) error {
 		return nil
 	})
+	// Additional routes for Issue 1479
+	r.Add(http.MethodGet, "/users/:username/likes/projects/ids", func(c Context) error {
+		return nil
+	})
+	r.Add(http.MethodGet, "/users/:username/profile", func(c Context) error {
+		return nil
+	})
+	r.Add(http.MethodGet, "/users/:username/uploads/:type", func(c Context) error {
+		return nil
+	})
 
 	c := e.NewContext(nil, nil).(*context)
 
@@ -1152,6 +1162,26 @@ func TestRouterParam1466(t *testing.T) {
 
 	r.Find(http.MethodGet, "/users/signup", c)
 	assert.Equal(t, "", c.Param("username"))
+	// Additional assertions for #1479
+	r.Find(http.MethodGet, "/users/sharewithme/likes/projects/ids", c)
+	assert.Equal(t, "sharewithme", c.Param("username"))
+
+	r.Find(http.MethodGet, "/users/ajitem/likes/projects/ids", c)
+	assert.Equal(t, "ajitem", c.Param("username"))
+
+	r.Find(http.MethodGet, "/users/sharewithme/profile", c)
+	assert.Equal(t, "sharewithme", c.Param("username"))
+
+	r.Find(http.MethodGet, "/users/ajitem/profile", c)
+	assert.Equal(t, "ajitem", c.Param("username"))
+
+	r.Find(http.MethodGet, "/users/sharewithme/uploads/self", c)
+	assert.Equal(t, "sharewithme", c.Param("username"))
+	assert.Equal(t, "self", c.Param("type"))
+
+	r.Find(http.MethodGet, "/users/ajitem/uploads/self", c)
+	assert.Equal(t, "ajitem", c.Param("username"))
+	assert.Equal(t, "self", c.Param("type"))
 }
 
 func benchmarkRouterRoutes(b *testing.B, routes []*Route) {
