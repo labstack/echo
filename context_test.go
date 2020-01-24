@@ -93,6 +93,7 @@ func (responseWriterErr) WriteHeader(statusCode int) {
 
 func TestContext(t *testing.T) {
 	e := New()
+	*e.maxParam = 1
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userJSON))
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec).(*context)
@@ -471,6 +472,7 @@ func TestContextPath(t *testing.T) {
 
 func TestContextPathParam(t *testing.T) {
 	e := New()
+	*e.maxParam = 2
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	c := e.NewContext(req, nil)
 
@@ -485,6 +487,26 @@ func TestContextPathParam(t *testing.T) {
 	// Param
 	testify.Equal(t, "501", c.Param("fid"))
 	testify.Equal(t, "", c.Param("undefined"))
+}
+
+func TestContextGetAndSetParam(t *testing.T) {
+	e := New()
+	*e.maxParam = 2
+	req := httptest.NewRequest(http.MethodGet, "/:foo", nil)
+	c := e.NewContext(req, nil)
+	c.SetParamNames("foo")
+
+	// round-trip param values with modification
+	paramVals := c.ParamValues()
+	testify.EqualValues(t, []string{""}, c.ParamValues())
+	paramVals[0] = "bar"
+	c.SetParamValues(paramVals...)
+	testify.EqualValues(t, []string{"bar"}, c.ParamValues())
+
+	// shouldn't explode during Reset() afterwards!
+	testify.NotPanics(t, func() {
+		c.Reset(nil, nil)
+	})
 }
 
 func TestContextFormValue(t *testing.T) {
