@@ -205,7 +205,7 @@ func TestJWT(t *testing.T) {
 		req.Header.Set(echo.HeaderCookie, tc.hdrCookie)
 		c := e.NewContext(req, res)
 
-		if tc.reqURL == "/" + token {
+		if tc.reqURL == "/"+token {
 			c.SetParamNames("jwt")
 			c.SetParamValues(token)
 		}

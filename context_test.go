@@ -7,7 +7,6 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
-	"github.com/labstack/gommon/log"
 	"io"
 	"math"
 	"mime/multipart"
@@ -19,6 +18,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/labstack/gommon/log"
 	testify "github.com/stretchr/testify/assert"
 )
 

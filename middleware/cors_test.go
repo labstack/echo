@@ -73,7 +73,7 @@ func TestCORS(t *testing.T) {
 	c = e.NewContext(req, rec)
 	req.Header.Set(echo.HeaderOrigin, "http://aaa.example.com")
 	cors = CORSWithConfig(CORSConfig{
-		AllowOrigins:     []string{"http://*.example.com"},
+		AllowOrigins: []string{"http://*.example.com"},
 	})
 	h = cors(echo.NotFoundHandler)
 	h(c)
