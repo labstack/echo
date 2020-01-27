@@ -14,6 +14,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/net/http2"
 )
 
 type (
@@ -510,6 +511,17 @@ func TestEchoStartAutoTLS(t *testing.T) {
 	default:
 		assert.NoError(t, e.Close())
 	}
+}
+
+func TestEchoStartH2CServer(t *testing.T) {
+	e := New()
+	e.Debug = true
+	h2s := &http2.Server{}
+
+	go func() {
+		assert.NoError(t, e.StartH2CServer(":0", h2s))
+	}()
+	time.Sleep(200 * time.Millisecond)
 }
 
 func testMethod(t *testing.T, method, path string, e *Echo) {
