@@ -382,6 +382,32 @@ func TestBindParam(t *testing.T) {
 	}
 }
 
+func TestBindParamIgnoreCaseSensitive(t *testing.T) {
+	e := New()
+	*e.maxParam = 1
+
+	body := bytes.NewBufferString(`{ "id": 1, "name": "Jon Snow" }`)
+	req := httptest.NewRequest(POST, "/", body)
+	req.Header.Set(HeaderContentType, MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+
+	ctx := e.NewContext(req, rec)
+	ctx.SetPath("/users/:id")
+	ctx.SetParamNames("id")
+	ctx.SetParamValues("a")
+
+	u2 := new(struct {
+		ID   int    `json:"id"`
+		Name string `json:"name"`
+	})
+
+	err := ctx.Bind(u2)
+	if assert.NoError(t, err) {
+		assert.Equal(t, 1, u2.ID)
+		assert.Equal(t, "Jon Snow", u2.Name)
+	}
+}
+
 func TestBindUnmarshalTypeError(t *testing.T) {
 	body := bytes.NewBufferString(`{ "id": "text" }`)
 	e := New()

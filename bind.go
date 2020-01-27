@@ -124,7 +124,7 @@ func (b *DefaultBinder) bindData(ptr interface{}, data map[string][]string, tag 
 		}
 
 		inputValue, exists := data[inputFieldName]
-		if !exists {
+		if !exists && tag == "query" {
 			// Go json.Unmarshal supports case insensitive binding.  However the
 			// url params are bound case sensitive which is inconsistent.  To
 			// fix this we must check all of the map values in a
