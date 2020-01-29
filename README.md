@@ -50,6 +50,13 @@ Lower is better!
 
 ## [Guide](https://echo.labstack.com/guide)
 
+### Installation
+
+```go
+// go get github.com/labstack/echo/{version}
+go get github.com/labstack/echo/v4
+```
+
 ### Example
 
 ```go
