@@ -1184,6 +1184,26 @@ func TestRouterParam1466(t *testing.T) {
 	assert.Equal(t, "self", c.Param("type"))
 }
 
+// Issue #1493
+func TestRouterParam1493(t *testing.T) {
+	e := New()
+	r := e.router
+
+	r.Add(http.MethodGet, "/assets/:id", func(c Context) error {
+		return c.String(http.StatusOK, "assetID")
+	})
+
+	c := e.NewContext(nil, nil).(*context)
+
+	// No loop shall occur, param must be empty
+	r.Find(http.MethodGet, "/assets/3/e", c)
+	assert.Equal(t, "", c.Param("id"))
+	assert.Equal(t, 0, c.response.Status)
+	r.Find(http.MethodGet, "/assets/tree/free", c)
+	assert.Equal(t, "", c.Param("id"))
+	assert.Equal(t, 0, c.response.Status)
+}
+
 func benchmarkRouterRoutes(b *testing.B, routes []*Route) {
 	e := New()
 	r := e.router
