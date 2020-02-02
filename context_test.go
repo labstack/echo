@@ -491,7 +491,6 @@ func TestContextPathParam(t *testing.T) {
 
 func TestContextGetAndSetParam(t *testing.T) {
 	e := New()
-	*e.maxParam = 2
 	req := httptest.NewRequest(http.MethodGet, "/:foo", nil)
 	c := e.NewContext(req, nil)
 	c.SetParamNames("foo")
