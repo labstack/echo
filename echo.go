@@ -325,6 +325,7 @@ func (e *Echo) NewContext(r *http.Request, w http.ResponseWriter) Context {
 		response: NewResponse(w, e),
 		store:    make(Map),
 		echo:     e,
+		pnames:   make([]string, *e.maxParam),
 		pvalues:  make([]string, *e.maxParam),
 		handler:  NotFoundHandler,
 	}
