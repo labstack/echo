@@ -856,9 +856,10 @@ func (ln tcpKeepAliveListener) Accept() (c net.Conn, err error) {
 		return
 	} else if err = c.(*net.TCPConn).SetKeepAlive(true); err != nil {
 		return
-	} else if err = c.(*net.TCPConn).SetKeepAlivePeriod(3 * time.Minute); err != nil {
-		return
 	}
+	// Ignore error from setting the KeepAlivePeriod as some systems, such as
+	// OpenBSD, do not support setting TCP_USER_TIMEOUT on IPPROTO_TCP
+	_ = c.(*net.TCPConn).SetKeepAlivePeriod(3 * time.Minute)
 	return
 }
 
