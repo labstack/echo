@@ -590,3 +590,10 @@ func TestEchoShutdown(t *testing.T) {
 	err := <-errCh
 	assert.Equal(t, err.Error(), "http: Server closed")
 }
+
+func TestEchoSetMaxParam(t *testing.T) {
+	e := New()
+	assert.Zero(t, *e.maxParam, "Default number of maximum paramers should be zero")
+	e.SetMaxParam(4)
+	assert.Equal(t, 4, *e.maxParam, "Maximum number of parameters should have been modified")
+}

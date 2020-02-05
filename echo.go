@@ -771,6 +771,11 @@ func (e *Echo) Shutdown(ctx stdContext.Context) error {
 	return e.Server.Shutdown(ctx)
 }
 
+// SetMaxParam controls the number of path parameters allowed in the context
+func (e *Echo) SetMaxParam(maxParam int) {
+	e.maxParam = &maxParam
+}
+
 // NewHTTPError creates a new HTTPError instance.
 func NewHTTPError(code int, message ...interface{}) *HTTPError {
 	he := &HTTPError{Code: code, Message: http.StatusText(code)}

@@ -93,7 +93,7 @@ func (responseWriterErr) WriteHeader(statusCode int) {
 
 func TestContext(t *testing.T) {
 	e := New()
-	*e.maxParam = 1
+	e.SetMaxParam(1)
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userJSON))
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec).(*context)
@@ -472,7 +472,7 @@ func TestContextPath(t *testing.T) {
 
 func TestContextPathParam(t *testing.T) {
 	e := New()
-	*e.maxParam = 2
+	e.SetMaxParam(2)
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	c := e.NewContext(req, nil)
 
@@ -491,7 +491,7 @@ func TestContextPathParam(t *testing.T) {
 
 func TestContextGetAndSetParam(t *testing.T) {
 	e := New()
-	*e.maxParam = 2
+	e.SetMaxParam(2)
 	req := httptest.NewRequest(http.MethodGet, "/:foo", nil)
 	c := e.NewContext(req, nil)
 	c.SetParamNames("foo")
