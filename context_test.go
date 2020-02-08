@@ -666,6 +666,25 @@ func TestContext_Path(t *testing.T) {
 	testify.Equal(t, path, c.Path())
 }
 
+func TestContext_MatchedRoute(t *testing.T) {
+	e := New()
+	e.Add("GET", "/pa/th", func(c Context) error {
+		return nil
+	})
+
+	// Valid path of a registered route
+	c := e.NewContext(nil, nil)
+	path := "/pa/th"
+	c.SetPath(path)
+	testify.Equal(t, path, c.MatchedRoute())
+
+	// Empty string for a non existing path
+	c = e.NewContext(nil, nil)
+	path = "/not/existing"
+	c.SetPath(path)
+	testify.Equal(t, "", c.MatchedRoute())
+}
+
 type validator struct{}
 
 func (*validator) Validate(i interface{}) error {

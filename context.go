@@ -45,6 +45,10 @@ type (
 		// or `X-Real-IP` request header.
 		RealIP() string
 
+		// MatchedRoute returns the chosen path of all registeres routes.
+		// Only a registered path will be returned, otherwise empty
+		MatchedRoute() string
+
 		// Path returns the registered path for the handler.
 		Path() string
 
@@ -278,6 +282,16 @@ func (c *context) RealIP() string {
 	}
 	ra, _, _ := net.SplitHostPort(c.request.RemoteAddr)
 	return ra
+}
+
+func (c *context) MatchedRoute() string {
+	pathx := c.Path()
+	for _, r := range c.Echo().Routes() {
+		if pathx == r.Path {
+			return r.Path
+		}
+	}
+	return ""
 }
 
 func (c *context) Path() string {
