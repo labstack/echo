@@ -271,8 +271,8 @@ func (c *context) Scheme() string {
 }
 
 func (c *context) RealIP() string {
-	if extractor := c.echo.IPExtractor; extractor != nil {
-		return extractor(c.request)
+	if c.echo != nil && c.echo.IPExtractor != nil {
+		return c.echo.IPExtractor(c.request)
 	}
 	// Fall back to legacy behavior
 	if ip := c.request.Header.Get(HeaderXForwardedFor); ip != "" {
