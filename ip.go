@@ -111,7 +111,7 @@ func ExtractIPFromRealIPHeader(options ...TrustOption) IPExtractor {
 
 // ExtractIPFromXFFHeader extracts IP address using x-forwarded-for header.
 // Use this if you put proxy which uses this header.
-// This returns nearest untrustable IP, if available. Otherwise, returns furthest trustable IP.
+// This returns nearest untrustable IP. If all IPs are trustable, returns furthest one (i.e.: XFF[0]).
 func ExtractIPFromXFFHeader(options ...TrustOption) IPExtractor {
 	checker := newIPChecker(options)
 	return func(req *http.Request) string {
