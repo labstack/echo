@@ -231,7 +231,9 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 			}
 
 			// Fix header
-			if req.Header.Get(echo.HeaderXRealIP) == "" {
+			// Basically it's not good practice to unconditionally pass incoming x-real-ip header to upstream.
+			// However, for backward compatibility, legacy behavior is preserved unless you configure Echo#IPExtractor.
+			if req.Header.Get(echo.HeaderXRealIP) == "" || c.Echo().IPExtractor != nil {
 				req.Header.Set(echo.HeaderXRealIP, c.RealIP())
 			}
 			if req.Header.Get(echo.HeaderXForwardedProto) == "" {
