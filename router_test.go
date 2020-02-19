@@ -1031,12 +1031,15 @@ func TestRouterParamBacktraceNotFound(t *testing.T) {
 	r.Find(http.MethodGet, "/a", c)
 	assert.Equal(t, "a", c.Param("param1"))
 
+	c = e.NewContext(nil, nil).(*context)
 	r.Find(http.MethodGet, "/a/foo", c)
 	assert.Equal(t, "a", c.Param("param1"))
 
+	c = e.NewContext(nil, nil).(*context)
 	r.Find(http.MethodGet, "/a/bar", c)
 	assert.Equal(t, "a", c.Param("param1"))
 
+	c = e.NewContext(nil, nil).(*context)
 	r.Find(http.MethodGet, "/a/bar/b", c)
 	assert.Equal(t, "a", c.Param("param1"))
 	assert.Equal(t, "b", c.Param("param2"))
@@ -1157,31 +1160,45 @@ func TestRouterParam1466(t *testing.T) {
 	r.Find(http.MethodGet, "/users/ajitem", c)
 	assert.Equal(t, "ajitem", c.Param("username"))
 
+	c = e.NewContext(nil, nil).(*context)
 	r.Find(http.MethodGet, "/users/sharewithme", c)
 	assert.Equal(t, "sharewithme", c.Param("username"))
 
+	c = e.NewContext(nil, nil).(*context)
 	r.Find(http.MethodGet, "/users/signup", c)
 	assert.Equal(t, "", c.Param("username"))
 	// Additional assertions for #1479
+	c = e.NewContext(nil, nil).(*context)
 	r.Find(http.MethodGet, "/users/sharewithme/likes/projects/ids", c)
 	assert.Equal(t, "sharewithme", c.Param("username"))
 
+	c = e.NewContext(nil, nil).(*context)
 	r.Find(http.MethodGet, "/users/ajitem/likes/projects/ids", c)
 	assert.Equal(t, "ajitem", c.Param("username"))
 
+	c = e.NewContext(nil, nil).(*context)
 	r.Find(http.MethodGet, "/users/sharewithme/profile", c)
 	assert.Equal(t, "sharewithme", c.Param("username"))
 
+	c = e.NewContext(nil, nil).(*context)
 	r.Find(http.MethodGet, "/users/ajitem/profile", c)
 	assert.Equal(t, "ajitem", c.Param("username"))
 
+	c = e.NewContext(nil, nil).(*context)
 	r.Find(http.MethodGet, "/users/sharewithme/uploads/self", c)
 	assert.Equal(t, "sharewithme", c.Param("username"))
 	assert.Equal(t, "self", c.Param("type"))
 
+	c = e.NewContext(nil, nil).(*context)
 	r.Find(http.MethodGet, "/users/ajitem/uploads/self", c)
 	assert.Equal(t, "ajitem", c.Param("username"))
 	assert.Equal(t, "self", c.Param("type"))
+
+	// Issue #1493 - check for routing loop
+	c = e.NewContext(nil, nil).(*context)
+	r.Find(http.MethodGet, "/users/tree/free", c)
+	assert.Equal(t, "", c.Param("id"))
+	assert.Equal(t, 0, c.response.Status)
 }
 
 func benchmarkRouterRoutes(b *testing.B, routes []*Route) {
