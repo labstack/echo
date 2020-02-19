@@ -348,7 +348,7 @@ func (r *Router) Find(method, path string, c Context) {
 			// Continue search
 			search = search[l:]
 			// Finish routing if no remaining search and we are on an leaf node
-			if search == "" && (cn.ppath != "" || cn.parent == nil) {
+			if search == "" && (nn == nil || cn.parent == nil || cn.ppath != "") {
 				break
 			}
 		}
