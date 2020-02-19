@@ -567,6 +567,32 @@ func TestRouterParamWithSlash(t *testing.T) {
 	})
 }
 
+// Issue #1509
+func TestRouterParamStaticConflict(t *testing.T) {
+	e := New()
+	r := e.router
+	handler := func(c Context) error {
+		c.Set("path", c.Path())
+		return nil
+	}
+
+	g := e.Group("/g")
+	g.GET("/skills", handler)
+	g.GET("/status", handler)
+	g.GET("/:name", handler)
+
+	c := e.NewContext(nil, nil).(*context)
+	r.Find(http.MethodGet, "/g/s", c)
+	c.handler(c)
+	assert.Equal(t, "s", c.Param("name"))
+	assert.Equal(t, "/g/:name", c.Get("path"))
+
+	c = e.NewContext(nil, nil).(*context)
+	r.Find(http.MethodGet, "/g/status", c)
+	c.handler(c)
+	assert.Equal(t, "/g/status", c.Get("path"))
+}
+
 func TestRouterMatchAny(t *testing.T) {
 	e := New()
 	r := e.router
