@@ -347,7 +347,14 @@ func (r *Router) Find(method, path string, c Context) {
 		if l == pl {
 			// Continue search
 			search = search[l:]
-		} else {
+			// Finish routing if no remaining search and we are on an leaf node
+			if search == "" && (cn.ppath != "" || cn.parent == nil) {
+				break
+			}
+		}
+
+		// Attempt to go back up the tree on no matching prefix or no remaining search
+		if l != pl || search == "" {
 			if nn == nil { // Issue #1348
 				return // Not found
 			}
@@ -358,10 +365,6 @@ func (r *Router) Find(method, path string, c Context) {
 			} else if nk == akind {
 				goto Any
 			}
-		}
-
-		if search == "" {
-			break
 		}
 
 		// Static node
