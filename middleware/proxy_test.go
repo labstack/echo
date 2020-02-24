@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -118,4 +119,47 @@ func TestProxy(t *testing.T) {
 	e.Use(Proxy(rrb1))
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
+}
+
+func TestProxyRealIPHeader(t *testing.T) {
+	// Setup
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	defer upstream.Close()
+	url, _ := url.Parse(upstream.URL)
+	rrb := NewRoundRobinBalancer([]*ProxyTarget{{Name: "upstream", URL: url}})
+	e := echo.New()
+	e.Use(Proxy(rrb))
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+
+	remoteAddrIP, _, _ := net.SplitHostPort(req.RemoteAddr)
+	realIPHeaderIP := "203.0.113.1"
+	extractedRealIP := "203.0.113.10"
+	tests := []*struct {
+		hasRealIPheader bool
+		hasIPExtractor  bool
+		extectedXRealIP string
+	}{
+		{false, false, remoteAddrIP},
+		{false, true, extractedRealIP},
+		{true, false, realIPHeaderIP},
+		{true, true, extractedRealIP},
+	}
+
+	for _, tt := range tests {
+		if tt.hasRealIPheader {
+			req.Header.Set(echo.HeaderXRealIP, realIPHeaderIP)
+		} else {
+			req.Header.Del(echo.HeaderXRealIP)
+		}
+		if tt.hasIPExtractor {
+			e.IPExtractor = func(*http.Request) string {
+				return extractedRealIP
+			}
+		} else {
+			e.IPExtractor = nil
+		}
+		e.ServeHTTP(rec, req)
+		assert.Equal(t, tt.extectedXRealIP, req.Header.Get(echo.HeaderXRealIP), "hasRealIPheader: %t / hasIPExtractor: %t", tt.hasRealIPheader, tt.hasIPExtractor)
+	}
 }

@@ -43,6 +43,7 @@ type (
 
 		// RealIP returns the client's network address based on `X-Forwarded-For`
 		// or `X-Real-IP` request header.
+		// The behavior can be configured using `Echo#IPExtractor`.
 		RealIP() string
 
 		// Path returns the registered path for the handler.
@@ -270,6 +271,10 @@ func (c *context) Scheme() string {
 }
 
 func (c *context) RealIP() string {
+	if c.echo != nil && c.echo.IPExtractor != nil {
+		return c.echo.IPExtractor(c.request)
+	}
+	// Fall back to legacy behavior
 	if ip := c.request.Header.Get(HeaderXForwardedFor); ip != "" {
 		return strings.Split(ip, ", ")[0]
 	}

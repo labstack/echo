@@ -90,6 +90,7 @@ type (
 		Validator        Validator
 		Renderer         Renderer
 		Logger           Logger
+		IPExtractor      IPExtractor
 	}
 
 	// Route contains a handler and information for matching against requests.
