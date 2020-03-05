@@ -543,10 +543,21 @@ func request(method, path string, e *Echo) (int, string) {
 }
 
 func TestHTTPError(t *testing.T) {
-	err := NewHTTPError(http.StatusBadRequest, map[string]interface{}{
-		"code": 12,
+	t.Run("non-internal", func(t *testing.T) {
+		err := NewHTTPError(http.StatusBadRequest, map[string]interface{}{
+			"code": 12,
+		})
+
+		assert.Equal(t, "code=400, message=map[code:12]", err.Error())
+
 	})
-	assert.Equal(t, "code=400, message=map[code:12], internal=<nil>", err.Error())
+	t.Run("internal", func(t *testing.T) {
+		err := NewHTTPError(http.StatusBadRequest, map[string]interface{}{
+			"code": 12,
+		})
+		err.SetInternal(errors.New("internal error"))
+		assert.Equal(t, "code=400, message=map[code:12], internal=internal error", err.Error())
+	})
 }
 
 func TestEchoClose(t *testing.T) {
