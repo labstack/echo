@@ -114,10 +114,17 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 			req := c.Request()
 			res := c.Response()
 			start := time.Now()
+
 			if err = next(c); err != nil {
 				c.Error(err)
 			}
+
+			if config.Skipper(c) {
+				return
+			}
+
 			stop := time.Now()
+
 			buf := config.pool.Get().(*bytes.Buffer)
 			buf.Reset()
 			defer config.pool.Put(buf)
