@@ -171,3 +171,43 @@ func TestLoggerCustomTimestamp(t *testing.T) {
 	_, err := time.Parse(customTimeFormat, loggedTime)
 	assert.Error(t, err)
 }
+
+func TestLoggerSkipperAfterHandler(t *testing.T) {
+	buf := new(bytes.Buffer)
+
+	e := echo.New()
+	e.Use(
+		LoggerWithConfig(LoggerConfig{
+			Output: buf,
+			Skipper: func(c echo.Context) bool {
+				return c.Response().Status == http.StatusBadRequest
+			},
+		}),
+	)
+
+	e.GET("/skip", func(c echo.Context) error {
+		return c.NoContent(http.StatusBadRequest)
+	})
+	e.GET("/log", func(c echo.Context) error {
+		return c.NoContent(http.StatusNotFound)
+	})
+
+	tests := []struct {
+		path string
+		logged bool
+	}{
+		{path: "/skip", logged: false},
+		{path: "/log", logged: true},
+	}
+
+	for _, test := range tests {
+		buf.Reset()
+
+		req := httptest.NewRequest(http.MethodGet, test.path, nil)
+		rec := httptest.NewRecorder()
+
+		e.ServeHTTP(rec, req)
+
+		assert.Equal(t, test.logged, buf.Len() != 0, "path: %s", test.path)
+	}
+}
