@@ -317,9 +317,11 @@ func (c *context) ParamValues() []string {
 }
 
 func (c *context) SetParamValues(values ...string) {
+	arr := c.pvalues[:]
 	for _, val := range values {
-		c.pvalues = append(c.pvalues, val)
+		arr = append(arr, val)
 	}
+	c.pvalues = arr
 }
 
 func (c *context) QueryParam(name string) string {
