@@ -318,9 +318,11 @@ func (c *context) ParamValues() []string {
 
 func (c *context) SetParamValues(values ...string) {
 	// NOTE: Don't just set c.pvalues = values, because it has to have length c.echo.maxParam at all times
-	for i, val := range values {
-		c.pvalues[i] = val
+	
+	if len(c.pvalues) != len(c.pnames) {
+		return
 	}
+	c.pvalues = values
 }
 
 func (c *context) QueryParam(name string) string {
