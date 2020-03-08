@@ -318,7 +318,7 @@ func (c *context) ParamValues() []string {
 
 func (c *context) SetParamValues(values ...string) {
 	// NOTE: Don't just set c.pvalues = values, because it has to have length c.echo.maxParam at all times
-	if len(c.pvalues) != len(c.pnames) {
+	if len(values) != len(c.pnames) {
 		return
 	}
 	c.pvalues = values
