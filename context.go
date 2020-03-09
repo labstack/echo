@@ -310,6 +310,7 @@ func (c *context) ParamNames() []string {
 
 func (c *context) SetParamNames(names ...string) {
 	c.pnames = names
+	c.pvalues = make([]string, len(c.pnames))
 }
 
 func (c *context) ParamValues() []string {
@@ -317,7 +318,10 @@ func (c *context) ParamValues() []string {
 }
 
 func (c *context) SetParamValues(values ...string) {
-	// NOTE: Don't just set c.pvalues = values, because it has to have length c.echo.maxParam at all times
+	// NOTE: Don't just set c.pvalues = values, because it has to have length c.pnames at all times
+	if len(c.pnames) == 0 {
+		panic("Please call `c.SetParamNames` before setting param values")
+	}
 	for i, val := range values {
 		c.pvalues[i] = val
 	}

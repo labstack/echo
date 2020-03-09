@@ -301,9 +301,8 @@ func New() (e *Echo) {
 		AutoTLSManager: autocert.Manager{
 			Prompt: autocert.AcceptTOS,
 		},
-		Logger:   log.New("echo"),
-		colorer:  color.New(),
-		maxParam: new(int),
+		Logger:  log.New("echo"),
+		colorer: color.New(),
 	}
 	e.Server.Handler = e
 	e.TLSServer.Handler = e
@@ -326,7 +325,6 @@ func (e *Echo) NewContext(r *http.Request, w http.ResponseWriter) Context {
 		response: NewResponse(w, e),
 		store:    make(Map),
 		echo:     e,
-		pvalues:  make([]string, *e.maxParam),
 		handler:  NotFoundHandler,
 	}
 }
