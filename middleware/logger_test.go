@@ -185,17 +185,21 @@ func TestLoggerSkipperAfterHandler(t *testing.T) {
 		}),
 	)
 
-	e.GET("/skip", func(c echo.Context) error {
-		return c.NoContent(http.StatusBadRequest)
-	})
-	e.GET("/log", func(c echo.Context) error {
-		return c.NoContent(http.StatusNotFound)
-	})
+	handler := func(status int) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			return c.NoContent(status)
+		}
+	}
+
+	e.GET("/ok", handler(http.StatusOK))
+	e.GET("/skip", handler(http.StatusBadRequest))
+	e.GET("/log", handler(http.StatusNotFound))
 
 	tests := []struct {
 		path string
 		logged bool
 	}{
+		{path: "/ok", logged: true},
 		{path: "/skip", logged: false},
 		{path: "/log", logged: true},
 	}
