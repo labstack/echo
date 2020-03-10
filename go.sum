@@ -28,10 +28,8 @@ github.com/gorilla/websocket v1.0.1-0.20161019023340-5df680c89f2a h1:O9D4Vd0tTwg
 github.com/gorilla/websocket v1.0.1-0.20161019023340-5df680c89f2a/go.mod h1:E7qHFY5m1UJ88s3WnNqhKjPHQ0heANvMoAMk2YaljkQ=
 github.com/kardianos/osext v0.0.0-20160811001526-c2c54e542fb7 h1:pKv4oHt3kat9yf1jofmaRv3KxGaY5B7VV55GrfXFa74=
 github.com/kardianos/osext v0.0.0-20160811001526-c2c54e542fb7/go.mod h1:1NbS8ALrpOvjt0rHPNLyCIeMtbizbir8U//inJ+zuB8=
-github.com/klauspost/compress v1.4.0 h1:8nsMz3tWa9SWWPL60G1V6CUsf4lLjWLTNEtibhe8gh8=
-github.com/klauspost/compress v1.4.0/go.mod h1:RyIbtBH6LamlWaDj8nUwkbUhJ87Yi3uG0guNDohfE1A=
-github.com/klauspost/cpuid v0.0.0-20180405133222-e7e905edc00e h1:+lIPJOWl+jSiJOc70QXJ07+2eg2Jy2EC7Mi11BWujeM=
-github.com/klauspost/cpuid v0.0.0-20180405133222-e7e905edc00e/go.mod h1:Pj4uuM528wm8OyEC2QMXAi2YiTZ96dNQPGgoMS4s3ek=
+github.com/klauspost/compress v1.10.2 h1:Znfn6hXZAHaLPNnlqUYRrBSReFHYybslgv4PTiyz6P0=
+github.com/klauspost/compress v1.10.2/go.mod h1:aoV0uJVorq1K+umq18yTdKaF57EivdYsUV+/s2qKfXs=
 github.com/labstack/echo v2.2.0+incompatible h1:WHGirux72mcAqh0rDGCNqhMkIF2VxCJjFsrOuqi+5hk=
 github.com/labstack/echo v2.2.0+incompatible/go.mod h1:0INS7j/VjnFxD4E2wkz67b8cVwCLbBmJyDaka6Cmk1s=
 github.com/labstack/gommon v0.0.4-0.20160925181133-f3b1a1b3bd47 h1:x/Ms6Ye+tvnOz6TeSUCkkZ250WXG8vuJFOaYGZDE7mc=
@@ -44,8 +42,8 @@ github.com/pmezard/go-difflib v0.0.0-20151028094244-d8ed2627bdf0 h1:GD+A8+e+wFkq
 github.com/pmezard/go-difflib v0.0.0-20151028094244-d8ed2627bdf0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/stretchr/testify v1.1.5-0.20160925220609-976c720a22c8 h1:f4Xo/Dhbk4mbPFN+QqSzSsXt1bK2fMLqpMY+Jx6AR6A=
 github.com/stretchr/testify v1.1.5-0.20160925220609-976c720a22c8/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
-github.com/trafficstars/fasthttp v1.0.5 h1:xdxgIkRjTP6hTK62/46ZPKrzKYNNg1uE08QGIjhpEOE=
-github.com/trafficstars/fasthttp v1.0.5/go.mod h1:jCXSuU7R5/fVhndJUtwzvOETX8fKNMzjdWVtsR+GY6I=
+github.com/trafficstars/fasthttp v1.0.6-0.20200310175633-34512817e764 h1:x0z49QzeM5/y3HGpM9t2Cnb28yG6izhwTWBfMEJNQyI=
+github.com/trafficstars/fasthttp v1.0.6-0.20200310175633-34512817e764/go.mod h1:HQ7sI41HjB+kawrMPkBQugEDGaju5oxa2QnVDuFqK1M=
 github.com/tylerb/graceful v1.2.13 h1:yKdTh6eHcWdD8Jm3wxgJ6pNf8Lb3wwbV4Ip8fHbeMLE=
 github.com/tylerb/graceful v1.2.13/go.mod h1:LPYTbOYmUTdabwRt0TGhLllQ0MUNbs0Y5q1WXJOI9II=
 github.com/valyala/bytebufferpool v1.0.0 h1:GqA5TC/0021Y/b9FG4Oi9Mr3q7XYx6KllzawFIhcdPw=
@@ -54,10 +52,8 @@ github.com/valyala/fasttemplate v0.0.0-20160315193134-3b874956e03f h1:qL0GulPclt
 github.com/valyala/fasttemplate v0.0.0-20160315193134-3b874956e03f/go.mod h1:50wTf68f99/Zt14pr046Tgt3Lp2vLyFZKzbFXTOabXw=
 github.com/valyala/tcplisten v0.0.0-20161114210144-ceec8f93295a/go.mod h1:v3UYOV9WzVtRmSR+PDvWpU/qWl4Wa5LApYYX4ZtKbio=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
-golang.org/x/net v0.0.0-20180911220305-26e67e76b6c3 h1:czFLhve3vsQetD6JOJ8NZZvGQIXlnN3/yXxbT6/awxI=
-golang.org/x/net v0.0.0-20180911220305-26e67e76b6c3/go.mod h1:mL1N/T3taQHkDXs73rZJwtUhF3w3ftmwwsq0BUmARs4=
-golang.org/x/net v0.0.0-20190404232315-eb5bcb51f2a3 h1:0GoQqolDA55aaLxZyTzK/Y2ePZzZTUrRacwib7cNsYQ=
-golang.org/x/net v0.0.0-20190404232315-eb5bcb51f2a3/go.mod h1:t9HGtf8HONx5eT2rtn7q6eTqICYqUVnKs3thJo3Qplg=
+golang.org/x/net v0.0.0-20200301022130-244492dfa37a h1:GuSPYbZzB5/dcLNCwLQLsg3obCJtX9IJhpXkvY7kzk0=
+golang.org/x/net v0.0.0-20200301022130-244492dfa37a/go.mod h1:z5CRVTTTmAJ677TzLLGU+0bjPO0LkuOLi4/5GtJWs/s=
 golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20190412213103-97732733099d h1:+R4KGOnez64A81RvjARKc4UT5/tI9ujCIVX+P5KiHuI=
 golang.org/x/sys v0.0.0-20190412213103-97732733099d/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
