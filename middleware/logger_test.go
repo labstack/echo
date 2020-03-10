@@ -196,7 +196,7 @@ func TestLoggerSkipperAfterHandler(t *testing.T) {
 	e.GET("/log", handler(http.StatusNotFound))
 
 	tests := []struct {
-		path string
+		path   string
 		logged bool
 	}{
 		{path: "/ok", logged: true},
@@ -213,5 +213,28 @@ func TestLoggerSkipperAfterHandler(t *testing.T) {
 		e.ServeHTTP(rec, req)
 
 		assert.Equal(t, test.logged, buf.Len() != 0, "path: %s", test.path)
+	}
+}
+
+func BenchmarkLoggerSkipping(b *testing.B) {
+	logger := LoggerWithConfig(LoggerConfig{
+		Output: new(bytes.Buffer),
+		Skipper: func(_ echo.Context) bool {
+			return true
+		},
+	})
+
+	handler := logger(func(c echo.Context) error {
+		return nil
+	})
+
+	e := echo.New()
+	c := e.NewContext(
+		httptest.NewRequest(http.MethodGet, "/", nil),
+		httptest.NewRecorder(),
+	)
+
+	for i := 0; i < b.N; i++ {
+		_ = handler(c)
 	}
 }
