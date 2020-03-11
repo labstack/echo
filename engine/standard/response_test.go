@@ -32,7 +32,7 @@ func TestResponseSetCookie(t *testing.T) {
 	res := NewResponse(rec, log.New("test"))
 	res.SetCookie(&Cookie{&http.Cookie{
 		Name:  "name",
-		Value: "Jon Snow",
+		Value: "JonSnow",
 	}})
-	assert.Equal(t, "name=Jon Snow", rec.Header().Get("Set-Cookie"))
+	assert.Equal(t, "name=JonSnow", rec.Header().Get("Set-Cookie"))
 }
