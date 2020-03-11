@@ -8,7 +8,7 @@ import (
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/engine"
 	"github.com/stretchr/testify/assert"
-	"github.com/trafficstars/fasthttp"
+	"github.com/valyala/fasthttp"
 )
 
 // TODO: Fix me

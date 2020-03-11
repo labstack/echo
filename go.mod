@@ -24,8 +24,8 @@ require (
 	github.com/mattn/go-isatty v0.0.0-20160806122752-66b8e73f3f5c
 	github.com/pmezard/go-difflib v0.0.0-20151028094244-d8ed2627bdf0 // indirect
 	github.com/stretchr/testify v1.1.5-0.20160925220609-976c720a22c8
-	github.com/trafficstars/fasthttp v1.0.6-0.20200310175633-34512817e764
 	github.com/tylerb/graceful v1.2.13
+	github.com/valyala/fasthttp v1.9.0
 	github.com/valyala/fasttemplate v0.0.0-20160315193134-3b874956e03f
 	golang.org/x/net v0.0.0-20200301022130-244492dfa37a
 	golang.org/x/sys v0.0.0-20190412213103-97732733099d // indirect

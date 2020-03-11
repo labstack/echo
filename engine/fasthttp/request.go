@@ -11,7 +11,7 @@ import (
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/engine"
 	"github.com/labstack/echo/log"
-	"github.com/trafficstars/fasthttp"
+	"github.com/valyala/fasthttp"
 )
 
 type (

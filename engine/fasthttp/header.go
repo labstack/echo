@@ -2,7 +2,7 @@
 
 package fasthttp
 
-import "github.com/trafficstars/fasthttp"
+import "github.com/valyala/fasthttp"
 
 type (
 	// RequestHeader holds `fasthttp.RequestHeader`.

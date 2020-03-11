@@ -9,7 +9,7 @@ import (
 
 	"github.com/labstack/echo/engine/test"
 	"github.com/labstack/gommon/log"
-	fast "github.com/trafficstars/fasthttp"
+	fast "github.com/valyala/fasthttp"
 )
 
 type fakeAddr struct {

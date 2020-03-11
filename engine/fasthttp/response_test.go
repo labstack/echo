@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/trafficstars/fasthttp"
+	"github.com/valyala/fasthttp"
 
 	"github.com/labstack/gommon/log"
 )
