@@ -111,8 +111,7 @@ func (s *Server) Start() error {
 
 // Stop implements `engine.Server#Stop` function.
 func (s *Server) Stop() error {
-	// TODO: implement `engine.Server#Stop` function
-	return nil
+	return s.Shutdown()
 }
 
 func (s *Server) startDefaultListener() error {
