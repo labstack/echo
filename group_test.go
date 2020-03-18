@@ -1,7 +1,9 @@
 package echo
 
 import (
+	"io/ioutil"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -24,6 +26,19 @@ func TestGroup(t *testing.T) {
 	g.Match([]string{http.MethodGet, http.MethodPost}, "/", h)
 	g.Static("/static", "/tmp")
 	g.File("/walle", "_fixture/images//walle.png")
+}
+
+func TestGroupFile(t *testing.T) {
+	e := New()
+	g := e.Group("/group")
+	g.File("/walle", "_fixture/images/walle.png")
+	expectedData, err := ioutil.ReadFile("_fixture/images/walle.png")
+	assert.Nil(t, err)
+	req := httptest.NewRequest(http.MethodGet, "/group/walle", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, expectedData, rec.Body.Bytes())
 }
 
 func TestGroupRouteMiddleware(t *testing.T) {
