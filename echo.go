@@ -606,12 +606,12 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h := NotFoundHandler
 
 	if e.premiddleware == nil {
-		e.findRouter(r.Host).Find(r.Method, getPath(r), c)
+		e.findRouter(r.Host).Find(r.Method, GetPath(r), c)
 		h = c.Handler()
 		h = applyMiddleware(h, e.middleware...)
 	} else {
 		h = func(c Context) error {
-			e.findRouter(r.Host).Find(r.Method, getPath(r), c)
+			e.findRouter(r.Host).Find(r.Method, GetPath(r), c)
 			h := c.Handler()
 			h = applyMiddleware(h, e.middleware...)
 			return h(c)
@@ -817,7 +817,8 @@ func WrapMiddleware(m func(http.Handler) http.Handler) MiddlewareFunc {
 	}
 }
 
-func getPath(r *http.Request) string {
+// GetPath returns RawPath, if it's empty returns Path from URL
+func GetPath(r *http.Request) string {
 	path := r.URL.RawPath
 	if path == "" {
 		path = r.URL.Path

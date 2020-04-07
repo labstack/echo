@@ -224,7 +224,7 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 
 			// Rewrite
 			for k, v := range config.rewriteRegex {
-				replacer := captureTokens(k, req.URL.Path)
+				replacer := captureTokens(k, echo.GetPath(req))
 				if replacer != nil {
 					req.URL.Path = replacer.Replace(v)
 				}
