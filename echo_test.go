@@ -497,19 +497,39 @@ func TestEchoStartTLSByteString(t *testing.T) {
 }
 
 func TestEchoStartAutoTLS(t *testing.T) {
+	testPort := "9876"
 	e := New()
-	errChan := make(chan error, 0)
+	errChan := make(chan error, 1)
 
 	go func() {
-		errChan <- e.StartAutoTLS(":0")
+		defer close(errChan)
+		errChan <- e.StartAutoTLS(":" + testPort)
 	}()
-	time.Sleep(200 * time.Millisecond)
+
+	// making a non-TLS http Request, which is enough to verify that Echo
+	// started without triggering an ACME error
+	uri := "http://localhost:" + testPort
+	req, err := http.NewRequest("GET", uri, nil)
+	require.NoError(t, err)
+	ctx, cancel := stdContext.WithTimeout(stdContext.Background(), time.Second)
+	defer cancel()
+	req = req.WithContext(ctx)
+	client := http.DefaultClient
+	_, err = client.Do(req)
+	require.NoError(t, err)
 
 	select {
 	case err := <-errChan:
-		assert.NoError(t, err)
-	default:
-		assert.NoError(t, e.Close())
+		// Echo should still be running, the errChan should not have closed
+		t.Fatalf("(before e.Close()) e.StartAutoTLS:%v", err)
+	case <-time.After(200 * time.Millisecond):
+		// Echo at this point has taken a (non-https) request and survived.
+		// It can now be closed.
+		require.NoError(t, e.Close())
+	}
+	err = <-errChan
+	if err != http.ErrServerClosed {
+		t.Fatalf("(after e.Close()) e.StartAutoTLS:%v", err)
 	}
 }
 
