@@ -608,7 +608,6 @@ func TestRouterMatchAny(t *testing.T) {
 		return nil
 	})
 	c := e.NewContext(nil, nil).(*context)
-
 	r.Find(http.MethodGet, "/", c)
 	assert.Equal(t, "", c.Param("*"))
 
@@ -617,6 +616,61 @@ func TestRouterMatchAny(t *testing.T) {
 
 	r.Find(http.MethodGet, "/users/joe", c)
 	assert.Equal(t, "joe", c.Param("*"))
+}
+
+// TestRouterMatchAnySlash shall verify finding the best route
+// for any routes with trailing slash requests
+func TestRouterMatchAnySlash(t *testing.T) {
+	e := New()
+	r := e.router
+
+	handler := func(c Context) error {
+		c.Set("path", c.Path())
+		return nil
+	}
+
+	// Routes
+	r.Add(http.MethodGet, "/users", handler)
+	r.Add(http.MethodGet, "/users/*", handler)
+	r.Add(http.MethodGet, "/img/*", handler)
+	r.Add(http.MethodGet, "/img/load", handler)
+	r.Add(http.MethodGet, "/img/load/*", handler)
+
+	c := e.NewContext(nil, nil).(*context)
+	r.Find(http.MethodGet, "/", c)
+	assert.Equal(t, "", c.Param("*"))
+
+	// Test trailing slash request for simple any route (see #1526)
+	c = e.NewContext(nil, nil).(*context)
+	r.Find(http.MethodGet, "/users/", c)
+	c.handler(c)
+	assert.Equal(t, "/users/*", c.Get("path"))
+	assert.Equal(t, "", c.Param("*"))
+
+	c = e.NewContext(nil, nil).(*context)
+	r.Find(http.MethodGet, "/users/joe", c)
+	c.handler(c)
+	assert.Equal(t, "/users/*", c.Get("path"))
+	assert.Equal(t, "joe", c.Param("*"))
+
+	// Test trailing slash request for nested any route (see #1526)
+	c = e.NewContext(nil, nil).(*context)
+	r.Find(http.MethodGet, "/img/load", c)
+	c.handler(c)
+	assert.Equal(t, "/img/load", c.Get("path"))
+	assert.Equal(t, "", c.Param("*"))
+
+	c = e.NewContext(nil, nil).(*context)
+	r.Find(http.MethodGet, "/img/load/", c)
+	c.handler(c)
+	assert.Equal(t, "/img/load/*", c.Get("path"))
+	assert.Equal(t, "", c.Param("*"))
+
+	c = e.NewContext(nil, nil).(*context)
+	r.Find(http.MethodGet, "/img/load/ben", c)
+	c.handler(c)
+	assert.Equal(t, "/img/load/*", c.Get("path"))
+	assert.Equal(t, "ben", c.Param("*"))
 }
 
 func TestRouterMatchAnyMultiLevel(t *testing.T) {
