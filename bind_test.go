@@ -162,6 +162,7 @@ var values = map[string][]string{
 
 func TestBindJSON(t *testing.T) {
 	assert := assert.New(t)
+	
 	testBindOkay(assert, strings.NewReader(userJSON), MIMEApplicationJSON)
 	testBindError(assert, strings.NewReader(invalidContent), MIMEApplicationJSON, &json.SyntaxError{})
 	testBindError(assert, strings.NewReader(userJSONInvalidType), MIMEApplicationJSON, &json.UnmarshalTypeError{})
