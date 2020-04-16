@@ -17,12 +17,13 @@ import (
 )
 
 func TestLogger(t *testing.T) {
+	handler := func(c echo.Context, m map[string]string) {}
 	// Note: Just for the test coverage, not a real test.
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	h := Logger()(func(c echo.Context) error {
+	h := Logger(handler)(func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	})
 
@@ -32,7 +33,7 @@ func TestLogger(t *testing.T) {
 	// Status 3xx
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
-	h = Logger()(func(c echo.Context) error {
+	h = Logger(handler)(func(c echo.Context) error {
 		return c.String(http.StatusTemporaryRedirect, "test")
 	})
 	h(c)
@@ -40,7 +41,7 @@ func TestLogger(t *testing.T) {
 	// Status 4xx
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
-	h = Logger()(func(c echo.Context) error {
+	h = Logger(handler)(func(c echo.Context) error {
 		return c.String(http.StatusNotFound, "test")
 	})
 	h(c)
@@ -49,7 +50,7 @@ func TestLogger(t *testing.T) {
 	req = httptest.NewRequest(http.MethodGet, "/", nil)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
-	h = Logger()(func(c echo.Context) error {
+	h = Logger(handler)(func(c echo.Context) error {
 		return errors.New("error")
 	})
 	h(c)
@@ -61,9 +62,8 @@ func TestLoggerIPAddress(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	buf := new(bytes.Buffer)
-	e.Logger.SetOutput(buf)
 	ip := "127.0.0.1"
-	h := Logger()(func(c echo.Context) error {
+	h := Logger(func(c echo.Context, m map[string]string) {})(func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	})
 
@@ -94,7 +94,7 @@ func TestLoggerTemplate(t *testing.T) {
 			`"latency_human":"${latency_human}","bytes_in":${bytes_in}, "path":"${path}", "referer":"${referer}",` +
 			`"bytes_out":${bytes_out},"ch":"${header:X-Custom-Header}", "protocol":"${protocol}"` +
 			`"us":"${query:username}", "cf":"${form:username}", "session":"${cookie:session}"}` + "\n",
-		Output: buf,
+		LoggerHandler: func(c echo.Context, m map[string]string) {},
 	}))
 
 	e.GET("/", func(c echo.Context) error {
@@ -152,7 +152,7 @@ func TestLoggerCustomTimestamp(t *testing.T) {
 			`"bytes_out":${bytes_out},"ch":"${header:X-Custom-Header}",` +
 			`"us":"${query:username}", "cf":"${form:username}", "session":"${cookie:session}"}` + "\n",
 		CustomTimeFormat: customTimeFormat,
-		Output:           buf,
+		LoggerHandler:    func(c echo.Context, m map[string]string) {},
 	}))
 
 	e.GET("/", func(c echo.Context) error {

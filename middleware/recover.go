@@ -25,6 +25,9 @@ type (
 		// DisablePrintStack disables printing stack trace.
 		// Optional. Default value as false.
 		DisablePrintStack bool `yaml:"disable_print_stack"`
+
+		// RecoverHandler receives the error and stack.
+		RecoverHandler func(echo.Context, error, []byte)
 	}
 )
 
@@ -35,6 +38,9 @@ var (
 		StackSize:         4 << 10, // 4 KB
 		DisableStackAll:   false,
 		DisablePrintStack: false,
+		RecoverHandler: func(c echo.Context, err error, stack []byte) {
+			fmt.Printf("recover error: %s\n%s\n", err, string(stack))
+		},
 	}
 )
 
@@ -67,10 +73,10 @@ func RecoverWithConfig(config RecoverConfig) echo.MiddlewareFunc {
 					if !ok {
 						err = fmt.Errorf("%v", r)
 					}
-					stack := make([]byte, config.StackSize)
-					length := runtime.Stack(stack, !config.DisableStackAll)
 					if !config.DisablePrintStack {
-						c.Logger().Printf("[PANIC RECOVER] %v %s\n", err, stack[:length])
+						stack := make([]byte, config.StackSize)
+						length := runtime.Stack(stack, !config.DisableStackAll)
+						config.RecoverHandler(c, err, stack[:length])
 					}
 					c.Error(err)
 				}

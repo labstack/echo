@@ -479,7 +479,6 @@ func TestEchoStartTLSByteString(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			e := New()
-			e.HideBanner = true
 
 			go func() {
 				err := e.StartTLS(":0", test.cert, test.key)
