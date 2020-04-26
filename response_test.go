@@ -19,8 +19,13 @@ func TestResponse(t *testing.T) {
 	res.Before(func() {
 		c.Response().Header().Set(HeaderServer, "echo")
 	})
+	// After
+	res.After(func() {
+		c.Response().Header().Set(HeaderXFrameOptions, "DENY")
+	})
 	res.Write([]byte("test"))
 	assert.Equal(t, "echo", rec.Header().Get(HeaderServer))
+	assert.Equal(t, "DENY", rec.Header().Get(HeaderXFrameOptions))
 }
 
 func TestResponse_Write_FallsBackToDefaultStatus(t *testing.T) {
