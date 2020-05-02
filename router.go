@@ -355,6 +355,10 @@ func (r *Router) Find(method, path string, c Context) {
 
 		// Attempt to go back up the tree on no matching prefix or no remaining search
 		if l != pl || search == "" {
+			// Handle special case of trailing slash route with existing any route
+			if cn.findChildByKind(akind) != nil { // Issue #1526
+				goto Any
+			}
 			if nn == nil { // Issue #1348
 				return // Not found
 			}
