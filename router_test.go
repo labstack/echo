@@ -635,6 +635,7 @@ func TestRouterMatchAnySlash(t *testing.T) {
 	r.Add(http.MethodGet, "/img/*", handler)
 	r.Add(http.MethodGet, "/img/load", handler)
 	r.Add(http.MethodGet, "/img/load/*", handler)
+	r.Add(http.MethodGet, "/assets/*", handler)
 
 	c := e.NewContext(nil, nil).(*context)
 	r.Find(http.MethodGet, "/", c)
@@ -671,6 +672,22 @@ func TestRouterMatchAnySlash(t *testing.T) {
 	c.handler(c)
 	assert.Equal(t, "/img/load/*", c.Get("path"))
 	assert.Equal(t, "ben", c.Param("*"))
+
+	// Test /assets/* any route
+	// ... without trailing slash must not match
+	c = e.NewContext(nil, nil).(*context)
+	r.Find(http.MethodGet, "/assets", c)
+	c.handler(c)
+	assert.Equal(t, nil, c.Get("path"))
+	assert.Equal(t, "", c.Param("*"))
+
+	// ... with trailing slash must match
+	c = e.NewContext(nil, nil).(*context)
+	r.Find(http.MethodGet, "/assets/", c)
+	c.handler(c)
+	assert.Equal(t, "/assets/*", c.Get("path"))
+	assert.Equal(t, "", c.Param("*"))
+
 }
 
 func TestRouterMatchAnyMultiLevel(t *testing.T) {
