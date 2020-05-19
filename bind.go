@@ -100,6 +100,10 @@ func (b *DefaultBinder) bindData(ptr interface{}, data map[string][]string, tag 
 
 	// !struct
 	if typ.Kind() != reflect.Struct {
+		if tag == "param" || tag == "query" {
+			// incompatible type, data is probably to be found in the body
+			return nil
+		}
 		return errors.New("binding element must be a struct")
 	}
 
