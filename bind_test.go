@@ -9,6 +9,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"reflect"
 	"strconv"
 	"strings"
@@ -162,7 +163,10 @@ var values = map[string][]string{
 
 func TestBindJSON(t *testing.T) {
 	assert := assert.New(t)
-	testBindOkay(assert, strings.NewReader(userJSON), MIMEApplicationJSON)
+	testBindOkay(assert, strings.NewReader(userJSON), nil, MIMEApplicationJSON)
+	testBindOkay(assert, strings.NewReader(userJSON), dummyQuery, MIMEApplicationJSON)
+	testBindArrayOkay(assert, strings.NewReader(usersJSON), nil, MIMEApplicationJSON)
+	testBindArrayOkay(assert, strings.NewReader(usersJSON), dummyQuery, MIMEApplicationJSON)
 	testBindError(assert, strings.NewReader(invalidContent), MIMEApplicationJSON, &json.SyntaxError{})
 	testBindError(assert, strings.NewReader(userJSONInvalidType), MIMEApplicationJSON, &json.UnmarshalTypeError{})
 }
@@ -170,11 +174,15 @@ func TestBindJSON(t *testing.T) {
 func TestBindXML(t *testing.T) {
 	assert := assert.New(t)
 
-	testBindOkay(assert, strings.NewReader(userXML), MIMEApplicationXML)
+	testBindOkay(assert, strings.NewReader(userXML), nil, MIMEApplicationXML)
+	testBindOkay(assert, strings.NewReader(userXML), dummyQuery, MIMEApplicationXML)
+	testBindArrayOkay(assert, strings.NewReader(userXML), nil, MIMEApplicationXML)
+	testBindArrayOkay(assert, strings.NewReader(userXML), dummyQuery, MIMEApplicationXML)
 	testBindError(assert, strings.NewReader(invalidContent), MIMEApplicationXML, errors.New(""))
 	testBindError(assert, strings.NewReader(userXMLConvertNumberError), MIMEApplicationXML, &strconv.NumError{})
 	testBindError(assert, strings.NewReader(userXMLUnsupportedTypeError), MIMEApplicationXML, &xml.SyntaxError{})
-	testBindOkay(assert, strings.NewReader(userXML), MIMETextXML)
+	testBindOkay(assert, strings.NewReader(userXML), nil, MIMETextXML)
+	testBindOkay(assert, strings.NewReader(userXML), dummyQuery, MIMETextXML)
 	testBindError(assert, strings.NewReader(invalidContent), MIMETextXML, errors.New(""))
 	testBindError(assert, strings.NewReader(userXMLConvertNumberError), MIMETextXML, &strconv.NumError{})
 	testBindError(assert, strings.NewReader(userXMLUnsupportedTypeError), MIMETextXML, &xml.SyntaxError{})
@@ -183,7 +191,8 @@ func TestBindXML(t *testing.T) {
 func TestBindForm(t *testing.T) {
 	assert := assert.New(t)
 
-	testBindOkay(assert, strings.NewReader(userForm), MIMEApplicationForm)
+	testBindOkay(assert, strings.NewReader(userForm), nil, MIMEApplicationForm)
+	testBindOkay(assert, strings.NewReader(userForm), dummyQuery, MIMEApplicationForm)
 	e := New()
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userForm))
 	rec := httptest.NewRecorder()
@@ -307,14 +316,16 @@ func TestBindUnmarshalTextPtr(t *testing.T) {
 }
 
 func TestBindMultipartForm(t *testing.T) {
-	body := new(bytes.Buffer)
-	mw := multipart.NewWriter(body)
+	bodyBuffer := new(bytes.Buffer)
+	mw := multipart.NewWriter(bodyBuffer)
 	mw.WriteField("id", "1")
 	mw.WriteField("name", "Jon Snow")
 	mw.Close()
+	body := bodyBuffer.Bytes()
 
 	assert := assert.New(t)
-	testBindOkay(assert, body, mw.FormDataContentType())
+	testBindOkay(assert, bytes.NewReader(body), nil, mw.FormDataContentType())
+	testBindOkay(assert, bytes.NewReader(body), dummyQuery, mw.FormDataContentType())
 }
 
 func TestBindUnsupportedMediaType(t *testing.T) {
@@ -516,9 +527,13 @@ func assertBindTestStruct(a *assert.Assertions, ts *bindTestStruct) {
 	a.Equal("", ts.GetCantSet())
 }
 
-func testBindOkay(assert *assert.Assertions, r io.Reader, ctype string) {
+func testBindOkay(assert *assert.Assertions, r io.Reader, query url.Values, ctype string) {
 	e := New()
-	req := httptest.NewRequest(http.MethodPost, "/", r)
+	path := "/"
+	if len(query) > 0 {
+		path += "?" + query.Encode()
+	}
+	req := httptest.NewRequest(http.MethodPost, path, r)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	req.Header.Set(HeaderContentType, ctype)
@@ -527,6 +542,25 @@ func testBindOkay(assert *assert.Assertions, r io.Reader, ctype string) {
 	if assert.NoError(err) {
 		assert.Equal(1, u.ID)
 		assert.Equal("Jon Snow", u.Name)
+	}
+}
+
+func testBindArrayOkay(assert *assert.Assertions, r io.Reader, query url.Values, ctype string) {
+	e := New()
+	path := "/"
+	if len(query) > 0 {
+		path += "?" + query.Encode()
+	}
+	req := httptest.NewRequest(http.MethodPost, path, r)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	req.Header.Set(HeaderContentType, ctype)
+	u := []user{}
+	err := c.Bind(&u)
+	if assert.NoError(err) {
+		assert.Equal(1, len(u))
+		assert.Equal(1, u[0].ID)
+		assert.Equal("Jon Snow", u[0].Name)
 	}
 }
 
