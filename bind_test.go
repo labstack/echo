@@ -435,33 +435,25 @@ func TestBindSetFields(t *testing.T) {
 	if assert.NoError(setIntField("5", 0, val.FieldByName("I"))) {
 		assert.Equal(5, ts.I)
 	}
-	if assert.NoError(setIntField("", 0, val.FieldByName("I"))) {
-		assert.Equal(0, ts.I)
-	}
+	assert.Error(setIntField("", 0, val.FieldByName("I")))
 
 	// Uint
 	if assert.NoError(setUintField("10", 0, val.FieldByName("UI"))) {
 		assert.Equal(uint(10), ts.UI)
 	}
-	if assert.NoError(setUintField("", 0, val.FieldByName("UI"))) {
-		assert.Equal(uint(0), ts.UI)
-	}
+	assert.Error(setUintField("", 0, val.FieldByName("UI")))
 
 	// Float
 	if assert.NoError(setFloatField("15.5", 0, val.FieldByName("F32"))) {
 		assert.Equal(float32(15.5), ts.F32)
 	}
-	if assert.NoError(setFloatField("", 0, val.FieldByName("F32"))) {
-		assert.Equal(float32(0.0), ts.F32)
-	}
+	assert.Error(setFloatField("", 0, val.FieldByName("F32")))
 
 	// Bool
 	if assert.NoError(setBoolField("true", val.FieldByName("B"))) {
 		assert.Equal(true, ts.B)
 	}
-	if assert.NoError(setBoolField("", val.FieldByName("B"))) {
-		assert.Equal(false, ts.B)
-	}
+	assert.Error(setBoolField("", val.FieldByName("B")))
 
 	ok, err := unmarshalFieldNonPtr("2016-12-06T19:09:05Z", val.FieldByName("T"))
 	if assert.NoError(err) {
