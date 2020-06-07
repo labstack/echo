@@ -61,6 +61,7 @@ import (
 	"golang.org/x/crypto/acme/autocert"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
+	"golang.org/x/xerrors"
 )
 
 type (
@@ -345,7 +346,7 @@ func (e *Echo) Routers() map[string]*Router {
 // with status code.
 func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 	var he *HTTPError
-	if errors.As(err, &he) {
+	if xerrors.As(err, &he) {
 		if he.Internal != nil {
 			if herr, ok := he.Internal.(*HTTPError); ok {
 				he = herr
