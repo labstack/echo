@@ -344,8 +344,8 @@ func (e *Echo) Routers() map[string]*Router {
 // DefaultHTTPErrorHandler is the default HTTP error handler. It sends a JSON response
 // with status code.
 func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
-	he, ok := err.(*HTTPError)
-	if ok {
+	var he *HTTPError
+	if errors.As(err, &he) {
 		if he.Internal != nil {
 			if herr, ok := he.Internal.(*HTTPError); ok {
 				he = herr
