@@ -346,13 +346,7 @@ func (e *Echo) Routers() map[string]*Router {
 // with status code.
 func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 	var he *HTTPError
-	if xerrors.As(err, &he) {
-		if he.Internal != nil {
-			if herr, ok := he.Internal.(*HTTPError); ok {
-				he = herr
-			}
-		}
-	} else {
+	if !xerrors.As(err, &he) {
 		he = &HTTPError{
 			Code:    http.StatusInternalServerError,
 			Message: http.StatusText(http.StatusInternalServerError),
@@ -794,6 +788,11 @@ func (he *HTTPError) Error() string {
 func (he *HTTPError) SetInternal(err error) *HTTPError {
 	he.Internal = err
 	return he
+}
+
+// Unwrap satisfies the Go 1.13 error wrapper interface.
+func (he *HTTPError) Unwrap() error {
+	return he.Internal
 }
 
 // WrapHandler wraps `http.Handler` into `echo.HandlerFunc`.

@@ -601,3 +601,22 @@ func TestEchoShutdown(t *testing.T) {
 	err := <-errCh
 	assert.Equal(t, err.Error(), "http: Server closed")
 }
+
+func TestHTTPError_Unwrap(t *testing.T) {
+	t.Run("non-internal", func(t *testing.T) {
+		err := NewHTTPError(http.StatusBadRequest, map[string]interface{}{
+			"code": 12,
+		})
+
+		assert.Nil(t, errors.Unwrap(err))
+	})
+
+	t.Run("internal", func(t *testing.T) {
+		err := NewHTTPError(http.StatusBadRequest, map[string]interface{}{
+			"code": 12,
+		})
+
+		err.SetInternal(errors.New("internal error"))
+		assert.Equal(t, "internal error", errors.Unwrap(err).Error())
+	})
+}
