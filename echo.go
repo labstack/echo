@@ -20,6 +20,8 @@ Example:
   func main() {
     // Echo instance
     e := echo.New()
+		// set net/http logger
+    e.Server.ErrorLogger = TODO
 
     // Middleware
     e.Use(middleware.Logger())
@@ -29,7 +31,7 @@ Example:
     e.GET("/", hello)
 
     // Start server
-    e.Logger.Fatal(e.Start(":1323"))
+    log.Fatal(e.Start(":1323"))
   }
 
 Learn more at https://echo.labstack.com
@@ -44,7 +46,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	stdLog "log"
 	"net"
 	"net/http"
 	"net/url"
@@ -55,8 +56,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/labstack/gommon/color"
-	"github.com/labstack/gommon/log"
 	"golang.org/x/crypto/acme"
 	"golang.org/x/crypto/acme/autocert"
 	"golang.org/x/net/http2"
@@ -67,8 +66,6 @@ type (
 	// Echo is the top-level framework instance.
 	Echo struct {
 		common
-		StdLogger        *stdLog.Logger
-		colorer          *color.Color
 		premiddleware    []MiddlewareFunc
 		middleware       []MiddlewareFunc
 		maxParam         *int
@@ -83,13 +80,11 @@ type (
 		AutoTLSManager   autocert.Manager
 		DisableHTTP2     bool
 		Debug            bool
-		HideBanner       bool
 		HidePort         bool
 		HTTPErrorHandler HTTPErrorHandler
 		Binder           Binder
 		Validator        Validator
 		Renderer         Renderer
-		Logger           Logger
 		IPExtractor      IPExtractor
 	}
 
@@ -301,16 +296,12 @@ func New() (e *Echo) {
 		AutoTLSManager: autocert.Manager{
 			Prompt: autocert.AcceptTOS,
 		},
-		Logger:   log.New("echo"),
-		colorer:  color.New(),
 		maxParam: new(int),
 	}
 	e.Server.Handler = e
 	e.TLSServer.Handler = e
 	e.HTTPErrorHandler = e.DefaultHTTPErrorHandler
 	e.Binder = &DefaultBinder{}
-	e.Logger.SetLevel(log.ERROR)
-	e.StdLogger = stdLog.New(e.Logger.Output(), e.Logger.Prefix()+": ", 0)
 	e.pool.New = func() interface{} {
 		return e.NewContext(nil, nil)
 	}
@@ -375,7 +366,7 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 			err = c.JSON(code, message)
 		}
 		if err != nil {
-			e.Logger.Error(err)
+			// todo: maybe set in context and pass to logger middelware
 		}
 	}
 }
@@ -690,16 +681,7 @@ func (e *Echo) startTLS(address string) error {
 // StartServer starts a custom http server.
 func (e *Echo) StartServer(s *http.Server) (err error) {
 	// Setup
-	e.colorer.SetOutput(e.Logger.Output())
-	s.ErrorLog = e.StdLogger
 	s.Handler = e
-	if e.Debug {
-		e.Logger.SetLevel(log.DEBUG)
-	}
-
-	if !e.HideBanner {
-		e.colorer.Printf(banner, e.colorer.Red("v"+Version), e.colorer.Blue(website))
-	}
 
 	if s.TLSConfig == nil {
 		if e.Listener == nil {
@@ -707,9 +689,6 @@ func (e *Echo) StartServer(s *http.Server) (err error) {
 			if err != nil {
 				return err
 			}
-		}
-		if !e.HidePort {
-			e.colorer.Printf("⇨ http server started on %s\n", e.colorer.Green(e.Listener.Addr()))
 		}
 		return s.Serve(e.Listener)
 	}
@@ -720,9 +699,6 @@ func (e *Echo) StartServer(s *http.Server) (err error) {
 		}
 		e.TLSListener = tls.NewListener(l, s.TLSConfig)
 	}
-	if !e.HidePort {
-		e.colorer.Printf("⇨ https server started on %s\n", e.colorer.Green(e.TLSListener.Addr()))
-	}
 	return s.Serve(e.TLSListener)
 }
 
@@ -731,25 +707,13 @@ func (e *Echo) StartH2CServer(address string, h2s *http2.Server) (err error) {
 	// Setup
 	s := e.Server
 	s.Addr = address
-	e.colorer.SetOutput(e.Logger.Output())
-	s.ErrorLog = e.StdLogger
 	s.Handler = h2c.NewHandler(e, h2s)
-	if e.Debug {
-		e.Logger.SetLevel(log.DEBUG)
-	}
-
-	if !e.HideBanner {
-		e.colorer.Printf(banner, e.colorer.Red("v"+Version), e.colorer.Blue(website))
-	}
 
 	if e.Listener == nil {
 		e.Listener, err = newListener(s.Addr)
 		if err != nil {
 			return err
 		}
-	}
-	if !e.HidePort {
-		e.colorer.Printf("⇨ http server started on %s\n", e.colorer.Green(e.Listener.Addr()))
 	}
 	return s.Serve(e.Listener)
 }

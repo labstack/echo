@@ -2,16 +2,14 @@ package middleware
 
 import (
 	"bytes"
-	"encoding/json"
 	"io"
+	"log"
 	"strconv"
-	"strings"
-	"sync"
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/gommon/color"
 	"github.com/valyala/fasttemplate"
+	"go.uber.org/zap"
 )
 
 type (
@@ -54,15 +52,29 @@ type (
 		// Optional. Default value DefaultLoggerConfig.CustomTimeFormat.
 		CustomTimeFormat string `yaml:"custom_time_format"`
 
-		// Output is a writer where logs in JSON format are written.
-		// Optional. Default value os.Stdout.
-		Output io.Writer
+		LoggerHandler func(c echo.Context, m map[string]string)
 
 		template *fasttemplate.Template
-		colorer  *color.Color
-		pool     *sync.Pool
 	}
 )
+
+// NOTE: optionaly here can be handler to diffrent log libraries, or it can be left
+// for user to define.
+func NewZapLoggerHandler(l *zap.Logger) func(c echo.Context, m map[string]string) {
+	return func(c echo.Context, m map[string]string) {
+		l.Info("request log", zap.String("id", m["id"]) /*TODO: ....*/)
+	}
+}
+
+func NewStdLoggerHandler(l *log.Logger) func(c echo.Context, m map[string]string) {
+	return func(c echo.Context, m map[string]string) {
+		l.Printf("request log, id=%s", m["id"])
+	}
+}
+
+// func NewLogrusLoggerHandler(l *log.Logger) func(c echo.Context, m map[string]string) {}
+// func NewLog15LoggerHandler(l *log.Logger) func(c echo.Context, m map[string]string) {}
+// etc.
 
 var (
 	// DefaultLoggerConfig is the default Logger middleware config.
@@ -73,12 +85,13 @@ var (
 			`"status":${status},"error":"${error}","latency":${latency},"latency_human":"${latency_human}"` +
 			`,"bytes_in":${bytes_in},"bytes_out":${bytes_out}}` + "\n",
 		CustomTimeFormat: "2006-01-02 15:04:05.00000",
-		colorer:          color.New(),
 	}
 )
 
 // Logger returns a middleware that logs HTTP requests.
-func Logger() echo.MiddlewareFunc {
+func Logger(handler func(c echo.Context, m map[string]string)) echo.MiddlewareFunc {
+	c := DefaultLoggerConfig
+	c.LoggerHandler = handler
 	return LoggerWithConfig(DefaultLoggerConfig)
 }
 
@@ -92,18 +105,8 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 	if config.Format == "" {
 		config.Format = DefaultLoggerConfig.Format
 	}
-	if config.Output == nil {
-		config.Output = DefaultLoggerConfig.Output
-	}
 
 	config.template = fasttemplate.New(config.Format, "${", "}")
-	config.colorer = color.New()
-	config.colorer.SetOutput(config.Output)
-	config.pool = &sync.Pool{
-		New: func() interface{} {
-			return bytes.NewBuffer(make([]byte, 256))
-		},
-	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) (err error) {
@@ -118,105 +121,30 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 				c.Error(err)
 			}
 			stop := time.Now()
-			buf := config.pool.Get().(*bytes.Buffer)
-			buf.Reset()
-			defer config.pool.Put(buf)
+			m := make(map[string]string)
 
-			if _, err = config.template.ExecuteFunc(buf, func(w io.Writer, tag string) (int, error) {
+			var buf bytes.Buffer
+			if _, err = config.template.ExecuteFunc(&buf, func(w io.Writer, tag string) (int, error) {
 				switch tag {
 				case "time_unix":
-					return buf.WriteString(strconv.FormatInt(time.Now().Unix(), 10))
-				case "time_unix_nano":
-					return buf.WriteString(strconv.FormatInt(time.Now().UnixNano(), 10))
-				case "time_rfc3339":
-					return buf.WriteString(time.Now().Format(time.RFC3339))
-				case "time_rfc3339_nano":
-					return buf.WriteString(time.Now().Format(time.RFC3339Nano))
-				case "time_custom":
-					return buf.WriteString(time.Now().Format(config.CustomTimeFormat))
+					m["time_unix"] = strconv.FormatInt(time.Now().Unix(), 10)
 				case "id":
 					id := req.Header.Get(echo.HeaderXRequestID)
 					if id == "" {
 						id = res.Header().Get(echo.HeaderXRequestID)
 					}
-					return buf.WriteString(id)
-				case "remote_ip":
-					return buf.WriteString(c.RealIP())
-				case "host":
-					return buf.WriteString(req.Host)
-				case "uri":
-					return buf.WriteString(req.RequestURI)
-				case "method":
-					return buf.WriteString(req.Method)
-				case "path":
-					p := req.URL.Path
-					if p == "" {
-						p = "/"
-					}
-					return buf.WriteString(p)
-				case "protocol":
-					return buf.WriteString(req.Proto)
-				case "referer":
-					return buf.WriteString(req.Referer())
-				case "user_agent":
-					return buf.WriteString(req.UserAgent())
-				case "status":
-					n := res.Status
-					s := config.colorer.Green(n)
-					switch {
-					case n >= 500:
-						s = config.colorer.Red(n)
-					case n >= 400:
-						s = config.colorer.Yellow(n)
-					case n >= 300:
-						s = config.colorer.Cyan(n)
-					}
-					return buf.WriteString(s)
-				case "error":
-					if err != nil {
-						// Error may contain invalid JSON e.g. `"`
-						b, _ := json.Marshal(err.Error())
-						b = b[1 : len(b)-1]
-						return buf.Write(b)
-					}
+					m["id"] = id
 				case "latency":
 					l := stop.Sub(start)
-					return buf.WriteString(strconv.FormatInt(int64(l), 10))
-				case "latency_human":
-					return buf.WriteString(stop.Sub(start).String())
-				case "bytes_in":
-					cl := req.Header.Get(echo.HeaderContentLength)
-					if cl == "" {
-						cl = "0"
-					}
-					return buf.WriteString(cl)
-				case "bytes_out":
-					return buf.WriteString(strconv.FormatInt(res.Size, 10))
-				default:
-					switch {
-					case strings.HasPrefix(tag, "header:"):
-						return buf.Write([]byte(c.Request().Header.Get(tag[7:])))
-					case strings.HasPrefix(tag, "query:"):
-						return buf.Write([]byte(c.QueryParam(tag[6:])))
-					case strings.HasPrefix(tag, "form:"):
-						return buf.Write([]byte(c.FormValue(tag[5:])))
-					case strings.HasPrefix(tag, "cookie:"):
-						cookie, err := c.Cookie(tag[7:])
-						if err == nil {
-							return buf.Write([]byte(cookie.Value))
-						}
-					}
+					m["latency"] = strconv.FormatInt(int64(l), 10)
 				}
+				// TODO:
 				return 0, nil
 			}); err != nil {
 				return
 			}
 
-			if config.Output == nil {
-				_, err = c.Logger().Output().Write(buf.Bytes())
-				return
-			}
-			_, err = config.Output.Write(buf.Bytes())
+			config.LoggerHandler(c, m)
 			return
 		}
 	}
