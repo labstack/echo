@@ -40,6 +40,7 @@ var (
 		StackSize:         4 << 10, // 4 KB
 		DisableStackAll:   false,
 		DisablePrintStack: false,
+		LogLevel:          0,
 	}
 )
 
