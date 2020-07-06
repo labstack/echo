@@ -5,6 +5,7 @@ import (
 	"runtime"
 
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/gommon/log"
 )
 
 type (
@@ -25,6 +26,10 @@ type (
 		// DisablePrintStack disables printing stack trace.
 		// Optional. Default value as false.
 		DisablePrintStack bool `yaml:"disable_print_stack"`
+
+		// LogLevel is log level to printing stack trace.
+		// Optional. Default value 0 (Print).
+		LogLevel log.Lvl
 	}
 )
 
@@ -35,6 +40,7 @@ var (
 		StackSize:         4 << 10, // 4 KB
 		DisableStackAll:   false,
 		DisablePrintStack: false,
+		LogLevel:          0,
 	}
 )
 
@@ -70,7 +76,21 @@ func RecoverWithConfig(config RecoverConfig) echo.MiddlewareFunc {
 					stack := make([]byte, config.StackSize)
 					length := runtime.Stack(stack, !config.DisableStackAll)
 					if !config.DisablePrintStack {
-						c.Logger().Printf("[PANIC RECOVER] %v %s\n", err, stack[:length])
+						msg := fmt.Sprintf("[PANIC RECOVER] %v %s\n", err, stack[:length])
+						switch config.LogLevel {
+						case log.DEBUG:
+							c.Logger().Debug(msg)
+						case log.INFO:
+							c.Logger().Info(msg)
+						case log.WARN:
+							c.Logger().Warn(msg)
+						case log.ERROR:
+							c.Logger().Error(msg)
+						case log.OFF:
+							// None.
+						default:
+							c.Logger().Print(msg)
+						}
 					}
 					c.Error(err)
 				}
