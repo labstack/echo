@@ -504,11 +504,7 @@ func (e *Echo) add(host, method, path string, handler HandlerFunc, middleware ..
 	name := handlerName(handler)
 	router := e.findRouter(host)
 	router.Add(method, path, func(c Context) error {
-		h := handler
-		// Chain middleware
-		for i := len(middleware) - 1; i >= 0; i-- {
-			h = middleware[i](h)
-		}
+		h := applyMiddleware(handler, middleware...)
 		return h(c)
 	})
 	r := &Route{
