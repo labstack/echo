@@ -549,7 +549,6 @@ func TestHTTPError(t *testing.T) {
 		})
 
 		assert.Equal(t, "code=400, message=map[code:12]", err.Error())
-
 	})
 	t.Run("internal", func(t *testing.T) {
 		err := NewHTTPError(http.StatusBadRequest, map[string]interface{}{
