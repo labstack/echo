@@ -18,10 +18,6 @@ func TestRewrite(t *testing.T) {
 			"/api/*":            "/$1",
 			"/js/*":             "/public/javascripts/$1",
 			"/users/*/orders/*": "/user/$1/order/$2",
-			"/foo/*":            "/v1/foo/$1",
-			"/v1/foo/*":         "/v1/foo/$1",
-			"/v2/foo/*":         "/v2/foo/$1",
-			"^/bar/*":           "/foobar/$1",
 		},
 	}))
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -41,18 +37,6 @@ func TestRewrite(t *testing.T) {
 	req.URL.Path = "/api/new users"
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "/new users", req.URL.Path)
-	req.URL.Path = "/foo/bar"
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/v1/foo/bar", req.URL.Path)
-	req.URL.Path = "/v1/foo/bar"
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/v1/foo/bar", req.URL.Path)
-	req.URL.Path = "/v2/foo/bar"
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/v2/foo/bar", req.URL.Path)
-	req.URL.Path = "/bar/baz"
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/foobar/baz", req.URL.Path)
 }
 
 // Issue #1086
