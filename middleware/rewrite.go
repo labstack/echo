@@ -59,6 +59,9 @@ func RewriteWithConfig(config RewriteConfig) echo.MiddlewareFunc {
 	for k, v := range config.Rules {
 		k = regexp.QuoteMeta(k)
 		k = strings.Replace(k, `\*`, "(.*)", -1)
+		if strings.HasPrefix(k, `\^`) {
+			k = strings.Replace(k, `\^`, "^", -1)
+		}
 		k = k + "$"
 		config.rulesRegex[regexp.MustCompile(k)] = v
 	}
