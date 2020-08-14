@@ -45,6 +45,9 @@ type (
 		// Examples: If custom TLS certificates are required.
 		Transport http.RoundTripper
 
+		// ModifyResponse defines function to modify response from ProxyTarget.
+		ModifyResponse func(*http.Response) error
+
 		rewriteRegex map[*regexp.Regexp]string
 	}
 
