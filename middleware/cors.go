@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -76,6 +77,15 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 		config.AllowMethods = DefaultCORSConfig.AllowMethods
 	}
 
+	allowOriginPatterns := []string{}
+	for _, origin := range config.AllowOrigins {
+		pattern := regexp.QuoteMeta(origin)
+		pattern = strings.Replace(pattern, "\\*", ".*", -1)
+		pattern = strings.Replace(pattern, "\\?", ".", -1)
+		pattern = "^" + pattern + "$"
+		allowOriginPatterns = append(allowOriginPatterns, pattern)
+	}
+
 	allowMethods := strings.Join(config.AllowMethods, ",")
 	allowHeaders := strings.Join(config.AllowHeaders, ",")
 	exposeHeaders := strings.Join(config.ExposeHeaders, ",")
@@ -105,6 +115,26 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 				if matchSubdomain(origin, o) {
 					allowOrigin = origin
 					break
+				}
+			}
+
+			// Check allowed origin patterns
+			for _, re := range allowOriginPatterns {
+				if allowOrigin == "" {
+					didx := strings.Index(origin, "://")
+					if didx == -1 {
+						continue
+					}
+					domAuth := origin[didx+3:]
+					// to avoid regex cost by invalid long domain
+					if len(domAuth) > 253 {
+						break
+					}
+
+					if match, _ := regexp.MatchString(re, origin); match {
+						allowOrigin = origin
+						break
+					}
 				}
 			}
 

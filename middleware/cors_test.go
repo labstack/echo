@@ -83,3 +83,141 @@ func TestCORS(t *testing.T) {
 	h(c)
 	assert.Equal(t, "http://bbb.example.com", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
 }
+
+func Test_allowOriginScheme(t *testing.T) {
+	tests := []struct {
+		domain, pattern string
+		expected        bool
+	}{
+		{
+			domain:   "http://example.com",
+			pattern:  "http://example.com",
+			expected: true,
+		},
+		{
+			domain:   "https://example.com",
+			pattern:  "https://example.com",
+			expected: true,
+		},
+		{
+			domain:   "http://example.com",
+			pattern:  "https://example.com",
+			expected: false,
+		},
+		{
+			domain:   "https://example.com",
+			pattern:  "http://example.com",
+			expected: false,
+		},
+	}
+
+	e := echo.New()
+	for _, tt := range tests {
+		req := httptest.NewRequest(http.MethodOptions, "/", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		req.Header.Set(echo.HeaderOrigin, tt.domain)
+		cors := CORSWithConfig(CORSConfig{
+			AllowOrigins: []string{tt.pattern},
+		})
+		h := cors(echo.NotFoundHandler)
+		h(c)
+
+		if tt.expected {
+			assert.Equal(t, tt.domain, rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
+		} else {
+			assert.Equal(t, "", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
+		}
+	}
+}
+
+func Test_allowOriginSubdomain(t *testing.T) {
+	tests := []struct {
+		domain, pattern string
+		expected        bool
+	}{
+		{
+			domain:   "http://aaa.example.com",
+			pattern:  "http://*.example.com",
+			expected: true,
+		},
+		{
+			domain:   "http://bbb.aaa.example.com",
+			pattern:  "http://*.example.com",
+			expected: true,
+		},
+		{
+			domain:   "http://bbb.aaa.example.com",
+			pattern:  "http://*.aaa.example.com",
+			expected: true,
+		},
+		{
+			domain:   "http://aaa.example.com:8080",
+			pattern:  "http://*.example.com:8080",
+			expected: true,
+		},
+
+		{
+			domain:   "http://fuga.hoge.com",
+			pattern:  "http://*.example.com",
+			expected: false,
+		},
+		{
+			domain:   "http://ccc.bbb.example.com",
+			pattern:  "http://*.aaa.example.com",
+			expected: false,
+		},
+		{
+			domain: `http://1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890\
+		  .1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890\
+		  .1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890\
+		  .1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.example.com`,
+			pattern:  "http://*.example.com",
+			expected: false,
+		},
+		{
+			domain:   `http://1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.example.com`,
+			pattern:  "http://*.example.com",
+			expected: false,
+		},
+		{
+			domain:   "http://ccc.bbb.example.com",
+			pattern:  "http://example.com",
+			expected: false,
+		},
+		{
+			domain:   "https://prod-preview--aaa.bbb.com",
+			pattern:  "https://*--aaa.bbb.com",
+			expected: true,
+		},
+		{
+			domain:   "http://ccc.bbb.example.com",
+			pattern:  "http://*.example.com",
+			expected: true,
+		},
+		{
+			domain:   "http://ccc.bbb.example.com",
+			pattern:  "http://foo.[a-z]*.example.com",
+			expected: false,
+		},
+	}
+
+	e := echo.New()
+	for _, tt := range tests {
+		req := httptest.NewRequest(http.MethodOptions, "/", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		req.Header.Set(echo.HeaderOrigin, tt.domain)
+		cors := CORSWithConfig(CORSConfig{
+			AllowOrigins: []string{tt.pattern},
+		})
+		h := cors(echo.NotFoundHandler)
+		h(c)
+
+		if tt.expected {
+			assert.Equal(t, tt.domain, rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
+		} else {
+			assert.Equal(t, "", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
+		}
+	}
+}
