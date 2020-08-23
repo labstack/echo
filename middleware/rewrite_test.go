@@ -42,11 +42,11 @@ func TestRewrite(t *testing.T) {
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "/new%20users", req.URL.EscapedPath())
-	req.URL.Path =  "/users/jill/orders/T%2FcO4lW%2Ft%2FVp%2F"
+	req.URL.Path = "/users/jill/orders/T%2FcO4lW%2Ft%2FVp%2F"
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "/user/jill/order/T%2FcO4lW%2Ft%2FVp%2F", req.URL.EscapedPath())
-	req.URL.Path =  "/users/jill/orders/%%%%"
+	req.URL.Path = "/users/jill/orders/%%%%"
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
@@ -66,14 +66,14 @@ func TestEchoRewritePreMiddleware(t *testing.T) {
 
 	// Route
 	r.Add(http.MethodGet, "/new", func(c echo.Context) error {
-		return c.NoContent(200)
+		return c.NoContent(http.StatusOK)
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/old", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "/new", req.URL.EscapedPath())
-	assert.Equal(t, 200, rec.Code)
+	assert.Equal(t, http.StatusOK, rec.Code)
 }
 
 // Issue #1143
@@ -89,10 +89,10 @@ func TestRewriteWithConfigPreMiddleware_Issue1143(t *testing.T) {
 	}))
 
 	r.Add(http.MethodGet, "/api/:version/hosts/:name", func(c echo.Context) error {
-		return c.String(200, "hosts")
+		return c.String(http.StatusOK, "hosts")
 	})
 	r.Add(http.MethodGet, "/api/:version/eng", func(c echo.Context) error {
-		return c.String(200, "eng")
+		return c.String(http.StatusOK, "eng")
 	})
 
 	for i := 0; i < 100; i++ {
@@ -100,7 +100,7 @@ func TestRewriteWithConfigPreMiddleware_Issue1143(t *testing.T) {
 		rec := httptest.NewRecorder()
 		e.ServeHTTP(rec, req)
 		assert.Equal(t, "/api/v1/hosts/test", req.URL.EscapedPath())
-		assert.Equal(t, 200, rec.Code)
+		assert.Equal(t, http.StatusOK, rec.Code)
 
 		defer rec.Result().Body.Close()
 		bodyBytes, _ := ioutil.ReadAll(rec.Result().Body)
