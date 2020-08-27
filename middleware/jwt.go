@@ -86,6 +86,7 @@ const (
 // Errors
 var (
 	ErrJWTMissing = echo.NewHTTPError(http.StatusBadRequest, "missing or malformed jwt")
+	ErrJWTInvalid = echo.NewHTTPError(http.StatusUnauthorized, "invalid or expired jwt")
 )
 
 var (
@@ -213,8 +214,8 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 				return config.ErrorHandlerWithContext(err, c)
 			}
 			return &echo.HTTPError{
-				Code:     http.StatusUnauthorized,
-				Message:  "invalid or expired jwt",
+				Code:     ErrJWTInvalid.Code,
+				Message:  ErrJWTInvalid.Message,
 				Internal: err,
 			}
 		}
