@@ -1,7 +1,9 @@
 package middleware
 
 import (
+	"bytes"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -104,10 +106,25 @@ func TestProxy(t *testing.T) {
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "/user/jack/order/1", req.URL.Path)
 	assert.Equal(t, http.StatusOK, rec.Code)
-  req.URL.Path = "/users/jill/orders/T%2FcO4lW%2Ft%2FVp%2F"
+	req.URL.Path = "/users/jill/orders/T%2FcO4lW%2Ft%2FVp%2F"
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "/user/jill/order/T%2FcO4lW%2Ft%2FVp%2F", req.URL.Path)
 	assert.Equal(t, http.StatusOK, rec.Code)
+
+	// ModifyResponse
+	e = echo.New()
+	e.Use(ProxyWithConfig(ProxyConfig{
+		Balancer: rrb,
+		ModifyResponse: func(res *http.Response) error {
+			res.Body = ioutil.NopCloser(bytes.NewBuffer([]byte("modified")))
+			res.Header.Set("X-Modified", "1")
+			return nil
+		},
+	}))
+	rec = httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, "modified", rec.Body.String())
+	assert.Equal(t, "1", rec.Header().Get("X-Modified"))
 
 	// ProxyTarget is set in context
 	contextObserver := func(next echo.HandlerFunc) echo.HandlerFunc {
