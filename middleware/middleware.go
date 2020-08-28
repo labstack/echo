@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -30,6 +32,17 @@ func captureTokens(pattern *regexp.Regexp, input string) *strings.Replacer {
 		replace[j+1] = v
 	}
 	return strings.NewReplacer(replace...)
+}
+
+//rewritePath sets request url path and raw path
+func rewritePath(replacer *strings.Replacer, target string, req *http.Request) error {
+	replacerRawPath := replacer.Replace(target)
+	replacerPath, err := url.PathUnescape(replacerRawPath)
+	if err != nil {
+		return err
+	}
+	req.URL.Path, req.URL.RawPath = replacerPath, replacerRawPath
+	return nil
 }
 
 // DefaultSkipper returns false which processes the middleware.

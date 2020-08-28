@@ -227,9 +227,12 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 
 			// Rewrite
 			for k, v := range config.rewriteRegex {
-				replacer := captureTokens(k, echo.GetPath(req))
+				//use req.URL.Path here or else we will have double escaping
+				replacer := captureTokens(k, req.URL.Path)
 				if replacer != nil {
-					req.URL.Path = replacer.Replace(v)
+					if err := rewritePath(replacer, v, req); err != nil {
+						return echo.NewHTTPError(http.StatusBadRequest, "invalid url")
+					}
 				}
 			}
 
