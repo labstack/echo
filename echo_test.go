@@ -76,8 +76,16 @@ func TestEchoStatic(t *testing.T) {
 
 	// Directory
 	e.Static("/images", "_fixture/images")
-	c, _ = request(http.MethodGet, "/images", e)
+	c, _ = request(http.MethodGet, "/images/", e)
 	assert.Equal(http.StatusNotFound, c)
+
+	// Directory Redirect
+	e.Static("/", "_fixture")
+	req := httptest.NewRequest(http.MethodGet, "/folder", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	assert.Equal(http.StatusMovedPermanently, rec.Code)
+	assert.Equal("/folder/", rec.HeaderMap["Location"][0])
 
 	// Directory with index.html
 	e.Static("/", "_fixture")
@@ -86,9 +94,10 @@ func TestEchoStatic(t *testing.T) {
 	assert.Equal(true, strings.HasPrefix(r, "<!doctype html>"))
 
 	// Sub-directory with index.html
-	c, r = request(http.MethodGet, "/folder", e)
+	c, r = request(http.MethodGet, "/folder/", e)
 	assert.Equal(http.StatusOK, c)
 	assert.Equal(true, strings.HasPrefix(r, "<!doctype html>"))
+
 }
 
 func TestEchoFile(t *testing.T) {

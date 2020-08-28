@@ -48,6 +48,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"path"
 	"path/filepath"
 	"reflect"
@@ -479,7 +480,20 @@ func (common) static(prefix, root string, get func(string, HandlerFunc, ...Middl
 		if err != nil {
 			return err
 		}
+
 		name := filepath.Join(root, path.Clean("/"+p)) // "/"+ for security
+		fi, err := os.Stat(name)
+		if err != nil {
+			// The access path does not exist
+			return NotFoundHandler(c)
+		}
+
+		// If the request is for a directory and does not end with "/"
+		p = c.Request().URL.Path // path must not be empty.
+		if fi.IsDir() && p[len(p)-1] != '/' {
+			// Redirect to ends with "/"
+			return c.Redirect(http.StatusMovedPermanently, p+"/")
+		}
 		return c.File(name)
 	}
 	if prefix == "/" {
