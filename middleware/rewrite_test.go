@@ -94,3 +94,30 @@ func TestRewriteWithConfigPreMiddleware_Issue1143(t *testing.T) {
 		assert.Equal(t, "hosts", string(bodyBytes))
 	}
 }
+
+// Issue #1573
+func TestEchoRewriteWithCaret(t *testing.T) {
+	e := echo.New()
+
+	e.Pre(RewriteWithConfig(RewriteConfig{
+		Rules: map[string]string{
+			"^/abc/*": "/v1/abc/$1",
+		},
+	}))
+
+	rec := httptest.NewRecorder()
+
+	var req *http.Request
+
+	req = httptest.NewRequest(http.MethodGet, "/abc/test", nil)
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, "/v1/abc/test", req.URL.Path)
+
+	req = httptest.NewRequest(http.MethodGet, "/v1/abc/test", nil)
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, "/v1/abc/test", req.URL.Path)
+
+	req = httptest.NewRequest(http.MethodGet, "/v2/abc/test", nil)
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, "/v2/abc/test", req.URL.Path)
+}
