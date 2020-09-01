@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+//Assert expected with url.EscapedPath method to obtain the path.
 func TestRewrite(t *testing.T) {
 	e := echo.New()
 	e.Use(RewriteWithConfig(RewriteConfig{
@@ -24,19 +25,31 @@ func TestRewrite(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req.URL.Path = "/api/users"
 	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/users", req.URL.Path)
+	assert.Equal(t, "/users", req.URL.EscapedPath())
 	req.URL.Path = "/js/main.js"
+	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/public/javascripts/main.js", req.URL.Path)
+	assert.Equal(t, "/public/javascripts/main.js", req.URL.EscapedPath())
 	req.URL.Path = "/old"
+	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/new", req.URL.Path)
+	assert.Equal(t, "/new", req.URL.EscapedPath())
 	req.URL.Path = "/users/jack/orders/1"
+	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/user/jack/order/1", req.URL.Path)
+	assert.Equal(t, "/user/jack/order/1", req.URL.EscapedPath())
 	req.URL.Path = "/api/new users"
+	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/new users", req.URL.Path)
+	assert.Equal(t, "/new%20users", req.URL.EscapedPath())
+	req.URL.Path =  "/users/jill/orders/T%2FcO4lW%2Ft%2FVp%2F"
+	rec = httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, "/user/jill/order/T%2FcO4lW%2Ft%2FVp%2F", req.URL.EscapedPath())
+	req.URL.Path =  "/users/jill/orders/%%%%"
+	rec = httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
 // Issue #1086
@@ -59,7 +72,7 @@ func TestEchoRewritePreMiddleware(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/old", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/new", req.URL.Path)
+	assert.Equal(t, "/new", req.URL.EscapedPath())
 	assert.Equal(t, 200, rec.Code)
 }
 
@@ -86,7 +99,7 @@ func TestRewriteWithConfigPreMiddleware_Issue1143(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/mgmt/proj/test/agt", nil)
 		rec := httptest.NewRecorder()
 		e.ServeHTTP(rec, req)
-		assert.Equal(t, "/api/v1/hosts/test", req.URL.Path)
+		assert.Equal(t, "/api/v1/hosts/test", req.URL.EscapedPath())
 		assert.Equal(t, 200, rec.Code)
 
 		defer rec.Result().Body.Close()

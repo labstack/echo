@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"net/http"
 	"regexp"
 	"strings"
 
@@ -73,12 +74,14 @@ func RewriteWithConfig(config RewriteConfig) echo.MiddlewareFunc {
 			}
 
 			req := c.Request()
-
 			// Rewrite
 			for k, v := range config.rulesRegex {
+				//use req.URL.Path here or else we will have double escaping
 				replacer := captureTokens(k, req.URL.Path)
 				if replacer != nil {
-					req.URL.Path = replacer.Replace(v)
+					if err := rewritePath(replacer, v, req); err != nil {
+						return echo.NewHTTPError(http.StatusBadRequest, "invalid url")
+					}
 					break
 				}
 			}

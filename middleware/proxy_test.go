@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+//Assert expected with url.EscapedPath method to obtain the path.
 func TestProxy(t *testing.T) {
 	// Setup
 	t1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -94,22 +95,34 @@ func TestProxy(t *testing.T) {
 		},
 	}))
 	req.URL.Path = "/api/users"
+	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/users", req.URL.Path)
+	assert.Equal(t, "/users", req.URL.EscapedPath())
+	assert.Equal(t, http.StatusOK, rec.Code)
 	req.URL.Path = "/js/main.js"
+	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/public/javascripts/main.js", req.URL.Path)
+	assert.Equal(t, "/public/javascripts/main.js", req.URL.EscapedPath())
+	assert.Equal(t, http.StatusOK, rec.Code)
 	req.URL.Path = "/old"
+	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/new", req.URL.Path)
+	assert.Equal(t, "/new", req.URL.EscapedPath())
+	assert.Equal(t, http.StatusOK, rec.Code)
 	req.URL.Path = "/users/jack/orders/1"
+	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/user/jack/order/1", req.URL.Path)
+	assert.Equal(t, "/user/jack/order/1", req.URL.EscapedPath())
 	assert.Equal(t, http.StatusOK, rec.Code)
 	req.URL.Path = "/users/jill/orders/T%2FcO4lW%2Ft%2FVp%2F"
+	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/user/jill/order/T%2FcO4lW%2Ft%2FVp%2F", req.URL.Path)
+	assert.Equal(t, "/user/jill/order/T%2FcO4lW%2Ft%2FVp%2F", req.URL.EscapedPath())
 	assert.Equal(t, http.StatusOK, rec.Code)
+	req.URL.Path =  "/users/jill/orders/%%%%"
+	rec = httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
 
 	// ModifyResponse
 	e = echo.New()
