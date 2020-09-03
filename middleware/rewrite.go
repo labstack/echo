@@ -1,11 +1,8 @@
 package middleware
 
 import (
-	"net/http"
-	"regexp"
-	"strings"
-
 	"github.com/labstack/echo/v4"
+	"regexp"
 )
 
 type (
@@ -54,18 +51,8 @@ func RewriteWithConfig(config RewriteConfig) echo.MiddlewareFunc {
 	if config.Skipper == nil {
 		config.Skipper = DefaultBodyDumpConfig.Skipper
 	}
-	config.rulesRegex = map[*regexp.Regexp]string{}
 
-	// Initialize
-	for k, v := range config.Rules {
-		k = regexp.QuoteMeta(k)
-		k = strings.Replace(k, `\*`, "(.*)", -1)
-		if strings.HasPrefix(k, `\^`) {
-			k = strings.Replace(k, `\^`, "^", -1)
-		}
-		k = k + "$"
-		config.rulesRegex[regexp.MustCompile(k)] = v
-	}
+	config.rulesRegex = rewriteRulesRegex(config.Rules)
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) (err error) {
@@ -74,17 +61,8 @@ func RewriteWithConfig(config RewriteConfig) echo.MiddlewareFunc {
 			}
 
 			req := c.Request()
-			// Rewrite
-			for k, v := range config.rulesRegex {
-				//use req.URL.Path here or else we will have double escaping
-				replacer := captureTokens(k, req.URL.Path)
-				if replacer != nil {
-					if err := rewritePath(replacer, v, req); err != nil {
-						return echo.NewHTTPError(http.StatusBadRequest, "invalid url")
-					}
-					break
-				}
-			}
+			// Set rewrite path and raw path
+			rewritePath(config.rulesRegex, req)
 			return next(c)
 		}
 	}
