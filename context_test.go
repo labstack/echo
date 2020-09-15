@@ -871,3 +871,12 @@ func TestContext_RealIP(t *testing.T) {
 		testify.Equal(t, tt.s, tt.c.RealIP())
 	}
 }
+
+func BenchmarkRealIPForHeaderXForwardFor(b *testing.B) {
+	c := context{request: &http.Request{
+		Header: http.Header{HeaderXForwardedFor: []string{"127.0.0.1, 127.0.1.1, "}},
+	}}
+	for i := 0; i < b.N; i++ {
+		c.RealIP()
+	}
+}
