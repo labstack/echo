@@ -72,6 +72,15 @@ func BenchmarkAllocXML(b *testing.B) {
 	}
 }
 
+func BenchmarkRealIPForHeaderXForwardFor(b *testing.B) {
+	c := context{request: &http.Request{
+		Header: http.Header{HeaderXForwardedFor: []string{"127.0.0.1, 127.0.1.1, "}},
+	}}
+	for i := 0; i < b.N; i++ {
+		c.RealIP()
+	}
+}
+
 func (t *Template) Render(w io.Writer, name string, data interface{}, c Context) error {
 	return t.templates.ExecuteTemplate(w, name, data)
 }
@@ -850,6 +859,14 @@ func TestContext_RealIP(t *testing.T) {
 		{
 			&context{
 				request: &http.Request{
+					Header: http.Header{HeaderXForwardedFor: []string{"127.0.0.1"}},
+				},
+			},
+			"127.0.0.1",
+		},
+		{
+			&context{
+				request: &http.Request{
 					Header: http.Header{
 						"X-Real-Ip": []string{"192.168.0.1"},
 					},
@@ -869,14 +886,5 @@ func TestContext_RealIP(t *testing.T) {
 
 	for _, tt := range tests {
 		testify.Equal(t, tt.s, tt.c.RealIP())
-	}
-}
-
-func BenchmarkRealIPForHeaderXForwardFor(b *testing.B) {
-	c := context{request: &http.Request{
-		Header: http.Header{HeaderXForwardedFor: []string{"127.0.0.1, 127.0.1.1, "}},
-	}}
-	for i := 0; i < b.N; i++ {
-		c.RealIP()
 	}
 }
