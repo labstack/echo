@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -357,6 +358,52 @@ func TestCorsHeaders(t *testing.T) {
 
 		if tt.method == http.MethodOptions {
 			assert.Equal(t, http.StatusNoContent, rec.Code)
+		}
+	}
+}
+
+func Test_allowOriginFunc(t *testing.T) {
+	returnTrue := func(origin string) (bool, error) {
+		return true, nil
+	}
+	returnFalse := func(origin string) (bool, error) {
+		return false, nil
+	}
+	returnError := func(origin string) (bool, error) {
+		return true, errors.New("this is a test error")
+	}
+
+	allowOriginFuncs := []func(origin string) (bool, error){
+		returnTrue,
+		returnFalse,
+		returnError,
+	}
+
+	const origin = "http://example.com"
+
+	e := echo.New()
+	for _, allowOriginFunc := range allowOriginFuncs {
+		req := httptest.NewRequest(http.MethodOptions, "/", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		req.Header.Set(echo.HeaderOrigin, origin)
+		cors := CORSWithConfig(CORSConfig{
+			AllowOriginFunc: allowOriginFunc,
+		})
+		h := cors(echo.NotFoundHandler)
+		err := h(c)
+
+		expected, expectedErr := allowOriginFunc(origin)
+		if expectedErr != nil {
+			assert.Equal(t, expectedErr, err)
+			assert.Equal(t, "", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
+			continue
+		}
+
+		if expected {
+			assert.Equal(t, origin, rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
+		} else {
+			assert.Equal(t, "", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
 		}
 	}
 }
