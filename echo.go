@@ -496,6 +496,7 @@ func (common) static(prefix, root string, get func(string, HandlerFunc, ...Middl
 		}
 		return c.File(name)
 	}
+	get(prefix, h)
 	if prefix == "/" {
 		return get(prefix+"*", h)
 	}
