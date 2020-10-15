@@ -1,4 +1,4 @@
-module github.com/pwli0755/echo/v4
+module github.com/labstack/echo/v4
 
 go 1.15
 
