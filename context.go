@@ -361,7 +361,7 @@ func (c *context) FormFile(name string) (*multipart.FileHeader, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	f.Close()
 	return fh, nil
 }
 
