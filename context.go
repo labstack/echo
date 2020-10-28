@@ -310,7 +310,19 @@ func (c *context) ParamNames() []string {
 
 func (c *context) SetParamNames(names ...string) {
 	c.pnames = names
-	*c.echo.maxParam = len(names)
+
+	l := len(names)
+	if *c.echo.maxParam < l {
+		*c.echo.maxParam = l
+	}
+
+	if len(c.pvalues) < l {
+		// Keeping the old pvalues just for backward compatibility, but it sounds that doesn't make sense to keep them,
+		// probably those values will be overriden in a Context#SetParamValues
+		newPvalues := make([]string, l)
+		copy(newPvalues, c.pvalues)
+		c.pvalues = newPvalues
+	}
 }
 
 func (c *context) ParamValues() []string {
@@ -318,7 +330,15 @@ func (c *context) ParamValues() []string {
 }
 
 func (c *context) SetParamValues(values ...string) {
-	c.pvalues = values
+	// NOTE: Don't just set c.pvalues = values, because it has to have length c.echo.maxParam at all times
+	// It will brake the Router#Find code
+	limit := len(values)
+	if limit > *c.echo.maxParam {
+		limit = *c.echo.maxParam
+	}
+	for i := 0; i < limit; i++ {
+		c.pvalues[i] = values[i]
+	}
 }
 
 func (c *context) QueryParam(name string) string {
