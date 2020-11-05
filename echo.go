@@ -92,6 +92,7 @@ type (
 		Renderer         Renderer
 		Logger           Logger
 		IPExtractor      IPExtractor
+		ListenerNetwork  string
 	}
 
 	// Route contains a handler and information for matching against requests.
@@ -281,6 +282,7 @@ var (
 	ErrInvalidRedirectCode         = errors.New("invalid redirect status code")
 	ErrCookieNotFound              = errors.New("cookie not found")
 	ErrInvalidCertOrKeyType        = errors.New("invalid cert or key type, must be string or []byte")
+	ErrInvalidListenerNetwork      = errors.New("invalid listener network")
 )
 
 // Error handlers
@@ -302,9 +304,10 @@ func New() (e *Echo) {
 		AutoTLSManager: autocert.Manager{
 			Prompt: autocert.AcceptTOS,
 		},
-		Logger:   log.New("echo"),
-		colorer:  color.New(),
-		maxParam: new(int),
+		Logger:          log.New("echo"),
+		colorer:         color.New(),
+		maxParam:        new(int),
+		ListenerNetwork: "tcp",
 	}
 	e.Server.Handler = e
 	e.TLSServer.Handler = e
@@ -712,7 +715,7 @@ func (e *Echo) StartServer(s *http.Server) (err error) {
 
 	if s.TLSConfig == nil {
 		if e.Listener == nil {
-			e.Listener, err = newListener(s.Addr)
+			e.Listener, err = newListener(s.Addr, e.ListenerNetwork)
 			if err != nil {
 				return err
 			}
@@ -723,7 +726,7 @@ func (e *Echo) StartServer(s *http.Server) (err error) {
 		return s.Serve(e.Listener)
 	}
 	if e.TLSListener == nil {
-		l, err := newListener(s.Addr)
+		l, err := newListener(s.Addr, e.ListenerNetwork)
 		if err != nil {
 			return err
 		}
@@ -752,7 +755,7 @@ func (e *Echo) StartH2CServer(address string, h2s *http2.Server) (err error) {
 	}
 
 	if e.Listener == nil {
-		e.Listener, err = newListener(s.Addr)
+		e.Listener, err = newListener(s.Addr, e.ListenerNetwork)
 		if err != nil {
 			return err
 		}
@@ -873,8 +876,11 @@ func (ln tcpKeepAliveListener) Accept() (c net.Conn, err error) {
 	return
 }
 
-func newListener(address string) (*tcpKeepAliveListener, error) {
-	l, err := net.Listen("tcp", address)
+func newListener(address, network string) (*tcpKeepAliveListener, error) {
+	if network != "tcp" && network != "tcp4" && network != "tcp6" {
+		return nil, ErrInvalidListenerNetwork
+	}
+	l, err := net.Listen(network, address)
 	if err != nil {
 		return nil, err
 	}
