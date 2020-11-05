@@ -362,10 +362,12 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 	// Issue #1426
 	code := he.Code
 	message := he.Message
-	if e.Debug {
-		message = err.Error()
-	} else if m, ok := message.(string); ok {
-		message = Map{"message": m}
+	if m, ok := he.Message.(string); ok {
+		if e.Debug {
+			message = Map{"message": m, "error": err.Error()}
+		} else {
+			message = Map{"message": m}
+		}
 	}
 
 	// Send response

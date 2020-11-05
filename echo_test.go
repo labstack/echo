@@ -568,6 +568,49 @@ func TestHTTPError(t *testing.T) {
 	})
 }
 
+func TestDefaultHTTPErrorHandler(t *testing.T) {
+	e := New()
+	e.Debug = true
+	e.Any("/plain", func(c Context) error {
+		return errors.New("An error occurred")
+	})
+	e.Any("/badrequest", func(c Context) error {
+		return NewHTTPError(http.StatusBadRequest, "Invalid request")
+	})
+	e.Any("/servererror", func(c Context) error {
+		return NewHTTPError(http.StatusInternalServerError, map[string]interface{}{
+			"code":    33,
+			"message": "Something bad happened",
+			"error":   "stackinfo",
+		})
+	})
+	// With Debug=true plain response contains error message
+	c, b := request(http.MethodGet, "/plain", e)
+	assert.Equal(t, http.StatusInternalServerError, c)
+	assert.Equal(t, "{\n  \"error\": \"An error occurred\",\n  \"message\": \"Internal Server Error\"\n}\n", b)
+	// and special handling for HTTPError
+	c, b = request(http.MethodGet, "/badrequest", e)
+	assert.Equal(t, http.StatusBadRequest, c)
+	assert.Equal(t, "{\n  \"error\": \"code=400, message=Invalid request\",\n  \"message\": \"Invalid request\"\n}\n", b)
+	// complex errors are serialized to pretty JSON
+	c, b = request(http.MethodGet, "/servererror", e)
+	assert.Equal(t, http.StatusInternalServerError, c)
+	assert.Equal(t, "{\n  \"code\": 33,\n  \"error\": \"stackinfo\",\n  \"message\": \"Something bad happened\"\n}\n", b)
+
+	e.Debug = false
+	// With Debug=false the error response is shortened
+	c, b = request(http.MethodGet, "/plain", e)
+	assert.Equal(t, http.StatusInternalServerError, c)
+	assert.Equal(t, "{\"message\":\"Internal Server Error\"}\n", b)
+	c, b = request(http.MethodGet, "/badrequest", e)
+	assert.Equal(t, http.StatusBadRequest, c)
+	assert.Equal(t, "{\"message\":\"Invalid request\"}\n", b)
+	// No difference for error response with non plain string errors
+	c, b = request(http.MethodGet, "/servererror", e)
+	assert.Equal(t, http.StatusInternalServerError, c)
+	assert.Equal(t, "{\"code\":33,\"error\":\"stackinfo\",\"message\":\"Something bad happened\"}\n", b)
+}
+
 func TestEchoClose(t *testing.T) {
 	e := New()
 	errCh := make(chan error)
