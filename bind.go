@@ -19,7 +19,11 @@ type (
 	}
 
 	// DefaultBinder is the default implementation of the Binder interface.
-	DefaultBinder struct{}
+	DefaultBinder struct {
+		// AvoidBindByFieldName avoid binding struct fields by name automatically. If it's set to true, the binding is
+		// only performed when a valid tag is pressent
+		AvoidBindByFieldName bool
+	}
 
 	// BindUnmarshaler is the interface used to wrap the UnmarshalParam method.
 	// Types that don't implement this, but do implement encoding.TextUnmarshaler
@@ -113,13 +117,14 @@ func (b *DefaultBinder) bindData(ptr interface{}, data map[string][]string, tag 
 		inputFieldName := typeField.Tag.Get(tag)
 
 		if inputFieldName == "" {
-			inputFieldName = typeField.Name
 			// If tag is nil, we inspect if the field is a struct.
 			if _, ok := structField.Addr().Interface().(BindUnmarshaler); !ok && structFieldKind == reflect.Struct {
 				if err := b.bindData(structField.Addr().Interface(), data, tag); err != nil {
 					return err
 				}
 				continue
+			} else if b.AvoidBindByFieldName == false {
+				inputFieldName = typeField.Name
 			}
 		}
 

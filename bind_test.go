@@ -330,6 +330,23 @@ func TestBindbindData(t *testing.T) {
 	assertBindTestStruct(assert, ts)
 }
 
+func TestBindbindDataByTags(t *testing.T) {
+	assert := assert.New(t)
+	ts := new(bindTestStructWithTags)
+	b := new(DefaultBinder)
+	b.bindData(ts, values, "form")
+	assertBindTestStruct(assert, (*bindTestStruct)(ts))
+}
+
+func TestBindbindDataAvoidBindByFieldName(t *testing.T) {
+	assert := assert.New(t)
+	ts := new(bindTestStruct)
+	b := new(DefaultBinder)
+	b.AvoidBindByFieldName = true
+	b.bindData(ts, values, "form")
+	assertBindTestStructDefaultValues(assert, ts)
+}
+
 func TestBindParam(t *testing.T) {
 	e := New()
 	req := httptest.NewRequest(GET, "/", nil)
@@ -513,6 +530,24 @@ func assertBindTestStruct(a *assert.Assertions, ts *bindTestStruct) {
 	a.Equal(float32(32.5), ts.F32)
 	a.Equal(float64(64.5), ts.F64)
 	a.Equal("test", ts.S)
+	a.Equal("", ts.GetCantSet())
+}
+
+func assertBindTestStructDefaultValues(a *assert.Assertions, ts *bindTestStruct) {
+	a.Equal(0, ts.I)
+	a.Equal(int8(0), ts.I8)
+	a.Equal(int16(0), ts.I16)
+	a.Equal(int32(0), ts.I32)
+	a.Equal(int64(0), ts.I64)
+	a.Equal(uint(0), ts.UI)
+	a.Equal(uint8(0), ts.UI8)
+	a.Equal(uint16(0), ts.UI16)
+	a.Equal(uint32(0), ts.UI32)
+	a.Equal(uint64(0), ts.UI64)
+	a.Equal(false, ts.B)
+	a.Equal(float32(0), ts.F32)
+	a.Equal(float64(0), ts.F64)
+	a.Equal("", ts.S)
 	a.Equal("", ts.GetCantSet())
 }
 
