@@ -6,11 +6,17 @@ on:
       - master
     paths:
       - '**.go'
+      - 'go.*'
+      - '_fixture/**'
+      - '.github/**'
   pull_request:
     branches:
       - master
     paths:
       - '**.go'
+      - 'go.*'
+      - '_fixture/**'
+      - '.github/**'
 
 env:
   GO111MODULE: on
