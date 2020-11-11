@@ -347,6 +347,29 @@ func TestBindbindDataAvoidBindByFieldName(t *testing.T) {
 	assertBindTestStructDefaultValues(assert, ts)
 }
 
+func TestBindAvoidBindingJsonStructField(t *testing.T) {
+	type User struct {
+		ID      int  `json:"id"`
+		IsAdmin bool `json:"-"`
+	}
+
+	assert := assert.New(t)
+
+	e := New()
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userAvoidBindJSONField))
+	req.Header.Set(HeaderContentType, MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	defaultUser := &User{}
+	b := new(DefaultBinder)
+	b.Bind(defaultUser, c)
+
+	assert.Equal(1, defaultUser.ID)
+	// This should be false because the Zero value of a bool is false and the JSON have it in true
+	assert.Equal(false, defaultUser.IsAdmin)
+}
+
 func TestBindParam(t *testing.T) {
 	e := New()
 	req := httptest.NewRequest(GET, "/", nil)

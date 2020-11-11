@@ -32,6 +32,7 @@ const (
 	userJSONInvalidType         = `{"id":"1","name":"Jon Snow"}`
 	userXMLConvertNumberError   = `<user><id>Number one</id><name>Jon Snow</name></user>`
 	userXMLUnsupportedTypeError = `<user><>Number one</><name>Jon Snow</name></user>`
+	userAvoidBindJSONField      = `{"id": 1, "isAdmin": true}`
 )
 
 const userJSONPretty = `{

@@ -21,7 +21,9 @@ type (
 	// DefaultBinder is the default implementation of the Binder interface.
 	DefaultBinder struct {
 		// AvoidBindByFieldName avoid binding struct fields by name automatically. If it's set to true, the binding is
-		// only performed when a valid tag is pressent
+		// only performed when a valid tag is pressent.
+		// This doesn't apply for json/xml encoding. In this case you should use the features provided in the Go stdlib
+		// to achieve this. e.g. If you want to ignore a struct field during binding, you should add the tag `json:"-"`
 		AvoidBindByFieldName bool
 	}
 
