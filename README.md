@@ -42,11 +42,12 @@ For older versions, please use the latest v3 tag.
 
 ## Benchmarks
 
-Date: 2018/03/15<br>
+Date: 2020/11/11<br>
 Source: https://github.com/vishr/web-framework-benchmark<br>
 Lower is better!
 
-<img src="https://i.imgur.com/I32VdMJ.png">
+<img src="https://i.imgur.com/qwPNQbl.png">
+<img src="https://i.imgur.com/s8yKQjx.png">
 
 ## [Guide](https://echo.labstack.com/guide)
 
