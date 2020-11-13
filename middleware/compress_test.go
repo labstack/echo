@@ -120,6 +120,22 @@ func TestGzipErrorReturned(t *testing.T) {
 	assert.Empty(t, rec.Header().Get(echo.HeaderContentEncoding))
 }
 
+func TestGzipErrorReturnedInvalidConfig(t *testing.T) {
+	e := echo.New()
+	// Invalid level
+	e.Use(GzipWithConfig(GzipConfig{Level: 12}))
+	e.GET("/", func(c echo.Context) error {
+		c.Response().Write([]byte("test"))
+		return nil
+	})
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, rec.Body.String(), "gzip")
+}
+
 // Issue #806
 func TestGzipWithStatic(t *testing.T) {
 	e := echo.New()
@@ -144,5 +160,27 @@ func TestGzipWithStatic(t *testing.T) {
 			buf.ReadFrom(r)
 			assert.Equal(t, want, buf.Bytes())
 		}
+	}
+}
+
+func BenchmarkGzip(b *testing.B) {
+	e := echo.New()
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
+
+	h := Gzip()(func(c echo.Context) error {
+		c.Response().Write([]byte("test")) // For Content-Type sniffing
+		return nil
+	})
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		// Gzip
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		h(c)
 	}
 }
