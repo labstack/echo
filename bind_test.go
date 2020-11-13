@@ -99,6 +99,22 @@ type (
 	Struct      struct {
 		Foo string
 	}
+	jsonBenchmark struct {
+		One   int `json:"One" form:"One" query:"One"`
+		Two   int `json:"Two" form:"Two" query:"Two"`
+		Three int `json:"Three" form:"Three" query:"Three"`
+		Four  int `json:"Four" form:"Four" query:"Four"`
+		Five  int `json:"Five" form:"Five" query:"Five"`
+		Six   int `json:"Six" form:"Six" query:"Six"`
+		Seven int `json:"Seven" form:"Seven" query:"Seven"`
+		Eigth int `json:"Eigth" form:"Eigth" query:"Eigth"`
+		Nine  int `json:"Nine" form:"Nine" query:"Nine"`
+		Ten   int `json:"Ten" form:"Ten" query:"Ten"`
+	}
+)
+
+const (
+	jsonBenchmarkJSON = `{"One":1,"Two":2,"Three":3,"Four":4,"Five":5,"Six":6,"Seven":7,"Eigth":8,"Nine":9,"Ten":10}`
 )
 
 func (t *Timestamp) UnmarshalParam(src string) error {
@@ -510,6 +526,95 @@ func TestBindSetFields(t *testing.T) {
 	}
 }
 
+func TestDefaultBinderConfiguration(t *testing.T) {
+	type Node struct {
+		ID   int    `json:"id"`
+		Node string `json:"node" param:"node"`
+		Next string `json:"next" param:"next"`
+	}
+
+	var testCases = []struct {
+		name         string
+		givenURL     string
+		givenContent io.Reader
+		givenMethod  string
+		givenBinder  DefaultBinder
+		expectNode   string
+		expectNext   string
+	}{
+		{
+			name:         "bind to struct with route param + query param and binding by struct field name",
+			givenMethod:  http.MethodPost,
+			givenURL:     "/api/real_node/endpoint?node=xxx&next=real_next",
+			givenContent: strings.NewReader(`{"id": 1}`),
+			expectNode:   "xxx",
+			expectNext:   "real_next",
+		},
+		{
+			name:         "bind to struct with route param + query param and avoid binding by struct field name",
+			givenMethod:  http.MethodPost,
+			givenURL:     "/api/real_node/endpoint?node=xxx",
+			givenContent: strings.NewReader(`{"id": 1}`),
+			givenBinder:  DefaultBinder{AvoidBindByFieldName: true},
+			expectNode:   "real_node",
+		},
+		{
+			name:         "bind to struct with route param + query param and disabling param binding",
+			givenMethod:  http.MethodPost,
+			givenURL:     "/api/real_node/endpoint?node=xxx",
+			givenContent: strings.NewReader(`{"id": 1}`),
+			givenBinder:  DefaultBinder{DisableRouteParamsBinding: true},
+			expectNode:   "xxx",
+		},
+		{
+			name:         "bind to struct with route param + query param and disabling query binding",
+			givenMethod:  http.MethodPost,
+			givenURL:     "/api/real_node/endpoint?node=xxx&next=yyy",
+			givenContent: strings.NewReader(`{"id": 1}`),
+			givenBinder:  DefaultBinder{DisableQueryParamsBinding: true},
+			expectNode:   "real_node",
+			expectNext:   "", // Node.Next shouldn't be binded
+		},
+		{
+			name:         "bind to struct with route param + query param and disabling body binding",
+			givenMethod:  http.MethodPost,
+			givenURL:     "/api/real_node/endpoint",
+			givenContent: strings.NewReader(`{"id": 1, "node": yyy}`),
+			givenBinder:  DefaultBinder{DisableBodyBinding: true},
+			expectNode:   "real_node",
+		},
+		{
+			name:         "bind to struct with route + query + body = body has priority",
+			givenMethod:  http.MethodPost,
+			givenURL:     "/api/real_node/endpoint?node=xxx",
+			givenContent: strings.NewReader(`{"id": 1, "node": "zzz"}`),
+			expectNode:   "zzz",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			// assume route we are testing is "/api/:node/endpoint"
+			req := httptest.NewRequest(tc.givenMethod, tc.givenURL, tc.givenContent)
+			req.Header.Set(HeaderContentType, MIMEApplicationJSON)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			c.SetParamNames("node")
+			c.SetParamValues("real_node")
+
+			defaultUser := &Node{}
+			err := tc.givenBinder.Bind(defaultUser, c)
+			if err != nil {
+				t.Fatal(err)
+			}
+			assert.Equal(t, tc.expectNode, defaultUser.Node)
+			assert.Equal(t, tc.expectNext, defaultUser.Next)
+		})
+	}
+}
+
 func BenchmarkBindbindData(b *testing.B) {
 	b.ReportAllocs()
 	assert := assert.New(b)
@@ -536,6 +641,72 @@ func BenchmarkBindbindDataWithTags(b *testing.B) {
 	}
 	assert.NoError(err)
 	assertBindTestStruct(assert, (*bindTestStruct)(ts))
+}
+
+func BenchmarkBindByJsonBody(b *testing.B) {
+	b.ReportAllocs()
+	assert := assert.New(b)
+
+	e := New()
+	var err error
+	var jb *jsonBenchmark
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(jsonBenchmarkJSON))
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		req.Header.Set(HeaderContentType, MIMEApplicationJSON)
+		jb = new(jsonBenchmark)
+		err = c.Bind(jb)
+	}
+	if assert.NoError(err) {
+		assert.Equal(1, jb.One)
+		assert.Equal(2, jb.Two)
+		assert.Equal(3, jb.Three)
+		assert.Equal(4, jb.Four)
+		assert.Equal(5, jb.Five)
+		assert.Equal(6, jb.Six)
+		assert.Equal(7, jb.Seven)
+		assert.Equal(8, jb.Eigth)
+		assert.Equal(9, jb.Nine)
+		assert.Equal(10, jb.Ten)
+	}
+}
+
+func BenchmarkBindByJsonBodyDisablingRouteParamQueryParamBinding(b *testing.B) {
+	b.ReportAllocs()
+	assert := assert.New(b)
+
+	e := New()
+	e.Binder = &DefaultBinder{
+		DisableQueryParamsBinding: true,
+		DisableRouteParamsBinding: true,
+	}
+	var err error
+	var jb *jsonBenchmark
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(jsonBenchmarkJSON))
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		req.Header.Set(HeaderContentType, MIMEApplicationJSON)
+		jb = new(jsonBenchmark)
+		err = c.Bind(jb)
+	}
+	if assert.NoError(err) {
+		assert.Equal(1, jb.One)
+		assert.Equal(2, jb.Two)
+		assert.Equal(3, jb.Three)
+		assert.Equal(4, jb.Four)
+		assert.Equal(5, jb.Five)
+		assert.Equal(6, jb.Six)
+		assert.Equal(7, jb.Seven)
+		assert.Equal(8, jb.Eigth)
+		assert.Equal(9, jb.Nine)
+		assert.Equal(10, jb.Ten)
+	}
 }
 
 func assertBindTestStruct(a *assert.Assertions, ts *bindTestStruct) {

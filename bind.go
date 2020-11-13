@@ -25,6 +25,12 @@ type (
 		// This doesn't apply for json/xml encoding. In this case you should use the features provided in the Go stdlib
 		// to achieve this. e.g. If you want to ignore a struct field during binding, you should add the tag `json:"-"`
 		AvoidBindByFieldName bool
+
+		// This flags are aimed to fully disable each one of the three binding methods supported by DefaultBinder
+		// Setting this flags to true, when you don't need that kind of binding, will result in performace gains.
+		DisableRouteParamsBinding bool
+		DisableQueryParamsBinding bool
+		DisableBodyBinding        bool
 	}
 
 	// BindUnmarshaler is the interface used to wrap the UnmarshalParam method.
@@ -46,13 +52,17 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 	for i, name := range names {
 		params[name] = []string{values[i]}
 	}
-	if err := b.bindData(i, params, "param"); err != nil {
-		return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
+	if !b.DisableRouteParamsBinding {
+		if err := b.bindData(i, params, "param"); err != nil {
+			return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
+		}
 	}
-	if err = b.bindData(i, c.QueryParams(), "query"); err != nil {
-		return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
+	if !b.DisableQueryParamsBinding {
+		if err = b.bindData(i, c.QueryParams(), "query"); err != nil {
+			return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
+		}
 	}
-	if req.ContentLength == 0 {
+	if b.DisableBodyBinding || req.ContentLength == 0 {
 		return
 	}
 	ctype := req.Header.Get(HeaderContentType)
