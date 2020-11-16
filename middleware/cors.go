@@ -120,7 +120,15 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 				return c.NoContent(http.StatusNoContent)
 			}
 
-			if config.AllowOriginFunc == nil {
+			if config.AllowOriginFunc != nil {
+				allowed, err := config.AllowOriginFunc(origin)
+				if err != nil {
+					return err
+				}
+				if allowed {
+					allowOrigin = origin
+				}
+			} else {
 				// Check allowed origins
 				for _, o := range config.AllowOrigins {
 					if o == "*" && config.AllowCredentials {
@@ -155,14 +163,6 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 							break
 						}
 					}
-				}
-			} else {
-				allowed, err := config.AllowOriginFunc(origin)
-				if err != nil {
-					return err
-				}
-				if allowed {
-					allowOrigin = origin
 				}
 			}
 
