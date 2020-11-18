@@ -47,6 +47,7 @@ import (
 	stdLog "log"
 	"net"
 	"net/http"
+	_ "net/http/pprof" // This is needed to have DefaultServeMux fill with pprof routes
 	"net/url"
 	"os"
 	"path"
@@ -781,6 +782,16 @@ func (e *Echo) Shutdown(ctx stdContext.Context) error {
 		return err
 	}
 	return e.Server.Shutdown(ctx)
+}
+
+// EnableProfiling starts an stdlib http Server for the pprof endpoints (net/http/pprof)
+// Enabling this doesn't start the profiling, you should use pprof Go tool for that
+func (e *Echo) EnableProfiling(port int) {
+	go func() {
+		address := fmt.Sprintf("localhost:%d", port)
+		e.colorer.Printf("⇨ http server for profiling started on %s\n", e.colorer.Green(address))
+		http.ListenAndServe(address, nil)
+	}()
 }
 
 // NewHTTPError creates a new HTTPError instance.
