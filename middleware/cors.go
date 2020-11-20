@@ -102,6 +102,17 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 			origin := req.Header.Get(echo.HeaderOrigin)
 			allowOrigin := ""
 
+			preflight := req.Method == http.MethodOptions
+			res.Header().Add(echo.HeaderVary, echo.HeaderOrigin)
+
+			// No Origin provided
+			if origin == "" {
+				if !preflight {
+					return next(c)
+				}
+				return c.NoContent(http.StatusNoContent)
+			}
+
 			// Check allowed origins
 			for _, o := range config.AllowOrigins {
 				if o == "*" && config.AllowCredentials {
@@ -138,9 +149,16 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 				}
 			}
 
+			// Origin not allowed
+			if allowOrigin == "" {
+				if !preflight {
+					return next(c)
+				}
+				return c.NoContent(http.StatusNoContent)
+			}
+
 			// Simple request
-			if req.Method != http.MethodOptions {
-				res.Header().Add(echo.HeaderVary, echo.HeaderOrigin)
+			if !preflight {
 				res.Header().Set(echo.HeaderAccessControlAllowOrigin, allowOrigin)
 				if config.AllowCredentials {
 					res.Header().Set(echo.HeaderAccessControlAllowCredentials, "true")
@@ -152,7 +170,6 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 			}
 
 			// Preflight request
-			res.Header().Add(echo.HeaderVary, echo.HeaderOrigin)
 			res.Header().Add(echo.HeaderVary, echo.HeaderAccessControlRequestMethod)
 			res.Header().Add(echo.HeaderVary, echo.HeaderAccessControlRequestHeaders)
 			res.Header().Set(echo.HeaderAccessControlAllowOrigin, allowOrigin)
