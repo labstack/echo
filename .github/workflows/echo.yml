@@ -18,10 +18,6 @@ on:
       - '_fixture/**'
       - '.github/**'
 
-env:
-  GO111MODULE: on
-  GOPROXY: https://proxy.golang.org
-
 jobs:
   test:
     strategy:
@@ -38,9 +34,14 @@ jobs:
 
       - name: Set GOPATH and PATH
         run: |
-          echo "::set-env name=GOPATH::$(dirname $GITHUB_WORKSPACE)"
-          echo "::add-path::$(dirname $GITHUB_WORKSPACE)/bin"
+          echo "GOPATH=$(dirname $GITHUB_WORKSPACE)" >> $GITHUB_ENV
+          echo "$(dirname $GITHUB_WORKSPACE)/bin" >> $GITHUB_PATH
         shell: bash
+
+      - name: Set build variables
+        run: |
+          echo "GOPROXY=https://proxy.golang.org" >> $GITHUB_ENV
+          echo "GO111MODULE=on" >> $GITHUB_ENV
 
       - name: Checkout Code
         uses: actions/checkout@v1
