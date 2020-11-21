@@ -14,14 +14,16 @@ type (
 		echo   *Echo
 	}
 	node struct {
-		kind          kind
-		label         byte
-		prefix        string
-		parent        *node
-		children      children
-		ppath         string
-		pnames        []string
-		methodHandler *methodHandler
+		kind            kind
+		label           byte
+		prefix          string
+		parent          *node
+		staticChildrens children
+		ppath           string
+		pnames          []string
+		methodHandler   *methodHandler
+		paramChildren   *node
+		anyChildren     *node
 	}
 	kind          uint8
 	children      []*node
@@ -44,6 +46,9 @@ const (
 	skind kind = iota
 	pkind
 	akind
+
+	paramLabel = byte(':')
+	anyLabel   = byte('*')
 )
 
 // NewRouter returns a new Router instance.
@@ -134,23 +139,32 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 			}
 		} else if l < pl {
 			// Split node
-			n := newNode(cn.kind, cn.prefix[l:], cn, cn.children, cn.methodHandler, cn.ppath, cn.pnames)
+			n := newNode(cn.kind, cn.prefix[l:], cn, cn.staticChildrens, cn.methodHandler, cn.ppath, cn.pnames, cn.paramChildren, cn.anyChildren)
 
 			// Update parent path for all children to new node
-			for _, child := range cn.children {
+			for _, child := range cn.staticChildrens {
 				child.parent = n
+			}
+			if cn.paramChildren != nil {
+				cn.paramChildren.parent = n
+			}
+			if cn.anyChildren != nil {
+				cn.anyChildren.parent = n
 			}
 
 			// Reset parent node
 			cn.kind = skind
 			cn.label = cn.prefix[0]
 			cn.prefix = cn.prefix[:l]
-			cn.children = nil
+			cn.staticChildrens = nil
 			cn.methodHandler = new(methodHandler)
 			cn.ppath = ""
 			cn.pnames = nil
+			cn.paramChildren = nil
+			cn.anyChildren = nil
 
-			cn.addChild(n)
+			// Only Static children could reach here
+			cn.addStaticChild(n)
 
 			if l == sl {
 				// At parent node
@@ -160,9 +174,10 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 				cn.pnames = pnames
 			} else {
 				// Create child node
-				n = newNode(t, search[l:], cn, nil, new(methodHandler), ppath, pnames)
+				n = newNode(t, search[l:], cn, nil, new(methodHandler), ppath, pnames, nil, nil)
 				n.addHandler(method, h)
-				cn.addChild(n)
+				// Only Static children could reach here
+				cn.addStaticChild(n)
 			}
 		} else if l < sl {
 			search = search[l:]
@@ -173,9 +188,16 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 				continue
 			}
 			// Create child node
-			n := newNode(t, search, cn, nil, new(methodHandler), ppath, pnames)
+			n := newNode(t, search, cn, nil, new(methodHandler), ppath, pnames, nil, nil)
 			n.addHandler(method, h)
-			cn.addChild(n)
+			switch t {
+			case skind:
+				cn.addStaticChild(n)
+			case pkind:
+				cn.paramChildren = n
+			case akind:
+				cn.anyChildren = n
+			}
 		} else {
 			// Node already exists
 			if h != nil {
@@ -190,34 +212,27 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 	}
 }
 
-func newNode(t kind, pre string, p *node, c children, mh *methodHandler, ppath string, pnames []string) *node {
+func newNode(t kind, pre string, p *node, sc children, mh *methodHandler, ppath string, pnames []string, paramChildren, anyChildren *node) *node {
 	return &node{
-		kind:          t,
-		label:         pre[0],
-		prefix:        pre,
-		parent:        p,
-		children:      c,
-		ppath:         ppath,
-		pnames:        pnames,
-		methodHandler: mh,
+		kind:            t,
+		label:           pre[0],
+		prefix:          pre,
+		parent:          p,
+		staticChildrens: sc,
+		ppath:           ppath,
+		pnames:          pnames,
+		methodHandler:   mh,
+		paramChildren:   paramChildren,
+		anyChildren:     anyChildren,
 	}
 }
 
-func (n *node) addChild(c *node) {
-	n.children = append(n.children, c)
+func (n *node) addStaticChild(c *node) {
+	n.staticChildrens = append(n.staticChildrens, c)
 }
 
-func (n *node) findChild(l byte, t kind) *node {
-	for _, c := range n.children {
-		if c.label == l && c.kind == t {
-			return c
-		}
-	}
-	return nil
-}
-
-func (n *node) findChildWithLabel(l byte) *node {
-	for _, c := range n.children {
+func (n *node) findStaticChild(l byte) *node {
+	for _, c := range n.staticChildrens {
 		if c.label == l {
 			return c
 		}
@@ -225,11 +240,17 @@ func (n *node) findChildWithLabel(l byte) *node {
 	return nil
 }
 
-func (n *node) findChildByKind(t kind) *node {
-	for _, c := range n.children {
-		if c.kind == t {
+func (n *node) findChildWithLabel(l byte) *node {
+	for _, c := range n.staticChildrens {
+		if c.label == l {
 			return c
 		}
+	}
+	if l == paramLabel {
+		return n.paramChildren
+	}
+	if l == anyLabel {
+		return n.anyChildren
 	}
 	return nil
 }
@@ -356,7 +377,7 @@ func (r *Router) Find(method, path string, c Context) {
 		// Attempt to go back up the tree on no matching prefix or no remaining search
 		if l != pl || search == "" {
 			// Handle special case of trailing slash route with existing any route (see #1526)
-			if path[len(path)-1] == '/' && cn.findChildByKind(akind) != nil {
+			if path[len(path)-1] == '/' && cn.anyChildren != nil {
 				goto Any
 			}
 			if nn == nil { // Issue #1348
@@ -372,7 +393,7 @@ func (r *Router) Find(method, path string, c Context) {
 		}
 
 		// Static node
-		if child = cn.findChild(search[0], skind); child != nil {
+		if child = cn.findStaticChild(search[0]); child != nil {
 			// Save next
 			if cn.prefix[len(cn.prefix)-1] == '/' { // Issue #623
 				nk = pkind
@@ -385,7 +406,7 @@ func (r *Router) Find(method, path string, c Context) {
 
 	Param:
 		// Param node
-		if child = cn.findChildByKind(pkind); child != nil {
+		if child = cn.paramChildren; child != nil {
 			// Issue #378
 			if len(pvalues) == n {
 				continue
@@ -410,7 +431,7 @@ func (r *Router) Find(method, path string, c Context) {
 
 	Any:
 		// Any node
-		if cn = cn.findChildByKind(akind); cn != nil {
+		if cn = cn.anyChildren; cn != nil {
 			// If any node is found, use remaining path for pvalues
 			pvalues[len(cn.pnames)-1] = search
 			break
@@ -424,7 +445,7 @@ func (r *Router) Find(method, path string, c Context) {
 			search = ns
 			np := nn.parent
 			// Consider param route one level up only
-			if cn = nn.findChildByKind(pkind); cn != nil {
+			if cn = nn.paramChildren; cn != nil {
 				pos := strings.IndexByte(ns, '/')
 				if pos == -1 {
 					// If no slash is remaining in search string set param value
@@ -441,7 +462,7 @@ func (r *Router) Find(method, path string, c Context) {
 			// No param route found, try to resolve nearest any route
 			for {
 				np = nn.parent
-				if cn = nn.findChildByKind(akind); cn != nil {
+				if cn = nn.anyChildren; cn != nil {
 					break
 				}
 				if np == nil {
@@ -472,7 +493,7 @@ func (r *Router) Find(method, path string, c Context) {
 
 		// Dig further for any, might have an empty value for *, e.g.
 		// serving a directory. Issue #207.
-		if cn = cn.findChildByKind(akind); cn == nil {
+		if cn = cn.anyChildren; cn == nil {
 			return
 		}
 		if h := cn.findHandler(method); h != nil {
