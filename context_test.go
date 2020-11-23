@@ -569,21 +569,40 @@ func TestContextQueryParam(t *testing.T) {
 }
 
 func TestContextFormFile(t *testing.T) {
+	const expectedContent = "lorem ipsum"
 	e := New()
 	buf := new(bytes.Buffer)
 	mr := multipart.NewWriter(buf)
 	w, err := mr.CreateFormFile("file", "test")
 	if testify.NoError(t, err) {
-		w.Write([]byte("test"))
+		w.Write([]byte(expectedContent))
 	}
 	mr.Close()
 	req := httptest.NewRequest(http.MethodPost, "/", buf)
 	req.Header.Set(HeaderContentType, mr.FormDataContentType())
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	f, err := c.FormFile("file")
+	f, fh, err := c.FormFile("file")
+	defer f.Close()
 	if testify.NoError(t, err) {
-		testify.Equal(t, "test", f.Filename)
+		testify.Equal(t, "test", fh.Filename)
+		content := &strings.Builder{}
+		n, err := io.Copy(content, f)
+		if testify.NoError(t, err) {
+			testify.Equal(t, n, int64(len(expectedContent)))
+			testify.Equal(t, expectedContent, content.String())
+		}
+	}
+
+	// Missing file
+	req = httptest.NewRequest(http.MethodPost, "/", buf)
+	req.Header.Set(HeaderContentType, mr.FormDataContentType())
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec)
+	f, fh, err = c.FormFile("missingFile")
+	if testify.Error(t, err) {
+		testify.Nil(t, f)
+		testify.Nil(t, fh)
 	}
 }
 
