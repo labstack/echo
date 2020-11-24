@@ -277,10 +277,12 @@ func TestEchoURL(t *testing.T) {
 	e := New()
 	static := func(Context) error { return nil }
 	getUser := func(Context) error { return nil }
+	getAny := func(Context) error { return nil }
 	getFile := func(Context) error { return nil }
 
 	e.GET("/static/file", static)
 	e.GET("/users/:id", getUser)
+	e.GET("/documents/*", getAny)
 	g := e.Group("/group")
 	g.GET("/users/:uid/files/:fid", getFile)
 
@@ -289,6 +291,9 @@ func TestEchoURL(t *testing.T) {
 	assert.Equal("/static/file", e.URL(static))
 	assert.Equal("/users/:id", e.URL(getUser))
 	assert.Equal("/users/1", e.URL(getUser, "1"))
+	assert.Equal("/users/1", e.URL(getUser, "1"))
+	assert.Equal("/documents/foo.txt", e.URL(getAny, "foo.txt"))
+	assert.Equal("/documents/*", e.URL(getAny))
 	assert.Equal("/group/users/1/files/:fid", e.URL(getFile, "1"))
 	assert.Equal("/group/users/1/files/1", e.URL(getFile, "1", "1"))
 }
@@ -651,4 +656,29 @@ func TestEchoShutdown(t *testing.T) {
 
 	err := <-errCh
 	assert.Equal(t, err.Error(), "http: Server closed")
+}
+
+func TestEchoReverse(t *testing.T) {
+	assert := assert.New(t)
+
+	e := New()
+	dummyHandler := func(Context) error { return nil }
+
+	e.GET("/static", dummyHandler).Name = "/static"
+	e.GET("/static/*", dummyHandler).Name = "/static/*"
+	e.GET("/params/:foo", dummyHandler).Name = "/params/:foo"
+	e.GET("/params/:foo/bar/:qux", dummyHandler).Name = "/params/:foo/bar/:qux"
+	e.GET("/params/:foo/bar/:qux/*", dummyHandler).Name = "/params/:foo/bar/:qux/*"
+
+	assert.Equal("/static", e.Reverse("/static"))
+	assert.Equal("/static", e.Reverse("/static", "missing param"))
+	assert.Equal("/static/*", e.Reverse("/static/*"))
+	assert.Equal("/static/foo.txt", e.Reverse("/static/*", "foo.txt"))
+
+	assert.Equal("/params/:foo", e.Reverse("/params/:foo"))
+	assert.Equal("/params/one", e.Reverse("/params/:foo", "one"))
+	assert.Equal("/params/:foo/bar/:qux", e.Reverse("/params/:foo/bar/:qux"))
+	assert.Equal("/params/one/bar/:qux", e.Reverse("/params/:foo/bar/:qux", "one"))
+	assert.Equal("/params/one/bar/two", e.Reverse("/params/:foo/bar/:qux", "one", "two"))
+	assert.Equal("/params/one/bar/two/three", e.Reverse("/params/:foo/bar/:qux/*", "one", "two", "three"))
 }
