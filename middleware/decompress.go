@@ -16,16 +16,54 @@ type (
 	DecompressConfig struct {
 		// Skipper defines a function to skip middleware.
 		Skipper Skipper
+
+		// GzipDecompressPool defines an interface to provide the sync.Pool used to create/store Gzip readers
+		GzipDecompressPool Decompressor
 	}
 )
 
 //GZIPEncoding content-encoding header if set to "gzip", decompress body contents.
 const GZIPEncoding string = "gzip"
 
+// Decompressor is used to get the sync.Pool used by the middleware to get Gzip readers
+type Decompressor interface {
+	gzipDecompressPool() sync.Pool
+}
+
 var (
 	//DefaultDecompressConfig defines the config for decompress middleware
-	DefaultDecompressConfig = DecompressConfig{Skipper: DefaultSkipper}
+	DefaultDecompressConfig = DecompressConfig{
+		Skipper:            DefaultSkipper,
+		GzipDecompressPool: &DefaultGzipDecompressPool{},
+	}
 )
+
+// DefaultGzipDecompressPool is the default implementation of Decompressor interface
+type DefaultGzipDecompressPool struct {
+}
+
+func (d *DefaultGzipDecompressPool) gzipDecompressPool() sync.Pool {
+	return sync.Pool{
+		New: func() interface{} {
+			// create with an empty reader (but with GZIP header)
+			w, err := gzip.NewWriterLevel(ioutil.Discard, gzip.BestSpeed)
+			if err != nil {
+				return err
+			}
+
+			b := new(bytes.Buffer)
+			w.Reset(b)
+			w.Flush()
+			w.Close()
+
+			r, err := gzip.NewReader(bytes.NewReader(b.Bytes()))
+			if err != nil {
+				return err
+			}
+			return r
+		},
+	}
+}
 
 //Decompress decompresses request body based if content encoding type is set to "gzip" with default config
 func Decompress() echo.MiddlewareFunc {
@@ -34,8 +72,16 @@ func Decompress() echo.MiddlewareFunc {
 
 //DecompressWithConfig decompresses request body based if content encoding type is set to "gzip" with config
 func DecompressWithConfig(config DecompressConfig) echo.MiddlewareFunc {
+	// Defaults
+	if config.Skipper == nil {
+		config.Skipper = DefaultGzipConfig.Skipper
+	}
+	if config.GzipDecompressPool == nil {
+		config.GzipDecompressPool = DefaultDecompressConfig.GzipDecompressPool
+	}
+
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		pool := gzipDecompressPool()
+		pool := config.GzipDecompressPool.gzipDecompressPool()
 		return func(c echo.Context) error {
 			if config.Skipper(c) {
 				return next(c)
@@ -70,28 +116,5 @@ func DecompressWithConfig(config DecompressConfig) echo.MiddlewareFunc {
 			}
 			return next(c)
 		}
-	}
-}
-
-func gzipDecompressPool() sync.Pool {
-	return sync.Pool{
-		New: func() interface{} {
-			// create with an empty reader (but with GZIP header)
-			w, err := gzip.NewWriterLevel(ioutil.Discard, gzip.BestSpeed)
-			if err != nil {
-				return err
-			}
-
-			b := new(bytes.Buffer)
-			w.Reset(b)
-			w.Flush()
-			w.Close()
-
-			r, err := gzip.NewReader(bytes.NewReader(b.Bytes()))
-			if err != nil {
-				return err
-			}
-			return r
-		},
 	}
 }
