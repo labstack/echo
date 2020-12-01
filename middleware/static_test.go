@@ -3,6 +3,7 @@ package middleware
 import (
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 
 	"github.com/labstack/echo/v4"
@@ -89,5 +90,5 @@ func TestStatic(t *testing.T) {
 	e.ServeHTTP(rec, req)
 
 	assert.Equal(http.StatusOK, rec.Code)
-	assert.Contains(rec.Body.String(), "..\\_fixture\\_fixture")
+	assert.Contains(rec.Body.String(), filepath.Join("..", "_fixture", "_fixture"))
 }
