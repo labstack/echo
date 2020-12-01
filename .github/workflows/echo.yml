@@ -104,12 +104,12 @@ jobs:
       - name: Run Benchmark (Previous)
         run: |
           cd previous
-          go test -run="-" -bench=".*" -count=5 ./... > benchmark.txt
+          go test -run="-" -bench=".*" -count=8 ./... > benchmark.txt
 
       - name: Run Benchmark (New)
         run: |
           cd new
-          go test -run="-" -bench=".*" -count=5 ./... > benchmark.txt
+          go test -run="-" -bench=".*" -count=8 ./... > benchmark.txt
 
       - name: Run Benchstat
         run: |
