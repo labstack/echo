@@ -3,6 +3,7 @@ package middleware
 import (
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 
 	"github.com/labstack/echo/v4"
@@ -67,4 +68,27 @@ func TestStatic(t *testing.T) {
 		assert.Equal(http.StatusOK, rec.Code)
 		assert.Contains(rec.Body.String(), "cert.pem")
 	}
+
+	// IgnoreBase
+	req = httptest.NewRequest(http.MethodGet, "/_fixture", nil)
+	rec = httptest.NewRecorder()
+	config.Root = "../_fixture"
+	config.IgnoreBase = true
+	static = StaticWithConfig(config)
+	c.Echo().Group("_fixture", static)
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(http.StatusOK, rec.Code)
+	assert.Equal(rec.Header().Get(echo.HeaderContentLength), "122")
+
+	req = httptest.NewRequest(http.MethodGet, "/_fixture", nil)
+	rec = httptest.NewRecorder()
+	config.Root = "../_fixture"
+	config.IgnoreBase = false
+	static = StaticWithConfig(config)
+	c.Echo().Group("_fixture", static)
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(http.StatusOK, rec.Code)
+	assert.Contains(rec.Body.String(), filepath.Join("..", "_fixture", "_fixture"))
 }
