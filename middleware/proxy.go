@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -44,6 +43,9 @@ type (
 		// To customize the transport to remote.
 		// Examples: If custom TLS certificates are required.
 		Transport http.RoundTripper
+
+		// ModifyResponse defines function to modify response from ProxyTarget.
+		ModifyResponse func(*http.Response) error
 
 		rewriteRegex map[*regexp.Regexp]string
 	}
@@ -203,13 +205,8 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 	if config.Balancer == nil {
 		panic("echo: proxy middleware requires balancer")
 	}
-	config.rewriteRegex = map[*regexp.Regexp]string{}
 
-	// Initialize
-	for k, v := range config.Rewrite {
-		k = strings.Replace(k, "*", "(\\S*)", -1)
-		config.rewriteRegex[regexp.MustCompile(k)] = v
-	}
+	config.rewriteRegex = rewriteRulesRegex(config.Rewrite)
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) (err error) {
@@ -222,13 +219,8 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 			tgt := config.Balancer.Next(c)
 			c.Set(config.ContextKey, tgt)
 
-			// Rewrite
-			for k, v := range config.rewriteRegex {
-				replacer := captureTokens(k, req.URL.Path)
-				if replacer != nil {
-					req.URL.Path = replacer.Replace(v)
-				}
-			}
+			// Set rewrite path and raw path
+			rewritePath(config.rewriteRegex, req)
 
 			// Fix header
 			// Basically it's not good practice to unconditionally pass incoming x-real-ip header to upstream.
@@ -259,3 +251,5 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 		}
 	}
 }
+
+

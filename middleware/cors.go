@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -17,6 +18,13 @@ type (
 		// AllowOrigin defines a list of origins that may access the resource.
 		// Optional. Default value []string{"*"}.
 		AllowOrigins []string `yaml:"allow_origins"`
+
+		// AllowOriginFunc is a custom function to validate the origin. It takes the
+		// origin as an argument and returns true if allowed or false otherwise. If
+		// an error is returned, it is returned by the handler. If this option is
+		// set, AllowOrigins is ignored.
+		// Optional.
+		AllowOriginFunc func(origin string) (bool, error) `yaml:"allow_origin_func"`
 
 		// AllowMethods defines a list methods allowed when accessing the resource.
 		// This is used in response to a preflight request.
@@ -76,6 +84,15 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 		config.AllowMethods = DefaultCORSConfig.AllowMethods
 	}
 
+	allowOriginPatterns := []string{}
+	for _, origin := range config.AllowOrigins {
+		pattern := regexp.QuoteMeta(origin)
+		pattern = strings.Replace(pattern, "\\*", ".*", -1)
+		pattern = strings.Replace(pattern, "\\?", ".", -1)
+		pattern = "^" + pattern + "$"
+		allowOriginPatterns = append(allowOriginPatterns, pattern)
+	}
+
 	allowMethods := strings.Join(config.AllowMethods, ",")
 	allowHeaders := strings.Join(config.AllowHeaders, ",")
 	exposeHeaders := strings.Join(config.ExposeHeaders, ",")
@@ -92,25 +109,73 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 			origin := req.Header.Get(echo.HeaderOrigin)
 			allowOrigin := ""
 
-			// Check allowed origins
-			for _, o := range config.AllowOrigins {
-				if o == "*" && config.AllowCredentials {
-					allowOrigin = origin
-					break
+			preflight := req.Method == http.MethodOptions
+			res.Header().Add(echo.HeaderVary, echo.HeaderOrigin)
+
+			// No Origin provided
+			if origin == "" {
+				if !preflight {
+					return next(c)
 				}
-				if o == "*" || o == origin {
-					allowOrigin = o
-					break
+				return c.NoContent(http.StatusNoContent)
+			}
+
+			if config.AllowOriginFunc != nil {
+				allowed, err := config.AllowOriginFunc(origin)
+				if err != nil {
+					return err
 				}
-				if matchSubdomain(origin, o) {
+				if allowed {
 					allowOrigin = origin
-					break
+				}
+			} else {
+				// Check allowed origins
+				for _, o := range config.AllowOrigins {
+					if o == "*" && config.AllowCredentials {
+						allowOrigin = origin
+						break
+					}
+					if o == "*" || o == origin {
+						allowOrigin = o
+						break
+					}
+					if matchSubdomain(origin, o) {
+						allowOrigin = origin
+						break
+					}
+				}
+
+				// Check allowed origin patterns
+				for _, re := range allowOriginPatterns {
+					if allowOrigin == "" {
+						didx := strings.Index(origin, "://")
+						if didx == -1 {
+							continue
+						}
+						domAuth := origin[didx+3:]
+						// to avoid regex cost by invalid long domain
+						if len(domAuth) > 253 {
+							break
+						}
+
+						if match, _ := regexp.MatchString(re, origin); match {
+							allowOrigin = origin
+							break
+						}
+					}
 				}
 			}
 
+			// Origin not allowed
+			if allowOrigin == "" {
+				if !preflight {
+					return next(c)
+				}
+				return c.NoContent(http.StatusNoContent)
+			}
+
 			// Simple request
-			if req.Method != http.MethodOptions {
-				res.Header().Add(echo.HeaderVary, echo.HeaderOrigin)
+			if !preflight {
 				res.Header().Set(echo.HeaderAccessControlAllowOrigin, allowOrigin)
 				if config.AllowCredentials {
 					res.Header().Set(echo.HeaderAccessControlAllowCredentials, "true")
@@ -122,7 +187,6 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 			}
 
 			// Preflight request
-			res.Header().Add(echo.HeaderVary, echo.HeaderOrigin)
 			res.Header().Add(echo.HeaderVary, echo.HeaderAccessControlRequestMethod)
 			res.Header().Add(echo.HeaderVary, echo.HeaderAccessControlRequestHeaders)
 			res.Header().Set(echo.HeaderAccessControlAllowOrigin, allowOrigin)

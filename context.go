@@ -276,7 +276,11 @@ func (c *context) RealIP() string {
 	}
 	// Fall back to legacy behavior
 	if ip := c.request.Header.Get(HeaderXForwardedFor); ip != "" {
-		return strings.Split(ip, ", ")[0]
+		i := strings.IndexAny(ip, ", ")
+		if i > 0 {
+			return ip[:i]
+		}
+		return ip
 	}
 	if ip := c.request.Header.Get(HeaderXRealIP); ip != "" {
 		return ip
@@ -310,6 +314,7 @@ func (c *context) ParamNames() []string {
 
 func (c *context) SetParamNames(names ...string) {
 	c.pnames = names
+	*c.echo.maxParam = len(names)
 }
 
 func (c *context) ParamValues() []string {
@@ -317,10 +322,7 @@ func (c *context) ParamValues() []string {
 }
 
 func (c *context) SetParamValues(values ...string) {
-	// NOTE: Don't just set c.pvalues = values, because it has to have length c.echo.maxParam at all times
-	for i, val := range values {
-		c.pvalues[i] = val
-	}
+	c.pvalues = values
 }
 
 func (c *context) QueryParam(name string) string {
@@ -363,7 +365,7 @@ func (c *context) FormFile(name string) (*multipart.FileHeader, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	f.Close()
 	return fh, nil
 }
 

@@ -72,6 +72,15 @@ func BenchmarkAllocXML(b *testing.B) {
 	}
 }
 
+func BenchmarkRealIPForHeaderXForwardFor(b *testing.B) {
+	c := context{request: &http.Request{
+		Header: http.Header{HeaderXForwardedFor: []string{"127.0.0.1, 127.0.1.1, "}},
+	}}
+	for i := 0; i < b.N; i++ {
+		c.RealIP()
+	}
+}
+
 func (t *Template) Render(w io.Writer, name string, data interface{}, c Context) error {
 	return t.templates.ExecuteTemplate(w, name, data)
 }
@@ -93,7 +102,6 @@ func (responseWriterErr) WriteHeader(statusCode int) {
 
 func TestContext(t *testing.T) {
 	e := New()
-	*e.maxParam = 1
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userJSON))
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec).(*context)
@@ -472,7 +480,6 @@ func TestContextPath(t *testing.T) {
 
 func TestContextPathParam(t *testing.T) {
 	e := New()
-	*e.maxParam = 2
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	c := e.NewContext(req, nil)
 
@@ -491,7 +498,8 @@ func TestContextPathParam(t *testing.T) {
 
 func TestContextGetAndSetParam(t *testing.T) {
 	e := New()
-	*e.maxParam = 2
+	r := e.Router()
+	r.Add(http.MethodGet, "/:foo", func(Context) error { return nil })
 	req := httptest.NewRequest(http.MethodGet, "/:foo", nil)
 	c := e.NewContext(req, nil)
 	c.SetParamNames("foo")
@@ -844,6 +852,14 @@ func TestContext_RealIP(t *testing.T) {
 			&context{
 				request: &http.Request{
 					Header: http.Header{HeaderXForwardedFor: []string{"127.0.0.1, 127.0.1.1, "}},
+				},
+			},
+			"127.0.0.1",
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderXForwardedFor: []string{"127.0.0.1"}},
 				},
 			},
 			"127.0.0.1",

@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
@@ -30,6 +31,31 @@ func captureTokens(pattern *regexp.Regexp, input string) *strings.Replacer {
 		replace[j+1] = v
 	}
 	return strings.NewReplacer(replace...)
+}
+
+func rewriteRulesRegex(rewrite map[string]string) map[*regexp.Regexp]string {
+	// Initialize
+	rulesRegex := map[*regexp.Regexp]string{}
+	for k, v := range rewrite {
+		k = regexp.QuoteMeta(k)
+		k = strings.Replace(k, `\*`, "(.*)", -1)
+		if strings.HasPrefix(k, `\^`) {
+			k = strings.Replace(k, `\^`, "^", -1)
+		}
+		k = k + "$"
+		rulesRegex[regexp.MustCompile(k)] = v
+	}
+	return rulesRegex
+}
+
+func rewritePath(rewriteRegex map[*regexp.Regexp]string, req *http.Request) {
+	for k, v := range rewriteRegex {
+		replacerRawPath := captureTokens(k, req.URL.EscapedPath())
+		if replacerRawPath != nil {
+			replacerPath := captureTokens(k, req.URL.Path)
+			req.URL.RawPath, req.URL.Path = replacerRawPath.Replace(v), replacerPath.Replace(v)
+		}
+	}
 }
 
 // DefaultSkipper returns false which processes the middleware.

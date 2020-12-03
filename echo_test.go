@@ -76,8 +76,16 @@ func TestEchoStatic(t *testing.T) {
 
 	// Directory
 	e.Static("/images", "_fixture/images")
-	c, _ = request(http.MethodGet, "/images", e)
+	c, _ = request(http.MethodGet, "/images/", e)
 	assert.Equal(http.StatusNotFound, c)
+
+	// Directory Redirect
+	e.Static("/", "_fixture")
+	req := httptest.NewRequest(http.MethodGet, "/folder", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	assert.Equal(http.StatusMovedPermanently, rec.Code)
+	assert.Equal("/folder/", rec.HeaderMap["Location"][0])
 
 	// Directory with index.html
 	e.Static("/", "_fixture")
@@ -86,9 +94,10 @@ func TestEchoStatic(t *testing.T) {
 	assert.Equal(true, strings.HasPrefix(r, "<!doctype html>"))
 
 	// Sub-directory with index.html
-	c, r = request(http.MethodGet, "/folder", e)
+	c, r = request(http.MethodGet, "/folder/", e)
 	assert.Equal(http.StatusOK, c)
 	assert.Equal(true, strings.HasPrefix(r, "<!doctype html>"))
+
 }
 
 func TestEchoFile(t *testing.T) {
@@ -543,10 +552,63 @@ func request(method, path string, e *Echo) (int, string) {
 }
 
 func TestHTTPError(t *testing.T) {
-	err := NewHTTPError(http.StatusBadRequest, map[string]interface{}{
-		"code": 12,
+	t.Run("non-internal", func(t *testing.T) {
+		err := NewHTTPError(http.StatusBadRequest, map[string]interface{}{
+			"code": 12,
+		})
+
+		assert.Equal(t, "code=400, message=map[code:12]", err.Error())
 	})
-	assert.Equal(t, "code=400, message=map[code:12], internal=<nil>", err.Error())
+	t.Run("internal", func(t *testing.T) {
+		err := NewHTTPError(http.StatusBadRequest, map[string]interface{}{
+			"code": 12,
+		})
+		err.SetInternal(errors.New("internal error"))
+		assert.Equal(t, "code=400, message=map[code:12], internal=internal error", err.Error())
+	})
+}
+
+func TestDefaultHTTPErrorHandler(t *testing.T) {
+	e := New()
+	e.Debug = true
+	e.Any("/plain", func(c Context) error {
+		return errors.New("An error occurred")
+	})
+	e.Any("/badrequest", func(c Context) error {
+		return NewHTTPError(http.StatusBadRequest, "Invalid request")
+	})
+	e.Any("/servererror", func(c Context) error {
+		return NewHTTPError(http.StatusInternalServerError, map[string]interface{}{
+			"code":    33,
+			"message": "Something bad happened",
+			"error":   "stackinfo",
+		})
+	})
+	// With Debug=true plain response contains error message
+	c, b := request(http.MethodGet, "/plain", e)
+	assert.Equal(t, http.StatusInternalServerError, c)
+	assert.Equal(t, "{\n  \"error\": \"An error occurred\",\n  \"message\": \"Internal Server Error\"\n}\n", b)
+	// and special handling for HTTPError
+	c, b = request(http.MethodGet, "/badrequest", e)
+	assert.Equal(t, http.StatusBadRequest, c)
+	assert.Equal(t, "{\n  \"error\": \"code=400, message=Invalid request\",\n  \"message\": \"Invalid request\"\n}\n", b)
+	// complex errors are serialized to pretty JSON
+	c, b = request(http.MethodGet, "/servererror", e)
+	assert.Equal(t, http.StatusInternalServerError, c)
+	assert.Equal(t, "{\n  \"code\": 33,\n  \"error\": \"stackinfo\",\n  \"message\": \"Something bad happened\"\n}\n", b)
+
+	e.Debug = false
+	// With Debug=false the error response is shortened
+	c, b = request(http.MethodGet, "/plain", e)
+	assert.Equal(t, http.StatusInternalServerError, c)
+	assert.Equal(t, "{\"message\":\"Internal Server Error\"}\n", b)
+	c, b = request(http.MethodGet, "/badrequest", e)
+	assert.Equal(t, http.StatusBadRequest, c)
+	assert.Equal(t, "{\"message\":\"Invalid request\"}\n", b)
+	// No difference for error response with non plain string errors
+	c, b = request(http.MethodGet, "/servererror", e)
+	assert.Equal(t, http.StatusInternalServerError, c)
+	assert.Equal(t, "{\"code\":33,\"error\":\"stackinfo\",\"message\":\"Something bad happened\"}\n", b)
 }
 
 func TestEchoClose(t *testing.T) {

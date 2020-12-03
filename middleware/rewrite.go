@@ -1,10 +1,8 @@
 package middleware
 
 import (
-	"regexp"
-	"strings"
-
 	"github.com/labstack/echo/v4"
+	"regexp"
 )
 
 type (
@@ -53,14 +51,8 @@ func RewriteWithConfig(config RewriteConfig) echo.MiddlewareFunc {
 	if config.Skipper == nil {
 		config.Skipper = DefaultBodyDumpConfig.Skipper
 	}
-	config.rulesRegex = map[*regexp.Regexp]string{}
 
-	// Initialize
-	for k, v := range config.Rules {
-		k = strings.Replace(k, "*", "(.*)", -1)
-		k = k + "$"
-		config.rulesRegex[regexp.MustCompile(k)] = v
-	}
+	config.rulesRegex = rewriteRulesRegex(config.Rules)
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) (err error) {
@@ -69,15 +61,8 @@ func RewriteWithConfig(config RewriteConfig) echo.MiddlewareFunc {
 			}
 
 			req := c.Request()
-
-			// Rewrite
-			for k, v := range config.rulesRegex {
-				replacer := captureTokens(k, req.URL.Path)
-				if replacer != nil {
-					req.URL.Path = replacer.Replace(v)
-					break
-				}
-			}
+			// Set rewrite path and raw path
+			rewritePath(config.rulesRegex, req)
 			return next(c)
 		}
 	}
