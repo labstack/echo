@@ -110,8 +110,8 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 	if config.CookieMaxAge == 0 {
 		config.CookieMaxAge = DefaultCSRFConfig.CookieMaxAge
 	}
-	if config.CookieSameSite == 0 {
-		config.CookieSameSite = http.SameSiteDefaultMode
+	if config.CookieSameSite == http.SameSiteNoneMode {
+		config.CookieSecure = true
 	}
 
 	// Initialize
