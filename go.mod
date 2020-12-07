@@ -3,7 +3,7 @@ module github.com/labstack/echo/v4
 go 1.15
 
 require (
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/dgrijalva/jwt-go/v4 v4.0.0-preview1
 	github.com/labstack/gommon v0.3.0
 	github.com/mattn/go-colorable v0.1.7 // indirect
 	github.com/stretchr/testify v1.4.0
