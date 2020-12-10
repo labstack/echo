@@ -362,10 +362,12 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 	// Issue #1426
 	code := he.Code
 	message := he.Message
-	if e.Debug {
-		message = err.Error()
-	} else if m, ok := message.(string); ok {
-		message = Map{"message": m}
+	if m, ok := he.Message.(string); ok {
+		if e.Debug {
+			message = Map{"message": m, "error": err.Error()}
+		} else {
+			message = Map{"message": m}
+		}
 	}
 
 	// Send response
@@ -570,7 +572,7 @@ func (e *Echo) Reverse(name string, params ...interface{}) string {
 	for _, r := range e.router.routes {
 		if r.Name == name {
 			for i, l := 0, len(r.Path); i < l; i++ {
-				if r.Path[i] == ':' && n < ln {
+				if (r.Path[i] == ':' || r.Path[i] == '*') && n < ln {
 					for ; i < l && r.Path[i] != '/'; i++ {
 					}
 					uri.WriteString(fmt.Sprintf("%v", params[n]))

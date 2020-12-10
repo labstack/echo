@@ -277,10 +277,12 @@ func TestEchoURL(t *testing.T) {
 	e := New()
 	static := func(Context) error { return nil }
 	getUser := func(Context) error { return nil }
+	getAny := func(Context) error { return nil }
 	getFile := func(Context) error { return nil }
 
 	e.GET("/static/file", static)
 	e.GET("/users/:id", getUser)
+	e.GET("/documents/*", getAny)
 	g := e.Group("/group")
 	g.GET("/users/:uid/files/:fid", getFile)
 
@@ -289,6 +291,9 @@ func TestEchoURL(t *testing.T) {
 	assert.Equal("/static/file", e.URL(static))
 	assert.Equal("/users/:id", e.URL(getUser))
 	assert.Equal("/users/1", e.URL(getUser, "1"))
+	assert.Equal("/users/1", e.URL(getUser, "1"))
+	assert.Equal("/documents/foo.txt", e.URL(getAny, "foo.txt"))
+	assert.Equal("/documents/*", e.URL(getAny))
 	assert.Equal("/group/users/1/files/:fid", e.URL(getFile, "1"))
 	assert.Equal("/group/users/1/files/1", e.URL(getFile, "1", "1"))
 }
@@ -568,6 +573,49 @@ func TestHTTPError(t *testing.T) {
 	})
 }
 
+func TestDefaultHTTPErrorHandler(t *testing.T) {
+	e := New()
+	e.Debug = true
+	e.Any("/plain", func(c Context) error {
+		return errors.New("An error occurred")
+	})
+	e.Any("/badrequest", func(c Context) error {
+		return NewHTTPError(http.StatusBadRequest, "Invalid request")
+	})
+	e.Any("/servererror", func(c Context) error {
+		return NewHTTPError(http.StatusInternalServerError, map[string]interface{}{
+			"code":    33,
+			"message": "Something bad happened",
+			"error":   "stackinfo",
+		})
+	})
+	// With Debug=true plain response contains error message
+	c, b := request(http.MethodGet, "/plain", e)
+	assert.Equal(t, http.StatusInternalServerError, c)
+	assert.Equal(t, "{\n  \"error\": \"An error occurred\",\n  \"message\": \"Internal Server Error\"\n}\n", b)
+	// and special handling for HTTPError
+	c, b = request(http.MethodGet, "/badrequest", e)
+	assert.Equal(t, http.StatusBadRequest, c)
+	assert.Equal(t, "{\n  \"error\": \"code=400, message=Invalid request\",\n  \"message\": \"Invalid request\"\n}\n", b)
+	// complex errors are serialized to pretty JSON
+	c, b = request(http.MethodGet, "/servererror", e)
+	assert.Equal(t, http.StatusInternalServerError, c)
+	assert.Equal(t, "{\n  \"code\": 33,\n  \"error\": \"stackinfo\",\n  \"message\": \"Something bad happened\"\n}\n", b)
+
+	e.Debug = false
+	// With Debug=false the error response is shortened
+	c, b = request(http.MethodGet, "/plain", e)
+	assert.Equal(t, http.StatusInternalServerError, c)
+	assert.Equal(t, "{\"message\":\"Internal Server Error\"}\n", b)
+	c, b = request(http.MethodGet, "/badrequest", e)
+	assert.Equal(t, http.StatusBadRequest, c)
+	assert.Equal(t, "{\"message\":\"Invalid request\"}\n", b)
+	// No difference for error response with non plain string errors
+	c, b = request(http.MethodGet, "/servererror", e)
+	assert.Equal(t, http.StatusInternalServerError, c)
+	assert.Equal(t, "{\"code\":33,\"error\":\"stackinfo\",\"message\":\"Something bad happened\"}\n", b)
+}
+
 func TestEchoClose(t *testing.T) {
 	e := New()
 	errCh := make(chan error)
@@ -608,4 +656,29 @@ func TestEchoShutdown(t *testing.T) {
 
 	err := <-errCh
 	assert.Equal(t, err.Error(), "http: Server closed")
+}
+
+func TestEchoReverse(t *testing.T) {
+	assert := assert.New(t)
+
+	e := New()
+	dummyHandler := func(Context) error { return nil }
+
+	e.GET("/static", dummyHandler).Name = "/static"
+	e.GET("/static/*", dummyHandler).Name = "/static/*"
+	e.GET("/params/:foo", dummyHandler).Name = "/params/:foo"
+	e.GET("/params/:foo/bar/:qux", dummyHandler).Name = "/params/:foo/bar/:qux"
+	e.GET("/params/:foo/bar/:qux/*", dummyHandler).Name = "/params/:foo/bar/:qux/*"
+
+	assert.Equal("/static", e.Reverse("/static"))
+	assert.Equal("/static", e.Reverse("/static", "missing param"))
+	assert.Equal("/static/*", e.Reverse("/static/*"))
+	assert.Equal("/static/foo.txt", e.Reverse("/static/*", "foo.txt"))
+
+	assert.Equal("/params/:foo", e.Reverse("/params/:foo"))
+	assert.Equal("/params/one", e.Reverse("/params/:foo", "one"))
+	assert.Equal("/params/:foo/bar/:qux", e.Reverse("/params/:foo/bar/:qux"))
+	assert.Equal("/params/one/bar/:qux", e.Reverse("/params/:foo/bar/:qux", "one"))
+	assert.Equal("/params/one/bar/two", e.Reverse("/params/:foo/bar/:qux", "one", "two"))
+	assert.Equal("/params/one/bar/two/three", e.Reverse("/params/:foo/bar/:qux/*", "one", "two", "three"))
 }

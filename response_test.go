@@ -56,3 +56,19 @@ func TestResponse_Flush(t *testing.T) {
 	res.Flush()
 	assert.True(t, rec.Flushed)
 }
+
+func TestResponse_ChangeStatusCodeBeforeWrite(t *testing.T) {
+	e := New()
+	rec := httptest.NewRecorder()
+	res := &Response{echo: e, Writer: rec}
+
+	res.Before(func() {
+		if 200 < res.Status && res.Status < 300 {
+			res.Status = 200
+		}
+	})
+
+	res.WriteHeader(209)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+}
