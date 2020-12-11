@@ -428,7 +428,9 @@ func (r *Router) Find(method, path string, c Context) {
 				pos := strings.IndexByte(ns, '/')
 				if pos == -1 {
 					// If no slash is remaining in search string set param value
-					pvalues[len(cn.pnames)-1] = search
+					if len(cn.pnames) > 0 {
+						pvalues[len(cn.pnames)-1] = search
+					}
 					break
 				} else if pos > 0 {
 					// Otherwise continue route processing with restored next node

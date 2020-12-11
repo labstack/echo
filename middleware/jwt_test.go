@@ -3,6 +3,8 @@ package middleware
 import (
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/dgrijalva/jwt-go"
@@ -75,6 +77,7 @@ func TestJWT(t *testing.T) {
 		reqURL     string // "/" if empty
 		hdrAuth    string
 		hdrCookie  string // test.Request doesn't provide SetCookie(); use name=val
+		formValues map[string]string
 		info       string
 	}{
 		{
@@ -192,12 +195,48 @@ func TestJWT(t *testing.T) {
 			expErrCode: http.StatusBadRequest,
 			info:       "Empty cookie",
 		},
+		{
+			config: JWTConfig{
+				SigningKey:  validKey,
+				TokenLookup: "form:jwt",
+			},
+			formValues: map[string]string{"jwt": token},
+			info:       "Valid form method",
+		},
+		{
+			config: JWTConfig{
+				SigningKey:  validKey,
+				TokenLookup: "form:jwt",
+			},
+			expErrCode: http.StatusUnauthorized,
+			formValues: map[string]string{"jwt": "invalid"},
+			info:       "Invalid token with form method",
+		},
+		{
+			config: JWTConfig{
+				SigningKey:  validKey,
+				TokenLookup: "form:jwt",
+			},
+			expErrCode: http.StatusBadRequest,
+			info:       "Empty form field",
+		},
 	} {
 		if tc.reqURL == "" {
 			tc.reqURL = "/"
 		}
 
-		req := httptest.NewRequest(http.MethodGet, tc.reqURL, nil)
+		var req *http.Request
+		if len(tc.formValues) > 0 {
+			form := url.Values{}
+			for k, v := range tc.formValues {
+				form.Set(k, v)
+			}
+			req = httptest.NewRequest(http.MethodPost, tc.reqURL, strings.NewReader(form.Encode()))
+			req.Header.Set(echo.HeaderContentType, "application/x-www-form-urlencoded")
+			req.ParseForm()
+		} else {
+			req = httptest.NewRequest(http.MethodGet, tc.reqURL, nil)
+		}
 		res := httptest.NewRecorder()
 		req.Header.Set(echo.HeaderAuthorization, tc.hdrAuth)
 		req.Header.Set(echo.HeaderCookie, tc.hdrCookie)
