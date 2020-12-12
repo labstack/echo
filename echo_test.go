@@ -4,6 +4,7 @@ import (
 	"bytes"
 	stdContext "context"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -656,6 +657,69 @@ func TestEchoShutdown(t *testing.T) {
 
 	err := <-errCh
 	assert.Equal(t, err.Error(), "http: Server closed")
+}
+
+var listenerNetworkTests = []struct {
+	test    string
+	network string
+	address string
+}{
+	{"tcp ipv4 address", "tcp", "127.0.0.1:1323"},
+	{"tcp ipv6 address", "tcp", "[::1]:1323"},
+	{"tcp4 ipv4 address", "tcp4", "127.0.0.1:1323"},
+	{"tcp6 ipv6 address", "tcp6", "[::1]:1323"},
+}
+
+func TestEchoListenerNetwork(t *testing.T) {
+	for _, tt := range listenerNetworkTests {
+		t.Run(tt.test, func(t *testing.T) {
+			e := New()
+			e.ListenerNetwork = tt.network
+
+			// HandlerFunc
+			e.GET("/ok", func(c Context) error {
+				return c.String(http.StatusOK, "OK")
+			})
+
+			errCh := make(chan error)
+
+			go func() {
+				errCh <- e.Start(tt.address)
+			}()
+
+			time.Sleep(200 * time.Millisecond)
+
+			if resp, err := http.Get(fmt.Sprintf("http://%s/ok", tt.address)); err == nil {
+				defer resp.Body.Close()
+				assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+				if body, err := ioutil.ReadAll(resp.Body); err == nil {
+					assert.Equal(t, "OK", string(body))
+				} else {
+					assert.Fail(t, err.Error())
+				}
+
+			} else {
+				assert.Fail(t, err.Error())
+			}
+
+			if err := e.Close(); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestEchoListenerNetworkInvalid(t *testing.T) {
+	e := New()
+	e.ListenerNetwork = "unix"
+
+	// HandlerFunc
+	e.GET("/ok", func(c Context) error {
+		return c.String(http.StatusOK, "OK")
+	})
+
+	assert.Equal(t, ErrInvalidListenerNetwork, e.Start(":1323"))
 }
 
 func TestEchoReverse(t *testing.T) {
