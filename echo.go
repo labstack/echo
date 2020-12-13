@@ -49,7 +49,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -486,7 +485,7 @@ func (common) static(prefix, root string, get func(string, HandlerFunc, ...Middl
 			return err
 		}
 
-		name := filepath.Join(root, path.Clean("/"+p)) // "/"+ for security
+		name := filepath.Join(root, filepath.Clean("/"+p)) // "/"+ for security
 		fi, err := os.Stat(name)
 		if err != nil {
 			// The access path does not exist

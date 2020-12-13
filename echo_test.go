@@ -60,45 +60,105 @@ func TestEcho(t *testing.T) {
 }
 
 func TestEchoStatic(t *testing.T) {
-	e := New()
+	var testCases = []struct {
+		name                 string
+		givenPrefix          string
+		givenRoot            string
+		whenURL              string
+		expectStatus         int
+		expectHeaderLocation string
+		expectBodyStartsWith string
+	}{
+		{
+			name:                 "ok",
+			givenPrefix:          "/images",
+			givenRoot:            "_fixture/images",
+			whenURL:              "/images/walle.png",
+			expectStatus:         http.StatusOK,
+			expectBodyStartsWith: string([]byte{0x89, 0x50, 0x4e, 0x47}),
+		},
+		{
+			name:                 "No file",
+			givenPrefix:          "/images",
+			givenRoot:            "_fixture/scripts",
+			whenURL:              "/images/bolt.png",
+			expectStatus:         http.StatusNotFound,
+			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
+		},
+		{
+			name:                 "Directory",
+			givenPrefix:          "/images",
+			givenRoot:            "_fixture/images",
+			whenURL:              "/images/",
+			expectStatus:         http.StatusNotFound,
+			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
+		},
+		{
+			name:                 "Directory Redirect",
+			givenPrefix:          "/",
+			givenRoot:            "_fixture",
+			whenURL:              "/folder",
+			expectStatus:         http.StatusMovedPermanently,
+			expectHeaderLocation: "/folder/",
+			expectBodyStartsWith: "",
+		},
+		{
+			name:                 "Directory with index.html",
+			givenPrefix:          "/",
+			givenRoot:            "_fixture",
+			whenURL:              "/",
+			expectStatus:         http.StatusOK,
+			expectBodyStartsWith: "<!doctype html>",
+		},
+		{
+			name:                 "Sub-directory with index.html",
+			givenPrefix:          "/",
+			givenRoot:            "_fixture",
+			whenURL:              "/folder/",
+			expectStatus:         http.StatusOK,
+			expectBodyStartsWith: "<!doctype html>",
+		},
+		{
+			name:                 "do not allow directory traversal (backslash - windows separator)",
+			givenPrefix:          "/",
+			givenRoot:            "_fixture/",
+			whenURL:              `/..\\middleware/basic_auth.go`,
+			expectStatus:         http.StatusNotFound,
+			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
+		},
+		{
+			name:                 "do not allow directory traversal (slash - unix separator)",
+			givenPrefix:          "/",
+			givenRoot:            "_fixture/",
+			whenURL:              `/../middleware/basic_auth.go`,
+			expectStatus:         http.StatusNotFound,
+			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
+		},
+	}
 
-	assert := assert.New(t)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			e.Static(tc.givenPrefix, tc.givenRoot)
+			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+			assert.Equal(t, tc.expectStatus, rec.Code)
+			body := rec.Body.String()
+			if tc.expectBodyStartsWith != "" {
+				assert.True(t, strings.HasPrefix(body, tc.expectBodyStartsWith))
+			} else {
+				assert.Equal(t, "", body)
+			}
 
-	// OK
-	e.Static("/images", "_fixture/images")
-	c, b := request(http.MethodGet, "/images/walle.png", e)
-	assert.Equal(http.StatusOK, c)
-	assert.NotEmpty(b)
-
-	// No file
-	e.Static("/images", "_fixture/scripts")
-	c, _ = request(http.MethodGet, "/images/bolt.png", e)
-	assert.Equal(http.StatusNotFound, c)
-
-	// Directory
-	e.Static("/images", "_fixture/images")
-	c, _ = request(http.MethodGet, "/images/", e)
-	assert.Equal(http.StatusNotFound, c)
-
-	// Directory Redirect
-	e.Static("/", "_fixture")
-	req := httptest.NewRequest(http.MethodGet, "/folder", nil)
-	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-	assert.Equal(http.StatusMovedPermanently, rec.Code)
-	assert.Equal("/folder/", rec.HeaderMap["Location"][0])
-
-	// Directory with index.html
-	e.Static("/", "_fixture")
-	c, r := request(http.MethodGet, "/", e)
-	assert.Equal(http.StatusOK, c)
-	assert.Equal(true, strings.HasPrefix(r, "<!doctype html>"))
-
-	// Sub-directory with index.html
-	c, r = request(http.MethodGet, "/folder/", e)
-	assert.Equal(http.StatusOK, c)
-	assert.Equal(true, strings.HasPrefix(r, "<!doctype html>"))
-
+			if tc.expectHeaderLocation != "" {
+				assert.Equal(t, tc.expectHeaderLocation, rec.Result().Header["Location"][0])
+			} else {
+				_, ok := rec.Result().Header["Location"]
+				assert.False(t, ok)
+			}
+		})
+	}
 }
 
 func TestEchoFile(t *testing.T) {
