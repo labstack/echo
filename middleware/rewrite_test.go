@@ -21,6 +21,9 @@ func TestRewrite(t *testing.T) {
 			"/users/*/orders/*": "/user/$1/order/$2",
 		},
 	}))
+	e.GET("/*", func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	})
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	req.URL.Path = "/api/users"

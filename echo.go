@@ -517,8 +517,8 @@ func (e *Echo) File(path, file string, m ...MiddlewareFunc) *Route {
 func (e *Echo) add(host, method, path string, handler HandlerFunc, middleware ...MiddlewareFunc) *Route {
 	name := handlerName(handler)
 	router := e.findRouter(host)
+	h := applyMiddleware(handler, append(e.middleware, middleware...)...)
 	router.Add(method, path, func(c Context) error {
-		h := applyMiddleware(handler, middleware...)
 		return h(c)
 	})
 	r := &Route{
@@ -614,19 +614,12 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c.Reset(r, w)
 	h := NotFoundHandler
 
-	if e.premiddleware == nil {
+	h = func(c Context) error {
 		e.findRouter(r.Host).Find(r.Method, r.URL.EscapedPath(), c)
-		h = c.Handler()
-		h = applyMiddleware(h, e.middleware...)
-	} else {
-		h = func(c Context) error {
-			e.findRouter(r.Host).Find(r.Method, r.URL.EscapedPath(), c)
-			h := c.Handler()
-			h = applyMiddleware(h, e.middleware...)
-			return h(c)
-		}
-		h = applyMiddleware(h, e.premiddleware...)
+		h := c.Handler()
+		return h(c)
 	}
+	h = applyMiddleware(h, e.premiddleware...)
 
 	// Execute chain
 	if err := h(c); err != nil {

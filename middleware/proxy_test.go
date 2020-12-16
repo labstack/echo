@@ -52,6 +52,9 @@ func TestProxy(t *testing.T) {
 	// Random
 	e := echo.New()
 	e.Use(Proxy(rb))
+	e.GET("/", func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	})
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -74,6 +77,9 @@ func TestProxy(t *testing.T) {
 	rrb := NewRoundRobinBalancer(targets)
 	e = echo.New()
 	e.Use(Proxy(rrb))
+	e.GET("/", func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	})
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	body = rec.Body.String()
@@ -94,6 +100,9 @@ func TestProxy(t *testing.T) {
 			"/users/*/orders/*": "/user/$1/order/$2",
 		},
 	}))
+	e.GET("/*", func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	})
 	req.URL.Path = "/api/users"
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -119,7 +128,7 @@ func TestProxy(t *testing.T) {
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "/user/jill/order/T%2FcO4lW%2Ft%2FVp%2F", req.URL.EscapedPath())
 	assert.Equal(t, http.StatusOK, rec.Code)
-	req.URL.Path =  "/users/jill/orders/%%%%"
+	req.URL.Path = "/users/jill/orders/%%%%"
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
@@ -134,6 +143,9 @@ func TestProxy(t *testing.T) {
 			return nil
 		},
 	}))
+	e.GET("/*", func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	})
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "modified", rec.Body.String())
@@ -163,6 +175,9 @@ func TestProxyRealIPHeader(t *testing.T) {
 	rrb := NewRoundRobinBalancer([]*ProxyTarget{{Name: "upstream", URL: url}})
 	e := echo.New()
 	e.Use(Proxy(rrb))
+	e.GET("/", func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	})
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 

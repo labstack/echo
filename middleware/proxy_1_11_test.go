@@ -41,6 +41,9 @@ func TestProxy_1_11(t *testing.T) {
 	// Random
 	e := echo.New()
 	e.Use(Proxy(rb))
+	e.GET("/*", func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	})
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 
