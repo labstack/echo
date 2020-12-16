@@ -167,7 +167,7 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 			if err != nil {
 				return
 			}
-			name := filepath.Join(config.Root, path.Clean("/"+p)) // "/"+ for security
+			name := filepath.Join(config.Root, filepath.Clean("/"+p)) // "/"+ for security
 
 			if config.IgnoreBase {
 				routePath := path.Base(strings.TrimRight(c.Path(), "/*"))
