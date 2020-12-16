@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/labstack/echo/v4"
 )
@@ -58,6 +59,8 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 		config.Level = DefaultGzipConfig.Level
 	}
 
+	pool := gzipCompressPool(config)
+
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			if config.Skipper(c) {
@@ -68,11 +71,13 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 			res.Header().Add(echo.HeaderVary, echo.HeaderAcceptEncoding)
 			if strings.Contains(c.Request().Header.Get(echo.HeaderAcceptEncoding), gzipScheme) {
 				res.Header().Set(echo.HeaderContentEncoding, gzipScheme) // Issue #806
-				rw := res.Writer
-				w, err := gzip.NewWriterLevel(rw, config.Level)
-				if err != nil {
-					return err
+				i := pool.Get()
+				w, ok := i.(*gzip.Writer)
+				if !ok {
+					return echo.NewHTTPError(http.StatusInternalServerError, i.(error).Error())
 				}
+				rw := res.Writer
+				w.Reset(rw)
 				defer func() {
 					if res.Size == 0 {
 						if res.Header().Get(echo.HeaderContentEncoding) == gzipScheme {
@@ -85,6 +90,7 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 						w.Reset(ioutil.Discard)
 					}
 					w.Close()
+					pool.Put(w)
 				}()
 				grw := &gzipResponseWriter{Writer: w, ResponseWriter: rw}
 				res.Writer = grw
@@ -125,4 +131,16 @@ func (w *gzipResponseWriter) Push(target string, opts *http.PushOptions) error {
 		return p.Push(target, opts)
 	}
 	return http.ErrNotSupported
+}
+
+func gzipCompressPool(config GzipConfig) sync.Pool {
+	return sync.Pool{
+		New: func() interface{} {
+			w, err := gzip.NewWriterLevel(ioutil.Discard, config.Level)
+			if err != nil {
+				return err
+			}
+			return w
+		},
+	}
 }

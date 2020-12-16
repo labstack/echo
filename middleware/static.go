@@ -36,6 +36,12 @@ type (
 		// Enable directory browsing.
 		// Optional. Default value false.
 		Browse bool `yaml:"browse"`
+
+		// Enable ignoring of the base of the URL path.
+		// Example: when assigning a static middleware to a non root path group,
+		// the filesystem path is not doubled
+		// Optional. Default value false.
+		IgnoreBase bool `yaml:"ignoreBase"`
 	}
 )
 
@@ -161,7 +167,16 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 			if err != nil {
 				return
 			}
-			name := filepath.Join(config.Root, path.Clean("/"+p)) // "/"+ for security
+			name := filepath.Join(config.Root, filepath.Clean("/"+p)) // "/"+ for security
+
+			if config.IgnoreBase {
+				routePath := path.Base(strings.TrimRight(c.Path(), "/*"))
+				baseURLPath := path.Base(p)
+				if baseURLPath == routePath {
+					i := strings.LastIndex(name, routePath)
+					name = name[:i] + strings.Replace(name[i:], routePath, "", 1)
+				}
+			}
 
 			fi, err := os.Stat(name)
 			if err != nil {
