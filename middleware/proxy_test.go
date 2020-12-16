@@ -103,36 +103,35 @@ func TestProxy(t *testing.T) {
 	e.GET("/*", func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	})
-	req.URL.Path = "/api/users"
+	req.URL, _ = url.Parse("/api/users")
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "/users", req.URL.EscapedPath())
 	assert.Equal(t, http.StatusOK, rec.Code)
-	req.URL.Path = "/js/main.js"
+	req.URL, _ = url.Parse( "/js/main.js")
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "/public/javascripts/main.js", req.URL.EscapedPath())
 	assert.Equal(t, http.StatusOK, rec.Code)
-	req.URL.Path = "/old"
+	req.URL, _ = url.Parse("/old")
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "/new", req.URL.EscapedPath())
 	assert.Equal(t, http.StatusOK, rec.Code)
-	req.URL.Path = "/users/jack/orders/1"
+	req.URL, _ = url.Parse( "/users/jack/orders/1")
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "/user/jack/order/1", req.URL.EscapedPath())
 	assert.Equal(t, http.StatusOK, rec.Code)
-	req.URL.Path = "/users/jill/orders/T%2FcO4lW%2Ft%2FVp%2F"
+	req.URL, _ = url.Parse("/user/jill/order/T%2FcO4lW%2Ft%2FVp%2F")
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "/user/jill/order/T%2FcO4lW%2Ft%2FVp%2F", req.URL.EscapedPath())
 	assert.Equal(t, http.StatusOK, rec.Code)
-	req.URL.Path = "/users/jill/orders/%%%%"
+	req.URL, _ = url.Parse("/api/new users")
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
-	assert.Equal(t, http.StatusBadRequest, rec.Code)
-
+	assert.Equal(t, "/new%20users", req.URL.EscapedPath())
 	// ModifyResponse
 	e = echo.New()
 	e.Use(ProxyWithConfig(ProxyConfig{

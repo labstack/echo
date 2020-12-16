@@ -72,6 +72,15 @@ func BenchmarkAllocXML(b *testing.B) {
 	}
 }
 
+func BenchmarkRealIPForHeaderXForwardFor(b *testing.B) {
+	c := context{request: &http.Request{
+		Header: http.Header{HeaderXForwardedFor: []string{"127.0.0.1, 127.0.1.1, "}},
+	}}
+	for i := 0; i < b.N; i++ {
+		c.RealIP()
+	}
+}
+
 func (t *Template) Render(w io.Writer, name string, data interface{}, c Context) error {
 	return t.templates.ExecuteTemplate(w, name, data)
 }
@@ -508,6 +517,40 @@ func TestContextGetAndSetParam(t *testing.T) {
 	})
 }
 
+// Issue #1655
+func TestContextSetParamNamesShouldUpdateEchoMaxParam(t *testing.T) {
+	assert := testify.New(t)
+
+	e := New()
+	assert.Equal(0, *e.maxParam)
+
+	expectedOneParam := []string{"one"}
+	expectedTwoParams := []string{"one", "two"}
+	expectedThreeParams := []string{"one", "two", ""}
+	expectedABCParams := []string{"A", "B", "C"}
+
+	c := e.NewContext(nil, nil)
+	c.SetParamNames("1", "2")
+	c.SetParamValues(expectedTwoParams...)
+	assert.Equal(2, *e.maxParam)
+	assert.EqualValues(expectedTwoParams, c.ParamValues())
+
+	c.SetParamNames("1")
+	assert.Equal(2, *e.maxParam)
+	// Here for backward compatibility the ParamValues remains as they are
+	assert.EqualValues(expectedOneParam, c.ParamValues())
+
+	c.SetParamNames("1", "2", "3")
+	assert.Equal(3, *e.maxParam)
+	// Here for backward compatibility the ParamValues remains as they are, but the len is extended to e.maxParam
+	assert.EqualValues(expectedThreeParams, c.ParamValues())
+
+	c.SetParamValues("A", "B", "C", "D")
+	assert.Equal(3, *e.maxParam)
+	// Here D shouldn't be returned
+	assert.EqualValues(expectedABCParams, c.ParamValues())
+}
+
 func TestContextFormValue(t *testing.T) {
 	f := make(url.Values)
 	f.Set("name", "Jon Snow")
@@ -843,6 +886,14 @@ func TestContext_RealIP(t *testing.T) {
 			&context{
 				request: &http.Request{
 					Header: http.Header{HeaderXForwardedFor: []string{"127.0.0.1, 127.0.1.1, "}},
+				},
+			},
+			"127.0.0.1",
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderXForwardedFor: []string{"127.0.0.1"}},
 				},
 			},
 			"127.0.0.1",

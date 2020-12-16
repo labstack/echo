@@ -553,3 +553,305 @@ func testBindError(assert *assert.Assertions, r io.Reader, ctype string, expecte
 		}
 	}
 }
+
+func TestDefaultBinder_BindToStructFromMixedSources(t *testing.T) {
+	// tests to check binding behaviour when multiple sources path params, query params and request body are in use
+	// binding is done in steps and one source could overwrite previous source binded data
+	// these tests are to document this behaviour and detect further possible regressions when bind implementation is changed
+
+	type Node struct {
+		ID   int    `json:"id"`
+		Node string `json:"node"`
+	}
+
+	var testCases = []struct {
+		name             string
+		givenURL         string
+		givenContent     io.Reader
+		givenMethod      string
+		whenBindTarget   interface{}
+		whenNoPathParams bool
+		expect           interface{}
+		expectError      string
+	}{
+		{
+			name:         "ok, POST bind to struct with: path param + query param + empty body",
+			givenMethod:  http.MethodPost,
+			givenURL:     "/api/real_node/endpoint?node=xxx",
+			givenContent: strings.NewReader(`{"id": 1}`),
+			expect:       &Node{ID: 1, Node: "xxx"}, // in current implementation query params has higher priority than path params
+		},
+		{
+			name:         "ok, POST bind to struct with: path param + empty body",
+			givenMethod:  http.MethodPost,
+			givenURL:     "/api/real_node/endpoint",
+			givenContent: strings.NewReader(`{"id": 1}`),
+			expect:       &Node{ID: 1, Node: "real_node"},
+		},
+		{
+			name:         "ok, POST bind to struct with path + query + body = body has priority",
+			givenMethod:  http.MethodPost,
+			givenURL:     "/api/real_node/endpoint?node=xxx",
+			givenContent: strings.NewReader(`{"id": 1, "node": "zzz"}`),
+			expect:       &Node{ID: 1, Node: "zzz"}, // field value from content has higher priority
+		},
+		{
+			name:         "nok, POST body bind failure",
+			givenMethod:  http.MethodPost,
+			givenURL:     "/api/real_node/endpoint?node=xxx",
+			givenContent: strings.NewReader(`{`),
+			expect:       &Node{ID: 0, Node: "xxx"}, // query binding has already modified bind target
+			expectError:  "code=400, message=unexpected EOF, internal=unexpected EOF",
+		},
+		{
+			name:         "nok, GET body bind failure - trying to bind json array to struct",
+			givenMethod:  http.MethodGet,
+			givenURL:     "/api/real_node/endpoint?node=xxx",
+			givenContent: strings.NewReader(`[{"id": 1}]`),
+			expect:       &Node{ID: 0, Node: "xxx"}, // query binding has already modified bind target
+			expectError:  "code=400, message=Unmarshal type error: expected=echo.Node, got=array, field=, offset=1, internal=json: cannot unmarshal array into Go value of type echo.Node",
+		},
+		{ // binding query params interferes with body. b.BindBody() should be used to bind only body to slice
+			name:             "nok, GET query params bind failure - trying to bind json array to slice",
+			givenMethod:      http.MethodGet,
+			givenURL:         "/api/real_node/endpoint?node=xxx",
+			givenContent:     strings.NewReader(`[{"id": 1}]`),
+			whenNoPathParams: true,
+			whenBindTarget:   &[]Node{},
+			expect:           &[]Node{},
+			expectError:      "code=400, message=binding element must be a struct, internal=binding element must be a struct",
+		},
+		{ // binding path params interferes with body. b.BindBody() should be used to bind only body to slice
+			name:           "nok, GET path params bind failure - trying to bind json array to slice",
+			givenMethod:    http.MethodGet,
+			givenURL:       "/api/real_node/endpoint?node=xxx",
+			givenContent:   strings.NewReader(`[{"id": 1}]`),
+			whenBindTarget: &[]Node{},
+			expect:         &[]Node{},
+			expectError:    "code=400, message=binding element must be a struct, internal=binding element must be a struct",
+		},
+		{
+			name:             "ok, GET body bind json array to slice",
+			givenMethod:      http.MethodGet,
+			givenURL:         "/api/real_node/endpoint",
+			givenContent:     strings.NewReader(`[{"id": 1}]`),
+			whenNoPathParams: true,
+			whenBindTarget:   &[]Node{},
+			expect:           &[]Node{{ID: 1, Node: ""}},
+			expectError:      "",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			// assume route we are testing is "/api/:node/endpoint?some_query_params=here"
+			req := httptest.NewRequest(tc.givenMethod, tc.givenURL, tc.givenContent)
+			req.Header.Set(HeaderContentType, MIMEApplicationJSON)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			if !tc.whenNoPathParams {
+				c.SetParamNames("node")
+				c.SetParamValues("real_node")
+			}
+
+			var bindTarget interface{}
+			if tc.whenBindTarget != nil {
+				bindTarget = tc.whenBindTarget
+			} else {
+				bindTarget = &Node{}
+			}
+			b := new(DefaultBinder)
+
+			err := b.Bind(bindTarget, c)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, tc.expect, bindTarget)
+		})
+	}
+}
+
+func TestDefaultBinder_BindBody(t *testing.T) {
+	// tests to check binding behaviour when multiple sources path params, query params and request body are in use
+	// generally when binding from request body - URL and path params are ignored - unless form is being binded.
+	// these tests are to document this behaviour and detect further possible regressions when bind implementation is changed
+
+	type Node struct {
+		ID   int    `json:"id" xml:"id"`
+		Node string `json:"node" xml:"node"`
+	}
+	type Nodes struct {
+		Nodes []Node `xml:"node" form:"node"`
+	}
+
+	var testCases = []struct {
+		name             string
+		givenURL         string
+		givenContent     io.Reader
+		givenMethod      string
+		givenContentType string
+		whenNoPathParams bool
+		whenBindTarget   interface{}
+		expect           interface{}
+		expectError      string
+	}{
+		{
+			name:             "ok, JSON POST bind to struct with: path + query + empty field in body",
+			givenURL:         "/api/real_node/endpoint?node=xxx",
+			givenMethod:      http.MethodPost,
+			givenContentType: MIMEApplicationJSON,
+			givenContent:     strings.NewReader(`{"id": 1}`),
+			expect:           &Node{ID: 1, Node: ""}, // path params or query params should not interfere with body
+		},
+		{
+			name:             "ok, JSON POST bind to struct with: path + query + body",
+			givenURL:         "/api/real_node/endpoint?node=xxx",
+			givenMethod:      http.MethodPost,
+			givenContentType: MIMEApplicationJSON,
+			givenContent:     strings.NewReader(`{"id": 1, "node": "zzz"}`),
+			expect:           &Node{ID: 1, Node: "zzz"}, // field value from content has higher priority
+		},
+		{
+			name:             "ok, JSON POST body bind json array to slice (has matching path/query params)",
+			givenURL:         "/api/real_node/endpoint?node=xxx",
+			givenMethod:      http.MethodPost,
+			givenContentType: MIMEApplicationJSON,
+			givenContent:     strings.NewReader(`[{"id": 1}]`),
+			whenNoPathParams: true,
+			whenBindTarget:   &[]Node{},
+			expect:           &[]Node{{ID: 1, Node: ""}},
+			expectError:      "",
+		},
+		{ // rare case as GET is not usually used to send request body
+			name:             "ok, JSON GET bind to struct with: path + query + empty field in body",
+			givenURL:         "/api/real_node/endpoint?node=xxx",
+			givenMethod:      http.MethodGet,
+			givenContentType: MIMEApplicationJSON,
+			givenContent:     strings.NewReader(`{"id": 1}`),
+			expect:           &Node{ID: 1, Node: ""}, // path params or query params should not interfere with body
+		},
+		{ // rare case as GET is not usually used to send request body
+			name:             "ok, JSON GET bind to struct with: path + query + body",
+			givenURL:         "/api/real_node/endpoint?node=xxx",
+			givenMethod:      http.MethodGet,
+			givenContentType: MIMEApplicationJSON,
+			givenContent:     strings.NewReader(`{"id": 1, "node": "zzz"}`),
+			expect:           &Node{ID: 1, Node: "zzz"}, // field value from content has higher priority
+		},
+		{
+			name:             "nok, JSON POST body bind failure",
+			givenURL:         "/api/real_node/endpoint?node=xxx",
+			givenMethod:      http.MethodPost,
+			givenContentType: MIMEApplicationJSON,
+			givenContent:     strings.NewReader(`{`),
+			expect:           &Node{ID: 0, Node: ""},
+			expectError:      "code=400, message=unexpected EOF, internal=unexpected EOF",
+		},
+		{
+			name:             "ok, XML POST bind to struct with: path + query + empty body",
+			givenURL:         "/api/real_node/endpoint?node=xxx",
+			givenMethod:      http.MethodPost,
+			givenContentType: MIMEApplicationXML,
+			givenContent:     strings.NewReader(`<node><id>1</id><node>yyy</node></node>`),
+			expect:           &Node{ID: 1, Node: "yyy"},
+		},
+		{
+			name:             "ok, XML POST bind array to slice with: path + query + body",
+			givenURL:         "/api/real_node/endpoint?node=xxx",
+			givenMethod:      http.MethodPost,
+			givenContentType: MIMEApplicationXML,
+			givenContent:     strings.NewReader(`<nodes><node><id>1</id><node>yyy</node></node></nodes>`),
+			whenBindTarget:   &Nodes{},
+			expect:           &Nodes{Nodes: []Node{{ID: 1, Node: "yyy"}}},
+		},
+		{
+			name:             "nok, XML POST bind failure",
+			givenURL:         "/api/real_node/endpoint?node=xxx",
+			givenMethod:      http.MethodPost,
+			givenContentType: MIMEApplicationXML,
+			givenContent:     strings.NewReader(`<node><`),
+			expect:           &Node{ID: 0, Node: ""},
+			expectError:      "code=400, message=Syntax error: line=1, error=XML syntax error on line 1: unexpected EOF, internal=XML syntax error on line 1: unexpected EOF",
+		},
+		{
+			name:             "ok, FORM POST bind to struct with: path + query + empty body",
+			givenURL:         "/api/real_node/endpoint?node=xxx",
+			givenMethod:      http.MethodPost,
+			givenContentType: MIMEApplicationForm,
+			givenContent:     strings.NewReader(`id=1&node=yyy`),
+			expect:           &Node{ID: 1, Node: "yyy"},
+		},
+		{
+			// NB: form values are taken from BOTH body and query for POST/PUT/PATCH by standard library implementation
+			// See: https://golang.org/pkg/net/http/#Request.ParseForm
+			name:             "ok, FORM POST bind to struct with: path + query + empty field in body",
+			givenURL:         "/api/real_node/endpoint?node=xxx",
+			givenMethod:      http.MethodPost,
+			givenContentType: MIMEApplicationForm,
+			givenContent:     strings.NewReader(`id=1`),
+			expect:           &Node{ID: 1, Node: "xxx"},
+		},
+		{
+			// NB: form values are taken from query by standard library implementation
+			// See: https://golang.org/pkg/net/http/#Request.ParseForm
+			name:             "ok, FORM GET bind to struct with: path + query + empty field in body",
+			givenURL:         "/api/real_node/endpoint?node=xxx",
+			givenMethod:      http.MethodGet,
+			givenContentType: MIMEApplicationForm,
+			givenContent:     strings.NewReader(`id=1`),
+			expect:           &Node{ID: 0, Node: "xxx"}, // 'xxx' is taken from URL and body is not used with GET by implementation
+		},
+		{
+			name:             "nok, unsupported content type",
+			givenURL:         "/api/real_node/endpoint?node=xxx",
+			givenMethod:      http.MethodPost,
+			givenContentType: MIMETextPlain,
+			givenContent:     strings.NewReader(`<html></html>`),
+			expect:           &Node{ID: 0, Node: ""},
+			expectError:      "code=415, message=Unsupported Media Type",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			// assume route we are testing is "/api/:node/endpoint?some_query_params=here"
+			req := httptest.NewRequest(tc.givenMethod, tc.givenURL, tc.givenContent)
+			switch tc.givenContentType {
+			case MIMEApplicationXML:
+				req.Header.Set(HeaderContentType, MIMEApplicationXML)
+			case MIMEApplicationForm:
+				req.Header.Set(HeaderContentType, MIMEApplicationForm)
+			case MIMEApplicationJSON:
+				req.Header.Set(HeaderContentType, MIMEApplicationJSON)
+			}
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			if !tc.whenNoPathParams {
+				c.SetParamNames("node")
+				c.SetParamValues("real_node")
+			}
+
+			var bindTarget interface{}
+			if tc.whenBindTarget != nil {
+				bindTarget = tc.whenBindTarget
+			} else {
+				bindTarget = &Node{}
+			}
+			b := new(DefaultBinder)
+
+			err := b.BindBody(c, bindTarget)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, tc.expect, bindTarget)
+		})
+	}
+}

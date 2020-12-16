@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/labstack/echo/v4"
@@ -26,33 +27,28 @@ func TestRewrite(t *testing.T) {
 	})
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
-	req.URL.Path = "/api/users"
+	req.URL, _ = url.Parse("/api/users")
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "/users", req.URL.EscapedPath())
-	req.URL.Path = "/js/main.js"
+	req.URL, _ = url.Parse("/js/main.js")
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "/public/javascripts/main.js", req.URL.EscapedPath())
-	req.URL.Path = "/old"
+	req.URL, _ = url.Parse("/old")
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "/new", req.URL.EscapedPath())
-	req.URL.Path = "/users/jack/orders/1"
+	req.URL, _ = url.Parse("/users/jack/orders/1")
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "/user/jack/order/1", req.URL.EscapedPath())
-	req.URL.Path = "/api/new users"
-	rec = httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/new%20users", req.URL.EscapedPath())
-	req.URL.Path = "/users/jill/orders/T%2FcO4lW%2Ft%2FVp%2F"
+	req.URL, _ = url.Parse("/user/jill/order/T%2FcO4lW%2Ft%2FVp%2F")
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "/user/jill/order/T%2FcO4lW%2Ft%2FVp%2F", req.URL.EscapedPath())
-	req.URL.Path = "/users/jill/orders/%%%%"
-	rec = httptest.NewRecorder()
+	req.URL, _ = url.Parse("/api/new users")
 	e.ServeHTTP(rec, req)
-	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Equal(t, "/new%20users", req.URL.EscapedPath())
 }
 
 // Issue #1086
@@ -61,11 +57,10 @@ func TestEchoRewritePreMiddleware(t *testing.T) {
 	r := e.Router()
 
 	// Rewrite old url to new one
-	e.Pre(RewriteWithConfig(RewriteConfig{
-		Rules: map[string]string{
+	e.Pre(Rewrite(map[string]string{
 			"/old": "/new",
 		},
-	}))
+	))
 
 	// Route
 	r.Add(http.MethodGet, "/new", func(c echo.Context) error {
