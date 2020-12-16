@@ -1335,6 +1335,40 @@ func TestRouterFindNotPanicOrLoopsWhenContextSetParamValuesIsCalledWithLessValue
 	assert.Equal(t, 1, c.Get("i"))
 }
 
+// Issue #1653
+func TestRouterPanicWhenParamNoRootOnlyChildsFailsFind(t *testing.T) {
+	e := New()
+	r := e.router
+
+	r.Add(http.MethodGet, "/users/create", handlerHelper("create", 1))
+	r.Add(http.MethodGet, "/users/:id/edit", func(c Context) error {
+		return nil
+	})
+	r.Add(http.MethodGet, "/users/:id/active", func(c Context) error {
+		return nil
+	})
+
+	c := e.NewContext(nil, nil).(*context)
+	r.Find(http.MethodGet, "/users/alice/edit", c)
+	assert.Equal(t, "alice", c.Param("id"))
+
+	c = e.NewContext(nil, nil).(*context)
+	r.Find(http.MethodGet, "/users/bob/active", c)
+	assert.Equal(t, "bob", c.Param("id"))
+
+	c = e.NewContext(nil, nil).(*context)
+	r.Find(http.MethodGet, "/users/create", c)
+	c.Handler()(c)
+	assert.Equal(t, 1, c.Get("create"))
+	assert.Equal(t, "/users/create", c.Get("path"))
+
+	//This panic before the fix for Issue #1653
+	c = e.NewContext(nil, nil).(*context)
+	r.Find(http.MethodGet, "/users/createNotFound", c)
+	he := c.Handler()(c).(*HTTPError)
+	assert.Equal(t, http.StatusNotFound, he.Code)
+}
+
 func benchmarkRouterRoutes(b *testing.B, routes []*Route) {
 	e := New()
 	r := e.router
