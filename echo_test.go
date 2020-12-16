@@ -102,6 +102,15 @@ func TestEchoStatic(t *testing.T) {
 			expectHeaderLocation: "/folder/",
 			expectBodyStartsWith: "",
 		},
+    {
+			name:                 "Directory Redirect with non-root path",
+			givenPrefix:          "/static",
+			givenRoot:            "_fixture",
+			whenURL:              "/static",
+			expectStatus:         http.StatusMovedPermanently,
+			expectHeaderLocation: "/static/",
+			expectBodyStartsWith: "",
+		},
 		{
 			name:                 "Directory with index.html",
 			givenPrefix:          "/",
@@ -158,6 +167,40 @@ func TestEchoStatic(t *testing.T) {
 				assert.False(t, ok)
 			}
 		})
+	}
+}
+
+func TestEchoStaticRedirectIndex(t *testing.T) {
+	assert := assert.New(t)
+	e := New()
+
+	// HandlerFunc
+	e.Static("/static", "_fixture")
+
+	errCh := make(chan error)
+
+	go func() {
+		errCh <- e.Start("127.0.0.1:1323")
+	}()
+
+	time.Sleep(200 * time.Millisecond)
+
+	if resp, err := http.Get("http://127.0.0.1:1323/static"); err == nil {
+		defer resp.Body.Close()
+		assert.Equal(http.StatusOK, resp.StatusCode)
+
+		if body, err := ioutil.ReadAll(resp.Body); err == nil {
+			assert.Equal(true, strings.HasPrefix(string(body), "<!doctype html>"))
+		} else {
+			assert.Fail(err.Error())
+		}
+
+	} else {
+		assert.Fail(err.Error())
+	}
+
+	if err := e.Close(); err != nil {
+		t.Fatal(err)
 	}
 }
 
