@@ -175,8 +175,10 @@ var (
 		{"GET", "/authorizations", ""},
 		{"GET", "/authorizations/:id", ""},
 		{"POST", "/authorizations", ""},
-		//{"PUT", "/authorizations/clients/:client_id", ""},
-		//{"PATCH", "/authorizations/:id", ""},
+
+		{"PUT", "/authorizations/clients/:client_id", ""},
+		{"PATCH", "/authorizations/:id", ""},
+
 		{"DELETE", "/authorizations/:id", ""},
 		{"GET", "/applications/:client_id/tokens/:access_token", ""},
 		{"DELETE", "/applications/:client_id/tokens", ""},
@@ -198,7 +200,9 @@ var (
 		{"PUT", "/notifications", ""},
 		{"PUT", "/repos/:owner/:repo/notifications", ""},
 		{"GET", "/notifications/threads/:id", ""},
-		//{"PATCH", "/notifications/threads/:id", ""},
+
+		{"PATCH", "/notifications/threads/:id", ""},
+
 		{"GET", "/notifications/threads/:id/subscription", ""},
 		{"PUT", "/notifications/threads/:id/subscription", ""},
 		{"DELETE", "/notifications/threads/:id/subscription", ""},
@@ -221,11 +225,15 @@ var (
 		// Gists
 		{"GET", "/users/:user/gists", ""},
 		{"GET", "/gists", ""},
-		//{"GET", "/gists/public", ""},
-		//{"GET", "/gists/starred", ""},
+
+		{"GET", "/gists/public", ""},
+		{"GET", "/gists/starred", ""},
+
 		{"GET", "/gists/:id", ""},
 		{"POST", "/gists", ""},
-		//{"PATCH", "/gists/:id", ""},
+
+		{"PATCH", "/gists/:id", ""},
+
 		{"PUT", "/gists/:id/star", ""},
 		{"DELETE", "/gists/:id/star", ""},
 		{"GET", "/gists/:id/star", ""},
@@ -237,11 +245,15 @@ var (
 		{"POST", "/repos/:owner/:repo/git/blobs", ""},
 		{"GET", "/repos/:owner/:repo/git/commits/:sha", ""},
 		{"POST", "/repos/:owner/:repo/git/commits", ""},
-		//{"GET", "/repos/:owner/:repo/git/refs/*ref", ""},
+
+		{"GET", "/repos/:owner/:repo/git/refs/*ref", ""},
+
 		{"GET", "/repos/:owner/:repo/git/refs", ""},
 		{"POST", "/repos/:owner/:repo/git/refs", ""},
-		//{"PATCH", "/repos/:owner/:repo/git/refs/*ref", ""},
-		//{"DELETE", "/repos/:owner/:repo/git/refs/*ref", ""},
+
+		{"PATCH", "/repos/:owner/:repo/git/refs/*ref", ""},
+		{"DELETE", "/repos/:owner/:repo/git/refs/*ref", ""},
+
 		{"GET", "/repos/:owner/:repo/git/tags/:sha", ""},
 		{"POST", "/repos/:owner/:repo/git/tags", ""},
 		{"GET", "/repos/:owner/:repo/git/trees/:sha", ""},
@@ -254,22 +266,32 @@ var (
 		{"GET", "/repos/:owner/:repo/issues", ""},
 		{"GET", "/repos/:owner/:repo/issues/:number", ""},
 		{"POST", "/repos/:owner/:repo/issues", ""},
-		//{"PATCH", "/repos/:owner/:repo/issues/:number", ""},
+
+		{"PATCH", "/repos/:owner/:repo/issues/:number", ""},
+
 		{"GET", "/repos/:owner/:repo/assignees", ""},
 		{"GET", "/repos/:owner/:repo/assignees/:assignee", ""},
 		{"GET", "/repos/:owner/:repo/issues/:number/comments", ""},
-		//{"GET", "/repos/:owner/:repo/issues/comments", ""},
-		//{"GET", "/repos/:owner/:repo/issues/comments/:id", ""},
+
+		{"GET", "/repos/:owner/:repo/issues/comments", ""},
+		{"GET", "/repos/:owner/:repo/issues/comments/:id", ""},
+
 		{"POST", "/repos/:owner/:repo/issues/:number/comments", ""},
-		//{"PATCH", "/repos/:owner/:repo/issues/comments/:id", ""},
-		//{"DELETE", "/repos/:owner/:repo/issues/comments/:id", ""},
+
+		{"PATCH", "/repos/:owner/:repo/issues/comments/:id", ""},
+		{"DELETE", "/repos/:owner/:repo/issues/comments/:id", ""},
+
 		{"GET", "/repos/:owner/:repo/issues/:number/events", ""},
-		//{"GET", "/repos/:owner/:repo/issues/events", ""},
-		//{"GET", "/repos/:owner/:repo/issues/events/:id", ""},
+
+		{"GET", "/repos/:owner/:repo/issues/events", ""},
+		{"GET", "/repos/:owner/:repo/issues/events/:id", ""},
+
 		{"GET", "/repos/:owner/:repo/labels", ""},
 		{"GET", "/repos/:owner/:repo/labels/:name", ""},
 		{"POST", "/repos/:owner/:repo/labels", ""},
-		//{"PATCH", "/repos/:owner/:repo/labels/:name", ""},
+
+		{"PATCH", "/repos/:owner/:repo/labels/:name", ""},
+
 		{"DELETE", "/repos/:owner/:repo/labels/:name", ""},
 		{"GET", "/repos/:owner/:repo/issues/:number/labels", ""},
 		{"POST", "/repos/:owner/:repo/issues/:number/labels", ""},
@@ -280,7 +302,9 @@ var (
 		{"GET", "/repos/:owner/:repo/milestones", ""},
 		{"GET", "/repos/:owner/:repo/milestones/:number", ""},
 		{"POST", "/repos/:owner/:repo/milestones", ""},
-		//{"PATCH", "/repos/:owner/:repo/milestones/:number", ""},
+
+		{"PATCH", "/repos/:owner/:repo/milestones/:number", ""},
+
 		{"DELETE", "/repos/:owner/:repo/milestones/:number", ""},
 
 		// Miscellaneous
@@ -296,7 +320,9 @@ var (
 		{"GET", "/users/:user/orgs", ""},
 		{"GET", "/user/orgs", ""},
 		{"GET", "/orgs/:org", ""},
-		//{"PATCH", "/orgs/:org", ""},
+
+		{"PATCH", "/orgs/:org", ""},
+
 		{"GET", "/orgs/:org/members", ""},
 		{"GET", "/orgs/:org/members/:user", ""},
 		{"DELETE", "/orgs/:org/members/:user", ""},
@@ -307,7 +333,9 @@ var (
 		{"GET", "/orgs/:org/teams", ""},
 		{"GET", "/teams/:id", ""},
 		{"POST", "/orgs/:org/teams", ""},
-		//{"PATCH", "/teams/:id", ""},
+
+		{"PATCH", "/teams/:id", ""},
+
 		{"DELETE", "/teams/:id", ""},
 		{"GET", "/teams/:id/members", ""},
 		{"GET", "/teams/:id/members/:user", ""},
@@ -323,17 +351,22 @@ var (
 		{"GET", "/repos/:owner/:repo/pulls", ""},
 		{"GET", "/repos/:owner/:repo/pulls/:number", ""},
 		{"POST", "/repos/:owner/:repo/pulls", ""},
-		//{"PATCH", "/repos/:owner/:repo/pulls/:number", ""},
+
+		{"PATCH", "/repos/:owner/:repo/pulls/:number", ""},
+
 		{"GET", "/repos/:owner/:repo/pulls/:number/commits", ""},
 		{"GET", "/repos/:owner/:repo/pulls/:number/files", ""},
 		{"GET", "/repos/:owner/:repo/pulls/:number/merge", ""},
 		{"PUT", "/repos/:owner/:repo/pulls/:number/merge", ""},
 		{"GET", "/repos/:owner/:repo/pulls/:number/comments", ""},
-		//{"GET", "/repos/:owner/:repo/pulls/comments", ""},
-		//{"GET", "/repos/:owner/:repo/pulls/comments/:number", ""},
+
+		{"GET", "/repos/:owner/:repo/pulls/comments", ""},
+		{"GET", "/repos/:owner/:repo/pulls/comments/:number", ""},
+
 		{"PUT", "/repos/:owner/:repo/pulls/:number/comments", ""},
-		//{"PATCH", "/repos/:owner/:repo/pulls/comments/:number", ""},
-		//{"DELETE", "/repos/:owner/:repo/pulls/comments/:number", ""},
+
+		{"PATCH", "/repos/:owner/:repo/pulls/comments/:number", ""},
+		{"DELETE", "/repos/:owner/:repo/pulls/comments/:number", ""},
 
 		// Repositories
 		{"GET", "/user/repos", ""},
@@ -343,7 +376,9 @@ var (
 		{"POST", "/user/repos", ""},
 		{"POST", "/orgs/:org/repos", ""},
 		{"GET", "/repos/:owner/:repo", ""},
-		//{"PATCH", "/repos/:owner/:repo", ""},
+
+		{"PATCH", "/repos/:owner/:repo", ""},
+
 		{"GET", "/repos/:owner/:repo/contributors", ""},
 		{"GET", "/repos/:owner/:repo/languages", ""},
 		{"GET", "/repos/:owner/:repo/teams", ""},
@@ -359,19 +394,26 @@ var (
 		{"GET", "/repos/:owner/:repo/commits/:sha/comments", ""},
 		{"POST", "/repos/:owner/:repo/commits/:sha/comments", ""},
 		{"GET", "/repos/:owner/:repo/comments/:id", ""},
-		//{"PATCH", "/repos/:owner/:repo/comments/:id", ""},
+
+		{"PATCH", "/repos/:owner/:repo/comments/:id", ""},
+
 		{"DELETE", "/repos/:owner/:repo/comments/:id", ""},
 		{"GET", "/repos/:owner/:repo/commits", ""},
 		{"GET", "/repos/:owner/:repo/commits/:sha", ""},
 		{"GET", "/repos/:owner/:repo/readme", ""},
+
 		//{"GET", "/repos/:owner/:repo/contents/*path", ""},
 		//{"PUT", "/repos/:owner/:repo/contents/*path", ""},
 		//{"DELETE", "/repos/:owner/:repo/contents/*path", ""},
-		//{"GET", "/repos/:owner/:repo/:archive_format/:ref", ""},
+
+		{"GET", "/repos/:owner/:repo/:archive_format/:ref", ""},
+
 		{"GET", "/repos/:owner/:repo/keys", ""},
 		{"GET", "/repos/:owner/:repo/keys/:id", ""},
 		{"POST", "/repos/:owner/:repo/keys", ""},
-		//{"PATCH", "/repos/:owner/:repo/keys/:id", ""},
+
+		{"PATCH", "/repos/:owner/:repo/keys/:id", ""},
+
 		{"DELETE", "/repos/:owner/:repo/keys/:id", ""},
 		{"GET", "/repos/:owner/:repo/downloads", ""},
 		{"GET", "/repos/:owner/:repo/downloads/:id", ""},
@@ -381,14 +423,18 @@ var (
 		{"GET", "/repos/:owner/:repo/hooks", ""},
 		{"GET", "/repos/:owner/:repo/hooks/:id", ""},
 		{"POST", "/repos/:owner/:repo/hooks", ""},
-		//{"PATCH", "/repos/:owner/:repo/hooks/:id", ""},
+
+		{"PATCH", "/repos/:owner/:repo/hooks/:id", ""},
+
 		{"POST", "/repos/:owner/:repo/hooks/:id/tests", ""},
 		{"DELETE", "/repos/:owner/:repo/hooks/:id", ""},
 		{"POST", "/repos/:owner/:repo/merges", ""},
 		{"GET", "/repos/:owner/:repo/releases", ""},
 		{"GET", "/repos/:owner/:repo/releases/:id", ""},
 		{"POST", "/repos/:owner/:repo/releases", ""},
-		//{"PATCH", "/repos/:owner/:repo/releases/:id", ""},
+
+		{"PATCH", "/repos/:owner/:repo/releases/:id", ""},
+
 		{"DELETE", "/repos/:owner/:repo/releases/:id", ""},
 		{"GET", "/repos/:owner/:repo/releases/:id/assets", ""},
 		{"GET", "/repos/:owner/:repo/stats/contributors", ""},
@@ -412,7 +458,9 @@ var (
 		// Users
 		{"GET", "/users/:user", ""},
 		{"GET", "/user", ""},
-		//{"PATCH", "/user", ""},
+
+		{"PATCH", "/user", ""},
+
 		{"GET", "/users", ""},
 		{"GET", "/user/emails", ""},
 		{"POST", "/user/emails", ""},
@@ -429,7 +477,9 @@ var (
 		{"GET", "/user/keys", ""},
 		{"GET", "/user/keys/:id", ""},
 		{"POST", "/user/keys", ""},
-		//{"PATCH", "/user/keys/:id", ""},
+
+		{"PATCH", "/user/keys/:id", ""},
+
 		{"DELETE", "/user/keys/:id", ""},
 	}
 
@@ -498,6 +548,88 @@ var (
 		{"POST", "/people/:userId/moments/:collection", ""},
 		{"GET", "/people/:userId/moments/:collection", ""},
 		{"DELETE", "/moments/:id", ""},
+	}
+
+	paramAndAnyAPI = []*Route{
+		{"GET", "/root/:first/foo/*", ""},
+		{"GET", "/root/:first/:second/*", ""},
+		{"GET", "/root/:first/bar/:second/*", ""},
+		{"GET", "/root/:first/qux/:second/:third/:fourth", ""},
+		{"GET", "/root/:first/qux/:second/:third/:fourth/*", ""},
+		{"GET", "/root/*", ""},
+
+		{"POST", "/root/:first/foo/*", ""},
+		{"POST", "/root/:first/:second/*", ""},
+		{"POST", "/root/:first/bar/:second/*", ""},
+		{"POST", "/root/:first/qux/:second/:third/:fourth", ""},
+		{"POST", "/root/:first/qux/:second/:third/:fourth/*", ""},
+		{"POST", "/root/*", ""},
+
+		{"PUT", "/root/:first/foo/*", ""},
+		{"PUT", "/root/:first/:second/*", ""},
+		{"PUT", "/root/:first/bar/:second/*", ""},
+		{"PUT", "/root/:first/qux/:second/:third/:fourth", ""},
+		{"PUT", "/root/:first/qux/:second/:third/:fourth/*", ""},
+		{"PUT", "/root/*", ""},
+
+		{"DELETE", "/root/:first/foo/*", ""},
+		{"DELETE", "/root/:first/:second/*", ""},
+		{"DELETE", "/root/:first/bar/:second/*", ""},
+		{"DELETE", "/root/:first/qux/:second/:third/:fourth", ""},
+		{"DELETE", "/root/:first/qux/:second/:third/:fourth/*", ""},
+		{"DELETE", "/root/*", ""},
+	}
+
+	paramAndAnyAPIToFind = []*Route{
+		{"GET", "/root/one/foo/after/the/asterisk", ""},
+		{"GET", "/root/one/foo/path/after/the/asterisk", ""},
+		{"GET", "/root/one/two/path/after/the/asterisk", ""},
+		{"GET", "/root/one/bar/two/after/the/asterisk", ""},
+		{"GET", "/root/one/qux/two/three/four", ""},
+		{"GET", "/root/one/qux/two/three/four/after/the/asterisk", ""},
+
+		{"POST", "/root/one/foo/after/the/asterisk", ""},
+		{"POST", "/root/one/foo/path/after/the/asterisk", ""},
+		{"POST", "/root/one/two/path/after/the/asterisk", ""},
+		{"POST", "/root/one/bar/two/after/the/asterisk", ""},
+		{"POST", "/root/one/qux/two/three/four", ""},
+		{"POST", "/root/one/qux/two/three/four/after/the/asterisk", ""},
+
+		{"PUT", "/root/one/foo/after/the/asterisk", ""},
+		{"PUT", "/root/one/foo/path/after/the/asterisk", ""},
+		{"PUT", "/root/one/two/path/after/the/asterisk", ""},
+		{"PUT", "/root/one/bar/two/after/the/asterisk", ""},
+		{"PUT", "/root/one/qux/two/three/four", ""},
+		{"PUT", "/root/one/qux/two/three/four/after/the/asterisk", ""},
+
+		{"DELETE", "/root/one/foo/after/the/asterisk", ""},
+		{"DELETE", "/root/one/foo/path/after/the/asterisk", ""},
+		{"DELETE", "/root/one/two/path/after/the/asterisk", ""},
+		{"DELETE", "/root/one/bar/two/after/the/asterisk", ""},
+		{"DELETE", "/root/one/qux/two/three/four", ""},
+		{"DELETE", "/root/one/qux/two/three/four/after/the/asterisk", ""},
+	}
+
+	missesAPI = []*Route{
+		{"GET", "/missOne", ""},
+		{"GET", "/miss/two", ""},
+		{"GET", "/miss/three/levels", ""},
+		{"GET", "/miss/four/levels/nooo", ""},
+
+		{"POST", "/missOne", ""},
+		{"POST", "/miss/two", ""},
+		{"POST", "/miss/three/levels", ""},
+		{"POST", "/miss/four/levels/nooo", ""},
+
+		{"PUT", "/missOne", ""},
+		{"PUT", "/miss/two", ""},
+		{"PUT", "/miss/three/levels", ""},
+		{"PUT", "/miss/four/levels/nooo", ""},
+
+		{"DELETE", "/missOne", ""},
+		{"DELETE", "/miss/two", ""},
+		{"DELETE", "/miss/three/levels", ""},
+		{"DELETE", "/miss/four/levels/nooo", ""},
 	}
 
 	// handlerHelper created a function that will set a context key for assertion
@@ -1332,7 +1464,7 @@ func TestRouterPanicWhenParamNoRootOnlyChildsFailsFind(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, he.Code)
 }
 
-func benchmarkRouterRoutes(b *testing.B, routes []*Route) {
+func benchmarkRouterRoutes(b *testing.B, routes []*Route, routesToFind []*Route) {
 	e := New()
 	r := e.router
 	b.ReportAllocs()
@@ -1344,9 +1476,12 @@ func benchmarkRouterRoutes(b *testing.B, routes []*Route) {
 		})
 	}
 
+	// Routes adding are performed just once, so it doesn't make sense to see that in the benchmark
+	b.ResetTimer()
+
 	// Find routes
 	for i := 0; i < b.N; i++ {
-		for _, route := range gitHubAPI {
+		for _, route := range routesToFind {
 			c := e.pool.Get().(*context)
 			r.Find(route.Method, route.Path, c)
 			e.pool.Put(c)
@@ -1355,28 +1490,56 @@ func benchmarkRouterRoutes(b *testing.B, routes []*Route) {
 }
 
 func BenchmarkRouterStaticRoutes(b *testing.B) {
-	benchmarkRouterRoutes(b, staticRoutes)
+	benchmarkRouterRoutes(b, staticRoutes, staticRoutes)
+}
+
+func BenchmarkRouterStaticRoutesMisses(b *testing.B) {
+	benchmarkRouterRoutes(b, staticRoutes, missesAPI)
 }
 
 func BenchmarkRouterGitHubAPI(b *testing.B) {
-	benchmarkRouterRoutes(b, gitHubAPI)
+	benchmarkRouterRoutes(b, gitHubAPI, gitHubAPI)
+}
+
+func BenchmarkRouterGitHubAPIMisses(b *testing.B) {
+	benchmarkRouterRoutes(b, gitHubAPI, missesAPI)
 }
 
 func BenchmarkRouterParseAPI(b *testing.B) {
-	benchmarkRouterRoutes(b, parseAPI)
+	benchmarkRouterRoutes(b, parseAPI, parseAPI)
+}
+
+func BenchmarkRouterParseAPIMisses(b *testing.B) {
+	benchmarkRouterRoutes(b, parseAPI, missesAPI)
 }
 
 func BenchmarkRouterGooglePlusAPI(b *testing.B) {
-	benchmarkRouterRoutes(b, googlePlusAPI)
+	benchmarkRouterRoutes(b, googlePlusAPI, googlePlusAPI)
+}
+
+func BenchmarkRouterGooglePlusAPIMisses(b *testing.B) {
+	benchmarkRouterRoutes(b, googlePlusAPI, missesAPI)
+}
+
+func BenchmarkRouterParamsAndAnyAPI(b *testing.B) {
+	benchmarkRouterRoutes(b, paramAndAnyAPI, paramAndAnyAPIToFind)
 }
 
 func (n *node) printTree(pfx string, tail bool) {
 	p := prefix(tail, pfx, "└── ", "├── ")
 	fmt.Printf("%s%s, %p: type=%d, parent=%p, handler=%v, pnames=%v\n", p, n.prefix, n, n.kind, n.parent, n.methodHandler, n.pnames)
 
-	children := n.children
-	l := len(children)
 	p = prefix(tail, pfx, "    ", "│   ")
+
+	children := n.staticChildrens
+	l := len(children)
+
+	if n.paramChildren != nil {
+		n.paramChildren.printTree(p, n.anyChildren == nil && l == 0)
+	}
+	if n.anyChildren != nil {
+		n.anyChildren.printTree(p, l == 0)
+	}
 	for i := 0; i < l-1; i++ {
 		children[i].printTree(p, false)
 	}
