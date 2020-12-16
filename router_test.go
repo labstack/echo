@@ -1430,6 +1430,43 @@ func TestRouterParam1466(t *testing.T) {
 	assert.Equal(t, 0, c.response.Status)
 }
 
+// Issue #1655
+func TestRouterFindNotPanicOrLoopsWhenContextSetParamValuesIsCalledWithLessValuesThanEchoMaxParam(t *testing.T) {
+	e := New()
+	r := e.router
+
+	v0 := e.Group("/:version")
+	v0.GET("/admin", func(c Context) error {
+		c.SetParamNames("version")
+		c.SetParamValues("v1")
+		return nil
+	})
+
+	v0.GET("/images/view/:id", handlerHelper("iv", 1))
+	v0.GET("/images/:id", handlerHelper("i", 1))
+	v0.GET("/view/*", handlerHelper("v", 1))
+
+	//If this API is called before the next two one panic the other loops ( of course without my fix ;) )
+	c := e.NewContext(nil, nil)
+	r.Find(http.MethodGet, "/v1/admin", c)
+	c.Handler()(c)
+	assert.Equal(t, "v1", c.Param("version"))
+
+	//panic
+	c = e.NewContext(nil, nil)
+	r.Find(http.MethodGet, "/v1/view/same-data", c)
+	c.Handler()(c)
+	assert.Equal(t, "same-data", c.Param("*"))
+	assert.Equal(t, 1, c.Get("v"))
+
+	//looping
+	c = e.NewContext(nil, nil)
+	r.Find(http.MethodGet, "/v1/images/view", c)
+	c.Handler()(c)
+	assert.Equal(t, "view", c.Param("id"))
+	assert.Equal(t, 1, c.Get("i"))
+}
+
 // Issue #1653
 func TestRouterPanicWhenParamNoRootOnlyChildsFailsFind(t *testing.T) {
 	e := New()
