@@ -22,7 +22,8 @@ type (
 		// SourceFunc uses echo.Context to extract the identifier for a visitor
 		SourceFunc func(context echo.Context) string
 		// Store defines a store for the rate limiter
-		Store RateLimiterStore
+		Store        RateLimiterStore
+		ErrorHandler func(context echo.Context) error
 	}
 )
 
@@ -31,6 +32,9 @@ var DefaultRateLimiterConfig = RateLimiterConfig{
 	Skipper: DefaultSkipper,
 	SourceFunc: func(ctx echo.Context) string {
 		return ctx.RealIP()
+	},
+	ErrorHandler: func(context echo.Context) error {
+		return context.JSON(http.StatusTooManyRequests, nil)
 	},
 }
 
@@ -50,6 +54,9 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 	if config.SourceFunc == nil {
 		config.SourceFunc = DefaultRateLimiterConfig.SourceFunc
 	}
+	if config.ErrorHandler == nil {
+		config.ErrorHandler = DefaultRateLimiterConfig.ErrorHandler
+	}
 	if config.Store == nil {
 		panic("Store configuration must be provided")
 	}
@@ -66,7 +73,7 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 
 			allowed := config.Store.Allow(identifier)
 			if !allowed {
-				return c.JSON(http.StatusTooManyRequests, nil)
+				return config.ErrorHandler(c)
 			}
 			return next(c)
 		}
@@ -76,10 +83,10 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 // RateLimiterMemoryStore is the built-in store implementation for RateLimiter
 type (
 	RateLimiterMemoryStore struct {
-		visitors    map[string]visitor
-		mutex       sync.Mutex
-		rate        rate.Limit
-		burst       int
+		visitors map[string]visitor
+		mutex    sync.Mutex
+		rate     rate.Limit
+		burst    int
 	}
 	visitor struct {
 		*rate.Limiter

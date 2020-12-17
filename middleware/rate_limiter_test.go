@@ -94,13 +94,13 @@ func TestRateLimiter(t *testing.T) {
 		id   string
 		code int
 	}{
-		{"127.0.0.1", 200},
-		{"127.0.0.1", 200},
-		{"127.0.0.1", 200},
-		{"127.0.0.1", 429},
-		{"127.0.0.1", 429},
-		{"127.0.0.1", 429},
-		{"127.0.0.1", 429},
+		{"127.0.0.1", http.StatusOK},
+		{"127.0.0.1", http.StatusOK},
+		{"127.0.0.1", http.StatusOK},
+		{"127.0.0.1", http.StatusTooManyRequests},
+		{"127.0.0.1", http.StatusTooManyRequests},
+		{"127.0.0.1", http.StatusTooManyRequests},
+		{"127.0.0.1", http.StatusTooManyRequests},
 	}
 
 	for _, tc := range testCases {
@@ -134,13 +134,13 @@ func TestRateLimiterWithConfig(t *testing.T) {
 			id   string
 			code int
 		}{
-			{"127.0.0.1", 200},
-			{"127.0.0.1", 200},
-			{"127.0.0.1", 200},
-			{"127.0.0.1", 429},
-			{"127.0.0.1", 429},
-			{"127.0.0.1", 429},
-			{"127.0.0.1", 429},
+			{"127.0.0.1", http.StatusOK},
+			{"127.0.0.1", http.StatusOK},
+			{"127.0.0.1", http.StatusOK},
+			{"127.0.0.1", http.StatusTooManyRequests},
+			{"127.0.0.1", http.StatusTooManyRequests},
+			{"127.0.0.1", http.StatusTooManyRequests},
+			{"127.0.0.1", http.StatusTooManyRequests},
 		}
 
 		for _, tc := range testCases {
@@ -153,6 +153,9 @@ func TestRateLimiterWithConfig(t *testing.T) {
 			mw := RateLimiterWithConfig(RateLimiterConfig{
 				SourceFunc: func(c echo.Context) string {
 					return c.RealIP()
+				},
+				ErrorHandler: func(ctx echo.Context) error {
+					return ctx.JSON(http.StatusTooManyRequests, nil)
 				},
 				Store: inMemoryStore,
 			})
@@ -177,13 +180,13 @@ func TestRateLimiterWithConfig(t *testing.T) {
 			id   string
 			code int
 		}{
-			{"127.0.0.1", 200},
-			{"127.0.0.1", 200},
-			{"127.0.0.1", 200},
-			{"127.0.0.1", 429},
-			{"127.0.0.1", 429},
-			{"127.0.0.1", 429},
-			{"127.0.0.1", 429},
+			{"127.0.0.1", http.StatusOK},
+			{"127.0.0.1", http.StatusOK},
+			{"127.0.0.1", http.StatusOK},
+			{"127.0.0.1", http.StatusTooManyRequests},
+			{"127.0.0.1", http.StatusTooManyRequests},
+			{"127.0.0.1", http.StatusTooManyRequests},
+			{"127.0.0.1", http.StatusTooManyRequests},
 		}
 
 		for _, tc := range testCases {
