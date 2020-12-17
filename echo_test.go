@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -730,8 +731,24 @@ var listenerNetworkTests = []struct {
 	{"tcp6 ipv6 address", "tcp6", "[::1]:1323"},
 }
 
+func supportsIPv6() bool {
+	addrs, _ := net.InterfaceAddrs()
+	for _, addr := range addrs {
+		// Check if any interface has local IPv6 assigned
+		if strings.Contains(addr.String(), "::1") {
+			return true
+		}
+	}
+	return false
+}
+
 func TestEchoListenerNetwork(t *testing.T) {
+	hasIPv6 := supportsIPv6()
 	for _, tt := range listenerNetworkTests {
+		if !hasIPv6 && strings.Contains(tt.address, "::") {
+			t.Skip("Skipping testing IPv6 for " + tt.address + ", not available")
+			continue
+		}
 		t.Run(tt.test, func(t *testing.T) {
 			e := New()
 			e.ListenerNetwork = tt.network
