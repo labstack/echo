@@ -23,6 +23,10 @@ func (g *Group) Use(middleware ...MiddlewareFunc) {
 	if len(g.middleware) == 0 {
 		return
 	}
+	// Allow all requests to reach the group as they might get dropped if router
+	// doesn't find a match, making none of the group middleware process.
+	g.Any("", NotFoundHandler)
+	g.Any("/*", NotFoundHandler)
 }
 
 // CONNECT implements `Echo#CONNECT()` for sub-routes within the Group.
