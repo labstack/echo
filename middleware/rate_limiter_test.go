@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 )
 
 func TestRateLimiter(t *testing.T) {
@@ -27,10 +26,10 @@ func TestRateLimiter(t *testing.T) {
 		{"127.0.0.1", 200},
 		{"127.0.0.1", 200},
 		{"127.0.0.1", 200},
-		{"127.0.0.1", 200},
-		{"127.0.0.1", 200},
 		{"127.0.0.1", 429},
-		{"127.0.0.1", 200},
+		{"127.0.0.1", 429},
+		{"127.0.0.1", 429},
+		{"127.0.0.1", 429},
 	}
 
 	for _, tc := range testCases {
@@ -47,7 +46,6 @@ func TestRateLimiter(t *testing.T) {
 		_ = mw(handler)(c)
 
 		assert.Equal(t, tc.code, rec.Code)
-		time.Sleep(500 * time.Millisecond)
 	}
 }
 
@@ -69,10 +67,10 @@ func TestRateLimiterWithConfig(t *testing.T) {
 		{"127.0.0.1", 200},
 		{"127.0.0.1", 200},
 		{"127.0.0.1", 200},
-		{"127.0.0.1", 200},
-		{"127.0.0.1", 200},
 		{"127.0.0.1", 429},
-		{"127.0.0.1", 200},
+		{"127.0.0.1", 429},
+		{"127.0.0.1", 429},
+		{"127.0.0.1", 429},
 	}
 
 	for _, tc := range testCases {
@@ -92,7 +90,6 @@ func TestRateLimiterWithConfig(t *testing.T) {
 		_ = mw(handler)(c)
 
 		assert.Equal(t, tc.code, rec.Code)
-		time.Sleep(500 * time.Millisecond)
 	}
 }
 
@@ -108,16 +105,15 @@ func TestInMemoryStore_ShouldAllow(t *testing.T) {
 		{"127.0.0.1", true},
 		{"127.0.0.1", true},
 		{"127.0.0.1", true},
-		{"127.0.0.1", true},
-		{"127.0.0.1", true},
 		{"127.0.0.1", false},
-		{"127.0.0.1", true},
+		{"127.0.0.1", false},
+		{"127.0.0.1", false},
+		{"127.0.0.1", false},
 	}
 
 	for _, tc := range testCases {
 		allowed := inMemoryStore.ShouldAllow(tc.id)
 
 		assert.Equal(t, tc.allowed, allowed)
-		time.Sleep(500 * time.Millisecond)
 	}
 }
