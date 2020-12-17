@@ -3,18 +3,14 @@ package middleware
 import (
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/time/rate"
 	"net/http"
 	"net/http/httptest"
-	"sync"
 	"testing"
 	"time"
 )
 
 func TestRateLimiter(t *testing.T) {
 	var inMemoryStore = new(InMemoryStore)
-	inMemoryStore.visitors = map[string]*rate.Limiter{}
-	inMemoryStore.mutex = sync.Mutex{}
 	inMemoryStore.rate = 1
 	inMemoryStore.burst = 3
 
@@ -57,8 +53,6 @@ func TestRateLimiter(t *testing.T) {
 
 func TestRateLimiterWithConfig(t *testing.T) {
 	var inMemoryStore = new(InMemoryStore)
-	inMemoryStore.visitors = map[string]*rate.Limiter{}
-	inMemoryStore.mutex = sync.Mutex{}
 	inMemoryStore.rate = 1
 	inMemoryStore.burst = 3
 
@@ -104,8 +98,6 @@ func TestRateLimiterWithConfig(t *testing.T) {
 
 func TestInMemoryStore_ShouldAllow(t *testing.T) {
 	var inMemoryStore = new(InMemoryStore)
-	inMemoryStore.visitors = map[string]*rate.Limiter{}
-	inMemoryStore.mutex = sync.Mutex{}
 	inMemoryStore.rate = 1
 	inMemoryStore.burst = 3
 

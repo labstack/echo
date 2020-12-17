@@ -21,7 +21,7 @@ type (
 		// SourceFunc uses echo.Context to extract the identifier for a visitor
 		SourceFunc func(context echo.Context) string
 		// Store defines a store for the rate limiter
-		Store      TokenStore
+		Store TokenStore
 	}
 )
 
@@ -82,6 +82,10 @@ type InMemoryStore struct {
 func (store *InMemoryStore) ShouldAllow(identifier string) bool {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
+
+	if store.visitors == nil {
+		store.visitors = make(map[string]*rate.Limiter)
+	}
 
 	limiter, exists := store.visitors[identifier]
 	if !exists {
