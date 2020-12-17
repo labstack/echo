@@ -137,10 +137,10 @@ func TestRateLimiterWithConfig(t *testing.T) {
 			{"127.0.0.1", http.StatusOK},
 			{"127.0.0.1", http.StatusOK},
 			{"127.0.0.1", http.StatusOK},
-			{"127.0.0.1", http.StatusTooManyRequests},
-			{"127.0.0.1", http.StatusTooManyRequests},
-			{"127.0.0.1", http.StatusTooManyRequests},
-			{"127.0.0.1", http.StatusTooManyRequests},
+			{"127.0.0.1", http.StatusForbidden},
+			{"127.0.0.1", http.StatusForbidden},
+			{"127.0.0.1", http.StatusForbidden},
+			{"127.0.0.1", http.StatusForbidden},
 		}
 
 		for _, tc := range testCases {
@@ -155,7 +155,7 @@ func TestRateLimiterWithConfig(t *testing.T) {
 					return c.RealIP()
 				},
 				ErrorHandler: func(ctx echo.Context) error {
-					return ctx.JSON(http.StatusTooManyRequests, nil)
+					return ctx.JSON(http.StatusForbidden, nil)
 				},
 				Store: inMemoryStore,
 			})
