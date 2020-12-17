@@ -19,6 +19,79 @@ func TestRateLimiter(t *testing.T) {
 		return c.String(http.StatusOK, "test")
 	}
 
+	assert.Panics(t, func() {
+		RateLimiter(nil, nil)
+	})
+
+	assert.Panics(t, func() {
+		RateLimiter(func(ctx echo.Context) string {
+			return "127.0.0.1"
+		}, nil)
+	})
+
+	assert.NotPanics(t, func() {
+		RateLimiter(func(ctx echo.Context) string {
+			return "127.0.0.1"
+		}, inMemoryStore)
+	})
+
+	{
+		var skipped bool
+		var inMemoryStore = new(InMemoryStore)
+		inMemoryStore.rate = 1
+		inMemoryStore.burst = 3
+
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Add(echo.HeaderXRealIP, "127.0.0.1")
+
+		rec := httptest.NewRecorder()
+
+		c := e.NewContext(req, rec)
+
+		mw := RateLimiterWithConfig(RateLimiterConfig{
+			Skipper: func(c echo.Context) bool {
+				skipped = true
+				return true
+			},
+			Store: inMemoryStore,
+			SourceFunc: func(ctx echo.Context) string {
+				return "127.0.0.1"
+			},
+		})
+
+		_ = mw(handler)(c)
+
+		assert.Equal(t, true, skipped)
+	}
+
+	{
+		var beforeRan bool
+		var inMemoryStore = new(InMemoryStore)
+		inMemoryStore.rate = 1
+		inMemoryStore.burst = 3
+
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Add(echo.HeaderXRealIP, "127.0.0.1")
+
+		rec := httptest.NewRecorder()
+
+		c := e.NewContext(req, rec)
+
+		mw := RateLimiterWithConfig(RateLimiterConfig{
+			BeforeFunc: func(c echo.Context) {
+				beforeRan = true
+			},
+			Store: inMemoryStore,
+			SourceFunc: func(ctx echo.Context) string {
+				return "127.0.0.1"
+			},
+		})
+
+		_ = mw(handler)(c)
+
+		assert.Equal(t, true, beforeRan)
+	}
+
 	testCases := []struct {
 		id   string
 		code int
