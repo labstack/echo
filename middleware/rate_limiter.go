@@ -5,6 +5,7 @@ import (
 	"golang.org/x/time/rate"
 	"net/http"
 	"sync"
+	"time"
 )
 
 // RateLimiterStore is the interface to be implemented by custom stores.
@@ -73,27 +74,34 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 }
 
 // RateLimiterMemoryStore is the built-in store implementation for RateLimiter
-type RateLimiterMemoryStore struct {
-	visitors map[string]*rate.Limiter
-	mutex    sync.Mutex
-	rate     rate.Limit
-	burst    int
-}
+type (
+	RateLimiterMemoryStore struct {
+		visitors    map[string]visitor
+		mutex       sync.Mutex
+		rate        rate.Limit
+		burst       int
+	}
+	visitor struct {
+		*rate.Limiter
+		lastSeen time.Time
+	}
+)
 
 // Allow implements RateLimiterStore.Allow
 func (store *RateLimiterMemoryStore) Allow(identifier string) bool {
 	store.mutex.Lock()
 
 	if store.visitors == nil {
-		store.visitors = make(map[string]*rate.Limiter)
+		store.visitors = make(map[string]visitor)
 	}
 
 	limiter, exists := store.visitors[identifier]
 	if !exists {
-		limiter = rate.NewLimiter(store.rate, store.burst)
+		limiter.Limiter = rate.NewLimiter(store.rate, store.burst)
+		limiter.lastSeen = time.Now()
 		store.visitors[identifier] = limiter
 	}
-
+	limiter.lastSeen = time.Now()
 	store.mutex.Unlock()
 	return limiter.Allow()
 }

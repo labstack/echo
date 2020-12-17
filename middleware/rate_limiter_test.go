@@ -119,46 +119,88 @@ func TestRateLimiter(t *testing.T) {
 }
 
 func TestRateLimiterWithConfig(t *testing.T) {
-	var inMemoryStore = new(RateLimiterMemoryStore)
-	inMemoryStore.rate = 1
-	inMemoryStore.burst = 3
+	{
+		var inMemoryStore = new(RateLimiterMemoryStore)
+		inMemoryStore.rate = 1
+		inMemoryStore.burst = 3
 
-	e := echo.New()
+		e := echo.New()
 
-	handler := func(c echo.Context) error {
-		return c.String(http.StatusOK, "test")
+		handler := func(c echo.Context) error {
+			return c.String(http.StatusOK, "test")
+		}
+
+		testCases := []struct {
+			id   string
+			code int
+		}{
+			{"127.0.0.1", 200},
+			{"127.0.0.1", 200},
+			{"127.0.0.1", 200},
+			{"127.0.0.1", 429},
+			{"127.0.0.1", 429},
+			{"127.0.0.1", 429},
+			{"127.0.0.1", 429},
+		}
+
+		for _, tc := range testCases {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.Header.Add(echo.HeaderXRealIP, tc.id)
+
+			rec := httptest.NewRecorder()
+
+			c := e.NewContext(req, rec)
+			mw := RateLimiterWithConfig(RateLimiterConfig{
+				SourceFunc: func(c echo.Context) string {
+					return c.RealIP()
+				},
+				Store: inMemoryStore,
+			})
+
+			_ = mw(handler)(c)
+
+			assert.Equal(t, tc.code, rec.Code)
+		}
 	}
+	{
+		var inMemoryStore = new(RateLimiterMemoryStore)
+		inMemoryStore.rate = 1
+		inMemoryStore.burst = 3
 
-	testCases := []struct {
-		id   string
-		code int
-	}{
-		{"127.0.0.1", 200},
-		{"127.0.0.1", 200},
-		{"127.0.0.1", 200},
-		{"127.0.0.1", 429},
-		{"127.0.0.1", 429},
-		{"127.0.0.1", 429},
-		{"127.0.0.1", 429},
-	}
+		e := echo.New()
 
-	for _, tc := range testCases {
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		req.Header.Add(echo.HeaderXRealIP, tc.id)
+		handler := func(c echo.Context) error {
+			return c.String(http.StatusOK, "test")
+		}
 
-		rec := httptest.NewRecorder()
+		testCases := []struct {
+			id   string
+			code int
+		}{
+			{"127.0.0.1", 200},
+			{"127.0.0.1", 200},
+			{"127.0.0.1", 200},
+			{"127.0.0.1", 429},
+			{"127.0.0.1", 429},
+			{"127.0.0.1", 429},
+			{"127.0.0.1", 429},
+		}
 
-		c := e.NewContext(req, rec)
-		mw := RateLimiterWithConfig(RateLimiterConfig{
-			SourceFunc: func(c echo.Context) string {
-				return c.RealIP()
-			},
-			Store: inMemoryStore,
-		})
+		for _, tc := range testCases {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.Header.Add(echo.HeaderXRealIP, tc.id)
 
-		_ = mw(handler)(c)
+			rec := httptest.NewRecorder()
 
-		assert.Equal(t, tc.code, rec.Code)
+			c := e.NewContext(req, rec)
+			mw := RateLimiterWithConfig(RateLimiterConfig{
+				Store: inMemoryStore,
+			})
+
+			_ = mw(handler)(c)
+
+			assert.Equal(t, tc.code, rec.Code)
+		}
 	}
 }
 
