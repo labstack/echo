@@ -119,37 +119,3 @@ func TestGroupRouteMiddlewareWithMatchAny(t *testing.T) {
 	assert.Equal(t, "/*", m)
 
 }
-
-func TestMultipleGroupSamePathMiddleware(t *testing.T) {
-	// Ensure multiple groups with the same path do not clobber previous routes or mixup middlewares
-	e := New()
-	m1 := func(next HandlerFunc) HandlerFunc {
-		return func(c Context) error {
-			c.Set("middleware", "m1")
-			return next(c)
-		}
-	}
-	m2 := func(next HandlerFunc) HandlerFunc {
-		return func(c Context) error {
-			c.Set("middleware", "m2")
-			return next(c)
-		}
-	}
-	h := func(c Context) error {
-		return c.String(http.StatusOK, c.Get("middleware").(string))
-	}
-
-	g1 := e.Group("/group", m1)
-	{
-		g1.GET("", h)
-	}
-	g2 := e.Group("/group", m2)
-	{
-		g2.GET("/other", h)
-	}
-
-	_, m := request(http.MethodGet, "/group", e)
-	assert.Equal(t, "m1", m)
-	_, m = request(http.MethodGet, "/group/other", e)
-	assert.Equal(t, "m2", m)
-}
