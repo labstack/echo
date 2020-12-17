@@ -895,3 +895,4 @@ func applyMiddleware(h HandlerFunc, middleware ...MiddlewareFunc) HandlerFunc {
 	}
 	return h
 }
+
