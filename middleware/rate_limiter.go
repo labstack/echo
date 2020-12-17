@@ -7,10 +7,10 @@ import (
 	"sync"
 )
 
-// TokenStore is the interface to be implemented by custom stores.
-type TokenStore interface {
-	// Stores for the rate limiter have to implement the ShouldAllow method
-	ShouldAllow(identifier string) bool
+// RateLimiterStore is the interface to be implemented by custom stores.
+type RateLimiterStore interface {
+	// Stores for the rate limiter have to implement the Allow method
+	Allow(identifier string) bool
 }
 
 type (
@@ -21,19 +21,21 @@ type (
 		// SourceFunc uses echo.Context to extract the identifier for a visitor
 		SourceFunc func(context echo.Context) string
 		// Store defines a store for the rate limiter
-		Store TokenStore
+		Store RateLimiterStore
 	}
 )
 
 // DefaultRateLimiterConfig defines default values for RateLimiterConfig
 var DefaultRateLimiterConfig = RateLimiterConfig{
 	Skipper: DefaultSkipper,
+	SourceFunc: func(ctx echo.Context) string {
+		return ctx.RealIP()
+	},
 }
 
 // RateLimiter returns a rate limiting middleware
-func RateLimiter(source func(context echo.Context) string, store TokenStore) echo.MiddlewareFunc {
+func RateLimiter(store RateLimiterStore) echo.MiddlewareFunc {
 	config := DefaultRateLimiterConfig
-	config.SourceFunc = source
 	config.Store = store
 
 	return RateLimiterWithConfig(config)
@@ -45,7 +47,7 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 		config.Skipper = DefaultRateLimiterConfig.Skipper
 	}
 	if config.SourceFunc == nil {
-		panic("Source function must be provided")
+		config.SourceFunc = DefaultRateLimiterConfig.SourceFunc
 	}
 	if config.Store == nil {
 		panic("Store configuration must be provided")
@@ -61,7 +63,7 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 
 			identifier := config.SourceFunc(c)
 
-			allowed := config.Store.ShouldAllow(identifier)
+			allowed := config.Store.Allow(identifier)
 			if !allowed {
 				return c.JSON(http.StatusTooManyRequests, nil)
 			}
@@ -70,18 +72,17 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 	}
 }
 
-// InMemoryStore is the built-in store implementation for RateLimiter
-type InMemoryStore struct {
+// RateLimiterMemoryStore is the built-in store implementation for RateLimiter
+type RateLimiterMemoryStore struct {
 	visitors map[string]*rate.Limiter
 	mutex    sync.Mutex
 	rate     rate.Limit
 	burst    int
 }
 
-// ShouldAllow implements TokenStore.ShouldAllow
-func (store *InMemoryStore) ShouldAllow(identifier string) bool {
+// Allow implements RateLimiterStore.Allow
+func (store *RateLimiterMemoryStore) Allow(identifier string) bool {
 	store.mutex.Lock()
-	defer store.mutex.Unlock()
 
 	if store.visitors == nil {
 		store.visitors = make(map[string]*rate.Limiter)
@@ -93,5 +94,6 @@ func (store *InMemoryStore) ShouldAllow(identifier string) bool {
 		store.visitors[identifier] = limiter
 	}
 
+	store.mutex.Unlock()
 	return limiter.Allow()
 }
