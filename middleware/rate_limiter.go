@@ -25,6 +25,7 @@ type (
 	}
 )
 
+// DefaultRateLimiterConfig defines default values for RateLimiterConfig
 var DefaultRateLimiterConfig = RateLimiterConfig{
 	Skipper: DefaultSkipper,
 }
@@ -63,9 +64,8 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 			allowed := config.Store.ShouldAllow(identifier)
 			if !allowed {
 				return c.JSON(http.StatusTooManyRequests, nil)
-			} else {
-				return next(c)
 			}
+			return next(c)
 		}
 	}
 }
@@ -78,7 +78,7 @@ type InMemoryStore struct {
 	burst    int
 }
 
-// implements TokenStore.ShouldAllow
+// ShouldAllow implements TokenStore.ShouldAllow
 func (store *InMemoryStore) ShouldAllow(identifier string) bool {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
