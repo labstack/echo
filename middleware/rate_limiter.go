@@ -78,6 +78,7 @@ type InMemoryStore struct {
 	burst    int
 }
 
+// implements TokenStore.ShouldAllow
 func (store *InMemoryStore) ShouldAllow(identifier string) bool {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
