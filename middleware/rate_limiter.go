@@ -1,11 +1,12 @@
 package middleware
 
 import (
-	"github.com/labstack/echo/v4"
-	"golang.org/x/time/rate"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/labstack/echo/v4"
+	"golang.org/x/time/rate"
 )
 
 // RateLimiterStore is the interface to be implemented by custom stores.
@@ -153,7 +154,7 @@ type (
 func NewRateLimiterMemoryStore(
 	rate rate.Limit,
 	burst int,
-/* using this variadic because I don't see a better way to make it optional. suggestions are welcome */
+	/* using this variadic because I don't see a better way to make it optional. suggestions are welcome */
 	expiresIn ...time.Duration) (store RateLimiterMemoryStore) {
 	store.rate = rate
 	store.burst = burst
@@ -168,11 +169,10 @@ func NewRateLimiterMemoryStore(
 
 // Allow implements RateLimiterStore.Allow
 func (store *RateLimiterMemoryStore) Allow(identifier string) bool {
-	if time.Since(store.lastCleanup) > store.expiresIn {
-		go store.cleanupStaleVisitors()
-	}
-
 	store.mutex.Lock()
+	if time.Since(store.lastCleanup) > store.expiresIn {
+		store.cleanupStaleVisitors()
+	}
 
 	if store.visitors == nil {
 		store.visitors = make(map[string]Visitor)
@@ -195,12 +195,10 @@ cleanupStaleVisitors helps manage the size of the visitors map by removing stale
 of users who haven't visited again after the configured expiry time has elapsed
 */
 func (store *RateLimiterMemoryStore) cleanupStaleVisitors() {
-	store.mutex.Lock()
 	for id, visitor := range store.visitors {
 		if time.Since(visitor.lastSeen) > store.expiresIn {
 			delete(store.visitors, id)
 		}
 	}
 	store.lastCleanup = time.Now()
-	store.mutex.Unlock()
 }
