@@ -2,13 +2,14 @@ package middleware
 
 import (
 	"errors"
-	"github.com/labstack/echo/v4"
-	"github.com/stretchr/testify/assert"
-	"golang.org/x/time/rate"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
+	"golang.org/x/time/rate"
 )
 
 func TestRateLimiter(t *testing.T) {
@@ -264,6 +265,32 @@ func TestRateLimiterWithConfig_beforeFunc(t *testing.T) {
 	assert.Equal(t, true, beforeRan)
 }
 
+func rateProducer(t *testing.T, interval time.Duration, count int, f func(i int)) {
+	ticker := time.NewTicker(interval)
+	i := 0
+	quit := make(chan struct{})
+	// t.Logf("Starting rateProducer for %d runs\n", count)
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				f(i)
+				if i < count {
+					i++
+					continue
+				}
+				close(quit)
+			case <-quit:
+				// t.Logf("- stop rateProducer after %d runs\n", i)
+				ticker.Stop()
+				return
+			}
+		}
+	}()
+	<-quit
+	// t.Logf("Completed rateProducer with %d runs\n", i)
+}
+
 func TestRateLimiterMemoryStore_Allow(t *testing.T) {
 	var inMemoryStore = NewRateLimiterMemoryStore(1, 3, 2*time.Second)
 
@@ -271,27 +298,31 @@ func TestRateLimiterMemoryStore_Allow(t *testing.T) {
 		id      string
 		allowed bool
 	}{
-		{"127.0.0.1", true},
-		{"127.0.0.1", true},
-		{"127.0.0.1", true},
-		{"127.0.0.1", false},
-		{"127.0.0.1", false},
-		{"127.0.0.1", false},
-		{"127.0.0.1", false},
+		{"127.0.0.1", true},  // 0 ms
+		{"127.0.0.1", true},  // 220 ms burst #2
+		{"127.0.0.1", true},  // 440 ms burst #3
+		{"127.0.0.1", false}, // 660 ms block
+		{"127.0.0.1", false}, // 880 ms block
+		{"127.0.0.1", true},  // 1100 ms next second #1
+		{"127.0.0.2", true},  // 1320 ms allow other ip
+		{"127.0.0.1", false}, // 1540 ms no burst
+		{"127.0.0.1", false}, // 1760 ms no burst
+		{"127.0.0.1", false}, // 1980 ms no burst
+		{"127.0.0.1", true},  // 2200 ms no burst
+		{"127.0.0.1", false}, // 2420 ms no burst
+		{"127.0.0.1", false}, // 2640 ms no burst
+		{"127.0.0.1", false}, // 2860 ms no burst
+		{"127.0.0.1", true},  // 3080 ms no burst
+		{"127.0.0.1", false}, // 3300 ms no burst
 	}
 
-	for _, tc := range testCases {
+	f := func(i int) {
+		t.Logf("Running testcase #%d", i)
+		tc := testCases[i]
 		allowed := inMemoryStore.Allow(tc.id)
 		assert.Equal(t, tc.allowed, allowed)
 	}
-	/*
-	time.Sleep(5 * time.Second)
-	allowed := inMemoryStore.Allow("127.0.0.2")
-	assert.Equal(t, true, allowed)
-	//fmt.Println(inMemoryStore.visitors)
-	_, exists := inMemoryStore.visitors["127.0.0.1"]
-	assert.Equal(t, false, exists)
-	*/
+	rateProducer(t, 220*time.Millisecond, len(testCases)-1, f)
 }
 
 func TestRateLimiterMemoryStore_cleanupStaleVisitors(t *testing.T) {
