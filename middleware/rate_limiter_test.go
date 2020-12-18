@@ -4,9 +4,11 @@ import (
 	"errors"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/time/rate"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestRateLimiter(t *testing.T) {
@@ -300,4 +302,44 @@ func TestRateLimiterMemoryStore_Allow(t *testing.T) {
 
 		assert.Equal(t, tc.allowed, allowed)
 	}
+}
+
+func TestRateLimiterMemoryStore_CleanupStaleVisitors(t *testing.T) {
+	var inMemoryStore = new(RateLimiterMemoryStore)
+	inMemoryStore.rate = 1
+	inMemoryStore.burst = 3
+	inMemoryStore.visitors = map[string]Visitor{
+		"A": {
+			Limiter:  rate.NewLimiter(1, 3),
+			lastSeen: time.Now(),
+		},
+		"B": {
+			Limiter:  rate.NewLimiter(1, 3),
+			lastSeen: time.Now().Add(-1 * time.Minute),
+		},
+		"C": {
+			Limiter:  rate.NewLimiter(1, 3),
+			lastSeen: time.Now().Add(-5 * time.Minute),
+		},
+		"D": {
+			Limiter:  rate.NewLimiter(1, 3),
+			lastSeen: time.Now().Add(-10 * time.Minute),
+		},
+	}
+
+	inMemoryStore.CleanupStaleVisitors()
+
+	var exists bool
+
+	_, exists = inMemoryStore.visitors["A"]
+	assert.Equal(t, true, exists)
+
+	_, exists = inMemoryStore.visitors["B"]
+	assert.Equal(t, true, exists)
+
+	_, exists = inMemoryStore.visitors["C"]
+	assert.Equal(t, false, exists)
+
+	_, exists = inMemoryStore.visitors["D"]
+	assert.Equal(t, false, exists)
 }
