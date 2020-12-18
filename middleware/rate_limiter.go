@@ -26,7 +26,9 @@ type (
 		ErrorHandler ErrorHandler
 		DenyHandler ErrorHandler
 	}
+	// ErrorHandler provides a handler for returning errors from the middleware
 	ErrorHandler func(context echo.Context) error
+	// Extractor is used to extract data from echo.Context
 	Extractor func(context echo.Context) (string, error)
 )
 
