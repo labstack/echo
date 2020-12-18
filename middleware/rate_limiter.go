@@ -19,22 +19,29 @@ type (
 	RateLimiterConfig struct {
 		Skipper    Skipper
 		BeforeFunc BeforeFunc
-		// SourceFunc uses echo.Context to extract the identifier for a visitor
-		SourceFunc func(context echo.Context) string
+		// Extractor uses echo.Context to extract the identifier for a visitor
+		IdentifierExtractor Extractor
 		// Store defines a store for the rate limiter
 		Store        RateLimiterStore
-		ErrorHandler func(context echo.Context) error
+		ErrorHandler ErrorHandler
+		DenyHandler ErrorHandler
 	}
+	ErrorHandler func(context echo.Context) error
+	Extractor func(context echo.Context) (string, error)
 )
 
 // DefaultRateLimiterConfig defines default values for RateLimiterConfig
 var DefaultRateLimiterConfig = RateLimiterConfig{
 	Skipper: DefaultSkipper,
-	SourceFunc: func(ctx echo.Context) string {
-		return ctx.RealIP()
+	IdentifierExtractor: func(ctx echo.Context) (string, error) {
+		id := ctx.RealIP()
+		return id, nil
 	},
 	ErrorHandler: func(context echo.Context) error {
 		return context.JSON(http.StatusTooManyRequests, nil)
+	},
+	DenyHandler: func(context echo.Context) error {
+		return context.JSON(http.StatusForbidden, nil)
 	},
 }
 
@@ -51,11 +58,14 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 	if config.Skipper == nil {
 		config.Skipper = DefaultRateLimiterConfig.Skipper
 	}
-	if config.SourceFunc == nil {
-		config.SourceFunc = DefaultRateLimiterConfig.SourceFunc
+	if config.IdentifierExtractor == nil {
+		config.IdentifierExtractor = DefaultRateLimiterConfig.IdentifierExtractor
 	}
 	if config.ErrorHandler == nil {
 		config.ErrorHandler = DefaultRateLimiterConfig.ErrorHandler
+	}
+	if config.DenyHandler == nil {
+		config.DenyHandler = DefaultRateLimiterConfig.DenyHandler
 	}
 	if config.Store == nil {
 		panic("Store configuration must be provided")
@@ -69,10 +79,12 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 				config.BeforeFunc(c)
 			}
 
-			identifier := config.SourceFunc(c)
+			identifier, err := config.IdentifierExtractor(c)
+			if err != nil {
+				return config.DenyHandler(c)
+			}
 
-			allowed := config.Store.Allow(identifier)
-			if !allowed {
+			if !config.Store.Allow(identifier) {
 				return config.ErrorHandler(c)
 			}
 			return next(c)
