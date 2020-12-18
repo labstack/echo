@@ -59,7 +59,7 @@ RateLimiter returns a rate limiting middleware
 	e.GET("/rate-limited", func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}, RateLimiter(inMemoryStore))
- */
+*/
 func RateLimiter(store RateLimiterStore) echo.MiddlewareFunc {
 	config := DefaultRateLimiterConfig
 	config.Store = store
@@ -135,10 +135,12 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 // RateLimiterMemoryStore is the built-in store implementation for RateLimiter
 type (
 	RateLimiterMemoryStore struct {
-		visitors map[string]Visitor
-		mutex    sync.Mutex
-		rate     rate.Limit
-		burst    int
+		visitors    map[string]Visitor
+		mutex       sync.Mutex
+		rate        rate.Limit
+		burst       int
+		expiresIn   time.Duration
+		lastCleanup time.Time
 	}
 	// Visitor signifies a unique user's limiter details
 	Visitor struct {
@@ -147,8 +149,29 @@ type (
 	}
 )
 
+// NewRateLimiterMemoryStore returns an instance of RateLimiterMemoryStore
+func NewRateLimiterMemoryStore(
+	rate rate.Limit,
+	burst int,
+/* using this variadic because I don't see a better way to make it optional. suggestions are welcome */
+	expiresIn ...time.Duration) (store RateLimiterMemoryStore) {
+	store.rate = rate
+	store.burst = burst
+	if len(expiresIn) == 0 || expiresIn[0] == 0 {
+		store.expiresIn = 3 * time.Minute
+	} else {
+		store.expiresIn = expiresIn[0]
+	}
+	store.lastCleanup = time.Now()
+	return
+}
+
 // Allow implements RateLimiterStore.Allow
 func (store *RateLimiterMemoryStore) Allow(identifier string) bool {
+	if time.Since(store.lastCleanup) > store.expiresIn {
+		go store.cleanupStaleVisitors()
+	}
+
 	store.mutex.Lock()
 
 	if store.visitors == nil {
@@ -163,19 +186,21 @@ func (store *RateLimiterMemoryStore) Allow(identifier string) bool {
 	}
 	limiter.lastSeen = time.Now()
 	store.mutex.Unlock()
+
 	return limiter.Allow()
 }
 
 /*
-CleanupStaleVisitors helps manage the size of the visitors map by removing stale records
-of users who haven't visited again in the past 3 mins
- */
-func (store *RateLimiterMemoryStore) CleanupStaleVisitors() {
+cleanupStaleVisitors helps manage the size of the visitors map by removing stale records
+of users who haven't visited again after the configured expiry time has elapsed
+*/
+func (store *RateLimiterMemoryStore) cleanupStaleVisitors() {
 	store.mutex.Lock()
 	for id, visitor := range store.visitors {
-		if time.Since(visitor.lastSeen) > 3*time.Minute {
+		if time.Since(visitor.lastSeen) > store.expiresIn {
 			delete(store.visitors, id)
 		}
 	}
+	store.lastCleanup = time.Now()
 	store.mutex.Unlock()
 }

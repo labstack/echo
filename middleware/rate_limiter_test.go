@@ -18,9 +18,7 @@ func TestRateLimiter(t *testing.T) {
 		return c.String(http.StatusOK, "test")
 	}
 
-	var inMemoryStore = new(RateLimiterMemoryStore)
-	inMemoryStore.rate = 1
-	inMemoryStore.burst = 3
+	var inMemoryStore = NewRateLimiterMemoryStore(1, 3)
 
 	testCases := []struct {
 		id   string
@@ -41,32 +39,27 @@ func TestRateLimiter(t *testing.T) {
 
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		mw := RateLimiter(inMemoryStore)
+		mw := RateLimiter(&inMemoryStore)
 
 		_ = mw(handler)(c)
-		println(c.RealIP())
 		assert.Equal(t, tc.code, rec.Code)
 	}
 }
 
 func TestRateLimiter_panicBehaviour(t *testing.T) {
-	var inMemoryStore = new(RateLimiterMemoryStore)
-	inMemoryStore.rate = 1
-	inMemoryStore.burst = 3
+	var inMemoryStore = NewRateLimiterMemoryStore(1, 3)
 
 	assert.Panics(t, func() {
 		RateLimiter(nil)
 	})
 
 	assert.NotPanics(t, func() {
-		RateLimiter(inMemoryStore)
+		RateLimiter(&inMemoryStore)
 	})
 }
 
 func TestRateLimiterWithConfig(t *testing.T) {
-	var inMemoryStore = new(RateLimiterMemoryStore)
-	inMemoryStore.rate = 1
-	inMemoryStore.burst = 3
+	var inMemoryStore = NewRateLimiterMemoryStore(1, 3)
 
 	e := echo.New()
 
@@ -108,7 +101,7 @@ func TestRateLimiterWithConfig(t *testing.T) {
 			ErrorHandler: func(ctx echo.Context) error {
 				return ctx.JSON(http.StatusForbidden, nil)
 			},
-			Store: inMemoryStore,
+			Store: &inMemoryStore,
 		})
 
 		_ = mw(handler)(c)
@@ -118,9 +111,7 @@ func TestRateLimiterWithConfig(t *testing.T) {
 }
 
 func TestRateLimiterWithConfig_defaultDenyHandler(t *testing.T) {
-	var inMemoryStore = new(RateLimiterMemoryStore)
-	inMemoryStore.rate = 1
-	inMemoryStore.burst = 3
+	var inMemoryStore = NewRateLimiterMemoryStore(1, 3)
 
 	e := echo.New()
 
@@ -159,7 +150,7 @@ func TestRateLimiterWithConfig_defaultDenyHandler(t *testing.T) {
 			ErrorHandler: func(ctx echo.Context) error {
 				return ctx.JSON(http.StatusForbidden, nil)
 			},
-			Store: inMemoryStore,
+			Store: &inMemoryStore,
 		})
 
 		_ = mw(handler)(c)
@@ -170,9 +161,7 @@ func TestRateLimiterWithConfig_defaultDenyHandler(t *testing.T) {
 
 func TestRateLimiterWithConfig_defaultConfig(t *testing.T) {
 	{
-		var inMemoryStore = new(RateLimiterMemoryStore)
-		inMemoryStore.rate = 1
-		inMemoryStore.burst = 3
+		var inMemoryStore = NewRateLimiterMemoryStore(1, 3)
 
 		e := echo.New()
 
@@ -201,7 +190,7 @@ func TestRateLimiterWithConfig_defaultConfig(t *testing.T) {
 
 			c := e.NewContext(req, rec)
 			mw := RateLimiterWithConfig(RateLimiterConfig{
-				Store: inMemoryStore,
+				Store: &inMemoryStore,
 			})
 
 			_ = mw(handler)(c)
@@ -219,9 +208,7 @@ func TestRateLimiterWithConfig_skipper(t *testing.T) {
 		skipped = true
 		return c.String(http.StatusOK, "test")
 	}
-	var inMemoryStore = new(RateLimiterMemoryStore)
-	inMemoryStore.rate = 1
-	inMemoryStore.burst = 3
+	var inMemoryStore = NewRateLimiterMemoryStore(1, 3)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Add(echo.HeaderXRealIP, "127.0.0.1")
@@ -234,7 +221,7 @@ func TestRateLimiterWithConfig_skipper(t *testing.T) {
 		Skipper: func(c echo.Context) bool {
 			return true
 		},
-		Store: inMemoryStore,
+		Store: &inMemoryStore,
 		IdentifierExtractor: func(ctx echo.Context) (string, error) {
 			return "127.0.0.1", nil
 		},
@@ -253,9 +240,7 @@ func TestRateLimiterWithConfig_beforeFunc(t *testing.T) {
 	}
 
 	var beforeRan bool
-	var inMemoryStore = new(RateLimiterMemoryStore)
-	inMemoryStore.rate = 1
-	inMemoryStore.burst = 3
+	var inMemoryStore = NewRateLimiterMemoryStore(1, 3)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Add(echo.HeaderXRealIP, "127.0.0.1")
@@ -268,7 +253,7 @@ func TestRateLimiterWithConfig_beforeFunc(t *testing.T) {
 		BeforeFunc: func(c echo.Context) {
 			beforeRan = true
 		},
-		Store: inMemoryStore,
+		Store: &inMemoryStore,
 		IdentifierExtractor: func(ctx echo.Context) (string, error) {
 			return "127.0.0.1", nil
 		},
@@ -280,9 +265,7 @@ func TestRateLimiterWithConfig_beforeFunc(t *testing.T) {
 }
 
 func TestRateLimiterMemoryStore_Allow(t *testing.T) {
-	var inMemoryStore = new(RateLimiterMemoryStore)
-	inMemoryStore.rate = 1
-	inMemoryStore.burst = 3
+	var inMemoryStore = NewRateLimiterMemoryStore(1, 3, 2*time.Second)
 
 	testCases := []struct {
 		id      string
@@ -299,15 +282,20 @@ func TestRateLimiterMemoryStore_Allow(t *testing.T) {
 
 	for _, tc := range testCases {
 		allowed := inMemoryStore.Allow(tc.id)
-
 		assert.Equal(t, tc.allowed, allowed)
 	}
+	/*
+	time.Sleep(5 * time.Second)
+	allowed := inMemoryStore.Allow("127.0.0.2")
+	assert.Equal(t, true, allowed)
+	//fmt.Println(inMemoryStore.visitors)
+	_, exists := inMemoryStore.visitors["127.0.0.1"]
+	assert.Equal(t, false, exists)
+	*/
 }
 
-func TestRateLimiterMemoryStore_CleanupStaleVisitors(t *testing.T) {
-	var inMemoryStore = new(RateLimiterMemoryStore)
-	inMemoryStore.rate = 1
-	inMemoryStore.burst = 3
+func TestRateLimiterMemoryStore_cleanupStaleVisitors(t *testing.T) {
+	var inMemoryStore = NewRateLimiterMemoryStore(1, 3)
 	inMemoryStore.visitors = map[string]Visitor{
 		"A": {
 			Limiter:  rate.NewLimiter(1, 3),
@@ -327,7 +315,7 @@ func TestRateLimiterMemoryStore_CleanupStaleVisitors(t *testing.T) {
 		},
 	}
 
-	inMemoryStore.CleanupStaleVisitors()
+	inMemoryStore.cleanupStaleVisitors()
 
 	var exists bool
 
@@ -342,4 +330,25 @@ func TestRateLimiterMemoryStore_CleanupStaleVisitors(t *testing.T) {
 
 	_, exists = inMemoryStore.visitors["D"]
 	assert.Equal(t, false, exists)
+}
+
+func TestNewRateLimiterMemoryStore(t *testing.T) {
+	testCases := []struct {
+		rate              rate.Limit
+		burst             int
+		expiresIn         time.Duration
+		expectedExpiresIn time.Duration
+	}{
+		{1, 3, 5 * time.Second, 5 * time.Second},
+		{2, 4, 0, 3 * time.Minute},
+		{1, 5, 10 * time.Minute, 10 * time.Minute},
+		{3, 7, 0, 3 * time.Minute},
+	}
+
+	for _, tc := range testCases {
+		store := NewRateLimiterMemoryStore(tc.rate, tc.burst, tc.expiresIn)
+		assert.Equal(t, tc.rate, store.rate)
+		assert.Equal(t, tc.burst, store.burst)
+		assert.Equal(t, tc.expectedExpiresIn, store.expiresIn)
+	}
 }
