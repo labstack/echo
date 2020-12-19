@@ -170,7 +170,7 @@ func NewRateLimiterMemoryStore(
 	if store.expiresIn == 0 {
 		store.expiresIn = 3 * time.Minute
 	}
-	store.lastCleanup = time.Now()
+	store.lastCleanup = now()
 	return
 }
 
@@ -201,7 +201,7 @@ func RateLimiterMemoryStoreExpiresIn(expiresIn time.Duration) RateLimiterMemoryS
 // Allow implements RateLimiterStore.Allow
 func (store *RateLimiterMemoryStore) Allow(identifier string) bool {
 	store.mutex.Lock()
-	if time.Since(store.lastCleanup) > store.expiresIn {
+	if now().Sub(store.lastCleanup) > store.expiresIn {
 		store.cleanupStaleVisitors()
 	}
 
@@ -209,13 +209,13 @@ func (store *RateLimiterMemoryStore) Allow(identifier string) bool {
 	if !exists {
 		limiter = new(Visitor)
 		limiter.Limiter = rate.NewLimiter(store.rate, store.burst)
-		limiter.lastSeen = time.Now()
+		limiter.lastSeen = now()
 		store.visitors[identifier] = limiter
 	}
-	limiter.lastSeen = time.Now()
+	limiter.lastSeen = now()
 	store.mutex.Unlock()
 
-	return limiter.Allow()
+	return limiter.AllowN(now(), 1)
 }
 
 /*
@@ -224,9 +224,16 @@ of users who haven't visited again after the configured expiry time has elapsed
 */
 func (store *RateLimiterMemoryStore) cleanupStaleVisitors() {
 	for id, visitor := range store.visitors {
-		if time.Since(visitor.lastSeen) > store.expiresIn {
+		if now().Sub(visitor.lastSeen) > store.expiresIn {
 			delete(store.visitors, id)
 		}
 	}
-	store.lastCleanup = time.Now()
+	store.lastCleanup = now()
+}
+
+/*
+actual time method which is mocked in test file
+*/
+var now = func() time.Time {
+	return time.Now()
 }

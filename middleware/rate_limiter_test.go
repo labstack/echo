@@ -290,36 +290,12 @@ func TestRateLimiterWithConfig_beforeFunc(t *testing.T) {
 	assert.Equal(t, true, beforeRan)
 }
 
-func rateProducer(interval time.Duration, count int, f func(i int)) {
-	ticker := time.NewTicker(interval)
-	i := 0
-	quit := make(chan struct{})
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				f(i)
-				if i < count {
-					i++
-					continue
-				}
-				close(quit)
-			case <-quit:
-				ticker.Stop()
-				return
-			}
-		}
-	}()
-	<-quit
-}
-
 func TestRateLimiterMemoryStore_Allow(t *testing.T) {
 	var inMemoryStore = NewRateLimiterMemoryStore(
 		RateLimiterMemoryStoreRate(1),
 		RateLimiterMemoryStoreBurst(3),
 		RateLimiterMemoryStoreExpiresIn(2*time.Second),
 	)
-
 	testCases := []struct {
 		id      string
 		allowed bool
@@ -340,15 +316,24 @@ func TestRateLimiterMemoryStore_Allow(t *testing.T) {
 		{"127.0.0.1", false}, // 2860 ms no burst
 		{"127.0.0.1", true},  // 3080 ms no burst
 		{"127.0.0.1", false}, // 3300 ms no burst
+		{"127.0.0.1", false}, // 3520 ms no burst
+		{"127.0.0.1", false}, // 3740 ms no burst
+		{"127.0.0.1", false}, // 3960 ms no burst
+		{"127.0.0.1", true}, // 4180 ms no burst
+		{"127.0.0.1", false}, // 4400 ms no burst
+		{"127.0.0.1", false}, // 4620 ms no burst
+		{"127.0.0.1", false}, // 4840 ms no burst
+		{"127.0.0.1", true}, // 5060 ms no burst
 	}
 
-	f := func(i int) {
-		t.Logf("Running testcase #%d", i)
-		tc := testCases[i]
+	for i, tc := range testCases {
+		t.Logf("Running testcase #%d => %v", i, time.Duration(i)*220*time.Millisecond)
+		now = func() time.Time {
+			return time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC).Add(time.Duration(i) * 220 * time.Millisecond)
+		}
 		allowed := inMemoryStore.Allow(tc.id)
 		assert.Equal(t, tc.allowed, allowed)
 	}
-	rateProducer(220*time.Millisecond, len(testCases)-1, f)
 }
 
 func TestRateLimiterMemoryStore_cleanupStaleVisitors(t *testing.T) {
@@ -359,19 +344,19 @@ func TestRateLimiterMemoryStore_cleanupStaleVisitors(t *testing.T) {
 	inMemoryStore.visitors = map[string]*Visitor{
 		"A": {
 			Limiter:  rate.NewLimiter(1, 3),
-			lastSeen: time.Now(),
+			lastSeen: now(),
 		},
 		"B": {
 			Limiter:  rate.NewLimiter(1, 3),
-			lastSeen: time.Now().Add(-1 * time.Minute),
+			lastSeen: now().Add(-1 * time.Minute),
 		},
 		"C": {
 			Limiter:  rate.NewLimiter(1, 3),
-			lastSeen: time.Now().Add(-5 * time.Minute),
+			lastSeen: now().Add(-5 * time.Minute),
 		},
 		"D": {
 			Limiter:  rate.NewLimiter(1, 3),
-			lastSeen: time.Now().Add(-10 * time.Minute),
+			lastSeen: now().Add(-10 * time.Minute),
 		},
 	}
 
