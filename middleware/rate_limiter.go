@@ -186,11 +186,7 @@ var DefaultRateLimiterMemoryStoreConfig = RateLimiterMemoryStoreConfig{
 
 // Allow implements RateLimiterStore.Allow
 func (store *RateLimiterMemoryStore) Allow(identifier string) bool {
-	if now().Sub(store.lastCleanup) > store.expiresIn {
-		go store.cleanupStaleVisitors()
-	}
 	store.mutex.Lock()
-
 	limiter, exists := store.visitors[identifier]
 	if !exists {
 		limiter = new(Visitor)
@@ -200,7 +196,9 @@ func (store *RateLimiterMemoryStore) Allow(identifier string) bool {
 	}
 	limiter.lastSeen = now()
 	store.mutex.Unlock()
-
+	if now().Sub(store.lastCleanup) > store.expiresIn {
+		store.cleanupStaleVisitors()
+	}
 	return limiter.AllowN(now(), 1)
 }
 
@@ -209,14 +207,12 @@ cleanupStaleVisitors helps manage the size of the visitors map by removing stale
 of users who haven't visited again after the configured expiry time has elapsed
 */
 func (store *RateLimiterMemoryStore) cleanupStaleVisitors() {
-	store.mutex.Lock()
 	for id, visitor := range store.visitors {
 		if now().Sub(visitor.lastSeen) > store.expiresIn {
 			delete(store.visitors, id)
 		}
 	}
 	store.lastCleanup = now()
-	store.mutex.Unlock()
 }
 
 /*
