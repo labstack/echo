@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -341,6 +342,10 @@ func TestRateLimiterMemoryStore_cleanupStaleVisitors(t *testing.T) {
 		RateLimiterMemoryStoreRate(1),
 		RateLimiterMemoryStoreBurst(3),
 	)
+	now = func() time.Time {
+		return time.Now()
+	}
+	fmt.Println(now())
 	inMemoryStore.visitors = map[string]*Visitor{
 		"A": {
 			Limiter:  rate.NewLimiter(1, 3),
