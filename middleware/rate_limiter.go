@@ -139,8 +139,8 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 	}
 }
 
-// RateLimiterMemoryStore is the built-in store implementation for RateLimiter
 type (
+	// RateLimiterMemoryStore is the built-in store implementation for RateLimiter
 	RateLimiterMemoryStore struct {
 		visitors    map[string]*Visitor
 		mutex       sync.Mutex
@@ -157,53 +157,39 @@ type (
 )
 
 // NewRateLimiterMemoryStore returns an instance of RateLimiterMemoryStore
-func NewRateLimiterMemoryStore(
-	options ...RateLimiterMemoryStoreOption,
-) (store *RateLimiterMemoryStore) {
-	store = &RateLimiterMemoryStore{
-		visitors:  make(map[string]*Visitor),
-		expiresIn: 3 * time.Minute,
+func NewRateLimiterMemoryStore(config RateLimiterMemoryStoreConfig) (store *RateLimiterMemoryStore) {
+	store = &RateLimiterMemoryStore{}
+
+	store.rate = config.rate
+	store.burst = config.burst
+	if config.expiresIn == 0 {
+		store.expiresIn = DefaultRateLimiterMemoryStoreConfig.expiresIn
+	} else {
+		store.expiresIn = config.expiresIn
 	}
-	for _, option := range options {
-		option(store)
-	}
-	if store.expiresIn == 0 {
-		store.expiresIn = 3 * time.Minute
-	}
+	store.visitors = make(map[string]*Visitor)
 	store.lastCleanup = now()
 	return
 }
 
-// RateLimiterMemoryStoreOption represents an option of RateLimiterMemoryStore
-type RateLimiterMemoryStoreOption func(store *RateLimiterMemoryStore)
-
-// RateLimiterMemoryStoreRate sets rate of RateLimiterMemoryStore
-func RateLimiterMemoryStoreRate(rate rate.Limit) RateLimiterMemoryStoreOption {
-	return func(store *RateLimiterMemoryStore) {
-		store.rate = rate
-	}
+// RateLimiterMemoryStoreConfig represents configuration for RateLimiterMemoryStore
+type RateLimiterMemoryStoreConfig struct {
+	rate      rate.Limit
+	burst     int
+	expiresIn time.Duration
 }
 
-// RateLimiterMemoryStoreBurst sets rate of RateLimiterMemoryStore
-func RateLimiterMemoryStoreBurst(burst int) RateLimiterMemoryStoreOption {
-	return func(store *RateLimiterMemoryStore) {
-		store.burst = burst
-	}
-}
-
-// RateLimiterMemoryStoreExpiresIn sets rate of RateLimiterMemoryStore
-func RateLimiterMemoryStoreExpiresIn(expiresIn time.Duration) RateLimiterMemoryStoreOption {
-	return func(store *RateLimiterMemoryStore) {
-		store.expiresIn = expiresIn
-	}
+// DefaultRateLimiterMemoryStoreConfig provides default configuration values for RateLimiterMemoryStore
+var DefaultRateLimiterMemoryStoreConfig = RateLimiterMemoryStoreConfig{
+	expiresIn: 3 * time.Minute,
 }
 
 // Allow implements RateLimiterStore.Allow
 func (store *RateLimiterMemoryStore) Allow(identifier string) bool {
-	store.mutex.Lock()
 	if now().Sub(store.lastCleanup) > store.expiresIn {
-		store.cleanupStaleVisitors()
+		go store.cleanupStaleVisitors()
 	}
+	store.mutex.Lock()
 
 	limiter, exists := store.visitors[identifier]
 	if !exists {
@@ -223,12 +209,14 @@ cleanupStaleVisitors helps manage the size of the visitors map by removing stale
 of users who haven't visited again after the configured expiry time has elapsed
 */
 func (store *RateLimiterMemoryStore) cleanupStaleVisitors() {
+	store.mutex.Lock()
 	for id, visitor := range store.visitors {
 		if now().Sub(visitor.lastSeen) > store.expiresIn {
 			delete(store.visitors, id)
 		}
 	}
 	store.lastCleanup = now()
+	store.mutex.Unlock()
 }
 
 /*

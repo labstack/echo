@@ -20,10 +20,7 @@ func TestRateLimiter(t *testing.T) {
 		return c.String(http.StatusOK, "test")
 	}
 
-	var inMemoryStore = NewRateLimiterMemoryStore(
-		RateLimiterMemoryStoreRate(1),
-		RateLimiterMemoryStoreBurst(3),
-	)
+	var inMemoryStore = NewRateLimiterMemoryStore(RateLimiterMemoryStoreConfig{rate: 1, burst: 3})
 
 	mw := RateLimiter(inMemoryStore)
 
@@ -53,10 +50,7 @@ func TestRateLimiter(t *testing.T) {
 }
 
 func TestRateLimiter_panicBehaviour(t *testing.T) {
-	var inMemoryStore = NewRateLimiterMemoryStore(
-		RateLimiterMemoryStoreRate(1),
-		RateLimiterMemoryStoreBurst(3),
-	)
+	var inMemoryStore = NewRateLimiterMemoryStore(RateLimiterMemoryStoreConfig{rate: 1, burst: 3})
 
 	assert.Panics(t, func() {
 		RateLimiter(nil)
@@ -68,10 +62,7 @@ func TestRateLimiter_panicBehaviour(t *testing.T) {
 }
 
 func TestRateLimiterWithConfig(t *testing.T) {
-	var inMemoryStore = NewRateLimiterMemoryStore(
-		RateLimiterMemoryStoreRate(1),
-		RateLimiterMemoryStoreBurst(3),
-	)
+	var inMemoryStore = NewRateLimiterMemoryStore(RateLimiterMemoryStoreConfig{rate: 1, burst: 3})
 
 	e := echo.New()
 
@@ -124,10 +115,7 @@ func TestRateLimiterWithConfig(t *testing.T) {
 }
 
 func TestRateLimiterWithConfig_defaultDenyHandler(t *testing.T) {
-	var inMemoryStore = NewRateLimiterMemoryStore(
-		RateLimiterMemoryStoreRate(1),
-		RateLimiterMemoryStoreBurst(3),
-	)
+	var inMemoryStore = NewRateLimiterMemoryStore(RateLimiterMemoryStoreConfig{rate: 1, burst: 3})
 
 	e := echo.New()
 
@@ -178,10 +166,7 @@ func TestRateLimiterWithConfig_defaultDenyHandler(t *testing.T) {
 
 func TestRateLimiterWithConfig_defaultConfig(t *testing.T) {
 	{
-		var inMemoryStore = NewRateLimiterMemoryStore(
-			RateLimiterMemoryStoreRate(1),
-			RateLimiterMemoryStoreBurst(3),
-		)
+		var inMemoryStore = NewRateLimiterMemoryStore(RateLimiterMemoryStoreConfig{rate: 1, burst: 3})
 
 		e := echo.New()
 
@@ -229,10 +214,7 @@ func TestRateLimiterWithConfig_skipper(t *testing.T) {
 		skipped = true
 		return c.String(http.StatusOK, "test")
 	}
-	var inMemoryStore = NewRateLimiterMemoryStore(
-		RateLimiterMemoryStoreRate(1),
-		RateLimiterMemoryStoreBurst(3),
-	)
+	var inMemoryStore = NewRateLimiterMemoryStore(RateLimiterMemoryStoreConfig{rate: 1, burst: 3})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Add(echo.HeaderXRealIP, "127.0.0.1")
@@ -264,10 +246,7 @@ func TestRateLimiterWithConfig_beforeFunc(t *testing.T) {
 	}
 
 	var beforeRan bool
-	var inMemoryStore = NewRateLimiterMemoryStore(
-		RateLimiterMemoryStoreRate(1),
-		RateLimiterMemoryStoreBurst(3),
-	)
+	var inMemoryStore = NewRateLimiterMemoryStore(RateLimiterMemoryStoreConfig{rate: 1, burst: 3})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Add(echo.HeaderXRealIP, "127.0.0.1")
@@ -292,11 +271,7 @@ func TestRateLimiterWithConfig_beforeFunc(t *testing.T) {
 }
 
 func TestRateLimiterMemoryStore_Allow(t *testing.T) {
-	var inMemoryStore = NewRateLimiterMemoryStore(
-		RateLimiterMemoryStoreRate(1),
-		RateLimiterMemoryStoreBurst(3),
-		RateLimiterMemoryStoreExpiresIn(2*time.Second),
-	)
+	var inMemoryStore = NewRateLimiterMemoryStore(RateLimiterMemoryStoreConfig{rate: 1, burst: 3, expiresIn: 2 * time.Second})
 	testCases := []struct {
 		id      string
 		allowed bool
@@ -320,11 +295,11 @@ func TestRateLimiterMemoryStore_Allow(t *testing.T) {
 		{"127.0.0.1", false}, // 3520 ms no burst
 		{"127.0.0.1", false}, // 3740 ms no burst
 		{"127.0.0.1", false}, // 3960 ms no burst
-		{"127.0.0.1", true}, // 4180 ms no burst
+		{"127.0.0.1", true},  // 4180 ms no burst
 		{"127.0.0.1", false}, // 4400 ms no burst
 		{"127.0.0.1", false}, // 4620 ms no burst
 		{"127.0.0.1", false}, // 4840 ms no burst
-		{"127.0.0.1", true}, // 5060 ms no burst
+		{"127.0.0.1", true},  // 5060 ms no burst
 	}
 
 	for i, tc := range testCases {
@@ -338,10 +313,7 @@ func TestRateLimiterMemoryStore_Allow(t *testing.T) {
 }
 
 func TestRateLimiterMemoryStore_cleanupStaleVisitors(t *testing.T) {
-	var inMemoryStore = NewRateLimiterMemoryStore(
-		RateLimiterMemoryStoreRate(1),
-		RateLimiterMemoryStoreBurst(3),
-	)
+	var inMemoryStore = NewRateLimiterMemoryStore(RateLimiterMemoryStoreConfig{rate: 1, burst: 3})
 	now = func() time.Time {
 		return time.Now()
 	}
@@ -397,11 +369,7 @@ func TestNewRateLimiterMemoryStore(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		store := NewRateLimiterMemoryStore(
-			RateLimiterMemoryStoreRate(tc.rate),
-			RateLimiterMemoryStoreBurst(tc.burst),
-			RateLimiterMemoryStoreExpiresIn(tc.expiresIn),
-		)
+		store := NewRateLimiterMemoryStore(RateLimiterMemoryStoreConfig{rate: tc.rate, burst: tc.burst, expiresIn: tc.expiresIn})
 		assert.Equal(t, tc.rate, store.rate)
 		assert.Equal(t, tc.burst, store.burst)
 		assert.Equal(t, tc.expectedExpiresIn, store.expiresIn)
