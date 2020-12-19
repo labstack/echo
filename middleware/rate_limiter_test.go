@@ -265,11 +265,10 @@ func TestRateLimiterWithConfig_beforeFunc(t *testing.T) {
 	assert.Equal(t, true, beforeRan)
 }
 
-func rateProducer(t *testing.T, interval time.Duration, count int, f func(i int)) {
+func rateProducer(interval time.Duration, count int, f func(i int)) {
 	ticker := time.NewTicker(interval)
 	i := 0
 	quit := make(chan struct{})
-	// t.Logf("Starting rateProducer for %d runs\n", count)
 	go func() {
 		for {
 			select {
@@ -281,14 +280,12 @@ func rateProducer(t *testing.T, interval time.Duration, count int, f func(i int)
 				}
 				close(quit)
 			case <-quit:
-				// t.Logf("- stop rateProducer after %d runs\n", i)
 				ticker.Stop()
 				return
 			}
 		}
 	}()
 	<-quit
-	// t.Logf("Completed rateProducer with %d runs\n", i)
 }
 
 func TestRateLimiterMemoryStore_Allow(t *testing.T) {
@@ -322,7 +319,7 @@ func TestRateLimiterMemoryStore_Allow(t *testing.T) {
 		allowed := inMemoryStore.Allow(tc.id)
 		assert.Equal(t, tc.allowed, allowed)
 	}
-	rateProducer(t, 220*time.Millisecond, len(testCases)-1, f)
+	rateProducer(220*time.Millisecond, len(testCases)-1, f)
 }
 
 func TestRateLimiterMemoryStore_cleanupStaleVisitors(t *testing.T) {
