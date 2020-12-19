@@ -19,7 +19,12 @@ func TestRateLimiter(t *testing.T) {
 		return c.String(http.StatusOK, "test")
 	}
 
-	var inMemoryStore = NewRateLimiterMemoryStore(1, 3)
+	var inMemoryStore = NewRateLimiterMemoryStore(
+		RateLimiterMemoryStoreRate(1),
+		RateLimiterMemoryStoreBurst(3),
+	)
+
+	mw := RateLimiter(inMemoryStore)
 
 	testCases := []struct {
 		id   string
@@ -40,7 +45,6 @@ func TestRateLimiter(t *testing.T) {
 
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		mw := RateLimiter(&inMemoryStore)
 
 		_ = mw(handler)(c)
 		assert.Equal(t, tc.code, rec.Code)
@@ -48,25 +52,48 @@ func TestRateLimiter(t *testing.T) {
 }
 
 func TestRateLimiter_panicBehaviour(t *testing.T) {
-	var inMemoryStore = NewRateLimiterMemoryStore(1, 3)
+	var inMemoryStore = NewRateLimiterMemoryStore(
+		RateLimiterMemoryStoreRate(1),
+		RateLimiterMemoryStoreBurst(3),
+	)
 
 	assert.Panics(t, func() {
 		RateLimiter(nil)
 	})
 
 	assert.NotPanics(t, func() {
-		RateLimiter(&inMemoryStore)
+		RateLimiter(inMemoryStore)
 	})
 }
 
 func TestRateLimiterWithConfig(t *testing.T) {
-	var inMemoryStore = NewRateLimiterMemoryStore(1, 3)
+	var inMemoryStore = NewRateLimiterMemoryStore(
+		RateLimiterMemoryStoreRate(1),
+		RateLimiterMemoryStoreBurst(3),
+	)
 
 	e := echo.New()
 
 	handler := func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}
+
+	mw := RateLimiterWithConfig(RateLimiterConfig{
+		IdentifierExtractor: func(c echo.Context) (string, error) {
+			id := c.Request().Header.Get(echo.HeaderXRealIP)
+			if id == "" {
+				return "", errors.New("invalid identifier")
+			}
+			return id, nil
+		},
+		DenyHandler: func(ctx echo.Context) error {
+			return ctx.JSON(http.StatusBadRequest, nil)
+		},
+		ErrorHandler: func(ctx echo.Context) error {
+			return ctx.JSON(http.StatusForbidden, nil)
+		},
+		Store: inMemoryStore,
+	})
 
 	testCases := []struct {
 		id   string
@@ -88,22 +115,6 @@ func TestRateLimiterWithConfig(t *testing.T) {
 		rec := httptest.NewRecorder()
 
 		c := e.NewContext(req, rec)
-		mw := RateLimiterWithConfig(RateLimiterConfig{
-			IdentifierExtractor: func(c echo.Context) (string, error) {
-				id := c.Request().Header.Get(echo.HeaderXRealIP)
-				if id == "" {
-					return "", errors.New("invalid identifier")
-				}
-				return id, nil
-			},
-			DenyHandler: func(ctx echo.Context) error {
-				return ctx.JSON(http.StatusBadRequest, nil)
-			},
-			ErrorHandler: func(ctx echo.Context) error {
-				return ctx.JSON(http.StatusForbidden, nil)
-			},
-			Store: &inMemoryStore,
-		})
 
 		_ = mw(handler)(c)
 
@@ -112,13 +123,30 @@ func TestRateLimiterWithConfig(t *testing.T) {
 }
 
 func TestRateLimiterWithConfig_defaultDenyHandler(t *testing.T) {
-	var inMemoryStore = NewRateLimiterMemoryStore(1, 3)
+	var inMemoryStore = NewRateLimiterMemoryStore(
+		RateLimiterMemoryStoreRate(1),
+		RateLimiterMemoryStoreBurst(3),
+	)
 
 	e := echo.New()
 
 	handler := func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}
+
+	mw := RateLimiterWithConfig(RateLimiterConfig{
+		IdentifierExtractor: func(c echo.Context) (string, error) {
+			id := c.Request().Header.Get(echo.HeaderXRealIP)
+			if id == "" {
+				return "", errors.New("invalid identifier")
+			}
+			return id, nil
+		},
+		ErrorHandler: func(ctx echo.Context) error {
+			return ctx.JSON(http.StatusForbidden, nil)
+		},
+		Store: inMemoryStore,
+	})
 
 	testCases := []struct {
 		id   string
@@ -140,19 +168,6 @@ func TestRateLimiterWithConfig_defaultDenyHandler(t *testing.T) {
 		rec := httptest.NewRecorder()
 
 		c := e.NewContext(req, rec)
-		mw := RateLimiterWithConfig(RateLimiterConfig{
-			IdentifierExtractor: func(c echo.Context) (string, error) {
-				id := c.Request().Header.Get(echo.HeaderXRealIP)
-				if id == "" {
-					return "", errors.New("invalid identifier")
-				}
-				return id, nil
-			},
-			ErrorHandler: func(ctx echo.Context) error {
-				return ctx.JSON(http.StatusForbidden, nil)
-			},
-			Store: &inMemoryStore,
-		})
 
 		_ = mw(handler)(c)
 
@@ -162,13 +177,20 @@ func TestRateLimiterWithConfig_defaultDenyHandler(t *testing.T) {
 
 func TestRateLimiterWithConfig_defaultConfig(t *testing.T) {
 	{
-		var inMemoryStore = NewRateLimiterMemoryStore(1, 3)
+		var inMemoryStore = NewRateLimiterMemoryStore(
+			RateLimiterMemoryStoreRate(1),
+			RateLimiterMemoryStoreBurst(3),
+		)
 
 		e := echo.New()
 
 		handler := func(c echo.Context) error {
 			return c.String(http.StatusOK, "test")
 		}
+
+		mw := RateLimiterWithConfig(RateLimiterConfig{
+			Store: inMemoryStore,
+		})
 
 		testCases := []struct {
 			id   string
@@ -190,9 +212,6 @@ func TestRateLimiterWithConfig_defaultConfig(t *testing.T) {
 			rec := httptest.NewRecorder()
 
 			c := e.NewContext(req, rec)
-			mw := RateLimiterWithConfig(RateLimiterConfig{
-				Store: &inMemoryStore,
-			})
 
 			_ = mw(handler)(c)
 
@@ -209,7 +228,10 @@ func TestRateLimiterWithConfig_skipper(t *testing.T) {
 		skipped = true
 		return c.String(http.StatusOK, "test")
 	}
-	var inMemoryStore = NewRateLimiterMemoryStore(1, 3)
+	var inMemoryStore = NewRateLimiterMemoryStore(
+		RateLimiterMemoryStoreRate(1),
+		RateLimiterMemoryStoreBurst(3),
+	)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Add(echo.HeaderXRealIP, "127.0.0.1")
@@ -222,7 +244,7 @@ func TestRateLimiterWithConfig_skipper(t *testing.T) {
 		Skipper: func(c echo.Context) bool {
 			return true
 		},
-		Store: &inMemoryStore,
+		Store: inMemoryStore,
 		IdentifierExtractor: func(ctx echo.Context) (string, error) {
 			return "127.0.0.1", nil
 		},
@@ -241,7 +263,10 @@ func TestRateLimiterWithConfig_beforeFunc(t *testing.T) {
 	}
 
 	var beforeRan bool
-	var inMemoryStore = NewRateLimiterMemoryStore(1, 3)
+	var inMemoryStore = NewRateLimiterMemoryStore(
+		RateLimiterMemoryStoreRate(1),
+		RateLimiterMemoryStoreBurst(3),
+	)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Add(echo.HeaderXRealIP, "127.0.0.1")
@@ -254,7 +279,7 @@ func TestRateLimiterWithConfig_beforeFunc(t *testing.T) {
 		BeforeFunc: func(c echo.Context) {
 			beforeRan = true
 		},
-		Store: &inMemoryStore,
+		Store: inMemoryStore,
 		IdentifierExtractor: func(ctx echo.Context) (string, error) {
 			return "127.0.0.1", nil
 		},
@@ -289,7 +314,11 @@ func rateProducer(interval time.Duration, count int, f func(i int)) {
 }
 
 func TestRateLimiterMemoryStore_Allow(t *testing.T) {
-	var inMemoryStore = NewRateLimiterMemoryStore(1, 3, 2*time.Second)
+	var inMemoryStore = NewRateLimiterMemoryStore(
+		RateLimiterMemoryStoreRate(1),
+		RateLimiterMemoryStoreBurst(3),
+		RateLimiterMemoryStoreExpiresIn(2*time.Second),
+	)
 
 	testCases := []struct {
 		id      string
@@ -323,8 +352,11 @@ func TestRateLimiterMemoryStore_Allow(t *testing.T) {
 }
 
 func TestRateLimiterMemoryStore_cleanupStaleVisitors(t *testing.T) {
-	var inMemoryStore = NewRateLimiterMemoryStore(1, 3)
-	inMemoryStore.visitors = map[string]Visitor{
+	var inMemoryStore = NewRateLimiterMemoryStore(
+		RateLimiterMemoryStoreRate(1),
+		RateLimiterMemoryStoreBurst(3),
+	)
+	inMemoryStore.visitors = map[string]*Visitor{
 		"A": {
 			Limiter:  rate.NewLimiter(1, 3),
 			lastSeen: time.Now(),
@@ -343,6 +375,7 @@ func TestRateLimiterMemoryStore_cleanupStaleVisitors(t *testing.T) {
 		},
 	}
 
+	inMemoryStore.Allow("D")
 	inMemoryStore.cleanupStaleVisitors()
 
 	var exists bool
@@ -357,7 +390,7 @@ func TestRateLimiterMemoryStore_cleanupStaleVisitors(t *testing.T) {
 	assert.Equal(t, false, exists)
 
 	_, exists = inMemoryStore.visitors["D"]
-	assert.Equal(t, false, exists)
+	assert.Equal(t, true, exists)
 }
 
 func TestNewRateLimiterMemoryStore(t *testing.T) {
@@ -374,7 +407,11 @@ func TestNewRateLimiterMemoryStore(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		store := NewRateLimiterMemoryStore(tc.rate, tc.burst, tc.expiresIn)
+		store := NewRateLimiterMemoryStore(
+			RateLimiterMemoryStoreRate(tc.rate),
+			RateLimiterMemoryStoreBurst(tc.burst),
+			RateLimiterMemoryStoreExpiresIn(tc.expiresIn),
+		)
 		assert.Equal(t, tc.rate, store.rate)
 		assert.Equal(t, tc.burst, store.burst)
 		assert.Equal(t, tc.expectedExpiresIn, store.expiresIn)

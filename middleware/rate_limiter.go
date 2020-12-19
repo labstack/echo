@@ -9,11 +9,13 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// RateLimiterStore is the interface to be implemented by custom stores.
-type RateLimiterStore interface {
-	// Stores for the rate limiter have to implement the Allow method
-	Allow(identifier string) bool
-}
+type (
+	// RateLimiterStore is the interface to be implemented by custom stores.
+	RateLimiterStore interface {
+		// Stores for the rate limiter have to implement the Allow method
+		Allow(identifier string) bool
+	}
+)
 
 type (
 	// RateLimiterConfig defines the configuration for the rate limiter
@@ -53,9 +55,11 @@ RateLimiter returns a rate limiting middleware
 
 	e := echo.New()
 
-	var inMemoryStore = new(RateLimiterMemoryStore)
-	inMemoryStore.rate = 1
-	inMemoryStore.burst = 3
+	var inMemoryStore = NewRateLimiterMemoryStore(
+		RateLimiterMemoryStoreRate(1),
+		RateLimiterMemoryStoreBurst(3),
+		RateLimiterMemoryStoreExpiresIn(3 * time.Minute),
+	)
 
 	e.GET("/rate-limited", func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
@@ -73,9 +77,11 @@ RateLimiterWithConfig returns a rate limiting middleware
 
 	e := echo.New()
 
-	var inMemoryStore = new(RateLimiterMemoryStore)
-	inMemoryStore.rate = 1
-	inMemoryStore.burst = 3
+	var inMemoryStore = NewRateLimiterMemoryStore(
+		RateLimiterMemoryStoreRate(1),
+		RateLimiterMemoryStoreBurst(3),
+		RateLimiterMemoryStoreExpiresIn(3 * time.Minute),
+	)
 
 	config := RateLimiterConfig{
 		Skipper: DefaultSkipper,
@@ -136,7 +142,7 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 // RateLimiterMemoryStore is the built-in store implementation for RateLimiter
 type (
 	RateLimiterMemoryStore struct {
-		visitors    map[string]Visitor
+		visitors    map[string]*Visitor
 		mutex       sync.Mutex
 		rate        rate.Limit
 		burst       int
@@ -152,19 +158,44 @@ type (
 
 // NewRateLimiterMemoryStore returns an instance of RateLimiterMemoryStore
 func NewRateLimiterMemoryStore(
-	rate rate.Limit,
-	burst int,
-	/* using this variadic because I don't see a better way to make it optional. suggestions are welcome */
-	expiresIn ...time.Duration) (store RateLimiterMemoryStore) {
-	store.rate = rate
-	store.burst = burst
-	if len(expiresIn) == 0 || expiresIn[0] == 0 {
+	options ...RateLimiterMemoryStoreOption,
+) (store *RateLimiterMemoryStore) {
+	store = &RateLimiterMemoryStore{
+		visitors:  make(map[string]*Visitor),
+		expiresIn: 3 * time.Minute,
+	}
+	for _, option := range options {
+		option(store)
+	}
+	if store.expiresIn == 0 {
 		store.expiresIn = 3 * time.Minute
-	} else {
-		store.expiresIn = expiresIn[0]
 	}
 	store.lastCleanup = time.Now()
 	return
+}
+
+// RateLimiterMemoryStoreOption represents an option of RateLimiterMemoryStore
+type RateLimiterMemoryStoreOption func(store *RateLimiterMemoryStore)
+
+// RateLimiterMemoryStoreRate sets rate of RateLimiterMemoryStore
+func RateLimiterMemoryStoreRate(rate rate.Limit) RateLimiterMemoryStoreOption {
+	return func(store *RateLimiterMemoryStore) {
+		store.rate = rate
+	}
+}
+
+// RateLimiterMemoryStoreBurst sets rate of RateLimiterMemoryStore
+func RateLimiterMemoryStoreBurst(burst int) RateLimiterMemoryStoreOption {
+	return func(store *RateLimiterMemoryStore) {
+		store.burst = burst
+	}
+}
+
+// RateLimiterMemoryStoreExpiresIn sets rate of RateLimiterMemoryStore
+func RateLimiterMemoryStoreExpiresIn(expiresIn time.Duration) RateLimiterMemoryStoreOption {
+	return func(store *RateLimiterMemoryStore) {
+		store.expiresIn = expiresIn
+	}
 }
 
 // Allow implements RateLimiterStore.Allow
@@ -174,12 +205,9 @@ func (store *RateLimiterMemoryStore) Allow(identifier string) bool {
 		store.cleanupStaleVisitors()
 	}
 
-	if store.visitors == nil {
-		store.visitors = make(map[string]Visitor)
-	}
-
 	limiter, exists := store.visitors[identifier]
 	if !exists {
+		limiter = new(Visitor)
 		limiter.Limiter = rate.NewLimiter(store.rate, store.burst)
 		limiter.lastSeen = time.Now()
 		store.visitors[identifier] = limiter
