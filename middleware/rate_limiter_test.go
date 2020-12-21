@@ -3,12 +3,15 @@ package middleware
 import (
 	"errors"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/gommon/random"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/time/rate"
 )
@@ -375,3 +378,53 @@ func TestNewRateLimiterMemoryStore(t *testing.T) {
 		assert.Equal(t, tc.expectedExpiresIn, store.expiresIn)
 	}
 }
+
+func generateAddressList(count int) []string {
+	addrs := make([]string, count)
+	for i := 0; i < count; i++ {
+		addrs[i] = random.String(15)
+	}
+	return addrs
+}
+
+func run(wg *sync.WaitGroup, store RateLimiterStore, addrs []string, max int, b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		store.Allow(addrs[rand.Intn(max)])
+	}
+	wg.Done()
+}
+
+func benchmarkStore(store RateLimiterStore, parallel int, max int, b *testing.B) {
+	addrs := generateAddressList(max)
+	wg := &sync.WaitGroup{}
+	for i := 0; i < parallel; i++ {
+		wg.Add(1)
+		go run(wg, store, addrs, max, b)
+	}
+	wg.Wait()
+}
+
+const (
+	testExpiresIn = 1000 * time.Millisecond
+)
+
+func BenchmarkRateLimiterMemoryStore_1000(b *testing.B) {
+	var store = NewRateLimiterMemoryStore(RateLimiterMemoryStoreConfig{rate: 100, burst: 200, expiresIn: testExpiresIn})
+	benchmarkStore(store, 10, 1000, b)
+}
+
+func BenchmarkRateLimiterMemoryStore_10000(b *testing.B) {
+	var store = NewRateLimiterMemoryStore(RateLimiterMemoryStoreConfig{rate: 100, burst: 200, expiresIn: testExpiresIn})
+	benchmarkStore(store, 10, 10000, b)
+}
+
+func BenchmarkRateLimiterMemoryStore_100000(b *testing.B) {
+	var store = NewRateLimiterMemoryStore(RateLimiterMemoryStoreConfig{rate: 100, burst: 200, expiresIn: testExpiresIn})
+	benchmarkStore(store, 10, 100000, b)
+}
+
+func BenchmarkRateLimiterMemoryStore_conc100_10000(b *testing.B) {
+	var store = NewRateLimiterMemoryStore(RateLimiterMemoryStoreConfig{rate: 100, burst: 200, expiresIn: testExpiresIn})
+	benchmarkStore(store, 100, 10000, b)
+}
+
