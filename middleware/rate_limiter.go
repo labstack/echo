@@ -56,9 +56,7 @@ RateLimiter returns a rate limiting middleware
 	e := echo.New()
 
 	var inMemoryStore = NewRateLimiterMemoryStore(
-		RateLimiterMemoryStoreRate(1),
-		RateLimiterMemoryStoreBurst(3),
-		RateLimiterMemoryStoreExpiresIn(3 * time.Minute),
+		RateLimiterMemoryStoreConfig{rate: 1, burst: 3, expiresIn: 3 * time.Minute}
 	)
 
 	e.GET("/rate-limited", func(c echo.Context) error {
@@ -78,9 +76,7 @@ RateLimiterWithConfig returns a rate limiting middleware
 	e := echo.New()
 
 	var inMemoryStore = NewRateLimiterMemoryStore(
-		RateLimiterMemoryStoreRate(1),
-		RateLimiterMemoryStoreBurst(3),
-		RateLimiterMemoryStoreExpiresIn(3 * time.Minute),
+		RateLimiterMemoryStoreConfig{rate: 1, burst: 3, expiresIn: 3 * time.Minute}
 	)
 
 	config := RateLimiterConfig{
@@ -195,10 +191,10 @@ func (store *RateLimiterMemoryStore) Allow(identifier string) bool {
 		store.visitors[identifier] = limiter
 	}
 	limiter.lastSeen = now()
-	store.mutex.Unlock()
 	if now().Sub(store.lastCleanup) > store.expiresIn {
 		store.cleanupStaleVisitors()
 	}
+	store.mutex.Unlock()
 	return limiter.AllowN(now(), 1)
 }
 
