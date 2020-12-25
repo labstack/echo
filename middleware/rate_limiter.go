@@ -55,9 +55,7 @@ RateLimiter returns a rate limiting middleware
 
 	e := echo.New()
 
-	limiterStore := middleware.NewRateLimiterMemoryStore(
-		middleware.RateLimiterMemoryStoreConfig{Rate: 10, Burst: 30, ExpiresIn: 3 * time.Minute}
-	)
+	limiterStore := middleware.NewRateLimiterMemoryStore(20)
 
 	e.GET("/rate-limited", func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
@@ -151,16 +149,43 @@ type (
 	}
 )
 
-// NewRateLimiterMemoryStore returns an instance of RateLimiterMemoryStore
-func NewRateLimiterMemoryStore(config RateLimiterMemoryStoreConfig) (store *RateLimiterMemoryStore) {
+/*
+NewRateLimiterMemoryStore returns an instance of RateLimiterMemoryStore with
+the provided rate. Burst and ExpiresIn will be set to default values.
+
+Example (with 20 requests/sec):
+
+	limiterStore := middleware.NewRateLimiterMemoryStore(20)
+
+*/
+func NewRateLimiterMemoryStore(rate rate.Limit) (store *RateLimiterMemoryStore) {
+	return NewRateLimiterMemoryStoreWithConfig(RateLimiterMemoryStoreConfig{
+		Rate: rate,
+	})
+}
+
+/*
+NewRateLimiterMemoryStoreWithConfig returns an instance of RateLimiterMemoryStore
+with the provided configuration. Rate must be provided. Burst will be set to the value of
+the configured rate if not provided or set to 0.
+
+Example:
+
+	limiterStore := middleware.NewRateLimiterMemoryStoreWithConfig(
+		middleware.RateLimiterMemoryStoreConfig{Rate: 50, Burst: 200, ExpiresIn: 5 * time.Minutes},
+	)
+*/
+func NewRateLimiterMemoryStoreWithConfig(config RateLimiterMemoryStoreConfig) (store *RateLimiterMemoryStore) {
 	store = &RateLimiterMemoryStore{}
 
 	store.rate = config.Rate
 	store.burst = config.Burst
+	store.expiresIn = config.ExpiresIn
 	if config.ExpiresIn == 0 {
 		store.expiresIn = DefaultRateLimiterMemoryStoreConfig.ExpiresIn
-	} else {
-		store.expiresIn = config.ExpiresIn
+	}
+	if config.Burst == 0 {
+		store.burst = int(config.Rate)
 	}
 	store.visitors = make(map[string]*Visitor)
 	store.lastCleanup = now()
