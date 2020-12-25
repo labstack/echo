@@ -156,12 +156,12 @@ type (
 func NewRateLimiterMemoryStore(config RateLimiterMemoryStoreConfig) (store *RateLimiterMemoryStore) {
 	store = &RateLimiterMemoryStore{}
 
-	store.rate = config.rate
-	store.burst = config.burst
-	if config.expiresIn == 0 {
-		store.expiresIn = DefaultRateLimiterMemoryStoreConfig.expiresIn
+	store.rate = config.Rate
+	store.burst = config.Burst
+	if config.ExpiresIn == 0 {
+		store.expiresIn = DefaultRateLimiterMemoryStoreConfig.ExpiresIn
 	} else {
-		store.expiresIn = config.expiresIn
+		store.expiresIn = config.ExpiresIn
 	}
 	store.visitors = make(map[string]*Visitor)
 	store.lastCleanup = now()
@@ -170,14 +170,14 @@ func NewRateLimiterMemoryStore(config RateLimiterMemoryStoreConfig) (store *Rate
 
 // RateLimiterMemoryStoreConfig represents configuration for RateLimiterMemoryStore
 type RateLimiterMemoryStoreConfig struct {
-	rate      rate.Limit
-	burst     int
-	expiresIn time.Duration
+	Rate      rate.Limit
+	Burst     int
+	ExpiresIn time.Duration
 }
 
 // DefaultRateLimiterMemoryStoreConfig provides default configuration values for RateLimiterMemoryStore
 var DefaultRateLimiterMemoryStoreConfig = RateLimiterMemoryStoreConfig{
-	expiresIn: 3 * time.Minute,
+	ExpiresIn: 3 * time.Minute,
 }
 
 // Allow implements RateLimiterStore.Allow
