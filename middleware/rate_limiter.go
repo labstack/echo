@@ -55,13 +55,13 @@ RateLimiter returns a rate limiting middleware
 
 	e := echo.New()
 
-	var inMemoryStore = NewRateLimiterMemoryStore(
-		RateLimiterMemoryStoreConfig{rate: 1, burst: 3, expiresIn: 3 * time.Minute}
+	limiterStore := middleware.NewRateLimiterMemoryStore(
+		middleware.RateLimiterMemoryStoreConfig{Rate: 10, Burst: 30, ExpiresIn: 3 * time.Minute}
 	)
 
 	e.GET("/rate-limited", func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
-	}, RateLimiter(inMemoryStore))
+	}, RateLimiter(limiterStore))
 */
 func RateLimiter(store RateLimiterStore) echo.MiddlewareFunc {
 	config := DefaultRateLimiterConfig
@@ -75,12 +75,11 @@ RateLimiterWithConfig returns a rate limiting middleware
 
 	e := echo.New()
 
-	var inMemoryStore = NewRateLimiterMemoryStore(
-		RateLimiterMemoryStoreConfig{rate: 1, burst: 3, expiresIn: 3 * time.Minute}
-	)
-
-	config := RateLimiterConfig{
+	config := middleware.RateLimiterConfig{
 		Skipper: DefaultSkipper,
+		Store: middleware.NewRateLimiterMemoryStore(
+			middleware.RateLimiterMemoryStoreConfig{Rate: 10, Burst: 30, ExpiresIn: 3 * time.Minute}
+		)
 		IdentifierExtractor: func(ctx echo.Context) (string, error) {
 			id := ctx.RealIP()
 			return id, nil
@@ -95,7 +94,7 @@ RateLimiterWithConfig returns a rate limiting middleware
 
 	e.GET("/rate-limited", func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
-	}, RateLimiterWithConfig(config))
+	}, middleware.RateLimiterWithConfig(config))
 */
 func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 	if config.Skipper == nil {
