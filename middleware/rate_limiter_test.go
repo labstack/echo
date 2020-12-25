@@ -428,22 +428,3 @@ func BenchmarkRateLimiterMemoryStore_conc100_10000(b *testing.B) {
 	benchmarkStore(store, 100, 10000, b)
 }
 
-func BenchmarkRateLimiterShardedMemoryStore_1000(b *testing.B) {
-	var store = NewRateLimiterShardedMemoryStore(RateLimiterMemoryStoreConfig{rate: 100, burst: 200, expiresIn: testExpiresIn})
-	benchmarkStore(store, 10, 1000, b)
-}
-
-func BenchmarkRateLimiterShardedMemoryStore_10000(b *testing.B) {
-	var store = NewRateLimiterShardedMemoryStore(RateLimiterMemoryStoreConfig{rate: 100, burst: 200, expiresIn: testExpiresIn})
-
-	benchmarkStore(store, 10, 10000, b)
-}
-func BenchmarkRateLimiterShardedMemoryStore_100000(b *testing.B) {
-	var store = NewRateLimiterShardedMemoryStore(RateLimiterMemoryStoreConfig{rate: 100, burst: 200, expiresIn: testExpiresIn})
-	benchmarkStore(store, 10, 100000, b)
-}
-
-func BenchmarkRateLimiterShardedMemoryStore_conc100_10000(b *testing.B) {
-	var store = NewRateLimiterShardedMemoryStore(RateLimiterMemoryStoreConfig{rate: 100, burst: 200, expiresIn: testExpiresIn})
-	benchmarkStore(store, 100, 10000, b)
-}
