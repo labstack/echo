@@ -43,10 +43,10 @@ var DefaultRateLimiterConfig = RateLimiterConfig{
 		return id, nil
 	},
 	ErrorHandler: func(context echo.Context) error {
-		return context.JSON(http.StatusTooManyRequests, nil)
+		return context.JSON(http.StatusForbidden, nil)
 	},
 	DenyHandler: func(context echo.Context) error {
-		return context.JSON(http.StatusForbidden, nil)
+		return context.JSON(http.StatusTooManyRequests, nil)
 	},
 }
 
@@ -123,11 +123,11 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 
 			identifier, err := config.IdentifierExtractor(c)
 			if err != nil {
-				return config.DenyHandler(c)
+				return config.ErrorHandler(c)
 			}
 
 			if !config.Store.Allow(identifier) {
-				return config.ErrorHandler(c)
+				return config.DenyHandler(c)
 			}
 			return next(c)
 		}

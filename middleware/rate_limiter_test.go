@@ -82,10 +82,10 @@ func TestRateLimiterWithConfig(t *testing.T) {
 			return id, nil
 		},
 		DenyHandler: func(ctx echo.Context) error {
-			return ctx.JSON(http.StatusBadRequest, nil)
+			return ctx.JSON(http.StatusForbidden, nil)
 		},
 		ErrorHandler: func(ctx echo.Context) error {
-			return ctx.JSON(http.StatusForbidden, nil)
+			return ctx.JSON(http.StatusBadRequest, nil)
 		},
 		Store: inMemoryStore,
 	})
@@ -147,10 +147,10 @@ func TestRateLimiterWithConfig_defaultDenyHandler(t *testing.T) {
 		{"127.0.0.1", http.StatusOK},
 		{"127.0.0.1", http.StatusOK},
 		{"127.0.0.1", http.StatusOK},
-		{"127.0.0.1", http.StatusForbidden},
+		{"127.0.0.1", http.StatusTooManyRequests},
 		{"", http.StatusForbidden},
-		{"127.0.0.1", http.StatusForbidden},
-		{"127.0.0.1", http.StatusForbidden},
+		{"127.0.0.1", http.StatusTooManyRequests},
+		{"127.0.0.1", http.StatusTooManyRequests},
 	}
 
 	for _, tc := range testCases {
