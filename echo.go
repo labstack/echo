@@ -67,6 +67,9 @@ type (
 	// Echo is the top-level framework instance.
 	Echo struct {
 		common
+		// startupMutex is mutex to lock Echo instance access during server configuration and startup. Useful for to get
+		// listener address info (on which interface/port was listener binded) without having data races.
+		startupMutex     sync.RWMutex
 		StdLogger        *stdLog.Logger
 		colorer          *color.Color
 		premiddleware    []MiddlewareFunc
@@ -643,21 +646,30 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // Start starts an HTTP server.
 func (e *Echo) Start(address string) error {
+	e.startupMutex.Lock()
 	e.Server.Addr = address
-	return e.StartServer(e.Server)
+	if err := e.configureServer(e.Server); err != nil {
+		e.startupMutex.Unlock()
+		return err
+	}
+	e.startupMutex.Unlock()
+	return e.serve()
 }
 
 // StartTLS starts an HTTPS server.
 // If `certFile` or `keyFile` is `string` the values are treated as file paths.
 // If `certFile` or `keyFile` is `[]byte` the values are treated as the certificate or key as-is.
 func (e *Echo) StartTLS(address string, certFile, keyFile interface{}) (err error) {
+	e.startupMutex.Lock()
 	var cert []byte
 	if cert, err = filepathOrContent(certFile); err != nil {
+		e.startupMutex.Unlock()
 		return
 	}
 
 	var key []byte
 	if key, err = filepathOrContent(keyFile); err != nil {
+		e.startupMutex.Unlock()
 		return
 	}
 
@@ -665,10 +677,17 @@ func (e *Echo) StartTLS(address string, certFile, keyFile interface{}) (err erro
 	s.TLSConfig = new(tls.Config)
 	s.TLSConfig.Certificates = make([]tls.Certificate, 1)
 	if s.TLSConfig.Certificates[0], err = tls.X509KeyPair(cert, key); err != nil {
+		e.startupMutex.Unlock()
 		return
 	}
 
-	return e.startTLS(address)
+	e.configureTLS(address)
+	if err := e.configureServer(s); err != nil {
+		e.startupMutex.Unlock()
+		return err
+	}
+	e.startupMutex.Unlock()
+	return s.Serve(e.TLSListener)
 }
 
 func filepathOrContent(fileOrContent interface{}) (content []byte, err error) {
@@ -684,24 +703,41 @@ func filepathOrContent(fileOrContent interface{}) (content []byte, err error) {
 
 // StartAutoTLS starts an HTTPS server using certificates automatically installed from https://letsencrypt.org.
 func (e *Echo) StartAutoTLS(address string) error {
+	e.startupMutex.Lock()
 	s := e.TLSServer
 	s.TLSConfig = new(tls.Config)
 	s.TLSConfig.GetCertificate = e.AutoTLSManager.GetCertificate
 	s.TLSConfig.NextProtos = append(s.TLSConfig.NextProtos, acme.ALPNProto)
-	return e.startTLS(address)
+
+	e.configureTLS(address)
+	if err := e.configureServer(s); err != nil {
+		e.startupMutex.Unlock()
+		return err
+	}
+	e.startupMutex.Unlock()
+	return s.Serve(e.TLSListener)
 }
 
-func (e *Echo) startTLS(address string) error {
+func (e *Echo) configureTLS(address string) {
 	s := e.TLSServer
 	s.Addr = address
 	if !e.DisableHTTP2 {
 		s.TLSConfig.NextProtos = append(s.TLSConfig.NextProtos, "h2")
 	}
-	return e.StartServer(e.TLSServer)
 }
 
 // StartServer starts a custom http server.
 func (e *Echo) StartServer(s *http.Server) (err error) {
+	e.startupMutex.Lock()
+	if err := e.configureServer(s); err != nil {
+		e.startupMutex.Unlock()
+		return err
+	}
+	e.startupMutex.Unlock()
+	return e.serve()
+}
+
+func (e *Echo) configureServer(s *http.Server) (err error) {
 	// Setup
 	e.colorer.SetOutput(e.Logger.Output())
 	s.ErrorLog = e.StdLogger
@@ -724,7 +760,7 @@ func (e *Echo) StartServer(s *http.Server) (err error) {
 		if !e.HidePort {
 			e.colorer.Printf("⇨ http server started on %s\n", e.colorer.Green(e.Listener.Addr()))
 		}
-		return s.Serve(e.Listener)
+		return nil
 	}
 	if e.TLSListener == nil {
 		l, err := newListener(s.Addr, e.ListenerNetwork)
@@ -736,11 +772,39 @@ func (e *Echo) StartServer(s *http.Server) (err error) {
 	if !e.HidePort {
 		e.colorer.Printf("⇨ https server started on %s\n", e.colorer.Green(e.TLSListener.Addr()))
 	}
-	return s.Serve(e.TLSListener)
+	return nil
+}
+
+func (e *Echo) serve() error {
+	if e.TLSListener != nil {
+		return e.Server.Serve(e.TLSListener)
+	}
+	return e.Server.Serve(e.Listener)
+}
+
+// ListenerAddr returns net.Addr for Listener
+func (e *Echo) ListenerAddr() net.Addr {
+	e.startupMutex.RLock()
+	defer e.startupMutex.RUnlock()
+	if e.Listener == nil {
+		return nil
+	}
+	return e.Listener.Addr()
+}
+
+// TLSListenerAddr returns net.Addr for TLSListener
+func (e *Echo) TLSListenerAddr() net.Addr {
+	e.startupMutex.RLock()
+	defer e.startupMutex.RUnlock()
+	if e.TLSListener == nil {
+		return nil
+	}
+	return e.TLSListener.Addr()
 }
 
 // StartH2CServer starts a custom http/2 server with h2c (HTTP/2 Cleartext).
 func (e *Echo) StartH2CServer(address string, h2s *http2.Server) (err error) {
+	e.startupMutex.Lock()
 	// Setup
 	s := e.Server
 	s.Addr = address
@@ -758,18 +822,22 @@ func (e *Echo) StartH2CServer(address string, h2s *http2.Server) (err error) {
 	if e.Listener == nil {
 		e.Listener, err = newListener(s.Addr, e.ListenerNetwork)
 		if err != nil {
+			e.startupMutex.Unlock()
 			return err
 		}
 	}
 	if !e.HidePort {
 		e.colorer.Printf("⇨ http server started on %s\n", e.colorer.Green(e.Listener.Addr()))
 	}
+	e.startupMutex.Unlock()
 	return s.Serve(e.Listener)
 }
 
 // Close immediately stops the server.
 // It internally calls `http.Server#Close()`.
 func (e *Echo) Close() error {
+	e.startupMutex.Lock()
+	defer e.startupMutex.Unlock()
 	if err := e.TLSServer.Close(); err != nil {
 		return err
 	}
@@ -779,6 +847,8 @@ func (e *Echo) Close() error {
 // Shutdown stops the server gracefully.
 // It internally calls `http.Server#Shutdown()`.
 func (e *Echo) Shutdown(ctx stdContext.Context) error {
+	e.startupMutex.Lock()
+	defer e.startupMutex.Unlock()
 	if err := e.TLSServer.Shutdown(ctx); err != nil {
 		return err
 	}

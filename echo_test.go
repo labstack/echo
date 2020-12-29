@@ -3,12 +3,14 @@ package echo
 import (
 	"bytes"
 	stdContext "context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -485,26 +487,125 @@ func TestEchoContext(t *testing.T) {
 	e.ReleaseContext(c)
 }
 
-func TestEchoStart(t *testing.T) {
-	e := New()
-	go func() {
-		assert.NoError(t, e.Start(":0"))
-	}()
-	time.Sleep(200 * time.Millisecond)
+func waitForServerStart(e *Echo, errChan <-chan error, isTLS bool) error {
+	ctx, cancel := stdContext.WithTimeout(stdContext.Background(), 200*time.Millisecond)
+	defer cancel()
+
+	ticker := time.NewTicker(5 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+			var addr net.Addr
+			if isTLS {
+				addr = e.TLSListenerAddr()
+			} else {
+				addr = e.ListenerAddr()
+			}
+			if addr != nil && strings.Contains(addr.String(), ":") {
+				return nil // was started
+			}
+		case err := <-errChan:
+			if err == http.ErrServerClosed {
+				return nil
+			}
+			return err
+		}
+	}
 }
 
-func TestEchoStartTLS(t *testing.T) {
+func TestEchoStart(t *testing.T) {
 	e := New()
+	errChan := make(chan error)
+
 	go func() {
-		err := e.StartTLS(":0", "_fixture/certs/cert.pem", "_fixture/certs/key.pem")
-		// Prevent the test to fail after closing the servers
-		if err != http.ErrServerClosed {
-			assert.NoError(t, err)
+		err := e.Start(":0")
+		if err != nil {
+			errChan <- err
 		}
 	}()
-	time.Sleep(200 * time.Millisecond)
 
-	e.Close()
+	err := waitForServerStart(e, errChan, false)
+	assert.NoError(t, err)
+
+	assert.NoError(t, e.Close())
+}
+
+func TestEcho_StartTLS(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		addr        string
+		certFile    string
+		keyFile     string
+		expectError string
+	}{
+		{
+			name: "ok",
+			addr: ":0",
+		},
+		{
+			name:        "nok, invalid certFile",
+			addr:        ":0",
+			certFile:    "not existing",
+			expectError: "open not existing: no such file or directory",
+		},
+		{
+			name:        "nok, invalid keyFile",
+			addr:        ":0",
+			keyFile:     "not existing",
+			expectError: "open not existing: no such file or directory",
+		},
+		{
+			name:        "nok, failed to create cert out of certFile and keyFile",
+			addr:        ":0",
+			keyFile:     "_fixture/certs/cert.pem", // we are passing cert instead of key
+			expectError: "tls: found a certificate rather than a key in the PEM for the private key",
+		},
+		{
+			name:        "nok, invalid tls address",
+			addr:        "nope",
+			expectError: "listen tcp: address nope: missing port in address",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			errChan := make(chan error)
+
+			go func() {
+				certFile := "_fixture/certs/cert.pem"
+				if tc.certFile != "" {
+					certFile = tc.certFile
+				}
+				keyFile := "_fixture/certs/key.pem"
+				if tc.keyFile != "" {
+					keyFile = tc.keyFile
+				}
+
+				err := e.StartTLS(tc.addr, certFile, keyFile)
+				if err != nil {
+					errChan <- err
+				}
+			}()
+
+			err := waitForServerStart(e, errChan, true)
+			if tc.expectError != "" {
+				if _, ok := err.(*os.PathError); ok {
+					assert.Error(t, err) // error messages for unix and windows are different. so test only error type here
+				} else {
+					assert.EqualError(t, err, tc.expectError)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+
+			assert.NoError(t, e.Close())
+		})
+	}
 }
 
 func TestEchoStartTLSByteString(t *testing.T) {
@@ -557,47 +658,103 @@ func TestEchoStartTLSByteString(t *testing.T) {
 			e := New()
 			e.HideBanner = true
 
-			go func() {
-				err := e.StartTLS(":0", test.cert, test.key)
-				if test.expectedErr != nil {
-					require.EqualError(t, err, test.expectedErr.Error())
-				} else if err != http.ErrServerClosed { // Prevent the test to fail after closing the servers
-					require.NoError(t, err)
-				}
-			}()
-			time.Sleep(200 * time.Millisecond)
+			errChan := make(chan error, 0)
 
-			require.NoError(t, e.Close())
+			go func() {
+				errChan <- e.StartTLS(":0", test.cert, test.key)
+			}()
+
+			err := waitForServerStart(e, errChan, true)
+			if test.expectedErr != nil {
+				assert.EqualError(t, err, test.expectedErr.Error())
+			} else {
+				assert.NoError(t, err)
+			}
+
+			assert.NoError(t, e.Close())
 		})
 	}
 }
 
-func TestEchoStartAutoTLS(t *testing.T) {
-	e := New()
-	errChan := make(chan error, 0)
+func TestEcho_StartAutoTLS(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		addr        string
+		expectError string
+	}{
+		{
+			name: "ok",
+			addr: ":0",
+		},
+		{
+			name:        "nok, invalid address",
+			addr:        "nope",
+			expectError: "listen tcp: address nope: missing port in address",
+		},
+	}
 
-	go func() {
-		errChan <- e.StartAutoTLS(":0")
-	}()
-	time.Sleep(200 * time.Millisecond)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			errChan := make(chan error, 0)
 
-	select {
-	case err := <-errChan:
-		assert.NoError(t, err)
-	default:
-		assert.NoError(t, e.Close())
+			go func() {
+				errChan <- e.StartAutoTLS(tc.addr)
+			}()
+
+			err := waitForServerStart(e, errChan, true)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			assert.NoError(t, e.Close())
+		})
 	}
 }
 
-func TestEchoStartH2CServer(t *testing.T) {
-	e := New()
-	e.Debug = true
-	h2s := &http2.Server{}
+func TestEcho_StartH2CServer(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		addr        string
+		expectError string
+	}{
+		{
+			name: "ok",
+			addr: ":0",
+		},
+		{
+			name:        "nok, invalid address",
+			addr:        "nope",
+			expectError: "listen tcp: address nope: missing port in address",
+		},
+	}
 
-	go func() {
-		assert.NoError(t, e.StartH2CServer(":0", h2s))
-	}()
-	time.Sleep(200 * time.Millisecond)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			e.Debug = true
+			h2s := &http2.Server{}
+
+			errChan := make(chan error)
+			go func() {
+				err := e.StartH2CServer(tc.addr, h2s)
+				if err != nil {
+					errChan <- err
+				}
+			}()
+
+			err := waitForServerStart(e, errChan, false)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			assert.NoError(t, e.Close())
+		})
+	}
 }
 
 func testMethod(t *testing.T, method, path string, e *Echo) {
@@ -686,7 +843,8 @@ func TestEchoClose(t *testing.T) {
 		errCh <- e.Start(":0")
 	}()
 
-	time.Sleep(200 * time.Millisecond)
+	err := waitForServerStart(e, errCh, false)
+	assert.NoError(t, err)
 
 	if err := e.Close(); err != nil {
 		t.Fatal(err)
@@ -694,7 +852,7 @@ func TestEchoClose(t *testing.T) {
 
 	assert.NoError(t, e.Close())
 
-	err := <-errCh
+	err = <-errCh
 	assert.Equal(t, err.Error(), "http: Server closed")
 }
 
@@ -706,7 +864,8 @@ func TestEchoShutdown(t *testing.T) {
 		errCh <- e.Start(":0")
 	}()
 
-	time.Sleep(200 * time.Millisecond)
+	err := waitForServerStart(e, errCh, false)
+	assert.NoError(t, err)
 
 	if err := e.Close(); err != nil {
 		t.Fatal(err)
@@ -716,7 +875,7 @@ func TestEchoShutdown(t *testing.T) {
 	defer cancel()
 	assert.NoError(t, e.Shutdown(ctx))
 
-	err := <-errCh
+	err = <-errCh
 	assert.Equal(t, err.Error(), "http: Server closed")
 }
 
@@ -764,7 +923,8 @@ func TestEchoListenerNetwork(t *testing.T) {
 				errCh <- e.Start(tt.address)
 			}()
 
-			time.Sleep(200 * time.Millisecond)
+			err := waitForServerStart(e, errCh, false)
+			assert.NoError(t, err)
 
 			if resp, err := http.Get(fmt.Sprintf("http://%s/ok", tt.address)); err == nil {
 				defer resp.Body.Close()
@@ -822,4 +982,102 @@ func TestEchoReverse(t *testing.T) {
 	assert.Equal("/params/one/bar/:qux", e.Reverse("/params/:foo/bar/:qux", "one"))
 	assert.Equal("/params/one/bar/two", e.Reverse("/params/:foo/bar/:qux", "one", "two"))
 	assert.Equal("/params/one/bar/two/three", e.Reverse("/params/:foo/bar/:qux/*", "one", "two", "three"))
+}
+
+func TestEcho_ListenerAddr(t *testing.T) {
+	e := New()
+
+	addr := e.ListenerAddr()
+	assert.Nil(t, addr)
+
+	errCh := make(chan error)
+	go func() {
+		errCh <- e.Start(":0")
+	}()
+
+	err := waitForServerStart(e, errCh, false)
+	assert.NoError(t, err)
+}
+
+func TestEcho_TLSListenerAddr(t *testing.T) {
+	cert, err := ioutil.ReadFile("_fixture/certs/cert.pem")
+	require.NoError(t, err)
+	key, err := ioutil.ReadFile("_fixture/certs/key.pem")
+	require.NoError(t, err)
+
+	e := New()
+
+	addr := e.TLSListenerAddr()
+	assert.Nil(t, addr)
+
+	errCh := make(chan error)
+	go func() {
+		errCh <- e.StartTLS(":0", cert, key)
+	}()
+
+	err = waitForServerStart(e, errCh, true)
+	assert.NoError(t, err)
+}
+
+func TestEcho_StartServer(t *testing.T) {
+	cert, err := ioutil.ReadFile("_fixture/certs/cert.pem")
+	require.NoError(t, err)
+	key, err := ioutil.ReadFile("_fixture/certs/key.pem")
+	require.NoError(t, err)
+	certs, err := tls.X509KeyPair(cert, key)
+	require.NoError(t, err)
+
+	var testCases = []struct {
+		name        string
+		addr        string
+		TLSConfig   *tls.Config
+		expectError string
+	}{
+		{
+			name: "ok",
+			addr: ":0",
+		},
+		{
+			name:      "ok, start with TLS",
+			addr:      ":0",
+			TLSConfig: &tls.Config{Certificates: []tls.Certificate{certs}},
+		},
+		{
+			name:        "nok, invalid address",
+			addr:        "nope",
+			expectError: "listen tcp: address nope: missing port in address",
+		},
+		{
+			name:        "nok, invalid tls address",
+			addr:        "nope",
+			TLSConfig:   &tls.Config{InsecureSkipVerify: true},
+			expectError: "listen tcp: address nope: missing port in address",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			e.Debug = true
+
+			server := new(http.Server)
+			server.Addr = tc.addr
+			if tc.TLSConfig != nil {
+				server.TLSConfig = tc.TLSConfig
+			}
+
+			errCh := make(chan error)
+			go func() {
+				errCh <- e.StartServer(server)
+			}()
+
+			err := waitForServerStart(e, errCh, tc.TLSConfig != nil)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.NoError(t, e.Close())
+		})
+	}
 }
