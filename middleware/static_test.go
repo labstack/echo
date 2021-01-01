@@ -1,94 +1,133 @@
 package middleware
 
 import (
-	"net/http"
-	"net/http/httptest"
-	"path/filepath"
-	"testing"
-
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
+	"net/http"
+	"net/http/httptest"
+	"testing"
 )
 
 func TestStatic(t *testing.T) {
-	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	config := StaticConfig{
-		Root: "../_fixture",
+	var testCases = []struct {
+		name                 string
+		givenConfig          *StaticConfig
+		givenAttachedToGroup string
+		whenURL              string
+		expectContains       string
+		expectLength         string
+		expectCode           int
+	}{
+		{
+			name:           "ok, serve index with Echo message",
+			whenURL:        "/",
+			expectCode:     http.StatusOK,
+			expectContains: "<title>Echo</title>",
+		},
+		{
+			name:         "ok, serve file from subdirectory",
+			whenURL:      "/images/walle.png",
+			expectCode:   http.StatusOK,
+			expectLength: "219885",
+		},
+		{
+			name: "ok, when html5 mode serve index for any static file that does not exist",
+			givenConfig: &StaticConfig{
+				Root:  "../_fixture",
+				HTML5: true,
+			},
+			whenURL:        "/random",
+			expectCode:     http.StatusOK,
+			expectContains: "<title>Echo</title>",
+		},
+		{
+			name: "ok, serve index as directory index listing files directory",
+			givenConfig: &StaticConfig{
+				Root:   "../_fixture/certs",
+				Browse: true,
+			},
+			whenURL:        "/",
+			expectCode:     http.StatusOK,
+			expectContains: "cert.pem",
+		},
+		{
+			name: "ok, serve directory index with IgnoreBase and browse",
+			givenConfig: &StaticConfig{
+				Root:       "../_fixture/_fixture/", // <-- last `_fixture/` is overlapping with group path and needs to be ignored
+				IgnoreBase: true,
+				Browse:     true,
+			},
+			givenAttachedToGroup: "/_fixture",
+			whenURL:              "/_fixture/",
+			expectCode:           http.StatusOK,
+			expectContains:       `<a class="file" href="README.md">README.md</a>`,
+		},
+		{
+			name: "ok, serve file with IgnoreBase",
+			givenConfig: &StaticConfig{
+				Root:       "../_fixture/_fixture/", // <-- last `_fixture/` is overlapping with group path and needs to be ignored
+				IgnoreBase: true,
+				Browse:     true,
+			},
+			givenAttachedToGroup: "/_fixture",
+			whenURL:              "/_fixture/README.md",
+			expectCode:           http.StatusOK,
+			expectContains:       "This directory is used for the static middleware test",
+		},
+		{
+			name:           "nok, file not found",
+			whenURL:        "/none",
+			expectCode:     http.StatusNotFound,
+			expectContains: "{\"message\":\"Not Found\"}\n",
+		},
+		{
+			name:           "nok, do not allow directory traversal (backslash - windows separator)",
+			whenURL:        `/..\\middleware/basic_auth.go`,
+			expectCode:     http.StatusNotFound,
+			expectContains: "{\"message\":\"Not Found\"}\n",
+		},
+		{
+			name:           "nok,do not allow directory traversal (slash - unix separator)",
+			whenURL:        `/../middleware/basic_auth.go`,
+			expectCode:     http.StatusNotFound,
+			expectContains: "{\"message\":\"Not Found\"}\n",
+		},
 	}
 
-	// Directory
-	h := StaticWithConfig(config)(echo.NotFoundHandler)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
 
-	assert := assert.New(t)
+			config := StaticConfig{Root: "../_fixture"}
+			if tc.givenConfig != nil {
+				config = *tc.givenConfig
+			}
+			middlewareFunc := StaticWithConfig(config)
+			if tc.givenAttachedToGroup != "" {
+				// middleware is attached to group
+				subGroup := e.Group(tc.givenAttachedToGroup, middlewareFunc)
+				// group without http handlers (routes) does not do anything.
+				// Request is matched against http handlers (routes) that have group middleware attached to them
+				subGroup.GET("", echo.NotFoundHandler)
+				subGroup.GET("/*", echo.NotFoundHandler)
+			} else {
+				// middleware is on root level
+				e.Use(middlewareFunc)
+			}
 
-	if assert.NoError(h(c)) {
-		assert.Contains(rec.Body.String(), "Echo")
+			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
+			rec := httptest.NewRecorder()
+
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, tc.expectCode, rec.Code)
+			if tc.expectContains != "" {
+				responseBody := rec.Body.String()
+				assert.Contains(t, responseBody, tc.expectContains)
+			}
+			if tc.expectLength != "" {
+				assert.Equal(t, rec.Header().Get(echo.HeaderContentLength), tc.expectLength)
+			}
+		})
 	}
-
-	// File found
-	req = httptest.NewRequest(http.MethodGet, "/images/walle.png", nil)
-	rec = httptest.NewRecorder()
-	c = e.NewContext(req, rec)
-	if assert.NoError(h(c)) {
-		assert.Equal(http.StatusOK, rec.Code)
-		assert.Equal(rec.Header().Get(echo.HeaderContentLength), "219885")
-	}
-
-	// File not found
-	req = httptest.NewRequest(http.MethodGet, "/none", nil)
-	rec = httptest.NewRecorder()
-	c = e.NewContext(req, rec)
-	he := h(c).(*echo.HTTPError)
-	assert.Equal(http.StatusNotFound, he.Code)
-
-	// HTML5
-	req = httptest.NewRequest(http.MethodGet, "/random", nil)
-	rec = httptest.NewRecorder()
-	c = e.NewContext(req, rec)
-	config.HTML5 = true
-	static := StaticWithConfig(config)
-	h = static(echo.NotFoundHandler)
-	if assert.NoError(h(c)) {
-		assert.Equal(http.StatusOK, rec.Code)
-		assert.Contains(rec.Body.String(), "Echo")
-	}
-
-	// Browse
-	req = httptest.NewRequest(http.MethodGet, "/", nil)
-	rec = httptest.NewRecorder()
-	c = e.NewContext(req, rec)
-	config.Root = "../_fixture/certs"
-	config.Browse = true
-	static = StaticWithConfig(config)
-	h = static(echo.NotFoundHandler)
-	if assert.NoError(h(c)) {
-		assert.Equal(http.StatusOK, rec.Code)
-		assert.Contains(rec.Body.String(), "cert.pem")
-	}
-
-	// IgnoreBase
-	req = httptest.NewRequest(http.MethodGet, "/_fixture", nil)
-	rec = httptest.NewRecorder()
-	config.Root = "../_fixture"
-	config.IgnoreBase = true
-	static = StaticWithConfig(config)
-	c.Echo().Group("_fixture", static)
-	e.ServeHTTP(rec, req)
-
-	assert.Equal(http.StatusOK, rec.Code)
-	assert.Equal(rec.Header().Get(echo.HeaderContentLength), "122")
-
-	req = httptest.NewRequest(http.MethodGet, "/_fixture", nil)
-	rec = httptest.NewRecorder()
-	config.Root = "../_fixture"
-	config.IgnoreBase = false
-	static = StaticWithConfig(config)
-	c.Echo().Group("_fixture", static)
-	e.ServeHTTP(rec, req)
-
-	assert.Equal(http.StatusOK, rec.Code)
-	assert.Contains(rec.Body.String(), filepath.Join("..", "_fixture", "_fixture"))
 }
