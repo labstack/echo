@@ -1,11 +1,13 @@
 package middleware
 
 import (
-	"github.com/labstack/echo/v4"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+
+	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestStatic(t *testing.T) {
@@ -127,6 +129,150 @@ func TestStatic(t *testing.T) {
 			}
 			if tc.expectLength != "" {
 				assert.Equal(t, rec.Header().Get(echo.HeaderContentLength), tc.expectLength)
+			}
+		})
+	}
+}
+
+func TestStatic_GroupWithStatic(t *testing.T) {
+	var testCases = []struct {
+		name                 string
+		givenGroup           string
+		givenPrefix          string
+		givenRoot            string
+		whenURL              string
+		expectStatus         int
+		expectHeaderLocation string
+		expectBodyStartsWith string
+	}{
+		{
+			name:                 "ok",
+			givenPrefix:          "/images",
+			givenRoot:            "../_fixture/images",
+			whenURL:              "/group/images/walle.png",
+			expectStatus:         http.StatusOK,
+			expectBodyStartsWith: string([]byte{0x89, 0x50, 0x4e, 0x47}),
+		},
+		{
+			name:                 "No file",
+			givenPrefix:          "/images",
+			givenRoot:            "../_fixture/scripts",
+			whenURL:              "/group/images/bolt.png",
+			expectStatus:         http.StatusNotFound,
+			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
+		},
+		{
+			name:                 "Directory not found (no trailing slash)",
+			givenPrefix:          "/images",
+			givenRoot:            "../_fixture/images",
+			whenURL:              "/group/images/",
+			expectStatus:         http.StatusNotFound,
+			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
+		},
+		{
+			name:                 "Directory redirect",
+			givenPrefix:          "/",
+			givenRoot:            "../_fixture",
+			whenURL:              "/group/folder",
+			expectStatus:         http.StatusMovedPermanently,
+			expectHeaderLocation: "/group/folder/",
+			expectBodyStartsWith: "",
+		},
+		{
+			name:                 "Prefixed directory 404 (request URL without slash)",
+			givenGroup:           "_fixture",
+			givenPrefix:          "/folder/", // trailing slash will intentionally not match "/folder"
+			givenRoot:            "../_fixture",
+			whenURL:              "/_fixture/folder", // no trailing slash
+			expectStatus:         http.StatusNotFound,
+			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
+		},
+		{
+			name:                 "Prefixed directory redirect (without slash redirect to slash)",
+			givenGroup:           "_fixture",
+			givenPrefix:          "/folder", // no trailing slash shall match /folder and /folder/*
+			givenRoot:            "../_fixture",
+			whenURL:              "/_fixture/folder", // no trailing slash
+			expectStatus:         http.StatusMovedPermanently,
+			expectHeaderLocation: "/_fixture/folder/",
+			expectBodyStartsWith: "",
+		},
+		{
+			name:                 "Directory with index.html",
+			givenPrefix:          "/",
+			givenRoot:            "../_fixture",
+			whenURL:              "/group/",
+			expectStatus:         http.StatusOK,
+			expectBodyStartsWith: "<!doctype html>",
+		},
+		{
+			name:                 "Prefixed directory with index.html (prefix ending with slash)",
+			givenPrefix:          "/assets/",
+			givenRoot:            "../_fixture",
+			whenURL:              "/group/assets/",
+			expectStatus:         http.StatusOK,
+			expectBodyStartsWith: "<!doctype html>",
+		},
+		{
+			name:                 "Prefixed directory with index.html (prefix ending without slash)",
+			givenPrefix:          "/assets",
+			givenRoot:            "../_fixture",
+			whenURL:              "/group/assets/",
+			expectStatus:         http.StatusOK,
+			expectBodyStartsWith: "<!doctype html>",
+		},
+		{
+			name:                 "Sub-directory with index.html",
+			givenPrefix:          "/",
+			givenRoot:            "../_fixture",
+			whenURL:              "/group/folder/",
+			expectStatus:         http.StatusOK,
+			expectBodyStartsWith: "<!doctype html>",
+		},
+		{
+			name:                 "do not allow directory traversal (backslash - windows separator)",
+			givenPrefix:          "/",
+			givenRoot:            "../_fixture/",
+			whenURL:              `/group/..\\middleware/basic_auth.go`,
+			expectStatus:         http.StatusNotFound,
+			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
+		},
+		{
+			name:                 "do not allow directory traversal (slash - unix separator)",
+			givenPrefix:          "/",
+			givenRoot:            "../_fixture/",
+			whenURL:              `/group/../middleware/basic_auth.go`,
+			expectStatus:         http.StatusNotFound,
+			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+			group := "/group"
+			if tc.givenGroup != "" {
+				group = tc.givenGroup
+			}
+			g := e.Group(group)
+			g.Static(tc.givenPrefix, tc.givenRoot)
+
+			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+			assert.Equal(t, tc.expectStatus, rec.Code)
+			body := rec.Body.String()
+			if tc.expectBodyStartsWith != "" {
+				assert.True(t, strings.HasPrefix(body, tc.expectBodyStartsWith))
+			} else {
+				assert.Equal(t, "", body)
+			}
+
+			if tc.expectHeaderLocation != "" {
+				assert.Equal(t, tc.expectHeaderLocation, rec.Header().Get(echo.HeaderLocation))
+			} else {
+				_, ok := rec.Result().Header[echo.HeaderLocation]
+				assert.False(t, ok)
 			}
 		})
 	}

@@ -503,9 +503,15 @@ func (common) static(prefix, root string, get func(string, HandlerFunc, ...Middl
 		}
 		return c.File(name)
 	}
-	get(prefix, h)
-	if prefix == "/" {
-		return get(prefix+"*", h)
+	// Handle added routes based on trailing slash:
+	// 	/prefix  => exact route "/prefix" + any route "/prefix/*"
+	// 	/prefix/ => only any route "/prefix/*"
+	if prefix != "" {
+		if prefix[len(prefix)-1] == '/' {
+			// Only add any route for intentional trailing slash
+			return get(prefix+"*", h)
+		}
+		get(prefix, h)
 	}
 	return get(prefix+"/*", h)
 }

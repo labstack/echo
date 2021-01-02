@@ -115,10 +115,43 @@ func TestEchoStatic(t *testing.T) {
 			expectBodyStartsWith: "",
 		},
 		{
+			name:                 "Prefixed directory 404 (request URL without slash)",
+			givenPrefix:          "/folder/", // trailing slash will intentionally not match "/folder"
+			givenRoot:            "_fixture",
+			whenURL:              "/folder", // no trailing slash
+			expectStatus:         http.StatusNotFound,
+			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
+		},
+		{
+			name:                 "Prefixed directory redirect (without slash redirect to slash)",
+			givenPrefix:          "/folder", // no trailing slash shall match /folder and /folder/*
+			givenRoot:            "_fixture",
+			whenURL:              "/folder", // no trailing slash
+			expectStatus:         http.StatusMovedPermanently,
+			expectHeaderLocation: "/folder/",
+			expectBodyStartsWith: "",
+		},
+		{
 			name:                 "Directory with index.html",
 			givenPrefix:          "/",
 			givenRoot:            "_fixture",
 			whenURL:              "/",
+			expectStatus:         http.StatusOK,
+			expectBodyStartsWith: "<!doctype html>",
+		},
+		{
+			name:                 "Prefixed directory with index.html (prefix ending with slash)",
+			givenPrefix:          "/assets/",
+			givenRoot:            "_fixture",
+			whenURL:              "/assets/",
+			expectStatus:         http.StatusOK,
+			expectBodyStartsWith: "<!doctype html>",
+		},
+		{
+			name:                 "Prefixed directory with index.html (prefix ending without slash)",
+			givenPrefix:          "/assets",
+			givenRoot:            "_fixture",
+			whenURL:              "/assets/",
 			expectStatus:         http.StatusOK,
 			expectBodyStartsWith: "<!doctype html>",
 		},
