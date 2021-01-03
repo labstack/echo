@@ -19,6 +19,13 @@ type (
 		// Optional. Default value []string{"*"}.
 		AllowOrigins []string `yaml:"allow_origins"`
 
+		// AllowOriginFunc is a custom function to validate the origin. It takes the
+		// origin as an argument and returns true if allowed or false otherwise. If
+		// an error is returned, it is returned by the handler. If this option is
+		// set, AllowOrigins is ignored.
+		// Optional.
+		AllowOriginFunc func(origin string) (bool, error) `yaml:"allow_origin_func"`
+
 		// AllowMethods defines a list methods allowed when accessing the resource.
 		// This is used in response to a preflight request.
 		// Optional. Default value DefaultCORSConfig.AllowMethods.
@@ -113,38 +120,48 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 				return c.NoContent(http.StatusNoContent)
 			}
 
-			// Check allowed origins
-			for _, o := range config.AllowOrigins {
-				if o == "*" && config.AllowCredentials {
+			if config.AllowOriginFunc != nil {
+				allowed, err := config.AllowOriginFunc(origin)
+				if err != nil {
+					return err
+				}
+				if allowed {
 					allowOrigin = origin
-					break
 				}
-				if o == "*" || o == origin {
-					allowOrigin = o
-					break
-				}
-				if matchSubdomain(origin, o) {
-					allowOrigin = origin
-					break
-				}
-			}
-
-			// Check allowed origin patterns
-			for _, re := range allowOriginPatterns {
-				if allowOrigin == "" {
-					didx := strings.Index(origin, "://")
-					if didx == -1 {
-						continue
-					}
-					domAuth := origin[didx+3:]
-					// to avoid regex cost by invalid long domain
-					if len(domAuth) > 253 {
-						break
-					}
-
-					if match, _ := regexp.MatchString(re, origin); match {
+			} else {
+				// Check allowed origins
+				for _, o := range config.AllowOrigins {
+					if o == "*" && config.AllowCredentials {
 						allowOrigin = origin
 						break
+					}
+					if o == "*" || o == origin {
+						allowOrigin = o
+						break
+					}
+					if matchSubdomain(origin, o) {
+						allowOrigin = origin
+						break
+					}
+				}
+
+				// Check allowed origin patterns
+				for _, re := range allowOriginPatterns {
+					if allowOrigin == "" {
+						didx := strings.Index(origin, "://")
+						if didx == -1 {
+							continue
+						}
+						domAuth := origin[didx+3:]
+						// to avoid regex cost by invalid long domain
+						if len(domAuth) > 253 {
+							break
+						}
+
+						if match, _ := regexp.MatchString(re, origin); match {
+							allowOrigin = origin
+							break
+						}
 					}
 				}
 			}

@@ -30,10 +30,8 @@ type (
 	}
 )
 
-// Bind implements the `Binder#Bind` function.
-func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
-	req := c.Request()
-
+// BindPathParams binds path params to bindable object
+func (b *DefaultBinder) BindPathParams(c Context, i interface{}) error {
 	names := c.ParamNames()
 	values := c.ParamValues()
 	params := map[string][]string{}
@@ -43,12 +41,28 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 	if err := b.bindData(i, params, "param"); err != nil {
 		return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
 	}
-	if err = b.bindData(i, c.QueryParams(), "query"); err != nil {
+	return nil
+}
+
+// BindQueryParams binds query params to bindable object
+func (b *DefaultBinder) BindQueryParams(c Context, i interface{}) error {
+	if err := b.bindData(i, c.QueryParams(), "query"); err != nil {
 		return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
 	}
+	return nil
+}
+
+// BindBody binds request body contents to bindable object
+// NB: then binding forms take note that this implementation uses standard library form parsing
+// which parses form data from BOTH URL and BODY if content type is not MIMEMultipartForm
+// See non-MIMEMultipartForm: https://golang.org/pkg/net/http/#Request.ParseForm
+// See MIMEMultipartForm: https://golang.org/pkg/net/http/#Request.ParseMultipartForm
+func (b *DefaultBinder) BindBody(c Context, i interface{}) (err error) {
+	req := c.Request()
 	if req.ContentLength == 0 {
 		return
 	}
+
 	ctype := req.Header.Get(HeaderContentType)
 	switch {
 	case strings.HasPrefix(ctype, MIMEApplicationJSON):
@@ -80,7 +94,26 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 	default:
 		return ErrUnsupportedMediaType
 	}
-	return
+	return nil
+}
+
+// Bind implements the `Binder#Bind` function.
+// Binding is done in following order: 1) path params; 2) query params; 3) request body. Each step COULD override previous
+// step binded values. For single source binding use their own methods BindBody, BindQueryParams, BindPathParams.
+func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
+	if err := b.BindPathParams(c, i); err != nil {
+		return err
+	}
+	// Issue #1670 - Query params are binded only for GET/DELETE and NOT for usual request with body (POST/PUT/PATCH)
+	// Reasoning here is that parameters in query and bind destination struct could have UNEXPECTED matches and results due that.
+	// i.e. is `&id=1&lang=en` from URL same as `{"id":100,"lang":"de"}` request body and which one should have priority when binding.
+	// This HTTP method check restores pre v4.1.11 behavior and avoids different problems when query is mixed with body
+	if c.Request().Method == http.MethodGet || c.Request().Method == http.MethodDelete {
+		if err = b.BindQueryParams(c, i); err != nil {
+			return err
+		}
+	}
+	return b.BindBody(c, i)
 }
 
 func (b *DefaultBinder) bindData(ptr interface{}, data map[string][]string, tag string) error {

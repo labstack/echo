@@ -3,10 +3,12 @@ package middleware
 import (
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/labstack/echo/v4"
@@ -21,6 +23,35 @@ func TestDecompress(t *testing.T) {
 
 	// Skip if no Content-Encoding header
 	h := Decompress()(func(c echo.Context) error {
+		c.Response().Write([]byte("test")) // For Content-Type sniffing
+		return nil
+	})
+	h(c)
+
+	assert := assert.New(t)
+	assert.Equal("test", rec.Body.String())
+
+	// Decompress
+	body := `{"name": "echo"}`
+	gz, _ := gzipString(body)
+	req = httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(gz)))
+	req.Header.Set(echo.HeaderContentEncoding, GZIPEncoding)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec)
+	h(c)
+	assert.Equal(GZIPEncoding, req.Header.Get(echo.HeaderContentEncoding))
+	b, err := ioutil.ReadAll(req.Body)
+	assert.NoError(err)
+	assert.Equal(body, string(b))
+}
+
+func TestDecompressDefaultConfig(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("test"))
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	h := DecompressWithConfig(DecompressConfig{})(func(c echo.Context) error {
 		c.Response().Write([]byte("test")) // For Content-Type sniffing
 		return nil
 	})
@@ -106,6 +137,36 @@ func TestDecompressSkipper(t *testing.T) {
 	reqBody, err := ioutil.ReadAll(c.Request().Body)
 	assert.NoError(t, err)
 	assert.Equal(t, body, string(reqBody))
+}
+
+type TestDecompressPoolWithError struct {
+}
+
+func (d *TestDecompressPoolWithError) gzipDecompressPool() sync.Pool {
+	return sync.Pool{
+		New: func() interface{} {
+			return errors.New("pool error")
+		},
+	}
+}
+
+func TestDecompressPoolError(t *testing.T) {
+	e := echo.New()
+	e.Use(DecompressWithConfig(DecompressConfig{
+		Skipper:            DefaultSkipper,
+		GzipDecompressPool: &TestDecompressPoolWithError{},
+	}))
+	body := `{"name": "echo"}`
+	req := httptest.NewRequest(http.MethodPost, "/echo", strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentEncoding, GZIPEncoding)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, GZIPEncoding, req.Header.Get(echo.HeaderContentEncoding))
+	reqBody, err := ioutil.ReadAll(c.Request().Body)
+	assert.NoError(t, err)
+	assert.Equal(t, body, string(reqBody))
+	assert.Equal(t, rec.Code, http.StatusInternalServerError)
 }
 
 func BenchmarkDecompress(b *testing.B) {

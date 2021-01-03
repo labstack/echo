@@ -3,10 +3,14 @@ package echo
 import (
 	"bytes"
 	stdContext "context"
+	"crypto/tls"
 	"errors"
+	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -59,45 +63,181 @@ func TestEcho(t *testing.T) {
 }
 
 func TestEchoStatic(t *testing.T) {
+	var testCases = []struct {
+		name                 string
+		givenPrefix          string
+		givenRoot            string
+		whenURL              string
+		expectStatus         int
+		expectHeaderLocation string
+		expectBodyStartsWith string
+	}{
+		{
+			name:                 "ok",
+			givenPrefix:          "/images",
+			givenRoot:            "_fixture/images",
+			whenURL:              "/images/walle.png",
+			expectStatus:         http.StatusOK,
+			expectBodyStartsWith: string([]byte{0x89, 0x50, 0x4e, 0x47}),
+		},
+		{
+			name:                 "No file",
+			givenPrefix:          "/images",
+			givenRoot:            "_fixture/scripts",
+			whenURL:              "/images/bolt.png",
+			expectStatus:         http.StatusNotFound,
+			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
+		},
+		{
+			name:                 "Directory",
+			givenPrefix:          "/images",
+			givenRoot:            "_fixture/images",
+			whenURL:              "/images/",
+			expectStatus:         http.StatusNotFound,
+			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
+		},
+		{
+			name:                 "Directory Redirect",
+			givenPrefix:          "/",
+			givenRoot:            "_fixture",
+			whenURL:              "/folder",
+			expectStatus:         http.StatusMovedPermanently,
+			expectHeaderLocation: "/folder/",
+			expectBodyStartsWith: "",
+		},
+		{
+			name:                 "Directory Redirect with non-root path",
+			givenPrefix:          "/static",
+			givenRoot:            "_fixture",
+			whenURL:              "/static",
+			expectStatus:         http.StatusMovedPermanently,
+			expectHeaderLocation: "/static/",
+			expectBodyStartsWith: "",
+		},
+		{
+			name:                 "Prefixed directory 404 (request URL without slash)",
+			givenPrefix:          "/folder/", // trailing slash will intentionally not match "/folder"
+			givenRoot:            "_fixture",
+			whenURL:              "/folder", // no trailing slash
+			expectStatus:         http.StatusNotFound,
+			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
+		},
+		{
+			name:                 "Prefixed directory redirect (without slash redirect to slash)",
+			givenPrefix:          "/folder", // no trailing slash shall match /folder and /folder/*
+			givenRoot:            "_fixture",
+			whenURL:              "/folder", // no trailing slash
+			expectStatus:         http.StatusMovedPermanently,
+			expectHeaderLocation: "/folder/",
+			expectBodyStartsWith: "",
+		},
+		{
+			name:                 "Directory with index.html",
+			givenPrefix:          "/",
+			givenRoot:            "_fixture",
+			whenURL:              "/",
+			expectStatus:         http.StatusOK,
+			expectBodyStartsWith: "<!doctype html>",
+		},
+		{
+			name:                 "Prefixed directory with index.html (prefix ending with slash)",
+			givenPrefix:          "/assets/",
+			givenRoot:            "_fixture",
+			whenURL:              "/assets/",
+			expectStatus:         http.StatusOK,
+			expectBodyStartsWith: "<!doctype html>",
+		},
+		{
+			name:                 "Prefixed directory with index.html (prefix ending without slash)",
+			givenPrefix:          "/assets",
+			givenRoot:            "_fixture",
+			whenURL:              "/assets/",
+			expectStatus:         http.StatusOK,
+			expectBodyStartsWith: "<!doctype html>",
+		},
+		{
+			name:                 "Sub-directory with index.html",
+			givenPrefix:          "/",
+			givenRoot:            "_fixture",
+			whenURL:              "/folder/",
+			expectStatus:         http.StatusOK,
+			expectBodyStartsWith: "<!doctype html>",
+		},
+		{
+			name:                 "do not allow directory traversal (backslash - windows separator)",
+			givenPrefix:          "/",
+			givenRoot:            "_fixture/",
+			whenURL:              `/..\\middleware/basic_auth.go`,
+			expectStatus:         http.StatusNotFound,
+			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
+		},
+		{
+			name:                 "do not allow directory traversal (slash - unix separator)",
+			givenPrefix:          "/",
+			givenRoot:            "_fixture/",
+			whenURL:              `/../middleware/basic_auth.go`,
+			expectStatus:         http.StatusNotFound,
+			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			e.Static(tc.givenPrefix, tc.givenRoot)
+			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+			assert.Equal(t, tc.expectStatus, rec.Code)
+			body := rec.Body.String()
+			if tc.expectBodyStartsWith != "" {
+				assert.True(t, strings.HasPrefix(body, tc.expectBodyStartsWith))
+			} else {
+				assert.Equal(t, "", body)
+			}
+
+			if tc.expectHeaderLocation != "" {
+				assert.Equal(t, tc.expectHeaderLocation, rec.Result().Header["Location"][0])
+			} else {
+				_, ok := rec.Result().Header["Location"]
+				assert.False(t, ok)
+			}
+		})
+	}
+}
+
+func TestEchoStaticRedirectIndex(t *testing.T) {
+	assert := assert.New(t)
 	e := New()
 
-	assert := assert.New(t)
+	// HandlerFunc
+	e.Static("/static", "_fixture")
 
-	// OK
-	e.Static("/images", "_fixture/images")
-	c, b := request(http.MethodGet, "/images/walle.png", e)
-	assert.Equal(http.StatusOK, c)
-	assert.NotEmpty(b)
+	errCh := make(chan error)
 
-	// No file
-	e.Static("/images", "_fixture/scripts")
-	c, _ = request(http.MethodGet, "/images/bolt.png", e)
-	assert.Equal(http.StatusNotFound, c)
+	go func() {
+		errCh <- e.Start("127.0.0.1:1323")
+	}()
 
-	// Directory
-	e.Static("/images", "_fixture/images")
-	c, _ = request(http.MethodGet, "/images/", e)
-	assert.Equal(http.StatusNotFound, c)
+	time.Sleep(200 * time.Millisecond)
 
-	// Directory Redirect
-	e.Static("/", "_fixture")
-	req := httptest.NewRequest(http.MethodGet, "/folder", nil)
-	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-	assert.Equal(http.StatusMovedPermanently, rec.Code)
-	assert.Equal("/folder/", rec.HeaderMap["Location"][0])
+	if resp, err := http.Get("http://127.0.0.1:1323/static"); err == nil {
+		defer resp.Body.Close()
+		assert.Equal(http.StatusOK, resp.StatusCode)
 
-	// Directory with index.html
-	e.Static("/", "_fixture")
-	c, r := request(http.MethodGet, "/", e)
-	assert.Equal(http.StatusOK, c)
-	assert.Equal(true, strings.HasPrefix(r, "<!doctype html>"))
+		if body, err := ioutil.ReadAll(resp.Body); err == nil {
+			assert.Equal(true, strings.HasPrefix(string(body), "<!doctype html>"))
+		} else {
+			assert.Fail(err.Error())
+		}
 
-	// Sub-directory with index.html
-	c, r = request(http.MethodGet, "/folder/", e)
-	assert.Equal(http.StatusOK, c)
-	assert.Equal(true, strings.HasPrefix(r, "<!doctype html>"))
+	} else {
+		assert.Fail(err.Error())
+	}
 
+	if err := e.Close(); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestEchoFile(t *testing.T) {
@@ -277,10 +417,12 @@ func TestEchoURL(t *testing.T) {
 	e := New()
 	static := func(Context) error { return nil }
 	getUser := func(Context) error { return nil }
+	getAny := func(Context) error { return nil }
 	getFile := func(Context) error { return nil }
 
 	e.GET("/static/file", static)
 	e.GET("/users/:id", getUser)
+	e.GET("/documents/*", getAny)
 	g := e.Group("/group")
 	g.GET("/users/:uid/files/:fid", getFile)
 
@@ -289,6 +431,9 @@ func TestEchoURL(t *testing.T) {
 	assert.Equal("/static/file", e.URL(static))
 	assert.Equal("/users/:id", e.URL(getUser))
 	assert.Equal("/users/1", e.URL(getUser, "1"))
+	assert.Equal("/users/1", e.URL(getUser, "1"))
+	assert.Equal("/documents/foo.txt", e.URL(getAny, "foo.txt"))
+	assert.Equal("/documents/*", e.URL(getAny))
 	assert.Equal("/group/users/1/files/:fid", e.URL(getFile, "1"))
 	assert.Equal("/group/users/1/files/1", e.URL(getFile, "1", "1"))
 }
@@ -418,26 +563,125 @@ func TestEchoContext(t *testing.T) {
 	e.ReleaseContext(c)
 }
 
-func TestEchoStart(t *testing.T) {
-	e := New()
-	go func() {
-		assert.NoError(t, e.Start(":0"))
-	}()
-	time.Sleep(200 * time.Millisecond)
+func waitForServerStart(e *Echo, errChan <-chan error, isTLS bool) error {
+	ctx, cancel := stdContext.WithTimeout(stdContext.Background(), 200*time.Millisecond)
+	defer cancel()
+
+	ticker := time.NewTicker(5 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+			var addr net.Addr
+			if isTLS {
+				addr = e.TLSListenerAddr()
+			} else {
+				addr = e.ListenerAddr()
+			}
+			if addr != nil && strings.Contains(addr.String(), ":") {
+				return nil // was started
+			}
+		case err := <-errChan:
+			if err == http.ErrServerClosed {
+				return nil
+			}
+			return err
+		}
+	}
 }
 
-func TestEchoStartTLS(t *testing.T) {
+func TestEchoStart(t *testing.T) {
 	e := New()
+	errChan := make(chan error)
+
 	go func() {
-		err := e.StartTLS(":0", "_fixture/certs/cert.pem", "_fixture/certs/key.pem")
-		// Prevent the test to fail after closing the servers
-		if err != http.ErrServerClosed {
-			assert.NoError(t, err)
+		err := e.Start(":0")
+		if err != nil {
+			errChan <- err
 		}
 	}()
-	time.Sleep(200 * time.Millisecond)
 
-	e.Close()
+	err := waitForServerStart(e, errChan, false)
+	assert.NoError(t, err)
+
+	assert.NoError(t, e.Close())
+}
+
+func TestEcho_StartTLS(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		addr        string
+		certFile    string
+		keyFile     string
+		expectError string
+	}{
+		{
+			name: "ok",
+			addr: ":0",
+		},
+		{
+			name:        "nok, invalid certFile",
+			addr:        ":0",
+			certFile:    "not existing",
+			expectError: "open not existing: no such file or directory",
+		},
+		{
+			name:        "nok, invalid keyFile",
+			addr:        ":0",
+			keyFile:     "not existing",
+			expectError: "open not existing: no such file or directory",
+		},
+		{
+			name:        "nok, failed to create cert out of certFile and keyFile",
+			addr:        ":0",
+			keyFile:     "_fixture/certs/cert.pem", // we are passing cert instead of key
+			expectError: "tls: found a certificate rather than a key in the PEM for the private key",
+		},
+		{
+			name:        "nok, invalid tls address",
+			addr:        "nope",
+			expectError: "listen tcp: address nope: missing port in address",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			errChan := make(chan error)
+
+			go func() {
+				certFile := "_fixture/certs/cert.pem"
+				if tc.certFile != "" {
+					certFile = tc.certFile
+				}
+				keyFile := "_fixture/certs/key.pem"
+				if tc.keyFile != "" {
+					keyFile = tc.keyFile
+				}
+
+				err := e.StartTLS(tc.addr, certFile, keyFile)
+				if err != nil {
+					errChan <- err
+				}
+			}()
+
+			err := waitForServerStart(e, errChan, true)
+			if tc.expectError != "" {
+				if _, ok := err.(*os.PathError); ok {
+					assert.Error(t, err) // error messages for unix and windows are different. so test only error type here
+				} else {
+					assert.EqualError(t, err, tc.expectError)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+
+			assert.NoError(t, e.Close())
+		})
+	}
 }
 
 func TestEchoStartTLSByteString(t *testing.T) {
@@ -490,47 +734,103 @@ func TestEchoStartTLSByteString(t *testing.T) {
 			e := New()
 			e.HideBanner = true
 
-			go func() {
-				err := e.StartTLS(":0", test.cert, test.key)
-				if test.expectedErr != nil {
-					require.EqualError(t, err, test.expectedErr.Error())
-				} else if err != http.ErrServerClosed { // Prevent the test to fail after closing the servers
-					require.NoError(t, err)
-				}
-			}()
-			time.Sleep(200 * time.Millisecond)
+			errChan := make(chan error, 0)
 
-			require.NoError(t, e.Close())
+			go func() {
+				errChan <- e.StartTLS(":0", test.cert, test.key)
+			}()
+
+			err := waitForServerStart(e, errChan, true)
+			if test.expectedErr != nil {
+				assert.EqualError(t, err, test.expectedErr.Error())
+			} else {
+				assert.NoError(t, err)
+			}
+
+			assert.NoError(t, e.Close())
 		})
 	}
 }
 
-func TestEchoStartAutoTLS(t *testing.T) {
-	e := New()
-	errChan := make(chan error, 0)
+func TestEcho_StartAutoTLS(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		addr        string
+		expectError string
+	}{
+		{
+			name: "ok",
+			addr: ":0",
+		},
+		{
+			name:        "nok, invalid address",
+			addr:        "nope",
+			expectError: "listen tcp: address nope: missing port in address",
+		},
+	}
 
-	go func() {
-		errChan <- e.StartAutoTLS(":0")
-	}()
-	time.Sleep(200 * time.Millisecond)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			errChan := make(chan error, 0)
 
-	select {
-	case err := <-errChan:
-		assert.NoError(t, err)
-	default:
-		assert.NoError(t, e.Close())
+			go func() {
+				errChan <- e.StartAutoTLS(tc.addr)
+			}()
+
+			err := waitForServerStart(e, errChan, true)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			assert.NoError(t, e.Close())
+		})
 	}
 }
 
-func TestEchoStartH2CServer(t *testing.T) {
-	e := New()
-	e.Debug = true
-	h2s := &http2.Server{}
+func TestEcho_StartH2CServer(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		addr        string
+		expectError string
+	}{
+		{
+			name: "ok",
+			addr: ":0",
+		},
+		{
+			name:        "nok, invalid address",
+			addr:        "nope",
+			expectError: "listen tcp: address nope: missing port in address",
+		},
+	}
 
-	go func() {
-		assert.NoError(t, e.StartH2CServer(":0", h2s))
-	}()
-	time.Sleep(200 * time.Millisecond)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			e.Debug = true
+			h2s := &http2.Server{}
+
+			errChan := make(chan error)
+			go func() {
+				err := e.StartH2CServer(tc.addr, h2s)
+				if err != nil {
+					errChan <- err
+				}
+			}()
+
+			err := waitForServerStart(e, errChan, false)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			assert.NoError(t, e.Close())
+		})
+	}
 }
 
 func testMethod(t *testing.T, method, path string, e *Echo) {
@@ -619,7 +919,8 @@ func TestEchoClose(t *testing.T) {
 		errCh <- e.Start(":0")
 	}()
 
-	time.Sleep(200 * time.Millisecond)
+	err := waitForServerStart(e, errCh, false)
+	assert.NoError(t, err)
 
 	if err := e.Close(); err != nil {
 		t.Fatal(err)
@@ -627,7 +928,7 @@ func TestEchoClose(t *testing.T) {
 
 	assert.NoError(t, e.Close())
 
-	err := <-errCh
+	err = <-errCh
 	assert.Equal(t, err.Error(), "http: Server closed")
 }
 
@@ -639,7 +940,8 @@ func TestEchoShutdown(t *testing.T) {
 		errCh <- e.Start(":0")
 	}()
 
-	time.Sleep(200 * time.Millisecond)
+	err := waitForServerStart(e, errCh, false)
+	assert.NoError(t, err)
 
 	if err := e.Close(); err != nil {
 		t.Fatal(err)
@@ -649,6 +951,209 @@ func TestEchoShutdown(t *testing.T) {
 	defer cancel()
 	assert.NoError(t, e.Shutdown(ctx))
 
-	err := <-errCh
+	err = <-errCh
 	assert.Equal(t, err.Error(), "http: Server closed")
+}
+
+var listenerNetworkTests = []struct {
+	test    string
+	network string
+	address string
+}{
+	{"tcp ipv4 address", "tcp", "127.0.0.1:1323"},
+	{"tcp ipv6 address", "tcp", "[::1]:1323"},
+	{"tcp4 ipv4 address", "tcp4", "127.0.0.1:1323"},
+	{"tcp6 ipv6 address", "tcp6", "[::1]:1323"},
+}
+
+func supportsIPv6() bool {
+	addrs, _ := net.InterfaceAddrs()
+	for _, addr := range addrs {
+		// Check if any interface has local IPv6 assigned
+		if strings.Contains(addr.String(), "::1") {
+			return true
+		}
+	}
+	return false
+}
+
+func TestEchoListenerNetwork(t *testing.T) {
+	hasIPv6 := supportsIPv6()
+	for _, tt := range listenerNetworkTests {
+		if !hasIPv6 && strings.Contains(tt.address, "::") {
+			t.Skip("Skipping testing IPv6 for " + tt.address + ", not available")
+			continue
+		}
+		t.Run(tt.test, func(t *testing.T) {
+			e := New()
+			e.ListenerNetwork = tt.network
+
+			// HandlerFunc
+			e.GET("/ok", func(c Context) error {
+				return c.String(http.StatusOK, "OK")
+			})
+
+			errCh := make(chan error)
+
+			go func() {
+				errCh <- e.Start(tt.address)
+			}()
+
+			err := waitForServerStart(e, errCh, false)
+			assert.NoError(t, err)
+
+			if resp, err := http.Get(fmt.Sprintf("http://%s/ok", tt.address)); err == nil {
+				defer resp.Body.Close()
+				assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+				if body, err := ioutil.ReadAll(resp.Body); err == nil {
+					assert.Equal(t, "OK", string(body))
+				} else {
+					assert.Fail(t, err.Error())
+				}
+
+			} else {
+				assert.Fail(t, err.Error())
+			}
+
+			if err := e.Close(); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestEchoListenerNetworkInvalid(t *testing.T) {
+	e := New()
+	e.ListenerNetwork = "unix"
+
+	// HandlerFunc
+	e.GET("/ok", func(c Context) error {
+		return c.String(http.StatusOK, "OK")
+	})
+
+	assert.Equal(t, ErrInvalidListenerNetwork, e.Start(":1323"))
+}
+
+func TestEchoReverse(t *testing.T) {
+	assert := assert.New(t)
+
+	e := New()
+	dummyHandler := func(Context) error { return nil }
+
+	e.GET("/static", dummyHandler).Name = "/static"
+	e.GET("/static/*", dummyHandler).Name = "/static/*"
+	e.GET("/params/:foo", dummyHandler).Name = "/params/:foo"
+	e.GET("/params/:foo/bar/:qux", dummyHandler).Name = "/params/:foo/bar/:qux"
+	e.GET("/params/:foo/bar/:qux/*", dummyHandler).Name = "/params/:foo/bar/:qux/*"
+
+	assert.Equal("/static", e.Reverse("/static"))
+	assert.Equal("/static", e.Reverse("/static", "missing param"))
+	assert.Equal("/static/*", e.Reverse("/static/*"))
+	assert.Equal("/static/foo.txt", e.Reverse("/static/*", "foo.txt"))
+
+	assert.Equal("/params/:foo", e.Reverse("/params/:foo"))
+	assert.Equal("/params/one", e.Reverse("/params/:foo", "one"))
+	assert.Equal("/params/:foo/bar/:qux", e.Reverse("/params/:foo/bar/:qux"))
+	assert.Equal("/params/one/bar/:qux", e.Reverse("/params/:foo/bar/:qux", "one"))
+	assert.Equal("/params/one/bar/two", e.Reverse("/params/:foo/bar/:qux", "one", "two"))
+	assert.Equal("/params/one/bar/two/three", e.Reverse("/params/:foo/bar/:qux/*", "one", "two", "three"))
+}
+
+func TestEcho_ListenerAddr(t *testing.T) {
+	e := New()
+
+	addr := e.ListenerAddr()
+	assert.Nil(t, addr)
+
+	errCh := make(chan error)
+	go func() {
+		errCh <- e.Start(":0")
+	}()
+
+	err := waitForServerStart(e, errCh, false)
+	assert.NoError(t, err)
+}
+
+func TestEcho_TLSListenerAddr(t *testing.T) {
+	cert, err := ioutil.ReadFile("_fixture/certs/cert.pem")
+	require.NoError(t, err)
+	key, err := ioutil.ReadFile("_fixture/certs/key.pem")
+	require.NoError(t, err)
+
+	e := New()
+
+	addr := e.TLSListenerAddr()
+	assert.Nil(t, addr)
+
+	errCh := make(chan error)
+	go func() {
+		errCh <- e.StartTLS(":0", cert, key)
+	}()
+
+	err = waitForServerStart(e, errCh, true)
+	assert.NoError(t, err)
+}
+
+func TestEcho_StartServer(t *testing.T) {
+	cert, err := ioutil.ReadFile("_fixture/certs/cert.pem")
+	require.NoError(t, err)
+	key, err := ioutil.ReadFile("_fixture/certs/key.pem")
+	require.NoError(t, err)
+	certs, err := tls.X509KeyPair(cert, key)
+	require.NoError(t, err)
+
+	var testCases = []struct {
+		name        string
+		addr        string
+		TLSConfig   *tls.Config
+		expectError string
+	}{
+		{
+			name: "ok",
+			addr: ":0",
+		},
+		{
+			name:      "ok, start with TLS",
+			addr:      ":0",
+			TLSConfig: &tls.Config{Certificates: []tls.Certificate{certs}},
+		},
+		{
+			name:        "nok, invalid address",
+			addr:        "nope",
+			expectError: "listen tcp: address nope: missing port in address",
+		},
+		{
+			name:        "nok, invalid tls address",
+			addr:        "nope",
+			TLSConfig:   &tls.Config{InsecureSkipVerify: true},
+			expectError: "listen tcp: address nope: missing port in address",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			e.Debug = true
+
+			server := new(http.Server)
+			server.Addr = tc.addr
+			if tc.TLSConfig != nil {
+				server.TLSConfig = tc.TLSConfig
+			}
+
+			errCh := make(chan error)
+			go func() {
+				errCh <- e.StartServer(server)
+			}()
+
+			err := waitForServerStart(e, errCh, tc.TLSConfig != nil)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.NoError(t, e.Close())
+		})
+	}
 }

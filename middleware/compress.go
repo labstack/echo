@@ -59,7 +59,7 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 		config.Level = DefaultGzipConfig.Level
 	}
 
-	pool := gzipPool(config)
+	pool := gzipCompressPool(config)
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -133,7 +133,7 @@ func (w *gzipResponseWriter) Push(target string, opts *http.PushOptions) error {
 	return http.ErrNotSupported
 }
 
-func gzipPool(config GzipConfig) sync.Pool {
+func gzipCompressPool(config GzipConfig) sync.Pool {
 	return sync.Pool{
 		New: func() interface{} {
 			w, err := gzip.NewWriterLevel(ioutil.Discard, config.Level)
