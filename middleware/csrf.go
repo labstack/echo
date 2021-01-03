@@ -57,6 +57,10 @@ type (
 		// Indicates if CSRF cookie is HTTP only.
 		// Optional. Default value false.
 		CookieHTTPOnly bool `yaml:"cookie_http_only"`
+
+		// Indicates SameSite mode of the CSRF cookie.
+		// Optional. Default value SameSiteDefaultMode.
+		CookieSameSite http.SameSite `yaml:"cookie_same_site"`
 	}
 
 	// csrfTokenExtractor defines a function that takes `echo.Context` and returns
@@ -67,12 +71,13 @@ type (
 var (
 	// DefaultCSRFConfig is the default CSRF middleware config.
 	DefaultCSRFConfig = CSRFConfig{
-		Skipper:      DefaultSkipper,
-		TokenLength:  32,
-		TokenLookup:  "header:" + echo.HeaderXCSRFToken,
-		ContextKey:   "csrf",
-		CookieName:   "_csrf",
-		CookieMaxAge: 86400,
+		Skipper:        DefaultSkipper,
+		TokenLength:    32,
+		TokenLookup:    "header:" + echo.HeaderXCSRFToken,
+		ContextKey:     "csrf",
+		CookieName:     "_csrf",
+		CookieMaxAge:   86400,
+		CookieSameSite: http.SameSiteDefaultMode,
 	}
 )
 
@@ -104,6 +109,9 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 	}
 	if config.CookieMaxAge == 0 {
 		config.CookieMaxAge = DefaultCSRFConfig.CookieMaxAge
+	}
+	if config.CookieSameSite == http.SameSiteNoneMode {
+		config.CookieSecure = true
 	}
 
 	// Initialize
@@ -156,6 +164,9 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 			}
 			if config.CookieDomain != "" {
 				cookie.Domain = config.CookieDomain
+			}
+			if config.CookieSameSite != http.SameSiteDefaultMode {
+				cookie.SameSite = config.CookieSameSite
 			}
 			cookie.Expires = time.Now().Add(time.Duration(config.CookieMaxAge) * time.Second)
 			cookie.Secure = config.CookieSecure
