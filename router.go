@@ -372,14 +372,14 @@ func (r *Router) Find(method, path string, c Context) {
 			if search == "" && (nn == nil || cn.parent == nil || cn.ppath != "") {
 				break
 			}
+			// Handle special case of trailing slash route with existing any route (see #1526)
+			if search == "" && path[len(path)-1] == '/' && cn.anyChildren != nil {
+				goto Any
+			}
 		}
 
 		// Attempt to go back up the tree on no matching prefix or no remaining search
 		if l != pl || search == "" {
-			// Handle special case of trailing slash route with existing any route (see #1526)
-			if path[len(path)-1] == '/' && cn.anyChildren != nil {
-				goto Any
-			}
 			if nn == nil { // Issue #1348
 				return // Not found
 			}
