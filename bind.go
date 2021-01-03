@@ -98,12 +98,20 @@ func (b *DefaultBinder) BindBody(c Context, i interface{}) (err error) {
 }
 
 // Bind implements the `Binder#Bind` function.
+// Binding is done in following order: 1) path params; 2) query params; 3) request body. Each step COULD override previous
+// step binded values. For single source binding use their own methods BindBody, BindQueryParams, BindPathParams.
 func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 	if err := b.BindPathParams(c, i); err != nil {
 		return err
 	}
-	if err = b.BindQueryParams(c, i); err != nil {
-		return err
+	// Issue #1670 - Query params are binded only for GET/DELETE and NOT for usual request with body (POST/PUT/PATCH)
+	// Reasoning here is that parameters in query and bind destination struct could have UNEXPECTED matches and results due that.
+	// i.e. is `&id=1&lang=en` from URL same as `{"id":100,"lang":"de"}` request body and which one should have priority when binding.
+	// This HTTP method check restores pre v4.1.11 behavior and avoids different problems when query is mixed with body
+	if c.Request().Method == http.MethodGet || c.Request().Method == http.MethodDelete {
+		if err = b.BindQueryParams(c, i); err != nil {
+			return err
+		}
 	}
 	return b.BindBody(c, i)
 }
