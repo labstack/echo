@@ -146,7 +146,7 @@ func TestCSRFWithSameSiteModeNone(t *testing.T) {
 	c := e.NewContext(req, rec)
 
 	csrf := CSRFWithConfig(CSRFConfig{
-		CookieSameSite: http.SameSiteNoneMode,
+		CookieSameSite: SameSiteNoneMode,
 	})
 
 	h := csrf(func(c echo.Context) error {
