@@ -515,20 +515,6 @@ func TestBindSetFields(t *testing.T) {
 	}
 }
 
-func BenchmarkBindbindData(b *testing.B) {
-	b.ReportAllocs()
-	assert := assert.New(b)
-	ts := new(bindTestStruct)
-	binder := new(DefaultBinder)
-	var err error
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		err = binder.bindData(ts, values, "form")
-	}
-	assert.NoError(err)
-	assertBindTestStruct(assert, ts)
-}
-
 func BenchmarkBindbindDataWithTags(b *testing.B) {
 	b.ReportAllocs()
 	assert := assert.New(b)
