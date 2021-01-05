@@ -53,6 +53,7 @@ import (
 		* duration
 		* BindUnmarshaler() interface
 		* UnixTime() - converts unix time (integer) to time.Time
+		* UnixTimeNano() - converts unix time with nano second precision (integer) to time.Time
 		* CustomFunc() - callback function for your custom conversion logic. Signature `func(values []string) []error`
 */
 
@@ -1158,29 +1159,54 @@ func (b *ValueBinder) durations(sourceParam string, values []string, dest *[]tim
 }
 
 // UnixTime binds parameter to time.Time variable (in local Time corresponding to the given Unix time).
-// NB: value larger than 2147483647 (max int32, 2038-01-19T03:14:07Z) is interpreted as UnixNano (unix time with nanosecond precision)
-// where value last 9 characters (e.g. `999999999`) are nano seconds and everything before them are seconds part.
 //
-// This means following limitation:
-// 0 - 2147483647 is parsed in range of 1970-01-01T00:00:00.000000000+00:00 to 2038-01-19T03:14:07Z
-// 2147483648 - ... is parsed in range of 1970-01-01T00:00:02.147483648Z to ...
+// Example: 1609180603 bind to 2020-12-28T18:36:43.000000000+00:00
+//
+// Note:
+//  * time.Time{} (param is empty) and time.Unix(0,0) (param = "0") are not equal
 func (b *ValueBinder) UnixTime(sourceParam string, dest *time.Time) *ValueBinder {
-	return b.unixTime(sourceParam, dest, false)
+	return b.unixTime(sourceParam, dest, false, false)
 }
 
 // MustUnixTime requires parameter value to exist to be bind to time.Duration variable  (in local Time corresponding
 // to the given Unix time). Returns error when value does not exist.
-// NB: value larger than 2147483647 (max int32, 2038-01-19T03:14:07Z) is interpreted as UnixNano (unix time with nanosecond precision)
-// where value last 9 characters (e.g. `999999999`) are nano seconds and everything before them are seconds part.
 //
-// This means following limitation:
-// 0 - 2147483647 is parsed in range of 1970-01-01T00:00:00.000000000+00:00 to 2038-01-19T03:14:07Z
-// 2147483648 - ... is parsed in range of 1970-01-01T00:00:02.147483648Z to ...
+// Example: 1609180603 bind to 2020-12-28T18:36:43.000000000+00:00
+//
+// Note:
+//  * time.Time{} (param is empty) and time.Unix(0,0) (param = "0") are not equal
 func (b *ValueBinder) MustUnixTime(sourceParam string, dest *time.Time) *ValueBinder {
-	return b.unixTime(sourceParam, dest, true)
+	return b.unixTime(sourceParam, dest, true, false)
 }
 
-func (b *ValueBinder) unixTime(sourceParam string, dest *time.Time, valueMustExist bool) *ValueBinder {
+// UnixTimeNano binds parameter to time.Time variable (in local Time corresponding to the given Unix time in nano second precision).
+//
+// Example: 1609180603123456789 binds to 2020-12-28T18:36:43.123456789+00:00
+// Example:          1000000000 binds to 1970-01-01T00:00:01.000000000+00:00
+// Example:           999999999 binds to 1970-01-01T00:00:00.999999999+00:00
+//
+// Note:
+//  * time.Time{} (param is empty) and time.Unix(0,0) (param = "0") are not equal
+//  * Javascript's Number type only has about 53 bits of precision (Number.MAX_SAFE_INTEGER = 9007199254740991). Compare it to 1609180603123456789 in example.
+func (b *ValueBinder) UnixTimeNano(sourceParam string, dest *time.Time) *ValueBinder {
+	return b.unixTime(sourceParam, dest, false, true)
+}
+
+// MustUnixTimeNano requires parameter value to exist to be bind to time.Duration variable  (in local Time corresponding
+// to the given Unix time value in nano second precision). Returns error when value does not exist.
+//
+// Example: 1609180603123456789 binds to 2020-12-28T18:36:43.123456789+00:00
+// Example:          1000000000 binds to 1970-01-01T00:00:01.000000000+00:00
+// Example:           999999999 binds to 1970-01-01T00:00:00.999999999+00:00
+//
+// Note:
+//  * time.Time{} (param is empty) and time.Unix(0,0) (param = "0") are not equal
+//  * Javascript's Number type only has about 53 bits of precision (Number.MAX_SAFE_INTEGER = 9007199254740991). Compare it to 1609180603123456789 in example.
+func (b *ValueBinder) MustUnixTimeNano(sourceParam string, dest *time.Time) *ValueBinder {
+	return b.unixTime(sourceParam, dest, true, true)
+}
+
+func (b *ValueBinder) unixTime(sourceParam string, dest *time.Time, valueMustExist bool, isNano bool) *ValueBinder {
 	if b.failFast && b.errors != nil {
 		return b
 	}
@@ -1199,10 +1225,10 @@ func (b *ValueBinder) unixTime(sourceParam string, dest *time.Time, valueMustExi
 		return b
 	}
 
-	if n <= 2147483647 {
-		*dest = time.Unix(n, 0)
-	} else {
+	if isNano {
 		*dest = time.Unix(0, n)
+	} else {
+		*dest = time.Unix(n, 0)
 	}
 	return b
 }

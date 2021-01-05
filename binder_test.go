@@ -2434,10 +2434,7 @@ func TestBindWithDelimiter_invalidType(t *testing.T) {
 }
 
 func TestValueBinder_UnixTime(t *testing.T) {
-	exampleTime, _ := time.Parse(time.RFC3339, "2020-12-28T18:36:43+00:00")                   // => 1609180603
-	exampleTimeNano, _ := time.Parse(time.RFC3339Nano, "2020-12-28T18:36:43.123456789+00:00") // => 1609180603123456789
-	// 61123456789 = 61 seconds + 123456789 nano seconds
-	exampleTimeNanoShort, _ := time.Parse(time.RFC3339Nano, "1970-01-01T00:01:01.123456789+00:00")
+	exampleTime, _ := time.Parse(time.RFC3339, "2020-12-28T18:36:43+00:00") // => 1609180603
 	var testCases = []struct {
 		name            string
 		givenFailFast   bool
@@ -2453,19 +2450,9 @@ func TestValueBinder_UnixTime(t *testing.T) {
 			expectValue: exampleTime,
 		},
 		{
-			name:        "ok, binds value, unix time in nano seconds",
-			whenURL:     "/search?param=1609180603123456789&param=1609180604",
-			expectValue: exampleTimeNano,
-		},
-		{
-			name:        "ok, binds value, unix time in nano seconds (short)",
-			whenURL:     "/search?param=61123456789&param=1609180604",
-			expectValue: exampleTimeNanoShort,
-		},
-		{
-			name:        "ok, binds value, unix time in MAX seconds (2147483647)",
-			whenURL:     "/search?param=2147483647&param=1609180604",
-			expectValue: time.Unix(2147483647, 0),
+			name:        "ok, binds value, unix time over int32 value",
+			whenURL:     "/search?param=2147483648&param=1609180604",
+			expectValue: time.Unix(2147483648, 0),
 		},
 		{
 			name:        "ok, params values empty, value is not changed",
@@ -2529,6 +2516,109 @@ func TestValueBinder_UnixTime(t *testing.T) {
 				err = b.MustUnixTime("param", &dest).BindError()
 			} else {
 				err = b.UnixTime("param", &dest).BindError()
+			}
+
+			assert.Equal(t, tc.expectValue.UnixNano(), dest.UnixNano())
+			assert.Equal(t, tc.expectValue.In(time.UTC), dest.In(time.UTC))
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValueBinder_UnixTimeNano(t *testing.T) {
+	exampleTime, _ := time.Parse(time.RFC3339, "2020-12-28T18:36:43.000000000+00:00")         // => 1609180603
+	exampleTimeNano, _ := time.Parse(time.RFC3339Nano, "2020-12-28T18:36:43.123456789+00:00") // => 1609180603123456789
+	exampleTimeNanoBelowSec, _ := time.Parse(time.RFC3339Nano, "1970-01-01T00:00:00.999999999+00:00")
+	var testCases = []struct {
+		name            string
+		givenFailFast   bool
+		givenBindErrors []error
+		whenURL         string
+		whenMust        bool
+		expectValue     time.Time
+		expectError     string
+	}{
+		{
+			name:        "ok, binds value, unix time in nano seconds (sec precision)",
+			whenURL:     "/search?param=1609180603000000000&param=1609180604",
+			expectValue: exampleTime,
+		},
+		{
+			name:        "ok, binds value, unix time in nano seconds",
+			whenURL:     "/search?param=1609180603123456789&param=1609180604",
+			expectValue: exampleTimeNano,
+		},
+		{
+			name:        "ok, binds value, unix time in nano seconds (below 1 sec)",
+			whenURL:     "/search?param=999999999&param=1609180604",
+			expectValue: exampleTimeNanoBelowSec,
+		},
+		{
+			name:        "ok, params values empty, value is not changed",
+			whenURL:     "/search?nope=1",
+			expectValue: time.Time{},
+		},
+		{
+			name:          "nok, previous errors fail fast without binding value",
+			givenFailFast: true,
+			whenURL:       "/search?param=1&param=100",
+			expectValue:   time.Time{},
+			expectError:   "previous error",
+		},
+		{
+			name:        "nok, conversion fails, value is not changed",
+			whenURL:     "/search?param=nope&param=100",
+			expectValue: time.Time{},
+			expectError: "code=400, message=failed to bind field value to Time, internal=strconv.ParseInt: parsing \"nope\": invalid syntax, field=param",
+		},
+		{
+			name:        "ok (must), binds value",
+			whenMust:    true,
+			whenURL:     "/search?param=1609180603000000000&param=1609180604",
+			expectValue: exampleTime,
+		},
+		{
+			name:        "ok (must), params values empty, returns error, value is not changed",
+			whenMust:    true,
+			whenURL:     "/search?nope=1",
+			expectValue: time.Time{},
+			expectError: "code=400, message=required field value is empty, field=param",
+		},
+		{
+			name:          "nok (must), previous errors fail fast without binding value",
+			givenFailFast: true,
+			whenMust:      true,
+			whenURL:       "/search?param=1&param=100",
+			expectValue:   time.Time{},
+			expectError:   "previous error",
+		},
+		{
+			name:        "nok (must), conversion fails, value is not changed",
+			whenMust:    true,
+			whenURL:     "/search?param=nope&param=100",
+			expectValue: time.Time{},
+			expectError: "code=400, message=failed to bind field value to Time, internal=strconv.ParseInt: parsing \"nope\": invalid syntax, field=param",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			c := createTestContext(tc.whenURL, nil, nil)
+			b := QueryParamsBinder(c).FailFast(tc.givenFailFast)
+			if tc.givenFailFast {
+				b.errors = []error{errors.New("previous error")}
+			}
+
+			dest := time.Time{}
+			var err error
+			if tc.whenMust {
+				err = b.MustUnixTimeNano("param", &dest).BindError()
+			} else {
+				err = b.UnixTimeNano("param", &dest).BindError()
 			}
 
 			assert.Equal(t, tc.expectValue.UnixNano(), dest.UnixNano())
