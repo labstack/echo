@@ -116,12 +116,13 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 	return b.BindBody(c, i)
 }
 
-func (b *DefaultBinder) bindData(ptr interface{}, data map[string][]string, tag string) error {
-	if ptr == nil || len(data) == 0 {
+// bindData will bind data ONLY fields in destination struct that have EXPLICIT tag
+func (b *DefaultBinder) bindData(destination interface{}, data map[string][]string, tag string) error {
+	if destination == nil || len(data) == 0 {
 		return nil
 	}
-	typ := reflect.TypeOf(ptr).Elem()
-	val := reflect.ValueOf(ptr).Elem()
+	typ := reflect.TypeOf(destination).Elem()
+	val := reflect.ValueOf(destination).Elem()
 
 	// Map
 	if typ.Kind() == reflect.Map {
@@ -146,14 +147,15 @@ func (b *DefaultBinder) bindData(ptr interface{}, data map[string][]string, tag 
 		inputFieldName := typeField.Tag.Get(tag)
 
 		if inputFieldName == "" {
-			inputFieldName = typeField.Name
-			// If tag is nil, we inspect if the field is a struct.
+			// If tag is nil, we inspect if the field is a not BindUnmarshaler struct and try to bind data into it (might contains fields with tags).
+			// structs that implement BindUnmarshaler are binded only when they have explicit tag
 			if _, ok := structField.Addr().Interface().(BindUnmarshaler); !ok && structFieldKind == reflect.Struct {
 				if err := b.bindData(structField.Addr().Interface(), data, tag); err != nil {
 					return err
 				}
-				continue
 			}
+			// does not have explicit tag and is not an ordinary struct - so move to next field
+			continue
 		}
 
 		inputValue, exists := data[inputFieldName]
