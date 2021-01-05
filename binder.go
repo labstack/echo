@@ -26,7 +26,7 @@ import (
 		* <Type>s("param", &destination) - (for slices) if parameter values exists then binds it to given destination of that type i.e Int64s(...).
 		* Must<Type>s("param", &destination) - (for slices) parameter value is required to exist, binds it to given destination of that type i.e MustInt64s(...).
 
-  for some slice types `BindWithDelimiter("param", &dest, ",")` supports slitting parameter values before type conversion is done
+  for some slice types `BindWithDelimiter("param", &dest, ",")` supports splitting parameter values before type conversion is done
   i.e. URL `/api/search?id=1,2,3&id=1` can be bind to `[]int64{1,2,3,1}`
 
 	`FailFast` flags binder to stop binding after first bind error during binder call chain. Enabled by default.
@@ -642,18 +642,6 @@ func (b *ValueBinder) MustByte(sourceParam string, dest *byte) *ValueBinder {
 	return b.uintValue(sourceParam, dest, 8, true)
 }
 
-//// Bytes binds parameter to slice of byte
-//// NB: this will bind multiple query params with (single) integer values i.e. `&b=12&b=10` to `[]byte{12, 10}
-//// this will not help you with `b=255254` => to `[]byte{255,254}` use CustomFunc or BindUnmarshaler for that
-//func (b *ValueBinder) Bytes(sourceParam string, dest *[]byte) *ValueBinder {
-//	return b.uintsValue(sourceParam, dest, false)
-//}
-//
-//// MustBytes requires parameter value to exist to be bind to byte slice variable. Returns error when value does not exist
-//func (b *ValueBinder) MustBytes(sourceParam string, dest *[]byte) *ValueBinder {
-//	return b.uintsValue(sourceParam, dest, true)
-//}
-
 // Uint binds parameter to uint variable
 func (b *ValueBinder) Uint(sourceParam string, dest *uint) *ValueBinder {
 	return b.uintValue(sourceParam, dest, 0, false)
@@ -1170,16 +1158,24 @@ func (b *ValueBinder) durations(sourceParam string, values []string, dest *[]tim
 }
 
 // UnixTime binds parameter to time.Time variable (in local Time corresponding to the given Unix time).
-// NB: value larger than 2147483647 is interpreted as UnixNano (unix time with nanosecond precision) where
-// value last 9 characters (e.g. `999999999`) are nano seconds and everything before them are seconds part.
+// NB: value larger than 2147483647 (max int32, 2038-01-19T03:14:07Z) is interpreted as UnixNano (unix time with nanosecond precision)
+// where value last 9 characters (e.g. `999999999`) are nano seconds and everything before them are seconds part.
+//
+// This means following limitation:
+// 0 - 2147483647 is parsed in range of 1970-01-01T00:00:00.000000000+00:00 to 2038-01-19T03:14:07Z
+// 2147483648 - ... is parsed in range of 1970-01-01T00:00:02.147483648Z to ...
 func (b *ValueBinder) UnixTime(sourceParam string, dest *time.Time) *ValueBinder {
 	return b.unixTime(sourceParam, dest, false)
 }
 
 // MustUnixTime requires parameter value to exist to be bind to time.Duration variable  (in local Time corresponding
 // to the given Unix time). Returns error when value does not exist.
-// NB: value larger than 2147483647 is interpreted as UnixNano (unix time with nanosecond precision) where
-// value last 9 characters (e.g. `999999999`) are nano seconds and everything before them are seconds part.
+// NB: value larger than 2147483647 (max int32, 2038-01-19T03:14:07Z) is interpreted as UnixNano (unix time with nanosecond precision)
+// where value last 9 characters (e.g. `999999999`) are nano seconds and everything before them are seconds part.
+//
+// This means following limitation:
+// 0 - 2147483647 is parsed in range of 1970-01-01T00:00:00.000000000+00:00 to 2038-01-19T03:14:07Z
+// 2147483648 - ... is parsed in range of 1970-01-01T00:00:02.147483648Z to ...
 func (b *ValueBinder) MustUnixTime(sourceParam string, dest *time.Time) *ValueBinder {
 	return b.unixTime(sourceParam, dest, true)
 }
