@@ -134,9 +134,6 @@ func TestRateLimiterWithConfig_defaultDenyHandler(t *testing.T) {
 			}
 			return id, nil
 		},
-		ErrorHandler: func(ctx echo.Context) error {
-			return ctx.JSON(http.StatusForbidden, nil)
-		},
 		Store: inMemoryStore,
 	})
 
@@ -217,7 +214,7 @@ func TestRateLimiterWithConfig_skipper(t *testing.T) {
 		skipped = true
 		return c.String(http.StatusOK, "test")
 	}
-	var inMemoryStore = NewRateLimiterMemoryStoreWithConfig(RateLimiterMemoryStoreConfig{Rate: 1, Burst: 3})
+	var inMemoryStore = NewRateLimiterMemoryStore(5)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Add(echo.HeaderXRealIP, "127.0.0.1")
