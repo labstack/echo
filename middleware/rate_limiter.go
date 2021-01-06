@@ -225,7 +225,6 @@ func (store *RateLimiterMemoryStore) Allow(identifier string) bool {
 	if !exists {
 		limiter = new(Visitor)
 		limiter.Limiter = rate.NewLimiter(store.rate, store.burst)
-		limiter.lastSeen = now()
 		store.visitors[identifier] = limiter
 	}
 	limiter.lastSeen = now()
