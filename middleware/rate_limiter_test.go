@@ -81,10 +81,10 @@ func TestRateLimiterWithConfig(t *testing.T) {
 			}
 			return id, nil
 		},
-		DenyHandler: func(ctx echo.Context) error {
+		DenyHandler: func(ctx echo.Context, identifier string) error {
 			return ctx.JSON(http.StatusForbidden, nil)
 		},
-		ErrorHandler: func(ctx echo.Context) error {
+		ErrorHandler: func(ctx echo.Context, err error) error {
 			return ctx.JSON(http.StatusBadRequest, nil)
 		},
 		Store: inMemoryStore,
@@ -209,9 +209,8 @@ func TestRateLimiterWithConfig_defaultConfig(t *testing.T) {
 func TestRateLimiterWithConfig_skipper(t *testing.T) {
 	e := echo.New()
 
-	var skipped bool
+	var beforeFuncRan bool
 	handler := func(c echo.Context) error {
-		skipped = true
 		return c.String(http.StatusOK, "test")
 	}
 	var inMemoryStore = NewRateLimiterMemoryStore(5)
@@ -227,6 +226,9 @@ func TestRateLimiterWithConfig_skipper(t *testing.T) {
 		Skipper: func(c echo.Context) bool {
 			return true
 		},
+		BeforeFunc: func(c echo.Context) {
+			beforeFuncRan = true
+		},
 		Store: inMemoryStore,
 		IdentifierExtractor: func(ctx echo.Context) (string, error) {
 			return "127.0.0.1", nil
@@ -235,7 +237,41 @@ func TestRateLimiterWithConfig_skipper(t *testing.T) {
 
 	_ = mw(handler)(c)
 
-	assert.Equal(t, true, skipped)
+	assert.Equal(t, false, beforeFuncRan)
+}
+
+func TestRateLimiterWithConfig_skipperNoSkip(t *testing.T) {
+	e := echo.New()
+
+	var beforeFuncRan bool
+	handler := func(c echo.Context) error {
+		return c.String(http.StatusOK, "test")
+	}
+	var inMemoryStore = NewRateLimiterMemoryStore(5)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Add(echo.HeaderXRealIP, "127.0.0.1")
+
+	rec := httptest.NewRecorder()
+
+	c := e.NewContext(req, rec)
+
+	mw := RateLimiterWithConfig(RateLimiterConfig{
+		Skipper: func(c echo.Context) bool {
+			return false
+		},
+		BeforeFunc: func(c echo.Context) {
+			beforeFuncRan = true
+		},
+		Store: inMemoryStore,
+		IdentifierExtractor: func(ctx echo.Context) (string, error) {
+			return "127.0.0.1", nil
+		},
+	})
+
+	_ = mw(handler)(c)
+
+	assert.Equal(t, true, beforeFuncRan)
 }
 
 func TestRateLimiterWithConfig_beforeFunc(t *testing.T) {

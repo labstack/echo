@@ -25,14 +25,22 @@ type (
 		// IdentifierExtractor uses echo.Context to extract the identifier for a visitor
 		IdentifierExtractor Extractor
 		// Store defines a store for the rate limiter
-		Store        RateLimiterStore
-		ErrorHandler ErrorHandler
-		DenyHandler  ErrorHandler
+		Store RateLimiterStore
+		// ErrorHandler provides a handler to be called when IdentifierExtractor returns a non-nil error
+		ErrorHandler func(context echo.Context, err error) error
+		// DenyHandler provides a handler to be called when RateLimiter denies access
+		DenyHandler func(context echo.Context, identifier string) error
 	}
-	// ErrorHandler provides a handler for returning errors from the middleware
-	ErrorHandler func(context echo.Context) error
 	// Extractor is used to extract data from echo.Context
 	Extractor func(context echo.Context) (string, error)
+)
+
+// errors
+var (
+	// ErrRateLimitExceeded denotes an error raised when rate limit is exceeded
+	ErrRateLimitExceeded = echo.NewHTTPError(http.StatusTooManyRequests, "rate Limit Exceeded")
+	// ErrExtractorError denotes an error raised when extractor function is unsuccessful
+	ErrExtractorError = echo.NewHTTPError(http.StatusForbidden, "error occurred while extracting identifier")
 )
 
 // DefaultRateLimiterConfig defines default values for RateLimiterConfig
@@ -42,11 +50,15 @@ var DefaultRateLimiterConfig = RateLimiterConfig{
 		id := ctx.RealIP()
 		return id, nil
 	},
-	ErrorHandler: func(context echo.Context) error {
-		return context.JSON(http.StatusForbidden, nil)
+	ErrorHandler: func(context echo.Context, err error) error {
+		return &echo.HTTPError{
+			Code:     ErrExtractorError.Code,
+			Message:  ErrExtractorError.Message,
+			Internal: err,
+		}
 	},
-	DenyHandler: func(context echo.Context) error {
-		return context.JSON(http.StatusTooManyRequests, nil)
+	DenyHandler: func(context echo.Context, identifier string) error {
+		return ErrRateLimitExceeded
 	},
 }
 
@@ -121,11 +133,13 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 
 			identifier, err := config.IdentifierExtractor(c)
 			if err != nil {
-				return config.ErrorHandler(c)
+				c.Error(config.ErrorHandler(c, err))
+				return nil
 			}
 
 			if !config.Store.Allow(identifier) {
-				return config.DenyHandler(c)
+				c.Error(config.DenyHandler(c, identifier))
+				return nil
 			}
 			return next(c)
 		}
