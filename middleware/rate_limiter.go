@@ -183,6 +183,14 @@ NewRateLimiterMemoryStoreWithConfig returns an instance of RateLimiterMemoryStor
 with the provided configuration. Rate must be provided. Burst will be set to the value of
 the configured rate if not provided or set to 0.
 
+The build-in memory store is usually capable for modest loads. For higher loads other
+store implementations should be considered.
+
+Characteristics:
+* Concurrency above 100 parallel requests may causes measurable lock contention
+* A high number of different IP addresses (above 16000) may be impacted by the internally used Go map
+* A high number of requests from a single IP address may cause lock contention
+
 Example:
 
 	limiterStore := middleware.NewRateLimiterMemoryStoreWithConfig(
