@@ -750,6 +750,47 @@ func TestRouterMatchAny(t *testing.T) {
 	assert.Equal(t, "joe", c.Param("*"))
 }
 
+// Issue #1739
+func TestRouterMatchAnyPrefixIssue(t *testing.T) {
+	e := New()
+	r := e.router
+
+	// Routes
+	r.Add(http.MethodGet, "/*", func(c Context) error {
+		c.Set("path", c.Path())
+		return nil
+	})
+	r.Add(http.MethodGet, "/users/*", func(c Context) error {
+		c.Set("path", c.Path())
+		return nil
+	})
+	c := e.NewContext(nil, nil).(*context)
+	r.Find(http.MethodGet, "/", c)
+	c.handler(c)
+	assert.Equal(t, "/*", c.Get("path"))
+	assert.Equal(t, "", c.Param("*"))
+
+	r.Find(http.MethodGet, "/users", c)
+	c.handler(c)
+	assert.Equal(t, "/*", c.Get("path"))
+	assert.Equal(t, "users", c.Param("*"))
+
+	r.Find(http.MethodGet, "/users/", c)
+	c.handler(c)
+	assert.Equal(t, "/users/*", c.Get("path"))
+	assert.Equal(t, "", c.Param("*"))
+
+	r.Find(http.MethodGet, "/users_prefix", c)
+	c.handler(c)
+	assert.Equal(t, "/*", c.Get("path"))
+	assert.Equal(t, "users_prefix", c.Param("*"))
+
+	r.Find(http.MethodGet, "/users_prefix/", c)
+	c.handler(c)
+	assert.Equal(t, "/*", c.Get("path"))
+	assert.Equal(t, "users_prefix/", c.Param("*"))
+}
+
 // TestRouterMatchAnySlash shall verify finding the best route
 // for any routes with trailing slash requests
 func TestRouterMatchAnySlash(t *testing.T) {

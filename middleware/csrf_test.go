@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -80,4 +81,60 @@ func TestCSRFTokenFromQuery(t *testing.T) {
 	_, err = csrfTokenFromQuery("invalid")(c)
 	assert.Error(t, err)
 	csrfTokenFromQuery("csrf")
+}
+
+func TestCSRFSetSameSiteMode(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	csrf := CSRFWithConfig(CSRFConfig{
+		CookieSameSite: http.SameSiteStrictMode,
+	})
+
+	h := csrf(func(c echo.Context) error {
+		return c.String(http.StatusOK, "test")
+	})
+
+	r := h(c)
+	assert.NoError(t, r)
+	assert.Regexp(t, "SameSite=Strict", rec.Header()["Set-Cookie"])
+}
+
+func TestCSRFWithoutSameSiteMode(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	csrf := CSRFWithConfig(CSRFConfig{})
+
+	h := csrf(func(c echo.Context) error {
+		return c.String(http.StatusOK, "test")
+	})
+
+	r := h(c)
+	assert.NoError(t, r)
+	assert.NotRegexp(t, "SameSite=", rec.Header()["Set-Cookie"])
+}
+
+func TestCSRFWithSameSiteDefaultMode(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	csrf := CSRFWithConfig(CSRFConfig{
+		CookieSameSite: http.SameSiteDefaultMode,
+	})
+
+	h := csrf(func(c echo.Context) error {
+		return c.String(http.StatusOK, "test")
+	})
+
+	r := h(c)
+	assert.NoError(t, r)
+	fmt.Println(rec.Header()["Set-Cookie"])
+	assert.NotRegexp(t, "SameSite=", rec.Header()["Set-Cookie"])
 }

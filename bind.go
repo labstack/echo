@@ -98,22 +98,31 @@ func (b *DefaultBinder) BindBody(c Context, i interface{}) (err error) {
 }
 
 // Bind implements the `Binder#Bind` function.
+// Binding is done in following order: 1) path params; 2) query params; 3) request body. Each step COULD override previous
+// step binded values. For single source binding use their own methods BindBody, BindQueryParams, BindPathParams.
 func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 	if err := b.BindPathParams(c, i); err != nil {
 		return err
 	}
-	if err = b.BindQueryParams(c, i); err != nil {
-		return err
+	// Issue #1670 - Query params are binded only for GET/DELETE and NOT for usual request with body (POST/PUT/PATCH)
+	// Reasoning here is that parameters in query and bind destination struct could have UNEXPECTED matches and results due that.
+	// i.e. is `&id=1&lang=en` from URL same as `{"id":100,"lang":"de"}` request body and which one should have priority when binding.
+	// This HTTP method check restores pre v4.1.11 behavior and avoids different problems when query is mixed with body
+	if c.Request().Method == http.MethodGet || c.Request().Method == http.MethodDelete {
+		if err = b.BindQueryParams(c, i); err != nil {
+			return err
+		}
 	}
 	return b.BindBody(c, i)
 }
 
-func (b *DefaultBinder) bindData(ptr interface{}, data map[string][]string, tag string) error {
-	if ptr == nil || len(data) == 0 {
+// bindData will bind data ONLY fields in destination struct that have EXPLICIT tag
+func (b *DefaultBinder) bindData(destination interface{}, data map[string][]string, tag string) error {
+	if destination == nil || len(data) == 0 {
 		return nil
 	}
-	typ := reflect.TypeOf(ptr).Elem()
-	val := reflect.ValueOf(ptr).Elem()
+	typ := reflect.TypeOf(destination).Elem()
+	val := reflect.ValueOf(destination).Elem()
 
 	// Map
 	if typ.Kind() == reflect.Map {
@@ -138,14 +147,15 @@ func (b *DefaultBinder) bindData(ptr interface{}, data map[string][]string, tag 
 		inputFieldName := typeField.Tag.Get(tag)
 
 		if inputFieldName == "" {
-			inputFieldName = typeField.Name
-			// If tag is nil, we inspect if the field is a struct.
+			// If tag is nil, we inspect if the field is a not BindUnmarshaler struct and try to bind data into it (might contains fields with tags).
+			// structs that implement BindUnmarshaler are binded only when they have explicit tag
 			if _, ok := structField.Addr().Interface().(BindUnmarshaler); !ok && structFieldKind == reflect.Struct {
 				if err := b.bindData(structField.Addr().Interface(), data, tag); err != nil {
 					return err
 				}
-				continue
 			}
+			// does not have explicit tag and is not an ordinary struct - so move to next field
+			continue
 		}
 
 		inputValue, exists := data[inputFieldName]
