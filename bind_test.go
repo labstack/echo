@@ -160,6 +160,31 @@ var values = map[string][]string{
 	"ST":      {"bar"},
 }
 
+func TestToMultipleFields(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(http.MethodGet, "/?id=1&ID=2", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	type Root struct {
+		ID     int64 `query:"id"`
+		Child2 struct {
+			ID int64
+		}
+		Child1 struct {
+			ID int64 `query:"id"`
+		}
+	}
+
+	u := new(Root)
+	err := c.Bind(u)
+	if assert.NoError(t, err) {
+		assert.Equal(t, int64(1), u.ID)        // perfectly reasonable
+		assert.Equal(t, int64(1), u.Child1.ID) // untagged struct containing tagged field gets filled (by tag)
+		assert.Equal(t, int64(0), u.Child2.ID) // untagged struct containing untagged field should not be bind
+	}
+}
+
 func TestBindJSON(t *testing.T) {
 	assert := assert.New(t)
 	testBindOkay(assert, strings.NewReader(userJSON), MIMEApplicationJSON)
@@ -238,10 +263,13 @@ func TestBindUnmarshalParam(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	result := struct {
-		T  Timestamp   `query:"ts"`
-		TA []Timestamp `query:"ta"`
-		SA StringArray `query:"sa"`
-		ST Struct
+		T         Timestamp   `query:"ts"`
+		TA        []Timestamp `query:"ta"`
+		SA        StringArray `query:"sa"`
+		ST        Struct
+		StWithTag struct {
+			Foo string `query:"st"`
+		}
 	}{}
 	err := c.Bind(&result)
 	ts := Timestamp(time.Date(2016, 12, 6, 19, 9, 5, 0, time.UTC))
@@ -252,7 +280,8 @@ func TestBindUnmarshalParam(t *testing.T) {
 		assert.Equal(ts, result.T)
 		assert.Equal(StringArray([]string{"one", "two", "three"}), result.SA)
 		assert.Equal([]Timestamp{ts, ts}, result.TA)
-		assert.Equal(Struct{"baz"}, result.ST)
+		assert.Equal(Struct{""}, result.ST)       // child struct does not have a field with matching tag
+		assert.Equal("baz", result.StWithTag.Foo) // child struct has field with matching tag
 	}
 }
 
@@ -274,7 +303,7 @@ func TestBindUnmarshalText(t *testing.T) {
 		assert.Equal(t, ts, result.T)
 		assert.Equal(t, StringArray([]string{"one", "two", "three"}), result.SA)
 		assert.Equal(t, []time.Time{ts, ts}, result.TA)
-		assert.Equal(t, Struct{"baz"}, result.ST)
+		assert.Equal(t, Struct{""}, result.ST) // field in child struct does not have tag
 	}
 }
 
@@ -323,11 +352,27 @@ func TestBindUnsupportedMediaType(t *testing.T) {
 }
 
 func TestBindbindData(t *testing.T) {
-	assert := assert.New(t)
+	a := assert.New(t)
 	ts := new(bindTestStruct)
 	b := new(DefaultBinder)
-	b.bindData(ts, values, "form")
-	assertBindTestStruct(assert, ts)
+	err := b.bindData(ts, values, "form")
+	a.NoError(err)
+
+	a.Equal(0, ts.I)
+	a.Equal(int8(0), ts.I8)
+	a.Equal(int16(0), ts.I16)
+	a.Equal(int32(0), ts.I32)
+	a.Equal(int64(0), ts.I64)
+	a.Equal(uint(0), ts.UI)
+	a.Equal(uint8(0), ts.UI8)
+	a.Equal(uint16(0), ts.UI16)
+	a.Equal(uint32(0), ts.UI32)
+	a.Equal(uint64(0), ts.UI64)
+	a.Equal(false, ts.B)
+	a.Equal(float32(0), ts.F32)
+	a.Equal(float64(0), ts.F64)
+	a.Equal("", ts.S)
+	a.Equal("", ts.cantSet)
 }
 
 func TestBindParam(t *testing.T) {
@@ -470,20 +515,6 @@ func TestBindSetFields(t *testing.T) {
 	}
 }
 
-func BenchmarkBindbindData(b *testing.B) {
-	b.ReportAllocs()
-	assert := assert.New(b)
-	ts := new(bindTestStruct)
-	binder := new(DefaultBinder)
-	var err error
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		err = binder.bindData(ts, values, "form")
-	}
-	assert.NoError(err)
-	assertBindTestStruct(assert, ts)
-}
-
 func BenchmarkBindbindDataWithTags(b *testing.B) {
 	b.ReportAllocs()
 	assert := assert.New(b)
@@ -559,9 +590,10 @@ func TestDefaultBinder_BindToStructFromMixedSources(t *testing.T) {
 	// binding is done in steps and one source could overwrite previous source binded data
 	// these tests are to document this behaviour and detect further possible regressions when bind implementation is changed
 
-	type Node struct {
-		ID   int    `json:"id"`
-		Node string `json:"node"`
+	type Opts struct {
+		ID   int    `json:"id" form:"id" query:"id"`
+		Node string `json:"node" form:"node" query:"node" param:"node"`
+		Lang string
 	}
 
 	var testCases = []struct {
@@ -575,41 +607,77 @@ func TestDefaultBinder_BindToStructFromMixedSources(t *testing.T) {
 		expectError      string
 	}{
 		{
-			name:         "ok, POST bind to struct with: path param + query param + empty body",
+			name:         "ok, POST bind to struct with: path param + query param + body",
 			givenMethod:  http.MethodPost,
 			givenURL:     "/api/real_node/endpoint?node=xxx",
 			givenContent: strings.NewReader(`{"id": 1}`),
-			expect:       &Node{ID: 1, Node: "xxx"}, // in current implementation query params has higher priority than path params
+			expect:       &Opts{ID: 1, Node: "node_from_path"}, // query params are not used, node is filled from path
 		},
 		{
-			name:         "ok, POST bind to struct with: path param + empty body",
+			name:         "ok, PUT bind to struct with: path param + query param + body",
+			givenMethod:  http.MethodPut,
+			givenURL:     "/api/real_node/endpoint?node=xxx",
+			givenContent: strings.NewReader(`{"id": 1}`),
+			expect:       &Opts{ID: 1, Node: "node_from_path"}, // query params are not used
+		},
+		{
+			name:         "ok, GET bind to struct with: path param + query param + body",
+			givenMethod:  http.MethodGet,
+			givenURL:     "/api/real_node/endpoint?node=xxx",
+			givenContent: strings.NewReader(`{"id": 1}`),
+			expect:       &Opts{ID: 1, Node: "xxx"}, // query overwrites previous path value
+		},
+		{
+			name:         "ok, GET bind to struct with: path param + query param + body",
+			givenMethod:  http.MethodGet,
+			givenURL:     "/api/real_node/endpoint?node=xxx",
+			givenContent: strings.NewReader(`{"id": 1, "node": "zzz"}`),
+			expect:       &Opts{ID: 1, Node: "zzz"}, // body is binded last and overwrites previous (path,query) values
+		},
+		{
+			name:         "ok, DELETE bind to struct with: path param + query param + body",
+			givenMethod:  http.MethodDelete,
+			givenURL:     "/api/real_node/endpoint?node=xxx",
+			givenContent: strings.NewReader(`{"id": 1, "node": "zzz"}`),
+			expect:       &Opts{ID: 1, Node: "zzz"}, // for DELETE body is binded after query params
+		},
+		{
+			name:         "ok, POST bind to struct with: path param + body",
 			givenMethod:  http.MethodPost,
 			givenURL:     "/api/real_node/endpoint",
 			givenContent: strings.NewReader(`{"id": 1}`),
-			expect:       &Node{ID: 1, Node: "real_node"},
+			expect:       &Opts{ID: 1, Node: "node_from_path"},
 		},
 		{
 			name:         "ok, POST bind to struct with path + query + body = body has priority",
 			givenMethod:  http.MethodPost,
 			givenURL:     "/api/real_node/endpoint?node=xxx",
 			givenContent: strings.NewReader(`{"id": 1, "node": "zzz"}`),
-			expect:       &Node{ID: 1, Node: "zzz"}, // field value from content has higher priority
+			expect:       &Opts{ID: 1, Node: "zzz"}, // field value from content has higher priority
 		},
 		{
 			name:         "nok, POST body bind failure",
 			givenMethod:  http.MethodPost,
 			givenURL:     "/api/real_node/endpoint?node=xxx",
 			givenContent: strings.NewReader(`{`),
-			expect:       &Node{ID: 0, Node: "xxx"}, // query binding has already modified bind target
+			expect:       &Opts{ID: 0, Node: "node_from_path"}, // query binding has already modified bind target
 			expectError:  "code=400, message=unexpected EOF, internal=unexpected EOF",
+		},
+		{
+			name:         "nok, GET with body bind failure when types are not convertible",
+			givenMethod:  http.MethodGet,
+			givenURL:     "/api/real_node/endpoint?id=nope",
+			givenContent: strings.NewReader(`{"id": 1, "node": "zzz"}`),
+			expect:       &Opts{ID: 0, Node: "node_from_path"}, // path params binding has already modified bind target
+			expectError:  "code=400, message=strconv.ParseInt: parsing \"nope\": invalid syntax, internal=strconv.ParseInt: parsing \"nope\": invalid syntax",
 		},
 		{
 			name:         "nok, GET body bind failure - trying to bind json array to struct",
 			givenMethod:  http.MethodGet,
 			givenURL:     "/api/real_node/endpoint?node=xxx",
 			givenContent: strings.NewReader(`[{"id": 1}]`),
-			expect:       &Node{ID: 0, Node: "xxx"}, // query binding has already modified bind target
-			expectError:  "code=400, message=Unmarshal type error: expected=echo.Node, got=array, field=, offset=1, internal=json: cannot unmarshal array into Go value of type echo.Node",
+			expect:       &Opts{ID: 0, Node: "xxx"}, // query binding has already modified bind target
+			expectError:  "code=400, message=Unmarshal type error: expected=echo.Opts, got=array, field=, offset=1, internal=json: cannot unmarshal array into Go value of type echo.Opts",
 		},
 		{ // binding query params interferes with body. b.BindBody() should be used to bind only body to slice
 			name:             "nok, GET query params bind failure - trying to bind json array to slice",
@@ -617,17 +685,27 @@ func TestDefaultBinder_BindToStructFromMixedSources(t *testing.T) {
 			givenURL:         "/api/real_node/endpoint?node=xxx",
 			givenContent:     strings.NewReader(`[{"id": 1}]`),
 			whenNoPathParams: true,
-			whenBindTarget:   &[]Node{},
-			expect:           &[]Node{},
+			whenBindTarget:   &[]Opts{},
+			expect:           &[]Opts{},
 			expectError:      "code=400, message=binding element must be a struct, internal=binding element must be a struct",
+		},
+		{ // binding query params interferes with body. b.BindBody() should be used to bind only body to slice
+			name:             "ok, POST binding to slice should not be affected query params types",
+			givenMethod:      http.MethodPost,
+			givenURL:         "/api/real_node/endpoint?id=nope&node=xxx",
+			givenContent:     strings.NewReader(`[{"id": 1}]`),
+			whenNoPathParams: true,
+			whenBindTarget:   &[]Opts{},
+			expect:           &[]Opts{{ID: 1}},
+			expectError:      "",
 		},
 		{ // binding path params interferes with body. b.BindBody() should be used to bind only body to slice
 			name:           "nok, GET path params bind failure - trying to bind json array to slice",
 			givenMethod:    http.MethodGet,
 			givenURL:       "/api/real_node/endpoint?node=xxx",
 			givenContent:   strings.NewReader(`[{"id": 1}]`),
-			whenBindTarget: &[]Node{},
-			expect:         &[]Node{},
+			whenBindTarget: &[]Opts{},
+			expect:         &[]Opts{},
 			expectError:    "code=400, message=binding element must be a struct, internal=binding element must be a struct",
 		},
 		{
@@ -636,8 +714,8 @@ func TestDefaultBinder_BindToStructFromMixedSources(t *testing.T) {
 			givenURL:         "/api/real_node/endpoint",
 			givenContent:     strings.NewReader(`[{"id": 1}]`),
 			whenNoPathParams: true,
-			whenBindTarget:   &[]Node{},
-			expect:           &[]Node{{ID: 1, Node: ""}},
+			whenBindTarget:   &[]Opts{},
+			expect:           &[]Opts{{ID: 1, Node: ""}},
 			expectError:      "",
 		},
 	}
@@ -653,14 +731,14 @@ func TestDefaultBinder_BindToStructFromMixedSources(t *testing.T) {
 
 			if !tc.whenNoPathParams {
 				c.SetParamNames("node")
-				c.SetParamValues("real_node")
+				c.SetParamValues("node_from_path")
 			}
 
 			var bindTarget interface{}
 			if tc.whenBindTarget != nil {
 				bindTarget = tc.whenBindTarget
 			} else {
-				bindTarget = &Node{}
+				bindTarget = &Opts{}
 			}
 			b := new(DefaultBinder)
 
@@ -681,8 +759,8 @@ func TestDefaultBinder_BindBody(t *testing.T) {
 	// these tests are to document this behaviour and detect further possible regressions when bind implementation is changed
 
 	type Node struct {
-		ID   int    `json:"id" xml:"id"`
-		Node string `json:"node" xml:"node"`
+		ID   int    `json:"id" xml:"id" form:"id" query:"id"`
+		Node string `json:"node" xml:"node" form:"node" query:"node" param:"node"`
 	}
 	type Nodes struct {
 		Nodes []Node `xml:"node" form:"node"`
@@ -778,7 +856,7 @@ func TestDefaultBinder_BindBody(t *testing.T) {
 			expectError:      "code=400, message=Syntax error: line=1, error=XML syntax error on line 1: unexpected EOF, internal=XML syntax error on line 1: unexpected EOF",
 		},
 		{
-			name:             "ok, FORM POST bind to struct with: path + query + empty body",
+			name:             "ok, FORM POST bind to struct with: path + query + body",
 			givenURL:         "/api/real_node/endpoint?node=xxx",
 			givenMethod:      http.MethodPost,
 			givenContentType: MIMEApplicationForm,
