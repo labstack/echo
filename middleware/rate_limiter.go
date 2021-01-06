@@ -26,7 +26,7 @@ type (
 		IdentifierExtractor Extractor
 		// Store defines a store for the rate limiter
 		Store RateLimiterStore
-		// ErrorHandler provides a handler to be called when IdentifierExtractor returns a non-nil error
+		// ErrorHandler provides a handler to be called when IdentifierExtractor returns an error
 		ErrorHandler func(context echo.Context, err error) error
 		// DenyHandler provides a handler to be called when RateLimiter denies access
 		DenyHandler func(context echo.Context, identifier string) error
@@ -165,7 +165,7 @@ type (
 
 /*
 NewRateLimiterMemoryStore returns an instance of RateLimiterMemoryStore with
-the provided rate. Burst and ExpiresIn will be set to default values.
+the provided rate (as req/s). Burst and ExpiresIn will be set to default values.
 
 Example (with 20 requests/sec):
 
@@ -208,9 +208,9 @@ func NewRateLimiterMemoryStoreWithConfig(config RateLimiterMemoryStoreConfig) (s
 
 // RateLimiterMemoryStoreConfig represents configuration for RateLimiterMemoryStore
 type RateLimiterMemoryStoreConfig struct {
-	Rate      rate.Limit
-	Burst     int
-	ExpiresIn time.Duration
+	Rate      rate.Limit    // Rate of requests allowed to pass as req/s
+	Burst     int           // Burst additionally allows a number of requests to pass when rate limit is reached
+	ExpiresIn time.Duration // ExpiresIn is the duration after that a rate limiter is cleaned up
 }
 
 // DefaultRateLimiterMemoryStoreConfig provides default configuration values for RateLimiterMemoryStore
