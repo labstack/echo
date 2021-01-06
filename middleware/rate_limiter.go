@@ -38,9 +38,9 @@ type (
 // errors
 var (
 	// ErrRateLimitExceeded denotes an error raised when rate limit is exceeded
-	ErrRateLimitExceeded = echo.NewHTTPError(http.StatusTooManyRequests, "rate Limit Exceeded")
+	ErrRateLimitExceeded = echo.NewHTTPError(http.StatusTooManyRequests, "rate limit exceeded")
 	// ErrExtractorError denotes an error raised when extractor function is unsuccessful
-	ErrExtractorError = echo.NewHTTPError(http.StatusForbidden, "error occurred while extracting identifier")
+	ErrExtractorError = echo.NewHTTPError(http.StatusForbidden, "error while extracting identifier")
 )
 
 // DefaultRateLimiterConfig defines default values for RateLimiterConfig
@@ -94,10 +94,10 @@ RateLimiterWithConfig returns a rate limiting middleware
 			id := ctx.RealIP()
 			return id, nil
 		},
-		ErrorHandler: func(context echo.Context) error {
+		ErrorHandler: func(context echo.Context, err error) error {
 			return context.JSON(http.StatusTooManyRequests, nil)
 		},
-		DenyHandler: func(context echo.Context) error {
+		DenyHandler: func(context echo.Context, identifier string) error {
 			return context.JSON(http.StatusForbidden, nil)
 		},
 	}
