@@ -81,7 +81,7 @@ func TestRateLimiterWithConfig(t *testing.T) {
 			}
 			return id, nil
 		},
-		DenyHandler: func(ctx echo.Context, identifier string) error {
+		DenyHandler: func(ctx echo.Context, identifier string, err error) error {
 			return ctx.JSON(http.StatusForbidden, nil)
 		},
 		ErrorHandler: func(ctx echo.Context, err error) error {
@@ -343,7 +343,7 @@ func TestRateLimiterMemoryStore_Allow(t *testing.T) {
 		now = func() time.Time {
 			return time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC).Add(time.Duration(i) * 220 * time.Millisecond)
 		}
-		allowed := inMemoryStore.Allow(tc.id)
+		allowed, _ := inMemoryStore.Allow(tc.id)
 		assert.Equal(t, tc.allowed, allowed)
 	}
 }

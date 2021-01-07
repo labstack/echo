@@ -13,7 +13,7 @@ type (
 	// RateLimiterStore is the interface to be implemented by custom stores.
 	RateLimiterStore interface {
 		// Stores for the rate limiter have to implement the Allow method
-		Allow(identifier string) bool
+		Allow(identifier string) (bool, error)
 	}
 )
 
@@ -29,7 +29,7 @@ type (
 		// ErrorHandler provides a handler to be called when IdentifierExtractor returns a non-nil error
 		ErrorHandler func(context echo.Context, err error) error
 		// DenyHandler provides a handler to be called when RateLimiter denies access
-		DenyHandler func(context echo.Context, identifier string) error
+		DenyHandler func(context echo.Context, identifier string, err error) error
 	}
 	// Extractor is used to extract data from echo.Context
 	Extractor func(context echo.Context) (string, error)
@@ -57,8 +57,12 @@ var DefaultRateLimiterConfig = RateLimiterConfig{
 			Internal: err,
 		}
 	},
-	DenyHandler: func(context echo.Context, identifier string) error {
-		return ErrRateLimitExceeded
+	DenyHandler: func(context echo.Context, identifier string, err error) error {
+		return &echo.HTTPError{
+			Code:     ErrRateLimitExceeded.Code,
+			Message:  ErrRateLimitExceeded.Message,
+			Internal: err,
+		}
 	},
 }
 
@@ -137,8 +141,8 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 				return nil
 			}
 
-			if !config.Store.Allow(identifier) {
-				c.Error(config.DenyHandler(c, identifier))
+			if allow, err := config.Store.Allow(identifier); !allow {
+				c.Error(config.DenyHandler(c, identifier, err))
 				return nil
 			}
 			return next(c)
@@ -219,7 +223,7 @@ var DefaultRateLimiterMemoryStoreConfig = RateLimiterMemoryStoreConfig{
 }
 
 // Allow implements RateLimiterStore.Allow
-func (store *RateLimiterMemoryStore) Allow(identifier string) bool {
+func (store *RateLimiterMemoryStore) Allow(identifier string) (bool, error) {
 	store.mutex.Lock()
 	limiter, exists := store.visitors[identifier]
 	if !exists {
@@ -232,7 +236,7 @@ func (store *RateLimiterMemoryStore) Allow(identifier string) bool {
 		store.cleanupStaleVisitors()
 	}
 	store.mutex.Unlock()
-	return limiter.AllowN(now(), 1)
+	return limiter.AllowN(now(), 1), nil
 }
 
 /*
