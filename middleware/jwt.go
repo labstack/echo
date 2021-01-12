@@ -29,12 +29,12 @@ type (
 		// ErrorHandlerWithContext is almost identical to ErrorHandler, but it's passed the current context.
 		ErrorHandlerWithContext JWTErrorHandlerWithContext
 
-		// Signing key to validate token. Used as fallback if SigningKeys has length 0.
-		// Required. This or SigningKeys.
+		// Signing key to validate token. Used as fallback if KeyFunc is nil or SigningKeys has length 0.
+		// Required. This or SigningKeys or KeyFunc.
 		SigningKey interface{}
 
-		// Map of signing keys to validate token with kid field usage.
-		// Required. This or SigningKey.
+		// Map of signing keys to validate token with kid field usage. Used as fallback if KeyFunc is nil.
+		// Required. This or SigningKey or KeyFunc.
 		SigningKeys map[string]interface{}
 
 		// Signing method, used to check token signing method.
@@ -64,7 +64,12 @@ type (
 		// Optional. Default value "Bearer".
 		AuthScheme string
 
-		keyFunc jwt.Keyfunc
+		// KeyFunc defines a function to supply the key for a token verification.
+		// When a user-defined KeyFunc is provided, SigningKey, SigningKeys, and SigningMethod are ignored.
+		// Required. This or SigningKey or SigningKeys.
+		// Default to an internal implementation verifying the signing algorithm and selecting the proper key.
+		// See: `jwt.Keyfunc`
+		KeyFunc jwt.Keyfunc
 	}
 
 	// JWTSuccessHandler defines a function which is executed for a valid token.
@@ -99,6 +104,7 @@ var (
 		TokenLookup:   "header:" + echo.HeaderAuthorization,
 		AuthScheme:    "Bearer",
 		Claims:        jwt.MapClaims{},
+		KeyFunc:       nil,
 	}
 )
 
@@ -123,7 +129,7 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	if config.Skipper == nil {
 		config.Skipper = DefaultJWTConfig.Skipper
 	}
-	if config.SigningKey == nil && len(config.SigningKeys) == 0 {
+	if config.SigningKey == nil && len(config.SigningKeys) == 0 && config.KeyFunc == nil {
 		panic("echo: jwt middleware requires signing key")
 	}
 	if config.SigningMethod == "" {
@@ -141,21 +147,8 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	if config.AuthScheme == "" {
 		config.AuthScheme = DefaultJWTConfig.AuthScheme
 	}
-	config.keyFunc = func(t *jwt.Token) (interface{}, error) {
-		// Check the signing method
-		if t.Method.Alg() != config.SigningMethod {
-			return nil, fmt.Errorf("unexpected jwt signing method=%v", t.Header["alg"])
-		}
-		if len(config.SigningKeys) > 0 {
-			if kid, ok := t.Header["kid"].(string); ok {
-				if key, ok := config.SigningKeys[kid]; ok {
-					return key, nil
-				}
-			}
-			return nil, fmt.Errorf("unexpected jwt key id=%v", t.Header["kid"])
-		}
-
-		return config.SigningKey, nil
+	if config.KeyFunc == nil {
+		config.KeyFunc = config.defaultKeyFunc
 	}
 
 	// Initialize
@@ -196,11 +189,11 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 			token := new(jwt.Token)
 			// Issue #647, #656
 			if _, ok := config.Claims.(jwt.MapClaims); ok {
-				token, err = jwt.Parse(auth, config.keyFunc)
+				token, err = jwt.Parse(auth, config.KeyFunc)
 			} else {
 				t := reflect.ValueOf(config.Claims).Type().Elem()
 				claims := reflect.New(t).Interface().(jwt.Claims)
-				token, err = jwt.ParseWithClaims(auth, claims, config.keyFunc)
+				token, err = jwt.ParseWithClaims(auth, claims, config.KeyFunc)
 			}
 			if err == nil && token.Valid {
 				// Store user information from token into context.
@@ -223,6 +216,24 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 			}
 		}
 	}
+}
+
+// defaultKeyFunc returns a signing key of the given token.
+func (config *JWTConfig) defaultKeyFunc(t *jwt.Token) (interface{}, error) {
+	// Check the signing method
+	if t.Method.Alg() != config.SigningMethod {
+		return nil, fmt.Errorf("unexpected jwt signing method=%v", t.Header["alg"])
+	}
+	if len(config.SigningKeys) > 0 {
+		if kid, ok := t.Header["kid"].(string); ok {
+			if key, ok := config.SigningKeys[kid]; ok {
+				return key, nil
+			}
+		}
+		return nil, fmt.Errorf("unexpected jwt key id=%v", t.Header["kid"])
+	}
+
+	return config.SigningKey, nil
 }
 
 // jwtFromHeader returns a `jwtExtractor` that extracts token from the request header.
