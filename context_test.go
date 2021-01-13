@@ -13,14 +13,14 @@ import (
 
 	"strings"
 
-	gcontext "github.com/labstack/echo/context"
+	gcontext "github.com/trafficstars/echo/context"
 
 	"net/url"
 
 	"encoding/xml"
 
-	"github.com/labstack/echo/test"
 	"github.com/stretchr/testify/assert"
+	"github.com/trafficstars/echo/test"
 )
 
 type (
@@ -353,7 +353,7 @@ func TestContextRedirect(t *testing.T) {
 
 func TestStdContextEmbedded(t *testing.T) {
 	c := new(context)
-	sc := gcontext.WithValue(nil, "key", "val")
+	sc := gcontext.WithValue(gcontext.Background(), "key", "val")
 	c.SetStdContext(sc)
 	assert.NotEqual(t, c, c.StdContext())
 }

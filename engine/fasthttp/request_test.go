@@ -7,8 +7,8 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/labstack/echo/engine/test"
 	"github.com/labstack/gommon/log"
+	"github.com/trafficstars/echo/engine/test"
 	fast "github.com/valyala/fasthttp"
 )
 
@@ -23,7 +23,7 @@ func (a fakeAddr) String() string {
 
 func TestRequest(t *testing.T) {
 	ctx := new(fast.RequestCtx)
-	url, _ := url.Parse("http://github.com/labstack/echo")
+	url, _ := url.Parse("http://github.com/trafficstars/echo")
 	ctx.Init(&fast.Request{}, fakeAddr{addr: "127.0.0.1"}, nil)
 	ctx.Request.Read(bufio.NewReader(bytes.NewBufferString(test.MultipartRequest)))
 	ctx.Request.SetRequestURI(url.String())

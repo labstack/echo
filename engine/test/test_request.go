@@ -5,11 +5,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/labstack/echo/engine"
 	"github.com/stretchr/testify/assert"
+	"github.com/trafficstars/echo/engine"
 )
 
-const MultipartRequest = `POST /labstack/echo HTTP/1.1
+const MultipartRequest = `POST /trafficstars/echo HTTP/1.1
 Host: github.com
 Connection: close
 User-Agent: Mozilla/5.0 (Macintosh; U; Intel Mac OS X; de-de) AppleWebKit/523.10.3 (KHTML, like Gecko) Version/3.0.4 Safari/523.10
@@ -43,9 +43,9 @@ func RequestTest(t *testing.T, request engine.Request) {
 	assert.Equal(t, "github.com", request.Host())
 	request.SetHost("labstack.com")
 	assert.Equal(t, "labstack.com", request.Host())
-	request.SetURI("/labstack/echo?token=54321")
-	assert.Equal(t, "/labstack/echo?token=54321", request.URI())
-	assert.Equal(t, "/labstack/echo", request.URL().Path())
+	request.SetURI("/trafficstars/echo?token=54321")
+	assert.Equal(t, "/trafficstars/echo?token=54321", request.URI())
+	assert.Equal(t, "/trafficstars/echo", request.URL().Path())
 	assert.Equal(t, "https://github.com/", request.Referer())
 	assert.Equal(t, "192.168.1.1", request.Header().Get("X-Real-IP"))
 	assert.Equal(t, "http", request.Scheme())

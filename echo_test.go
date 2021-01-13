@@ -12,9 +12,9 @@ import (
 
 	"errors"
 
-	"github.com/labstack/echo/test"
 	"github.com/labstack/gommon/log"
 	"github.com/stretchr/testify/assert"
+	"github.com/trafficstars/echo/test"
 )
 
 type (

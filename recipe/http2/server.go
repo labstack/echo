@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/labstack/echo"
-	"github.com/labstack/echo/engine"
-	"github.com/labstack/echo/engine/standard"
+	"github.com/trafficstars/echo"
+	"github.com/trafficstars/echo/engine"
+	"github.com/trafficstars/echo/engine/standard"
 )
 
 func request(c echo.Context) error {

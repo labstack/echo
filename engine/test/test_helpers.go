@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/labstack/echo/engine"
 	"github.com/stretchr/testify/assert"
+	"github.com/trafficstars/echo/engine"
 )
 
 func HeaderTest(t *testing.T, header engine.Header) {

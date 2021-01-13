@@ -36,7 +36,7 @@ title = "Index"
 ### Installation
 
 ```sh
-$ go get -u github.com/labstack/echo
+$ go get -u github.com/trafficstars/echo
 ```
 
 ### Hello, World!
@@ -48,8 +48,8 @@ package main
 
 import (
 	"net/http"
-	"github.com/labstack/echo"
-	"github.com/labstack/echo/engine/standard"
+	"github.com/trafficstars/echo"
+	"github.com/trafficstars/echo/engine/standard"
 )
 
 func main() {
@@ -262,7 +262,7 @@ Middleware | Description
 ### Need help?
 
 - [Hop on to chat](https://gitter.im/labstack/echo)
-- [Open an issue](https://github.com/labstack/echo/issues/new)
+- [Open an issue](https://github.com/trafficstars/echo/issues/new)
 
 ## Support Echo
 
@@ -284,8 +284,8 @@ Middleware | Description
 
 - [Vishal Rana](https://github.com/vishr) - Author
 - [Nitin Rana](https://github.com/nr17) - Consultant
-- [Contributors](https://github.com/labstack/echo/graphs/contributors)
+- [Contributors](https://github.com/trafficstars/echo/graphs/contributors)
 
 ## License
 
-[MIT](https://github.com/labstack/echo/blob/master/LICENSE)
+[MIT](https://github.com/trafficstars/echo/blob/master/LICENSE)

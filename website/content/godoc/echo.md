@@ -4,5 +4,5 @@ title = "echo"
   name = "echo"
   parent = "godoc"
   weight = 1
-  url = "https://godoc.org/github.com/labstack/echo"
+  url = "https://godoc.org/github.com/trafficstars/echo"
 +++

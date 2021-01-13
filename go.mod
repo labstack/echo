@@ -18,7 +18,6 @@ require (
 	github.com/golang/protobuf v0.0.0-20161012205335-98fa35717058 // indirect
 	github.com/gorilla/websocket v1.0.1-0.20161019023340-5df680c89f2a
 	github.com/kardianos/osext v0.0.0-20160811001526-c2c54e542fb7 // indirect
-	github.com/labstack/echo v2.2.0+incompatible
 	github.com/labstack/gommon v0.0.4-0.20160925181133-f3b1a1b3bd47
 	github.com/mattn/go-colorable v0.0.7-0.20160930084157-6c903ff4aa50 // indirect
 	github.com/mattn/go-isatty v0.0.0-20160806122752-66b8e73f3f5c

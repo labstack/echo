@@ -39,7 +39,7 @@ package handler
 import (
 	"net/http"
 
-	"github.com/labstack/echo"
+	"github.com/trafficstars/echo"
 )
 
 type (
@@ -81,8 +81,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/labstack/echo"
-	"github.com/labstack/echo/engine/standard"
+	"github.com/trafficstars/echo"
+	"github.com/trafficstars/echo/engine/standard"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -158,4 +158,4 @@ req, err := http.NewRequest(echo.POST, "/?"+q.Encode(), nil)
 
 *TBD*
 
-You can looking to built-in middleware [test cases](https://github.com/labstack/echo/tree/master/middleware).
+You can looking to built-in middleware [test cases](https://github.com/trafficstars/echo/tree/master/middleware).

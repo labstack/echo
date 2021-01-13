@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/labstack/echo"
-	"github.com/labstack/echo/test"
 	"github.com/stretchr/testify/assert"
+	"github.com/trafficstars/echo"
+	"github.com/trafficstars/echo/test"
 )
 
 func TestBodyLimit(t *testing.T) {

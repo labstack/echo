@@ -1,6 +1,6 @@
-# [Echo v2](http://echo.labstack.com/v2) [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/labstack/echo) [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/labstack/echo/master/LICENSE) [![Build Status](http://img.shields.io/travis/labstack/echo.svg?style=flat-square)](https://travis-ci.org/labstack/echo) [![Coverage Status](http://img.shields.io/coveralls/labstack/echo.svg?style=flat-square)](https://coveralls.io/r/labstack/echo) [![Join the chat at https://gitter.im/labstack/echo](https://img.shields.io/badge/gitter-join%20chat-brightgreen.svg?style=flat-square)](https://gitter.im/labstack/echo) [![Twitter](https://img.shields.io/badge/twitter-@labstack-55acee.svg?style=flat-square)](https://twitter.com/labstack)
+# [Echo v2](http://echo.labstack.com/v2) [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/trafficstars/echo) [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/labstack/echo/master/LICENSE) [![Build Status](http://img.shields.io/travis/labstack/echo.svg?style=flat-square)](https://travis-ci.org/labstack/echo) [![Coverage Status](http://img.shields.io/coveralls/labstack/echo.svg?style=flat-square)](https://coveralls.io/r/labstack/echo) [![Join the chat at https://gitter.im/labstack/echo](https://img.shields.io/badge/gitter-join%20chat-brightgreen.svg?style=flat-square)](https://gitter.im/labstack/echo) [![Twitter](https://img.shields.io/badge/twitter-@labstack-55acee.svg?style=flat-square)](https://twitter.com/labstack)
 
-## Don't forget to try the upcoming [v3](https://github.com/labstack/echo/tree/v3) tracked [here]( https://github.com/labstack/echo/issues/665)
+## Don't forget to try the upcoming [v3](https://github.com/trafficstars/echo/tree/v3) tracked [here]( https://github.com/trafficstars/echo/issues/665)
 
 #### Fast and unfancy HTTP server framework for Go (Golang). Up to 10x faster than the rest.
 
@@ -37,10 +37,10 @@
 Echo is developed and tested using Go `1.6.x` and `1.7.x`
 
 ```sh
-$ go get -u github.com/labstack/echo
+$ go get -u github.com/trafficstars/echo
 ```
 
-> Ideally, you should rely on a [package manager](https://github.com/avelino/awesome-go#package-management) like glide or govendor to use a specific [version](https://github.com/labstack/echo/releases) of Echo.
+> Ideally, you should rely on a [package manager](https://github.com/avelino/awesome-go#package-management) like glide or govendor to use a specific [version](https://github.com/trafficstars/echo/releases) of Echo.
 
 ### Hello, World!
 
@@ -51,8 +51,8 @@ package main
 
 import (
 	"net/http"
-	"github.com/labstack/echo"
-	"github.com/labstack/echo/engine/standard"
+	"github.com/trafficstars/echo"
+	"github.com/trafficstars/echo/engine/standard"
 )
 
 func main() {
@@ -292,7 +292,7 @@ Middleware | Description
 ### Need help?
 
 - [Hop on to chat](https://gitter.im/labstack/echo)
-- [Open an issue](https://github.com/labstack/echo/issues/new)
+- [Open an issue](https://github.com/trafficstars/echo/issues/new)
 
 ## Support Us
 
@@ -313,8 +313,8 @@ Middleware | Description
 ## Credits
 - [Vishal Rana](https://github.com/vishr) - Author
 - [Nitin Rana](https://github.com/nr17) - Consultant
-- [Contributors](https://github.com/labstack/echo/graphs/contributors)
+- [Contributors](https://github.com/trafficstars/echo/graphs/contributors)
 
 ## License
 
-[MIT](https://github.com/labstack/echo/blob/master/LICENSE)
+[MIT](https://github.com/trafficstars/echo/blob/master/LICENSE)

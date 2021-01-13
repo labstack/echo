@@ -32,8 +32,6 @@ github.com/klauspost/compress v1.8.2 h1:Bx0qjetmNjdFXASH02NSAREKpiaDwkO1DRZ3dV2K
 github.com/klauspost/compress v1.8.2/go.mod h1:RyIbtBH6LamlWaDj8nUwkbUhJ87Yi3uG0guNDohfE1A=
 github.com/klauspost/cpuid v1.2.1 h1:vJi+O/nMdFt0vqm8NZBI6wzALWdA2X+egi0ogNyrC/w=
 github.com/klauspost/cpuid v1.2.1/go.mod h1:Pj4uuM528wm8OyEC2QMXAi2YiTZ96dNQPGgoMS4s3ek=
-github.com/labstack/echo v2.2.0+incompatible h1:WHGirux72mcAqh0rDGCNqhMkIF2VxCJjFsrOuqi+5hk=
-github.com/labstack/echo v2.2.0+incompatible/go.mod h1:0INS7j/VjnFxD4E2wkz67b8cVwCLbBmJyDaka6Cmk1s=
 github.com/labstack/gommon v0.0.4-0.20160925181133-f3b1a1b3bd47 h1:x/Ms6Ye+tvnOz6TeSUCkkZ250WXG8vuJFOaYGZDE7mc=
 github.com/labstack/gommon v0.0.4-0.20160925181133-f3b1a1b3bd47/go.mod h1:/tj9csK2iPSBvn+3NLM9e52usepMtrd5ilFYA+wQNJ4=
 github.com/mattn/go-colorable v0.0.7-0.20160930084157-6c903ff4aa50 h1:+lj/MTidgAcsu6wyXg7By2rgbT5kVFT5GFKq/VZZwi4=

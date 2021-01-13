@@ -5,7 +5,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/labstack/echo"
+	"github.com/trafficstars/echo"
 )
 
 type (

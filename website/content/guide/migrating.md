@@ -14,7 +14,7 @@ description = "Migrating from Echo v1 to v2"
 - Good news, 85% of the API remains the same.
 - `Engine` interface to abstract `HTTP` server implementation, allowing
 us to use HTTP servers beyond Go standard library. It currently supports standard and [fasthttp](https://github.com/valyala/fasthttp) server.
-- Context, Request and Response are converted to interfaces. [More...](https://github.com/labstack/echo/issues/146)
+- Context, Request and Response are converted to interfaces. [More...](https://github.com/trafficstars/echo/issues/146)
 - Handler signature is changed to `func (c echo.Context) error`.
 - Dropped auto wrapping of handler and middleware to enforce compile time check.
 - APIs to run middleware before or after the router, which doesn't require `Echo#Hook` API now.
@@ -62,8 +62,8 @@ package main
 import (
 	"net/http"
 
-	"github.com/labstack/echo"
-	"github.com/labstack/echo/engine/standard"
+	"github.com/trafficstars/echo"
+	"github.com/trafficstars/echo/engine/standard"
 )
 
 // Standard middleware

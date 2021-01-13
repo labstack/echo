@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/labstack/echo"
 	"github.com/labstack/gommon/color"
 	isatty "github.com/mattn/go-isatty"
+	"github.com/trafficstars/echo"
 	"github.com/valyala/fasttemplate"
 )
 

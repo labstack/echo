@@ -8,9 +8,9 @@ Example:
 	import (
 	    "net/http"
 
-	    "github.com/labstack/echo"
-	    "github.com/labstack/echo/engine/standard"
-	    "github.com/labstack/echo/middleware"
+	    "github.com/trafficstars/echo"
+	    "github.com/trafficstars/echo/engine/standard"
+	    "github.com/trafficstars/echo/middleware"
 	)
 
 	// Handler
@@ -48,10 +48,10 @@ import (
 	"runtime"
 	"sync"
 
-	gcontext "github.com/labstack/echo/context"
-	"github.com/labstack/echo/engine"
-	"github.com/labstack/echo/log"
 	glog "github.com/labstack/gommon/log"
+	gcontext "github.com/trafficstars/echo/context"
+	"github.com/trafficstars/echo/engine"
+	"github.com/trafficstars/echo/log"
 )
 
 type (
