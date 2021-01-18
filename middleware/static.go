@@ -6,7 +6,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/labstack/echo"
+	"github.com/trafficstars/echo"
 )
 
 type (

@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/labstack/echo/engine"
+	"github.com/trafficstars/echo/engine"
 )
 
 type (

@@ -3,7 +3,7 @@ package middleware
 import (
 	"encoding/base64"
 
-	"github.com/labstack/echo"
+	"github.com/trafficstars/echo"
 )
 
 type (

@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/labstack/echo"
-	"github.com/labstack/echo/engine"
-	"github.com/labstack/echo/log"
 	glog "github.com/labstack/gommon/log"
+	"github.com/trafficstars/echo"
+	"github.com/trafficstars/echo/engine"
+	"github.com/trafficstars/echo/log"
 )
 
 type (

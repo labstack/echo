@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/labstack/echo"
-	"github.com/labstack/echo/test"
 	"github.com/labstack/gommon/random"
 	"github.com/stretchr/testify/assert"
+	"github.com/trafficstars/echo"
+	"github.com/trafficstars/echo/test"
 )
 
 func TestCSRF(t *testing.T) {

@@ -8,9 +8,9 @@ import (
 	"mime/multipart"
 	"net"
 
-	"github.com/labstack/echo"
-	"github.com/labstack/echo/engine"
-	"github.com/labstack/echo/log"
+	"github.com/trafficstars/echo"
+	"github.com/trafficstars/echo/engine"
+	"github.com/trafficstars/echo/log"
 	"github.com/valyala/fasthttp"
 )
 

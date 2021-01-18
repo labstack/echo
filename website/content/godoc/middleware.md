@@ -5,5 +5,5 @@ title = "middleware"
   identifier = "godoc-middleware"
   parent = "godoc"
   weight = 1
-  url = "https://godoc.org/github.com/labstack/echo/middleware"
+  url = "https://godoc.org/github.com/trafficstars/echo/middleware"
 +++

@@ -12,12 +12,12 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/labstack/echo/engine"
-	"github.com/labstack/echo/log"
+	"github.com/trafficstars/echo/engine"
+	"github.com/trafficstars/echo/log"
 
 	"bytes"
 
-	gcontext "github.com/labstack/echo/context"
+	gcontext "github.com/trafficstars/echo/context"
 )
 
 type (

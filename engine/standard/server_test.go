@@ -6,9 +6,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/labstack/echo"
-	"github.com/labstack/echo/engine"
 	"github.com/stretchr/testify/assert"
+	"github.com/trafficstars/echo"
+	"github.com/trafficstars/echo/engine"
 )
 
 // TODO: Fix me

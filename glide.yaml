@@ -1,4 +1,4 @@
-package: github.com/labstack/echo
+package: github.com/trafficstars/echo
 import:
 - package: github.com/GeertJohan/go.rice
 - package: github.com/dgrijalva/jwt-go

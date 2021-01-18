@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/labstack/echo"
-	"github.com/labstack/echo/test"
 	"github.com/stretchr/testify/assert"
+	"github.com/trafficstars/echo"
+	"github.com/trafficstars/echo/test"
 )
 
 // jwtCustomInfo defines some custom types we're going to use within our tokens.

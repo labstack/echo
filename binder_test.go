@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/labstack/echo/test"
 	"github.com/stretchr/testify/assert"
+	"github.com/trafficstars/echo/test"
 )
 
 type (

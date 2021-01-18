@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"github.com/labstack/echo"
+	"github.com/trafficstars/echo"
 )
 
 type (
