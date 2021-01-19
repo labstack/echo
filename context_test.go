@@ -2,22 +2,18 @@ package echo
 
 import (
 	"bytes"
+	"context"
+	"encoding/xml"
 	"errors"
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
+	"strings"
 	"testing"
 	"text/template"
 	"time"
-
-	"strings"
-
-	gcontext "github.com/trafficstars/echo/context"
-
-	"net/url"
-
-	"encoding/xml"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/trafficstars/echo/test"
@@ -37,7 +33,7 @@ func TestContext(t *testing.T) {
 	e := New()
 	req := test.NewRequest(POST, "/", strings.NewReader(userJSON))
 	rec := test.NewResponseRecorder()
-	c := e.NewContext(req, rec).(*context)
+	c := e.NewContext(req, rec).(*echoContext)
 
 	// Echo
 	assert.Equal(t, e, c.Echo())
@@ -71,7 +67,7 @@ func TestContext(t *testing.T) {
 
 	// JSON
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*context)
+	c = e.NewContext(req, rec).(*echoContext)
 	err = c.JSON(http.StatusOK, user{1, "Jon Snow"})
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Status())
@@ -81,13 +77,13 @@ func TestContext(t *testing.T) {
 
 	// JSON (error)
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*context)
+	c = e.NewContext(req, rec).(*echoContext)
 	err = c.JSON(http.StatusOK, make(chan bool))
 	assert.Error(t, err)
 
 	// JSONP
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*context)
+	c = e.NewContext(req, rec).(*echoContext)
 	callback := "callback"
 	err = c.JSONP(http.StatusOK, callback, user{1, "Jon Snow"})
 	if assert.NoError(t, err) {
@@ -98,7 +94,7 @@ func TestContext(t *testing.T) {
 
 	// XML
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*context)
+	c = e.NewContext(req, rec).(*echoContext)
 	err = c.XML(http.StatusCreated, user{1, "Jon Snow"})
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusCreated, rec.Status())
@@ -108,13 +104,13 @@ func TestContext(t *testing.T) {
 
 	// XML (error)
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*context)
+	c = e.NewContext(req, rec).(*echoContext)
 	err = c.XML(http.StatusOK, make(chan bool))
 	assert.Error(t, err)
 
 	// String
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*context)
+	c = e.NewContext(req, rec).(*echoContext)
 	err = c.String(http.StatusOK, "Hello, World!")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Status())
@@ -124,7 +120,7 @@ func TestContext(t *testing.T) {
 
 	// HTML
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*context)
+	c = e.NewContext(req, rec).(*echoContext)
 	err = c.HTML(http.StatusOK, "Hello, <strong>World!</strong>")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Status())
@@ -134,7 +130,7 @@ func TestContext(t *testing.T) {
 
 	// Stream
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*context)
+	c = e.NewContext(req, rec).(*echoContext)
 	r := strings.NewReader("response from a stream")
 	err = c.Stream(http.StatusOK, "application/octet-stream", r)
 	if assert.NoError(t, err) {
@@ -145,7 +141,7 @@ func TestContext(t *testing.T) {
 
 	// Attachment
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*context)
+	c = e.NewContext(req, rec).(*echoContext)
 	file, err := os.Open("_fixture/images/walle.png")
 	if assert.NoError(t, err) {
 		err = c.Attachment(file, "walle.png")
@@ -158,7 +154,7 @@ func TestContext(t *testing.T) {
 
 	// Inline
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*context)
+	c = e.NewContext(req, rec).(*echoContext)
 	file, err = os.Open("_fixture/images/walle.png")
 	if assert.NoError(t, err) {
 		err = c.Inline(file, "walle.png")
@@ -171,13 +167,13 @@ func TestContext(t *testing.T) {
 
 	// NoContent
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*context)
+	c = e.NewContext(req, rec).(*echoContext)
 	c.NoContent(http.StatusOK)
 	assert.Equal(t, http.StatusOK, rec.Status())
 
 	// Error
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*context)
+	c = e.NewContext(req, rec).(*echoContext)
 	c.Error(errors.New("error"))
 	assert.Equal(t, http.StatusInternalServerError, rec.Status())
 
@@ -193,7 +189,7 @@ func TestContextCookie(t *testing.T) {
 	req.Header().Add(HeaderCookie, theme)
 	req.Header().Add(HeaderCookie, user)
 	rec := test.NewResponseRecorder()
-	c := e.NewContext(req, rec).(*context)
+	c := e.NewContext(req, rec).(*echoContext)
 
 	// Read single
 	cookie, err := c.Cookie("theme")
@@ -352,15 +348,17 @@ func TestContextRedirect(t *testing.T) {
 }
 
 func TestStdContextEmbedded(t *testing.T) {
-	c := new(context)
-	sc := gcontext.WithValue(gcontext.Background(), "key", "val")
+	c := new(echoContext)
+	sc := context.WithValue(context.Background(), "key", "val")
 	c.SetStdContext(sc)
 	assert.NotEqual(t, c, c.StdContext())
 }
 
 func TestContextStore(t *testing.T) {
 	var c Context
-	c = new(context)
+	c = &echoContext{
+		context: context.Background(),
+	}
 	c.Set("name", "Jon Snow")
 	assert.Equal(t, "Jon Snow", c.Get("name"))
 }

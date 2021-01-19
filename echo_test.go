@@ -2,15 +2,13 @@ package echo
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"testing"
-
 	"reflect"
 	"strings"
-
-	"errors"
+	"testing"
 
 	"github.com/labstack/gommon/log"
 	"github.com/stretchr/testify/assert"
@@ -333,7 +331,7 @@ func TestEchoHTTPError(t *testing.T) {
 func TestEchoContext(t *testing.T) {
 	e := New()
 	c := e.AcquireContext()
-	assert.IsType(t, new(context), c)
+	assert.IsType(t, new(echoContext), c)
 	e.ReleaseContext(c)
 }
 
