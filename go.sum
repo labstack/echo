@@ -2,8 +2,9 @@ github.com/GeertJohan/go.rice v0.0.0-20160811093408-9fdfd46f9806 h1:3Bj1wM25VYlq
 github.com/GeertJohan/go.rice v0.0.0-20160811093408-9fdfd46f9806/go.mod h1:DgrzXonpdQbfN3uYaGz1EG4Sbhyum/MMIn6Cphlh2bw=
 github.com/daaku/go.zipexe v0.0.0-20150329023125-a5fe2436ffcb h1:tUf55Po0vzOendQ7NWytcdK0VuzQmfAgvGBUOQvN0WA=
 github.com/daaku/go.zipexe v0.0.0-20150329023125-a5fe2436ffcb/go.mod h1:U0vRfAucUOohvdCxt5MWLF+TePIL0xbCkbKIiV8TQCE=
-github.com/davecgh/go-spew v1.0.1-0.20160907170601-6d212800a42e h1:9EoM2C6YAkhnxTxG3LrAos2/KaALZdSNG5HTGPEEedE=
-github.com/davecgh/go-spew v1.0.1-0.20160907170601-6d212800a42e/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
+github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dgrijalva/jwt-go v3.0.1-0.20160831183534-24c63f56522a+incompatible h1:ZaDz72vl6QxbdXokqXGO2JCa2tW+Bg2szKgDFj381Ro=
 github.com/dgrijalva/jwt-go v3.0.1-0.20160831183534-24c63f56522a+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a h1:yDWHCSQ40h88yih2JAcL6Ls/kVkSE8GFACTGVnMPruw=
@@ -38,10 +39,11 @@ github.com/mattn/go-colorable v0.0.7-0.20160930084157-6c903ff4aa50 h1:+lj/MTidgA
 github.com/mattn/go-colorable v0.0.7-0.20160930084157-6c903ff4aa50/go.mod h1:9vuHe8Xs5qXnSaW/c/ABM9alt+Vo+STaOChaDxuIBZU=
 github.com/mattn/go-isatty v0.0.0-20160806122752-66b8e73f3f5c h1:3nKFouDdpgGUV/uerJcYWH45ZbJzX0SiVWfTgmUeTzc=
 github.com/mattn/go-isatty v0.0.0-20160806122752-66b8e73f3f5c/go.mod h1:M+lRXTBqGeGNdLjl/ufCoiOlB5xdOkqRJdNxMWT7Zi4=
-github.com/pmezard/go-difflib v0.0.0-20151028094244-d8ed2627bdf0 h1:GD+A8+e+wFkqje55/2fOVnZPkoDIu1VooBWfNrnY8Uo=
-github.com/pmezard/go-difflib v0.0.0-20151028094244-d8ed2627bdf0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/stretchr/testify v1.1.5-0.20160925220609-976c720a22c8 h1:f4Xo/Dhbk4mbPFN+QqSzSsXt1bK2fMLqpMY+Jx6AR6A=
-github.com/stretchr/testify v1.1.5-0.20160925220609-976c720a22c8/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
+github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
+github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
+github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
+github.com/stretchr/testify v1.3.0 h1:TivCn/peBQ7UY8ooIcPgZFpTNSz0Q2U6UrFlUfqbe0Q=
+github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
 github.com/tylerb/graceful v1.2.13 h1:yKdTh6eHcWdD8Jm3wxgJ6pNf8Lb3wwbV4Ip8fHbeMLE=
 github.com/tylerb/graceful v1.2.13/go.mod h1:LPYTbOYmUTdabwRt0TGhLllQ0MUNbs0Y5q1WXJOI9II=
 github.com/valyala/bytebufferpool v1.0.0 h1:GqA5TC/0021Y/b9FG4Oi9Mr3q7XYx6KllzawFIhcdPw=

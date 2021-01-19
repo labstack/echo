@@ -5,7 +5,7 @@ go 1.13
 require (
 	github.com/GeertJohan/go.rice v0.0.0-20160811093408-9fdfd46f9806
 	github.com/daaku/go.zipexe v0.0.0-20150329023125-a5fe2436ffcb // indirect
-	github.com/davecgh/go-spew v1.0.1-0.20160907170601-6d212800a42e // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgrijalva/jwt-go v3.0.1-0.20160831183534-24c63f56522a+incompatible
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a // indirect
 	github.com/facebookgo/ensure v0.0.0-20200202191622-63f1cf65ac4c // indirect
@@ -21,8 +21,7 @@ require (
 	github.com/labstack/gommon v0.0.4-0.20160925181133-f3b1a1b3bd47
 	github.com/mattn/go-colorable v0.0.7-0.20160930084157-6c903ff4aa50 // indirect
 	github.com/mattn/go-isatty v0.0.0-20160806122752-66b8e73f3f5c
-	github.com/pmezard/go-difflib v0.0.0-20151028094244-d8ed2627bdf0 // indirect
-	github.com/stretchr/testify v1.1.5-0.20160925220609-976c720a22c8
+	github.com/stretchr/testify v1.3.0
 	github.com/tylerb/graceful v1.2.13
 	github.com/valyala/fasthttp v1.9.0
 	github.com/valyala/fasttemplate v0.0.0-20160315193134-3b874956e03f

@@ -39,6 +39,7 @@ package echo
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -49,7 +50,6 @@ import (
 	"sync"
 
 	glog "github.com/labstack/gommon/log"
-	gcontext "github.com/trafficstars/echo/context"
 	"github.com/trafficstars/echo/engine"
 	"github.com/trafficstars/echo/log"
 )
@@ -237,14 +237,13 @@ func New() (e *Echo) {
 
 // NewContext returns a Context instance.
 func (e *Echo) NewContext(req engine.Request, res engine.Response) Context {
-	return &context{
-		stdContext: gcontext.Background(),
-		request:    req,
-		response:   res,
-		store:      make(store),
-		echo:       e,
-		pvalues:    make([]string, *e.maxParam),
-		handler:    NotFoundHandler,
+	return &echoContext{
+		context:  context.Background(),
+		request:  req,
+		response: res,
+		echo:     e,
+		pvalues:  make([]string, *e.maxParam),
+		handler:  NotFoundHandler,
 	}
 }
 
@@ -541,7 +540,7 @@ func (e *Echo) ReleaseContext(c Context) {
 }
 
 func (e *Echo) ServeHTTP(req engine.Request, res engine.Response) {
-	c := e.pool.Get().(*context)
+	c := e.pool.Get().(*echoContext)
 	c.Reset(req, res)
 
 	// Middleware
