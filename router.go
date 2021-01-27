@@ -1,7 +1,9 @@
 package echo
 
 import (
+	"fmt"
 	"net/http"
+	"reflect"
 	"strings"
 )
 
@@ -201,11 +203,16 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 		} else {
 			// Node already exists
 			if h != nil {
-				cn.addHandler(method, h)
-				cn.ppath = ppath
 				if len(cn.pnames) == 0 { // Issue #729
 					cn.pnames = pnames
+				} else {
+					if !reflect.DeepEqual(cn.pnames, pnames) {
+						panic(fmt.Sprintf("echo: route params are different for %s - %s != %s",
+							cn.ppath, cn.pnames, pnames))
+					}
 				}
+				cn.addHandler(method, h)
+				cn.ppath = ppath
 			}
 		}
 		return

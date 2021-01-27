@@ -1542,6 +1542,33 @@ func TestRouterPanicWhenParamNoRootOnlyChildsFailsFind(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, he.Code)
 }
 
+// Issue #1726
+func TestRouterParamDifferentNamesPerHTTPMethod(t *testing.T) {
+	e := New()
+	r := e.router
+
+	r.Add(http.MethodGet, "/translation/:lang", func(Context) error {
+		return nil
+	})
+	r.Add(http.MethodPut, "/translation/:lang", func(Context) error {
+		return nil
+	})
+
+	c := e.NewContext(nil, nil).(*context)
+
+	r.Find(http.MethodGet, "/translation/en-US", c)
+	assert.Equal(t, "en-US", c.Param("lang"))
+
+	r.Find(http.MethodPut, "/translation/es-AR", c)
+	assert.Equal(t, "es-AR", c.Param("lang"))
+
+	assert.Panics(t, func() {
+		r.Add(http.MethodDelete, "/translation/:id", func(Context) error {
+			return nil
+		})
+	})
+}
+
 func benchmarkRouterRoutes(b *testing.B, routes []*Route, routesToFind []*Route) {
 	e := New()
 	r := e.router
