@@ -56,8 +56,8 @@ func TestEchoRewritePreMiddleware(t *testing.T) {
 
 	// Rewrite old url to new one
 	e.Pre(Rewrite(map[string]string{
-			"/old": "/new",
-		},
+		"/old": "/new",
+	},
 	))
 
 	// Route
@@ -139,6 +139,7 @@ func TestEchoRewriteWithRegexRules(t *testing.T) {
 		Rules: map[string]string{
 			"^/a/*":     "/v1/$1",
 			"^/b/*/c/*": "/v2/$2/$1",
+			"^/c/*/*":   "/v3/$2",
 		},
 		RegexRules: map[*regexp.Regexp]string{
 			regexp.MustCompile("^/x/.+?/(.*)"):   "/v4/$1",
@@ -157,6 +158,14 @@ func TestEchoRewriteWithRegexRules(t *testing.T) {
 	req = httptest.NewRequest(http.MethodGet, "/b/foo/c/bar/baz", nil)
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "/v2/bar/baz/foo", req.URL.Path)
+
+	req = httptest.NewRequest(http.MethodGet, "/c/ignore/test", nil)
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, "/v3/test", req.URL.Path)
+
+	req = httptest.NewRequest(http.MethodGet, "/c/ignore1/test/this", nil)
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, "/v3/test/this", req.URL.Path)
 
 	req = httptest.NewRequest(http.MethodGet, "/x/ignore/test", nil)
 	e.ServeHTTP(rec, req)
