@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"testing"
 
 	"github.com/labstack/echo/v4"
@@ -128,4 +129,40 @@ func TestEchoRewriteWithCaret(t *testing.T) {
 	req = httptest.NewRequest(http.MethodGet, "/v2/abc/test", nil)
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "/v2/abc/test", req.URL.Path)
+}
+
+// Verify regex used with rewrite
+func TestEchoRewriteWithRegexRules(t *testing.T) {
+	e := echo.New()
+
+	e.Pre(RewriteWithConfig(RewriteConfig{
+		Rules: map[string]string{
+			"^/a/*":     "/v1/$1",
+			"^/b/*/c/*": "/v2/$2/$1",
+		},
+		RegexRules: map[*regexp.Regexp]string{
+			regexp.MustCompile("^/x/.+?/(.*)"):   "/v4/$1",
+			regexp.MustCompile("^/y/(.+?)/(.*)"): "/v5/$2/$1",
+		},
+	}))
+
+	rec := httptest.NewRecorder()
+
+	var req *http.Request
+
+	req = httptest.NewRequest(http.MethodGet, "/a/test", nil)
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, "/v1/test", req.URL.Path)
+
+	req = httptest.NewRequest(http.MethodGet, "/b/foo/c/bar/baz", nil)
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, "/v2/bar/baz/foo", req.URL.Path)
+
+	req = httptest.NewRequest(http.MethodGet, "/x/ignore/test", nil)
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, "/v4/test", req.URL.Path)
+
+	req = httptest.NewRequest(http.MethodGet, "/y/foo/bar", nil)
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, "/v5/bar/foo", req.URL.Path)
 }

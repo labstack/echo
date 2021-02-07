@@ -1,8 +1,9 @@
 package middleware
 
 import (
-	"github.com/labstack/echo/v4"
 	"regexp"
+
+	"github.com/labstack/echo/v4"
 )
 
 type (
@@ -21,7 +22,12 @@ type (
 		// Required.
 		Rules map[string]string `yaml:"rules"`
 
-		rulesRegex map[*regexp.Regexp]string
+		// RegexRules defines the URL path rewrite rules using regexp.Rexexp with captures
+		// Every capture group in the values can be retrieved by index e.g. $1, $2 and so on.
+		// Example:
+		// "^/old/[0.9]+/":     "/new",
+		// "^/api/.+?/(.*)":     "/v2/$1",
+		RegexRules map[*regexp.Regexp]string `yaml:"regex_rules"`
 	}
 )
 
@@ -45,14 +51,20 @@ func Rewrite(rules map[string]string) echo.MiddlewareFunc {
 // See: `Rewrite()`.
 func RewriteWithConfig(config RewriteConfig) echo.MiddlewareFunc {
 	// Defaults
-	if config.Rules == nil {
-		panic("echo: rewrite middleware requires url path rewrite rules")
+	if config.Rules == nil && config.RegexRules == nil {
+		panic("echo: rewrite middleware requires url path rewrite rules or regex rules")
 	}
+
 	if config.Skipper == nil {
 		config.Skipper = DefaultBodyDumpConfig.Skipper
 	}
 
-	config.rulesRegex = rewriteRulesRegex(config.Rules)
+	if config.RegexRules == nil {
+		config.RegexRules = make(map[*regexp.Regexp]string)
+	}
+	for k, v := range rewriteRulesRegex(config.Rules) {
+		config.RegexRules[k] = v
+	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) (err error) {
@@ -62,7 +74,7 @@ func RewriteWithConfig(config RewriteConfig) echo.MiddlewareFunc {
 
 			req := c.Request()
 			// Set rewrite path and raw path
-			rewritePath(config.rulesRegex, req)
+			rewritePath(config.RegexRules, req)
 			return next(c)
 		}
 	}
