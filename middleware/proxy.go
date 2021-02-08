@@ -36,11 +36,11 @@ type (
 		// "/users/*/orders/*": "/user/$1/order/$2",
 		Rewrite map[string]string
 
-		// RegexRules defines the URL path rewrite rules using regexp.Rexexp with captures
+		// RegexRewrite defines rewrite rules using regexp.Rexexp with captures
 		// Every capture group in the values can be retrieved by index e.g. $1, $2 and so on.
 		// Example:
 		// "^/old/[0.9]+/":     "/new",
-		// "^/api/.+?/(.*)":     "/v2/$1",
+		// "^/api/.+?/(.*)":    "/v2/$1",
 		RegexRewrite map[*regexp.Regexp]string
 
 		// Context key to store selected ProxyTarget into context.
