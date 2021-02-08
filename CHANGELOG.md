@@ -1,6 +1,6 @@
 # Changelog
 
-## v4.2.0 - 2020-02-04
+## v4.2.0 - 2020-02-08
 
 **Important notes**
 
@@ -8,6 +8,9 @@ The behaviour for binding data has been reworked for compatibility with echo bef
 enforcing `explicit tagging` for processing parameters. This **may break** your code if you 
 expect combined handling of query/path/form params.
 Please see the updated documentation for [request](https://echo.labstack.com/guide/request) and [binding](https://echo.labstack.com/guide/request)
+
+The handling for rewrite rules has been slightly adjusted to expand `*` to a non-greedy `(.*?)` capture group. This is only relevant if multiple asterisks are used in your rules.
+Please see [rewrite](https://echo.labstack.com/middleware/rewrite) and [proxy](https://echo.labstack.com/middleware/proxy) for details.
 
 **Security**
 
@@ -23,6 +26,7 @@ Please see the updated documentation for [request](https://echo.labstack.com/gui
 * Binder: New fluent binder for query/path/form parameter binding (#1717, #1736, aldas)
 * Router: Performance improvements for missed routes (#1689, pafuent)
 * Router: Improve performance for Real-IP detection using IndexByte instead of Split (#1640, imxyb)
+* Middleware: Support real regex rules for rewrite and proxy middleware (#1767)
 * Middleware: New rate limiting middleware (#1724, iambenkay)
 * Middleware: New timeout middleware implementation for go1.13+ (#1743, )
 * Middleware: Allow regex pattern for CORS middleware (#1623, KlotzAndrew)
