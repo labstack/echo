@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"testing"
 
 	"github.com/labstack/echo/v4"
@@ -55,8 +56,8 @@ func TestEchoRewritePreMiddleware(t *testing.T) {
 
 	// Rewrite old url to new one
 	e.Pre(Rewrite(map[string]string{
-			"/old": "/new",
-		},
+		"/old": "/new",
+	},
 	))
 
 	// Route
@@ -128,4 +129,46 @@ func TestEchoRewriteWithCaret(t *testing.T) {
 	req = httptest.NewRequest(http.MethodGet, "/v2/abc/test", nil)
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "/v2/abc/test", req.URL.Path)
+}
+
+// Verify regex used with rewrite
+func TestEchoRewriteWithRegexRules(t *testing.T) {
+	e := echo.New()
+
+	e.Pre(RewriteWithConfig(RewriteConfig{
+		Rules: map[string]string{
+			"^/a/*":     "/v1/$1",
+			"^/b/*/c/*": "/v2/$2/$1",
+			"^/c/*/*":   "/v3/$2",
+		},
+		RegexRules: map[*regexp.Regexp]string{
+			regexp.MustCompile("^/x/.+?/(.*)"):   "/v4/$1",
+			regexp.MustCompile("^/y/(.+?)/(.*)"): "/v5/$2/$1",
+		},
+	}))
+
+	var rec *httptest.ResponseRecorder
+	var req *http.Request
+
+	testCases := []struct {
+		requestPath string
+		expectPath  string
+	}{
+		{"/unmatched", "/unmatched"},
+		{"/a/test", "/v1/test"},
+		{"/b/foo/c/bar/baz", "/v2/bar/baz/foo"},
+		{"/c/ignore/test", "/v3/test"},
+		{"/c/ignore1/test/this", "/v3/test/this"},
+		{"/x/ignore/test", "/v4/test"},
+		{"/y/foo/bar", "/v5/bar/foo"},
+	}
+
+		for _, tc := range testCases {
+			t.Run(tc.requestPath, func(t *testing.T) {
+				req = httptest.NewRequest(http.MethodGet, tc.requestPath, nil)
+				rec = httptest.NewRecorder()
+				e.ServeHTTP(rec, req)
+				assert.Equal(t, tc.expectPath, req.URL.EscapedPath())
+			})
+		}
 }
