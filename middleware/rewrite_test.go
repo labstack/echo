@@ -147,31 +147,26 @@ func TestEchoRewriteWithRegexRules(t *testing.T) {
 		},
 	}))
 
-	rec := httptest.NewRecorder()
-
+	var rec *httptest.ResponseRecorder
 	var req *http.Request
 
-	req = httptest.NewRequest(http.MethodGet, "/a/test", nil)
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/v1/test", req.URL.Path)
+	testCases := []struct {
+		requestPath string
+		expectPath  string
+	}{
+		{"/unmatched", "/unmatched"},
+		{"/a/test", "/v1/test"},
+		{"/b/foo/c/bar/baz", "/v2/bar/baz/foo"},
+		{"/c/ignore/test", "/v3/test"},
+		{"/c/ignore1/test/this", "/v3/test/this"},
+		{"/x/ignore/test", "/v4/test"},
+		{"/y/foo/bar", "/v5/bar/foo"},
+	}
 
-	req = httptest.NewRequest(http.MethodGet, "/b/foo/c/bar/baz", nil)
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/v2/bar/baz/foo", req.URL.Path)
-
-	req = httptest.NewRequest(http.MethodGet, "/c/ignore/test", nil)
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/v3/test", req.URL.Path)
-
-	req = httptest.NewRequest(http.MethodGet, "/c/ignore1/test/this", nil)
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/v3/test/this", req.URL.Path)
-
-	req = httptest.NewRequest(http.MethodGet, "/x/ignore/test", nil)
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/v4/test", req.URL.Path)
-
-	req = httptest.NewRequest(http.MethodGet, "/y/foo/bar", nil)
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/v5/bar/foo", req.URL.Path)
+	for _, tc := range testCases {
+		req = httptest.NewRequest(http.MethodGet, tc.requestPath, nil)
+		rec = httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+		assert.Equal(t, tc.expectPath, req.URL.EscapedPath())
+	}
 }
