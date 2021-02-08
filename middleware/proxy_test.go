@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"testing"
 
 	"github.com/labstack/echo/v4"
@@ -83,46 +84,6 @@ func TestProxy(t *testing.T) {
 	body = rec.Body.String()
 	assert.Equal(t, "target 2", body)
 
-	// Rewrite
-	e = echo.New()
-	e.Use(ProxyWithConfig(ProxyConfig{
-		Balancer: rrb,
-		Rewrite: map[string]string{
-			"/old":              "/new",
-			"/api/*":            "/$1",
-			"/js/*":             "/public/javascripts/$1",
-			"/users/*/orders/*": "/user/$1/order/$2",
-		},
-	}))
-	req.URL, _ = url.Parse("/api/users")
-	rec = httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/users", req.URL.EscapedPath())
-	assert.Equal(t, http.StatusOK, rec.Code)
-	req.URL, _ = url.Parse( "/js/main.js")
-	rec = httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/public/javascripts/main.js", req.URL.EscapedPath())
-	assert.Equal(t, http.StatusOK, rec.Code)
-	req.URL, _ = url.Parse("/old")
-	rec = httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/new", req.URL.EscapedPath())
-	assert.Equal(t, http.StatusOK, rec.Code)
-	req.URL, _ = url.Parse( "/users/jack/orders/1")
-	rec = httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/user/jack/order/1", req.URL.EscapedPath())
-	assert.Equal(t, http.StatusOK, rec.Code)
-	req.URL, _ = url.Parse("/user/jill/order/T%2FcO4lW%2Ft%2FVp%2F")
-	rec = httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/user/jill/order/T%2FcO4lW%2Ft%2FVp%2F", req.URL.EscapedPath())
-	assert.Equal(t, http.StatusOK, rec.Code)
-	req.URL, _ = url.Parse("/api/new users")
-	rec = httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/new%20users", req.URL.EscapedPath())
 	// ModifyResponse
 	e = echo.New()
 	e.Use(ProxyWithConfig(ProxyConfig{
@@ -194,5 +155,103 @@ func TestProxyRealIPHeader(t *testing.T) {
 		}
 		e.ServeHTTP(rec, req)
 		assert.Equal(t, tt.extectedXRealIP, req.Header.Get(echo.HeaderXRealIP), "hasRealIPheader: %t / hasIPExtractor: %t", tt.hasRealIPheader, tt.hasIPExtractor)
+	}
+}
+
+func TestProxyRewrite(t *testing.T) {
+	// Setup
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	defer upstream.Close()
+	url, _ := url.Parse(upstream.URL)
+	rrb := NewRoundRobinBalancer([]*ProxyTarget{{Name: "upstream", URL: url}})
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+
+	// Rewrite
+	e := echo.New()
+	e.Use(ProxyWithConfig(ProxyConfig{
+		Balancer: rrb,
+		Rewrite: map[string]string{
+			"/old":              "/new",
+			"/api/*":            "/$1",
+			"/js/*":             "/public/javascripts/$1",
+			"/users/*/orders/*": "/user/$1/order/$2",
+		},
+	}))
+	req.URL, _ = url.Parse("/api/users")
+	rec = httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, "/users", req.URL.EscapedPath())
+	assert.Equal(t, http.StatusOK, rec.Code)
+	req.URL, _ = url.Parse("/js/main.js")
+	rec = httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, "/public/javascripts/main.js", req.URL.EscapedPath())
+	assert.Equal(t, http.StatusOK, rec.Code)
+	req.URL, _ = url.Parse("/old")
+	rec = httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, "/new", req.URL.EscapedPath())
+	assert.Equal(t, http.StatusOK, rec.Code)
+	req.URL, _ = url.Parse("/users/jack/orders/1")
+	rec = httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, "/user/jack/order/1", req.URL.EscapedPath())
+	assert.Equal(t, http.StatusOK, rec.Code)
+	req.URL, _ = url.Parse("/user/jill/order/T%2FcO4lW%2Ft%2FVp%2F")
+	rec = httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, "/user/jill/order/T%2FcO4lW%2Ft%2FVp%2F", req.URL.EscapedPath())
+	assert.Equal(t, http.StatusOK, rec.Code)
+	req.URL, _ = url.Parse("/api/new users")
+	rec = httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, "/new%20users", req.URL.EscapedPath())
+}
+
+func TestProxyRewriteRegex(t *testing.T) {
+	// Setup
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	defer upstream.Close()
+	url, _ := url.Parse(upstream.URL)
+	rrb := NewRoundRobinBalancer([]*ProxyTarget{{Name: "upstream", URL: url}})
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+
+	// Rewrite
+	e := echo.New()
+	e.Use(ProxyWithConfig(ProxyConfig{
+		Balancer: rrb,
+		Rewrite: map[string]string{
+			"^/a/*":     "/v1/$1",
+			"^/b/*/c/*": "/v2/$2/$1",
+			"^/c/*/*":   "/v3/$2",
+		},
+		RegexRewrite: map[*regexp.Regexp]string{
+			regexp.MustCompile("^/x/.+?/(.*)"):   "/v4/$1",
+			regexp.MustCompile("^/y/(.+?)/(.*)"): "/v5/$2/$1",
+		},
+	}))
+
+	testCases := []struct {
+		requestPath string
+		statusCode  int
+		expectPath  string
+	}{
+		{"/unmatched", http.StatusOK, "/unmatched"},
+		{"/a/test", http.StatusOK, "/v1/test"},
+		{"/b/foo/c/bar/baz", http.StatusOK, "/v2/bar/baz/foo"},
+		{"/c/ignore/test", http.StatusOK, "/v3/test"},
+		{"/c/ignore1/test/this", http.StatusOK, "/v3/test/this"},
+		{"/x/ignore/test", http.StatusOK, "/v4/test"},
+		{"/y/foo/bar", http.StatusOK, "/v5/bar/foo"},
+	}
+
+	for _, tc := range testCases {
+		req.URL, _ = url.Parse(tc.requestPath)
+		rec = httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+		assert.Equal(t, tc.expectPath, req.URL.EscapedPath())
+		assert.Equal(t, tc.statusCode, rec.Code)
 	}
 }

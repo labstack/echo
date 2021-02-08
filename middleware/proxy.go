@@ -36,6 +36,13 @@ type (
 		// "/users/*/orders/*": "/user/$1/order/$2",
 		Rewrite map[string]string
 
+		// RegexRules defines the URL path rewrite rules using regexp.Rexexp with captures
+		// Every capture group in the values can be retrieved by index e.g. $1, $2 and so on.
+		// Example:
+		// "^/old/[0.9]+/":     "/new",
+		// "^/api/.+?/(.*)":     "/v2/$1",
+		RegexRewrite map[*regexp.Regexp]string
+
 		// Context key to store selected ProxyTarget into context.
 		// Optional. Default value "target".
 		ContextKey string
@@ -46,8 +53,6 @@ type (
 
 		// ModifyResponse defines function to modify response from ProxyTarget.
 		ModifyResponse func(*http.Response) error
-
-		rewriteRegex map[*regexp.Regexp]string
 	}
 
 	// ProxyTarget defines the upstream target.
@@ -206,7 +211,14 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 		panic("echo: proxy middleware requires balancer")
 	}
 
-	config.rewriteRegex = rewriteRulesRegex(config.Rewrite)
+	if config.Rewrite != nil {
+		if config.RegexRewrite == nil {
+			config.RegexRewrite = make(map[*regexp.Regexp]string)
+		}
+		for k, v := range rewriteRulesRegex(config.Rewrite) {
+			config.RegexRewrite[k] = v
+		}
+	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) (err error) {
@@ -220,7 +232,7 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 			c.Set(config.ContextKey, tgt)
 
 			// Set rewrite path and raw path
-			rewritePath(config.rewriteRegex, req)
+			rewritePath(config.RegexRewrite, req)
 
 			// Fix header
 			// Basically it's not good practice to unconditionally pass incoming x-real-ip header to upstream.
@@ -251,5 +263,3 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 		}
 	}
 }
-
-
