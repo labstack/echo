@@ -247,11 +247,14 @@ func TestProxyRewriteRegex(t *testing.T) {
 		{"/y/foo/bar", http.StatusOK, "/v5/bar/foo"},
 	}
 
+
 	for _, tc := range testCases {
-		req.URL, _ = url.Parse(tc.requestPath)
-		rec = httptest.NewRecorder()
-		e.ServeHTTP(rec, req)
-		assert.Equal(t, tc.expectPath, req.URL.EscapedPath())
-		assert.Equal(t, tc.statusCode, rec.Code)
+		t.Run(tc.requestPath, func(t *testing.T) {
+			req.URL, _ = url.Parse(tc.requestPath)
+			rec = httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+			assert.Equal(t, tc.expectPath, req.URL.EscapedPath())
+			assert.Equal(t, tc.statusCode, rec.Code)
+		})
 	}
 }
