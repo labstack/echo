@@ -361,7 +361,10 @@ func (r *Router) Find(method, path string, c Context) {
 	state := pState.s[0:0]
 	defer func() {
 		for i := range state {
+			state[i].nk = 0
 			state[i].nn = nil
+			state[i].ns = ""
+			state[i].np = 0
 		}
 		pState.s = state[0:0]
 		syncPool.Put(pState)
@@ -393,6 +396,11 @@ func (r *Router) Find(method, path string, c Context) {
 		search = last.ns
 		n = last.np
 		valid = cn != nil
+
+		last.nk = 0
+		last.nn = nil
+		last.ns = ""
+		last.np = 0
 		return
 	}
 
