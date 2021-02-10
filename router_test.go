@@ -730,23 +730,27 @@ func TestRouterMatchAny(t *testing.T) {
 	r := e.router
 
 	// Routes
-	r.Add(http.MethodGet, "/", func(Context) error {
-		return nil
-	})
-	r.Add(http.MethodGet, "/*", func(Context) error {
-		return nil
-	})
-	r.Add(http.MethodGet, "/users/*", func(Context) error {
-		return nil
-	})
+	r.Add(http.MethodGet, "/", handlerHelper("case", 1))
+	r.Add(http.MethodGet, "/*", handlerHelper("case", 2))
+	r.Add(http.MethodGet, "/users/*", handlerHelper("case", 3))
+
 	c := e.NewContext(nil, nil).(*context)
 	r.Find(http.MethodGet, "/", c)
-	assert.Equal(t, "", c.Param("*"))
+	c.handler(c)
+
+	assert.Equal(t, 1, c.Get("case"))
+	assert.Equal(t, "/", c.Get("path"))
 
 	r.Find(http.MethodGet, "/download", c)
+	c.handler(c)
+	assert.Equal(t, 2, c.Get("case"))
+	assert.Equal(t, "/*", c.Get("path"))
 	assert.Equal(t, "download", c.Param("*"))
 
 	r.Find(http.MethodGet, "/users/joe", c)
+	c.handler(c)
+	assert.Equal(t, 3, c.Get("case"))
+	assert.Equal(t, "/users/*", c.Get("path"))
 	assert.Equal(t, "joe", c.Param("*"))
 }
 
@@ -818,10 +822,101 @@ func TestRouterBacktrackingFromParam(t *testing.T) {
 	c := e.NewContext(nil, nil).(*context)
 
 	r.Find(http.MethodGet, "/users/firstname/no-match", c)
-
 	c.handler(c)
 	assert.Equal(t, 1, c.Get("case"))
 	assert.Equal(t, "/*", c.Get("path"))
+	assert.Equal(t, "users/firstname/no-match", c.Param("*"))
+
+	r.Find(http.MethodGet, "/users/firstname/", c)
+	c.handler(c)
+	assert.Equal(t, 2, c.Get("case"))
+	assert.Equal(t, "/users/:name/", c.Get("path"))
+	assert.Equal(t, "firstname", c.Param("name"))
+}
+
+func TestRouterBacktrackingFromParamAny(t *testing.T) {
+	e := New()
+	r := e.router
+
+	r.Add(http.MethodGet, "/*", handlerHelper("case", 1))
+	r.Add(http.MethodGet, "/:name/lastname", handlerHelper("case", 2))
+
+	c := e.NewContext(nil, nil).(*context)
+
+	r.Find(http.MethodGet, "/firstname/test", c)
+	c.handler(c)
+	assert.Equal(t, 1, c.Get("case"))
+	assert.Equal(t, "/*", c.Get("path"))
+	assert.Equal(t, "firstname/test", c.Param("*"))
+
+	r.Find(http.MethodGet, "/firstname", c)
+	c.handler(c)
+	assert.Equal(t, 1, c.Get("case"))
+	assert.Equal(t, "/*", c.Get("path"))
+	assert.Equal(t, "firstname", c.Param("*"))
+
+	r.Find(http.MethodGet, "/firstname/lastname", c)
+	c.handler(c)
+	assert.Equal(t, 2, c.Get("case"))
+	assert.Equal(t, "/:name/lastname", c.Get("path"))
+	assert.Equal(t, "firstname", c.Param("name"))
+}
+
+func TestRouterBacktrackingFromParamAny2(t *testing.T) {
+	e := New()
+	r := e.router
+
+	r.Add(http.MethodGet, "/*", handlerHelper("case", 1))
+	r.Add(http.MethodGet, "/:name", handlerHelper("case", 2))
+	r.Add(http.MethodGet, "/:name/lastname", handlerHelper("case", 3))
+
+	c := e.NewContext(nil, nil).(*context)
+
+	r.Find(http.MethodGet, "/firstname/test", c)
+	c.handler(c)
+	assert.Equal(t, 1, c.Get("case"))
+	assert.Equal(t, "/*", c.Get("path"))
+	assert.Equal(t, "firstname/test", c.Param("*"))
+
+	r.Find(http.MethodGet, "/firstname", c)
+	c.handler(c)
+	assert.Equal(t, 2, c.Get("case"))
+	assert.Equal(t, "/:name", c.Get("path"))
+	assert.Equal(t, "firstname", c.Param("name"))
+
+	r.Find(http.MethodGet, "/firstname/lastname", c)
+	c.handler(c)
+	assert.Equal(t, 3, c.Get("case"))
+	assert.Equal(t, "/:name/lastname", c.Get("path"))
+	assert.Equal(t, "firstname", c.Param("name"))
+}
+
+func TestRouterAnyCommonPath(t *testing.T) {
+	e := New()
+	r := e.router
+
+	r.Add(http.MethodGet, "/ab*", handlerHelper("case", 1))
+	r.Add(http.MethodGet, "/abcd", handlerHelper("case", 2))
+	r.Add(http.MethodGet, "/abcd*", handlerHelper("case", 3))
+
+	c := e.NewContext(nil, nil).(*context)
+
+	r.Find(http.MethodGet, "/abee", c)
+	c.handler(c)
+	assert.Equal(t, 1, c.Get("case"))
+	assert.Equal(t, "/ab*", c.Get("path"))
+	assert.Equal(t, "ee", c.Param("*"))
+
+	r.Find(http.MethodGet, "/abcd", c)
+	c.handler(c)
+	assert.Equal(t, "/abcd", c.Get("path"))
+	assert.Equal(t, 2, c.Get("case"))
+
+	r.Find(http.MethodGet, "/abcde", c)
+	c.handler(c)
+	assert.Equal(t, 3, c.Get("case"))
+	assert.Equal(t, "/abcd*", c.Get("path"))
+	assert.Equal(t, "e", c.Param("*"))
 }
 
 // TestRouterMatchAnySlash shall verify finding the best route

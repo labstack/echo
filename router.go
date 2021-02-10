@@ -352,7 +352,6 @@ func (r *Router) Find(method, path string, c Context) {
 
 	var (
 		search  = path
-		child   *node         // Child node
 		n       int           // Param counter
 		pvalues = ctx.pvalues // Use the internal slice so the interface can keep the illusion of a dynamic slice
 	)
@@ -373,7 +372,7 @@ func (r *Router) Find(method, path string, c Context) {
 	pushNext := func(nodeKind kind) {
 		i := len(state)
 		if i+1 > cap(state) {
-			state = append(state, make([]findNextState, 0, 10)...)
+			state = append(state, make([]findNextState, 10)...)
 		}
 		state = state[0 : i+1]
 		state[i].nk = nodeKind
@@ -406,10 +405,6 @@ func (r *Router) Find(method, path string, c Context) {
 
 	// Search order static > param > any
 	for {
-		if search == "" {
-			break
-		}
-
 		pl := 0 // Prefix length
 		l := 0  // LCP length
 
@@ -426,21 +421,8 @@ func (r *Router) Find(method, path string, c Context) {
 			}
 		}
 
-		if l == pl {
-			// Continue search
-			search = search[l:]
-			// Finish routing if no remaining search and we are on an leaf node
-			if search == "" && (len(state) == 0 || cn.parent == nil || cn.ppath != "") {
-				break
-			}
-			// Handle special case of trailing slash route with existing any route (see #1526)
-			if search == "" && path[len(path)-1] == '/' && cn.anyChildren != nil {
-				goto Any
-			}
-		}
-
-		// Attempt to go back up the tree on no matching prefix or no remaining search
-		if l != pl || search == "" {
+		if l != pl {
+			// No matching prefix, let's backtrack to the first possible alternative node of the decision path
 			nk, ok := popNext()
 			if !ok {
 				return // Issue #1348 => Not found
@@ -454,30 +436,35 @@ func (r *Router) Find(method, path string, c Context) {
 			}
 		}
 
+		// The full prefix has matched, remove the prefix from the remaining search
+		search = search[l:]
+
+		// Finish routing if no remaining search and we are on an leaf node
+		if search == "" && cn.ppath != "" {
+			break
+		}
+
 		// Static node
-		if child = cn.findStaticChild(search[0]); child != nil {
-			// Save next
-			if cn.prefix[len(cn.prefix)-1] == '/' { // Issue #623
-				// Push a new entry into the decisition path, if we don't find anything downtree
-				// try the current node again searching for a param node
-				pushNext(pkind)
+		if search != "" {
+			if child := cn.findStaticChild(search[0]); child != nil {
+				if cn.paramChildren != nil || cn.anyChildren != nil {
+					// Push a new entry into the decision path, if we don't find anything downtree
+					// try the current node again searching for a param or any node
+					// Optimization: The node is only pushed for backtracking if there's an praramChildren or an anyChildren
+					pushNext(pkind)
+				}
+				cn = child
+				continue
 			}
-			cn = child
-			continue
 		}
 
 	Param:
 		// Param node
-		if child = cn.paramChildren; child != nil {
-			// Issue #378
-			if len(pvalues) == n {
-				continue
-			}
-
-			// Save next
-			if cn.prefix[len(cn.prefix)-1] == '/' { // Issue #623
-				// Push a new entry into the decisition path, if we have nothing found downtree
-				// try the current node again searching for an any node
+		if child := cn.paramChildren; search != "" && child != nil {
+			if cn.anyChildren != nil {
+				// Push a new entry into the decision path, if we have nothing found downtree try the current node again
+				// searching for an any node.
+				// Optimization: The node is only pushed for backtracking if there's an anyChildren
 				pushNext(akind)
 			}
 
@@ -493,13 +480,14 @@ func (r *Router) Find(method, path string, c Context) {
 
 	Any:
 		// Any node
-		if cn = cn.anyChildren; cn != nil {
+		if child := cn.anyChildren; child != nil {
 			// If any node is found, use remaining path for pvalues
+			cn = child
 			pvalues[len(cn.pnames)-1] = search
 			break
 		}
 
-		// Let's try the next possible node in the decision path
+		// Let's backtrack to the first possible alternative node of the decision path
 		nk, ok := popNext()
 		if !ok {
 			return // Issue #1348 => Not found
@@ -517,24 +505,8 @@ func (r *Router) Find(method, path string, c Context) {
 	ctx.path = cn.ppath
 	ctx.pnames = cn.pnames
 
-	// NOTE: Slow zone...
 	if ctx.handler == nil {
 		ctx.handler = cn.checkMethodNotAllowed()
-
-		// Dig further for any, might have an empty value for *, e.g.
-		// serving a directory. Issue #207.
-		if cn = cn.anyChildren; cn == nil {
-			return
-		}
-		if h := cn.findHandler(method); h != nil {
-			ctx.handler = h
-		} else {
-			ctx.handler = cn.checkMethodNotAllowed()
-		}
-		ctx.path = cn.ppath
-		ctx.pnames = cn.pnames
-		pvalues[len(cn.pnames)-1] = ""
 	}
-
 	return
 }
