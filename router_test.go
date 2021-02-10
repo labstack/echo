@@ -791,6 +791,39 @@ func TestRouterMatchAnyPrefixIssue(t *testing.T) {
 	assert.Equal(t, "users_prefix/", c.Param("*"))
 }
 
+func TestRouteMultiLevelBacktracking(t *testing.T) {
+	e := New()
+	r := e.router
+
+	r.Add(http.MethodGet, "/a/:b/c", handlerHelper("case", 1))
+	r.Add(http.MethodGet, "/a/c/d", handlerHelper("case", 2))
+	r.Add(http.MethodGet, "/:e/c/f", handlerHelper("case", 3))
+
+	c := e.NewContext(nil, nil).(*context)
+	r.Find(http.MethodGet, "/a/c/f", c)
+
+	c.handler(c)
+	assert.Equal(t, 3, c.Get("case"))
+	assert.Equal(t, "/:e/c/f", c.Get("path"))
+}
+
+// Issue #
+func TestRouterBacktrackingFromParam(t *testing.T) {
+	e := New()
+	r := e.router
+
+	r.Add(http.MethodGet, "/*", handlerHelper("case", 1))
+	r.Add(http.MethodGet, "/users/:name/", handlerHelper("case", 2))
+
+	c := e.NewContext(nil, nil).(*context)
+
+	r.Find(http.MethodGet, "/users/firstname/no-match", c)
+
+	c.handler(c)
+	assert.Equal(t, 1, c.Get("case"))
+	assert.Equal(t, "/*", c.Get("path"))
+}
+
 // TestRouterMatchAnySlash shall verify finding the best route
 // for any routes with trailing slash requests
 func TestRouterMatchAnySlash(t *testing.T) {

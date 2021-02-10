@@ -2,7 +2,7 @@ package echo
 
 import (
 	"net/http"
-	"strings"
+	"sync"
 )
 
 type (
@@ -320,6 +320,23 @@ func (n *node) checkMethodNotAllowed() HandlerFunc {
 	return NotFoundHandler
 }
 
+type findNextState struct {
+	nk kind
+	nn *node
+	ns string
+	np int
+}
+
+type statePointer struct {
+	s []findNextState
+}
+
+var syncPool = sync.Pool{
+	New: func() interface{} {
+		return &statePointer{make([]findNextState, 0, 10)}
+	},
+}
+
 // Find lookup a handler registered for method and path. It also parses URL for path
 // parameters and load them into context.
 //
@@ -337,11 +354,47 @@ func (r *Router) Find(method, path string, c Context) {
 		search  = path
 		child   *node         // Child node
 		n       int           // Param counter
-		nk      kind          // Next kind
-		nn      *node         // Next node
-		ns      string        // Next search
 		pvalues = ctx.pvalues // Use the internal slice so the interface can keep the illusion of a dynamic slice
 	)
+
+	pState := syncPool.Get().(*statePointer)
+	state := pState.s[0:0]
+	defer func() {
+		for i := range state {
+			state[i].nn = nil
+		}
+		pState.s = state[0:0]
+		syncPool.Put(pState)
+	}()
+
+	pushNext := func(nodeKind kind) {
+		i := len(state)
+		if i+1 > cap(state) {
+			state = append(state, make([]findNextState, 0, 10)...)
+		}
+		state = state[0 : i+1]
+		state[i].nk = nodeKind
+		state[i].nn = cn
+		state[i].ns = search
+		state[i].np = n
+	}
+
+	popNext := func() (nodeKind kind, valid bool) {
+		if len(state) == 0 {
+			return
+		}
+
+		i := len(state) - 1
+		last := state[i]
+		state = state[0:i]
+
+		nodeKind = last.nk
+		cn = last.nn
+		search = last.ns
+		n = last.np
+		valid = cn != nil
+		return
+	}
 
 	// Search order static > param > any
 	for {
@@ -369,7 +422,7 @@ func (r *Router) Find(method, path string, c Context) {
 			// Continue search
 			search = search[l:]
 			// Finish routing if no remaining search and we are on an leaf node
-			if search == "" && (nn == nil || cn.parent == nil || cn.ppath != "") {
+			if search == "" && (len(state) == 0 || cn.parent == nil || cn.ppath != "") {
 				break
 			}
 			// Handle special case of trailing slash route with existing any route (see #1526)
@@ -380,15 +433,16 @@ func (r *Router) Find(method, path string, c Context) {
 
 		// Attempt to go back up the tree on no matching prefix or no remaining search
 		if l != pl || search == "" {
-			if nn == nil { // Issue #1348
-				return // Not found
-			}
-			cn = nn
-			search = ns
-			if nk == pkind {
+			nk, ok := popNext()
+			if !ok {
+				return // Issue #1348 => Not found
+			} else if nk == pkind {
 				goto Param
 			} else if nk == akind {
 				goto Any
+			} else {
+				// Not found
+				return
 			}
 		}
 
@@ -396,9 +450,9 @@ func (r *Router) Find(method, path string, c Context) {
 		if child = cn.findStaticChild(search[0]); child != nil {
 			// Save next
 			if cn.prefix[len(cn.prefix)-1] == '/' { // Issue #623
-				nk = pkind
-				nn = cn
-				ns = search
+				// Push a new entry into the decisition path, if we don't find anything downtree
+				// try the current node again searching for a param node
+				pushNext(pkind)
 			}
 			cn = child
 			continue
@@ -414,9 +468,9 @@ func (r *Router) Find(method, path string, c Context) {
 
 			// Save next
 			if cn.prefix[len(cn.prefix)-1] == '/' { // Issue #623
-				nk = akind
-				nn = cn
-				ns = search
+				// Push a new entry into the decisition path, if we have nothing found downtree
+				// try the current node again searching for an any node
+				pushNext(akind)
 			}
 
 			cn = child
@@ -437,52 +491,18 @@ func (r *Router) Find(method, path string, c Context) {
 			break
 		}
 
-		// No node found, continue at stored next node
-		// or find nearest "any" route
-		if nn != nil {
-			// No next node to go down in routing (issue #954)
-			// Find nearest "any" route going up the routing tree
-			search = ns
-			np := nn.parent
-			// Consider param route one level up only
-			if cn = nn.paramChildren; cn != nil {
-				pos := strings.IndexByte(ns, '/')
-				if pos == -1 {
-					// If no slash is remaining in search string set param value
-					if len(cn.pnames) > 0 {
-						pvalues[len(cn.pnames)-1] = search
-					}
-					break
-				} else if pos > 0 {
-					// Otherwise continue route processing with restored next node
-					cn = nn
-					nn = nil
-					ns = ""
-					goto Param
-				}
-			}
-			// No param route found, try to resolve nearest any route
-			for {
-				np = nn.parent
-				if cn = nn.anyChildren; cn != nil {
-					break
-				}
-				if np == nil {
-					break // no further parent nodes in tree, abort
-				}
-				var str strings.Builder
-				str.WriteString(nn.prefix)
-				str.WriteString(search)
-				search = str.String()
-				nn = np
-			}
-			if cn != nil { // use the found "any" route and update path
-				pvalues[len(cn.pnames)-1] = search
-				break
-			}
+		// Let's try the next possible node in the decision path
+		nk, ok := popNext()
+		if !ok {
+			return // Issue #1348 => Not found
+		} else if nk == pkind {
+			goto Param
+		} else if nk == akind {
+			goto Any
+		} else {
+			// Not found
+			return
 		}
-		return // Not found
-
 	}
 
 	ctx.handler = cn.findHandler(method)
