@@ -60,7 +60,7 @@ func AddTrailingSlashWithConfig(config TrailingSlashConfig) echo.MiddlewareFunc 
 
 				// Redirect
 				if config.RedirectCode != 0 {
-					return c.Redirect(config.RedirectCode, uri)
+					return c.Redirect(config.RedirectCode, sanitizeURI(uri))
 				}
 
 				// Forward
@@ -108,7 +108,7 @@ func RemoveTrailingSlashWithConfig(config TrailingSlashConfig) echo.MiddlewareFu
 
 				// Redirect
 				if config.RedirectCode != 0 {
-					return c.Redirect(config.RedirectCode, uri)
+					return c.Redirect(config.RedirectCode, sanitizeURI(uri))
 				}
 
 				// Forward
@@ -118,4 +118,13 @@ func RemoveTrailingSlashWithConfig(config TrailingSlashConfig) echo.MiddlewareFu
 			return next(c)
 		}
 	}
+}
+
+func sanitizeURI(uri string) string {
+	// double slash `\\`, `//` or even `\/` is absolute uri for browsers and by redirecting request to that uri
+	// we are vulnerable to open redirect attack. so replace all slashes from the beginning with single slash
+	if len(uri) > 1 && (uri[0] == '\\' || uri[0] == '/') && (uri[1] == '\\' || uri[1] == '/') {
+		uri = "/" + strings.TrimLeft(uri, `/\`)
+	}
+	return uri
 }
