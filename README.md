@@ -91,6 +91,10 @@ func hello(c echo.Context) error {
   return c.String(http.StatusOK, "Hello, World!")
 }
 ```
+## Build with jsoniter
+Echo uses encoding/json as default json package, but you can change to [jsoniter](https://github.com/json-iterator/go) by using build tags.
+
+`go build -tags=jsoniter .`
 
 ## Help
 

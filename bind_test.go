@@ -2,7 +2,6 @@ package echo
 
 import (
 	"bytes"
-	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"io"
@@ -15,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labstack/echo/v4/internal/json"
 	"github.com/stretchr/testify/assert"
 )
 

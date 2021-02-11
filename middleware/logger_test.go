@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +12,7 @@ import (
 	"unsafe"
 
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/internal/json"
 	"github.com/stretchr/testify/assert"
 )
 

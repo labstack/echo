@@ -2,10 +2,8 @@
 package echo
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +11,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/labstack/echo/v4/internal/json"
+	"github.com/stretchr/testify/assert"
 )
 
 func createTestContext(URL string, body io.Reader, pathParams map[string]string) Context {

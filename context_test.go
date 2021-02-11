@@ -3,7 +3,6 @@ package echo
 import (
 	"bytes"
 	"crypto/tls"
-	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -18,6 +17,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/labstack/echo/v4/internal/json"
 	"github.com/labstack/gommon/log"
 	testify "github.com/stretchr/testify/assert"
 )

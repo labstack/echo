@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"bytes"
-	"encoding/json"
 	"io"
 	"strconv"
 	"strings"
@@ -10,6 +9,7 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/internal/json"
 	"github.com/labstack/gommon/color"
 	"github.com/valyala/fasttemplate"
 )

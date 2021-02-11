@@ -2,7 +2,6 @@ package echo
 
 import (
 	"encoding"
-	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -10,6 +9,8 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/labstack/echo/v4/internal/json"
 )
 
 type (

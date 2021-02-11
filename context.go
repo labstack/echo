@@ -2,7 +2,6 @@ package echo
 
 import (
 	"bytes"
-	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -14,6 +13,8 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/labstack/echo/v4/internal/json"
 )
 
 type (
