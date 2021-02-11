@@ -2,7 +2,6 @@ package echo
 
 import (
 	"net/http"
-	"sync"
 )
 
 type (
@@ -320,23 +319,6 @@ func (n *node) checkMethodNotAllowed() HandlerFunc {
 	return NotFoundHandler
 }
 
-type findNextState struct {
-	nk kind
-	nn *node
-	ns string
-	np int
-}
-
-type statePointer struct {
-	s []findNextState
-}
-
-var syncPool = sync.Pool{
-	New: func() interface{} {
-		return &statePointer{make([]findNextState, 0, 10)}
-	},
-}
-
 // Find lookup a handler registered for method and path. It also parses URL for path
 // parameters and load them into context.
 //
@@ -346,6 +328,8 @@ var syncPool = sync.Pool{
 // - Reset it `Context#Reset()`
 // - Return it `Echo#ReleaseContext()`.
 func (r *Router) Find(method, path string, c Context) {
+	const backTrackingDepth = 10
+
 	ctx := c.(*context)
 	ctx.path = path
 	cn := r.tree // Current node as root
@@ -354,52 +338,42 @@ func (r *Router) Find(method, path string, c Context) {
 		search  = path
 		n       int           // Param counter
 		pvalues = ctx.pvalues // Use the internal slice so the interface can keep the illusion of a dynamic slice
+
+		// Backtracking Information
+		state [backTrackingDepth]struct {
+			nk kind
+			nn *node
+			ns string
+			np int
+		}
+		stateIndex int = -1
 	)
 
-	pState := syncPool.Get().(*statePointer)
-	state := pState.s[0:0]
-	defer func() {
-		for i := range state {
-			state[i].nk = 0
-			state[i].nn = nil
-			state[i].ns = ""
-			state[i].np = 0
-		}
-		pState.s = state[0:0]
-		syncPool.Put(pState)
-	}()
-
 	pushNext := func(nodeKind kind) {
-		i := len(state)
-		if i+1 > cap(state) {
-			state = append(state, make([]findNextState, 10)...)
+		stateIndex++
+		if stateIndex >= backTrackingDepth {
+			panic("Max backtracking depth reached. TODO: this must be detected during registering the paths")
 		}
-		state = state[0 : i+1]
-		state[i].nk = nodeKind
-		state[i].nn = cn
-		state[i].ns = search
-		state[i].np = n
+
+		state[stateIndex].nk = nodeKind
+		state[stateIndex].nn = cn
+		state[stateIndex].ns = search
+		state[stateIndex].np = n
 	}
 
 	popNext := func() (nodeKind kind, valid bool) {
-		if len(state) == 0 {
+		if stateIndex < 0 {
 			return
 		}
 
-		i := len(state) - 1
-		last := state[i]
-		state = state[0:i]
+		last := state[stateIndex]
+		stateIndex--
 
 		nodeKind = last.nk
 		cn = last.nn
 		search = last.ns
 		n = last.np
 		valid = cn != nil
-
-		last.nk = 0
-		last.nn = nil
-		last.ns = ""
-		last.np = 0
 		return
 	}
 
@@ -425,7 +399,7 @@ func (r *Router) Find(method, path string, c Context) {
 			// No matching prefix, let's backtrack to the first possible alternative node of the decision path
 			nk, ok := popNext()
 			if !ok {
-				return // Issue #1348 => Not found
+				return // No other possibilities on the decision path
 			} else if nk == pkind {
 				goto Param
 			} else if nk == akind {
@@ -490,7 +464,7 @@ func (r *Router) Find(method, path string, c Context) {
 		// Let's backtrack to the first possible alternative node of the decision path
 		nk, ok := popNext()
 		if !ok {
-			return // Issue #1348 => Not found
+			return // No other possibilities on the decision path
 		} else if nk == pkind {
 			goto Param
 		} else if nk == akind {
