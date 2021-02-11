@@ -1,6 +1,6 @@
 # Changelog
 
-## v4.2.0 - 2020-02-08
+## v4.2.0 - 2020-02-11
 
 **Important notes**
 
@@ -15,6 +15,7 @@ Please see [rewrite](https://echo.labstack.com/middleware/rewrite) and [proxy](h
 **Security**
 
 * Fix directory traversal vulnerability for Windows (#1718, little-cui)
+* Fix open redirect vulnerability with trailing slash (#1771,#1775 aldas,GeoffreyFrogeye)
 
 **Enhancements**
 
