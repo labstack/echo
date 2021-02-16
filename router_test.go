@@ -754,6 +754,34 @@ func TestRouterMatchAny(t *testing.T) {
 	assert.Equal(t, "joe", c.Param("*"))
 }
 
+// NOTE: this is to document current implementation. Last added route with `*` asterisk is always the match and no
+// backtracking or more precise matching is done to find more suitable match.
+//
+// Current behaviour might not be correct or expected.
+// But this is where we are without well defined requirements/rules how (multiple) asterisks work in route
+func TestRouterAnyMatchesLastAddedAnyRoute(t *testing.T) {
+	e := New()
+	r := e.router
+
+	r.Add(http.MethodGet, "/users/*", handlerHelper("case", 1))
+	r.Add(http.MethodGet, "/users/*/action*", handlerHelper("case", 2))
+
+	c := e.NewContext(nil, nil).(*context)
+
+	r.Find(http.MethodGet, "/users/xxx/action/sea", c)
+	c.handler(c)
+	assert.Equal(t, "/users/*/action*", c.Get("path"))
+	assert.Equal(t, "xxx/action/sea", c.Param("*"))
+
+	// if we add another route then it is the last added and so it is matched
+	r.Add(http.MethodGet, "/users/*/action/search", handlerHelper("case", 3))
+
+	r.Find(http.MethodGet, "/users/xxx/action/sea", c)
+	c.handler(c)
+	assert.Equal(t, "/users/*/action/search", c.Get("path"))
+	assert.Equal(t, "xxx/action/sea", c.Param("*"))
+}
+
 // Issue #1739
 func TestRouterMatchAnyPrefixIssue(t *testing.T) {
 	e := New()

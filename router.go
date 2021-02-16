@@ -328,52 +328,45 @@ func (n *node) checkMethodNotAllowed() HandlerFunc {
 // - Reset it `Context#Reset()`
 // - Return it `Echo#ReleaseContext()`.
 func (r *Router) Find(method, path string, c Context) {
-	const backTrackingDepth = 10
-
 	ctx := c.(*context)
 	ctx.path = path
 	cn := r.tree // Current node as root
 
 	var (
-		search  = path
-		n       int           // Param counter
-		pvalues = ctx.pvalues // Use the internal slice so the interface can keep the illusion of a dynamic slice
-
-		// Backtracking Information
-		state [backTrackingDepth]struct {
-			nk kind
-			nn *node
-			ns string
-			np int
-		}
-		stateIndex int = -1
+		search      = path
+		searchIndex = 0
+		n           int           // Param counter
+		pvalues     = ctx.pvalues // Use the internal slice so the interface can keep the illusion of a dynamic slice
 	)
 
-	pushNext := func(nodeKind kind) {
-		stateIndex++
-		if stateIndex >= backTrackingDepth {
-			panic("Max backtracking depth reached. TODO: this must be detected during registering the paths")
-		}
+	// backtracking happens when we reach dead end when matching nodes in the router tree. To backtrack we set
+	// current node to parent to current node (this was previous node we checked) and choose next node kind to check.
+	// Next node kind relies on routing priority (static->param->any). So for example if there is no static node match we
+	// should check parent next sibling by kind (param). Backtracking itself does not check if there is next sibling this
+	// is left up to matching logic
+	backtrackToNextNodeKind := func(fromKind kind) (nextNodeKind kind, valid bool) {
+		previous := cn
+		cn = previous.parent
+		valid = cn != nil
 
-		state[stateIndex].nk = nodeKind
-		state[stateIndex].nn = cn
-		state[stateIndex].ns = search
-		state[stateIndex].np = n
-	}
+		// next node type by priority
+		// NOTE: by current implementation we never backtrack from any route so `previous.kind` value is here always static or any
+		// if this requirement is to change then for any route next kind would be static kind and this statement should be changed
+		nextNodeKind = previous.kind + 1
 
-	popNext := func() (nodeKind kind, valid bool) {
-		if stateIndex < 0 {
+		if fromKind == skind {
+			// when backtracking is done from static kind block we did not change search so nothing to restore
 			return
 		}
 
-		last := state[stateIndex]
-		stateIndex--
-
-		nodeKind = last.nk
-		cn = last.nn
-		search = last.ns
-		n = last.np
-		valid = cn != nil
+		if previous.kind == skind {
+			searchIndex -= len(previous.prefix)
+			search = path[searchIndex:]
+		} else {
+			n--
+			searchIndex -= len(pvalues[n])
+			search = path[searchIndex:]
+		}
 		return
 	}
 
@@ -397,21 +390,23 @@ func (r *Router) Find(method, path string, c Context) {
 
 		if l != pl {
 			// No matching prefix, let's backtrack to the first possible alternative node of the decision path
-			nk, ok := popNext()
+			nk, ok := backtrackToNextNodeKind(skind)
 			if !ok {
 				return // No other possibilities on the decision path
 			} else if nk == pkind {
 				goto Param
-			} else if nk == akind {
-				goto Any
+				// NOTE: this case (backtracking from static node to previous any node) can not happen by current any matching logic. Any node is end of search currently
+				//} else if nk == akind {
+				//	goto Any
 			} else {
-				// Not found
+				// Not found (this should never be possible for static node we are looking currently)
 				return
 			}
 		}
 
 		// The full prefix has matched, remove the prefix from the remaining search
 		search = search[l:]
+		searchIndex = searchIndex + l
 
 		// Finish routing if no remaining search and we are on an leaf node
 		if search == "" && cn.ppath != "" {
@@ -421,12 +416,6 @@ func (r *Router) Find(method, path string, c Context) {
 		// Static node
 		if search != "" {
 			if child := cn.findStaticChild(search[0]); child != nil {
-				if cn.paramChildren != nil || cn.anyChildren != nil {
-					// Push a new entry into the decision path, if we don't find anything downtree
-					// try the current node again searching for a param or any node
-					// Optimization: The node is only pushed for backtracking if there's an praramChildren or an anyChildren
-					pushNext(pkind)
-				}
 				cn = child
 				continue
 			}
@@ -435,13 +424,6 @@ func (r *Router) Find(method, path string, c Context) {
 	Param:
 		// Param node
 		if child := cn.paramChildren; search != "" && child != nil {
-			if cn.anyChildren != nil {
-				// Push a new entry into the decision path, if we have nothing found downtree try the current node again
-				// searching for an any node.
-				// Optimization: The node is only pushed for backtracking if there's an anyChildren
-				pushNext(akind)
-			}
-
 			cn = child
 			i, l := 0, len(search)
 			for ; i < l && search[i] != '/'; i++ {
@@ -449,6 +431,7 @@ func (r *Router) Find(method, path string, c Context) {
 			pvalues[n] = search[:i]
 			n++
 			search = search[i:]
+			searchIndex = searchIndex + i
 			continue
 		}
 
@@ -462,7 +445,7 @@ func (r *Router) Find(method, path string, c Context) {
 		}
 
 		// Let's backtrack to the first possible alternative node of the decision path
-		nk, ok := popNext()
+		nk, ok := backtrackToNextNodeKind(akind)
 		if !ok {
 			return // No other possibilities on the decision path
 		} else if nk == pkind {
