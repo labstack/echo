@@ -76,6 +76,7 @@ func TestDecompressDefaultConfig(t *testing.T) {
 
 func TestCompressRequestWithoutDecompressMiddleware(t *testing.T) {
 	e := echo.New()
+	e.BuildRouters()
 	body := `{"name":"echo"}`
 	gz, _ := gzipString(body)
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(gz)))
@@ -112,6 +113,7 @@ func TestDecompressErrorReturned(t *testing.T) {
 	e.GET("/", func(c echo.Context) error {
 		return echo.ErrNotFound
 	})
+	e.BuildRouters()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set(echo.HeaderContentEncoding, GZIPEncoding)
 	rec := httptest.NewRecorder()
@@ -127,6 +129,7 @@ func TestDecompressSkipper(t *testing.T) {
 			return c.Request().URL.Path == "/skip"
 		},
 	}))
+	e.BuildRouters()
 	body := `{"name": "echo"}`
 	req := httptest.NewRequest(http.MethodPost, "/skip", strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentEncoding, GZIPEncoding)
@@ -156,6 +159,7 @@ func TestDecompressPoolError(t *testing.T) {
 		Skipper:            DefaultSkipper,
 		GzipDecompressPool: &TestDecompressPoolWithError{},
 	}))
+	e.BuildRouters()
 	body := `{"name": "echo"}`
 	req := httptest.NewRequest(http.MethodPost, "/echo", strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentEncoding, GZIPEncoding)

@@ -644,13 +644,14 @@ var (
 
 func TestRouterStatic(t *testing.T) {
 	e := New()
-	r := e.router
+	b := NewRouter(e)
 	path := "/folders/a/files/echo.gif"
-	r.Add(http.MethodGet, path, func(c Context) error {
+	b.Add(http.MethodGet, path, "", func(c Context) error {
 		c.Set("path", path)
 		return nil
 	})
 	c := e.NewContext(nil, nil).(*context)
+	r, _ := b.Build()
 	r.Find(http.MethodGet, path, c)
 	c.handler(c)
 	assert.Equal(t, path, c.Get("path"))
@@ -658,23 +659,25 @@ func TestRouterStatic(t *testing.T) {
 
 func TestRouterParam(t *testing.T) {
 	e := New()
-	r := e.router
-	r.Add(http.MethodGet, "/users/:id", func(c Context) error {
+	b := NewRouter(e)
+	b.Add(http.MethodGet, "/users/:id", "", func(c Context) error {
 		return nil
 	})
 	c := e.NewContext(nil, nil).(*context)
+	r, _ := b.Build()
 	r.Find(http.MethodGet, "/users/1", c)
 	assert.Equal(t, "1", c.Param("id"))
 }
 
 func TestRouterTwoParam(t *testing.T) {
 	e := New()
-	r := e.router
-	r.Add(http.MethodGet, "/users/:uid/files/:fid", func(Context) error {
+	b := NewRouter(e)
+	b.Add(http.MethodGet, "/users/:uid/files/:fid", "", func(Context) error {
 		return nil
 	})
 	c := e.NewContext(nil, nil).(*context)
 
+	r, _ := b.Build()
 	r.Find(http.MethodGet, "/users/1/files/1", c)
 	assert.Equal(t, "1", c.Param("uid"))
 	assert.Equal(t, "1", c.Param("fid"))
@@ -683,17 +686,18 @@ func TestRouterTwoParam(t *testing.T) {
 // Issue #378
 func TestRouterParamWithSlash(t *testing.T) {
 	e := New()
-	r := e.router
+	b := NewRouter(e)
 
-	r.Add(http.MethodGet, "/a/:b/c/d/:e", func(c Context) error {
+	b.Add(http.MethodGet, "/a/:b/c/d/:e", "", func(c Context) error {
 		return nil
 	})
 
-	r.Add(http.MethodGet, "/a/:b/c/:d/:f", func(c Context) error {
+	b.Add(http.MethodGet, "/a/:b/c/:d/:f", "", func(c Context) error {
 		return nil
 	})
 
 	c := e.NewContext(nil, nil).(*context)
+	r, _ := b.Build()
 	assert.NotPanics(t, func() {
 		r.Find(http.MethodGet, "/a/1/c/d/2/3", c)
 	})
@@ -702,7 +706,6 @@ func TestRouterParamWithSlash(t *testing.T) {
 // Issue #1509
 func TestRouterParamStaticConflict(t *testing.T) {
 	e := New()
-	r := e.router
 	handler := func(c Context) error {
 		c.Set("path", c.Path())
 		return nil
@@ -712,6 +715,9 @@ func TestRouterParamStaticConflict(t *testing.T) {
 	g.GET("/skills", handler)
 	g.GET("/status", handler)
 	g.GET("/:name", handler)
+
+	e.BuildRouters()
+	r := e.Router()
 
 	c := e.NewContext(nil, nil).(*context)
 	r.Find(http.MethodGet, "/g/s", c)
@@ -727,19 +733,21 @@ func TestRouterParamStaticConflict(t *testing.T) {
 
 func TestRouterMatchAny(t *testing.T) {
 	e := New()
-	r := e.router
+	b := NewRouter(e)
 
 	// Routes
-	r.Add(http.MethodGet, "/", func(Context) error {
+	b.Add(http.MethodGet, "/", "", func(Context) error {
 		return nil
 	})
-	r.Add(http.MethodGet, "/*", func(Context) error {
+	b.Add(http.MethodGet, "/*", "", func(Context) error {
 		return nil
 	})
-	r.Add(http.MethodGet, "/users/*", func(Context) error {
+	b.Add(http.MethodGet, "/users/*", "", func(Context) error {
 		return nil
 	})
 	c := e.NewContext(nil, nil).(*context)
+
+	r, _ := b.Build()
 	r.Find(http.MethodGet, "/", c)
 	assert.Equal(t, "", c.Param("*"))
 
@@ -753,18 +761,20 @@ func TestRouterMatchAny(t *testing.T) {
 // Issue #1739
 func TestRouterMatchAnyPrefixIssue(t *testing.T) {
 	e := New()
-	r := e.router
+	b := NewRouter(e)
 
 	// Routes
-	r.Add(http.MethodGet, "/*", func(c Context) error {
+	b.Add(http.MethodGet, "/*", "", func(c Context) error {
 		c.Set("path", c.Path())
 		return nil
 	})
-	r.Add(http.MethodGet, "/users/*", func(c Context) error {
+	b.Add(http.MethodGet, "/users/*", "", func(c Context) error {
 		c.Set("path", c.Path())
 		return nil
 	})
 	c := e.NewContext(nil, nil).(*context)
+	r, _ := b.Build()
+
 	r.Find(http.MethodGet, "/", c)
 	c.handler(c)
 	assert.Equal(t, "/*", c.Get("path"))
@@ -795,7 +805,7 @@ func TestRouterMatchAnyPrefixIssue(t *testing.T) {
 // for any routes with trailing slash requests
 func TestRouterMatchAnySlash(t *testing.T) {
 	e := New()
-	r := e.router
+	b := NewRouter(e)
 
 	handler := func(c Context) error {
 		c.Set("path", c.Path())
@@ -803,14 +813,17 @@ func TestRouterMatchAnySlash(t *testing.T) {
 	}
 
 	// Routes
-	r.Add(http.MethodGet, "/users", handler)
-	r.Add(http.MethodGet, "/users/*", handler)
-	r.Add(http.MethodGet, "/img/*", handler)
-	r.Add(http.MethodGet, "/img/load", handler)
-	r.Add(http.MethodGet, "/img/load/*", handler)
-	r.Add(http.MethodGet, "/assets/*", handler)
+	b.Add(http.MethodGet, "/users", "", handler)
+	b.Add(http.MethodGet, "/users/*", "", handler)
+	b.Add(http.MethodGet, "/img/*", "", handler)
+	b.Add(http.MethodGet, "/img/load", "", handler)
+	b.Add(http.MethodGet, "/img/load/*", "", handler)
+	b.Add(http.MethodGet, "/assets/*", "", handler)
 
 	c := e.NewContext(nil, nil).(*context)
+
+	r, _ := b.Build()
+
 	r.Find(http.MethodGet, "/", c)
 	assert.Equal(t, "", c.Param("*"))
 
@@ -865,21 +878,24 @@ func TestRouterMatchAnySlash(t *testing.T) {
 
 func TestRouterMatchAnyMultiLevel(t *testing.T) {
 	e := New()
-	r := e.router
+	b := NewRouter(e)
 	handler := func(c Context) error {
 		c.Set("path", c.Path())
 		return nil
 	}
 
 	// Routes
-	r.Add(http.MethodGet, "/api/users/jack", handler)
-	r.Add(http.MethodGet, "/api/users/jill", handler)
-	r.Add(http.MethodGet, "/api/users/*", handler)
-	r.Add(http.MethodGet, "/api/*", handler)
-	r.Add(http.MethodGet, "/other/*", handler)
-	r.Add(http.MethodGet, "/*", handler)
+	b.Add(http.MethodGet, "/api/users/jack", "", handler)
+	b.Add(http.MethodGet, "/api/users/jill", "", handler)
+	b.Add(http.MethodGet, "/api/users/*", "", handler)
+	b.Add(http.MethodGet, "/api/*", "", handler)
+	b.Add(http.MethodGet, "/other/*", "", handler)
+	b.Add(http.MethodGet, "/*", "", handler)
 
 	c := e.NewContext(nil, nil).(*context)
+
+	r, _ := b.Build()
+
 	r.Find(http.MethodGet, "/api/users/jack", c)
 	c.handler(c)
 	assert.Equal(t, "/api/users/jack", c.Get("path"))
@@ -912,7 +928,6 @@ func TestRouterMatchAnyMultiLevel(t *testing.T) {
 }
 func TestRouterMatchAnyMultiLevelWithPost(t *testing.T) {
 	e := New()
-	r := e.router
 	handler := func(c Context) error {
 		c.Set("path", c.Path())
 		return nil
@@ -923,6 +938,9 @@ func TestRouterMatchAnyMultiLevelWithPost(t *testing.T) {
 	e.POST("/api/auth/forgotPassword", handler)
 	e.Any("/api/*", handler)
 	e.Any("/*", handler)
+
+	e.BuildRouters()
+	r := e.Router()
 
 	// POST /api/auth/login shall choose login method
 	c := e.NewContext(nil, nil).(*context)
@@ -963,11 +981,12 @@ func TestRouterMatchAnyMultiLevelWithPost(t *testing.T) {
 
 func TestRouterMicroParam(t *testing.T) {
 	e := New()
-	r := e.router
-	r.Add(http.MethodGet, "/:a/:b/:c", func(c Context) error {
+	b := NewRouter(e)
+	b.Add(http.MethodGet, "/:a/:b/:c", "", func(c Context) error {
 		return nil
 	})
 	c := e.NewContext(nil, nil).(*context)
+	r, _ := b.Build()
 	r.Find(http.MethodGet, "/1/2/3", c)
 	assert.Equal(t, "1", c.Param("a"))
 	assert.Equal(t, "2", c.Param("b"))
@@ -976,13 +995,14 @@ func TestRouterMicroParam(t *testing.T) {
 
 func TestRouterMixParamMatchAny(t *testing.T) {
 	e := New()
-	r := e.router
+	b := NewRouter(e)
 
 	// Route
-	r.Add(http.MethodGet, "/users/:id/*", func(c Context) error {
+	b.Add(http.MethodGet, "/users/:id/*", "", func(c Context) error {
 		return nil
 	})
 	c := e.NewContext(nil, nil).(*context)
+	r, _ := b.Build()
 
 	r.Find(http.MethodGet, "/users/joe/comments", c)
 	c.handler(c)
@@ -991,17 +1011,18 @@ func TestRouterMixParamMatchAny(t *testing.T) {
 
 func TestRouterMultiRoute(t *testing.T) {
 	e := New()
-	r := e.router
+	b := NewRouter(e)
 
 	// Routes
-	r.Add(http.MethodGet, "/users", func(c Context) error {
+	b.Add(http.MethodGet, "/users", "", func(c Context) error {
 		c.Set("path", "/users")
 		return nil
 	})
-	r.Add(http.MethodGet, "/users/:id", func(c Context) error {
+	b.Add(http.MethodGet, "/users/:id", "", func(c Context) error {
 		return nil
 	})
 	c := e.NewContext(nil, nil).(*context)
+	r, _ := b.Build()
 
 	// Route > /users
 	r.Find(http.MethodGet, "/users", c)
@@ -1021,18 +1042,20 @@ func TestRouterMultiRoute(t *testing.T) {
 
 func TestRouterPriority(t *testing.T) {
 	e := New()
-	r := e.router
+	b := NewRouter(e)
 
 	// Routes
-	r.Add(http.MethodGet, "/users", handlerHelper("a", 1))
-	r.Add(http.MethodGet, "/users/new", handlerHelper("b", 2))
-	r.Add(http.MethodGet, "/users/:id", handlerHelper("c", 3))
-	r.Add(http.MethodGet, "/users/dew", handlerHelper("d", 4))
-	r.Add(http.MethodGet, "/users/:id/files", handlerHelper("e", 5))
-	r.Add(http.MethodGet, "/users/newsee", handlerHelper("f", 6))
-	r.Add(http.MethodGet, "/users/*", handlerHelper("g", 7))
-	r.Add(http.MethodGet, "/users/new/*", handlerHelper("h", 8))
-	r.Add(http.MethodGet, "/*", handlerHelper("i", 9))
+	b.Add(http.MethodGet, "/users", "", handlerHelper("a", 1))
+	b.Add(http.MethodGet, "/users/new", "", handlerHelper("b", 2))
+	b.Add(http.MethodGet, "/users/:id", "", handlerHelper("c", 3))
+	b.Add(http.MethodGet, "/users/dew", "", handlerHelper("d", 4))
+	b.Add(http.MethodGet, "/users/:id/files", "", handlerHelper("e", 5))
+	b.Add(http.MethodGet, "/users/newsee", "", handlerHelper("f", 6))
+	b.Add(http.MethodGet, "/users/*", "", handlerHelper("g", 7))
+	b.Add(http.MethodGet, "/users/new/*", "", handlerHelper("h", 8))
+	b.Add(http.MethodGet, "/*", "", handlerHelper("i", 9))
+
+	r, _ := b.Build()
 
 	// Route > /users
 	c := e.NewContext(nil, nil).(*context)
@@ -1145,12 +1168,12 @@ func TestRouterPriority(t *testing.T) {
 
 func TestRouterIssue1348(t *testing.T) {
 	e := New()
-	r := e.router
+	b := NewRouter(e)
 
-	r.Add(http.MethodGet, "/:lang/", func(c Context) error {
+	b.Add(http.MethodGet, "/:lang/", "", func(c Context) error {
 		return nil
 	})
-	r.Add(http.MethodGet, "/:lang/dupa", func(c Context) error {
+	b.Add(http.MethodGet, "/:lang/dupa", "", func(c Context) error {
 		return nil
 	})
 }
@@ -1158,18 +1181,20 @@ func TestRouterIssue1348(t *testing.T) {
 // Issue #372
 func TestRouterPriorityNotFound(t *testing.T) {
 	e := New()
-	r := e.router
+	b := NewRouter(e)
 	c := e.NewContext(nil, nil).(*context)
 
 	// Add
-	r.Add(http.MethodGet, "/a/foo", func(c Context) error {
+	b.Add(http.MethodGet, "/a/foo", "", func(c Context) error {
 		c.Set("a", 1)
 		return nil
 	})
-	r.Add(http.MethodGet, "/a/bar", func(c Context) error {
+	b.Add(http.MethodGet, "/a/bar", "", func(c Context) error {
 		c.Set("b", 2)
 		return nil
 	})
+
+	r, _ := b.Build()
 
 	// Find
 	r.Find(http.MethodGet, "/a/foo", c)
@@ -1188,20 +1213,21 @@ func TestRouterPriorityNotFound(t *testing.T) {
 
 func TestRouterParamNames(t *testing.T) {
 	e := New()
-	r := e.router
+	b := NewRouter(e)
 
 	// Routes
-	r.Add(http.MethodGet, "/users", func(c Context) error {
+	b.Add(http.MethodGet, "/users", "", func(c Context) error {
 		c.Set("path", "/users")
 		return nil
 	})
-	r.Add(http.MethodGet, "/users/:id", func(c Context) error {
+	b.Add(http.MethodGet, "/users/:id", "", func(c Context) error {
 		return nil
 	})
-	r.Add(http.MethodGet, "/users/:uid/files/:fid", func(c Context) error {
+	b.Add(http.MethodGet, "/users/:uid/files/:fid", "", func(c Context) error {
 		return nil
 	})
 	c := e.NewContext(nil, nil).(*context)
+	r, _ := b.Build()
 
 	// Route > /users
 	r.Find(http.MethodGet, "/users", c)
@@ -1224,14 +1250,16 @@ func TestRouterParamNames(t *testing.T) {
 // Issue #623 and #1406
 func TestRouterStaticDynamicConflict(t *testing.T) {
 	e := New()
-	r := e.router
+	b := NewRouter(e)
 
-	r.Add(http.MethodGet, "/dictionary/skills", handlerHelper("a", 1))
-	r.Add(http.MethodGet, "/dictionary/:name", handlerHelper("b", 2))
-	r.Add(http.MethodGet, "/users/new", handlerHelper("d", 4))
-	r.Add(http.MethodGet, "/users/:name", handlerHelper("e", 5))
-	r.Add(http.MethodGet, "/server", handlerHelper("c", 3))
-	r.Add(http.MethodGet, "/", handlerHelper("f", 6))
+	b.Add(http.MethodGet, "/dictionary/skills", "", handlerHelper("a", 1))
+	b.Add(http.MethodGet, "/dictionary/:name", "", handlerHelper("b", 2))
+	b.Add(http.MethodGet, "/users/new", "", handlerHelper("d", 4))
+	b.Add(http.MethodGet, "/users/:name", "", handlerHelper("e", 5))
+	b.Add(http.MethodGet, "/server", "", handlerHelper("c", 3))
+	b.Add(http.MethodGet, "/", "", handlerHelper("f", 6))
+
+	r, _ := b.Build()
 
 	c := e.NewContext(nil, nil)
 	r.Find(http.MethodGet, "/dictionary/skills", c)
@@ -1279,23 +1307,25 @@ func TestRouterStaticDynamicConflict(t *testing.T) {
 // Issue #1348
 func TestRouterParamBacktraceNotFound(t *testing.T) {
 	e := New()
-	r := e.router
+	b := NewRouter(e)
 
 	// Add
-	r.Add(http.MethodGet, "/:param1", func(c Context) error {
+	b.Add(http.MethodGet, "/:param1", "", func(c Context) error {
 		return nil
 	})
-	r.Add(http.MethodGet, "/:param1/foo", func(c Context) error {
+	b.Add(http.MethodGet, "/:param1/foo", "", func(c Context) error {
 		return nil
 	})
-	r.Add(http.MethodGet, "/:param1/bar", func(c Context) error {
+	b.Add(http.MethodGet, "/:param1/bar", "", func(c Context) error {
 		return nil
 	})
-	r.Add(http.MethodGet, "/:param1/bar/:param2", func(c Context) error {
+	b.Add(http.MethodGet, "/:param1/bar/:param2", "", func(c Context) error {
 		return nil
 	})
 
 	c := e.NewContext(nil, nil).(*context)
+
+	r, _ := b.Build()
 
 	//Find
 	r.Find(http.MethodGet, "/a", c)
@@ -1322,14 +1352,15 @@ func TestRouterParamBacktraceNotFound(t *testing.T) {
 
 func testRouterAPI(t *testing.T, api []*Route) {
 	e := New()
-	r := e.router
+	b := NewRouter(e)
 
 	for _, route := range api {
-		r.Add(route.Method, route.Path, func(c Context) error {
+		b.Add(route.Method, route.Path, "", func(c Context) error {
 			return nil
 		})
 	}
 	c := e.NewContext(nil, nil).(*context)
+	r, _ := b.Build()
 	for _, route := range api {
 		r.Find(route.Method, route.Path, c)
 		tokens := strings.Split(route.Path[1:], "/")
@@ -1394,38 +1425,40 @@ func TestRouterMixedParams(t *testing.T) {
 // Issue #1466
 func TestRouterParam1466(t *testing.T) {
 	e := New()
-	r := e.router
+	b := NewRouter(e)
 
-	r.Add(http.MethodPost, "/users/signup", func(c Context) error {
+	b.Add(http.MethodPost, "/users/signup", "", func(c Context) error {
 		return nil
 	})
-	r.Add(http.MethodPost, "/users/signup/bulk", func(c Context) error {
+	b.Add(http.MethodPost, "/users/signup/bulk", "", func(c Context) error {
 		return nil
 	})
-	r.Add(http.MethodPost, "/users/survey", func(c Context) error {
+	b.Add(http.MethodPost, "/users/survey", "", func(c Context) error {
 		return nil
 	})
-	r.Add(http.MethodGet, "/users/:username", func(c Context) error {
+	b.Add(http.MethodGet, "/users/:username", "", func(c Context) error {
 		return nil
 	})
-	r.Add(http.MethodGet, "/interests/:name/users", func(c Context) error {
+	b.Add(http.MethodGet, "/interests/:name/users", "", func(c Context) error {
 		return nil
 	})
-	r.Add(http.MethodGet, "/skills/:name/users", func(c Context) error {
+	b.Add(http.MethodGet, "/skills/:name/users", "", func(c Context) error {
 		return nil
 	})
 	// Additional routes for Issue 1479
-	r.Add(http.MethodGet, "/users/:username/likes/projects/ids", func(c Context) error {
+	b.Add(http.MethodGet, "/users/:username/likes/projects/ids", "", func(c Context) error {
 		return nil
 	})
-	r.Add(http.MethodGet, "/users/:username/profile", func(c Context) error {
+	b.Add(http.MethodGet, "/users/:username/profile", "", func(c Context) error {
 		return nil
 	})
-	r.Add(http.MethodGet, "/users/:username/uploads/:type", func(c Context) error {
+	b.Add(http.MethodGet, "/users/:username/uploads/:type", "", func(c Context) error {
 		return nil
 	})
 
 	c := e.NewContext(nil, nil).(*context)
+
+	r, _ := b.Build()
 
 	r.Find(http.MethodGet, "/users/ajitem", c)
 	assert.Equal(t, "ajitem", c.Param("username"))
@@ -1474,7 +1507,6 @@ func TestRouterParam1466(t *testing.T) {
 // Issue #1655
 func TestRouterFindNotPanicOrLoopsWhenContextSetParamValuesIsCalledWithLessValuesThanEchoMaxParam(t *testing.T) {
 	e := New()
-	r := e.router
 
 	v0 := e.Group("/:version")
 	v0.GET("/admin", func(c Context) error {
@@ -1486,6 +1518,9 @@ func TestRouterFindNotPanicOrLoopsWhenContextSetParamValuesIsCalledWithLessValue
 	v0.GET("/images/view/:id", handlerHelper("iv", 1))
 	v0.GET("/images/:id", handlerHelper("i", 1))
 	v0.GET("/view/*", handlerHelper("v", 1))
+
+	e.BuildRouters()
+	r := e.Router()
 
 	//If this API is called before the next two one panic the other loops ( of course without my fix ;) )
 	c := e.NewContext(nil, nil)
@@ -1511,15 +1546,17 @@ func TestRouterFindNotPanicOrLoopsWhenContextSetParamValuesIsCalledWithLessValue
 // Issue #1653
 func TestRouterPanicWhenParamNoRootOnlyChildsFailsFind(t *testing.T) {
 	e := New()
-	r := e.router
+	b := NewRouter(e)
 
-	r.Add(http.MethodGet, "/users/create", handlerHelper("create", 1))
-	r.Add(http.MethodGet, "/users/:id/edit", func(c Context) error {
+	b.Add(http.MethodGet, "/users/create", "", handlerHelper("create", 1))
+	b.Add(http.MethodGet, "/users/:id/edit", "", func(c Context) error {
 		return nil
 	})
-	r.Add(http.MethodGet, "/users/:id/active", func(c Context) error {
+	b.Add(http.MethodGet, "/users/:id/active", "", func(c Context) error {
 		return nil
 	})
+
+	r, _ := b.Build()
 
 	c := e.NewContext(nil, nil).(*context)
 	r.Find(http.MethodGet, "/users/alice/edit", c)
@@ -1545,16 +1582,18 @@ func TestRouterPanicWhenParamNoRootOnlyChildsFailsFind(t *testing.T) {
 // Issue #1726
 func TestRouterParamDifferentNamesPerHTTPMethod(t *testing.T) {
 	e := New()
-	r := e.router
+	b := NewRouter(e)
 
-	r.Add(http.MethodGet, "/translation/:lang", func(Context) error {
+	b.Add(http.MethodGet, "/translation/:lang", "", func(Context) error {
 		return nil
 	})
-	r.Add(http.MethodPut, "/translation/:lang", func(Context) error {
+	b.Add(http.MethodPut, "/translation/:lang", "", func(Context) error {
 		return nil
 	})
 
 	c := e.NewContext(nil, nil).(*context)
+
+	r, _ := b.Build()
 
 	r.Find(http.MethodGet, "/translation/en-US", c)
 	assert.Equal(t, "en-US", c.Param("lang"))
@@ -1562,24 +1601,54 @@ func TestRouterParamDifferentNamesPerHTTPMethod(t *testing.T) {
 	r.Find(http.MethodPut, "/translation/es-AR", c)
 	assert.Equal(t, "es-AR", c.Param("lang"))
 
-	assert.Panics(t, func() {
-		r.Add(http.MethodDelete, "/translation/:id", func(Context) error {
-			return nil
-		})
+	_, err := b.Add(http.MethodDelete, "/translation/:id", "", func(Context) error {
+		return nil
 	})
+	assert.Error(t, err)
+}
+
+func TestRouterReverse(t *testing.T) {
+	assert := assert.New(t)
+
+	b := NewRouter(New())
+	dummyHandler := func(Context) error { return nil }
+
+	route, _ := b.Add(http.MethodGet, "/static", "", dummyHandler)
+	route.Name = "/static"
+
+	route, _ = b.Add(http.MethodGet, "/static/*", "", dummyHandler)
+	route.Name = "/static/*"
+
+	route, _ = b.Add(http.MethodGet, "/params/:foo", "/params/:foo", dummyHandler)
+	route, _ = b.Add(http.MethodGet, "/params/:foo/bar/:qux", "/params/:foo/bar/:qux", dummyHandler)
+	route, _ = b.Add(http.MethodGet, "/params/:foo/bar/:qux/*", "/params/:foo/bar/:qux/*", dummyHandler)
+
+	assert.Equal("/static", b.Reverse("/static"))
+	assert.Equal("/static", b.Reverse("/static", "missing param"))
+	assert.Equal("/static/*", b.Reverse("/static/*"))
+	assert.Equal("/static/foo.txt", b.Reverse("/static/*", "foo.txt"))
+
+	assert.Equal("/params/:foo", b.Reverse("/params/:foo"))
+	assert.Equal("/params/one", b.Reverse("/params/:foo", "one"))
+	assert.Equal("/params/:foo/bar/:qux", b.Reverse("/params/:foo/bar/:qux"))
+	assert.Equal("/params/one/bar/:qux", b.Reverse("/params/:foo/bar/:qux", "one"))
+	assert.Equal("/params/one/bar/two", b.Reverse("/params/:foo/bar/:qux", "one", "two"))
+	assert.Equal("/params/one/bar/two/three", b.Reverse("/params/:foo/bar/:qux/*", "one", "two", "three"))
 }
 
 func benchmarkRouterRoutes(b *testing.B, routes []*Route, routesToFind []*Route) {
 	e := New()
-	r := e.router
+	builder := NewRouter(e)
 	b.ReportAllocs()
 
 	// Add routes
 	for _, route := range routes {
-		r.Add(route.Method, route.Path, func(c Context) error {
+		builder.Add(route.Method, route.Path, "", func(c Context) error {
 			return nil
 		})
 	}
+
+	r, _ := builder.Build()
 
 	// Routes adding are performed just once, so it doesn't make sense to see that in the benchmark
 	b.ResetTimer()

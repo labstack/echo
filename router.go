@@ -1,6 +1,8 @@
 package echo
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -8,9 +10,27 @@ import (
 )
 
 type (
-	// Router is the registry of all registered routes for an `Echo` instance for
+	// Route contains a information for matching against requests.
+	Route struct {
+		Method string `json:"method"`
+		Path   string `json:"path"`
+		Name   string `json:"name"`
+	}
+
+	Router interface {
+		Find(method, path string, c Context) error
+	}
+
+	RouteBuilder interface {
+		Add(method, path, name string, h HandlerFunc) (*Route, error)
+		Reverse(name string, params ...interface{}) string
+		Routes() ([]*Route, error)
+		Build() (Router, error)
+	}
+
+	// router is the registry of all registered routes for an `Echo` instance for
 	// request matching and URL path parameter parsing.
-	Router struct {
+	router struct {
 		tree   *node
 		routes map[string]*Route
 		echo   *Echo
@@ -53,9 +73,13 @@ const (
 	anyLabel   = byte('*')
 )
 
+var (
+	NoRouteFound = errors.New("no route found")
+)
+
 // NewRouter returns a new Router instance.
-func NewRouter(e *Echo) *Router {
-	return &Router{
+func NewRouter(e *Echo) RouteBuilder {
+	return &router{
 		tree: &node{
 			methodHandler: new(methodHandler),
 		},
@@ -64,8 +88,18 @@ func NewRouter(e *Echo) *Router {
 	}
 }
 
+func (r *router) registerRoute(method, path, name string) *Route {
+	route := &Route{
+		Method: method,
+		Path:   path,
+		Name:   name,
+	}
+	r.routes[method+path] = route
+	return route
+}
+
 // Add registers a new route for method and path with matching handler.
-func (r *Router) Add(method, path string, h HandlerFunc) {
+func (r *router) Add(method, path, name string, h HandlerFunc) (*Route, error) {
 	// Validate path
 	if path == "" {
 		path = "/"
@@ -80,7 +114,9 @@ func (r *Router) Add(method, path string, h HandlerFunc) {
 		if path[i] == ':' {
 			j := i + 1
 
-			r.insert(method, path[:i], nil, skind, "", nil)
+			if err := r.insert(method, path[:i], nil, skind, "", nil); err != nil {
+				return nil, err
+			}
 			for ; i < l && path[i] != '/'; i++ {
 			}
 
@@ -89,21 +125,32 @@ func (r *Router) Add(method, path string, h HandlerFunc) {
 			i, l = j, len(path)
 
 			if i == l {
-				r.insert(method, path[:i], h, pkind, ppath, pnames)
+				if err := r.insert(method, path[:i], h, pkind, ppath, pnames); err != nil {
+					return nil, err
+				}
 			} else {
-				r.insert(method, path[:i], nil, pkind, "", nil)
+				if err := r.insert(method, path[:i], nil, pkind, "", nil); err != nil {
+					return nil, err
+				}
 			}
 		} else if path[i] == '*' {
-			r.insert(method, path[:i], nil, skind, "", nil)
+			if err := r.insert(method, path[:i], nil, skind, "", nil); err != nil {
+				return nil, err
+			}
 			pnames = append(pnames, "*")
-			r.insert(method, path[:i+1], h, akind, ppath, pnames)
+			if err := r.insert(method, path[:i+1], h, akind, ppath, pnames); err != nil {
+				return nil, err
+			}
 		}
 	}
 
-	r.insert(method, path, h, skind, ppath, pnames)
+	if err := r.insert(method, path, h, skind, ppath, pnames); err != nil {
+		return nil, err
+	}
+	return r.registerRoute(method, ppath, name), nil
 }
 
-func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string, pnames []string) {
+func (r *router) insert(method, path string, h HandlerFunc, t kind, ppath string, pnames []string) error {
 	// Adjust max param
 	l := len(pnames)
 	if *r.echo.maxParam < l {
@@ -112,7 +159,7 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 
 	cn := r.tree // Current node as root
 	if cn == nil {
-		panic("echo: invalid method")
+		errors.New("invalid root node")
 	}
 	search := path
 
@@ -207,15 +254,15 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 					cn.pnames = pnames
 				} else {
 					if !reflect.DeepEqual(cn.pnames, pnames) {
-						panic(fmt.Sprintf("echo: route params are different for %s - %s != %s",
-							cn.ppath, cn.pnames, pnames))
+						return fmt.Errorf("route params are different for %s - %s != %s",
+							cn.ppath, cn.pnames, pnames)
 					}
 				}
 				cn.addHandler(method, h)
 				cn.ppath = ppath
 			}
 		}
-		return
+		return nil
 	}
 }
 
@@ -335,7 +382,7 @@ func (n *node) checkMethodNotAllowed() HandlerFunc {
 // - Get context from `Echo#AcquireContext()`
 // - Reset it `Context#Reset()`
 // - Return it `Echo#ReleaseContext()`.
-func (r *Router) Find(method, path string, c Context) {
+func (r *router) Find(method, path string, c Context) error {
 	ctx := c.(*context)
 	ctx.path = path
 	cn := r.tree // Current node as root
@@ -388,7 +435,7 @@ func (r *Router) Find(method, path string, c Context) {
 		// Attempt to go back up the tree on no matching prefix or no remaining search
 		if l != pl || search == "" {
 			if nn == nil { // Issue #1348
-				return // Not found
+				return NoRouteFound
 			}
 			cn = nn
 			search = ns
@@ -488,7 +535,7 @@ func (r *Router) Find(method, path string, c Context) {
 				break
 			}
 		}
-		return // Not found
+		return NoRouteFound
 
 	}
 
@@ -503,7 +550,7 @@ func (r *Router) Find(method, path string, c Context) {
 		// Dig further for any, might have an empty value for *, e.g.
 		// serving a directory. Issue #207.
 		if cn = cn.anyChildren; cn == nil {
-			return
+			return NoRouteFound
 		}
 		if h := cn.findHandler(method); h != nil {
 			ctx.handler = h
@@ -515,5 +562,40 @@ func (r *Router) Find(method, path string, c Context) {
 		pvalues[len(cn.pnames)-1] = ""
 	}
 
-	return
+	return nil
+}
+
+func (r *router) Reverse(name string, params ...interface{}) string {
+	uri := new(bytes.Buffer)
+	ln := len(params)
+	n := 0
+	for _, r := range r.routes {
+		if r.Name == name {
+			for i, l := 0, len(r.Path); i < l; i++ {
+				if (r.Path[i] == ':' || r.Path[i] == '*') && n < ln {
+					for ; i < l && r.Path[i] != '/'; i++ {
+					}
+					uri.WriteString(fmt.Sprintf("%v", params[n]))
+					n++
+				}
+				if i < l {
+					uri.WriteByte(r.Path[i])
+				}
+			}
+			break
+		}
+	}
+	return uri.String()
+}
+
+func (r *router) Routes() ([]*Route, error) {
+	routes := make([]*Route, 0, len(r.routes))
+	for _, v := range r.routes {
+		routes = append(routes, v)
+	}
+	return routes, nil
+}
+
+func (r *router) Build() (Router, error) {
+	return r, nil
 }

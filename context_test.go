@@ -462,9 +462,13 @@ func TestContextCookie(t *testing.T) {
 
 func TestContextPath(t *testing.T) {
 	e := New()
-	r := e.Router()
+	b := NewRouter(e)
 
-	r.Add(http.MethodGet, "/users/:id", nil)
+	b.Add(http.MethodGet, "/users/:id", "", nil)
+	b.Add(http.MethodGet, "/users/:uid/files/:fid", "", nil)
+
+	r, _ := b.Build()
+
 	c := e.NewContext(nil, nil)
 	r.Find(http.MethodGet, "/users/1", c)
 
@@ -472,7 +476,6 @@ func TestContextPath(t *testing.T) {
 
 	assert.Equal("/users/:id", c.Path())
 
-	r.Add(http.MethodGet, "/users/:uid/files/:fid", nil)
 	c = e.NewContext(nil, nil)
 	r.Find(http.MethodGet, "/users/1/files/1", c)
 	assert.Equal("/users/:uid/files/:fid", c.Path())
@@ -498,8 +501,7 @@ func TestContextPathParam(t *testing.T) {
 
 func TestContextGetAndSetParam(t *testing.T) {
 	e := New()
-	r := e.Router()
-	r.Add(http.MethodGet, "/:foo", func(Context) error { return nil })
+	e.Add(http.MethodGet, "/:foo", func(Context) error { return nil })
 	req := httptest.NewRequest(http.MethodGet, "/:foo", nil)
 	c := e.NewContext(req, nil)
 	c.SetParamNames("foo")
@@ -672,17 +674,20 @@ func BenchmarkContext_Store(b *testing.B) {
 
 func TestContextHandler(t *testing.T) {
 	e := New()
-	r := e.Router()
-	b := new(bytes.Buffer)
+	b := NewRouter(e)
+	buff := new(bytes.Buffer)
 
-	r.Add(http.MethodGet, "/handler", func(Context) error {
-		_, err := b.Write([]byte("handler"))
+	b.Add(http.MethodGet, "/handler", "", func(Context) error {
+		_, err := buff.Write([]byte("handler"))
 		return err
 	})
+
+	r, _ := b.Build()
+
 	c := e.NewContext(nil, nil)
 	r.Find(http.MethodGet, "/handler", c)
 	err := c.Handler()(c)
-	testify.Equal(t, "handler", b.String())
+	testify.Equal(t, "handler", buff.String())
 	testify.NoError(t, err)
 }
 

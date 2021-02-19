@@ -50,6 +50,7 @@ const userXMLPretty = `<user>
 
 func TestEcho(t *testing.T) {
 	e := New()
+	e.BuildRouters()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
@@ -185,6 +186,7 @@ func TestEchoStatic(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			e := New()
 			e.Static(tc.givenPrefix, tc.givenRoot)
+			e.BuildRouters()
 			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
 			rec := httptest.NewRecorder()
 			e.ServeHTTP(rec, req)
@@ -243,6 +245,7 @@ func TestEchoStaticRedirectIndex(t *testing.T) {
 func TestEchoFile(t *testing.T) {
 	e := New()
 	e.File("/walle", "_fixture/images/walle.png")
+	e.BuildRouters()
 	c, b := request(http.MethodGet, "/walle", e)
 	assert.Equal(t, http.StatusOK, c)
 	assert.NotEmpty(t, b)
@@ -286,6 +289,8 @@ func TestEchoMiddleware(t *testing.T) {
 		return c.String(http.StatusOK, "OK")
 	})
 
+	e.BuildRouters()
+
 	c, b := request(http.MethodGet, "/", e)
 	assert.Equal(t, "-1123", buf.String())
 	assert.Equal(t, http.StatusOK, c)
@@ -300,6 +305,7 @@ func TestEchoMiddlewareError(t *testing.T) {
 		}
 	})
 	e.GET("/", NotFoundHandler)
+	e.BuildRouters()
 	c, _ := request(http.MethodGet, "/", e)
 	assert.Equal(t, http.StatusInternalServerError, c)
 }
@@ -311,6 +317,8 @@ func TestEchoHandler(t *testing.T) {
 	e.GET("/ok", func(c Context) error {
 		return c.String(http.StatusOK, "OK")
 	})
+
+	e.BuildRouters()
 
 	c, b := request(http.MethodGet, "/ok", e)
 	assert.Equal(t, http.StatusOK, c)
@@ -473,6 +481,7 @@ func TestEchoEncodedPath(t *testing.T) {
 	e.GET("/:id", func(c Context) error {
 		return c.NoContent(http.StatusOK)
 	})
+	e.BuildRouters()
 	req := httptest.NewRequest(http.MethodGet, "/with%2Fslash", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -525,6 +534,8 @@ func TestEchoGroup(t *testing.T) {
 	})
 	g3.GET("", h)
 
+	e.BuildRouters()
+
 	request(http.MethodGet, "/users", e)
 	assert.Equal(t, "0", buf.String())
 
@@ -539,6 +550,7 @@ func TestEchoGroup(t *testing.T) {
 
 func TestEchoNotFound(t *testing.T) {
 	e := New()
+	e.BuildRouters()
 	req := httptest.NewRequest(http.MethodGet, "/files", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -550,6 +562,7 @@ func TestEchoMethodNotAllowed(t *testing.T) {
 	e.GET("/", func(c Context) error {
 		return c.String(http.StatusOK, "Echo!")
 	})
+	e.BuildRouters()
 	req := httptest.NewRequest(http.MethodPost, "/", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -840,6 +853,7 @@ func testMethod(t *testing.T, method, path string, e *Echo) {
 	})
 	i := interface{}(e)
 	reflect.ValueOf(i).MethodByName(method).Call([]reflect.Value{p, h})
+	e.BuildRouters()
 	_, body := request(method, path, e)
 	assert.Equal(t, method, body)
 }
@@ -884,6 +898,7 @@ func TestDefaultHTTPErrorHandler(t *testing.T) {
 			"error":   "stackinfo",
 		})
 	})
+	e.BuildRouters()
 	// With Debug=true plain response contains error message
 	c, b := request(http.MethodGet, "/plain", e)
 	assert.Equal(t, http.StatusInternalServerError, c)

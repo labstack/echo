@@ -23,6 +23,7 @@ func TestRewrite(t *testing.T) {
 			"/users/*/orders/*": "/user/$1/order/$2",
 		},
 	}))
+	e.BuildRouters()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	req.URL, _ = url.Parse("/api/users")
@@ -52,7 +53,6 @@ func TestRewrite(t *testing.T) {
 // Issue #1086
 func TestEchoRewritePreMiddleware(t *testing.T) {
 	e := echo.New()
-	r := e.Router()
 
 	// Rewrite old url to new one
 	e.Pre(Rewrite(map[string]string{
@@ -61,9 +61,11 @@ func TestEchoRewritePreMiddleware(t *testing.T) {
 	))
 
 	// Route
-	r.Add(http.MethodGet, "/new", func(c echo.Context) error {
+	e.Add(http.MethodGet, "/new", func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	})
+
+	e.BuildRouters()
 
 	req := httptest.NewRequest(http.MethodGet, "/old", nil)
 	rec := httptest.NewRecorder()
@@ -75,7 +77,6 @@ func TestEchoRewritePreMiddleware(t *testing.T) {
 // Issue #1143
 func TestRewriteWithConfigPreMiddleware_Issue1143(t *testing.T) {
 	e := echo.New()
-	r := e.Router()
 
 	e.Pre(RewriteWithConfig(RewriteConfig{
 		Rules: map[string]string{
@@ -84,12 +85,14 @@ func TestRewriteWithConfigPreMiddleware_Issue1143(t *testing.T) {
 		},
 	}))
 
-	r.Add(http.MethodGet, "/api/:version/hosts/:name", func(c echo.Context) error {
+	e.Add(http.MethodGet, "/api/:version/hosts/:name", func(c echo.Context) error {
 		return c.String(http.StatusOK, "hosts")
 	})
-	r.Add(http.MethodGet, "/api/:version/eng", func(c echo.Context) error {
+	e.Add(http.MethodGet, "/api/:version/eng", func(c echo.Context) error {
 		return c.String(http.StatusOK, "eng")
 	})
+
+	e.BuildRouters()
 
 	for i := 0; i < 100; i++ {
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/mgmt/proj/test/agt", nil)
@@ -113,6 +116,8 @@ func TestEchoRewriteWithCaret(t *testing.T) {
 			"^/abc/*": "/v1/abc/$1",
 		},
 	}))
+
+	e.BuildRouters()
 
 	rec := httptest.NewRecorder()
 
@@ -147,6 +152,8 @@ func TestEchoRewriteWithRegexRules(t *testing.T) {
 		},
 	}))
 
+	e.BuildRouters()
+
 	var rec *httptest.ResponseRecorder
 	var req *http.Request
 
@@ -163,12 +170,12 @@ func TestEchoRewriteWithRegexRules(t *testing.T) {
 		{"/y/foo/bar", "/v5/bar/foo"},
 	}
 
-		for _, tc := range testCases {
-			t.Run(tc.requestPath, func(t *testing.T) {
-				req = httptest.NewRequest(http.MethodGet, tc.requestPath, nil)
-				rec = httptest.NewRecorder()
-				e.ServeHTTP(rec, req)
-				assert.Equal(t, tc.expectPath, req.URL.EscapedPath())
-			})
-		}
+	for _, tc := range testCases {
+		t.Run(tc.requestPath, func(t *testing.T) {
+			req = httptest.NewRequest(http.MethodGet, tc.requestPath, nil)
+			rec = httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+			assert.Equal(t, tc.expectPath, req.URL.EscapedPath())
+		})
+	}
 }

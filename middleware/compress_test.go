@@ -112,6 +112,7 @@ func TestGzipErrorReturned(t *testing.T) {
 	e.GET("/", func(c echo.Context) error {
 		return echo.ErrNotFound
 	})
+	e.BuildRouters()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
 	rec := httptest.NewRecorder()
@@ -128,6 +129,7 @@ func TestGzipErrorReturnedInvalidConfig(t *testing.T) {
 		c.Response().Write([]byte("test"))
 		return nil
 	})
+	e.BuildRouters()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
 	rec := httptest.NewRecorder()
@@ -141,6 +143,7 @@ func TestGzipWithStatic(t *testing.T) {
 	e := echo.New()
 	e.Use(Gzip())
 	e.Static("/test", "../_fixture/images")
+	e.BuildRouters()
 	req := httptest.NewRequest(http.MethodGet, "/test/walle.png", nil)
 	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
 	rec := httptest.NewRecorder()

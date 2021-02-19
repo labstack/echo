@@ -37,7 +37,6 @@ Learn more at https://echo.labstack.com
 package echo
 
 import (
-	"bytes"
 	stdContext "context"
 	"crypto/tls"
 	"errors"
@@ -75,8 +74,10 @@ type (
 		premiddleware    []MiddlewareFunc
 		middleware       []MiddlewareFunc
 		maxParam         *int
-		router           *Router
-		routers          map[string]*Router
+		routerBuilder    RouteBuilder
+		routersBuilder   map[string]RouteBuilder
+		router           Router
+		routers          map[string]Router
 		notFoundHandler  HandlerFunc
 		pool             sync.Pool
 		Server           *http.Server
@@ -95,13 +96,6 @@ type (
 		Logger           Logger
 		IPExtractor      IPExtractor
 		ListenerNetwork  string
-	}
-
-	// Route contains a handler and information for matching against requests.
-	Route struct {
-		Method string `json:"method"`
-		Path   string `json:"path"`
-		Name   string `json:"name"`
 	}
 
 	// HTTPError represents an error that occurred while handling a request.
@@ -320,8 +314,8 @@ func New() (e *Echo) {
 	e.pool.New = func() interface{} {
 		return e.NewContext(nil, nil)
 	}
-	e.router = NewRouter(e)
-	e.routers = map[string]*Router{}
+	e.routerBuilder = NewRouter(e)
+	e.routersBuilder = map[string]RouteBuilder{}
 	return
 }
 
@@ -338,13 +332,31 @@ func (e *Echo) NewContext(r *http.Request, w http.ResponseWriter) Context {
 }
 
 // Router returns the default router.
-func (e *Echo) Router() *Router {
+func (e *Echo) Router() Router {
 	return e.router
 }
 
 // Routers returns the map of host => router.
-func (e *Echo) Routers() map[string]*Router {
+func (e *Echo) Routers() map[string]Router {
 	return e.routers
+}
+
+//BuildRouters builds the internal Routers
+func (e *Echo) BuildRouters() error {
+	var err error
+	if e.router, err = e.routerBuilder.Build(); err != nil {
+		return err
+	}
+	e.routers = make(map[string]Router)
+	for host, routeBuilder := range e.routersBuilder {
+		router, err := routeBuilder.Build()
+		if err == nil {
+			e.routers[host] = router
+		} else {
+			return err
+		}
+	}
+	return nil
 }
 
 // DefaultHTTPErrorHandler is the default HTTP error handler. It sends a JSON response
@@ -530,17 +542,11 @@ func (e *Echo) File(path, file string, m ...MiddlewareFunc) *Route {
 
 func (e *Echo) add(host, method, path string, handler HandlerFunc, middleware ...MiddlewareFunc) *Route {
 	name := handlerName(handler)
-	router := e.findRouter(host)
-	router.Add(method, path, func(c Context) error {
+	router := e.findRouterBuilder(host)
+	r, _ := router.Add(method, path, name, func(c Context) error {
 		h := applyMiddleware(handler, middleware...)
 		return h(c)
 	})
-	r := &Route{
-		Method: method,
-		Path:   path,
-		Name:   name,
-	}
-	e.router.routes[method+path] = r
 	return r
 }
 
@@ -552,7 +558,7 @@ func (e *Echo) Add(method, path string, handler HandlerFunc, middleware ...Middl
 
 // Host creates a new router group for the provided host and optional host-level middleware.
 func (e *Echo) Host(name string, m ...MiddlewareFunc) (g *Group) {
-	e.routers[name] = NewRouter(e)
+	e.routersBuilder[name] = NewRouter(e)
 	g = &Group{host: name, echo: e}
 	g.Use(m...)
 	return
@@ -578,34 +584,12 @@ func (e *Echo) URL(h HandlerFunc, params ...interface{}) string {
 
 // Reverse generates an URL from route name and provided parameters.
 func (e *Echo) Reverse(name string, params ...interface{}) string {
-	uri := new(bytes.Buffer)
-	ln := len(params)
-	n := 0
-	for _, r := range e.router.routes {
-		if r.Name == name {
-			for i, l := 0, len(r.Path); i < l; i++ {
-				if (r.Path[i] == ':' || r.Path[i] == '*') && n < ln {
-					for ; i < l && r.Path[i] != '/'; i++ {
-					}
-					uri.WriteString(fmt.Sprintf("%v", params[n]))
-					n++
-				}
-				if i < l {
-					uri.WriteByte(r.Path[i])
-				}
-			}
-			break
-		}
-	}
-	return uri.String()
+	return e.routerBuilder.Reverse(name, params...)
 }
 
 // Routes returns the registered routes.
 func (e *Echo) Routes() []*Route {
-	routes := make([]*Route, 0, len(e.router.routes))
-	for _, v := range e.router.routes {
-		routes = append(routes, v)
-	}
+	routes, _ := e.routerBuilder.Routes()
 	return routes
 }
 
@@ -755,6 +739,11 @@ func (e *Echo) configureServer(s *http.Server) (err error) {
 
 	if !e.HideBanner {
 		e.colorer.Printf(banner, e.colorer.Red("v"+Version), e.colorer.Blue(website))
+	}
+
+	//Build Routers
+	if err := e.BuildRouters(); err != nil {
+		return err
 	}
 
 	if s.TLSConfig == nil {
@@ -912,13 +901,22 @@ func WrapMiddleware(m func(http.Handler) http.Handler) MiddlewareFunc {
 	}
 }
 
-func (e *Echo) findRouter(host string) *Router {
+func (e *Echo) findRouter(host string) Router {
 	if len(e.routers) > 0 {
 		if r, ok := e.routers[host]; ok {
 			return r
 		}
 	}
 	return e.router
+}
+
+func (e *Echo) findRouterBuilder(host string) RouteBuilder {
+	if len(e.routersBuilder) > 0 {
+		if r, ok := e.routersBuilder[host]; ok {
+			return r
+		}
+	}
+	return e.routerBuilder
 }
 
 func handlerName(h HandlerFunc) string {
