@@ -163,12 +163,12 @@ func TestEchoRewriteWithRegexRules(t *testing.T) {
 		{"/y/foo/bar", "/v5/bar/foo"},
 	}
 
-		for _, tc := range testCases {
-			t.Run(tc.requestPath, func(t *testing.T) {
-				req = httptest.NewRequest(http.MethodGet, tc.requestPath, nil)
-				rec = httptest.NewRecorder()
-				e.ServeHTTP(rec, req)
-				assert.Equal(t, tc.expectPath, req.URL.EscapedPath())
-			})
-		}
+	for _, tc := range testCases {
+		t.Run(tc.requestPath, func(t *testing.T) {
+			req = httptest.NewRequest(http.MethodGet, tc.requestPath, nil)
+			rec = httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+			assert.Equal(t, tc.expectPath, req.URL.EscapedPath())
+		})
+	}
 }

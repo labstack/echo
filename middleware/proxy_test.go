@@ -247,7 +247,6 @@ func TestProxyRewriteRegex(t *testing.T) {
 		{"/y/foo/bar", http.StatusOK, "/v5/bar/foo"},
 	}
 
-
 	for _, tc := range testCases {
 		t.Run(tc.requestPath, func(t *testing.T) {
 			req.URL, _ = url.Parse(tc.requestPath)
