@@ -101,10 +101,8 @@ type ValueBinder struct {
 // QueryParamsBinder creates query parameter value binder
 func QueryParamsBinder(c Context) *ValueBinder {
 	return &ValueBinder{
-		failFast: true,
-		ValueFunc: func(sourceParam string) string {
-			return c.QueryParam(sourceParam)
-		},
+		failFast:  true,
+		ValueFunc: c.QueryParam,
 		ValuesFunc: func(sourceParam string) []string {
 			values, ok := c.QueryParams()[sourceParam]
 			if !ok {
@@ -119,10 +117,8 @@ func QueryParamsBinder(c Context) *ValueBinder {
 // PathParamsBinder creates path parameter value binder
 func PathParamsBinder(c Context) *ValueBinder {
 	return &ValueBinder{
-		failFast: true,
-		ValueFunc: func(sourceParam string) string {
-			return c.Param(sourceParam)
-		},
+		failFast:  true,
+		ValueFunc: c.Param,
 		ValuesFunc: func(sourceParam string) []string {
 			// path parameter should not have multiple values so getting values does not make sense but lets not error out here
 			value := c.Param(sourceParam)
