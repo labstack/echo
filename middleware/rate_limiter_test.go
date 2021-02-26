@@ -350,9 +350,7 @@ func TestRateLimiterMemoryStore_Allow(t *testing.T) {
 
 func TestRateLimiterMemoryStore_cleanupStaleVisitors(t *testing.T) {
 	var inMemoryStore = NewRateLimiterMemoryStoreWithConfig(RateLimiterMemoryStoreConfig{Rate: 1, Burst: 3})
-	now = func() time.Time {
-		return time.Now()
-	}
+	now = time.Now
 	fmt.Println(now())
 	inMemoryStore.visitors = map[string]*Visitor{
 		"A": {

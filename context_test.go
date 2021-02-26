@@ -649,8 +649,7 @@ func TestContextRedirect(t *testing.T) {
 }
 
 func TestContextStore(t *testing.T) {
-	var c Context
-	c = new(context)
+	var c Context = new(context)
 	c.Set("name", "Jon Snow")
 	testify.Equal(t, "Jon Snow", c.Get("name"))
 }
@@ -687,8 +686,7 @@ func TestContextHandler(t *testing.T) {
 }
 
 func TestContext_SetHandler(t *testing.T) {
-	var c Context
-	c = new(context)
+	var c Context = new(context)
 
 	testify.Nil(t, c.Handler())
 
@@ -701,8 +699,7 @@ func TestContext_SetHandler(t *testing.T) {
 func TestContext_Path(t *testing.T) {
 	path := "/pa/th"
 
-	var c Context
-	c = new(context)
+	var c Context = new(context)
 
 	c.SetPath(path)
 	testify.Equal(t, path, c.Path())
@@ -736,8 +733,7 @@ func TestContext_QueryString(t *testing.T) {
 }
 
 func TestContext_Request(t *testing.T) {
-	var c Context
-	c = new(context)
+	var c Context = new(context)
 
 	testify.Nil(t, c.Request())
 
