@@ -684,6 +684,60 @@ func TestEcho_StartTLS(t *testing.T) {
 	}
 }
 
+func TestEchoStartTLSAndStart(t *testing.T) {
+	// We test if Echo and listeners work correctly when Echo is simultaneously attached to HTTP and HTTPS server
+	e := New()
+	e.GET("/", func(c Context) error {
+		return c.String(http.StatusOK, "OK")
+	})
+
+	errTLSChan := make(chan error)
+	go func() {
+		certFile := "_fixture/certs/cert.pem"
+		keyFile := "_fixture/certs/key.pem"
+		err := e.StartTLS("localhost:", certFile, keyFile)
+		if err != nil {
+			errTLSChan <- err
+		}
+	}()
+
+	err := waitForServerStart(e, errTLSChan, true)
+	assert.NoError(t, err)
+	defer func() {
+		if err := e.Shutdown(stdContext.Background()); err != nil {
+			t.Error(err)
+		}
+	}()
+
+	// check if HTTPS works (note: we are using self signed certs so InsecureSkipVerify=true)
+	client := &http.Client{Transport: &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}}
+	res, err := client.Get("https://" + e.TLSListenerAddr().String())
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+
+	errChan := make(chan error)
+	go func() {
+		err := e.Start("localhost:")
+		if err != nil {
+			errChan <- err
+		}
+	}()
+	err = waitForServerStart(e, errChan, false)
+	assert.NoError(t, err)
+
+	// now we are serving both HTTPS and HTTP listeners. see if HTTP works in addition to HTTPS
+	res, err = http.Get("http://" + e.ListenerAddr().String())
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+
+	// see if HTTPS works after HTTP listener is also added
+	res, err = client.Get("https://" + e.TLSListenerAddr().String())
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+}
+
 func TestEchoStartTLSByteString(t *testing.T) {
 	cert, err := ioutil.ReadFile("_fixture/certs/cert.pem")
 	require.NoError(t, err)
