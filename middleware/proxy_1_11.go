@@ -17,7 +17,9 @@ func proxyHTTP(tgt *ProxyTarget, c echo.Context, config ProxyConfig) http.Handle
 		if tgt.Name != "" {
 			desc = fmt.Sprintf("%s(%s)", tgt.Name, tgt.URL.String())
 		}
-		c.Set("_error", echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("remote %s unreachable, could not forward: %v", desc, err)))
+		httpError := echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("remote %s unreachable, could not forward: %v", desc, err))
+		httpError.Internal = err
+		c.Set("_error", httpError)
 	}
 	proxy.Transport = config.Transport
 	proxy.ModifyResponse = config.ModifyResponse
