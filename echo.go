@@ -660,7 +660,7 @@ func (e *Echo) Start(address string) error {
 		return err
 	}
 	e.startupMutex.Unlock()
-	return e.serve()
+	return e.Server.Serve(e.Listener)
 }
 
 // StartTLS starts an HTTPS server.
@@ -740,8 +740,12 @@ func (e *Echo) StartServer(s *http.Server) (err error) {
 		e.startupMutex.Unlock()
 		return err
 	}
+	if s.TLSConfig != nil {
+		e.startupMutex.Unlock()
+		return s.Serve(e.TLSListener)
+	}
 	e.startupMutex.Unlock()
-	return e.serve()
+	return s.Serve(e.Listener)
 }
 
 func (e *Echo) configureServer(s *http.Server) (err error) {
@@ -780,13 +784,6 @@ func (e *Echo) configureServer(s *http.Server) (err error) {
 		e.colorer.Printf("⇨ https server started on %s\n", e.colorer.Green(e.TLSListener.Addr()))
 	}
 	return nil
-}
-
-func (e *Echo) serve() error {
-	if e.TLSListener != nil {
-		return e.Server.Serve(e.TLSListener)
-	}
-	return e.Server.Serve(e.Listener)
 }
 
 // ListenerAddr returns net.Addr for Listener
