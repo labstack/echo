@@ -175,3 +175,22 @@ func TestTimeoutTestRequestClone(t *testing.T) {
 	assert.NoError(t, err)
 
 }
+
+func TestTimeoutRecoversPanic(t *testing.T) {
+	t.Parallel()
+	m := TimeoutWithConfig(TimeoutConfig{
+		Timeout: 25 * time.Millisecond,
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+
+	e := echo.New()
+	c := e.NewContext(req, rec)
+
+	err := m(func(c echo.Context) error {
+		panic("panic in handler")
+	})(c)
+
+	assert.Error(t, err, "panic recovered in timeout middleware: panic in handler")
+}
