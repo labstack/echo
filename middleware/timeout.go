@@ -4,6 +4,7 @@ package middleware
 
 import (
 	"context"
+	"fmt"
 	"github.com/labstack/echo/v4"
 	"time"
 )
@@ -62,6 +63,17 @@ func TimeoutWithConfig(config TimeoutConfig) echo.MiddlewareFunc {
 
 			done := make(chan error, 1)
 			go func() {
+				defer func() {
+					if r := recover(); r != nil {
+						err, ok := r.(error)
+						if !ok {
+							err = fmt.Errorf("panic recovered in timeout middleware: %v", r)
+						}
+						c.Logger().Error(err)
+						done <- err
+					}
+				}()
+
 				// This goroutine will keep running even if this middleware times out and
 				// will be stopped when ctx.Done() is called down the next(c) call chain
 				done <- next(c)
