@@ -32,6 +32,7 @@ func TestGroupFile(t *testing.T) {
 	e := New()
 	g := e.Group("/group")
 	g.File("/walle", "_fixture/images/walle.png")
+	e.BuildRouters()
 	expectedData, err := ioutil.ReadFile("_fixture/images/walle.png")
 	assert.Nil(t, err)
 	req := httptest.NewRequest(http.MethodGet, "/group/walle", nil)
@@ -75,6 +76,8 @@ func TestGroupRouteMiddleware(t *testing.T) {
 	g.GET("/404", h, m4)
 	g.GET("/405", h, m5)
 
+	e.BuildRouters()
+
 	c, _ := request(http.MethodGet, "/group/404", e)
 	assert.Equal(t, 404, c)
 	c, _ = request(http.MethodGet, "/group/405", e)
@@ -104,6 +107,8 @@ func TestGroupRouteMiddlewareWithMatchAny(t *testing.T) {
 	g.GET("", h, m2)
 	e.GET("unrelated", h, m2)
 	e.GET("*", h, m2)
+
+	e.BuildRouters()
 
 	_, m := request(http.MethodGet, "/group/help", e)
 	assert.Equal(t, "/group/help", m)

@@ -117,6 +117,8 @@ func TestStatic(t *testing.T) {
 				e.Use(middlewareFunc)
 			}
 
+			e.BuildRouters()
+
 			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
 			rec := httptest.NewRecorder()
 
@@ -256,6 +258,8 @@ func TestStatic_GroupWithStatic(t *testing.T) {
 			}
 			g := e.Group(group)
 			g.Static(tc.givenPrefix, tc.givenRoot)
+
+			e.BuildRouters()
 
 			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
 			rec := httptest.NewRecorder()

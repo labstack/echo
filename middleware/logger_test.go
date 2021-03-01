@@ -101,6 +101,8 @@ func TestLoggerTemplate(t *testing.T) {
 		return c.String(http.StatusOK, "Header Logged")
 	})
 
+	e.BuildRouters()
+
 	req := httptest.NewRequest(http.MethodGet, "/?username=apagano-param&password=secret", nil)
 	req.RequestURI = "/"
 	req.Header.Add(echo.HeaderXRealIP, "127.0.0.1")
@@ -158,6 +160,8 @@ func TestLoggerCustomTimestamp(t *testing.T) {
 	e.GET("/", func(c echo.Context) error {
 		return c.String(http.StatusOK, "custom time stamp test")
 	})
+
+	e.BuildRouters()
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()

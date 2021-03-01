@@ -53,6 +53,7 @@ func TestProxy(t *testing.T) {
 	// Random
 	e := echo.New()
 	e.Use(Proxy(rb))
+	e.BuildRouters()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -75,6 +76,7 @@ func TestProxy(t *testing.T) {
 	rrb := NewRoundRobinBalancer(targets)
 	e = echo.New()
 	e.Use(Proxy(rrb))
+	e.BuildRouters()
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	body = rec.Body.String()
@@ -94,6 +96,7 @@ func TestProxy(t *testing.T) {
 			return nil
 		},
 	}))
+	e.BuildRouters()
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "modified", rec.Body.String())
@@ -111,6 +114,7 @@ func TestProxy(t *testing.T) {
 	e = echo.New()
 	e.Use(contextObserver)
 	e.Use(Proxy(rrb1))
+	e.BuildRouters()
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 }
@@ -123,6 +127,7 @@ func TestProxyRealIPHeader(t *testing.T) {
 	rrb := NewRoundRobinBalancer([]*ProxyTarget{{Name: "upstream", URL: url}})
 	e := echo.New()
 	e.Use(Proxy(rrb))
+	e.BuildRouters()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 
@@ -178,6 +183,7 @@ func TestProxyRewrite(t *testing.T) {
 			"/users/*/orders/*": "/user/$1/order/$2",
 		},
 	}))
+	e.BuildRouters()
 	req.URL, _ = url.Parse("/api/users")
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -232,6 +238,8 @@ func TestProxyRewriteRegex(t *testing.T) {
 			regexp.MustCompile("^/y/(.+?)/(.*)"): "/v5/$2/$1",
 		},
 	}))
+
+	e.BuildRouters()
 
 	testCases := []struct {
 		requestPath string
