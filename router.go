@@ -339,19 +339,20 @@ func (r *Router) Find(method, path string, c Context) {
 		pvalues     = ctx.pvalues // Use the internal slice so the interface can keep the illusion of a dynamic slice
 	)
 
-	// backtracking happens when we reach dead end when matching nodes in the router tree. To backtrack we set
-	// current node to parent to current node (this was previous node we checked) and choose next node kind to check.
-	// Next node kind relies on routing priority (static->param->any). So for example if there is no static node match we
-	// should check parent next sibling by kind (param). Backtracking itself does not check if there is next sibling this
-	// is left up to matching logic
+	// Backtracking is needed when a dead end (leaf node) is reached in the router tree.
+	// To backtrack the current node will be changed to the parent node and the next kind for the
+	// router logic will be returned based on fromKind or kind of the dead end node (static > param > any).
+	// For example if there is no static node match we should check parent next sibling by kind (param).
+	// Backtracking itself does not check if there is a next sibling, this is done by the router logic.
 	backtrackToNextNodeKind := func(fromKind kind) (nextNodeKind kind, valid bool) {
 		previous := cn
 		cn = previous.parent
 		valid = cn != nil
 
-		// next node type by priority
-		// NOTE: by current implementation we never backtrack from any route so `previous.kind` value is here always static or any
-		// if this requirement is to change then for any route next kind would be static kind and this statement should be changed
+		// Next node type by priority
+		// NOTE: With the current implementation we never backtrack from an `any` route, so `previous.kind` is
+		// always `static` or `any`
+		// If this is changed then for any route next kind would be `static` and this statement should be changed
 		nextNodeKind = previous.kind + 1
 
 		if fromKind == skind {
@@ -359,14 +360,16 @@ func (r *Router) Find(method, path string, c Context) {
 			return
 		}
 
+		// restore search to value it was before we move to current node we are backtracking from.
 		if previous.kind == skind {
 			searchIndex -= len(previous.prefix)
-			search = path[searchIndex:]
 		} else {
 			n--
+			// for param/any node.prefix value is always `:` so we can not deduce searchIndex from that and must use pValue
+			// for that index as it would also contain part of path we cut off before moving into node we are backtracking from
 			searchIndex -= len(pvalues[n])
-			search = path[searchIndex:]
 		}
+		search = path[searchIndex:]
 		return
 	}
 
