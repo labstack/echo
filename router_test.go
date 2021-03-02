@@ -2228,14 +2228,14 @@ func (n *node) printTree(pfx string, tail bool) {
 
 	p = prefix(tail, pfx, "    ", "│   ")
 
-	children := n.staticChildrens
+	children := n.staticChildren
 	l := len(children)
 
-	if n.paramChildren != nil {
-		n.paramChildren.printTree(p, n.anyChildren == nil && l == 0)
+	if n.paramChild != nil {
+		n.paramChild.printTree(p, n.anyChild == nil && l == 0)
 	}
-	if n.anyChildren != nil {
-		n.anyChildren.printTree(p, l == 0)
+	if n.anyChild != nil {
+		n.anyChild.printTree(p, l == 0)
 	}
 	for i := 0; i < l-1; i++ {
 		children[i].printTree(p, false)
