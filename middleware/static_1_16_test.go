@@ -30,6 +30,14 @@ func TestStatic_CustomFS(t *testing.T) {
 			expectCode:     http.StatusOK,
 			expectContains: "<title>Echo</title>",
 		},
+
+		{
+			name:           "ok, serve index with Echo message",
+			whenURL:        "/_fixture/",
+			filesystem:     os.DirFS(".."),
+			expectCode:     http.StatusOK,
+			expectContains: "<title>Echo</title>",
+		},
 		{
 			name:    "ok, serve file from map fs",
 			whenURL: "/file.txt",

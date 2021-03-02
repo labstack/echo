@@ -155,8 +155,6 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 		config.Root = "."
 	}
 
-	config.Root = filepath.ToSlash(config.Root)
-
 	// Index template
 	t, err := template.New("index").Parse(html)
 	if err != nil {
@@ -177,7 +175,7 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 			if err != nil {
 				return
 			}
-			name := path.Join(config.Root, path.Clean("/"+p)) // "/"+ for security
+			name := filepath.Join(config.Root, filepath.Clean("/"+p)) // "/"+ for security
 
 			if config.IgnoreBase {
 				routePath := path.Base(strings.TrimRight(c.Path(), "/*"))
@@ -203,7 +201,7 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 					return err
 				}
 
-				file, err = openFile(config.Filesystem, path.Join(config.Root, config.Index))
+				file, err = openFile(config.Filesystem, filepath.Join(config.Root, config.Index))
 				if err != nil {
 					return err
 				}
@@ -217,7 +215,7 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 			}
 
 			if info.IsDir() {
-				index, err := openFile(config.Filesystem, path.Join(name, config.Index))
+				index, err := openFile(config.Filesystem, filepath.Join(name, config.Index))
 				if err != nil {
 					if config.Browse {
 						return listDir(t, name, file, c.Response())
@@ -244,11 +242,8 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 }
 
 func openFile(fs http.FileSystem, name string) (http.File, error) {
-	if filepath.Separator != '/' && strings.ContainsRune(name, filepath.Separator) {
-		return nil, os.ErrNotExist
-	}
-
-	return fs.Open(name)
+	pathWithSlashes := filepath.ToSlash(name)
+	return fs.Open(pathWithSlashes)
 }
 
 func serveFile(c echo.Context, file http.File, info os.FileInfo) error {
