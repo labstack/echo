@@ -2,7 +2,6 @@ package echo
 
 import (
 	"net/http"
-	"strings"
 )
 
 type (
@@ -334,21 +333,48 @@ func (r *Router) Find(method, path string, c Context) {
 	cn := r.tree // Current node as root
 
 	var (
-		search  = path
-		child   *node         // Child node
-		n       int           // Param counter
-		nk      kind          // Next kind
-		nn      *node         // Next node
-		ns      string        // Next search
-		pvalues = ctx.pvalues // Use the internal slice so the interface can keep the illusion of a dynamic slice
+		search      = path
+		searchIndex = 0
+		n           int           // Param counter
+		pvalues     = ctx.pvalues // Use the internal slice so the interface can keep the illusion of a dynamic slice
 	)
+
+	// Backtracking is needed when a dead end (leaf node) is reached in the router tree.
+	// To backtrack the current node will be changed to the parent node and the next kind for the
+	// router logic will be returned based on fromKind or kind of the dead end node (static > param > any).
+	// For example if there is no static node match we should check parent next sibling by kind (param).
+	// Backtracking itself does not check if there is a next sibling, this is done by the router logic.
+	backtrackToNextNodeKind := func(fromKind kind) (nextNodeKind kind, valid bool) {
+		previous := cn
+		cn = previous.parent
+		valid = cn != nil
+
+		// Next node type by priority
+		// NOTE: With the current implementation we never backtrack from an `any` route, so `previous.kind` is
+		// always `static` or `any`
+		// If this is changed then for any route next kind would be `static` and this statement should be changed
+		nextNodeKind = previous.kind + 1
+
+		if fromKind == skind {
+			// when backtracking is done from static kind block we did not change search so nothing to restore
+			return
+		}
+
+		// restore search to value it was before we move to current node we are backtracking from.
+		if previous.kind == skind {
+			searchIndex -= len(previous.prefix)
+		} else {
+			n--
+			// for param/any node.prefix value is always `:` so we can not deduce searchIndex from that and must use pValue
+			// for that index as it would also contain part of path we cut off before moving into node we are backtracking from
+			searchIndex -= len(pvalues[n])
+		}
+		search = path[searchIndex:]
+		return
+	}
 
 	// Search order static > param > any
 	for {
-		if search == "" {
-			break
-		}
-
 		pl := 0 // Prefix length
 		l := 0  // LCP length
 
@@ -365,60 +391,42 @@ func (r *Router) Find(method, path string, c Context) {
 			}
 		}
 
-		if l == pl {
-			// Continue search
-			search = search[l:]
-			// Finish routing if no remaining search and we are on an leaf node
-			if search == "" && (nn == nil || cn.parent == nil || cn.ppath != "") {
-				break
-			}
-			// Handle special case of trailing slash route with existing any route (see #1526)
-			if search == "" && path[len(path)-1] == '/' && cn.anyChildren != nil {
-				goto Any
+		if l != pl {
+			// No matching prefix, let's backtrack to the first possible alternative node of the decision path
+			nk, ok := backtrackToNextNodeKind(skind)
+			if !ok {
+				return // No other possibilities on the decision path
+			} else if nk == pkind {
+				goto Param
+				// NOTE: this case (backtracking from static node to previous any node) can not happen by current any matching logic. Any node is end of search currently
+				//} else if nk == akind {
+				//	goto Any
+			} else {
+				// Not found (this should never be possible for static node we are looking currently)
+				return
 			}
 		}
 
-		// Attempt to go back up the tree on no matching prefix or no remaining search
-		if l != pl || search == "" {
-			if nn == nil { // Issue #1348
-				return // Not found
-			}
-			cn = nn
-			search = ns
-			if nk == pkind {
-				goto Param
-			} else if nk == akind {
-				goto Any
-			}
+		// The full prefix has matched, remove the prefix from the remaining search
+		search = search[l:]
+		searchIndex = searchIndex + l
+
+		// Finish routing if no remaining search and we are on an leaf node
+		if search == "" && cn.ppath != "" {
+			break
 		}
 
 		// Static node
-		if child = cn.findStaticChild(search[0]); child != nil {
-			// Save next
-			if cn.prefix[len(cn.prefix)-1] == '/' { // Issue #623
-				nk = pkind
-				nn = cn
-				ns = search
+		if search != "" {
+			if child := cn.findStaticChild(search[0]); child != nil {
+				cn = child
+				continue
 			}
-			cn = child
-			continue
 		}
 
 	Param:
 		// Param node
-		if child = cn.paramChildren; child != nil {
-			// Issue #378
-			if len(pvalues) == n {
-				continue
-			}
-
-			// Save next
-			if cn.prefix[len(cn.prefix)-1] == '/' { // Issue #623
-				nk = akind
-				nn = cn
-				ns = search
-			}
-
+		if child := cn.paramChildren; search != "" && child != nil {
 			cn = child
 			i, l := 0, len(search)
 			for ; i < l && search[i] != '/'; i++ {
@@ -426,87 +434,39 @@ func (r *Router) Find(method, path string, c Context) {
 			pvalues[n] = search[:i]
 			n++
 			search = search[i:]
+			searchIndex = searchIndex + i
 			continue
 		}
 
 	Any:
 		// Any node
-		if cn = cn.anyChildren; cn != nil {
+		if child := cn.anyChildren; child != nil {
 			// If any node is found, use remaining path for pvalues
+			cn = child
 			pvalues[len(cn.pnames)-1] = search
 			break
 		}
 
-		// No node found, continue at stored next node
-		// or find nearest "any" route
-		if nn != nil {
-			// No next node to go down in routing (issue #954)
-			// Find nearest "any" route going up the routing tree
-			search = ns
-			np := nn.parent
-			// Consider param route one level up only
-			if cn = nn.paramChildren; cn != nil {
-				pos := strings.IndexByte(ns, '/')
-				if pos == -1 {
-					// If no slash is remaining in search string set param value
-					if len(cn.pnames) > 0 {
-						pvalues[len(cn.pnames)-1] = search
-					}
-					break
-				} else if pos > 0 {
-					// Otherwise continue route processing with restored next node
-					cn = nn
-					nn = nil
-					ns = ""
-					goto Param
-				}
-			}
-			// No param route found, try to resolve nearest any route
-			for {
-				np = nn.parent
-				if cn = nn.anyChildren; cn != nil {
-					break
-				}
-				if np == nil {
-					break // no further parent nodes in tree, abort
-				}
-				var str strings.Builder
-				str.WriteString(nn.prefix)
-				str.WriteString(search)
-				search = str.String()
-				nn = np
-			}
-			if cn != nil { // use the found "any" route and update path
-				pvalues[len(cn.pnames)-1] = search
-				break
-			}
+		// Let's backtrack to the first possible alternative node of the decision path
+		nk, ok := backtrackToNextNodeKind(akind)
+		if !ok {
+			return // No other possibilities on the decision path
+		} else if nk == pkind {
+			goto Param
+		} else if nk == akind {
+			goto Any
+		} else {
+			// Not found
+			return
 		}
-		return // Not found
-
 	}
 
 	ctx.handler = cn.findHandler(method)
 	ctx.path = cn.ppath
 	ctx.pnames = cn.pnames
 
-	// NOTE: Slow zone...
 	if ctx.handler == nil {
 		ctx.handler = cn.checkMethodNotAllowed()
-
-		// Dig further for any, might have an empty value for *, e.g.
-		// serving a directory. Issue #207.
-		if cn = cn.anyChildren; cn == nil {
-			return
-		}
-		if h := cn.findHandler(method); h != nil {
-			ctx.handler = h
-		} else {
-			ctx.handler = cn.checkMethodNotAllowed()
-		}
-		ctx.path = cn.ppath
-		ctx.pnames = cn.pnames
-		pvalues[len(cn.pnames)-1] = ""
 	}
-
 	return
 }

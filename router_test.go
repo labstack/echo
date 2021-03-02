@@ -730,24 +730,56 @@ func TestRouterMatchAny(t *testing.T) {
 	r := e.router
 
 	// Routes
-	r.Add(http.MethodGet, "/", func(Context) error {
-		return nil
-	})
-	r.Add(http.MethodGet, "/*", func(Context) error {
-		return nil
-	})
-	r.Add(http.MethodGet, "/users/*", func(Context) error {
-		return nil
-	})
+	r.Add(http.MethodGet, "/", handlerHelper("case", 1))
+	r.Add(http.MethodGet, "/*", handlerHelper("case", 2))
+	r.Add(http.MethodGet, "/users/*", handlerHelper("case", 3))
+
 	c := e.NewContext(nil, nil).(*context)
 	r.Find(http.MethodGet, "/", c)
-	assert.Equal(t, "", c.Param("*"))
+	c.handler(c)
+
+	assert.Equal(t, 1, c.Get("case"))
+	assert.Equal(t, "/", c.Get("path"))
 
 	r.Find(http.MethodGet, "/download", c)
+	c.handler(c)
+	assert.Equal(t, 2, c.Get("case"))
+	assert.Equal(t, "/*", c.Get("path"))
 	assert.Equal(t, "download", c.Param("*"))
 
 	r.Find(http.MethodGet, "/users/joe", c)
+	c.handler(c)
+	assert.Equal(t, 3, c.Get("case"))
+	assert.Equal(t, "/users/*", c.Get("path"))
 	assert.Equal(t, "joe", c.Param("*"))
+}
+
+// NOTE: this is to document current implementation. Last added route with `*` asterisk is always the match and no
+// backtracking or more precise matching is done to find more suitable match.
+//
+// Current behaviour might not be correct or expected.
+// But this is where we are without well defined requirements/rules how (multiple) asterisks work in route
+func TestRouterAnyMatchesLastAddedAnyRoute(t *testing.T) {
+	e := New()
+	r := e.router
+
+	r.Add(http.MethodGet, "/users/*", handlerHelper("case", 1))
+	r.Add(http.MethodGet, "/users/*/action*", handlerHelper("case", 2))
+
+	c := e.NewContext(nil, nil).(*context)
+
+	r.Find(http.MethodGet, "/users/xxx/action/sea", c)
+	c.handler(c)
+	assert.Equal(t, "/users/*/action*", c.Get("path"))
+	assert.Equal(t, "xxx/action/sea", c.Param("*"))
+
+	// if we add another route then it is the last added and so it is matched
+	r.Add(http.MethodGet, "/users/*/action/search", handlerHelper("case", 3))
+
+	r.Find(http.MethodGet, "/users/xxx/action/sea", c)
+	c.handler(c)
+	assert.Equal(t, "/users/*/action/search", c.Get("path"))
+	assert.Equal(t, "xxx/action/sea", c.Param("*"))
 }
 
 // Issue #1739
@@ -789,6 +821,130 @@ func TestRouterMatchAnyPrefixIssue(t *testing.T) {
 	c.handler(c)
 	assert.Equal(t, "/*", c.Get("path"))
 	assert.Equal(t, "users_prefix/", c.Param("*"))
+}
+
+func TestRouteMultiLevelBacktracking(t *testing.T) {
+	e := New()
+	r := e.router
+
+	r.Add(http.MethodGet, "/a/:b/c", handlerHelper("case", 1))
+	r.Add(http.MethodGet, "/a/c/d", handlerHelper("case", 2))
+	r.Add(http.MethodGet, "/:e/c/f", handlerHelper("case", 3))
+
+	c := e.NewContext(nil, nil).(*context)
+	r.Find(http.MethodGet, "/a/c/f", c)
+
+	c.handler(c)
+	assert.Equal(t, 3, c.Get("case"))
+	assert.Equal(t, "/:e/c/f", c.Get("path"))
+}
+
+// Issue #
+func TestRouterBacktrackingFromParam(t *testing.T) {
+	e := New()
+	r := e.router
+
+	r.Add(http.MethodGet, "/*", handlerHelper("case", 1))
+	r.Add(http.MethodGet, "/users/:name/", handlerHelper("case", 2))
+
+	c := e.NewContext(nil, nil).(*context)
+
+	r.Find(http.MethodGet, "/users/firstname/no-match", c)
+	c.handler(c)
+	assert.Equal(t, 1, c.Get("case"))
+	assert.Equal(t, "/*", c.Get("path"))
+	assert.Equal(t, "users/firstname/no-match", c.Param("*"))
+
+	r.Find(http.MethodGet, "/users/firstname/", c)
+	c.handler(c)
+	assert.Equal(t, 2, c.Get("case"))
+	assert.Equal(t, "/users/:name/", c.Get("path"))
+	assert.Equal(t, "firstname", c.Param("name"))
+}
+
+func TestRouterBacktrackingFromParamAny(t *testing.T) {
+	e := New()
+	r := e.router
+
+	r.Add(http.MethodGet, "/*", handlerHelper("case", 1))
+	r.Add(http.MethodGet, "/:name/lastname", handlerHelper("case", 2))
+
+	c := e.NewContext(nil, nil).(*context)
+
+	r.Find(http.MethodGet, "/firstname/test", c)
+	c.handler(c)
+	assert.Equal(t, 1, c.Get("case"))
+	assert.Equal(t, "/*", c.Get("path"))
+	assert.Equal(t, "firstname/test", c.Param("*"))
+
+	r.Find(http.MethodGet, "/firstname", c)
+	c.handler(c)
+	assert.Equal(t, 1, c.Get("case"))
+	assert.Equal(t, "/*", c.Get("path"))
+	assert.Equal(t, "firstname", c.Param("*"))
+
+	r.Find(http.MethodGet, "/firstname/lastname", c)
+	c.handler(c)
+	assert.Equal(t, 2, c.Get("case"))
+	assert.Equal(t, "/:name/lastname", c.Get("path"))
+	assert.Equal(t, "firstname", c.Param("name"))
+}
+
+func TestRouterBacktrackingFromParamAny2(t *testing.T) {
+	e := New()
+	r := e.router
+
+	r.Add(http.MethodGet, "/*", handlerHelper("case", 1))
+	r.Add(http.MethodGet, "/:name", handlerHelper("case", 2))
+	r.Add(http.MethodGet, "/:name/lastname", handlerHelper("case", 3))
+
+	c := e.NewContext(nil, nil).(*context)
+
+	r.Find(http.MethodGet, "/firstname/test", c)
+	c.handler(c)
+	assert.Equal(t, 1, c.Get("case"))
+	assert.Equal(t, "/*", c.Get("path"))
+	assert.Equal(t, "firstname/test", c.Param("*"))
+
+	r.Find(http.MethodGet, "/firstname", c)
+	c.handler(c)
+	assert.Equal(t, 2, c.Get("case"))
+	assert.Equal(t, "/:name", c.Get("path"))
+	assert.Equal(t, "firstname", c.Param("name"))
+
+	r.Find(http.MethodGet, "/firstname/lastname", c)
+	c.handler(c)
+	assert.Equal(t, 3, c.Get("case"))
+	assert.Equal(t, "/:name/lastname", c.Get("path"))
+	assert.Equal(t, "firstname", c.Param("name"))
+}
+
+func TestRouterAnyCommonPath(t *testing.T) {
+	e := New()
+	r := e.router
+
+	r.Add(http.MethodGet, "/ab*", handlerHelper("case", 1))
+	r.Add(http.MethodGet, "/abcd", handlerHelper("case", 2))
+	r.Add(http.MethodGet, "/abcd*", handlerHelper("case", 3))
+
+	c := e.NewContext(nil, nil).(*context)
+
+	r.Find(http.MethodGet, "/abee", c)
+	c.handler(c)
+	assert.Equal(t, 1, c.Get("case"))
+	assert.Equal(t, "/ab*", c.Get("path"))
+	assert.Equal(t, "ee", c.Param("*"))
+
+	r.Find(http.MethodGet, "/abcd", c)
+	c.handler(c)
+	assert.Equal(t, "/abcd", c.Get("path"))
+	assert.Equal(t, 2, c.Get("case"))
+
+	r.Find(http.MethodGet, "/abcde", c)
+	c.handler(c)
+	assert.Equal(t, 3, c.Get("case"))
+	assert.Equal(t, "/abcd*", c.Get("path"))
+	assert.Equal(t, "e", c.Param("*"))
 }
 
 // TestRouterMatchAnySlash shall verify finding the best route
