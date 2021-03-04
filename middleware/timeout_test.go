@@ -3,7 +3,6 @@
 package middleware
 
 import (
-	"context"
 	"errors"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -22,6 +21,7 @@ func TestTimeoutSkipper(t *testing.T) {
 		Skipper: func(context echo.Context) bool {
 			return true
 		},
+		Timeout: 1 * time.Nanosecond,
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -31,18 +31,17 @@ func TestTimeoutSkipper(t *testing.T) {
 	c := e.NewContext(req, rec)
 
 	err := m(func(c echo.Context) error {
-		assert.NotEqual(t, "*context.timerCtx", reflect.TypeOf(c.Request().Context()).String())
-		return nil
+		time.Sleep(25 * time.Microsecond)
+		return errors.New("response from handler")
 	})(c)
 
-	assert.NoError(t, err)
+	// if not skipped we would have not returned error due context timeout logic
+	assert.EqualError(t, err, "response from handler")
 }
 
 func TestTimeoutWithTimeout0(t *testing.T) {
 	t.Parallel()
-	m := TimeoutWithConfig(TimeoutConfig{
-		Timeout: 0,
-	})
+	m := Timeout()
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
@@ -52,26 +51,6 @@ func TestTimeoutWithTimeout0(t *testing.T) {
 
 	err := m(func(c echo.Context) error {
 		assert.NotEqual(t, "*context.timerCtx", reflect.TypeOf(c.Request().Context()).String())
-		return nil
-	})(c)
-
-	assert.NoError(t, err)
-}
-
-func TestTimeoutIsCancelable(t *testing.T) {
-	t.Parallel()
-	m := TimeoutWithConfig(TimeoutConfig{
-		Timeout: time.Minute,
-	})
-
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-
-	e := echo.New()
-	c := e.NewContext(req, rec)
-
-	err := m(func(c echo.Context) error {
-		assert.EqualValues(t, "*context.timerCtx", reflect.TypeOf(c.Request().Context()).String())
 		return nil
 	})(c)
 
@@ -80,7 +59,10 @@ func TestTimeoutIsCancelable(t *testing.T) {
 
 func TestTimeoutErrorOutInHandler(t *testing.T) {
 	t.Parallel()
-	m := Timeout()
+	m := TimeoutWithConfig(TimeoutConfig{
+		// Timeout has to be defined or the whole flow for timeout middleware will be skipped
+		Timeout: 50 * time.Millisecond,
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
@@ -95,13 +77,14 @@ func TestTimeoutErrorOutInHandler(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestTimeoutTimesOutAfterPredefinedTimeoutWithErrorHandler(t *testing.T) {
+func TestTimeoutOnTimeoutRouteErrorHandler(t *testing.T) {
 	t.Parallel()
+
+	actualErrChan := make(chan error, 1)
 	m := TimeoutWithConfig(TimeoutConfig{
-		Timeout: time.Second,
-		ErrorHandler: func(err error, e echo.Context) error {
-			assert.EqualError(t, err, context.DeadlineExceeded.Error())
-			return errors.New("err")
+		Timeout: 1 * time.Millisecond,
+		OnTimeoutRouteErrorHandler: func(err error, c echo.Context) {
+			actualErrChan <- err
 		},
 	})
 
@@ -111,32 +94,16 @@ func TestTimeoutTimesOutAfterPredefinedTimeoutWithErrorHandler(t *testing.T) {
 	e := echo.New()
 	c := e.NewContext(req, rec)
 
+	stopChan := make(chan struct{}, 0)
 	err := m(func(c echo.Context) error {
-		time.Sleep(time.Minute)
-		return nil
+		<-stopChan
+		return errors.New("error in route after timeout")
 	})(c)
+	stopChan <- struct{}{}
+	assert.NoError(t, err)
 
-	assert.EqualError(t, err, errors.New("err").Error())
-}
-
-func TestTimeoutTimesOutAfterPredefinedTimeout(t *testing.T) {
-	t.Parallel()
-	m := TimeoutWithConfig(TimeoutConfig{
-		Timeout: time.Second,
-	})
-
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-
-	e := echo.New()
-	c := e.NewContext(req, rec)
-
-	err := m(func(c echo.Context) error {
-		time.Sleep(time.Minute)
-		return nil
-	})(c)
-
-	assert.EqualError(t, err, context.DeadlineExceeded.Error())
+	actualErr := <-actualErrChan
+	assert.EqualError(t, actualErr, "error in route after timeout")
 }
 
 func TestTimeoutTestRequestClone(t *testing.T) {
@@ -148,7 +115,7 @@ func TestTimeoutTestRequestClone(t *testing.T) {
 
 	m := TimeoutWithConfig(TimeoutConfig{
 		// Timeout has to be defined or the whole flow for timeout middleware will be skipped
-		Timeout: time.Second,
+		Timeout: 1 * time.Second,
 	})
 
 	e := echo.New()
@@ -178,8 +145,31 @@ func TestTimeoutTestRequestClone(t *testing.T) {
 
 func TestTimeoutRecoversPanic(t *testing.T) {
 	t.Parallel()
+	e := echo.New()
+	e.Use(Recover()) // recover middleware will handler our panic
+	e.Use(TimeoutWithConfig(TimeoutConfig{
+		Timeout: 50 * time.Millisecond,
+	}))
+
+	e.GET("/", func(c echo.Context) error {
+		panic("panic!!!")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+
+	assert.NotPanics(t, func() {
+		e.ServeHTTP(rec, req)
+	})
+}
+
+func TestTimeoutDataRace(t *testing.T) {
+	t.Parallel()
+
+	timeout := 1 * time.Millisecond
 	m := TimeoutWithConfig(TimeoutConfig{
-		Timeout: 25 * time.Millisecond,
+		Timeout:      timeout,
+		ErrorMessage: "Timeout! change me",
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -189,8 +179,75 @@ func TestTimeoutRecoversPanic(t *testing.T) {
 	c := e.NewContext(req, rec)
 
 	err := m(func(c echo.Context) error {
-		panic("panic in handler")
+		// NOTE: when difference between timeout duration and handler execution time is almost the same (in range of 100microseconds)
+		// the result of timeout does not seem to be reliable - could respond timeout, could respond handler output
+		// difference over 500microseconds (0.5millisecond) response seems to be reliable
+		time.Sleep(timeout) // timeout and handler execution time difference is close to zero
+		return c.String(http.StatusOK, "Hello, World!")
 	})(c)
 
-	assert.Error(t, err, "panic recovered in timeout middleware: panic in handler")
+	assert.NoError(t, err)
+
+	if rec.Code == http.StatusServiceUnavailable {
+		assert.Equal(t, "Timeout! change me", rec.Body.String())
+	} else {
+		assert.Equal(t, "Hello, World!", rec.Body.String())
+	}
+}
+
+func TestTimeoutWithErrorMessage(t *testing.T) {
+	t.Parallel()
+
+	timeout := 1 * time.Millisecond
+	m := TimeoutWithConfig(TimeoutConfig{
+		Timeout:      timeout,
+		ErrorMessage: "Timeout! change me",
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+
+	e := echo.New()
+	c := e.NewContext(req, rec)
+
+	stopChan := make(chan struct{}, 0)
+	err := m(func(c echo.Context) error {
+		// NOTE: when difference between timeout duration and handler execution time is almost the same (in range of 100microseconds)
+		// the result of timeout does not seem to be reliable - could respond timeout, could respond handler output
+		// difference over 500microseconds (0.5millisecond) response seems to be reliable
+		<-stopChan
+		return c.String(http.StatusOK, "Hello, World!")
+	})(c)
+	stopChan <- struct{}{}
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
+	assert.Equal(t, "Timeout! change me", rec.Body.String())
+}
+
+func TestTimeoutWithDefaultErrorMessage(t *testing.T) {
+	t.Parallel()
+
+	timeout := 1 * time.Millisecond
+	m := TimeoutWithConfig(TimeoutConfig{
+		Timeout:      timeout,
+		ErrorMessage: "",
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+
+	e := echo.New()
+	c := e.NewContext(req, rec)
+
+	stopChan := make(chan struct{}, 0)
+	err := m(func(c echo.Context) error {
+		<-stopChan
+		return c.String(http.StatusOK, "Hello, World!")
+	})(c)
+	stopChan <- struct{}{}
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
+	assert.Equal(t, `<html><head><title>Timeout</title></head><body><h1>Timeout</h1></body></html>`, rec.Body.String())
 }
