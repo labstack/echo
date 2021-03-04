@@ -468,15 +468,46 @@ func TestEchoRoutes(t *testing.T) {
 	}
 }
 
-func TestEchoEncodedPath(t *testing.T) {
+func TestEchoServeHTTPPathEncoding(t *testing.T) {
 	e := New()
-	e.GET("/:id", func(c Context) error {
-		return c.NoContent(http.StatusOK)
+	e.GET("/with/slash", func(c Context) error {
+		return c.String(http.StatusOK, "/with/slash")
 	})
-	req := httptest.NewRequest(http.MethodGet, "/with%2Fslash", nil)
-	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, http.StatusOK, rec.Code)
+	e.GET("/:id", func(c Context) error {
+		return c.String(http.StatusOK, c.Param("id"))
+	})
+
+	var testCases = []struct {
+		name         string
+		whenURL      string
+		expectURL    string
+		expectStatus int
+	}{
+		{
+			name:         "url with encoding is not decoded for routing",
+			whenURL:      "/with%2Fslash",
+			expectURL:    "with%2Fslash", // `%2F` is not decoded to `/` for routing
+			expectStatus: http.StatusOK,
+		},
+		{
+			name:         "url without encoding is used as is",
+			whenURL:      "/with/slash",
+			expectURL:    "/with/slash",
+			expectStatus: http.StatusOK,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
+			rec := httptest.NewRecorder()
+
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, tc.expectStatus, rec.Code)
+			assert.Equal(t, tc.expectURL, rec.Body.String())
+		})
+	}
 }
 
 func TestEchoGroup(t *testing.T) {
@@ -1210,4 +1241,50 @@ func TestEcho_StartServer(t *testing.T) {
 			assert.NoError(t, e.Close())
 		})
 	}
+}
+
+func benchmarkEchoRoutes(b *testing.B, routes []*Route) {
+	e := New()
+	req := httptest.NewRequest("GET", "/", nil)
+	u := req.URL
+	w := httptest.NewRecorder()
+
+	b.ReportAllocs()
+
+	// Add routes
+	for _, route := range routes {
+		e.Add(route.Method, route.Path, func(c Context) error {
+			return nil
+		})
+	}
+
+	// Find routes
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, route := range routes {
+			req.Method = route.Method
+			u.Path = route.Path
+			e.ServeHTTP(w, req)
+		}
+	}
+}
+
+func BenchmarkEchoStaticRoutes(b *testing.B) {
+	benchmarkEchoRoutes(b, staticRoutes)
+}
+
+func BenchmarkEchoStaticRoutesMisses(b *testing.B) {
+	benchmarkEchoRoutes(b, staticRoutes)
+}
+
+func BenchmarkEchoGitHubAPI(b *testing.B) {
+	benchmarkEchoRoutes(b, gitHubAPI)
+}
+
+func BenchmarkEchoGitHubAPIMisses(b *testing.B) {
+	benchmarkEchoRoutes(b, gitHubAPI)
+}
+
+func BenchmarkEchoParseAPI(b *testing.B) {
+	benchmarkEchoRoutes(b, parseAPI)
 }

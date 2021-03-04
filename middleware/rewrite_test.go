@@ -12,9 +12,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-//Assert expected with url.EscapedPath method to obtain the path.
-func TestRewrite(t *testing.T) {
+func TestRewriteAfterRouting(t *testing.T) {
 	e := echo.New()
+	// middlewares added with `Use()` are executed after routing is done and do not affect which route handler is matched
 	e.Use(RewriteWithConfig(RewriteConfig{
 		Rules: map[string]string{
 			"/old":              "/new",
@@ -23,30 +23,71 @@ func TestRewrite(t *testing.T) {
 			"/users/*/orders/*": "/user/$1/order/$2",
 		},
 	}))
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-	req.URL, _ = url.Parse("/api/users")
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/users", req.URL.EscapedPath())
-	req.URL, _ = url.Parse("/js/main.js")
-	rec = httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/public/javascripts/main.js", req.URL.EscapedPath())
-	req.URL, _ = url.Parse("/old")
-	rec = httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/new", req.URL.EscapedPath())
-	req.URL, _ = url.Parse("/users/jack/orders/1")
-	rec = httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/user/jack/order/1", req.URL.EscapedPath())
-	req.URL, _ = url.Parse("/user/jill/order/T%2FcO4lW%2Ft%2FVp%2F")
-	rec = httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/user/jill/order/T%2FcO4lW%2Ft%2FVp%2F", req.URL.EscapedPath())
-	req.URL, _ = url.Parse("/api/new users")
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/new%20users", req.URL.EscapedPath())
+	e.GET("/public/*", func(c echo.Context) error {
+		return c.String(http.StatusOK, c.Param("*"))
+	})
+	e.GET("/*", func(c echo.Context) error {
+		return c.String(http.StatusOK, c.Param("*"))
+	})
+
+	var testCases = []struct {
+		whenPath             string
+		expectRoutePath      string
+		expectRequestPath    string
+		expectRequestRawPath string
+	}{
+		{
+			whenPath:             "/api/users",
+			expectRoutePath:      "api/users",
+			expectRequestPath:    "/users",
+			expectRequestRawPath: "",
+		},
+		{
+			whenPath:             "/js/main.js",
+			expectRoutePath:      "js/main.js",
+			expectRequestPath:    "/public/javascripts/main.js",
+			expectRequestRawPath: "",
+		},
+		{
+			whenPath:             "/users/jack/orders/1",
+			expectRoutePath:      "users/jack/orders/1",
+			expectRequestPath:    "/user/jack/order/1",
+			expectRequestRawPath: "",
+		},
+		{ // no rewrite rule matched. already encoded URL should not be double encoded or changed in any way
+			whenPath:             "/user/jill/order/T%2FcO4lW%2Ft%2FVp%2F",
+			expectRoutePath:      "user/jill/order/T%2FcO4lW%2Ft%2FVp%2F",
+			expectRequestPath:    "/user/jill/order/T/cO4lW/t/Vp/", // this is equal to `url.Parse(tc.whenPath)` result
+			expectRequestRawPath: "/user/jill/order/T%2FcO4lW%2Ft%2FVp%2F",
+		},
+		{ // just rewrite but do not touch encoding. already encoded URL should not be double encoded
+			whenPath:             "/users/jill/orders/T%2FcO4lW%2Ft%2FVp%2F",
+			expectRoutePath:      "users/jill/orders/T%2FcO4lW%2Ft%2FVp%2F",
+			expectRequestPath:    "/user/jill/order/T/cO4lW/t/Vp/", // this is equal to `url.Parse(tc.whenPath)` result
+			expectRequestRawPath: "/user/jill/order/T%2FcO4lW%2Ft%2FVp%2F",
+		},
+		{ // ` ` (space) is encoded by httpClient to `%20` when doing request to Echo. `%20` should not be double escaped or changed in any way when rewriting request
+			whenPath:             "/api/new users",
+			expectRoutePath:      "api/new users",
+			expectRequestPath:    "/new users",
+			expectRequestRawPath: "",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.whenPath, func(t *testing.T) {
+			target, _ := url.Parse(tc.whenPath)
+			req := httptest.NewRequest(http.MethodGet, target.String(), nil)
+			rec := httptest.NewRecorder()
+
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, tc.expectRoutePath, rec.Body.String())
+			assert.Equal(t, tc.expectRequestPath, req.URL.Path)
+			assert.Equal(t, tc.expectRequestRawPath, req.URL.RawPath)
+		})
+	}
 }
 
 // Issue #1086
@@ -55,6 +96,7 @@ func TestEchoRewritePreMiddleware(t *testing.T) {
 	r := e.Router()
 
 	// Rewrite old url to new one
+	// middlewares added with `Pre()` are executed before routing is done and therefore change which handler matches
 	e.Pre(Rewrite(map[string]string{
 		"/old": "/new",
 	},
@@ -77,6 +119,7 @@ func TestRewriteWithConfigPreMiddleware_Issue1143(t *testing.T) {
 	e := echo.New()
 	r := e.Router()
 
+	// middlewares added with `Pre()` are executed before routing is done and therefore change which handler matches
 	e.Pre(RewriteWithConfig(RewriteConfig{
 		Rules: map[string]string{
 			"/api/*/mgmt/proj/*/agt": "/api/$1/hosts/$2",

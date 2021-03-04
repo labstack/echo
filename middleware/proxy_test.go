@@ -75,10 +75,12 @@ func TestProxy(t *testing.T) {
 	rrb := NewRoundRobinBalancer(targets)
 	e = echo.New()
 	e.Use(Proxy(rrb))
+
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	body = rec.Body.String()
 	assert.Equal(t, "target 1", body)
+
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	body = rec.Body.String()
@@ -94,6 +96,7 @@ func TestProxy(t *testing.T) {
 			return nil
 		},
 	}))
+
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "modified", rec.Body.String())
@@ -108,6 +111,7 @@ func TestProxy(t *testing.T) {
 		}
 	}
 	rrb1 := NewRoundRobinBalancer(targets)
+
 	e = echo.New()
 	e.Use(contextObserver)
 	e.Use(Proxy(rrb1))
@@ -159,54 +163,84 @@ func TestProxyRealIPHeader(t *testing.T) {
 }
 
 func TestProxyRewrite(t *testing.T) {
-	// Setup
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
-	defer upstream.Close()
-	url, _ := url.Parse(upstream.URL)
-	rrb := NewRoundRobinBalancer([]*ProxyTarget{{Name: "upstream", URL: url}})
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-
-	// Rewrite
-	e := echo.New()
-	e.Use(ProxyWithConfig(ProxyConfig{
-		Balancer: rrb,
-		Rewrite: map[string]string{
-			"/old":              "/new",
-			"/api/*":            "/$1",
-			"/js/*":             "/public/javascripts/$1",
-			"/users/*/orders/*": "/user/$1/order/$2",
+	var testCases = []struct {
+		whenPath         string
+		expectProxiedURI string
+		expectStatus     int
+	}{
+		{
+			whenPath:         "/api/users",
+			expectProxiedURI: "/users",
+			expectStatus:     http.StatusOK,
 		},
-	}))
-	req.URL, _ = url.Parse("/api/users")
-	rec = httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/users", req.URL.EscapedPath())
-	assert.Equal(t, http.StatusOK, rec.Code)
-	req.URL, _ = url.Parse("/js/main.js")
-	rec = httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/public/javascripts/main.js", req.URL.EscapedPath())
-	assert.Equal(t, http.StatusOK, rec.Code)
-	req.URL, _ = url.Parse("/old")
-	rec = httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/new", req.URL.EscapedPath())
-	assert.Equal(t, http.StatusOK, rec.Code)
-	req.URL, _ = url.Parse("/users/jack/orders/1")
-	rec = httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/user/jack/order/1", req.URL.EscapedPath())
-	assert.Equal(t, http.StatusOK, rec.Code)
-	req.URL, _ = url.Parse("/user/jill/order/T%2FcO4lW%2Ft%2FVp%2F")
-	rec = httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/user/jill/order/T%2FcO4lW%2Ft%2FVp%2F", req.URL.EscapedPath())
-	assert.Equal(t, http.StatusOK, rec.Code)
-	req.URL, _ = url.Parse("/api/new users")
-	rec = httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, "/new%20users", req.URL.EscapedPath())
+		{
+			whenPath:         "/js/main.js",
+			expectProxiedURI: "/public/javascripts/main.js",
+			expectStatus:     http.StatusOK,
+		},
+		{
+			whenPath:         "/old",
+			expectProxiedURI: "/new",
+			expectStatus:     http.StatusOK,
+		},
+		{
+			whenPath:         "/users/jack/orders/1",
+			expectProxiedURI: "/user/jack/order/1",
+			expectStatus:     http.StatusOK,
+		},
+		{
+			whenPath:         "/user/jill/order/T%2FcO4lW%2Ft%2FVp%2F",
+			expectProxiedURI: "/user/jill/order/T%2FcO4lW%2Ft%2FVp%2F",
+			expectStatus:     http.StatusOK,
+		},
+		{ // ` ` (space) is encoded by httpClient to `%20` when doing request to Echo. `%20` should not be double escaped when proxying request
+			whenPath:         "/api/new users",
+			expectProxiedURI: "/new%20users",
+			expectStatus:     http.StatusOK,
+		},
+		{ // query params should be proxied and not be modified
+			whenPath:         "/api/users?limit=10",
+			expectProxiedURI: "/users?limit=10",
+			expectStatus:     http.StatusOK,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.whenPath, func(t *testing.T) {
+			receivedRequestURI := make(chan string, 1)
+			upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				// RequestURI is the unmodified request-target of the Request-Line (RFC 7230, Section 3.1.1) as sent by the client to a server
+				// we need unmodified target to see if we are encoding/decoding the url in addition to rewrite/replace logic
+				// if original request had `%2F` we should not magically decode it to `/` as it would change what was requested
+				receivedRequestURI <- r.RequestURI
+			}))
+			defer upstream.Close()
+			serverURL, _ := url.Parse(upstream.URL)
+			rrb := NewRoundRobinBalancer([]*ProxyTarget{{Name: "upstream", URL: serverURL}})
+
+			// Rewrite
+			e := echo.New()
+			e.Use(ProxyWithConfig(ProxyConfig{
+				Balancer: rrb,
+				Rewrite: map[string]string{
+					"/old":              "/new",
+					"/api/*":            "/$1",
+					"/js/*":             "/public/javascripts/$1",
+					"/users/*/orders/*": "/user/$1/order/$2",
+				},
+			}))
+
+			targetURL, _ := serverURL.Parse(tc.whenPath)
+			req := httptest.NewRequest(http.MethodGet, targetURL.String(), nil)
+			rec := httptest.NewRecorder()
+
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, tc.expectStatus, rec.Code)
+			actualRequestURI := <-receivedRequestURI
+			assert.Equal(t, tc.expectProxiedURI, actualRequestURI)
+		})
+	}
 }
 
 func TestProxyRewriteRegex(t *testing.T) {

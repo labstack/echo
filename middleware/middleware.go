@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -50,10 +51,26 @@ func rewriteRulesRegex(rewrite map[string]string) map[*regexp.Regexp]string {
 
 func rewritePath(rewriteRegex map[*regexp.Regexp]string, req *http.Request) {
 	for k, v := range rewriteRegex {
-		replacerRawPath := captureTokens(k, req.URL.EscapedPath())
-		if replacerRawPath != nil {
-			replacerPath := captureTokens(k, req.URL.Path)
-			req.URL.RawPath, req.URL.Path = replacerRawPath.Replace(v), replacerPath.Replace(v)
+		rawPath := req.URL.RawPath
+		if rawPath != "" {
+			// RawPath is only set when there has been escaping done. In that case Path must be deduced from rewritten RawPath
+			// because encoded Path could match rules that RawPath did not
+			if replacer := captureTokens(k, rawPath); replacer != nil {
+				rawPath = replacer.Replace(v)
+
+				req.URL.RawPath = rawPath
+				req.URL.Path, _ = url.PathUnescape(rawPath)
+
+				return // rewrite only once
+			}
+
+			continue
+		}
+
+		if replacer := captureTokens(k, req.URL.Path); replacer != nil {
+			req.URL.Path = replacer.Replace(v)
+
+			return // rewrite only once
 		}
 	}
 }
