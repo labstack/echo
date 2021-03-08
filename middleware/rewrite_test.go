@@ -215,3 +215,42 @@ func TestEchoRewriteWithRegexRules(t *testing.T) {
 		})
 	}
 }
+
+// Ensure correct escaping as defined in replacement (issue #1798)
+func TestEchoRewriteReplacementEscaping(t *testing.T) {
+	e := echo.New()
+
+	e.Pre(RewriteWithConfig(RewriteConfig{
+		Rules: map[string]string{
+			"^/a/*": "/$1?query=param",
+			"^/b/*": "/$1;part#one",
+		},
+		RegexRules: map[*regexp.Regexp]string{
+			regexp.MustCompile("^/x/(.*)"): "/$1?query=param",
+			regexp.MustCompile("^/y/(.*)"): "/$1;part#one",
+		},
+	}))
+
+	var rec *httptest.ResponseRecorder
+	var req *http.Request
+
+	testCases := []struct {
+		requestPath string
+		expectPath  string
+	}{
+		{"/unmatched", "/unmatched"},
+		{"/a/test", "/test?query=param"},
+		{"/b/foo/bar", "/foo/bar;part#one"},
+		{"/x/test", "/test?query=param"},
+		{"/y/foo/bar", "/foo/bar;part#one"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.requestPath, func(t *testing.T) {
+			req = httptest.NewRequest(http.MethodGet, tc.requestPath, nil)
+			rec = httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+			assert.Equal(t, tc.expectPath, req.URL.Path)
+		})
+	}
+}
