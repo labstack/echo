@@ -245,12 +245,16 @@ func TestProxyRewrite(t *testing.T) {
 
 func TestProxyRewriteRegex(t *testing.T) {
 	// Setup
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	receivedRequestURI := make(chan string, 1)
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// RequestURI is the unmodified request-target of the Request-Line (RFC 7230, Section 3.1.1) as sent by the client to a server
+		// we need unmodified target to see if we are encoding/decoding the url in addition to rewrite/replace logic
+		// if original request had `%2F` we should not magically decode it to `/` as it would change what was requested
+		receivedRequestURI <- r.RequestURI
+	}))
 	defer upstream.Close()
-	url, _ := url.Parse(upstream.URL)
-	rrb := NewRoundRobinBalancer([]*ProxyTarget{{Name: "upstream", URL: url}})
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
+	tmpUrL, _ := url.Parse(upstream.URL)
+	rrb := NewRoundRobinBalancer([]*ProxyTarget{{Name: "upstream", URL: tmpUrL}})
 
 	// Rewrite
 	e := echo.New()
@@ -279,14 +283,21 @@ func TestProxyRewriteRegex(t *testing.T) {
 		{"/c/ignore1/test/this", http.StatusOK, "/v3/test/this"},
 		{"/x/ignore/test", http.StatusOK, "/v4/test"},
 		{"/y/foo/bar", http.StatusOK, "/v5/bar/foo"},
+		// NB: fragment is not added by golang httputil.NewSingleHostReverseProxy implementation
+		// $2 = `bar?q=1#frag`, $1 = `foo`. replaced uri = `/v5/bar?q=1#frag/foo` but httputil.NewSingleHostReverseProxy does not send `#frag/foo` (currently)
+		{"/y/foo/bar?q=1#frag", http.StatusOK, "/v5/bar?q=1"},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.requestPath, func(t *testing.T) {
-			req.URL, _ = url.Parse(tc.requestPath)
-			rec = httptest.NewRecorder()
+			targetURL, _ := url.Parse(tc.requestPath)
+			req := httptest.NewRequest(http.MethodGet, targetURL.String(), nil)
+			rec := httptest.NewRecorder()
+
 			e.ServeHTTP(rec, req)
-			assert.Equal(t, tc.expectPath, req.URL.EscapedPath())
+
+			actualRequestURI := <-receivedRequestURI
+			assert.Equal(t, tc.expectPath, actualRequestURI)
 			assert.Equal(t, tc.statusCode, rec.Code)
 		})
 	}

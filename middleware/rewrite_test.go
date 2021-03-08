@@ -220,6 +220,8 @@ func TestEchoRewriteWithRegexRules(t *testing.T) {
 func TestEchoRewriteReplacementEscaping(t *testing.T) {
 	e := echo.New()
 
+	// NOTE: these are incorrect regexps as they do not factor in that URI we are replacing could contain ? (query) and # (fragment) parts
+	// so in reality they append query and fragment part as `$1` matches everything after that prefix
 	e.Pre(RewriteWithConfig(RewriteConfig{
 		Rules: map[string]string{
 			"^/a/*": "/$1?query=param",
@@ -228,6 +230,7 @@ func TestEchoRewriteReplacementEscaping(t *testing.T) {
 		RegexRules: map[*regexp.Regexp]string{
 			regexp.MustCompile("^/x/(.*)"): "/$1?query=param",
 			regexp.MustCompile("^/y/(.*)"): "/$1;part#one",
+			regexp.MustCompile("^/z/(.*)"): "/$1?test=1#escaped%20test",
 		},
 	}))
 
@@ -236,13 +239,15 @@ func TestEchoRewriteReplacementEscaping(t *testing.T) {
 
 	testCases := []struct {
 		requestPath string
-		expectPath  string
+		expect      string
 	}{
 		{"/unmatched", "/unmatched"},
 		{"/a/test", "/test?query=param"},
 		{"/b/foo/bar", "/foo/bar;part#one"},
 		{"/x/test", "/test?query=param"},
 		{"/y/foo/bar", "/foo/bar;part#one"},
+		{"/z/foo/b%20ar", "/foo/b%20ar?test=1#escaped%20test"},
+		{"/z/foo/b%20ar?nope=1#yes", "/foo/b%20ar?nope=1#yes?test=1%23escaped%20test"}, // example of appending
 	}
 
 	for _, tc := range testCases {
@@ -250,7 +255,7 @@ func TestEchoRewriteReplacementEscaping(t *testing.T) {
 			req = httptest.NewRequest(http.MethodGet, tc.requestPath, nil)
 			rec = httptest.NewRecorder()
 			e.ServeHTTP(rec, req)
-			assert.Equal(t, tc.expectPath, req.URL.Path)
+			assert.Equal(t, tc.expect, req.URL.String())
 		})
 	}
 }

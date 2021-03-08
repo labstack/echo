@@ -8,11 +8,13 @@ import (
 	"testing"
 )
 
-func TestRewritePath(t *testing.T) {
+func TestRewriteURL(t *testing.T) {
 	var testCases = []struct {
 		whenURL       string
 		expectPath    string
 		expectRawPath string
+		expectQuery   string
+		expectErr     string
 	}{
 		{
 			whenURL:       "http://localhost:8080/old",
@@ -28,6 +30,7 @@ func TestRewritePath(t *testing.T) {
 			whenURL:       "http://localhost:8080/users/+_+/orders/___++++?test=1",
 			expectPath:    "/user/+_+/order/___++++",
 			expectRawPath: "",
+			expectQuery:   "test=1",
 		},
 		{
 			whenURL:       "http://localhost:8080/users/%20a/orders/%20aa",
@@ -35,9 +38,10 @@ func TestRewritePath(t *testing.T) {
 			expectRawPath: "",
 		},
 		{
-			whenURL:       "http://localhost:8080/%47%6f%2f",
+			whenURL:       "http://localhost:8080/%47%6f%2f?test=1",
 			expectPath:    "/Go/",
 			expectRawPath: "/%47%6f%2f",
+			expectQuery:   "test=1",
 		},
 		{
 			whenURL:       "/users/jill/orders/T%2FcO4lW%2Ft%2FVp%2F",
@@ -49,21 +53,40 @@ func TestRewritePath(t *testing.T) {
 			expectPath:    "/user/jill/order/T/cO4lW/t/Vp/",
 			expectRawPath: "/user/jill/order/T%2FcO4lW%2Ft%2FVp%2F",
 		},
+		{
+			whenURL:       "http://localhost:8080/static",
+			expectPath:    "/static/path",
+			expectRawPath: "",
+			expectQuery:   "role=AUTHOR&limit=1000",
+		},
+		{
+			whenURL:       "/static",
+			expectPath:    "/static/path",
+			expectRawPath: "",
+			expectQuery:   "role=AUTHOR&limit=1000",
+		},
 	}
 
 	rules := map[*regexp.Regexp]string{
 		regexp.MustCompile("^/old$"):                      "/new",
 		regexp.MustCompile("^/users/(.*?)/orders/(.*?)$"): "/user/$1/order/$2",
+		regexp.MustCompile("^/static$"):                   "/static/path?role=AUTHOR&limit=1000",
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.whenURL, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
 
-			rewritePath(rules, req)
+			err := rewriteURL(rules, req)
 
+			if tc.expectErr != "" {
+				assert.EqualError(t, err, tc.expectErr)
+			} else {
+				assert.NoError(t, err)
+			}
 			assert.Equal(t, tc.expectPath, req.URL.Path)       // Path field is stored in decoded form: /%47%6f%2f becomes /Go/.
 			assert.Equal(t, tc.expectRawPath, req.URL.RawPath) // RawPath, an optional field which only gets set if the default encoding is different from Path.
+			assert.Equal(t, tc.expectQuery, req.URL.RawQuery)
 		})
 	}
 }
