@@ -1,5 +1,27 @@
 # Changelog
 
+## v4.2.1 - 2020-03-08
+
+**Important notes**
+
+Due to a datarace the config parameters for the newly added timeout middleware required a change.
+See the [docs](https://echo.labstack.com/middleware/timeout).
+A performance regression has been fixed, even bringing better performance than before for some routing scenarios.
+
+**Fixes**
+
+* Fix performance regression caused by path escaping (#1777, #1798, #1799, aldas)
+* Avoid context canceled errors (#1789, clwluvw)
+* Improve router to use on stack backtracking (#1791, aldas, stffabi)
+* Fix panic in timeout middleware not being not recovered and cause application crash (#1794, aldas)
+* Fix Echo.Serve() not serving on HTTP port correctly when TLSListener is used (#1785, #1793, aldas)
+* Apply go fmt (#1788, Le0tk0k)
+* Uses strings.Equalfold (#1790, rkilingr)
+* Improve code quality (#1792, withshubh)
+
+This release was made possible by our **contributors**:
+aldas, clwluvw, lammel, Le0tk0k, maciej-jezierski, rkilingr, stffabi, withshubh
+
 ## v4.2.0 - 2020-02-11
 
 **Important notes**
