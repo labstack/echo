@@ -231,8 +231,9 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 			tgt := config.Balancer.Next(c)
 			c.Set(config.ContextKey, tgt)
 
-			// Set rewrite path and raw path
-			rewritePath(config.RegexRewrite, req)
+			if err := rewriteURL(config.RegexRewrite, req); err != nil {
+				return err
+			}
 
 			// Fix header
 			// Basically it's not good practice to unconditionally pass incoming x-real-ip header to upstream.

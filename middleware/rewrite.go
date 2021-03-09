@@ -72,9 +72,9 @@ func RewriteWithConfig(config RewriteConfig) echo.MiddlewareFunc {
 				return next(c)
 			}
 
-			req := c.Request()
-			// Set rewrite path and raw path
-			rewritePath(config.RegexRules, req)
+			if err := rewriteURL(config.RegexRules, c.Request()); err != nil {
+				return err
+			}
 			return next(c)
 		}
 	}
