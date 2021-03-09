@@ -53,6 +53,8 @@ func rewriteURL(rewriteRegex map[*regexp.Regexp]string, req *http.Request) error
 		return nil
 	}
 
+	// Depending how HTTP request is sent RequestURI could contain Scheme://Host/path or be just /path.
+	// We only want to use path part for rewriting and therefore trim prefix if it exists
 	rawURI := req.RequestURI
 	if rawURI != "" && rawURI[0] != '/' {
 		prefix := ""
@@ -60,7 +62,7 @@ func rewriteURL(rewriteRegex map[*regexp.Regexp]string, req *http.Request) error
 			prefix = req.URL.Scheme + "://"
 		}
 		if req.URL.Host != "" {
-			prefix += req.URL.Host
+			prefix += req.URL.Host // host or host:port
 		}
 		if prefix != "" {
 			rawURI = strings.TrimPrefix(rawURI, prefix)
