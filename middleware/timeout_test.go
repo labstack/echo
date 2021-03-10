@@ -71,10 +71,34 @@ func TestTimeoutErrorOutInHandler(t *testing.T) {
 	c := e.NewContext(req, rec)
 
 	err := m(func(c echo.Context) error {
-		return errors.New("err")
+		return echo.NewHTTPError(http.StatusTeapot, "err")
 	})(c)
 
 	assert.Error(t, err)
+	assert.Equal(t, http.StatusTeapot, rec.Code)
+	assert.Equal(t, "{\"message\":\"err\"}\n", rec.Body.String())
+}
+
+func TestTimeoutSuccessfulRequest(t *testing.T) {
+	t.Parallel()
+	m := TimeoutWithConfig(TimeoutConfig{
+		// Timeout has to be defined or the whole flow for timeout middleware will be skipped
+		Timeout: 50 * time.Millisecond,
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+
+	e := echo.New()
+	c := e.NewContext(req, rec)
+
+	err := m(func(c echo.Context) error {
+		return c.JSON(http.StatusCreated, map[string]string{"data": "ok"})
+	})(c)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusCreated, rec.Code)
+	assert.Equal(t, "{\"data\":\"ok\"}\n", rec.Body.String())
 }
 
 func TestTimeoutOnTimeoutRouteErrorHandler(t *testing.T) {
