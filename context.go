@@ -64,6 +64,9 @@ type (
 		// SetParamValues sets path parameter values.
 		SetParamValues(values ...string)
 
+		// SetQueryParams sets query parameter values.
+		SetQueryParams(query url.Values)
+
 		// QueryParam returns the query param for the provided name.
 		QueryParam(name string) string
 
@@ -347,6 +350,10 @@ func (c *context) SetParamValues(values ...string) {
 	for i := 0; i < limit; i++ {
 		c.pvalues[i] = values[i]
 	}
+}
+
+func (c *context) SetQueryParams(query url.Values) {
+	c.query = query
 }
 
 func (c *context) QueryParam(name string) string {
