@@ -106,6 +106,11 @@ func (t echoHandlerFuncWrapper) ServeHTTP(rw http.ResponseWriter, r *http.Reques
 	// so on timeout writer stays what http.TimeoutHandler uses and prevents writing headers/body
 	t.ctx.Response().Writer = originalWriter
 	if err != nil {
+		// call global error handler to write error to the client. This is needed or `http.TimeoutHandler` will send status code by itself
+		// and after that our tries to write status code will not work anymore
+		t.ctx.Error(err)
+		// we pass error from handler to middlewares up in handler chain to act on it if needed. But this means that
+		// global error handler is probably be called twice as `t.ctx.Error` already does that.
 		t.errChan <- err
 	}
 }
