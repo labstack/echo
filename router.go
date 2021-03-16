@@ -446,7 +446,12 @@ func (r *Router) Find(method, path string, c Context) {
 		// Param node
 		if child := currentNode.paramChild; search != "" && child != nil {
 			currentNode = child
-			// FIXME: when param node does not have any children then param node should act similarly to any node - consider all remaining search as match
+			// when param node does not have any children then param node should act similarly to any node - consider all remaining search as match
+			if currentNode.staticChildren == nil && currentNode.paramChild == nil && currentNode.anyChild == nil {
+				paramValues[paramIndex] = search
+				break
+			}
+
 			i, l := 0, len(search)
 			for ; i < l && search[i] != '/'; i++ {
 			}

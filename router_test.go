@@ -692,11 +692,11 @@ func TestRouterParam(t *testing.T) {
 			expectRoute: "/users/:id",
 			expectParam: map[string]string{"id": "1"},
 		},
-		{ // FIXME: this documents current implementation (slash at end is problematic)
+		{
 			name:        "route /users/1/ to /users/:id",
 			whenURL:     "/users/1/",
-			expectRoute: nil, // FIXME: should be "/users/:id",
-			expectParam: nil, // FIXME: should be  map[string]string{"id": "1/"},
+			expectRoute: "/users/:id",
+			expectParam: map[string]string{"id": "1/"},
 		},
 	}
 
@@ -740,8 +740,8 @@ func TestRouterParamWithSlash(t *testing.T) {
 	r.Find(http.MethodGet, "/a/1/c/d/2/3", c) // `2/3` should mapped to path `/a/:b/c/d/:e` and into `:e`
 
 	err := c.handler(c)
-	assert.Equal(t, nil, c.Get("path"))                      // FIXME: should be "/a/:b/c/d/:e"
-	assert.EqualError(t, err, "code=404, message=Not Found") // FIXME: should be .NoError()
+	assert.Equal(t, "/a/:b/c/d/:e", c.Get("path"))
+	assert.NoError(t, err)
 }
 
 // Issue #1754 - router needs to backtrack multiple levels upwards in tree to find the matching route
