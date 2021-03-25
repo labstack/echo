@@ -630,6 +630,13 @@ func (c *context) SetLogger(l Logger) {
 }
 
 func (c *context) Reset(r *http.Request, w http.ResponseWriter) {
+	defer func() {
+		if err := recover(); err != nil {
+			newPvalues := make([]string, *c.echo.maxParam)
+			copy(newPvalues, c.pvalues)
+			c.pvalues = newPvalues
+		}
+	}()
 	c.request = r
 	c.response.reset(w)
 	c.query = nil
