@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"reflect"
 	"strings"
@@ -30,6 +31,7 @@ type (
 
 const (
 	userJSON                    = `{"id":1,"name":"Jon Snow"}`
+	usersJSON                   = `[{"id":1,"name":"Jon Snow"}]`
 	userXML                     = `<user><id>1</id><name>Jon Snow</name></user>`
 	userForm                    = `id=1&name=Jon Snow`
 	invalidContent              = "invalid content"
@@ -47,6 +49,8 @@ const userXMLPretty = `<user>
   <id>1</id>
   <name>Jon Snow</name>
 </user>`
+
+var dummyQuery = url.Values{"dummy": []string{"useless"}}
 
 func TestEcho(t *testing.T) {
 	e := New()
