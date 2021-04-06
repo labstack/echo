@@ -42,8 +42,8 @@ var (
 	}
 )
 
-// Timeout returns a middleware which recovers from panics anywhere in the chain
-// and handles the control to the centralized HTTPErrorHandler.
+// Timeout returns a middleware which returns error (503 Service Unavailable error) to client immediately when handler
+// call runs for longer than its time limit. NB: timeout does not stop handler execution.
 func Timeout() echo.MiddlewareFunc {
 	return TimeoutWithConfig(DefaultTimeoutConfig)
 }
