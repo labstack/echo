@@ -1,5 +1,15 @@
 # Changelog
 
+## v4.2.2 - 2020-04-07
+
+**Fixes**
+
+* Allow proxy middleware to use query part in rewrite (#1802)
+* Fix timeout middleware not sending status code when handler returns an error (#1805)
+* Fix Bind() when target is array/slice and path/query params complains bind target not being struct (#1835)
+* Fix panic in redirect middleware on short host name (#1813)
+* Fix timeout middleware docs (#1836)
+
 ## v4.2.1 - 2020-03-08
 
 **Important notes**
