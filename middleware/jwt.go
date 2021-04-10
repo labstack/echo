@@ -159,17 +159,23 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	}
 
 	// Initialize
-	parts := strings.Split(config.TokenLookup, ":")
-	extractor := jwtFromHeader(parts[1], config.AuthScheme)
-	switch parts[0] {
-	case "query":
-		extractor = jwtFromQuery(parts[1])
-	case "param":
-		extractor = jwtFromParam(parts[1])
-	case "cookie":
-		extractor = jwtFromCookie(parts[1])
-	case "form":
-		extractor = jwtFromForm(parts[1])
+	// Split sources
+	sources := strings.Split(config.TokenLookup, ",")
+	var extractor jwtExtractor
+	for _, source := range sources {
+		parts := strings.Split(source, ":")
+
+		extractor = jwtFromHeader(parts[1], config.AuthScheme)
+		switch parts[0] {
+		case "query":
+			extractor = jwtFromQuery(parts[1])
+		case "param":
+			extractor = jwtFromParam(parts[1])
+		case "cookie":
+			extractor = jwtFromCookie(parts[1])
+		case "form":
+			extractor = jwtFromForm(parts[1])
+		}
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
