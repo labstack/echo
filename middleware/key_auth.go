@@ -30,12 +30,19 @@ type (
 		// Validator is a function to validate key.
 		// Required.
 		Validator KeyAuthValidator
+
+		// ErrorHandler defines a function which is executed for an invalid key.
+		// It may be used to define a custom error.
+		ErrorHandler KeyAuthErrorHandler
 	}
 
 	// KeyAuthValidator defines a function to validate KeyAuth credentials.
 	KeyAuthValidator func(string, echo.Context) (bool, error)
 
 	keyExtractor func(echo.Context) (string, error)
+
+	// KeyAuthErrorHandler defines a function which is executed for an invalid key.
+	KeyAuthErrorHandler func(error, echo.Context) error
 )
 
 var (
@@ -95,10 +102,16 @@ func KeyAuthWithConfig(config KeyAuthConfig) echo.MiddlewareFunc {
 			// Extract and verify key
 			key, err := extractor(c)
 			if err != nil {
+				if config.ErrorHandler != nil {
+					return config.ErrorHandler(err, c)
+				}
 				return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 			}
 			valid, err := config.Validator(key, c)
 			if err != nil {
+				if config.ErrorHandler != nil {
+					return config.ErrorHandler(err, c)
+				}
 				return &echo.HTTPError{
 					Code:     http.StatusUnauthorized,
 					Message:  "invalid key",
