@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -18,7 +19,14 @@ func TestKeyAuth(t *testing.T) {
 	c := e.NewContext(req, rec)
 	config := KeyAuthConfig{
 		Validator: func(key string, c echo.Context) (bool, error) {
-			return key == "valid-key", nil
+			switch key {
+			case "valid-key":
+				return true, nil
+			case "error-key":
+				return false, errors.New("some user defined error")
+			default:
+				return false, nil
+			}
 		},
 	}
 	h := KeyAuthWithConfig(config)(func(c echo.Context) error {
@@ -72,4 +80,15 @@ func TestKeyAuth(t *testing.T) {
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationForm)
 	c = e.NewContext(req, rec)
 	assert.NoError(h(c))
+
+	// Invalid key with error handler
+	auth = DefaultKeyAuthConfig.AuthScheme + " " + "error-key"
+	req.Header.Set(echo.HeaderAuthorization, auth)
+	config.ErrorHandler = func(err error, _ echo.Context) error {
+		return err
+	}
+	ce := h(c)
+	if ce != nil {
+		assert.Equal(ce.Error(), "some user defined error")
+	}
 }
