@@ -11,6 +11,11 @@ import (
 	"github.com/labstack/gommon/random"
 )
 
+const (
+	// SameSiteNoneMode required to be redefined for Go 1.12 support (see #1524)
+	SameSiteNoneMode = http.SameSiteNoneMode
+)
+
 type (
 	// CSRFConfig defines the config for CSRF middleware.
 	CSRFConfig struct {

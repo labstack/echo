@@ -1,5 +1,3 @@
-// +build go1.13
-
 package middleware
 
 import (
