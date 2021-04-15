@@ -957,6 +957,23 @@ func TestHTTPError(t *testing.T) {
 	})
 }
 
+func TestHTTPError_Unwrap(t *testing.T) {
+	t.Run("non-internal", func(t *testing.T) {
+		err := NewHTTPError(http.StatusBadRequest, map[string]interface{}{
+			"code": 12,
+		})
+
+		assert.Nil(t, errors.Unwrap(err))
+	})
+	t.Run("internal", func(t *testing.T) {
+		err := NewHTTPError(http.StatusBadRequest, map[string]interface{}{
+			"code": 12,
+		})
+		err.SetInternal(errors.New("internal error"))
+		assert.Equal(t, "internal error", errors.Unwrap(err).Error())
+	})
+}
+
 func TestDefaultHTTPErrorHandler(t *testing.T) {
 	e := New()
 	e.Debug = true
