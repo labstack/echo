@@ -306,7 +306,7 @@ func TestProxyRewriteRegex(t *testing.T) {
 	}
 }
 
-func TestProxy_1_11(t *testing.T) {
+func TestProxyError(t *testing.T) {
 	// Setup
 	url1, _ := url.Parse("http://127.0.0.1:27121")
 	url2, _ := url.Parse("http://127.0.0.1:27122")
