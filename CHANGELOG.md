@@ -1,6 +1,6 @@
 # Changelog
 
-## v4.2.2 - 2020-04-07
+## v4.2.2 - 2021-04-07
 
 **Fixes**
 
@@ -10,7 +10,7 @@
 * Fix panic in redirect middleware on short host name (#1813)
 * Fix timeout middleware docs (#1836)
 
-## v4.2.1 - 2020-03-08
+## v4.2.1 - 2021-03-08
 
 **Important notes**
 
@@ -32,7 +32,7 @@ A performance regression has been fixed, even bringing better performance than b
 This release was made possible by our **contributors**:
 aldas, clwluvw, lammel, Le0tk0k, maciej-jezierski, rkilingr, stffabi, withshubh
 
-## v4.2.0 - 2020-02-11
+## v4.2.0 - 2021-02-11
 
 **Important notes**
 
