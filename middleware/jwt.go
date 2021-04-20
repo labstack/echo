@@ -161,20 +161,21 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	// Initialize
 	// Split sources
 	sources := strings.Split(config.TokenLookup, ",")
-	var extractor jwtExtractor
+	var extractors []jwtExtractor
 	for _, source := range sources {
 		parts := strings.Split(source, ":")
 
-		extractor = jwtFromHeader(parts[1], config.AuthScheme)
 		switch parts[0] {
 		case "query":
-			extractor = jwtFromQuery(parts[1])
+			extractors = append(extractors, jwtFromQuery(parts[1]))
 		case "param":
-			extractor = jwtFromParam(parts[1])
+			extractors = append(extractors, jwtFromParam(parts[1]))
 		case "cookie":
-			extractor = jwtFromCookie(parts[1])
+			extractors = append(extractors, jwtFromCookie(parts[1]))
 		case "form":
-			extractor = jwtFromForm(parts[1])
+			extractors = append(extractors, jwtFromForm(parts[1]))
+		case "header":
+			extractors = append(extractors, jwtFromHeader(parts[1], config.AuthScheme))
 		}
 	}
 
@@ -187,8 +188,17 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 			if config.BeforeFunc != nil {
 				config.BeforeFunc(c)
 			}
-
-			auth, err := extractor(c)
+			var auth string
+			var err error
+			for _, extractor := range extractors {
+				// Extract token from extractor, if it's not fail break the loop and
+				// set auth
+				auth, err = extractor(c)
+				if err == nil {
+					break
+				}
+			}
+			// If none of extractor has a token, handle error
 			if err != nil {
 				if config.ErrorHandler != nil {
 					return config.ErrorHandler(err)
@@ -199,6 +209,7 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 				}
 				return err
 			}
+
 			token := new(jwt.Token)
 			// Issue #647, #656
 			if _, ok := config.Claims.(jwt.MapClaims); ok {
