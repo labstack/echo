@@ -56,6 +56,8 @@ The benchmarks above were run on an Intel(R) Core(TM) i7-6820HQ CPU @ 2.70GHz
 ### Installation
 
 ```sh
+mkdir <app_name> && cd <app_name>
+go mod init <app_name>
 // go get github.com/labstack/echo/{version}
 go get github.com/labstack/echo/v4
 ```
