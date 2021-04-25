@@ -100,6 +100,9 @@ type (
 	Struct      struct {
 		Foo string
 	}
+	Bar struct {
+		Baz int `json:"baz" query:"baz"`
+	}
 )
 
 func (t *Timestamp) UnmarshalParam(src string) error {
@@ -327,6 +330,48 @@ func TestBindUnmarshalParamPtr(t *testing.T) {
 	err := c.Bind(&result)
 	if assert.NoError(t, err) {
 		assert.Equal(t, Timestamp(time.Date(2016, 12, 6, 19, 9, 5, 0, time.UTC)), *result.Tptr)
+	}
+}
+
+func TestBindUnmarshalParamAnonymousFieldPtr(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(http.MethodGet, "/?baz=1", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	result := struct {
+		*Bar
+	}{&Bar{}}
+	err := c.Bind(&result)
+	if assert.NoError(t, err) {
+		assert.Equal(t, 1, result.Baz)
+	}
+}
+
+func TestBindUnmarshalParamAnonymousFieldPtrNil(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(http.MethodGet, "/?baz=1", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	result := struct {
+		*Bar
+	}{}
+	err := c.Bind(&result)
+	if assert.NoError(t, err) {
+		assert.Nil(t, result.Bar)
+	}
+}
+
+func TestBindUnmarshalParamAnonymousFieldPtrCustomTag(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(http.MethodGet, `/?bar={"baz":100}&baz=1`, nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	result := struct {
+		*Bar `json:"bar" query:"bar"`
+	}{&Bar{}}
+	err := c.Bind(&result)
+	if assert.NoError(t, err) {
+		assert.Equal(t, 1, result.Baz)
 	}
 }
 

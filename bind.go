@@ -144,11 +144,20 @@ func (b *DefaultBinder) bindData(destination interface{}, data map[string][]stri
 	for i := 0; i < typ.NumField(); i++ {
 		typeField := typ.Field(i)
 		structField := val.Field(i)
+		if typeField.Anonymous {
+			for structField.Kind() == reflect.Ptr {
+				structField = structField.Elem()
+			}
+		}
 		if !structField.CanSet() {
 			continue
 		}
 		structFieldKind := structField.Kind()
 		inputFieldName := typeField.Tag.Get(tag)
+		if typeField.Anonymous && structField.Kind() == reflect.Struct && inputFieldName != "" {
+			// if anonymous struct, ignore custom tag
+			inputFieldName = ""
+		}
 
 		if inputFieldName == "" {
 			// If tag is nil, we inspect if the field is a not BindUnmarshaler struct and try to bind data into it (might contains fields with tags).
