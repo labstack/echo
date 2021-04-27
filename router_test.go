@@ -692,11 +692,11 @@ func TestRouterParam(t *testing.T) {
 			expectRoute: "/users/:id",
 			expectParam: map[string]string{"id": "1"},
 		},
-		{ // FIXME: this documents current implementation (slash at end is problematic)
+		{
 			name:        "route /users/1/ to /users/:id",
 			whenURL:     "/users/1/",
-			expectRoute: nil, // FIXME: should be "/users/:id",
-			expectParam: nil, // FIXME: should be  map[string]string{"id": "1/"},
+			expectRoute: "/users/:id",
+			expectParam: map[string]string{"id": "1/"},
 		},
 	}
 
@@ -707,6 +707,69 @@ func TestRouterParam(t *testing.T) {
 			r.Find(http.MethodGet, tc.whenURL, c)
 
 			c.handler(c)
+			assert.Equal(t, tc.expectRoute, c.Get("path"))
+			for param, expectedValue := range tc.expectParam {
+				assert.Equal(t, expectedValue, c.Param(param))
+			}
+			checkUnusedParamValues(t, c, tc.expectParam)
+		})
+	}
+}
+
+func TestMethodNotAllowedAndNotFound(t *testing.T) {
+	e := New()
+	r := e.router
+
+	// Routes
+	r.Add(http.MethodGet, "/*", handlerFunc)
+	r.Add(http.MethodPost, "/users/:id", handlerFunc)
+
+	var testCases = []struct {
+		name        string
+		whenMethod  string
+		whenURL     string
+		expectRoute interface{}
+		expectParam map[string]string
+		expectError error
+	}{
+		{
+			name:        "exact match for route+method",
+			whenMethod:  http.MethodPost,
+			whenURL:     "/users/1",
+			expectRoute: "/users/:id",
+			expectParam: map[string]string{"id": "1"},
+		},
+		{
+			name:        "matches node but not method. sends 405 from best match node",
+			whenMethod:  http.MethodPut,
+			whenURL:     "/users/1",
+			expectRoute: nil,
+			expectError: ErrMethodNotAllowed,
+		},
+		{
+			name:        "best match is any route up in tree",
+			whenMethod:  http.MethodGet,
+			whenURL:     "/users/1",
+			expectRoute: "/*",
+			expectParam: map[string]string{"*": "users/1"},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			c := e.NewContext(nil, nil).(*context)
+
+			method := http.MethodGet
+			if tc.whenMethod != "" {
+				method = tc.whenMethod
+			}
+			r.Find(method, tc.whenURL, c)
+			err := c.handler(c)
+
+			if tc.expectError != nil {
+				assert.Equal(t, tc.expectError, err)
+			} else {
+				assert.NoError(t, err)
+			}
 			assert.Equal(t, tc.expectRoute, c.Get("path"))
 			for param, expectedValue := range tc.expectParam {
 				assert.Equal(t, expectedValue, c.Param(param))
@@ -740,8 +803,8 @@ func TestRouterParamWithSlash(t *testing.T) {
 	r.Find(http.MethodGet, "/a/1/c/d/2/3", c) // `2/3` should mapped to path `/a/:b/c/d/:e` and into `:e`
 
 	err := c.handler(c)
-	assert.Equal(t, nil, c.Get("path"))                      // FIXME: should be "/a/:b/c/d/:e"
-	assert.EqualError(t, err, "code=404, message=Not Found") // FIXME: should be .NoError()
+	assert.Equal(t, "/a/:b/c/d/:e", c.Get("path"))
+	assert.NoError(t, err)
 }
 
 // Issue #1754 - router needs to backtrack multiple levels upwards in tree to find the matching route
@@ -2004,10 +2067,10 @@ func TestRouterParam1466(t *testing.T) {
 			expectRoute: "/users/:username",
 			expectParam: map[string]string{"username": "sharewithme"},
 		},
-		{
+		{ // route `/users/signup` is registered for POST. so param route `/users/:username` (lesser priority) is matched as it has GET handler
 			whenURL:     "/users/signup",
-			expectRoute: nil, // method not found as this route is for POST but request is for GET
-			expectParam: map[string]string{"username": ""},
+			expectRoute: "/users/:username",
+			expectParam: map[string]string{"username": "signup"},
 		},
 		// Additional assertions for #1479
 		{

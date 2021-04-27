@@ -464,7 +464,9 @@ func TestContextPath(t *testing.T) {
 	e := New()
 	r := e.Router()
 
-	r.Add(http.MethodGet, "/users/:id", nil)
+	handler := func(c Context) error { return c.String(http.StatusOK, "OK") }
+
+	r.Add(http.MethodGet, "/users/:id", handler)
 	c := e.NewContext(nil, nil)
 	r.Find(http.MethodGet, "/users/1", c)
 
@@ -472,7 +474,7 @@ func TestContextPath(t *testing.T) {
 
 	assert.Equal("/users/:id", c.Path())
 
-	r.Add(http.MethodGet, "/users/:uid/files/:fid", nil)
+	r.Add(http.MethodGet, "/users/:uid/files/:fid", handler)
 	c = e.NewContext(nil, nil)
 	r.Find(http.MethodGet, "/users/1/files/1", c)
 	assert.Equal("/users/:uid/files/:fid", c.Path())
