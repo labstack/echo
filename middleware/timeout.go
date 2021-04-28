@@ -92,6 +92,15 @@ func (t echoHandlerFuncWrapper) ServeHTTP(rw http.ResponseWriter, r *http.Reques
 	originalWriter := t.ctx.Response().Writer
 	t.ctx.Response().Writer = rw
 
+	// in case of panic we restore original writer and call panic again
+	// so it could be handled with global middleware Recover()
+	defer func() {
+		if err := recover(); err != nil {
+			t.ctx.Response().Writer = originalWriter
+			panic(err)
+		}
+	}()
+
 	err := t.handler(t.ctx)
 	if ctxErr := r.Context().Err(); ctxErr == context.DeadlineExceeded {
 		if err != nil && t.errHandler != nil {
