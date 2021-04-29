@@ -145,7 +145,7 @@ func (b *DefaultBinder) bindData(destination interface{}, data map[string][]stri
 		typeField := typ.Field(i)
 		structField := val.Field(i)
 		if typeField.Anonymous {
-			for structField.Kind() == reflect.Ptr {
+			if structField.Kind() == reflect.Ptr {
 				structField = structField.Elem()
 			}
 		}
@@ -155,8 +155,8 @@ func (b *DefaultBinder) bindData(destination interface{}, data map[string][]stri
 		structFieldKind := structField.Kind()
 		inputFieldName := typeField.Tag.Get(tag)
 		if typeField.Anonymous && structField.Kind() == reflect.Struct && inputFieldName != "" {
-			// if anonymous struct, ignore custom tag
-			inputFieldName = ""
+			// if anonymous struct with query/param/form tags, report an error
+			return errors.New("query/param/form tags are not allowed with anonymous struct field")
 		}
 
 		if inputFieldName == "" {

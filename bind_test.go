@@ -370,9 +370,7 @@ func TestBindUnmarshalParamAnonymousFieldPtrCustomTag(t *testing.T) {
 		*Bar `json:"bar" query:"bar"`
 	}{&Bar{}}
 	err := c.Bind(&result)
-	if assert.NoError(t, err) {
-		assert.Equal(t, 1, result.Baz)
-	}
+	assert.Contains(t, err.Error(), "query/param/form tags are not allowed with anonymous struct field")
 }
 
 func TestBindUnmarshalTextPtr(t *testing.T) {
