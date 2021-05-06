@@ -266,6 +266,21 @@ func TestBindQueryParamsCaseSensitivePrioritized(t *testing.T) {
 	}
 }
 
+func TestBindHeaderParam(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Name", "Jon Doe")
+	req.Header.Set("Id", "2")
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	u := new(user)
+	err := (&DefaultBinder{}).BindHeaders(c, u)
+	if assert.NoError(t, err) {
+		assert.Equal(t, 2, u.ID)
+		assert.Equal(t, "Jon Doe", u.Name)
+	}
+}
+
 func TestBindUnmarshalParam(t *testing.T) {
 	e := New()
 	req := httptest.NewRequest(http.MethodGet, "/?ts=2016-12-06T19:09:05Z&sa=one,two,three&ta=2016-12-06T19:09:05Z&ta=2016-12-06T19:09:05Z&ST=baz", nil)
