@@ -182,6 +182,14 @@ func TestJWT(t *testing.T) {
 		{
 			config: JWTConfig{
 				SigningKey:  validKey,
+				TokenLookup: "query:jwt,cookie:jwt",
+			},
+			hdrCookie: "jwt=" + token,
+			info:      "Multiple jwt lookuop",
+		},
+		{
+			config: JWTConfig{
+				SigningKey:  validKey,
 				TokenLookup: "cookie:jwt",
 			},
 			expErrCode: http.StatusUnauthorized,
