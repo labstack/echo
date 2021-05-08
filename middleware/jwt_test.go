@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -219,6 +220,35 @@ func TestJWT(t *testing.T) {
 			},
 			expErrCode: http.StatusBadRequest,
 			info:       "Empty form field",
+		},
+		{
+			hdrAuth: validAuth,
+			config: JWTConfig{
+				KeyFunc: func(*jwt.Token) (interface{}, error) {
+					return validKey, nil
+				},
+			},
+			info: "Valid JWT with a valid key using a user-defined KeyFunc",
+		},
+		{
+			hdrAuth: validAuth,
+			config: JWTConfig{
+				KeyFunc: func(*jwt.Token) (interface{}, error) {
+					return invalidKey, nil
+				},
+			},
+			expErrCode: http.StatusUnauthorized,
+			info:       "Valid JWT with an invalid key using a user-defined KeyFunc",
+		},
+		{
+			hdrAuth: validAuth,
+			config: JWTConfig{
+				KeyFunc: func(*jwt.Token) (interface{}, error) {
+					return nil, errors.New("faulty KeyFunc")
+				},
+			},
+			expErrCode: http.StatusUnauthorized,
+			info:       "Token verification does not pass using a user-defined KeyFunc",
 		},
 	} {
 		if tc.reqURL == "" {
