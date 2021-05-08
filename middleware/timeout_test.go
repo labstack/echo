@@ -116,18 +116,51 @@ func TestTimeoutOnTimeoutRouteErrorHandler(t *testing.T) {
 	rec := httptest.NewRecorder()
 
 	e := echo.New()
-	c := e.NewContext(req, rec)
 
 	stopChan := make(chan struct{}, 0)
-	err := m(func(c echo.Context) error {
+	e.GET("/", func(c echo.Context) error {
 		<-stopChan
 		return errors.New("error in route after timeout")
-	})(c)
+	}, m)
+
+	e.ServeHTTP(rec, req)
+
 	stopChan <- struct{}{}
-	assert.EqualError(t, err, "code=503, message=context deadline exceeded")
 
 	actualErr := <-actualErrChan
 	assert.EqualError(t, actualErr, "error in route after timeout")
+
+	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
+	assert.Equal(t, http.Header{"Content-Type": []string{"application/json; charset=UTF-8"}}, rec.Header())
+	assert.Equal(t, "{\"message\":\"context deadline exceeded\"}\n", rec.Body.String())
+}
+
+func TestTimeoutErrorMessage(t *testing.T) {
+	t.Parallel()
+
+	m := TimeoutWithConfig(TimeoutConfig{
+		Timeout:      1 * time.Millisecond,
+		ErrorMessage: "I am deprecated",
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+
+	e := echo.New()
+
+	stopChan := make(chan struct{}, 0)
+	e.GET("/", func(c echo.Context) error {
+		<-stopChan
+		return errors.New("error in route after timeout")
+	}, m)
+
+	e.ServeHTTP(rec, req)
+
+	stopChan <- struct{}{}
+
+	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
+	assert.Equal(t, http.Header{"Content-Type": []string{"application/json; charset=UTF-8"}}, rec.Header())
+	assert.Equal(t, "{\"message\":\"I am deprecated\"}\n", rec.Body.String())
 }
 
 func TestTimeoutTestRequestClone(t *testing.T) {
@@ -170,7 +203,7 @@ func TestTimeoutTestRequestClone(t *testing.T) {
 func TestTimeoutRecoversPanic(t *testing.T) {
 	t.Parallel()
 	e := echo.New()
-	e.Use(Recover()) // recover middleware will handler our panic
+	e.Use(Recover()) // recover middleware will handler our panics
 	e.Use(TimeoutWithConfig(TimeoutConfig{
 		Timeout: 50 * time.Millisecond,
 	}))
@@ -182,9 +215,11 @@ func TestTimeoutRecoversPanic(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 
-	assert.NotPanics(t, func() {
-		e.ServeHTTP(rec, req)
-	})
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Equal(t, http.Header{"Content-Type": []string{"application/json; charset=UTF-8"}}, rec.Header())
+	assert.Equal(t, "{\"message\":\"Internal Server Error\"}\n", rec.Body.String())
 }
 
 func TestTimeoutDataRace(t *testing.T) {

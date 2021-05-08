@@ -25,6 +25,11 @@ type (
 		// will not accept anything no more. If you want to know what actual route middleware timeouted use `c.Path()`
 		OnTimeoutRouteErrorHandler func(err error, c echo.Context)
 
+		// ErrorMessage is written to response on timeout in addition to http.StatusServiceUnavailable (503) status code
+		// It can be used to define a custom timeout error message
+		// DEPRECATED: do not use. Use `DefaultTimeoutErrorHandler` instead
+		ErrorMessage string
+
 		// DefaultTimeoutErrorHandler is an error handler that is executed when handler context timeouts or is cancelled.
 		// Overwrite this with our custom implementation when want to send your own custom error code etc.
 		// NB: OnTimeoutRouteErrorHandler will still be called when handler function eventually finishes.
@@ -58,6 +63,11 @@ func TimeoutWithConfig(config TimeoutConfig) echo.MiddlewareFunc {
 	// Defaults
 	if config.Skipper == nil {
 		config.Skipper = DefaultTimeoutConfig.Skipper
+	}
+	if config.ErrorMessage != "" && config.DefaultTimeoutErrorHandler == nil {
+		config.DefaultTimeoutErrorHandler = func(contextError error, c echo.Context) error {
+			return echo.NewHTTPError(http.StatusServiceUnavailable, config.ErrorMessage)
+		}
 	}
 	if config.DefaultTimeoutErrorHandler == nil {
 		config.DefaultTimeoutErrorHandler = func(contextError error, c echo.Context) error {
@@ -93,10 +103,7 @@ func TimeoutWithConfig(config TimeoutConfig) echo.MiddlewareFunc {
 			c.Response().Writer = tw
 
 			done := make(chan error)
-			defer close(done)
 			panicChan := make(chan interface{})
-			defer close(panicChan)
-
 			go func() {
 				defer func() {
 					if p := recover(); p != nil {
@@ -113,10 +120,14 @@ func TimeoutWithConfig(config TimeoutConfig) echo.MiddlewareFunc {
 				default:
 					done <- err
 				}
+				close(done)
 			}()
 
 			select {
 			case p := <-panicChan:
+				// restore writer for context so error handler can write response to request
+				c.Response().Writer = originalWriter
+
 				panic(p)
 			case err := <-done: // where are here before timeout has been exceeded
 				tw.mu.Lock()
@@ -144,6 +155,9 @@ func TimeoutWithConfig(config TimeoutConfig) echo.MiddlewareFunc {
 				tw.mu.Lock()
 				defer tw.mu.Unlock()
 
+				// restore writer for context so error handler can write response to request
+				c.Response().Writer = originalWriter
+
 				tw.timedOut = true
 				return config.DefaultTimeoutErrorHandler(ctx.Err(), c)
 			}
@@ -158,7 +172,7 @@ var ErrHandlerTimeout = errors.New("http: Handler timeout")
 // NOTE: this is copy of http.timeoutWriter
 type timeoutWriter struct {
 	w    http.ResponseWriter
-	h    map[string][]string
+	h    http.Header
 	wbuf bytes.Buffer
 	req  *http.Request
 
