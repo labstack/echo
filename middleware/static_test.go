@@ -94,6 +94,32 @@ func TestStatic(t *testing.T) {
 			expectCode:     http.StatusNotFound,
 			expectContains: "{\"message\":\"Not Found\"}\n",
 		},
+		{
+			name:           "ok, do not serve file, when a handler took care of the request",
+			whenURL:        "/regular-handler",
+			expectCode:     http.StatusOK,
+			expectContains: "ok",
+		},
+		{
+			name: "nok, when html5 fail if the index file does not exist",
+			givenConfig: &StaticConfig{
+				Root:  "../_fixture",
+				HTML5: true,
+				Index: "missing.html",
+			},
+			whenURL:    "/random",
+			expectCode: http.StatusInternalServerError,
+		},
+		{
+			name: "ok, serve from http.FileSystem",
+			givenConfig: &StaticConfig{
+				Root:       "_fixture",
+				Filesystem: http.Dir(".."),
+			},
+			whenURL:        "/",
+			expectCode:     http.StatusOK,
+			expectContains: "<title>Echo</title>",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -115,6 +141,9 @@ func TestStatic(t *testing.T) {
 			} else {
 				// middleware is on root level
 				e.Use(middlewareFunc)
+				e.GET("/regular-handler", func(c echo.Context) error {
+					return c.String(http.StatusOK, "ok")
+				})
 			}
 
 			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
