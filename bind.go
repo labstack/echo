@@ -97,6 +97,7 @@ func (b *DefaultBinder) BindBody(c Context, i interface{}) (err error) {
 	return nil
 }
 
+// BindHeaders binds HTTP headers to a bindable object
 func (b *DefaultBinder) BindHeaders(c Context, i interface{}) error {
 	if err := b.bindData(i, c.Request().Header, "header"); err != nil {
 		return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
