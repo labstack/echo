@@ -281,6 +281,22 @@ func TestBindHeaderParam(t *testing.T) {
 	}
 }
 
+func TestBindHeaderParamBadType(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Id", "salamander")
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	u := new(user)
+	err := (&DefaultBinder{}).BindHeaders(c, u)
+	assert.Error(t, err)
+
+	httpErr, ok := err.(*HTTPError)
+	if assert.True(t, ok) {
+		assert.Equal(t, http.StatusBadRequest, httpErr.Code)
+	}
+}
+
 func TestBindUnmarshalParam(t *testing.T) {
 	e := New()
 	req := httptest.NewRequest(http.MethodGet, "/?ts=2016-12-06T19:09:05Z&sa=one,two,three&ta=2016-12-06T19:09:05Z&ta=2016-12-06T19:09:05Z&ST=baz", nil)
