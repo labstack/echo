@@ -345,9 +345,14 @@ func (c *context) SetParamValues(values ...string) {
 	}
 }
 
-func (c *context) QueryParam(name string) string {
+func (c *context) QueryParam(name, option ...string) string {
 	if c.query == nil {
 		c.query = c.request.URL.Query()
+	}
+	if len(strings.TrimSpace(c.query.Get(name))) == 0 {
+		if len(option) > 0 {
+			return option[0]
+		}
 	}
 	return c.query.Get(name)
 }
