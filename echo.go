@@ -43,7 +43,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	stdLog "log"
 	"net"
 	"net/http"
@@ -249,21 +248,19 @@ ____________________________________O/_______
 `
 )
 
-var (
-	methods = [...]string{
-		http.MethodConnect,
-		http.MethodDelete,
-		http.MethodGet,
-		http.MethodHead,
-		http.MethodOptions,
-		http.MethodPatch,
-		http.MethodPost,
-		PROPFIND,
-		http.MethodPut,
-		http.MethodTrace,
-		REPORT,
-	}
-)
+var methods = [...]string{
+	http.MethodConnect,
+	http.MethodDelete,
+	http.MethodGet,
+	http.MethodHead,
+	http.MethodOptions,
+	http.MethodPatch,
+	http.MethodPost,
+	PROPFIND,
+	http.MethodPut,
+	http.MethodTrace,
+	REPORT,
+}
 
 // Errors
 var (
@@ -700,7 +697,7 @@ func (e *Echo) StartTLS(address string, certFile, keyFile interface{}) (err erro
 func filepathOrContent(fileOrContent interface{}) (content []byte, err error) {
 	switch v := fileOrContent.(type) {
 	case string:
-		return ioutil.ReadFile(v)
+		return os.ReadFile(v)
 	case []byte:
 		return v, nil
 	default:

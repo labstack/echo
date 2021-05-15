@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"sync"
 
@@ -22,7 +21,7 @@ type (
 	}
 )
 
-//GZIPEncoding content-encoding header if set to "gzip", decompress body contents.
+// GZIPEncoding content-encoding header if set to "gzip", decompress body contents.
 const GZIPEncoding string = "gzip"
 
 // Decompressor is used to get the sync.Pool used by the middleware to get Gzip readers
@@ -30,13 +29,11 @@ type Decompressor interface {
 	gzipDecompressPool() sync.Pool
 }
 
-var (
-	//DefaultDecompressConfig defines the config for decompress middleware
-	DefaultDecompressConfig = DecompressConfig{
-		Skipper:            DefaultSkipper,
-		GzipDecompressPool: &DefaultGzipDecompressPool{},
-	}
-)
+// DefaultDecompressConfig defines the config for decompress middleware
+var DefaultDecompressConfig = DecompressConfig{
+	Skipper:            DefaultSkipper,
+	GzipDecompressPool: &DefaultGzipDecompressPool{},
+}
 
 // DefaultGzipDecompressPool is the default implementation of Decompressor interface
 type DefaultGzipDecompressPool struct {
@@ -46,7 +43,7 @@ func (d *DefaultGzipDecompressPool) gzipDecompressPool() sync.Pool {
 	return sync.Pool{
 		New: func() interface{} {
 			// create with an empty reader (but with GZIP header)
-			w, err := gzip.NewWriterLevel(ioutil.Discard, gzip.BestSpeed)
+			w, err := gzip.NewWriterLevel(io.Discard, gzip.BestSpeed)
 			if err != nil {
 				return err
 			}
@@ -65,12 +62,12 @@ func (d *DefaultGzipDecompressPool) gzipDecompressPool() sync.Pool {
 	}
 }
 
-//Decompress decompresses request body based if content encoding type is set to "gzip" with default config
+// Decompress decompresses request body based if content encoding type is set to "gzip" with default config
 func Decompress() echo.MiddlewareFunc {
 	return DecompressWithConfig(DefaultDecompressConfig)
 }
 
-//DecompressWithConfig decompresses request body based if content encoding type is set to "gzip" with config
+// DecompressWithConfig decompresses request body based if content encoding type is set to "gzip" with config
 func DecompressWithConfig(config DecompressConfig) echo.MiddlewareFunc {
 	// Defaults
 	if config.Skipper == nil {
@@ -98,7 +95,7 @@ func DecompressWithConfig(config DecompressConfig) echo.MiddlewareFunc {
 
 				if err := gr.Reset(b); err != nil {
 					pool.Put(gr)
-					if err == io.EOF { //ignore if body is empty
+					if err == io.EOF { // ignore if body is empty
 						return next(c)
 					}
 					return err
@@ -111,7 +108,7 @@ func DecompressWithConfig(config DecompressConfig) echo.MiddlewareFunc {
 
 				b.Close() // http.Request.Body is closed by the Server, but because we are replacing it, it must be closed here
 
-				r := ioutil.NopCloser(&buf)
+				r := io.NopCloser(&buf)
 				c.Request().Body = r
 			}
 			return next(c)

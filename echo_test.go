@@ -6,7 +6,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -67,7 +67,7 @@ func TestEcho(t *testing.T) {
 }
 
 func TestEchoStatic(t *testing.T) {
-	var testCases = []struct {
+	testCases := []struct {
 		name                 string
 		givenPrefix          string
 		givenRoot            string
@@ -229,7 +229,7 @@ func TestEchoStaticRedirectIndex(t *testing.T) {
 		defer resp.Body.Close()
 		assert.Equal(http.StatusOK, resp.StatusCode)
 
-		if body, err := ioutil.ReadAll(resp.Body); err == nil {
+		if body, err := io.ReadAll(resp.Body); err == nil {
 			assert.Equal(true, strings.HasPrefix(string(body), "<!doctype html>"))
 		} else {
 			assert.Fail(err.Error())
@@ -481,7 +481,7 @@ func TestEchoServeHTTPPathEncoding(t *testing.T) {
 		return c.String(http.StatusOK, c.Param("id"))
 	})
 
-	var testCases = []struct {
+	testCases := []struct {
 		name         string
 		whenURL      string
 		expectURL    string
@@ -646,7 +646,7 @@ func TestEchoStart(t *testing.T) {
 }
 
 func TestEcho_StartTLS(t *testing.T) {
-	var testCases = []struct {
+	testCases := []struct {
 		name        string
 		addr        string
 		certFile    string
@@ -774,9 +774,9 @@ func TestEchoStartTLSAndStart(t *testing.T) {
 }
 
 func TestEchoStartTLSByteString(t *testing.T) {
-	cert, err := ioutil.ReadFile("_fixture/certs/cert.pem")
+	cert, err := os.ReadFile("_fixture/certs/cert.pem")
 	require.NoError(t, err)
-	key, err := ioutil.ReadFile("_fixture/certs/key.pem")
+	key, err := os.ReadFile("_fixture/certs/key.pem")
 	require.NoError(t, err)
 
 	testCases := []struct {
@@ -842,7 +842,7 @@ func TestEchoStartTLSByteString(t *testing.T) {
 }
 
 func TestEcho_StartAutoTLS(t *testing.T) {
-	var testCases = []struct {
+	testCases := []struct {
 		name        string
 		addr        string
 		expectError string
@@ -880,7 +880,7 @@ func TestEcho_StartAutoTLS(t *testing.T) {
 }
 
 func TestEcho_StartH2CServer(t *testing.T) {
-	var testCases = []struct {
+	testCases := []struct {
 		name        string
 		addr        string
 		expectError string
@@ -1112,7 +1112,7 @@ func TestEchoListenerNetwork(t *testing.T) {
 				defer resp.Body.Close()
 				assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-				if body, err := ioutil.ReadAll(resp.Body); err == nil {
+				if body, err := io.ReadAll(resp.Body); err == nil {
 					assert.Equal(t, "OK", string(body))
 				} else {
 					assert.Fail(t, err.Error())
@@ -1182,9 +1182,9 @@ func TestEcho_ListenerAddr(t *testing.T) {
 }
 
 func TestEcho_TLSListenerAddr(t *testing.T) {
-	cert, err := ioutil.ReadFile("_fixture/certs/cert.pem")
+	cert, err := os.ReadFile("_fixture/certs/cert.pem")
 	require.NoError(t, err)
-	key, err := ioutil.ReadFile("_fixture/certs/key.pem")
+	key, err := os.ReadFile("_fixture/certs/key.pem")
 	require.NoError(t, err)
 
 	e := New()
@@ -1202,14 +1202,14 @@ func TestEcho_TLSListenerAddr(t *testing.T) {
 }
 
 func TestEcho_StartServer(t *testing.T) {
-	cert, err := ioutil.ReadFile("_fixture/certs/cert.pem")
+	cert, err := os.ReadFile("_fixture/certs/cert.pem")
 	require.NoError(t, err)
-	key, err := ioutil.ReadFile("_fixture/certs/key.pem")
+	key, err := os.ReadFile("_fixture/certs/key.pem")
 	require.NoError(t, err)
 	certs, err := tls.X509KeyPair(cert, key)
 	require.NoError(t, err)
 
-	var testCases = []struct {
+	testCases := []struct {
 		name        string
 		addr        string
 		TLSConfig   *tls.Config

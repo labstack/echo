@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-//Assert expected with url.EscapedPath method to obtain the path.
+// Assert expected with url.EscapedPath method to obtain the path.
 func TestProxy(t *testing.T) {
 	// Setup
 	t1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -94,7 +94,7 @@ func TestProxy(t *testing.T) {
 	e.Use(ProxyWithConfig(ProxyConfig{
 		Balancer: rrb,
 		ModifyResponse: func(res *http.Response) error {
-			res.Body = ioutil.NopCloser(bytes.NewBuffer([]byte("modified")))
+			res.Body = io.NopCloser(bytes.NewBuffer([]byte("modified")))
 			res.Header.Set("X-Modified", "1")
 			return nil
 		},
@@ -166,7 +166,7 @@ func TestProxyRealIPHeader(t *testing.T) {
 }
 
 func TestProxyRewrite(t *testing.T) {
-	var testCases = []struct {
+	testCases := []struct {
 		whenPath         string
 		expectProxiedURI string
 		expectStatus     int
