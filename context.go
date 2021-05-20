@@ -276,9 +276,9 @@ func (c *context) RealIP() string {
 	}
 	// Fall back to legacy behavior
 	if ip := c.request.Header.Get(HeaderXForwardedFor); ip != "" {
-		i := strings.IndexAny(ip, ", ")
+		i := strings.IndexAny(ip, ",")
 		if i > 0 {
-			return ip[:i]
+			return strings.TrimSpace(ip[:i])
 		}
 		return ip
 	}

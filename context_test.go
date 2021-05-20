@@ -891,6 +891,14 @@ func TestContext_RealIP(t *testing.T) {
 		{
 			&context{
 				request: &http.Request{
+					Header: http.Header{HeaderXForwardedFor: []string{"127.0.0.1,127.0.1.1"}},
+				},
+			},
+			"127.0.0.1",
+		},
+		{
+			&context{
+				request: &http.Request{
 					Header: http.Header{HeaderXForwardedFor: []string{"127.0.0.1"}},
 				},
 			},
