@@ -90,6 +90,7 @@ type (
 		HidePort         bool
 		HTTPErrorHandler HTTPErrorHandler
 		Binder           Binder
+		JSONEncoder      JSONEncoder
 		Validator        Validator
 		Renderer         Renderer
 		Logger           Logger
@@ -123,6 +124,11 @@ type (
 	// Validator is the interface that wraps the Validate function.
 	Validator interface {
 		Validate(i interface{}) error
+	}
+
+	// JSONEncoder is the interface that encodes an interface{} into a JSON string.
+	JSONEncoder interface {
+		JSON(i interface{}, indent string, c Context) error
 	}
 
 	// Renderer is the interface that wraps the Render function.
@@ -315,6 +321,7 @@ func New() (e *Echo) {
 	e.TLSServer.Handler = e
 	e.HTTPErrorHandler = e.DefaultHTTPErrorHandler
 	e.Binder = &DefaultBinder{}
+	e.JSONEncoder = &DefaultJSONEncoder{}
 	e.Logger.SetLevel(log.ERROR)
 	e.StdLogger = stdLog.New(e.Logger.Output(), e.Logger.Prefix()+": ", 0)
 	e.pool.New = func() interface{} {
