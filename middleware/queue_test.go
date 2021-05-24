@@ -57,14 +57,16 @@ func TestQueueWithConfig(t *testing.T) {
 			defer wg.Done()
 
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
-
 			rec := httptest.NewRecorder()
 
 			c := e.NewContext(req, rec)
-
 			c.Set("procTime", pt)
 
-			_ = mw(handler)(c)
+			err := mw(handler)(c)
+			if err != nil {
+				ch <- err.(*echo.HTTPError).Code
+				return
+			}
 
 			ch <- rec.Code
 
@@ -78,8 +80,6 @@ func TestQueueWithConfig(t *testing.T) {
 
 	for i := 0; i < len(testCases); i++ {
 		c := <-ch
-
-		t.Log(c)
 
 		if c == http.StatusTooManyRequests {
 			errQueueFull = true
@@ -97,7 +97,58 @@ func TestQueueWithConfig(t *testing.T) {
 	assert.Equal(t, true, errQueueFull)
 	assert.Equal(t, true, errQueueTimeout)
 	assert.Equal(t, false, errInternalServerError)
+}
 
+func TestQueueWithConfig_panic(t *testing.T) {
+	e := echo.New()
+
+	handler := func(c echo.Context) error {
+		panic(`panic should release semaphore resources`)
+	}
+
+	mw := QueueWithConfig(QueueConfig{
+		QueueSize:     2,
+		Workers:       1,
+		QueueTimeout:  200 * time.Millisecond,
+		WorkerTimeout: 100 * time.Millisecond,
+	})
+
+	recoverMw := RecoverWithConfig(RecoverConfig{
+		DisableStackAll:   true,
+		DisablePrintStack: true,
+	})
+
+	expectedCalls := 5
+	actualCalls := 0
+	var wg sync.WaitGroup
+
+	for i := 0; i < 5; i++ {
+
+		wg.Add(1)
+
+		go func() {
+
+			defer wg.Done()
+
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+
+			c := e.NewContext(req, rec)
+
+			err := recoverMw(mw(handler))(c)
+			if err != nil {
+				return
+			}
+
+			actualCalls++
+
+		}()
+
+	}
+
+	wg.Wait()
+
+	assert.Equal(t, expectedCalls, actualCalls)
 }
 
 func TestQueueWithConfig_skipper(t *testing.T) {

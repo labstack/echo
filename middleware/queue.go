@@ -94,24 +94,22 @@ func QueueWithConfig(config QueueConfig) echo.MiddlewareFunc {
 			ctxQueue, _ := context.WithTimeout(context.Background(), config.QueueTimeout)
 
 			if err := queueSemaphore.Acquire(ctxQueue, 1); err != nil {
-				c.Error(ErrQueueFull)
-				return nil
+				return ErrQueueFull
 			}
 
 			ctxWorker, _ := context.WithTimeout(ctxQueue, config.WorkerTimeout)
 
 			if err := workersSemaphore.Acquire(ctxWorker, 1); err != nil {
 				queueSemaphore.Release(1)
-				c.Error(ErrQueueTimeout)
-				return nil
+				return ErrQueueTimeout
 			}
 
-			err := next(c)
+			defer func() {
+				workersSemaphore.Release(1)
+				queueSemaphore.Release(1)
+			}()
 
-			workersSemaphore.Release(1)
-			queueSemaphore.Release(1)
-
-			return err
+			return next(c)
 		}
 	}
 }
