@@ -97,6 +97,14 @@ func (b *DefaultBinder) BindBody(c Context, i interface{}) (err error) {
 	return nil
 }
 
+// BindHeaders binds HTTP headers to a bindable object
+func (b *DefaultBinder) BindHeaders(c Context, i interface{}) error {
+	if err := b.bindData(i, c.Request().Header, "header"); err != nil {
+		return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
+	}
+	return nil
+}
+
 // Bind implements the `Binder#Bind` function.
 // Binding is done in following order: 1) path params; 2) query params; 3) request body. Each step COULD override previous
 // step binded values. For single source binding use their own methods BindBody, BindQueryParams, BindPathParams.
@@ -134,7 +142,7 @@ func (b *DefaultBinder) bindData(destination interface{}, data map[string][]stri
 
 	// !struct
 	if typ.Kind() != reflect.Struct {
-		if tag == "param" || tag == "query" {
+		if tag == "param" || tag == "query" || tag == "header" {
 			// incompatible type, data is probably to be found in the body
 			return nil
 		}
