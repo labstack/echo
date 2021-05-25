@@ -119,7 +119,7 @@ func TestQueueWithConfig_panic(t *testing.T) {
 	})
 
 	expectedCalls := 5
-	actualCalls := 0
+	actualCallsChan := make(chan struct{}, 5)
 	var wg sync.WaitGroup
 
 	for i := 0; i < 5; i++ {
@@ -140,13 +140,15 @@ func TestQueueWithConfig_panic(t *testing.T) {
 				return
 			}
 
-			actualCalls++
+			actualCallsChan <- struct{}{}
 
 		}()
 
 	}
 
 	wg.Wait()
+
+	actualCalls := len(actualCallsChan)
 
 	assert.Equal(t, expectedCalls, actualCalls)
 }
