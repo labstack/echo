@@ -53,7 +53,7 @@ type (
 		// Optional. Default value jwt.MapClaims
 		Claims jwt.Claims
 
-		// TokenLookup is a string in the form of "<source>:<name>" that is used
+		// TokenLookup is a string in the form of "<source>:<name>" or "<source>:<name>,<source>:<name>" that is used
 		// to extract token from the request.
 		// Optional. Default value "header:Authorization".
 		// Possible values:
@@ -62,6 +62,9 @@ type (
 		// - "param:<name>"
 		// - "cookie:<name>"
 		// - "form:<name>"
+		// Multiply sources example:
+		// - "header: Authorization,cookie: myowncookie"
+
 		TokenLookup string
 
 		// AuthScheme to be used in the Authorization header.
