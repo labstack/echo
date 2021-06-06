@@ -234,7 +234,7 @@ const (
 
 const (
 	// Version of Echo
-	Version = "4.1.17"
+	Version = "4.3.0"
 	website = "https://echo.labstack.com"
 	// http://patorjk.com/software/taag/#p=display&f=Small%20Slant&t=Echo
 	banner = `
@@ -629,12 +629,12 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h := NotFoundHandler
 
 	if e.premiddleware == nil {
-		e.findRouter(r.Host).Find(r.Method, r.URL.EscapedPath(), c)
+		e.findRouter(r.Host).Find(r.Method, GetPath(r), c)
 		h = c.Handler()
 		h = applyMiddleware(h, e.middleware...)
 	} else {
 		h = func(c Context) error {
-			e.findRouter(r.Host).Find(r.Method, r.URL.EscapedPath(), c)
+			e.findRouter(r.Host).Find(r.Method, GetPath(r), c)
 			h := c.Handler()
 			h = applyMiddleware(h, e.middleware...)
 			return h(c)
@@ -660,7 +660,7 @@ func (e *Echo) Start(address string) error {
 		return err
 	}
 	e.startupMutex.Unlock()
-	return e.serve()
+	return e.Server.Serve(e.Listener)
 }
 
 // StartTLS starts an HTTPS server.
@@ -740,8 +740,12 @@ func (e *Echo) StartServer(s *http.Server) (err error) {
 		e.startupMutex.Unlock()
 		return err
 	}
+	if s.TLSConfig != nil {
+		e.startupMutex.Unlock()
+		return s.Serve(e.TLSListener)
+	}
 	e.startupMutex.Unlock()
-	return e.serve()
+	return s.Serve(e.Listener)
 }
 
 func (e *Echo) configureServer(s *http.Server) (err error) {
@@ -780,13 +784,6 @@ func (e *Echo) configureServer(s *http.Server) (err error) {
 		e.colorer.Printf("⇨ https server started on %s\n", e.colorer.Green(e.TLSListener.Addr()))
 	}
 	return nil
-}
-
-func (e *Echo) serve() error {
-	if e.TLSListener != nil {
-		return e.Server.Serve(e.TLSListener)
-	}
-	return e.Server.Serve(e.Listener)
 }
 
 // ListenerAddr returns net.Addr for Listener
@@ -910,6 +907,18 @@ func WrapMiddleware(m func(http.Handler) http.Handler) MiddlewareFunc {
 			return
 		}
 	}
+}
+
+// GetPath returns RawPath, if it's empty returns Path from URL
+// Difference between RawPath and Path is:
+//  * Path is where request path is stored. Value is stored in decoded form: /%47%6f%2f becomes /Go/.
+//  * RawPath is an optional field which only gets set if the default encoding is different from Path.
+func GetPath(r *http.Request) string {
+	path := r.URL.RawPath
+	if path == "" {
+		path = r.URL.Path
+	}
+	return path
 }
 
 func (e *Echo) findRouter(host string) *Router {

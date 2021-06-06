@@ -247,7 +247,7 @@ func (c *context) IsTLS() bool {
 
 func (c *context) IsWebSocket() bool {
 	upgrade := c.request.Header.Get(HeaderUpgrade)
-	return strings.ToLower(upgrade) == "websocket"
+	return strings.EqualFold(upgrade, "websocket")
 }
 
 func (c *context) Scheme() string {
@@ -277,9 +277,9 @@ func (c *context) RealIP() string {
 	}
 	// Fall back to legacy behavior
 	if ip := c.request.Header.Get(HeaderXForwardedFor); ip != "" {
-		i := strings.IndexAny(ip, ", ")
+		i := strings.IndexAny(ip, ",")
 		if i > 0 {
-			return ip[:i]
+			return strings.TrimSpace(ip[:i])
 		}
 		return ip
 	}

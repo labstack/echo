@@ -38,7 +38,7 @@ func rewriteRulesRegex(rewrite map[string]string) map[*regexp.Regexp]string {
 	rulesRegex := map[*regexp.Regexp]string{}
 	for k, v := range rewrite {
 		k = regexp.QuoteMeta(k)
-		k = strings.Replace(k, `\*`, "(.*)", -1)
+		k = strings.Replace(k, `\*`, "(.*?)", -1)
 		if strings.HasPrefix(k, `\^`) {
 			k = strings.Replace(k, `\^`, "^", -1)
 		}
@@ -48,14 +48,39 @@ func rewriteRulesRegex(rewrite map[string]string) map[*regexp.Regexp]string {
 	return rulesRegex
 }
 
-func rewritePath(rewriteRegex map[*regexp.Regexp]string, req *http.Request) {
-	for k, v := range rewriteRegex {
-		replacerRawPath := captureTokens(k, req.URL.EscapedPath())
-		if replacerRawPath != nil {
-			replacerPath := captureTokens(k, req.URL.Path)
-			req.URL.RawPath, req.URL.Path = replacerRawPath.Replace(v), replacerPath.Replace(v)
+func rewriteURL(rewriteRegex map[*regexp.Regexp]string, req *http.Request) error {
+	if len(rewriteRegex) == 0 {
+		return nil
+	}
+
+	// Depending how HTTP request is sent RequestURI could contain Scheme://Host/path or be just /path.
+	// We only want to use path part for rewriting and therefore trim prefix if it exists
+	rawURI := req.RequestURI
+	if rawURI != "" && rawURI[0] != '/' {
+		prefix := ""
+		if req.URL.Scheme != "" {
+			prefix = req.URL.Scheme + "://"
+		}
+		if req.URL.Host != "" {
+			prefix += req.URL.Host // host or host:port
+		}
+		if prefix != "" {
+			rawURI = strings.TrimPrefix(rawURI, prefix)
 		}
 	}
+
+	for k, v := range rewriteRegex {
+		if replacer := captureTokens(k, rawURI); replacer != nil {
+			url, err := req.URL.Parse(replacer.Replace(v))
+			if err != nil {
+				return err
+			}
+			req.URL = url
+
+			return nil // rewrite only once
+		}
+	}
+	return nil
 }
 
 // DefaultSkipper returns false which processes the middleware.

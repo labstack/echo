@@ -1,13 +1,16 @@
 package middleware
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"math/rand"
 	"net"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"regexp"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -36,6 +39,13 @@ type (
 		// "/users/*/orders/*": "/user/$1/order/$2",
 		Rewrite map[string]string
 
+		// RegexRewrite defines rewrite rules using regexp.Rexexp with captures
+		// Every capture group in the values can be retrieved by index e.g. $1, $2 and so on.
+		// Example:
+		// "^/old/[0.9]+/":     "/new",
+		// "^/api/.+?/(.*)":    "/v2/$1",
+		RegexRewrite map[*regexp.Regexp]string
+
 		// Context key to store selected ProxyTarget into context.
 		// Optional. Default value "target".
 		ContextKey string
@@ -46,8 +56,6 @@ type (
 
 		// ModifyResponse defines function to modify response from ProxyTarget.
 		ModifyResponse func(*http.Response) error
-
-		rewriteRegex map[*regexp.Regexp]string
 	}
 
 	// ProxyTarget defines the upstream target.
@@ -206,7 +214,14 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 		panic("echo: proxy middleware requires balancer")
 	}
 
-	config.rewriteRegex = rewriteRulesRegex(config.Rewrite)
+	if config.Rewrite != nil {
+		if config.RegexRewrite == nil {
+			config.RegexRewrite = make(map[*regexp.Regexp]string)
+		}
+		for k, v := range rewriteRulesRegex(config.Rewrite) {
+			config.RegexRewrite[k] = v
+		}
+	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) (err error) {
@@ -219,8 +234,9 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 			tgt := config.Balancer.Next(c)
 			c.Set(config.ContextKey, tgt)
 
-			// Set rewrite path and raw path
-			rewritePath(config.rewriteRegex, req)
+			if err := rewriteURL(config.RegexRewrite, req); err != nil {
+				return err
+			}
 
 			// Fix header
 			// Basically it's not good practice to unconditionally pass incoming x-real-ip header to upstream.
@@ -252,4 +268,36 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 	}
 }
 
+// StatusCodeContextCanceled is a custom HTTP status code for situations
+// where a client unexpectedly closed the connection to the server.
+// As there is no standard error code for "client closed connection", but
+// various well-known HTTP clients and server implement this HTTP code we use
+// 499 too instead of the more problematic 5xx, which does not allow to detect this situation
+const StatusCodeContextCanceled = 499
 
+func proxyHTTP(tgt *ProxyTarget, c echo.Context, config ProxyConfig) http.Handler {
+	proxy := httputil.NewSingleHostReverseProxy(tgt.URL)
+	proxy.ErrorHandler = func(resp http.ResponseWriter, req *http.Request, err error) {
+		desc := tgt.URL.String()
+		if tgt.Name != "" {
+			desc = fmt.Sprintf("%s(%s)", tgt.Name, tgt.URL.String())
+		}
+		// If the client canceled the request (usually by closing the connection), we can report a
+		// client error (4xx) instead of a server error (5xx) to correctly identify the situation.
+		// The Go standard library (at of late 2020) wraps the exported, standard
+		// context.Canceled error with unexported garbage value requiring a substring check, see
+		// https://github.com/golang/go/blob/6965b01ea248cabb70c3749fd218b36089a21efb/src/net/net.go#L416-L430
+		if err == context.Canceled || strings.Contains(err.Error(), "operation was canceled") {
+			httpError := echo.NewHTTPError(StatusCodeContextCanceled, fmt.Sprintf("client closed connection: %v", err))
+			httpError.Internal = err
+			c.Set("_error", httpError)
+		} else {
+			httpError := echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("remote %s unreachable, could not forward: %v", desc, err))
+			httpError.Internal = err
+			c.Set("_error", httpError)
+		}
+	}
+	proxy.Transport = config.Transport
+	proxy.ModifyResponse = config.ModifyResponse
+	return proxy
+}

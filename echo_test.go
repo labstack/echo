@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"reflect"
 	"strings"
@@ -23,13 +24,14 @@ import (
 
 type (
 	user struct {
-		ID   int    `json:"id" xml:"id" form:"id" query:"id" param:"id"`
-		Name string `json:"name" xml:"name" form:"name" query:"name" param:"name"`
+		ID   int    `json:"id" xml:"id" form:"id" query:"id" param:"id" header:"id"`
+		Name string `json:"name" xml:"name" form:"name" query:"name" param:"name" header:"name"`
 	}
 )
 
 const (
 	userJSON                    = `{"id":1,"name":"Jon Snow"}`
+	usersJSON                   = `[{"id":1,"name":"Jon Snow"}]`
 	userXML                     = `<user><id>1</id><name>Jon Snow</name></user>`
 	userForm                    = `id=1&name=Jon Snow`
 	invalidContent              = "invalid content"
@@ -47,6 +49,8 @@ const userXMLPretty = `<user>
   <id>1</id>
   <name>Jon Snow</name>
 </user>`
+
+var dummyQuery = url.Values{"dummy": []string{"useless"}}
 
 func TestEcho(t *testing.T) {
 	e := New()
@@ -468,15 +472,46 @@ func TestEchoRoutes(t *testing.T) {
 	}
 }
 
-func TestEchoEncodedPath(t *testing.T) {
+func TestEchoServeHTTPPathEncoding(t *testing.T) {
 	e := New()
-	e.GET("/:id", func(c Context) error {
-		return c.NoContent(http.StatusOK)
+	e.GET("/with/slash", func(c Context) error {
+		return c.String(http.StatusOK, "/with/slash")
 	})
-	req := httptest.NewRequest(http.MethodGet, "/with%2Fslash", nil)
-	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, http.StatusOK, rec.Code)
+	e.GET("/:id", func(c Context) error {
+		return c.String(http.StatusOK, c.Param("id"))
+	})
+
+	var testCases = []struct {
+		name         string
+		whenURL      string
+		expectURL    string
+		expectStatus int
+	}{
+		{
+			name:         "url with encoding is not decoded for routing",
+			whenURL:      "/with%2Fslash",
+			expectURL:    "with%2Fslash", // `%2F` is not decoded to `/` for routing
+			expectStatus: http.StatusOK,
+		},
+		{
+			name:         "url without encoding is used as is",
+			whenURL:      "/with/slash",
+			expectURL:    "/with/slash",
+			expectStatus: http.StatusOK,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
+			rec := httptest.NewRecorder()
+
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, tc.expectStatus, rec.Code)
+			assert.Equal(t, tc.expectURL, rec.Body.String())
+		})
+	}
 }
 
 func TestEchoGroup(t *testing.T) {
@@ -684,6 +719,60 @@ func TestEcho_StartTLS(t *testing.T) {
 	}
 }
 
+func TestEchoStartTLSAndStart(t *testing.T) {
+	// We test if Echo and listeners work correctly when Echo is simultaneously attached to HTTP and HTTPS server
+	e := New()
+	e.GET("/", func(c Context) error {
+		return c.String(http.StatusOK, "OK")
+	})
+
+	errTLSChan := make(chan error)
+	go func() {
+		certFile := "_fixture/certs/cert.pem"
+		keyFile := "_fixture/certs/key.pem"
+		err := e.StartTLS("localhost:", certFile, keyFile)
+		if err != nil {
+			errTLSChan <- err
+		}
+	}()
+
+	err := waitForServerStart(e, errTLSChan, true)
+	assert.NoError(t, err)
+	defer func() {
+		if err := e.Shutdown(stdContext.Background()); err != nil {
+			t.Error(err)
+		}
+	}()
+
+	// check if HTTPS works (note: we are using self signed certs so InsecureSkipVerify=true)
+	client := &http.Client{Transport: &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}}
+	res, err := client.Get("https://" + e.TLSListenerAddr().String())
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+
+	errChan := make(chan error)
+	go func() {
+		err := e.Start("localhost:")
+		if err != nil {
+			errChan <- err
+		}
+	}()
+	err = waitForServerStart(e, errChan, false)
+	assert.NoError(t, err)
+
+	// now we are serving both HTTPS and HTTP listeners. see if HTTP works in addition to HTTPS
+	res, err = http.Get("http://" + e.ListenerAddr().String())
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+
+	// see if HTTPS works after HTTP listener is also added
+	res, err = client.Get("https://" + e.TLSListenerAddr().String())
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+}
+
 func TestEchoStartTLSByteString(t *testing.T) {
 	cert, err := ioutil.ReadFile("_fixture/certs/cert.pem")
 	require.NoError(t, err)
@@ -865,6 +954,23 @@ func TestHTTPError(t *testing.T) {
 		})
 		err.SetInternal(errors.New("internal error"))
 		assert.Equal(t, "code=400, message=map[code:12], internal=internal error", err.Error())
+	})
+}
+
+func TestHTTPError_Unwrap(t *testing.T) {
+	t.Run("non-internal", func(t *testing.T) {
+		err := NewHTTPError(http.StatusBadRequest, map[string]interface{}{
+			"code": 12,
+		})
+
+		assert.Nil(t, errors.Unwrap(err))
+	})
+	t.Run("internal", func(t *testing.T) {
+		err := NewHTTPError(http.StatusBadRequest, map[string]interface{}{
+			"code": 12,
+		})
+		err.SetInternal(errors.New("internal error"))
+		assert.Equal(t, "internal error", errors.Unwrap(err).Error())
 	})
 }
 
@@ -1156,4 +1262,50 @@ func TestEcho_StartServer(t *testing.T) {
 			assert.NoError(t, e.Close())
 		})
 	}
+}
+
+func benchmarkEchoRoutes(b *testing.B, routes []*Route) {
+	e := New()
+	req := httptest.NewRequest("GET", "/", nil)
+	u := req.URL
+	w := httptest.NewRecorder()
+
+	b.ReportAllocs()
+
+	// Add routes
+	for _, route := range routes {
+		e.Add(route.Method, route.Path, func(c Context) error {
+			return nil
+		})
+	}
+
+	// Find routes
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, route := range routes {
+			req.Method = route.Method
+			u.Path = route.Path
+			e.ServeHTTP(w, req)
+		}
+	}
+}
+
+func BenchmarkEchoStaticRoutes(b *testing.B) {
+	benchmarkEchoRoutes(b, staticRoutes)
+}
+
+func BenchmarkEchoStaticRoutesMisses(b *testing.B) {
+	benchmarkEchoRoutes(b, staticRoutes)
+}
+
+func BenchmarkEchoGitHubAPI(b *testing.B) {
+	benchmarkEchoRoutes(b, gitHubAPI)
+}
+
+func BenchmarkEchoGitHubAPIMisses(b *testing.B) {
+	benchmarkEchoRoutes(b, gitHubAPI)
+}
+
+func BenchmarkEchoParseAPI(b *testing.B) {
+	benchmarkEchoRoutes(b, parseAPI)
 }

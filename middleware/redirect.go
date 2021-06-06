@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 )
@@ -40,11 +41,11 @@ func HTTPSRedirect() echo.MiddlewareFunc {
 // HTTPSRedirectWithConfig returns an HTTPSRedirect middleware with config.
 // See `HTTPSRedirect()`.
 func HTTPSRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
-	return redirect(config, func(scheme, host, uri string) (ok bool, url string) {
-		if ok = scheme != "https"; ok {
-			url = "https://" + host + uri
+	return redirect(config, func(scheme, host, uri string) (bool, string) {
+		if scheme != "https" {
+			return true, "https://" + host + uri
 		}
-		return
+		return false, ""
 	})
 }
 
@@ -59,11 +60,11 @@ func HTTPSWWWRedirect() echo.MiddlewareFunc {
 // HTTPSWWWRedirectWithConfig returns an HTTPSRedirect middleware with config.
 // See `HTTPSWWWRedirect()`.
 func HTTPSWWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
-	return redirect(config, func(scheme, host, uri string) (ok bool, url string) {
-		if ok = scheme != "https" && host[:4] != www; ok {
-			url = "https://www." + host + uri
+	return redirect(config, func(scheme, host, uri string) (bool, string) {
+		if scheme != "https" && !strings.HasPrefix(host, www) {
+			return true, "https://www." + host + uri
 		}
-		return
+		return false, ""
 	})
 }
 
@@ -79,13 +80,11 @@ func HTTPSNonWWWRedirect() echo.MiddlewareFunc {
 // See `HTTPSNonWWWRedirect()`.
 func HTTPSNonWWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 	return redirect(config, func(scheme, host, uri string) (ok bool, url string) {
-		if ok = scheme != "https"; ok {
-			if host[:4] == www {
-				host = host[4:]
-			}
-			url = "https://" + host + uri
+		if scheme != "https" {
+			host = strings.TrimPrefix(host, www)
+			return true, "https://" + host + uri
 		}
-		return
+		return false, ""
 	})
 }
 
@@ -100,11 +99,11 @@ func WWWRedirect() echo.MiddlewareFunc {
 // WWWRedirectWithConfig returns an HTTPSRedirect middleware with config.
 // See `WWWRedirect()`.
 func WWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
-	return redirect(config, func(scheme, host, uri string) (ok bool, url string) {
-		if ok = host[:4] != www; ok {
-			url = scheme + "://www." + host + uri
+	return redirect(config, func(scheme, host, uri string) (bool, string) {
+		if !strings.HasPrefix(host, www) {
+			return true, scheme + "://www." + host + uri
 		}
-		return
+		return false, ""
 	})
 }
 
@@ -119,17 +118,17 @@ func NonWWWRedirect() echo.MiddlewareFunc {
 // NonWWWRedirectWithConfig returns an HTTPSRedirect middleware with config.
 // See `NonWWWRedirect()`.
 func NonWWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
-	return redirect(config, func(scheme, host, uri string) (ok bool, url string) {
-		if ok = host[:4] == www; ok {
-			url = scheme + "://" + host[4:] + uri
+	return redirect(config, func(scheme, host, uri string) (bool, string) {
+		if strings.HasPrefix(host, www) {
+			return true, scheme + "://" + host[4:] + uri
 		}
-		return
+		return false, ""
 	})
 }
 
 func redirect(config RedirectConfig, cb redirectLogic) echo.MiddlewareFunc {
 	if config.Skipper == nil {
-		config.Skipper = DefaultTrailingSlashConfig.Skipper
+		config.Skipper = DefaultRedirectConfig.Skipper
 	}
 	if config.Code == 0 {
 		config.Code = DefaultRedirectConfig.Code

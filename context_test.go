@@ -464,7 +464,9 @@ func TestContextPath(t *testing.T) {
 	e := New()
 	r := e.Router()
 
-	r.Add(http.MethodGet, "/users/:id", nil)
+	handler := func(c Context) error { return c.String(http.StatusOK, "OK") }
+
+	r.Add(http.MethodGet, "/users/:id", handler)
 	c := e.NewContext(nil, nil)
 	r.Find(http.MethodGet, "/users/1", c)
 
@@ -472,7 +474,7 @@ func TestContextPath(t *testing.T) {
 
 	assert.Equal("/users/:id", c.Path())
 
-	r.Add(http.MethodGet, "/users/:uid/files/:fid", nil)
+	r.Add(http.MethodGet, "/users/:uid/files/:fid", handler)
 	c = e.NewContext(nil, nil)
 	r.Find(http.MethodGet, "/users/1/files/1", c)
 	assert.Equal("/users/:uid/files/:fid", c.Path())
@@ -668,8 +670,7 @@ func TestContextRedirect(t *testing.T) {
 }
 
 func TestContextStore(t *testing.T) {
-	var c Context
-	c = new(context)
+	var c Context = new(context)
 	c.Set("name", "Jon Snow")
 	testify.Equal(t, "Jon Snow", c.Get("name"))
 }
@@ -706,8 +707,7 @@ func TestContextHandler(t *testing.T) {
 }
 
 func TestContext_SetHandler(t *testing.T) {
-	var c Context
-	c = new(context)
+	var c Context = new(context)
 
 	testify.Nil(t, c.Handler())
 
@@ -720,8 +720,7 @@ func TestContext_SetHandler(t *testing.T) {
 func TestContext_Path(t *testing.T) {
 	path := "/pa/th"
 
-	var c Context
-	c = new(context)
+	var c Context = new(context)
 
 	c.SetPath(path)
 	testify.Equal(t, path, c.Path())
@@ -755,8 +754,7 @@ func TestContext_QueryString(t *testing.T) {
 }
 
 func TestContext_Request(t *testing.T) {
-	var c Context
-	c = new(context)
+	var c Context = new(context)
 
 	testify.Nil(t, c.Request())
 
@@ -905,6 +903,14 @@ func TestContext_RealIP(t *testing.T) {
 			&context{
 				request: &http.Request{
 					Header: http.Header{HeaderXForwardedFor: []string{"127.0.0.1, 127.0.1.1, "}},
+				},
+			},
+			"127.0.0.1",
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderXForwardedFor: []string{"127.0.0.1,127.0.1.1"}},
 				},
 			},
 			"127.0.0.1",
