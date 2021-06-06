@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -403,4 +404,195 @@ func TestJWTwithKID(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestJWTConfig_skipper(t *testing.T) {
+	e := echo.New()
+
+	e.Use(JWTWithConfig(JWTConfig{
+		Skipper: func(context echo.Context) bool {
+			return true // skip everything
+		},
+		SigningKey: []byte("secret"),
+	}))
+
+	isCalled := false
+	e.GET("/", func(c echo.Context) error {
+		isCalled = true
+		return c.String(http.StatusTeapot, "test")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	res := httptest.NewRecorder()
+	e.ServeHTTP(res, req)
+
+	assert.Equal(t, http.StatusTeapot, res.Code)
+	assert.True(t, isCalled)
+}
+
+func TestJWTConfig_BeforeFunc(t *testing.T) {
+	e := echo.New()
+	e.GET("/", func(c echo.Context) error {
+		return c.String(http.StatusTeapot, "test")
+	})
+
+	isCalled := false
+	e.Use(JWTWithConfig(JWTConfig{
+		BeforeFunc: func(context echo.Context) {
+			isCalled = true
+		},
+		SigningKey: []byte("secret"),
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set(echo.HeaderAuthorization, DefaultJWTConfig.AuthScheme+" eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ")
+	res := httptest.NewRecorder()
+	e.ServeHTTP(res, req)
+
+	assert.Equal(t, http.StatusTeapot, res.Code)
+	assert.True(t, isCalled)
+}
+
+func TestJWTConfig_extractorErrorHandling(t *testing.T) {
+	var testCases = []struct {
+		name             string
+		given            JWTConfig
+		expectStatusCode int
+	}{
+		{
+			name: "ok, ErrorHandler is executed",
+			given: JWTConfig{
+				SigningKey: []byte("secret"),
+				ErrorHandler: func(err error) error {
+					return echo.NewHTTPError(http.StatusTeapot, "custom_error")
+				},
+			},
+			expectStatusCode: http.StatusTeapot,
+		},
+		{
+			name: "ok, ErrorHandlerWithContext is executed",
+			given: JWTConfig{
+				SigningKey: []byte("secret"),
+				ErrorHandlerWithContext: func(err error, context echo.Context) error {
+					return echo.NewHTTPError(http.StatusTeapot, "custom_error")
+				},
+			},
+			expectStatusCode: http.StatusTeapot,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+			e.GET("/", func(c echo.Context) error {
+				return c.String(http.StatusNotImplemented, "should not end up here")
+			})
+
+			e.Use(JWTWithConfig(tc.given))
+
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			res := httptest.NewRecorder()
+			e.ServeHTTP(res, req)
+
+			assert.Equal(t, tc.expectStatusCode, res.Code)
+		})
+	}
+}
+
+func TestJWTConfig_parseTokenErrorHandling(t *testing.T) {
+	var testCases = []struct {
+		name      string
+		given     JWTConfig
+		expectErr string
+	}{
+		{
+			name: "ok, ErrorHandler is executed",
+			given: JWTConfig{
+				SigningKey: []byte("secret"),
+				ErrorHandler: func(err error) error {
+					return echo.NewHTTPError(http.StatusTeapot, "ErrorHandler: "+err.Error())
+				},
+			},
+			expectErr: "{\"message\":\"ErrorHandler: parsing failed\"}\n",
+		},
+		{
+			name: "ok, ErrorHandlerWithContext is executed",
+			given: JWTConfig{
+				SigningKey: []byte("secret"),
+				ErrorHandlerWithContext: func(err error, context echo.Context) error {
+					return echo.NewHTTPError(http.StatusTeapot, "ErrorHandlerWithContext: "+err.Error())
+				},
+			},
+			expectErr: "{\"message\":\"ErrorHandlerWithContext: parsing failed\"}\n",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+			//e.Debug = true
+			e.GET("/", func(c echo.Context) error {
+				return c.String(http.StatusNotImplemented, "should not end up here")
+			})
+
+			config := tc.given
+			parseTokenCalled := false
+			config.ParseTokenFunc = func(auth string, c echo.Context) (interface{}, error) {
+				parseTokenCalled = true
+				return nil, errors.New("parsing failed")
+			}
+			e.Use(JWTWithConfig(config))
+
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.Header.Set(echo.HeaderAuthorization, DefaultJWTConfig.AuthScheme+" eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ")
+			res := httptest.NewRecorder()
+
+			e.ServeHTTP(res, req)
+
+			assert.Equal(t, http.StatusTeapot, res.Code)
+			assert.Equal(t, tc.expectErr, res.Body.String())
+			assert.True(t, parseTokenCalled)
+		})
+	}
+}
+
+func TestJWTConfig_custom_ParseTokenFunc_Keyfunc(t *testing.T) {
+	e := echo.New()
+	e.GET("/", func(c echo.Context) error {
+		return c.String(http.StatusTeapot, "test")
+	})
+
+	// example of minimal custom ParseTokenFunc implementation. Allows you to use different versions of `github.com/dgrijalva/jwt-go`
+	// with current JWT middleware
+	signingKey := []byte("secret")
+
+	config := JWTConfig{
+		ParseTokenFunc: func(auth string, c echo.Context) (interface{}, error) {
+			keyFunc := func(t *jwt.Token) (interface{}, error) {
+				if t.Method.Alg() != "HS256" {
+					return nil, fmt.Errorf("unexpected jwt signing method=%v", t.Header["alg"])
+				}
+				return signingKey, nil
+			}
+
+			// claims are of type `jwt.MapClaims` when token is created with `jwt.Parse`
+			token, err := jwt.Parse(auth, keyFunc)
+			if err != nil {
+				return nil, err
+			}
+			if !token.Valid {
+				return nil, errors.New("invalid token")
+			}
+			return token, nil
+		},
+	}
+
+	e.Use(JWTWithConfig(config))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set(echo.HeaderAuthorization, DefaultJWTConfig.AuthScheme+" eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ")
+	res := httptest.NewRecorder()
+	e.ServeHTTP(res, req)
+
+	assert.Equal(t, http.StatusTeapot, res.Code)
 }

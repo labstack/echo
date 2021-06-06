@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -49,7 +50,8 @@ type (
 		// Optional. Default value "user".
 		ContextKey string
 
-		// Claims are extendable claims data defining token content.
+		// Claims are extendable claims data defining token content. Used by default ParseTokenFunc implementation.
+		// Not used if custom ParseTokenFunc is set.
 		// Optional. Default value jwt.MapClaims
 		Claims jwt.Claims
 
@@ -74,13 +76,20 @@ type (
 		// KeyFunc defines a user-defined function that supplies the public key for a token validation.
 		// The function shall take care of verifying the signing algorithm and selecting the proper key.
 		// A user-defined KeyFunc can be useful if tokens are issued by an external party.
+		// Used by default ParseTokenFunc implementation.
 		//
 		// When a user-defined KeyFunc is provided, SigningKey, SigningKeys, and SigningMethod are ignored.
 		// This is one of the three options to provide a token validation key.
 		// The order of precedence is a user-defined KeyFunc, SigningKeys and SigningKey.
 		// Required if neither SigningKeys nor SigningKey is provided.
+		// Not used if custom ParseTokenFunc is set.
 		// Default to an internal implementation verifying the signing algorithm and selecting the proper key.
 		KeyFunc jwt.Keyfunc
+
+		// ParseTokenFunc defines a user-defined function that parses token from given auth. Returns an error when token
+		// parsing fails or parsed token is invalid.
+		// Defaults to implementation using `github.com/dgrijalva/jwt-go` as JWT implementation library
+		ParseTokenFunc func(auth string, c echo.Context) (interface{}, error)
 	}
 
 	// JWTSuccessHandler defines a function which is executed for a valid token.
@@ -140,7 +149,7 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	if config.Skipper == nil {
 		config.Skipper = DefaultJWTConfig.Skipper
 	}
-	if config.SigningKey == nil && len(config.SigningKeys) == 0 && config.KeyFunc == nil {
+	if config.SigningKey == nil && len(config.SigningKeys) == 0 && config.KeyFunc == nil && config.ParseTokenFunc == nil {
 		panic("echo: jwt middleware requires signing key")
 	}
 	if config.SigningMethod == "" {
@@ -160,6 +169,9 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	}
 	if config.KeyFunc == nil {
 		config.KeyFunc = config.defaultKeyFunc
+	}
+	if config.ParseTokenFunc == nil {
+		config.ParseTokenFunc = config.defaultParseToken
 	}
 
 	// Initialize
@@ -214,16 +226,8 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 				return err
 			}
 
-			token := new(jwt.Token)
-			// Issue #647, #656
-			if _, ok := config.Claims.(jwt.MapClaims); ok {
-				token, err = jwt.Parse(auth, config.KeyFunc)
-			} else {
-				t := reflect.ValueOf(config.Claims).Type().Elem()
-				claims := reflect.New(t).Interface().(jwt.Claims)
-				token, err = jwt.ParseWithClaims(auth, claims, config.KeyFunc)
-			}
-			if err == nil && token.Valid {
+			token, err := config.ParseTokenFunc(auth, c)
+			if err == nil {
 				// Store user information from token into context.
 				c.Set(config.ContextKey, token)
 				if config.SuccessHandler != nil {
@@ -244,6 +248,26 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 			}
 		}
 	}
+}
+
+func (config *JWTConfig) defaultParseToken(auth string, c echo.Context) (interface{}, error) {
+	token := new(jwt.Token)
+	var err error
+	// Issue #647, #656
+	if _, ok := config.Claims.(jwt.MapClaims); ok {
+		token, err = jwt.Parse(auth, config.KeyFunc)
+	} else {
+		t := reflect.ValueOf(config.Claims).Type().Elem()
+		claims := reflect.New(t).Interface().(jwt.Claims)
+		token, err = jwt.ParseWithClaims(auth, claims, config.KeyFunc)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if !token.Valid {
+		return nil, errors.New("invalid token")
+	}
+	return token, nil
 }
 
 // defaultKeyFunc returns a signing key of the given token.
