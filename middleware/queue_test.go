@@ -16,10 +16,7 @@ func TestQueueWithConfig(t *testing.T) {
 
 	handler := func(c echo.Context) error {
 		pts := c.Get("procTime")
-		procTime, ok := pts.(int)
-		if !ok {
-			return c.NoContent(http.StatusInternalServerError)
-		}
+		procTime, _ := pts.(int)
 
 		time.Sleep(time.Duration(procTime) * time.Millisecond)
 
@@ -37,12 +34,16 @@ func TestQueueWithConfig(t *testing.T) {
 		procTime int // in Milliseconds
 	}{
 		{50},
-		{95},
-		{95},
-		{95},
-		{95},
-		{120},
-		{250},
+		{99},
+		{99},
+		{99},
+		{99},
+		{150},
+		{150},
+		{150},
+		{300},
+		{300},
+		{300},
 	}
 
 	ch := make(chan int, len(testCases))
@@ -76,7 +77,7 @@ func TestQueueWithConfig(t *testing.T) {
 
 	wg.Wait()
 
-	var errQueueFull, errQueueTimeout, errInternalServerError bool
+	var errQueueFull, errQueueTimeout bool
 
 	for i := 0; i < len(testCases); i++ {
 		c := <-ch
@@ -88,15 +89,10 @@ func TestQueueWithConfig(t *testing.T) {
 		if c == http.StatusRequestTimeout {
 			errQueueTimeout = true
 		}
-
-		if c == http.StatusInternalServerError {
-			errInternalServerError = true
-		}
 	}
 
 	assert.Equal(t, true, errQueueFull)
 	assert.Equal(t, true, errQueueTimeout)
-	assert.Equal(t, false, errInternalServerError)
 }
 
 func TestQueueWithConfig_panic(t *testing.T) {

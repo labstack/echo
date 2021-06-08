@@ -2,7 +2,9 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"net/http"
+	"runtime"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -15,8 +17,8 @@ type (
 		Skipper    Skipper
 		BeforeFunc BeforeFunc
 
-		QueueSize int64
-		Workers   int64
+		QueueSize int
+		Workers   int
 
 		QueueTimeout  time.Duration
 		WorkerTimeout time.Duration
@@ -25,17 +27,17 @@ type (
 
 // errors
 var (
-	// ErrQueueFull denotes an error raised when queue limit is reached
-	ErrQueueFull = echo.NewHTTPError(http.StatusTooManyRequests, "queue limit reached")
-	// ErrQueueTimeout denotes an error raised when context times out
-	ErrQueueTimeout = echo.NewHTTPError(http.StatusRequestTimeout, "request took too long to process")
+	// ErrQueueTimeout is thrown when the request waits more than QueueTimeout to be queued
+	ErrQueueTimeout = echo.NewHTTPError(http.StatusTooManyRequests, "queue limit reached")
+	// ErrWorkerTimeout is thrown when the request waits more than WorkerTimeout for a worker to start processing it
+	ErrWorkerTimeout = echo.NewHTTPError(http.StatusRequestTimeout, "request took too long to process")
 )
 
 // DefaultQueueConfig defines default values for QueueConfig
 var DefaultQueueConfig = QueueConfig{
 	Skipper:       DefaultSkipper,
 	QueueSize:     100,
-	Workers:       8,
+	Workers:       runtime.GOMAXPROCS(0),
 	QueueTimeout:  30 * time.Second,
 	WorkerTimeout: 10 * time.Second,
 }
@@ -47,7 +49,7 @@ Queue returns a queue middleware
 
 	e.GET("/queue", func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
-	}, Queue())
+	}, middleware.Queue())
 
 */
 func Queue() echo.MiddlewareFunc {
@@ -79,8 +81,8 @@ func QueueWithConfig(config QueueConfig) echo.MiddlewareFunc {
 		config.Skipper = DefaultQueueConfig.Skipper
 	}
 
-	queueSemaphore := semaphore.NewWeighted(config.QueueSize)
-	workersSemaphore := semaphore.NewWeighted(config.Workers)
+	queueSemaphore := semaphore.NewWeighted(int64(config.QueueSize))
+	workersSemaphore := semaphore.NewWeighted(int64(config.Workers))
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -91,17 +93,33 @@ func QueueWithConfig(config QueueConfig) echo.MiddlewareFunc {
 				config.BeforeFunc(c)
 			}
 
-			ctxQueue, _ := context.WithTimeout(context.Background(), config.QueueTimeout)
+			ctxQueue, queueCancel := context.WithTimeout(c.Request().Context(), config.QueueTimeout)
 
 			if err := queueSemaphore.Acquire(ctxQueue, 1); err != nil {
-				return ErrQueueFull
+				queueCancel()
+
+				if errors.Is(err, context.DeadlineExceeded) {
+					return ErrQueueTimeout
+				}
+
+				return err
 			}
 
-			ctxWorker, _ := context.WithTimeout(ctxQueue, config.WorkerTimeout)
+			ctxWorker, workerCancel := context.WithTimeout(ctxQueue, config.WorkerTimeout)
+
+			defer func() {
+				workerCancel()
+				queueCancel()
+			}()
 
 			if err := workersSemaphore.Acquire(ctxWorker, 1); err != nil {
 				queueSemaphore.Release(1)
-				return ErrQueueTimeout
+
+				if errors.Is(err, context.DeadlineExceeded) {
+					return ErrWorkerTimeout
+				}
+
+				return err
 			}
 
 			defer func() {
