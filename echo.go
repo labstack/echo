@@ -540,7 +540,7 @@ func (e *Echo) add(host, method, path string, handler HandlerFunc, middleware ..
 		Path:   path,
 		Name:   name,
 	}
-	e.router.routes[method+path] = r
+	e.router.routes = append(e.router.routes, r)
 	return r
 }
 
@@ -602,10 +602,8 @@ func (e *Echo) Reverse(name string, params ...interface{}) string {
 
 // Routes returns the registered routes.
 func (e *Echo) Routes() []*Route {
-	routes := make([]*Route, 0, len(e.router.routes))
-	for _, v := range e.router.routes {
-		routes = append(routes, v)
-	}
+	routes := make([]*Route, len(e.router.routes))
+	copy(routes, e.router.routes)
 	return routes
 }
 
