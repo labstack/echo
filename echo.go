@@ -81,6 +81,7 @@ type (
 		pool             sync.Pool
 		Server           *http.Server
 		TLSServer        *http.Server
+		TLSConfig        *tls.Config
 		Listener         net.Listener
 		TLSListener      net.Listener
 		AutoTLSManager   autocert.Manager
@@ -310,6 +311,7 @@ func New() (e *Echo) {
 		colorer:         color.New(),
 		maxParam:        new(int),
 		ListenerNetwork: "tcp",
+		TLSConfig:       new(tls.Config),
 	}
 	e.Server.Handler = e
 	e.TLSServer.Handler = e
@@ -681,7 +683,7 @@ func (e *Echo) StartTLS(address string, certFile, keyFile interface{}) (err erro
 	}
 
 	s := e.TLSServer
-	s.TLSConfig = new(tls.Config)
+	s.TLSConfig = e.TLSConfig
 	s.TLSConfig.Certificates = make([]tls.Certificate, 1)
 	if s.TLSConfig.Certificates[0], err = tls.X509KeyPair(cert, key); err != nil {
 		e.startupMutex.Unlock()
@@ -712,7 +714,7 @@ func filepathOrContent(fileOrContent interface{}) (content []byte, err error) {
 func (e *Echo) StartAutoTLS(address string) error {
 	e.startupMutex.Lock()
 	s := e.TLSServer
-	s.TLSConfig = new(tls.Config)
+	s.TLSConfig = e.TLSConfig
 	s.TLSConfig.GetCertificate = e.AutoTLSManager.GetCertificate
 	s.TLSConfig.NextProtos = append(s.TLSConfig.NextProtos, acme.ALPNProto)
 
