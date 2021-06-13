@@ -465,7 +465,7 @@ func (c *context) jsonPBlob(code int, callback string, i interface{}) (err error
 	if _, err = c.response.Write([]byte(callback + "(")); err != nil {
 		return
 	}
-	if err = c.echo.JSONEncoder.JSON(i, indent, c); err != nil {
+	if err = c.echo.JSONCodec.Encode(c, i, indent); err != nil {
 		return
 	}
 	if _, err = c.response.Write([]byte(");")); err != nil {
@@ -477,7 +477,7 @@ func (c *context) jsonPBlob(code int, callback string, i interface{}) (err error
 func (c *context) json(code int, i interface{}, indent string) error {
 	c.writeContentType(MIMEApplicationJSONCharsetUTF8)
 	c.response.Status = code
-	return c.echo.JSONEncoder.JSON(i, indent, c)
+	return c.echo.JSONCodec.Encode(c, i, indent)
 }
 
 func (c *context) JSON(code int, i interface{}) (err error) {
