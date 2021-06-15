@@ -70,12 +70,6 @@ func (r *Response) SetCookie(c engine.Cookie) {
 	cookie.SetExpire(c.Expires())
 	cookie.SetSecure(c.Secure())
 	cookie.SetHTTPOnly(c.HTTPOnly())
-
-	// Bad way! Needs next refactoring all forked dependencies
-	// https://jira.tsdev.tech/browse/STARS-7359
-	cookie.SetSecure(true)
-	cookie.SetSameSite(fasthttp.CookieSameSiteNoneMode)
-
 	r.Response.Header.SetCookie(cookie)
 }
 
