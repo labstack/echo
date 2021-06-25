@@ -472,6 +472,37 @@ func TestEchoRoutes(t *testing.T) {
 	}
 }
 
+func TestEchoRoutesHandleHostsProperly(t *testing.T) {
+	e := New()
+	h := e.Host("route.com")
+	routes := []*Route{
+		{http.MethodGet, "/users/:user/events", ""},
+		{http.MethodGet, "/users/:user/events/public", ""},
+		{http.MethodPost, "/repos/:owner/:repo/git/refs", ""},
+		{http.MethodPost, "/repos/:owner/:repo/git/tags", ""},
+	}
+	for _, r := range routes {
+		h.Add(r.Method, r.Path, func(c Context) error {
+			return c.String(http.StatusOK, "OK")
+		})
+	}
+
+	if assert.Equal(t, len(routes), len(e.Routes())) {
+		for _, r := range e.Routes() {
+			found := false
+			for _, rr := range routes {
+				if r.Method == rr.Method && r.Path == rr.Path {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("Route %s %s not found", r.Method, r.Path)
+			}
+		}
+	}
+}
+
 func TestEchoServeHTTPPathEncoding(t *testing.T) {
 	e := New()
 	e.GET("/with/slash", func(c Context) error {
@@ -510,6 +541,109 @@ func TestEchoServeHTTPPathEncoding(t *testing.T) {
 
 			assert.Equal(t, tc.expectStatus, rec.Code)
 			assert.Equal(t, tc.expectURL, rec.Body.String())
+		})
+	}
+}
+
+func TestEchoHost(t *testing.T) {
+	assert := assert.New(t)
+
+	okHandler := func(c Context) error { return c.String(http.StatusOK, http.StatusText(http.StatusOK)) }
+	teapotHandler := func(c Context) error { return c.String(http.StatusTeapot, http.StatusText(http.StatusTeapot)) }
+	acceptHandler := func(c Context) error { return c.String(http.StatusAccepted, http.StatusText(http.StatusAccepted)) }
+	teapotMiddleware := MiddlewareFunc(func(next HandlerFunc) HandlerFunc { return teapotHandler })
+
+	e := New()
+	e.GET("/", acceptHandler)
+	e.GET("/foo", acceptHandler)
+
+	ok := e.Host("ok.com")
+	ok.GET("/", okHandler)
+	ok.GET("/foo", okHandler)
+
+	teapot := e.Host("teapot.com")
+	teapot.GET("/", teapotHandler)
+	teapot.GET("/foo", teapotHandler)
+
+	middle := e.Host("middleware.com", teapotMiddleware)
+	middle.GET("/", okHandler)
+	middle.GET("/foo", okHandler)
+
+	var testCases = []struct {
+		name         string
+		whenHost     string
+		whenPath     string
+		expectBody   string
+		expectStatus int
+	}{
+		{
+			name:         "No Host Root",
+			whenHost:     "",
+			whenPath:     "/",
+			expectBody:   http.StatusText(http.StatusAccepted),
+			expectStatus: http.StatusAccepted,
+		},
+		{
+			name:         "No Host Foo",
+			whenHost:     "",
+			whenPath:     "/foo",
+			expectBody:   http.StatusText(http.StatusAccepted),
+			expectStatus: http.StatusAccepted,
+		},
+		{
+			name:         "OK Host Root",
+			whenHost:     "ok.com",
+			whenPath:     "/",
+			expectBody:   http.StatusText(http.StatusOK),
+			expectStatus: http.StatusOK,
+		},
+		{
+			name:         "OK Host Foo",
+			whenHost:     "ok.com",
+			whenPath:     "/foo",
+			expectBody:   http.StatusText(http.StatusOK),
+			expectStatus: http.StatusOK,
+		},
+		{
+			name:         "Teapot Host Root",
+			whenHost:     "teapot.com",
+			whenPath:     "/",
+			expectBody:   http.StatusText(http.StatusTeapot),
+			expectStatus: http.StatusTeapot,
+		},
+		{
+			name:         "Teapot Host Foo",
+			whenHost:     "teapot.com",
+			whenPath:     "/foo",
+			expectBody:   http.StatusText(http.StatusTeapot),
+			expectStatus: http.StatusTeapot,
+		},
+		{
+			name:         "Middleware Host",
+			whenHost:     "middleware.com",
+			whenPath:     "/",
+			expectBody:   http.StatusText(http.StatusTeapot),
+			expectStatus: http.StatusTeapot,
+		},
+		{
+			name:         "Middleware Host Foo",
+			whenHost:     "middleware.com",
+			whenPath:     "/foo",
+			expectBody:   http.StatusText(http.StatusTeapot),
+			expectStatus: http.StatusTeapot,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tc.whenPath, nil)
+			req.Host = tc.whenHost
+			rec := httptest.NewRecorder()
+
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(tc.expectStatus, rec.Code)
+			assert.Equal(tc.expectBody, rec.Body.String())
 		})
 	}
 }
@@ -1164,6 +1298,22 @@ func TestEchoReverse(t *testing.T) {
 	assert.Equal("/params/one/bar/:qux", e.Reverse("/params/:foo/bar/:qux", "one"))
 	assert.Equal("/params/one/bar/two", e.Reverse("/params/:foo/bar/:qux", "one", "two"))
 	assert.Equal("/params/one/bar/two/three", e.Reverse("/params/:foo/bar/:qux/*", "one", "two", "three"))
+}
+
+func TestEchoReverseHandleHostProperly(t *testing.T) {
+	assert := assert.New(t)
+
+	dummyHandler := func(Context) error { return nil }
+
+	e := New()
+	h := e.Host("the_host")
+	h.GET("/static", dummyHandler).Name = "/static"
+	h.GET("/static/*", dummyHandler).Name = "/static/*"
+
+	assert.Equal("/static", e.Reverse("/static"))
+	assert.Equal("/static", e.Reverse("/static", "missing param"))
+	assert.Equal("/static/*", e.Reverse("/static/*"))
+	assert.Equal("/static/foo.txt", e.Reverse("/static/*", "foo.txt"))
 }
 
 func TestEcho_ListenerAddr(t *testing.T) {
