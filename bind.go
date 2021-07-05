@@ -65,7 +65,7 @@ func (b *DefaultBinder) BindBody(c Context, i interface{}) (err error) {
 	ctype := req.Header.Get(HeaderContentType)
 	switch {
 	case strings.HasPrefix(ctype, MIMEApplicationJSON):
-		if err = c.Echo().JSONCodec.Decode(c, i); err != nil {
+		if err = c.Echo().JSONSerializer.Deserialize(c, i); err != nil {
 			switch err.(type) {
 			case *HTTPError:
 				return err
