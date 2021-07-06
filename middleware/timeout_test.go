@@ -2,8 +2,6 @@ package middleware
 
 import (
 	"errors"
-	"github.com/labstack/echo/v4"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -11,6 +9,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestTimeoutSkipper(t *testing.T) {
@@ -272,4 +273,43 @@ func TestTimeoutWithDefaultErrorMessage(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
 	assert.Equal(t, `<html><head><title>Timeout</title></head><body><h1>Timeout</h1></body></html>`, rec.Body.String())
+}
+
+func TestTimeoutCanHandleContextDeadlineOnNextHandler(t *testing.T) {
+	t.Parallel()
+
+	timeout := 1 * time.Millisecond
+	m := TimeoutWithConfig(TimeoutConfig{
+		Timeout:      timeout,
+		ErrorMessage: "Timeout! change me",
+	})
+
+	handlerFinishedExecution := make(chan bool)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+
+	e := echo.New()
+	c := e.NewContext(req, rec)
+
+	stopChan := make(chan struct{})
+	err := m(func(c echo.Context) error {
+		// NOTE: when difference between timeout duration and handler execution time is almost the same (in range of 100microseconds)
+		// the result of timeout does not seem to be reliable - could respond timeout, could respond handler output
+		// difference over 500microseconds (0.5millisecond) response seems to be reliable
+		<-stopChan
+
+		// The Request Context should have a Deadline set by http.TimeoutHandler
+		if _, ok := c.Request().Context().Deadline(); !ok {
+			assert.Fail(t, "No timeout set on Request Context")
+		}
+		handlerFinishedExecution <- c.Request().Context().Err() == nil
+		return c.String(http.StatusOK, "Hello, World!")
+	})(c)
+	stopChan <- struct{}{}
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
+	assert.Equal(t, "Timeout! change me", rec.Body.String())
+	assert.False(t, <-handlerFinishedExecution)
 }

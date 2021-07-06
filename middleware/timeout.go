@@ -2,9 +2,10 @@ package middleware
 
 import (
 	"context"
-	"github.com/labstack/echo/v4"
 	"net/http"
 	"time"
+
+	"github.com/labstack/echo/v4"
 )
 
 type (
@@ -87,6 +88,10 @@ type echoHandlerFuncWrapper struct {
 }
 
 func (t echoHandlerFuncWrapper) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+	// replace echo.Context Request with the one provided by TimeoutHandler to let later middlewares/handler on the chain
+	// handle properly it's cancellation
+	t.ctx.SetRequest(r)
+
 	// replace writer with TimeoutHandler custom one. This will guarantee that
 	// `writes by h to its ResponseWriter will return ErrHandlerTimeout.`
 	originalWriter := t.ctx.Response().Writer
