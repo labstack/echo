@@ -1,5 +1,20 @@
 # Changelog
 
+## v4.4.0 - 2021-07-12
+
+**Fixes**
+
+* Split HeaderXForwardedFor header only by comma [#1878](https://github.com/labstack/echo/pull/1878)
+* Fix Timeout middleware Context propagation [#1910](https://github.com/labstack/echo/pull/1910)
+ 
+**Enhancements**
+
+* Bind data using headers as source [#1866](https://github.com/labstack/echo/pull/1866)
+* Adds JWTConfig.ParseTokenFunc to JWT middleware to allow different libraries implementing JWT parsing. [#1887](https://github.com/labstack/echo/pull/1887)
+* Adding tests for Echo#Host [#1895](https://github.com/labstack/echo/pull/1895)
+* Adds RequestIDHandler function to RequestID middleware [#1898](https://github.com/labstack/echo/pull/1898)
+* Allow for custom JSON encoding implementations [#1880](https://github.com/labstack/echo/pull/1880)
+
 ## v4.3.0 - 2021-05-08
 
 **Important notes**
