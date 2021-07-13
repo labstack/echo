@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 )
 
@@ -88,7 +88,7 @@ type (
 
 		// ParseTokenFunc defines a user-defined function that parses token from given auth. Returns an error when token
 		// parsing fails or parsed token is invalid.
-		// Defaults to implementation using `github.com/dgrijalva/jwt-go` as JWT implementation library
+		// Defaults to implementation using `github.com/golang-jwt/jwt` as JWT implementation library
 		ParseTokenFunc func(auth string, c echo.Context) (interface{}, error)
 	}
 
