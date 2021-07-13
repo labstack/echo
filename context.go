@@ -82,7 +82,8 @@ type (
 		FormParams() (url.Values, error)
 
 		// FormFile returns the multipart form file for the provided name.
-		FormFile(name string) (*multipart.FileHeader, error)
+		// The multipart.File must be Close() by the caller if no error is returned
+		FormFile(name string) (multipart.File, *multipart.FileHeader, error)
 
 		// MultipartForm returns the multipart form.
 		MultipartForm() (*multipart.Form, error)
@@ -379,13 +380,12 @@ func (c *context) FormParams() (url.Values, error) {
 	return c.request.Form, nil
 }
 
-func (c *context) FormFile(name string) (*multipart.FileHeader, error) {
+func (c *context) FormFile(name string) (multipart.File, *multipart.FileHeader, error) {
 	f, fh, err := c.request.FormFile(name)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	f.Close()
-	return fh, nil
+	return f, fh, nil
 }
 
 func (c *context) MultipartForm() (*multipart.Form, error) {
