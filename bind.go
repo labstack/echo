@@ -296,9 +296,6 @@ func unmarshalFieldPtr(value string, field reflect.Value) (bool, error) {
 }
 
 func setIntField(value string, bitSize int, field reflect.Value) error {
-	if value == "" {
-		value = "0"
-	}
 	intVal, err := strconv.ParseInt(value, 10, bitSize)
 	if err == nil {
 		field.SetInt(intVal)
@@ -307,9 +304,6 @@ func setIntField(value string, bitSize int, field reflect.Value) error {
 }
 
 func setUintField(value string, bitSize int, field reflect.Value) error {
-	if value == "" {
-		value = "0"
-	}
 	uintVal, err := strconv.ParseUint(value, 10, bitSize)
 	if err == nil {
 		field.SetUint(uintVal)
@@ -318,9 +312,6 @@ func setUintField(value string, bitSize int, field reflect.Value) error {
 }
 
 func setBoolField(value string, field reflect.Value) error {
-	if value == "" {
-		value = "false"
-	}
 	boolVal, err := strconv.ParseBool(value)
 	if err == nil {
 		field.SetBool(boolVal)
@@ -329,9 +320,6 @@ func setBoolField(value string, field reflect.Value) error {
 }
 
 func setFloatField(value string, bitSize int, field reflect.Value) error {
-	if value == "" {
-		value = "0.0"
-	}
 	floatVal, err := strconv.ParseFloat(value, bitSize)
 	if err == nil {
 		field.SetFloat(floatVal)
