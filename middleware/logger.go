@@ -122,7 +122,7 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 			buf.Reset()
 			defer config.pool.Put(buf)
 
-			if _, err = config.template.ExecuteFunc(buf, func(w io.Writer, tag string) (int, error) {
+			if _, err := config.template.ExecuteFunc(buf, func(w io.Writer, tag string) (int, error) {
 				switch tag {
 				case "time_unix":
 					return buf.WriteString(strconv.FormatInt(time.Now().Unix(), 10))
@@ -209,14 +209,18 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 				}
 				return 0, nil
 			}); err != nil {
-				return
+				return err
 			}
 
 			if config.Output == nil {
-				_, err = c.Logger().Output().Write(buf.Bytes())
+				if _, err := c.Logger().Output().Write(buf.Bytes()); err != nil {
+					return err
+				}
 				return
 			}
-			_, err = config.Output.Write(buf.Bytes())
+			if _, err := config.Output.Write(buf.Bytes()); err != nil {
+				return err
+			}
 			return
 		}
 	}
