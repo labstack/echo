@@ -14,3 +14,5 @@ require (
 	golang.org/x/text v0.3.6 // indirect
 	golang.org/x/time v0.0.0-20201208040808-7e3f01d25324
 )
+
+replace github.com/dgrijalva/jwt-go => github.com/form3tech-oss/jwt-go v3.2.2+incompatible
