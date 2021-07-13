@@ -1286,6 +1286,8 @@ func TestEchoReverse(t *testing.T) {
 	e.GET("/params/:foo", dummyHandler).Name = "/params/:foo"
 	e.GET("/params/:foo/bar/:qux", dummyHandler).Name = "/params/:foo/bar/:qux"
 	e.GET("/params/:foo/bar/:qux/*", dummyHandler).Name = "/params/:foo/bar/:qux/*"
+	e.GET("/repeated_name_one", dummyHandler).Name = "/repeated_name"
+	e.GET("/repeated_name_two", dummyHandler).Name = "/repeated_name"
 
 	assert.Equal("/static", e.Reverse("/static"))
 	assert.Equal("/static", e.Reverse("/static", "missing param"))
@@ -1298,6 +1300,10 @@ func TestEchoReverse(t *testing.T) {
 	assert.Equal("/params/one/bar/:qux", e.Reverse("/params/:foo/bar/:qux", "one"))
 	assert.Equal("/params/one/bar/two", e.Reverse("/params/:foo/bar/:qux", "one", "two"))
 	assert.Equal("/params/one/bar/two/three", e.Reverse("/params/:foo/bar/:qux/*", "one", "two", "three"))
+
+	for i := 0; i < 100; i++ {
+		assert.Equal("/repeated_name_one", e.Reverse("/repeated_name"))
+	}
 }
 
 func TestEchoReverseHandleHostProperly(t *testing.T) {
