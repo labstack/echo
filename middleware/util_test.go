@@ -1,10 +1,22 @@
 package middleware
 
 import (
-	"testing"
-
 	"github.com/stretchr/testify/assert"
+	"io"
+	"testing"
 )
+
+type testLogger struct {
+	output io.Writer
+}
+
+func (l *testLogger) Write(p []byte) (n int, err error) {
+	return l.output.Write(p)
+}
+
+func (l *testLogger) Error(err error) {
+	_, _ = l.output.Write([]byte(err.Error()))
+}
 
 func Test_matchScheme(t *testing.T) {
 	tests := []struct {
@@ -91,5 +103,29 @@ func Test_matchSubdomain(t *testing.T) {
 
 	for _, v := range tests {
 		assert.Equal(t, v.expected, matchSubdomain(v.domain, v.pattern))
+	}
+}
+
+func TestRandomString(t *testing.T) {
+	var testCases = []struct {
+		name       string
+		whenLength uint8
+		expect     string
+	}{
+		{
+			name:       "ok, 16",
+			whenLength: 16,
+		},
+		{
+			name:       "ok, 32",
+			whenLength: 32,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			uid := randomString(tc.whenLength)
+			assert.Len(t, uid, int(tc.whenLength))
+		})
 	}
 }

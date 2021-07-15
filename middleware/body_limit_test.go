@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestBodyLimit(t *testing.T) {
+func TestBodyLimitConfig_ToMiddleware(t *testing.T) {
 	e := echo.New()
 	hw := []byte("Hello, World!")
 	req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(hw))
@@ -25,33 +25,42 @@ func TestBodyLimit(t *testing.T) {
 		return c.String(http.StatusOK, string(body))
 	}
 
-	assert := assert.New(t)
-
 	// Based on content length (within limit)
-	if assert.NoError(BodyLimit("2M")(h)(c)) {
-		assert.Equal(http.StatusOK, rec.Code)
-		assert.Equal(hw, rec.Body.Bytes())
+	mw, err := BodyLimitConfig{LimitBytes: 2 * MB}.ToMiddleware()
+	assert.NoError(t, err)
+
+	err = mw(h)(c)
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, hw, rec.Body.Bytes())
 	}
 
 	// Based on content read (overlimit)
-	he := BodyLimit("2B")(h)(c).(*echo.HTTPError)
-	assert.Equal(http.StatusRequestEntityTooLarge, he.Code)
+	mw, err = BodyLimitConfig{LimitBytes: 2}.ToMiddleware()
+	assert.NoError(t, err)
+	he := mw(h)(c).(*echo.HTTPError)
+	assert.Equal(t, http.StatusRequestEntityTooLarge, he.Code)
 
 	// Based on content read (within limit)
 	req = httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(hw))
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
-	if assert.NoError(BodyLimit("2M")(h)(c)) {
-		assert.Equal(http.StatusOK, rec.Code)
-		assert.Equal("Hello, World!", rec.Body.String())
-	}
+
+	mw, err = BodyLimitConfig{LimitBytes: 2 * MB}.ToMiddleware()
+	assert.NoError(t, err)
+	err = mw(h)(c)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "Hello, World!", rec.Body.String())
 
 	// Based on content read (overlimit)
 	req = httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(hw))
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
-	he = BodyLimit("2B")(h)(c).(*echo.HTTPError)
-	assert.Equal(http.StatusRequestEntityTooLarge, he.Code)
+	mw, err = BodyLimitConfig{LimitBytes: 2}.ToMiddleware()
+	assert.NoError(t, err)
+	he = mw(h)(c).(*echo.HTTPError)
+	assert.Equal(t, http.StatusRequestEntityTooLarge, he.Code)
 }
 
 func TestBodyLimitReader(t *testing.T) {
@@ -61,9 +70,8 @@ func TestBodyLimitReader(t *testing.T) {
 	rec := httptest.NewRecorder()
 
 	config := BodyLimitConfig{
-		Skipper: DefaultSkipper,
-		Limit:   "2B",
-		limit:   2,
+		Skipper:    DefaultSkipper,
+		LimitBytes: 2,
 	}
 	reader := &limitedReader{
 		BodyLimitConfig: config,
@@ -78,8 +86,80 @@ func TestBodyLimitReader(t *testing.T) {
 
 	// reset reader and read two bytes must succeed
 	bt := make([]byte, 2)
-	reader.Reset(ioutil.NopCloser(bytes.NewReader(hw)), e.NewContext(req, rec))
+	reader.Reset(e.NewContext(req, rec), ioutil.NopCloser(bytes.NewReader(hw)))
 	n, err := reader.Read(bt)
 	assert.Equal(t, 2, n)
 	assert.Equal(t, nil, err)
+}
+
+func TestBodyLimit_skipper(t *testing.T) {
+	e := echo.New()
+	h := func(c echo.Context) error {
+		body, err := ioutil.ReadAll(c.Request().Body)
+		if err != nil {
+			return err
+		}
+		return c.String(http.StatusOK, string(body))
+	}
+	mw, err := BodyLimitConfig{
+		Skipper: func(c echo.Context) bool {
+			return true
+		},
+		LimitBytes: 2,
+	}.ToMiddleware()
+	assert.NoError(t, err)
+
+	hw := []byte("Hello, World!")
+	req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(hw))
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	err = mw(h)(c)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, hw, rec.Body.Bytes())
+}
+
+func TestBodyLimitWithConfig(t *testing.T) {
+	e := echo.New()
+	hw := []byte("Hello, World!")
+	req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(hw))
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	h := func(c echo.Context) error {
+		body, err := ioutil.ReadAll(c.Request().Body)
+		if err != nil {
+			return err
+		}
+		return c.String(http.StatusOK, string(body))
+	}
+
+	mw := BodyLimitWithConfig(BodyLimitConfig{LimitBytes: 2 * MB})
+
+	err := mw(h)(c)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, hw, rec.Body.Bytes())
+}
+
+func TestBodyLimit(t *testing.T) {
+	e := echo.New()
+	hw := []byte("Hello, World!")
+	req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(hw))
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	h := func(c echo.Context) error {
+		body, err := ioutil.ReadAll(c.Request().Body)
+		if err != nil {
+			return err
+		}
+		return c.String(http.StatusOK, string(body))
+	}
+
+	mw := BodyLimit(2 * MB)
+
+	err := mw(h)(c)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, hw, rec.Body.Bytes())
 }

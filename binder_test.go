@@ -25,14 +25,15 @@ func createTestContext(URL string, body io.Reader, pathParams map[string]string)
 	c := e.NewContext(req, rec)
 
 	if len(pathParams) > 0 {
-		names := make([]string, 0)
-		values := make([]string, 0)
+		params := make(PathParams, 0)
 		for name, value := range pathParams {
-			names = append(names, name)
-			values = append(values, value)
+			params = append(params, PathParam{
+				Name:  name,
+				Value: value,
+			})
 		}
-		c.SetParamNames(names...)
-		c.SetParamValues(values...)
+		cc := c.(EditableContext)
+		cc.SetPathParams(params)
 	}
 
 	return c
@@ -2643,7 +2644,7 @@ func BenchmarkDefaultBinder_BindInt64_single(b *testing.B) {
 	binder := new(DefaultBinder)
 	for i := 0; i < b.N; i++ {
 		var dest Opts
-		_ = binder.Bind(&dest, c)
+		_ = binder.Bind(c, &dest)
 	}
 }
 
@@ -2710,7 +2711,7 @@ func BenchmarkDefaultBinder_BindInt64_10_fields(b *testing.B) {
 	binder := new(DefaultBinder)
 	for i := 0; i < b.N; i++ {
 		var dest Opts
-		_ = binder.Bind(&dest, c)
+		_ = binder.Bind(c, &dest)
 		if dest.Int64 != 1 {
 			b.Fatalf("int64!=1")
 		}

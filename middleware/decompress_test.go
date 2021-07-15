@@ -17,6 +17,31 @@ import (
 
 func TestDecompress(t *testing.T) {
 	e := echo.New()
+
+	h := Decompress()(func(c echo.Context) error {
+		c.Response().Write([]byte("test")) // For Content-Type sniffing
+		return nil
+	})
+
+	// Decompress request body
+	body := `{"name": "echo"}`
+	gz, _ := gzipString(body)
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(gz)))
+	req.Header.Set(echo.HeaderContentEncoding, GZIPEncoding)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	err := h(c)
+	assert.NoError(t, err)
+
+	assert.Equal(t, GZIPEncoding, req.Header.Get(echo.HeaderContentEncoding))
+	b, err := ioutil.ReadAll(req.Body)
+	assert.NoError(t, err)
+	assert.Equal(t, body, string(b))
+}
+
+func TestDecompress_skippedIfNoHeader(t *testing.T) {
+	e := echo.New()
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("test"))
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
@@ -26,39 +51,42 @@ func TestDecompress(t *testing.T) {
 		c.Response().Write([]byte("test")) // For Content-Type sniffing
 		return nil
 	})
-	h(c)
 
-	assert := assert.New(t)
-	assert.Equal("test", rec.Body.String())
+	err := h(c)
+	assert.NoError(t, err)
+	assert.Equal(t, "test", rec.Body.String())
 
-	// Decompress
-	body := `{"name": "echo"}`
-	gz, _ := gzipString(body)
-	req = httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(gz)))
-	req.Header.Set(echo.HeaderContentEncoding, GZIPEncoding)
-	rec = httptest.NewRecorder()
-	c = e.NewContext(req, rec)
-	h(c)
-	assert.Equal(GZIPEncoding, req.Header.Get(echo.HeaderContentEncoding))
-	b, err := ioutil.ReadAll(req.Body)
-	assert.NoError(err)
-	assert.Equal(body, string(b))
 }
 
-func TestDecompressDefaultConfig(t *testing.T) {
+func TestDecompressWithConfig_DefaultConfig_noDecode(t *testing.T) {
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("test"))
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
-	h := DecompressWithConfig(DecompressConfig{})(func(c echo.Context) error {
+	h, err := DecompressConfig{}.ToMiddleware()
+	assert.NoError(t, err)
+
+	err = h(func(c echo.Context) error {
+		c.Response().Write([]byte("test")) // For Content-Type sniffing
+		return nil
+	})(c)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "test", rec.Body.String())
+
+}
+
+func TestDecompressWithConfig_DefaultConfig(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("test"))
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	h := Decompress()(func(c echo.Context) error {
 		c.Response().Write([]byte("test")) // For Content-Type sniffing
 		return nil
 	})
-	h(c)
-
-	assert := assert.New(t)
-	assert.Equal("test", rec.Body.String())
 
 	// Decompress
 	body := `{"name": "echo"}`
@@ -67,11 +95,14 @@ func TestDecompressDefaultConfig(t *testing.T) {
 	req.Header.Set(echo.HeaderContentEncoding, GZIPEncoding)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
-	h(c)
-	assert.Equal(GZIPEncoding, req.Header.Get(echo.HeaderContentEncoding))
+
+	err := h(c)
+	assert.NoError(t, err)
+
+	assert.Equal(t, GZIPEncoding, req.Header.Get(echo.HeaderContentEncoding))
 	b, err := ioutil.ReadAll(req.Body)
-	assert.NoError(err)
-	assert.Equal(body, string(b))
+	assert.NoError(t, err)
+	assert.Equal(t, body, string(b))
 }
 
 func TestCompressRequestWithoutDecompressMiddleware(t *testing.T) {
@@ -82,7 +113,9 @@ func TestCompressRequestWithoutDecompressMiddleware(t *testing.T) {
 	req.Header.Set(echo.HeaderContentEncoding, GZIPEncoding)
 	rec := httptest.NewRecorder()
 	e.NewContext(req, rec)
+
 	e.ServeHTTP(rec, req)
+
 	assert.Equal(t, GZIPEncoding, req.Header.Get(echo.HeaderContentEncoding))
 	b, err := ioutil.ReadAll(req.Body)
 	assert.NoError(t, err)
@@ -99,7 +132,10 @@ func TestDecompressNoContent(t *testing.T) {
 	h := Decompress()(func(c echo.Context) error {
 		return c.NoContent(http.StatusNoContent)
 	})
-	if assert.NoError(t, h(c)) {
+
+	err := h(c)
+
+	if assert.NoError(t, err) {
 		assert.Equal(t, GZIPEncoding, req.Header.Get(echo.HeaderContentEncoding))
 		assert.Empty(t, rec.Header().Get(echo.HeaderContentType))
 		assert.Equal(t, 0, len(rec.Body.Bytes()))
@@ -115,7 +151,9 @@ func TestDecompressErrorReturned(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set(echo.HeaderContentEncoding, GZIPEncoding)
 	rec := httptest.NewRecorder()
+
 	e.ServeHTTP(rec, req)
+
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 	assert.Empty(t, rec.Header().Get(echo.HeaderContentEncoding))
 }
@@ -132,7 +170,9 @@ func TestDecompressSkipper(t *testing.T) {
 	req.Header.Set(echo.HeaderContentEncoding, GZIPEncoding)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
+
 	e.ServeHTTP(rec, req)
+
 	assert.Equal(t, rec.Header().Get(echo.HeaderContentType), echo.MIMEApplicationJSONCharsetUTF8)
 	reqBody, err := ioutil.ReadAll(c.Request().Body)
 	assert.NoError(t, err)
@@ -161,7 +201,9 @@ func TestDecompressPoolError(t *testing.T) {
 	req.Header.Set(echo.HeaderContentEncoding, GZIPEncoding)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
+
 	e.ServeHTTP(rec, req)
+
 	assert.Equal(t, GZIPEncoding, req.Header.Get(echo.HeaderContentEncoding))
 	reqBody, err := ioutil.ReadAll(c.Request().Body)
 	assert.NoError(t, err)

@@ -289,7 +289,7 @@ func TestRequestLogger_allFields(t *testing.T) {
 	req.Header.Set(echo.HeaderXRealIP, "8.8.8.8")
 
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
+	c := e.NewContext(req, rec).(echo.EditableContext)
 
 	c.SetPath("/test*")
 

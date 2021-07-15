@@ -12,6 +12,8 @@
 
 ## Supported Go versions
 
+Echo supports last four major releases. `v5` starts from 1.16 until there is last four major releases after that.
+
 As of version 4.0.0, Echo is available as a [Go module](https://github.com/golang/go/wiki/Modules).
 Therefore a Go version capable of understanding /vN suffixed imports is required:
 
@@ -67,8 +69,8 @@ package main
 
 import (
   "net/http"
-  "github.com/labstack/echo/v4"
-  "github.com/labstack/echo/v4/middleware"
+  "github.com/labstack/echo/v5"
+  "github.com/labstack/echo/v5/middleware"
 )
 
 func main() {
@@ -83,7 +85,9 @@ func main() {
   e.GET("/", hello)
 
   // Start server
-  e.Logger.Fatal(e.Start(":1323"))
+  if err := e.Start(":1323"); err != http.ErrServerClosed {
+    log.Fatal(err)
+  }
 }
 
 // Handler

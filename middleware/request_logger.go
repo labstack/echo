@@ -24,6 +24,7 @@ import (
 //		LogStatus: true,
 //		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
 //			logger.Info().
+//				Date("request_start", v.StartTime).
 //				Str("URI", v.URI).
 //				Int("status", v.Status).
 //				Msg("request")
@@ -39,6 +40,7 @@ import (
 //		LogStatus: true,
 //		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
 //			logger.Info("request",
+//				zap.Time("request_start", v.StartTime),
 //				zap.String("URI", v.URI),
 //				zap.Int("status", v.Status),
 //			)
@@ -54,8 +56,9 @@ import (
 //		LogStatus: true,
 //		LogValuesFunc: func(c echo.Context, values middleware.RequestLoggerValues) error {
 //			log.WithFields(logrus.Fields{
-//				"URI":   values.URI,
-//				"status": values.Status,
+//				"request_start": values.StartTime,
+//				"URI":           values.URI,
+//				"status":        values.Status,
 //			}).Info("request")
 //
 //			return nil
@@ -158,15 +161,15 @@ type RequestLoggerValues struct {
 	// ResponseSize is response content length value. Note: when used with Gzip middleware this value may not be always correct.
 	ResponseSize int64
 	// Headers are list of headers from request. Note: request can contain more than one header with same value so slice
-	// of values is been logger for each given header.
+	// of values is what will be returned/logged for each given header.
 	// Note: header values are converted to canonical form with http.CanonicalHeaderKey as this how request parser converts header
 	// names to. For example, the canonical key for "accept-encoding" is "Accept-Encoding".
 	Headers map[string][]string
 	// QueryParams are list of query parameters from request URI. Note: request can contain more than one query parameter
-	// with same name so slice of values is been logger for each given query param name.
+	// with same name so slice of values is what will be returned/logged for each given query param name.
 	QueryParams map[string][]string
 	// FormValues are list of form values from request body+URI. Note: request can contain more than one form value with
-	// same name so slice of values is been logger for each given form value name.
+	// same name so slice of values is what will be returned/logged for each given form value name.
 	FormValues map[string][]string
 }
 

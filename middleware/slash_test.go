@@ -67,7 +67,7 @@ func TestAddTrailingSlashWithConfig(t *testing.T) {
 		t.Run(tc.whenURL, func(t *testing.T) {
 			e := echo.New()
 
-			mw := AddTrailingSlashWithConfig(TrailingSlashConfig{
+			mw := AddTrailingSlashWithConfig(AddTrailingSlashConfig{
 				RedirectCode: http.StatusMovedPermanently,
 			})
 			h := mw(func(c echo.Context) error {
@@ -203,7 +203,7 @@ func TestRemoveTrailingSlashWithConfig(t *testing.T) {
 		t.Run(tc.whenURL, func(t *testing.T) {
 			e := echo.New()
 
-			mw := RemoveTrailingSlashWithConfig(TrailingSlashConfig{
+			mw := RemoveTrailingSlashWithConfig(RemoveTrailingSlashConfig{
 				RedirectCode: http.StatusMovedPermanently,
 			})
 			h := mw(func(c echo.Context) error {

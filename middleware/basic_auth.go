@@ -1,43 +1,37 @@
 package middleware
 
 import (
+	"bytes"
 	"encoding/base64"
+	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/labstack/echo/v4"
 )
 
-type (
-	// BasicAuthConfig defines the config for BasicAuth middleware.
-	BasicAuthConfig struct {
-		// Skipper defines a function to skip middleware.
-		Skipper Skipper
+// BasicAuthConfig defines the config for BasicAuthWithConfig middleware.
+type BasicAuthConfig struct {
+	// Skipper defines a function to skip middleware.
+	Skipper Skipper
 
-		// Validator is a function to validate BasicAuth credentials.
-		// Required.
-		Validator BasicAuthValidator
+	// Validator is a function to validate BasicAuthWithConfig credentials. Note: if request contains multiple basic auth headers
+	// this function would be called once for each header until first valid result is returned
+	// Required.
+	Validator BasicAuthValidator
 
-		// Realm is a string to define realm attribute of BasicAuth.
-		// Default value "Restricted".
-		Realm string
-	}
+	// Realm is a string to define realm attribute of BasicAuthWithConfig.
+	// Default value "Restricted".
+	Realm string
+}
 
-	// BasicAuthValidator defines a function to validate BasicAuth credentials.
-	BasicAuthValidator func(string, string, echo.Context) (bool, error)
-)
+// BasicAuthValidator defines a function to validate BasicAuthWithConfig credentials.
+type BasicAuthValidator func(c echo.Context, user string, password string) (bool, error)
 
 const (
 	basic        = "basic"
 	defaultRealm = "Restricted"
-)
-
-var (
-	// DefaultBasicAuthConfig is the default BasicAuth middleware config.
-	DefaultBasicAuthConfig = BasicAuthConfig{
-		Skipper: DefaultSkipper,
-		Realm:   defaultRealm,
-	}
 )
 
 // BasicAuth returns an BasicAuth middleware.
@@ -45,20 +39,21 @@ var (
 // For valid credentials it calls the next handler.
 // For missing or invalid credentials, it sends "401 - Unauthorized" response.
 func BasicAuth(fn BasicAuthValidator) echo.MiddlewareFunc {
-	c := DefaultBasicAuthConfig
-	c.Validator = fn
-	return BasicAuthWithConfig(c)
+	return BasicAuthWithConfig(BasicAuthConfig{Validator: fn})
 }
 
-// BasicAuthWithConfig returns an BasicAuth middleware with config.
-// See `BasicAuth()`.
+// BasicAuthWithConfig returns an BasicAuthWithConfig middleware with config.
 func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
-	// Defaults
+	return toMiddlewareOrPanic(config)
+}
+
+// ToMiddleware converts BasicAuthConfig to middleware or returns an error for invalid configuration
+func (config BasicAuthConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 	if config.Validator == nil {
-		panic("echo: basic-auth middleware requires a validator function")
+		return nil, errors.New("echo basic-auth middleware requires a validator function")
 	}
 	if config.Skipper == nil {
-		config.Skipper = DefaultBasicAuthConfig.Skipper
+		config.Skipper = DefaultSkipper
 	}
 	if config.Realm == "" {
 		config.Realm = defaultRealm
@@ -70,27 +65,31 @@ func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 				return next(c)
 			}
 
-			auth := c.Request().Header.Get(echo.HeaderAuthorization)
+			var lastError error
 			l := len(basic)
-
-			if len(auth) > l+1 && strings.EqualFold(auth[:l], basic) {
-				b, err := base64.StdEncoding.DecodeString(auth[l+1:])
-				if err != nil {
-					return err
+			for _, auth := range c.Request().Header[echo.HeaderAuthorization] {
+				if !(len(auth) > l+1 && strings.EqualFold(auth[:l], basic)) {
+					continue
 				}
-				cred := string(b)
-				for i := 0; i < len(cred); i++ {
-					if cred[i] == ':' {
-						// Verify credentials
-						valid, err := config.Validator(cred[:i], cred[i+1:], c)
-						if err != nil {
-							return err
-						} else if valid {
-							return next(c)
-						}
-						break
+
+				b, errDecode := base64.StdEncoding.DecodeString(auth[l+1:])
+				if errDecode != nil {
+					lastError = fmt.Errorf("invalid basic auth value: %w", errDecode)
+					continue
+				}
+				idx := bytes.IndexByte(b, ':')
+				if idx >= 0 {
+					valid, errValidate := config.Validator(c, string(b[:idx]), string(b[idx+1:]))
+					if errValidate != nil {
+						lastError = errValidate
+					} else if valid {
+						return next(c)
 					}
 				}
+			}
+
+			if lastError != nil {
+				return lastError
 			}
 
 			realm := defaultRealm
@@ -102,5 +101,5 @@ func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 			c.Response().Header().Set(echo.HeaderWWWAuthenticate, basic+" realm="+realm)
 			return echo.ErrUnauthorized
 		}
-	}
+	}, nil
 }

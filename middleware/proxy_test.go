@@ -55,7 +55,7 @@ func TestProxy(t *testing.T) {
 
 	// Random
 	e := echo.New()
-	e.Use(Proxy(rb))
+	e.Use(ProxyWithConfig(ProxyConfig{Balancer: rb}))
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -77,7 +77,7 @@ func TestProxy(t *testing.T) {
 	// Round-robin
 	rrb := NewRoundRobinBalancer(targets)
 	e = echo.New()
-	e.Use(Proxy(rrb))
+	e.Use(ProxyWithConfig(ProxyConfig{Balancer: rrb}))
 
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -113,13 +113,18 @@ func TestProxy(t *testing.T) {
 			return nil
 		}
 	}
-	rrb1 := NewRoundRobinBalancer(targets)
 
 	e = echo.New()
 	e.Use(contextObserver)
-	e.Use(Proxy(rrb1))
+	e.Use(ProxyWithConfig(ProxyConfig{Balancer: NewRoundRobinBalancer(targets)}))
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
+}
+
+func TestMustProxyWithConfig_emptyBalancerPanics(t *testing.T) {
+	assert.Panics(t, func() {
+		ProxyWithConfig(ProxyConfig{Balancer: nil})
+	})
 }
 
 func TestProxyRealIPHeader(t *testing.T) {
@@ -129,7 +134,7 @@ func TestProxyRealIPHeader(t *testing.T) {
 	url, _ := url.Parse(upstream.URL)
 	rrb := NewRoundRobinBalancer([]*ProxyTarget{{Name: "upstream", URL: url}})
 	e := echo.New()
-	e.Use(Proxy(rrb))
+	e.Use(ProxyWithConfig(ProxyConfig{Balancer: rrb}))
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 
@@ -334,7 +339,7 @@ func TestProxyError(t *testing.T) {
 
 	// Random
 	e := echo.New()
-	e.Use(Proxy(rb))
+	e.Use(ProxyWithConfig(ProxyConfig{Balancer: rb}))
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 
@@ -362,7 +367,7 @@ func TestClientCancelConnectionResultsHTTPCode499(t *testing.T) {
 	rb := NewRandomBalancer(nil)
 	assert.True(t, rb.AddTarget(target))
 	e := echo.New()
-	e.Use(Proxy(rb))
+	e.Use(ProxyWithConfig(ProxyConfig{Balancer: rb}))
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx, cancel := context.WithCancel(req.Context())

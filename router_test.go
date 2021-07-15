@@ -2,15 +2,22 @@ package echo
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
+type testRoute struct {
+	Method  string
+	Path    string
+	Handler string
+}
+
 var (
-	staticRoutes = []*Route{
+	staticRoutes = []testRoute{
 		{"GET", "/", ""},
 		{"GET", "/cmd.html", ""},
 		{"GET", "/code.html", ""},
@@ -170,7 +177,7 @@ var (
 		{"GET", "/progs/update.bash", ""},
 	}
 
-	gitHubAPI = []*Route{
+	gitHubAPI = []testRoute{
 		// OAuth Authorizations
 		{"GET", "/authorizations", ""},
 		{"GET", "/authorizations/:id", ""},
@@ -483,7 +490,7 @@ var (
 		{"DELETE", "/user/keys/:id", ""},
 	}
 
-	parseAPI = []*Route{
+	parseAPI = []testRoute{
 		// Objects
 		{"POST", "/1/classes/:className", ""},
 		{"GET", "/1/classes/:className/:objectId", ""},
@@ -527,7 +534,7 @@ var (
 		{"POST", "/1/functions", ""},
 	}
 
-	googlePlusAPI = []*Route{
+	googlePlusAPI = []testRoute{
 		// People
 		{"GET", "/people/:userId", ""},
 		{"GET", "/people", ""},
@@ -550,7 +557,7 @@ var (
 		{"DELETE", "/moments/:id", ""},
 	}
 
-	paramAndAnyAPI = []*Route{
+	paramAndAnyAPI = []testRoute{
 		{"GET", "/root/:first/foo/*", ""},
 		{"GET", "/root/:first/:second/*", ""},
 		{"GET", "/root/:first/bar/:second/*", ""},
@@ -580,7 +587,7 @@ var (
 		{"DELETE", "/root/*", ""},
 	}
 
-	paramAndAnyAPIToFind = []*Route{
+	paramAndAnyAPIToFind = []testRoute{
 		{"GET", "/root/one/foo/after/the/asterisk", ""},
 		{"GET", "/root/one/foo/path/after/the/asterisk", ""},
 		{"GET", "/root/one/two/path/after/the/asterisk", ""},
@@ -610,7 +617,7 @@ var (
 		{"DELETE", "/root/one/qux/two/three/four/after/the/asterisk", ""},
 	}
 
-	missesAPI = []*Route{
+	missesAPI = []testRoute{
 		{"GET", "/missOne", ""},
 		{"GET", "/miss/two", ""},
 		{"GET", "/miss/three/levels", ""},
@@ -636,24 +643,24 @@ var (
 	handlerHelper = func(key string, value int) func(c Context) error {
 		return func(c Context) error {
 			c.Set(key, value)
-			c.Set("path", c.Path())
+			c.Set("path", c.RouteInfo().Path())
 			return nil
 		}
 	}
 	handlerFunc = func(c Context) error {
-		c.Set("path", c.Path())
+		c.Set("path", c.RouteInfo().Path())
 		return nil
 	}
 )
 
 func checkUnusedParamValues(t *testing.T, c *context, expectParam map[string]string) {
-	for i, p := range c.pnames {
-		value := c.pvalues[i]
+	for _, p := range c.PathParams() {
+		value := p.Value
 		if value != "" {
 			if expectParam == nil {
 				t.Errorf("pValue '%v' is set for param name '%v' but we are not expecting it with expectParam", value, p)
 			} else {
-				if _, ok := expectParam[p]; !ok {
+				if _, ok := expectParam[p.Name]; !ok {
 					t.Errorf("pValue '%v' is set for param name '%v' but we are not expecting it with expectParam", value, p)
 				}
 			}
@@ -662,23 +669,24 @@ func checkUnusedParamValues(t *testing.T, c *context, expectParam map[string]str
 }
 
 func TestRouterStatic(t *testing.T) {
-	e := New()
-	r := e.router
 	path := "/folders/a/files/echo.gif"
-	r.Add(http.MethodGet, path, handlerFunc)
-	c := e.NewContext(nil, nil).(*context)
+	req := httptest.NewRequest("GET", path, nil)
 
-	r.Find(http.MethodGet, path, c)
-	c.handler(c)
+	e := New()
+	e.GET(path, handlerFunc)
 
-	assert.Equal(t, path, c.Get("path"))
+	pathParams := make(PathParams, 0, 2)
+	match := e.router.Match(req, &pathParams)
+
+	assert.Equal(t, path, match.RoutePath)
+	assert.Equal(t, 2, cap(pathParams))
+	assert.Len(t, pathParams, 0)
 }
 
 func TestRouterParam(t *testing.T) {
 	e := New()
-	r := e.router
 
-	r.Add(http.MethodGet, "/users/:id", handlerFunc)
+	e.GET("/users/:id", handlerFunc)
 
 	var testCases = []struct {
 		name        string
@@ -702,33 +710,77 @@ func TestRouterParam(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-
 			c := e.NewContext(nil, nil).(*context)
-			r.Find(http.MethodGet, tc.whenURL, c)
+			req := httptest.NewRequest("GET", tc.whenURL, nil)
+			match := e.router.Match(req, c.pathParams)
 
-			c.handler(c)
-			assert.Equal(t, tc.expectRoute, c.Get("path"))
+			assert.Equal(t, tc.expectRoute, match.RoutePath)
 			for param, expectedValue := range tc.expectParam {
-				assert.Equal(t, expectedValue, c.Param(param))
+				assert.Equal(t, expectedValue, c.pathParams.Get(param, "---none---"))
 			}
 			checkUnusedParamValues(t, c, tc.expectParam)
 		})
 	}
 }
 
+func TestRouter_addAndMatchAllSupportedMethods(t *testing.T) {
+	var testCases = []struct {
+		name       string
+		whenMethod string
+	}{
+		{name: "ok, CONNECT", whenMethod: http.MethodConnect},
+		{name: "ok, DELETE", whenMethod: http.MethodDelete},
+		{name: "ok, GET", whenMethod: http.MethodGet},
+		{name: "ok, HEAD", whenMethod: http.MethodHead},
+		{name: "ok, OPTIONS", whenMethod: http.MethodOptions},
+		{name: "ok, PATCH", whenMethod: http.MethodPatch},
+		{name: "ok, POST", whenMethod: http.MethodPost},
+		{name: "ok, PROPFIND", whenMethod: PROPFIND},
+		{name: "ok, PUT", whenMethod: http.MethodPut},
+		{name: "ok, TRACE", whenMethod: http.MethodTrace},
+		{name: "ok, REPORT", whenMethod: REPORT},
+		{name: "ok, NON_TRADITIONAL_METHOD", whenMethod: "NON_TRADITIONAL_METHOD"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+
+			e.GET("/*", handlerFunc)
+			e.Add(tc.whenMethod, "/my/*", handlerFunc)
+
+			req := httptest.NewRequest(tc.whenMethod, "/my/some-url", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec).(*context)
+
+			match := e.router.Match(req, c.pathParams)
+			c.route = match.RouteInfo
+
+			err := match.Handler(c)
+
+			assert.NoError(t, err)
+			assert.Equal(t, "/my/*", match.RoutePath)
+		})
+	}
+}
+
 func TestMethodNotAllowedAndNotFound(t *testing.T) {
 	e := New()
-	r := e.router
 
 	// Routes
-	r.Add(http.MethodGet, "/*", handlerFunc)
-	r.Add(http.MethodPost, "/users/:id", handlerFunc)
+	ri, err := e.AddRoute(Route{Method: http.MethodGet, Path: "/*", Handler: handlerFunc})
+	assert.NoError(t, err)
+	assert.Equal(t, "GET:/*", ri.Name())
+
+	ri, err = e.AddRoute(Route{Method: http.MethodPost, Path: "/users/:id", Handler: handlerFunc})
+	assert.NoError(t, err)
+	assert.Equal(t, "POST:/users/:id", ri.Name())
 
 	var testCases = []struct {
 		name        string
 		whenMethod  string
 		whenURL     string
-		expectRoute interface{}
+		expectRoute string
 		expectParam map[string]string
 		expectError error
 	}{
@@ -743,7 +795,7 @@ func TestMethodNotAllowedAndNotFound(t *testing.T) {
 			name:        "matches node but not method. sends 405 from best match node",
 			whenMethod:  http.MethodPut,
 			whenURL:     "/users/1",
-			expectRoute: nil,
+			expectRoute: "/users/:id",
 			expectError: ErrMethodNotAllowed,
 		},
 		{
@@ -762,17 +814,19 @@ func TestMethodNotAllowedAndNotFound(t *testing.T) {
 			if tc.whenMethod != "" {
 				method = tc.whenMethod
 			}
-			r.Find(method, tc.whenURL, c)
-			err := c.handler(c)
+			req := httptest.NewRequest(method, tc.whenURL, nil)
+			match := e.router.Match(req, c.pathParams)
+			c.route = match.RouteInfo
 
+			err := match.Handler(c)
 			if tc.expectError != nil {
 				assert.Equal(t, tc.expectError, err)
 			} else {
 				assert.NoError(t, err)
 			}
-			assert.Equal(t, tc.expectRoute, c.Get("path"))
+			assert.Equal(t, tc.expectRoute, match.RoutePath)
 			for param, expectedValue := range tc.expectParam {
-				assert.Equal(t, expectedValue, c.Param(param))
+				assert.Equal(t, expectedValue, c.pathParams.Get(param, "---none---"))
 			}
 			checkUnusedParamValues(t, c, tc.expectParam)
 		})
@@ -781,29 +835,32 @@ func TestMethodNotAllowedAndNotFound(t *testing.T) {
 
 func TestRouterTwoParam(t *testing.T) {
 	e := New()
-	r := e.router
-	r.Add(http.MethodGet, "/users/:uid/files/:fid", handlerFunc)
+	e.GET("/users/:uid/files/:fid", handlerFunc)
+
 	c := e.NewContext(nil, nil).(*context)
+	req := httptest.NewRequest(http.MethodGet, "/users/1/files/1", nil)
+	match := e.router.Match(req, c.pathParams)
 
-	r.Find(http.MethodGet, "/users/1/files/1", c)
-
-	assert.Equal(t, "1", c.Param("uid"))
-	assert.Equal(t, "1", c.Param("fid"))
+	assert.Equal(t, "/users/:uid/files/:fid", match.RoutePath)
+	assert.Equal(t, "1", c.pathParams.Get("uid", ""))
+	assert.Equal(t, "1", c.pathParams.Get("fid", ""))
 }
 
 // Issue #378
 func TestRouterParamWithSlash(t *testing.T) {
 	e := New()
-	r := e.router
 
-	r.Add(http.MethodGet, "/a/:b/c/d/:e", handlerFunc)
-	r.Add(http.MethodGet, "/a/:b/c/:d/:f", handlerFunc)
+	e.GET("/a/:b/c/d/:e", handlerFunc)
+	e.GET("/a/:b/c/:d/:f", handlerFunc)
 
 	c := e.NewContext(nil, nil).(*context)
-	r.Find(http.MethodGet, "/a/1/c/d/2/3", c) // `2/3` should mapped to path `/a/:b/c/d/:e` and into `:e`
+	// `2/3` should mapped to path `/a/:b/c/d/:e` and into `:e`
+	req := httptest.NewRequest(http.MethodGet, "/a/1/c/d/2/3", nil)
+	match := e.router.Match(req, c.pathParams)
+	c.route = match.RouteInfo
 
-	err := c.handler(c)
-	assert.Equal(t, "/a/:b/c/d/:e", c.Get("path"))
+	err := match.Handler(c)
+	assert.Equal(t, "/a/:b/c/d/:e", match.RoutePath)
 	assert.NoError(t, err)
 }
 
@@ -880,22 +937,21 @@ func TestRouteMultiLevelBacktracking(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			e := New()
-			r := e.router
 
-			r.Add(http.MethodGet, "/a/:b/c", handlerHelper("case", 1))
-			r.Add(http.MethodGet, "/a/c/d", handlerHelper("case", 2))
-			r.Add(http.MethodGet, "/a/c/df", handlerHelper("case", 3))
-			r.Add(http.MethodGet, "/a/*/f", handlerHelper("case", 4))
-			r.Add(http.MethodGet, "/:e/c/f", handlerHelper("case", 5))
-			r.Add(http.MethodGet, "/*", handlerHelper("case", 6))
+			e.GET("/a/:b/c", handlerFunc)
+			e.GET("/a/c/d", handlerFunc)
+			e.GET("/a/c/df", handlerFunc)
+			e.GET("/a/*/f", handlerFunc)
+			e.GET("/:e/c/f", handlerFunc)
+			e.GET("/*", handlerFunc)
 
 			c := e.NewContext(nil, nil).(*context)
-			r.Find(http.MethodGet, tc.whenURL, c)
+			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
+			match := e.router.Match(req, c.pathParams)
 
-			c.handler(c)
-			assert.Equal(t, tc.expectRoute, c.Get("path"))
+			assert.Equal(t, tc.expectRoute, match.RoutePath)
 			for param, expectedValue := range tc.expectParam {
-				assert.Equal(t, expectedValue, c.Param(param))
+				assert.Equal(t, expectedValue, c.pathParams.Get(param, "---none---"))
 			}
 			checkUnusedParamValues(t, c, tc.expectParam)
 		})
@@ -925,13 +981,12 @@ func TestRouteMultiLevelBacktracking(t *testing.T) {
 //                      +---------------+
 func TestRouteMultiLevelBacktracking2(t *testing.T) {
 	e := New()
-	r := e.router
 
-	r.Add(http.MethodGet, "/a/:b/c", handlerFunc)
-	r.Add(http.MethodGet, "/a/c/d", handlerFunc)
-	r.Add(http.MethodGet, "/a/c/df", handlerFunc)
-	r.Add(http.MethodGet, "/:e/c/f", handlerFunc)
-	r.Add(http.MethodGet, "/*", handlerFunc)
+	e.GET("/a/:b/c", handlerFunc)
+	e.GET("/a/c/d", handlerFunc)
+	e.GET("/a/c/df", handlerFunc)
+	e.GET("/:e/c/f", handlerFunc)
+	e.GET("/*", handlerFunc)
 
 	var testCases = []struct {
 		name        string
@@ -991,13 +1046,12 @@ func TestRouteMultiLevelBacktracking2(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			c := e.NewContext(nil, nil).(*context)
+			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
+			match := e.router.Match(req, c.pathParams)
 
-			r.Find(http.MethodGet, tc.whenURL, c)
-
-			c.handler(c)
-			assert.Equal(t, tc.expectRoute, c.Get("path"))
+			assert.Equal(t, tc.expectRoute, match.RoutePath)
 			for param, expectedValue := range tc.expectParam {
-				assert.Equal(t, expectedValue, c.Param(param))
+				assert.Equal(t, expectedValue, c.pathParams.Get(param, "---none---"))
 			}
 			checkUnusedParamValues(t, c, tc.expectParam)
 		})
@@ -1006,14 +1060,13 @@ func TestRouteMultiLevelBacktracking2(t *testing.T) {
 
 func TestRouterBacktrackingFromMultipleParamKinds(t *testing.T) {
 	e := New()
-	r := e.router
 
-	r.Add(http.MethodGet, "/*", handlerFunc) // this can match only path that does not have slash in it
-	r.Add(http.MethodGet, "/:1/second", handlerFunc)
-	r.Add(http.MethodGet, "/:1/:2", handlerFunc) // this acts as match ANY for all routes that have at least one slash
-	r.Add(http.MethodGet, "/:1/:2/third", handlerFunc)
-	r.Add(http.MethodGet, "/:1/:2/:3/fourth", handlerFunc)
-	r.Add(http.MethodGet, "/:1/:2/:3/:4/fifth", handlerFunc)
+	e.GET("/*", handlerFunc) // this can match only path that does not have slash in it
+	e.GET("/:1/second", handlerFunc)
+	e.GET("/:1/:2", handlerFunc) // this acts as match ANY for all routes that have at least one slash
+	e.GET("/:1/:2/third", handlerFunc)
+	e.GET("/:1/:2/:3/fourth", handlerFunc)
+	e.GET("/:1/:2/:3/:4/fifth", handlerFunc)
 
 	c := e.NewContext(nil, nil).(*context)
 	var testCases = []struct {
@@ -1045,7 +1098,7 @@ func TestRouterBacktrackingFromMultipleParamKinds(t *testing.T) {
 		},
 		{ // FIXME: should match `/:1/:2` when backtracking in tree. this 1 level backtracking fails even with old implementation
 			name:        "route /first/second/ to /:1/:2",
-			whenURL:     "/first/second/",
+			whenURL:     "/first/second/",                        /// <-- slash at the end is problematic
 			expectRoute: "/*",                                    // "/:1/:2",
 			expectParam: map[string]string{"*": "first/second/"}, // map[string]string{"1": "first", "2": "second/"},
 		},
@@ -1059,12 +1112,12 @@ func TestRouterBacktrackingFromMultipleParamKinds(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			r.Find(http.MethodGet, tc.whenURL, c)
+			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
+			match := e.router.Match(req, c.pathParams)
 
-			c.handler(c)
-			assert.Equal(t, tc.expectRoute, c.Get("path"))
+			assert.Equal(t, tc.expectRoute, match.RoutePath)
 			for param, expectedValue := range tc.expectParam {
-				assert.Equal(t, expectedValue, c.Param(param))
+				assert.Equal(t, expectedValue, c.pathParams.Get(param, "---none---"))
 			}
 			checkUnusedParamValues(t, c, tc.expectParam)
 		})
@@ -1074,16 +1127,11 @@ func TestRouterBacktrackingFromMultipleParamKinds(t *testing.T) {
 // Issue #1509
 func TestRouterParamStaticConflict(t *testing.T) {
 	e := New()
-	r := e.router
-	handler := func(c Context) error {
-		c.Set("path", c.Path())
-		return nil
-	}
 
 	g := e.Group("/g")
-	g.GET("/skills", handler)
-	g.GET("/status", handler)
-	g.GET("/:name", handler)
+	g.GET("/skills", handlerFunc)
+	g.GET("/status", handlerFunc)
+	g.GET("/:name", handlerFunc)
 
 	var testCases = []struct {
 		whenURL     string
@@ -1105,13 +1153,14 @@ func TestRouterParamStaticConflict(t *testing.T) {
 		t.Run(tc.whenURL, func(t *testing.T) {
 			c := e.NewContext(nil, nil).(*context)
 
-			r.Find(http.MethodGet, tc.whenURL, c)
-			err := c.handler(c)
+			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
+			match := e.router.Match(req, c.pathParams)
+			c.route = match.RouteInfo
 
-			assert.NoError(t, err)
-			assert.Equal(t, tc.expectRoute, c.Get("path"))
+			assert.NoError(t, match.Handler(c))
+			assert.Equal(t, tc.expectRoute, match.RoutePath)
 			for param, expectedValue := range tc.expectParam {
-				assert.Equal(t, expectedValue, c.Param(param))
+				assert.Equal(t, expectedValue, c.pathParams.Get(param, ""))
 			}
 			checkUnusedParamValues(t, c, tc.expectParam)
 		})
@@ -1153,8 +1202,11 @@ func TestRouterParam_escapeColon(t *testing.T) {
 		t.Run(tc.whenURL, func(t *testing.T) {
 			c := e.NewContext(nil, nil).(*context)
 
-			e.router.Find(http.MethodPost, tc.whenURL, c)
-			err := c.handler(c)
+			req := httptest.NewRequest(http.MethodPost, tc.whenURL, nil)
+			match := e.router.Match(req, c.pathParams)
+			c.route = match.RouteInfo
+
+			err := match.Handler(c)
 
 			assert.Equal(t, tc.expectRoute, c.Get("path"))
 			if tc.expectError != "" {
@@ -1163,7 +1215,7 @@ func TestRouterParam_escapeColon(t *testing.T) {
 				assert.NoError(t, err)
 			}
 			for param, expectedValue := range tc.expectParam {
-				assert.Equal(t, expectedValue, c.Param(param))
+				assert.Equal(t, expectedValue, c.PathParam(param))
 			}
 			checkUnusedParamValues(t, c, tc.expectParam)
 		})
@@ -1172,12 +1224,11 @@ func TestRouterParam_escapeColon(t *testing.T) {
 
 func TestRouterMatchAny(t *testing.T) {
 	e := New()
-	r := e.router
 
 	// Routes
-	r.Add(http.MethodGet, "/", handlerFunc)
-	r.Add(http.MethodGet, "/*", handlerFunc)
-	r.Add(http.MethodGet, "/users/*", handlerFunc)
+	e.GET("/", handlerFunc)
+	e.GET("/*", handlerFunc)
+	e.GET("/users/*", handlerFunc)
 
 	var testCases = []struct {
 		whenURL     string
@@ -1204,13 +1255,14 @@ func TestRouterMatchAny(t *testing.T) {
 		t.Run(tc.whenURL, func(t *testing.T) {
 			c := e.NewContext(nil, nil).(*context)
 
-			r.Find(http.MethodGet, tc.whenURL, c)
-			err := c.handler(c)
+			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
+			match := e.router.Match(req, c.pathParams)
+			c.route = match.RouteInfo
 
-			assert.NoError(t, err)
-			assert.Equal(t, tc.expectRoute, c.Get("path"))
+			assert.NoError(t, match.Handler(c))
+			assert.Equal(t, tc.expectRoute, match.RoutePath)
 			for param, expectedValue := range tc.expectParam {
-				assert.Equal(t, expectedValue, c.Param(param))
+				assert.Equal(t, expectedValue, c.pathParams.Get(param, ""))
 			}
 			checkUnusedParamValues(t, c, tc.expectParam)
 		})
@@ -1224,41 +1276,39 @@ func TestRouterMatchAny(t *testing.T) {
 // But this is where we are without well defined requirements/rules how (multiple) asterisks work in route
 func TestRouterAnyMatchesLastAddedAnyRoute(t *testing.T) {
 	e := New()
-	r := e.router
 
-	r.Add(http.MethodGet, "/users/*", handlerHelper("case", 1))
-	r.Add(http.MethodGet, "/users/*/action*", handlerHelper("case", 2))
+	e.GET("/users/*", handlerFunc)
+	e.GET("/users/*/action*", handlerFunc)
 
 	c := e.NewContext(nil, nil).(*context)
+	req := httptest.NewRequest(http.MethodGet, "/users/xxx/action/sea", nil)
+	match := e.router.Match(req, c.pathParams)
+	c.route = match.RouteInfo
 
-	r.Find(http.MethodGet, "/users/xxx/action/sea", c)
-	c.handler(c)
-	assert.Equal(t, "/users/*/action*", c.Get("path"))
-	assert.Equal(t, "xxx/action/sea", c.Param("*"))
+	assert.NoError(t, match.Handler(c))
+	assert.Equal(t, "/users/*/action*", match.RoutePath)
+	assert.Equal(t, "xxx/action/sea", c.pathParams.Get("*", ""))
 
 	// if we add another route then it is the last added and so it is matched
-	r.Add(http.MethodGet, "/users/*/action/search", handlerHelper("case", 3))
+	e.GET("/users/*/action/search", handlerFunc)
 
-	r.Find(http.MethodGet, "/users/xxx/action/sea", c)
-	c.handler(c)
-	assert.Equal(t, "/users/*/action/search", c.Get("path"))
-	assert.Equal(t, "xxx/action/sea", c.Param("*"))
+	c2 := e.NewContext(nil, nil).(*context)
+	req2 := httptest.NewRequest(http.MethodGet, "/users/xxx/action/sea", nil)
+	match2 := e.router.Match(req2, c2.pathParams)
+	c2.route = match2.RouteInfo
+
+	assert.NoError(t, match2.Handler(c2))
+	assert.Equal(t, "/users/*/action/search", match2.RoutePath)
+	assert.Equal(t, "xxx/action/sea", c2.pathParams.Get("*", ""))
 }
 
 // Issue #1739
 func TestRouterMatchAnyPrefixIssue(t *testing.T) {
 	e := New()
-	r := e.router
 
 	// Routes
-	r.Add(http.MethodGet, "/*", func(c Context) error {
-		c.Set("path", c.Path())
-		return nil
-	})
-	r.Add(http.MethodGet, "/users/*", func(c Context) error {
-		c.Set("path", c.Path())
-		return nil
-	})
+	e.GET("/*", handlerFunc)
+	e.GET("/users/*", handlerFunc)
 
 	var testCases = []struct {
 		whenURL     string
@@ -1295,13 +1345,14 @@ func TestRouterMatchAnyPrefixIssue(t *testing.T) {
 		t.Run(tc.whenURL, func(t *testing.T) {
 			c := e.NewContext(nil, nil).(*context)
 
-			r.Find(http.MethodGet, tc.whenURL, c)
-			err := c.handler(c)
+			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
+			match := e.router.Match(req, c.pathParams)
+			c.route = match.RouteInfo
 
-			assert.NoError(t, err)
-			assert.Equal(t, tc.expectRoute, c.Get("path"))
+			assert.NoError(t, match.Handler(c))
+			assert.Equal(t, tc.expectRoute, match.RoutePath)
 			for param, expectedValue := range tc.expectParam {
-				assert.Equal(t, expectedValue, c.Param(param))
+				assert.Equal(t, expectedValue, c.pathParams.Get(param, "---none---"))
 			}
 			checkUnusedParamValues(t, c, tc.expectParam)
 		})
@@ -1312,25 +1363,24 @@ func TestRouterMatchAnyPrefixIssue(t *testing.T) {
 // for any routes with trailing slash requests
 func TestRouterMatchAnySlash(t *testing.T) {
 	e := New()
-	r := e.router
 
 	// Routes
-	r.Add(http.MethodGet, "/users", handlerFunc)
-	r.Add(http.MethodGet, "/users/*", handlerFunc)
-	r.Add(http.MethodGet, "/img/*", handlerFunc)
-	r.Add(http.MethodGet, "/img/load", handlerFunc)
-	r.Add(http.MethodGet, "/img/load/*", handlerFunc)
-	r.Add(http.MethodGet, "/assets/*", handlerFunc)
+	e.GET("/users", handlerFunc)
+	e.GET("/users/*", handlerFunc)
+	e.GET("/img/*", handlerFunc)
+	e.GET("/img/load", handlerFunc)
+	e.GET("/img/load/*", handlerFunc)
+	e.GET("/assets/*", handlerFunc)
 
 	var testCases = []struct {
 		whenURL     string
-		expectRoute interface{}
+		expectRoute string
 		expectParam map[string]string
 		expectError error
 	}{
 		{
 			whenURL:     "/",
-			expectRoute: nil,
+			expectRoute: "",
 			expectParam: map[string]string{"*": ""},
 			expectError: ErrNotFound,
 		},
@@ -1363,7 +1413,7 @@ func TestRouterMatchAnySlash(t *testing.T) {
 		// Test /assets/* any route
 		{ // ... without trailing slash must not match
 			whenURL:     "/assets",
-			expectRoute: nil,
+			expectRoute: "",
 			expectParam: map[string]string{"*": ""},
 			expectError: ErrNotFound,
 		},
@@ -1378,17 +1428,19 @@ func TestRouterMatchAnySlash(t *testing.T) {
 		t.Run(tc.whenURL, func(t *testing.T) {
 			c := e.NewContext(nil, nil).(*context)
 
-			r.Find(http.MethodGet, tc.whenURL, c)
-			err := c.handler(c)
+			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
+			match := e.router.Match(req, c.pathParams)
+			c.route = match.RouteInfo
 
+			err := match.Handler(c)
 			if tc.expectError != nil {
 				assert.Equal(t, tc.expectError, err)
 			} else {
 				assert.NoError(t, err)
 			}
-			assert.Equal(t, tc.expectRoute, c.Get("path"))
+			assert.Equal(t, tc.expectRoute, match.RoutePath)
 			for param, expectedValue := range tc.expectParam {
-				assert.Equal(t, expectedValue, c.Param(param))
+				assert.Equal(t, expectedValue, c.pathParams.Get(param, ""))
 			}
 			checkUnusedParamValues(t, c, tc.expectParam)
 		})
@@ -1397,15 +1449,14 @@ func TestRouterMatchAnySlash(t *testing.T) {
 
 func TestRouterMatchAnyMultiLevel(t *testing.T) {
 	e := New()
-	r := e.router
 
 	// Routes
-	r.Add(http.MethodGet, "/api/users/jack", handlerFunc)
-	r.Add(http.MethodGet, "/api/users/jill", handlerFunc)
-	r.Add(http.MethodGet, "/api/users/*", handlerFunc)
-	r.Add(http.MethodGet, "/api/*", handlerFunc)
-	r.Add(http.MethodGet, "/other/*", handlerFunc)
-	r.Add(http.MethodGet, "/*", handlerFunc)
+	e.GET("/api/users/jack", handlerFunc)
+	e.GET("/api/users/jill", handlerFunc)
+	e.GET("/api/users/*", handlerFunc)
+	e.GET("/api/*", handlerFunc)
+	e.GET("/other/*", handlerFunc)
+	e.GET("/*", handlerFunc)
 
 	var testCases = []struct {
 		whenURL     string
@@ -1453,17 +1504,19 @@ func TestRouterMatchAnyMultiLevel(t *testing.T) {
 		t.Run(tc.whenURL, func(t *testing.T) {
 			c := e.NewContext(nil, nil).(*context)
 
-			r.Find(http.MethodGet, tc.whenURL, c)
-			err := c.handler(c)
+			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
+			match := e.router.Match(req, c.pathParams)
+			c.route = match.RouteInfo
 
+			err := match.Handler(c)
 			if tc.expectError != nil {
 				assert.Equal(t, tc.expectError, err)
 			} else {
 				assert.NoError(t, err)
 			}
-			assert.Equal(t, tc.expectRoute, c.Get("path"))
+			assert.Equal(t, tc.expectRoute, match.RoutePath)
 			for param, expectedValue := range tc.expectParam {
-				assert.Equal(t, expectedValue, c.Param(param))
+				assert.Equal(t, expectedValue, c.pathParams.Get(param, ""))
 			}
 			checkUnusedParamValues(t, c, tc.expectParam)
 		})
@@ -1471,7 +1524,6 @@ func TestRouterMatchAnyMultiLevel(t *testing.T) {
 }
 func TestRouterMatchAnyMultiLevelWithPost(t *testing.T) {
 	e := New()
-	r := e.router
 
 	// Routes
 	e.POST("/api/auth/login", handlerFunc)
@@ -1519,17 +1571,20 @@ func TestRouterMatchAnyMultiLevelWithPost(t *testing.T) {
 			if tc.whenMethod != "" {
 				method = tc.whenMethod
 			}
-			r.Find(method, tc.whenURL, c)
-			err := c.handler(c)
 
+			req := httptest.NewRequest(method, tc.whenURL, nil)
+			match := e.router.Match(req, c.pathParams)
+			c.route = match.RouteInfo
+
+			err := match.Handler(c)
 			if tc.expectError != nil {
 				assert.Equal(t, tc.expectError, err)
 			} else {
 				assert.NoError(t, err)
 			}
-			assert.Equal(t, tc.expectRoute, c.Get("path"))
+			assert.Equal(t, tc.expectRoute, match.RoutePath)
 			for param, expectedValue := range tc.expectParam {
-				assert.Equal(t, expectedValue, c.Param(param))
+				assert.Equal(t, expectedValue, c.pathParams.Get(param, ""))
 			}
 			checkUnusedParamValues(t, c, tc.expectParam)
 		})
@@ -1538,44 +1593,47 @@ func TestRouterMatchAnyMultiLevelWithPost(t *testing.T) {
 
 func TestRouterMicroParam(t *testing.T) {
 	e := New()
-	r := e.router
-	r.Add(http.MethodGet, "/:a/:b/:c", func(c Context) error {
-		return nil
-	})
+	e.GET("/:a/:b/:c", handlerFunc)
+
 	c := e.NewContext(nil, nil).(*context)
-	r.Find(http.MethodGet, "/1/2/3", c)
-	assert.Equal(t, "1", c.Param("a"))
-	assert.Equal(t, "2", c.Param("b"))
-	assert.Equal(t, "3", c.Param("c"))
+	req := httptest.NewRequest(http.MethodGet, "/1/2/3", nil)
+	match := e.router.Match(req, c.pathParams)
+	c.route = match.RouteInfo
+
+	assert.NoError(t, match.Handler(c))
+	assert.Equal(t, "1", c.pathParams.Get("a", "---none---"))
+	assert.Equal(t, "2", c.pathParams.Get("b", "---none---"))
+	assert.Equal(t, "3", c.pathParams.Get("c", "---none---"))
 }
 
 func TestRouterMixParamMatchAny(t *testing.T) {
 	e := New()
-	r := e.router
 
 	// Route
-	r.Add(http.MethodGet, "/users/:id/*", func(c Context) error {
-		return nil
-	})
-	c := e.NewContext(nil, nil).(*context)
+	e.GET("/users/:id/*", handlerFunc)
 
-	r.Find(http.MethodGet, "/users/joe/comments", c)
-	c.handler(c)
-	assert.Equal(t, "joe", c.Param("id"))
+	c := e.NewContext(nil, nil).(*context)
+	req := httptest.NewRequest(http.MethodGet, "/users/joe/comments", nil)
+	match := e.router.Match(req, c.pathParams)
+	c.route = match.RouteInfo
+
+	assert.NoError(t, match.Handler(c))
+	assert.Equal(t, "/users/:id/*", match.RoutePath)
+	assert.Equal(t, "joe", c.pathParams.Get("id", "---none---"))
+	assert.Equal(t, "comments", c.pathParams.Get("*", "---none---"))
 }
 
 func TestRouterMultiRoute(t *testing.T) {
 	e := New()
-	r := e.router
 
 	// Routes
-	r.Add(http.MethodGet, "/users", handlerFunc)
-	r.Add(http.MethodGet, "/users/:id", handlerFunc)
+	e.GET("/users", handlerFunc)
+	e.GET("/users/:id", handlerFunc)
 
 	var testCases = []struct {
 		whenMethod  string
 		whenURL     string
-		expectRoute interface{}
+		expectRoute string
 		expectParam map[string]string
 		expectError error
 	}{
@@ -1591,7 +1649,7 @@ func TestRouterMultiRoute(t *testing.T) {
 		},
 		{
 			whenURL:     "/user",
-			expectRoute: nil,
+			expectRoute: "",
 			expectParam: map[string]string{"*": ""},
 			expectError: ErrNotFound,
 		},
@@ -1600,21 +1658,19 @@ func TestRouterMultiRoute(t *testing.T) {
 		t.Run(tc.whenURL, func(t *testing.T) {
 			c := e.NewContext(nil, nil).(*context)
 
-			method := http.MethodGet
-			if tc.whenMethod != "" {
-				method = tc.whenMethod
-			}
-			r.Find(method, tc.whenURL, c)
-			err := c.handler(c)
+			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
+			match := e.router.Match(req, c.pathParams)
+			c.route = match.RouteInfo
 
+			err := match.Handler(c)
 			if tc.expectError != nil {
 				assert.Equal(t, tc.expectError, err)
 			} else {
 				assert.NoError(t, err)
 			}
-			assert.Equal(t, tc.expectRoute, c.Get("path"))
+			assert.Equal(t, tc.expectRoute, match.RoutePath)
 			for param, expectedValue := range tc.expectParam {
-				assert.Equal(t, expectedValue, c.Param(param))
+				assert.Equal(t, expectedValue, c.pathParams.Get(param, ""))
 			}
 			checkUnusedParamValues(t, c, tc.expectParam)
 		})
@@ -1623,18 +1679,17 @@ func TestRouterMultiRoute(t *testing.T) {
 
 func TestRouterPriority(t *testing.T) {
 	e := New()
-	r := e.router
 
 	// Routes
-	r.Add(http.MethodGet, "/users", handlerFunc)
-	r.Add(http.MethodGet, "/users/new", handlerFunc)
-	r.Add(http.MethodGet, "/users/:id", handlerFunc)
-	r.Add(http.MethodGet, "/users/dew", handlerFunc)
-	r.Add(http.MethodGet, "/users/:id/files", handlerFunc)
-	r.Add(http.MethodGet, "/users/newsee", handlerFunc)
-	r.Add(http.MethodGet, "/users/*", handlerFunc)
-	r.Add(http.MethodGet, "/users/new/*", handlerFunc)
-	r.Add(http.MethodGet, "/*", handlerFunc)
+	e.GET("/users", handlerFunc)
+	e.GET("/users/new", handlerFunc)
+	e.GET("/users/:id", handlerFunc)
+	e.GET("/users/dew", handlerFunc)
+	e.GET("/users/:id/files", handlerFunc)
+	e.GET("/users/newsee", handlerFunc)
+	e.GET("/users/*", handlerFunc)
+	e.GET("/users/new/*", handlerFunc)
+	e.GET("/*", handlerFunc)
 
 	var testCases = []struct {
 		whenMethod  string
@@ -1717,17 +1772,20 @@ func TestRouterPriority(t *testing.T) {
 			if tc.whenMethod != "" {
 				method = tc.whenMethod
 			}
-			r.Find(method, tc.whenURL, c)
-			err := c.handler(c)
 
+			req := httptest.NewRequest(method, tc.whenURL, nil)
+			match := e.router.Match(req, c.pathParams)
+			c.route = match.RouteInfo
+
+			err := match.Handler(c)
 			if tc.expectError != nil {
 				assert.Equal(t, tc.expectError, err)
 			} else {
 				assert.NoError(t, err)
 			}
-			assert.Equal(t, tc.expectRoute, c.Get("path"))
+			assert.Equal(t, tc.expectRoute, match.RoutePath)
 			for param, expectedValue := range tc.expectParam {
-				assert.Equal(t, expectedValue, c.Param(param))
+				assert.Equal(t, expectedValue, c.pathParams.Get(param, "---none---"))
 			}
 			checkUnusedParamValues(t, c, tc.expectParam)
 		})
@@ -1736,29 +1794,23 @@ func TestRouterPriority(t *testing.T) {
 
 func TestRouterIssue1348(t *testing.T) {
 	e := New()
-	r := e.router
 
-	r.Add(http.MethodGet, "/:lang/", func(c Context) error {
-		return nil
-	})
-	r.Add(http.MethodGet, "/:lang/dupa", func(c Context) error {
-		return nil
-	})
+	e.GET("/:lang/", handlerFunc)
+	e.GET("/:lang/dupa", handlerFunc)
 }
 
 // Issue #372
 func TestRouterPriorityNotFound(t *testing.T) {
 	e := New()
-	r := e.router
 
 	// Add
-	r.Add(http.MethodGet, "/a/foo", handlerFunc)
-	r.Add(http.MethodGet, "/a/bar", handlerFunc)
+	e.GET("/a/foo", handlerFunc)
+	e.GET("/a/bar", handlerFunc)
 
 	var testCases = []struct {
 		whenMethod  string
 		whenURL     string
-		expectRoute interface{}
+		expectRoute string
 		expectParam map[string]string
 		expectError error
 	}{
@@ -1772,7 +1824,7 @@ func TestRouterPriorityNotFound(t *testing.T) {
 		},
 		{
 			whenURL:     "/abc/def",
-			expectRoute: nil,
+			expectRoute: "",
 			expectError: ErrNotFound,
 		},
 	}
@@ -1784,17 +1836,20 @@ func TestRouterPriorityNotFound(t *testing.T) {
 			if tc.whenMethod != "" {
 				method = tc.whenMethod
 			}
-			r.Find(method, tc.whenURL, c)
-			err := c.handler(c)
 
+			req := httptest.NewRequest(method, tc.whenURL, nil)
+			match := e.router.Match(req, c.pathParams)
+			c.route = match.RouteInfo
+
+			err := match.Handler(c)
 			if tc.expectError != nil {
 				assert.Equal(t, tc.expectError, err)
 			} else {
 				assert.NoError(t, err)
 			}
-			assert.Equal(t, tc.expectRoute, c.Get("path"))
+			assert.Equal(t, tc.expectRoute, match.RoutePath)
 			for param, expectedValue := range tc.expectParam {
-				assert.Equal(t, expectedValue, c.Param(param))
+				assert.Equal(t, expectedValue, c.pathParams.Get(param, "---none---"))
 			}
 			checkUnusedParamValues(t, c, tc.expectParam)
 		})
@@ -1803,12 +1858,11 @@ func TestRouterPriorityNotFound(t *testing.T) {
 
 func TestRouterParamNames(t *testing.T) {
 	e := New()
-	r := e.router
 
 	// Routes
-	r.Add(http.MethodGet, "/users", handlerFunc)
-	r.Add(http.MethodGet, "/users/:id", handlerFunc)
-	r.Add(http.MethodGet, "/users/:uid/files/:fid", handlerFunc)
+	e.GET("/users", handlerFunc)
+	e.GET("/users/:id", handlerFunc)
+	e.GET("/users/:uid/files/:fid", handlerFunc)
 
 	var testCases = []struct {
 		whenMethod  string
@@ -1843,17 +1897,20 @@ func TestRouterParamNames(t *testing.T) {
 			if tc.whenMethod != "" {
 				method = tc.whenMethod
 			}
-			r.Find(method, tc.whenURL, c)
-			err := c.handler(c)
 
+			req := httptest.NewRequest(method, tc.whenURL, nil)
+			match := e.router.Match(req, c.pathParams)
+			c.route = match.RouteInfo
+
+			err := match.Handler(c)
 			if tc.expectError != nil {
 				assert.Equal(t, tc.expectError, err)
 			} else {
 				assert.NoError(t, err)
 			}
-			assert.Equal(t, tc.expectRoute, c.Get("path"))
+			assert.Equal(t, tc.expectRoute, match.RoutePath)
 			for param, expectedValue := range tc.expectParam {
-				assert.Equal(t, expectedValue, c.Param(param))
+				assert.Equal(t, expectedValue, c.pathParams.Get(param, "---none---"))
 			}
 			checkUnusedParamValues(t, c, tc.expectParam)
 		})
@@ -1863,19 +1920,18 @@ func TestRouterParamNames(t *testing.T) {
 // Issue #623 and #1406
 func TestRouterStaticDynamicConflict(t *testing.T) {
 	e := New()
-	r := e.router
 
-	r.Add(http.MethodGet, "/dictionary/skills", handlerHelper("a", 1))
-	r.Add(http.MethodGet, "/dictionary/:name", handlerHelper("b", 2))
-	r.Add(http.MethodGet, "/users/new", handlerHelper("d", 4))
-	r.Add(http.MethodGet, "/users/:name", handlerHelper("e", 5))
-	r.Add(http.MethodGet, "/server", handlerHelper("c", 3))
-	r.Add(http.MethodGet, "/", handlerHelper("f", 6))
+	e.GET("/dictionary/skills", handlerFunc)
+	e.GET("/dictionary/:name", handlerFunc)
+	e.GET("/users/new", handlerFunc)
+	e.GET("/users/:name", handlerFunc)
+	e.GET("/server", handlerFunc)
+	e.GET("/", handlerFunc)
 
 	var testCases = []struct {
 		whenMethod  string
 		whenURL     string
-		expectRoute interface{}
+		expectRoute string
 		expectParam map[string]string
 		expectError error
 	}{
@@ -1920,17 +1976,20 @@ func TestRouterStaticDynamicConflict(t *testing.T) {
 			if tc.whenMethod != "" {
 				method = tc.whenMethod
 			}
-			r.Find(method, tc.whenURL, c)
-			err := c.handler(c)
 
+			req := httptest.NewRequest(method, tc.whenURL, nil)
+			match := e.router.Match(req, c.pathParams)
+			c.route = match.RouteInfo
+
+			err := match.Handler(c)
 			if tc.expectError != nil {
 				assert.Equal(t, tc.expectError, err)
 			} else {
 				assert.NoError(t, err)
 			}
-			assert.Equal(t, tc.expectRoute, c.Get("path"))
+			assert.Equal(t, tc.expectRoute, match.RoutePath)
 			for param, expectedValue := range tc.expectParam {
-				assert.Equal(t, expectedValue, c.Param(param))
+				assert.Equal(t, expectedValue, c.pathParams.Get(param, ""))
 			}
 			checkUnusedParamValues(t, c, tc.expectParam)
 		})
@@ -1940,19 +1999,18 @@ func TestRouterStaticDynamicConflict(t *testing.T) {
 // Issue #1348
 func TestRouterParamBacktraceNotFound(t *testing.T) {
 	e := New()
-	r := e.router
 
 	// Add
-	r.Add(http.MethodGet, "/:param1", handlerFunc)
-	r.Add(http.MethodGet, "/:param1/foo", handlerFunc)
-	r.Add(http.MethodGet, "/:param1/bar", handlerFunc)
-	r.Add(http.MethodGet, "/:param1/bar/:param2", handlerFunc)
+	e.GET("/:param1", handlerFunc)
+	e.GET("/:param1/foo", handlerFunc)
+	e.GET("/:param1/bar", handlerFunc)
+	e.GET("/:param1/bar/:param2", handlerFunc)
 
 	var testCases = []struct {
 		name        string
 		whenMethod  string
 		whenURL     string
-		expectRoute interface{}
+		expectRoute string
 		expectParam map[string]string
 		expectError error
 	}{
@@ -1986,7 +2044,7 @@ func TestRouterParamBacktraceNotFound(t *testing.T) {
 		{
 			name:        "route /a/bbbbb should return 404",
 			whenURL:     "/a/bbbbb",
-			expectRoute: nil,
+			expectRoute: "",
 			expectError: ErrNotFound,
 		},
 	}
@@ -1998,40 +2056,52 @@ func TestRouterParamBacktraceNotFound(t *testing.T) {
 			if tc.whenMethod != "" {
 				method = tc.whenMethod
 			}
-			r.Find(method, tc.whenURL, c)
-			err := c.handler(c)
 
+			req := httptest.NewRequest(method, tc.whenURL, nil)
+			match := e.router.Match(req, c.pathParams)
+			c.route = match.RouteInfo
+
+			err := match.Handler(c)
 			if tc.expectError != nil {
 				assert.Equal(t, tc.expectError, err)
 			} else {
 				assert.NoError(t, err)
 			}
-			assert.Equal(t, tc.expectRoute, c.Get("path"))
+			assert.Equal(t, tc.expectRoute, match.RoutePath)
 			for param, expectedValue := range tc.expectParam {
-				assert.Equal(t, expectedValue, c.Param(param))
+				assert.Equal(t, expectedValue, c.pathParams.Get(param, "---none---"))
 			}
 			checkUnusedParamValues(t, c, tc.expectParam)
 		})
 	}
 }
 
-func testRouterAPI(t *testing.T, api []*Route) {
+func testRouterAPI(t *testing.T, api []testRoute) {
 	e := New()
-	r := e.router
 
 	for _, route := range api {
-		r.Add(route.Method, route.Path, func(c Context) error {
-			return nil
+		ri, err := e.AddRoute(Route{
+			Method: route.Method,
+			Path:   route.Path,
+			Handler: func(c Context) error {
+				return nil
+			},
 		})
+		assert.NoError(t, err)
+		assert.NotNil(t, ri)
 	}
+
 	c := e.NewContext(nil, nil).(*context)
 	for _, route := range api {
 		t.Run(route.Path, func(t *testing.T) {
-			r.Find(route.Method, route.Path, c)
+
+			req := httptest.NewRequest(route.Method, route.Path, nil)
+			e.router.Match(req, c.pathParams)
+
 			tokens := strings.Split(route.Path[1:], "/")
 			for _, token := range tokens {
 				if token[0] == ':' {
-					assert.Equal(t, c.Param(token[1:]), token)
+					assert.Equal(t, c.pathParams.Get(token[1:], "---none---"), token)
 				}
 			}
 		})
@@ -2042,9 +2112,70 @@ func TestRouterGitHubAPI(t *testing.T) {
 	testRouterAPI(t, gitHubAPI)
 }
 
+func TestRouter_Match_DifferentParamNamesForSamePlace(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		whenURL     string
+		whenMethod  string
+		expectRoute string
+		expectParam map[string]string
+		expectError error
+	}{
+		{
+			name:        "ok, 1=id + 2=file",
+			whenURL:     "/users/123/file/payroll.csv",
+			whenMethod:  http.MethodGet,
+			expectRoute: "/users/:id/file/:file",
+			expectParam: map[string]string{"id": "123", "file": "payroll.csv"},
+		},
+		{
+			name:        "ok, 1=id2 + 2=file2",
+			whenURL:     "/users/123/file/payroll.csv",
+			whenMethod:  http.MethodPost,
+			expectRoute: "/users/:id2/file/:file2",
+			expectParam: map[string]string{"id2": "123", "file2": "payroll.csv"},
+		},
+		{
+			name:        "ok, 1=uid",
+			whenURL:     "/users/999/files",
+			whenMethod:  http.MethodGet,
+			expectRoute: "/users/:uid/files",
+			expectParam: map[string]string{"uid": "999"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+
+			e.GET("/users/create", handlerFunc)
+			e.GET("/users/:id/file/:file", handlerFunc)
+			e.POST("/users/:id2/file/:file2", handlerFunc)
+			e.GET("/users/:uid/files", handlerFunc)
+
+			c := e.NewContext(nil, nil).(*context)
+			req := httptest.NewRequest(tc.whenMethod, tc.whenURL, nil)
+			match := e.router.Match(req, c.pathParams)
+			c.route = match.RouteInfo
+
+			err := match.Handler(c)
+			if tc.expectError != nil {
+				assert.Equal(t, tc.expectError, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, tc.expectRoute, match.RoutePath)
+			for param, expectedValue := range tc.expectParam {
+				assert.Equal(t, expectedValue, c.pathParams.Get(param, ""))
+			}
+			checkUnusedParamValues(t, c, tc.expectParam)
+		})
+	}
+}
+
 // Issue #729
 func TestRouterParamAlias(t *testing.T) {
-	api := []*Route{
+	api := []testRoute{
 		{http.MethodGet, "/users/:userID/following", ""},
 		{http.MethodGet, "/users/:userID/followedBy", ""},
 		{http.MethodGet, "/users/:userID/follow", ""},
@@ -2054,19 +2185,19 @@ func TestRouterParamAlias(t *testing.T) {
 
 // Issue #1052
 func TestRouterParamOrdering(t *testing.T) {
-	api := []*Route{
+	api := []testRoute{
 		{http.MethodGet, "/:a/:b/:c/:id", ""},
 		{http.MethodGet, "/:a/:id", ""},
 		{http.MethodGet, "/:a/:e/:id", ""},
 	}
 	testRouterAPI(t, api)
-	api2 := []*Route{
+	api2 := []testRoute{
 		{http.MethodGet, "/:a/:id", ""},
 		{http.MethodGet, "/:a/:e/:id", ""},
 		{http.MethodGet, "/:a/:b/:c/:id", ""},
 	}
 	testRouterAPI(t, api2)
-	api3 := []*Route{
+	api3 := []testRoute{
 		{http.MethodGet, "/:a/:b/:c/:id", ""},
 		{http.MethodGet, "/:a/:e/:id", ""},
 		{http.MethodGet, "/:a/:id", ""},
@@ -2076,12 +2207,12 @@ func TestRouterParamOrdering(t *testing.T) {
 
 // Issue #1139
 func TestRouterMixedParams(t *testing.T) {
-	api := []*Route{
+	api := []testRoute{
 		{http.MethodGet, "/teacher/:tid/room/suggestions", ""},
 		{http.MethodGet, "/teacher/:id", ""},
 	}
 	testRouterAPI(t, api)
-	api2 := []*Route{
+	api2 := []testRoute{
 		{http.MethodGet, "/teacher/:id", ""},
 		{http.MethodGet, "/teacher/:tid/room/suggestions", ""},
 	}
@@ -2091,23 +2222,24 @@ func TestRouterMixedParams(t *testing.T) {
 // Issue #1466
 func TestRouterParam1466(t *testing.T) {
 	e := New()
-	r := e.router
 
-	r.Add(http.MethodPost, "/users/signup", handlerFunc)
-	r.Add(http.MethodPost, "/users/signup/bulk", handlerFunc)
-	r.Add(http.MethodPost, "/users/survey", handlerFunc)
-	r.Add(http.MethodGet, "/users/:username", handlerFunc)
-	r.Add(http.MethodGet, "/interests/:name/users", handlerFunc)
-	r.Add(http.MethodGet, "/skills/:name/users", handlerFunc)
+	e.POST("/users/signup", handlerFunc)
+	e.POST("/users/signup/bulk", handlerFunc)
+	e.POST("/users/survey", handlerFunc)
+
+	e.GET("/users/:username", handlerFunc)
+	e.GET("/interests/:name/users", handlerFunc)
+	e.GET("/skills/:name/users", handlerFunc)
 	// Additional routes for Issue 1479
-	r.Add(http.MethodGet, "/users/:username/likes/projects/ids", handlerFunc)
-	r.Add(http.MethodGet, "/users/:username/profile", handlerFunc)
-	r.Add(http.MethodGet, "/users/:username/uploads/:type", handlerFunc)
+	e.GET("/users/:username/likes/projects/ids", handlerFunc)
+	e.GET("/users/:username/profile", handlerFunc)
+	e.GET("/users/:username/uploads/:type", handlerFunc)
 
 	var testCases = []struct {
 		whenURL     string
-		expectRoute interface{}
+		expectRoute string
 		expectParam map[string]string
+		expectError error
 	}{
 		{
 			whenURL:     "/users/ajitem",
@@ -2163,19 +2295,28 @@ func TestRouterParam1466(t *testing.T) {
 		},
 		{
 			whenURL:     "/users/tree/free",
-			expectRoute: nil, // not found
+			expectRoute: "", // not found
 			expectParam: map[string]string{"id": ""},
+			expectError: ErrNotFound,
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.whenURL, func(t *testing.T) {
 			c := e.NewContext(nil, nil).(*context)
 
-			r.Find(http.MethodGet, tc.whenURL, c)
-			c.handler(c)
-			assert.Equal(t, tc.expectRoute, c.Get("path"))
+			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
+			match := e.router.Match(req, c.pathParams)
+			c.route = match.RouteInfo
+
+			err := match.Handler(c)
+			if tc.expectError != nil {
+				assert.Equal(t, tc.expectError, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, tc.expectRoute, match.RoutePath)
 			for param, expectedValue := range tc.expectParam {
-				assert.Equal(t, expectedValue, c.Param(param))
+				assert.Equal(t, expectedValue, c.pathParams.Get(param, ""))
 			}
 			checkUnusedParamValues(t, c, tc.expectParam)
 		})
@@ -2185,12 +2326,13 @@ func TestRouterParam1466(t *testing.T) {
 // Issue #1655
 func TestRouterFindNotPanicOrLoopsWhenContextSetParamValuesIsCalledWithLessValuesThanEchoMaxParam(t *testing.T) {
 	e := New()
-	r := e.router
 
 	v0 := e.Group("/:version")
 	v0.GET("/admin", func(c Context) error {
-		c.SetParamNames("version")
-		c.SetParamValues("v1")
+		c.SetPathParams(PathParams{{
+			Name:  "version",
+			Value: "v1",
+		}})
 		return nil
 	})
 
@@ -2199,40 +2341,48 @@ func TestRouterFindNotPanicOrLoopsWhenContextSetParamValuesIsCalledWithLessValue
 	v0.GET("/view/*", handlerHelper("v", 1))
 
 	//If this API is called before the next two one panic the other loops ( of course without my fix ;) )
-	c := e.NewContext(nil, nil)
-	r.Find(http.MethodGet, "/v1/admin", c)
-	c.Handler()(c)
-	assert.Equal(t, "v1", c.Param("version"))
+	c := e.NewContext(nil, nil).(*context)
+	req := httptest.NewRequest(http.MethodGet, "/v1/admin", nil)
+	match := e.router.Match(req, c.pathParams)
+	c.route = match.RouteInfo
+
+	assert.NoError(t, match.Handler(c))
+	assert.Equal(t, "v1", c.PathParam("version"))
 
 	//panic
-	c = e.NewContext(nil, nil)
-	r.Find(http.MethodGet, "/v1/view/same-data", c)
-	c.Handler()(c)
-	assert.Equal(t, "same-data", c.Param("*"))
+	c = e.NewContext(nil, nil).(*context)
+	req = httptest.NewRequest(http.MethodGet, "/v1/view/same-data", nil)
+	match = e.router.Match(req, c.pathParams)
+	c.route = match.RouteInfo
+
+	assert.NoError(t, match.Handler(c))
+	assert.Equal(t, "same-data", c.PathParam("*"))
 	assert.Equal(t, 1, c.Get("v"))
 
 	//looping
-	c = e.NewContext(nil, nil)
-	r.Find(http.MethodGet, "/v1/images/view", c)
-	c.Handler()(c)
-	assert.Equal(t, "view", c.Param("id"))
+	c = e.NewContext(nil, nil).(*context)
+	req = httptest.NewRequest(http.MethodGet, "/v1/images/view", nil)
+	match = e.router.Match(req, c.pathParams)
+	c.route = match.RouteInfo
+
+	assert.NoError(t, match.Handler(c))
+	assert.Equal(t, "view", c.PathParam("id"))
 	assert.Equal(t, 1, c.Get("i"))
 }
 
 // Issue #1653
 func TestRouterPanicWhenParamNoRootOnlyChildsFailsFind(t *testing.T) {
 	e := New()
-	r := e.router
 
-	r.Add(http.MethodGet, "/users/create", handlerFunc)
-	r.Add(http.MethodGet, "/users/:id/edit", handlerFunc)
-	r.Add(http.MethodGet, "/users/:id/active", handlerFunc)
+	e.GET("/users/create", handlerFunc)
+	e.GET("/users/:id/edit", handlerFunc)
+	e.GET("/users/:id/active", handlerFunc)
 
 	var testCases = []struct {
-		whenURL      string
-		expectRoute  interface{}
-		expectParam  map[string]string
-		expectStatus int
+		whenURL     string
+		expectRoute string
+		expectParam map[string]string
+		expectError error
 	}{
 		{
 			whenURL:     "/users/alice/edit",
@@ -2251,40 +2401,247 @@ func TestRouterPanicWhenParamNoRootOnlyChildsFailsFind(t *testing.T) {
 		},
 		//This panic before the fix for Issue #1653
 		{
-			whenURL:      "/users/createNotFound",
-			expectStatus: http.StatusNotFound,
+			whenURL:     "/users/createNotFound",
+			expectError: ErrNotFound,
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.whenURL, func(t *testing.T) {
 			c := e.NewContext(nil, nil).(*context)
 
-			r.Find(http.MethodGet, tc.whenURL, c)
-			err := c.handler(c)
+			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
+			match := e.router.Match(req, c.pathParams)
+			c.route = match.RouteInfo
 
-			if tc.expectStatus != 0 {
-				assert.Error(t, err)
-				he := err.(*HTTPError)
-				assert.Equal(t, tc.expectStatus, he.Code)
+			err := match.Handler(c)
+			if tc.expectError != nil {
+				assert.Equal(t, tc.expectError, err)
+			} else {
+				assert.NoError(t, err)
 			}
-			assert.Equal(t, tc.expectRoute, c.Get("path"))
+			assert.Equal(t, tc.expectRoute, match.RoutePath)
 			for param, expectedValue := range tc.expectParam {
-				assert.Equal(t, expectedValue, c.Param(param))
+				assert.Equal(t, expectedValue, c.pathParams.Get(param, "---none---"))
 			}
 			checkUnusedParamValues(t, c, tc.expectParam)
 		})
 	}
 }
 
-func benchmarkRouterRoutes(b *testing.B, routes []*Route, routesToFind []*Route) {
+func TestRoutes_ReverseHandlerName(t *testing.T) {
+	static := func(Context) error { return nil }
+	getUser := func(Context) error { return nil }
+	getAny := func(Context) error { return nil }
+	getFile := func(Context) error { return nil }
+
+	var testCases = []struct {
+		name      string
+		when      string
+		whenArgs  []interface{}
+		expect    string
+		expectErr string
+	}{
+		{
+			name:     "ok, HandlerName + args",
+			when:     HandlerName(getFile),
+			whenArgs: []interface{}{"1"},
+			expect:   "/group/users/1/files/:fid",
+		},
+		{
+			name:   "ok, HandlerName",
+			when:   HandlerName(getFile),
+			expect: "/group/users/:uid/files/:fid",
+		},
+		{
+			name:   "ok, unnamed fixed name",
+			when:   "GET:/static/file",
+			expect: "/static/file",
+		},
+		{
+			name:   "ok, unnamed fixed name",
+			when:   "GET:/users/:id",
+			expect: "/users/:id",
+		},
+		{
+			name:   "ok, unnamed any route",
+			when:   "POST:/documents/*",
+			expect: "/documents/*",
+		},
+		{
+			name:     "ok, unnamed any route + args",
+			when:     "GET:/documents/*",
+			whenArgs: []interface{}{"index.html"},
+			expect:   "/documents/index.html",
+		},
+		{
+			name:     "ok, named route + args",
+			when:     HandlerName(getFile),
+			whenArgs: []interface{}{"1", "abc"},
+			expect:   "/group/users/1/files/abc",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			e.GET("/static/file", static)
+			e.GET("/users/:id", getUser)
+			e.Any("/documents/*", getAny)
+
+			g := e.Group("/group")
+			g.GET("/roles/:rid/files/:fid", getFile)
+			g.AddRoute(Route{Method: http.MethodGet, Path: "/users/:uid/files/:fid", Handler: getFile, Name: HandlerName(getFile)})
+
+			reversed, err := e.Router().Routes().Reverse(tc.when, tc.whenArgs...)
+
+			assert.Equal(t, tc.expect, reversed)
+			if tc.expectErr != "" {
+				assert.EqualError(t, err, tc.expectErr)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestRoutes_Reverse(t *testing.T) {
+	var testCases = []struct {
+		name      string
+		when      string
+		whenArgs  []interface{}
+		expect    string
+		expectErr string
+	}{
+		{
+			name:   "ok, static",
+			when:   "/static",
+			expect: "/static",
+		},
+		{
+			name:     "ok, static + args",
+			when:     "/static",
+			whenArgs: []interface{}{"missing param"},
+			expect:   "/static",
+		},
+		{
+			name:   "ok, static/*",
+			when:   "/static/*",
+			expect: "/static/*",
+		},
+		{
+			name:     "ok, static/*",
+			when:     "/static/*",
+			whenArgs: []interface{}{"foo.txt"},
+			expect:   "/static/foo.txt",
+		},
+		{
+			name:   "ok, /params/:foo",
+			when:   "/params/:foo",
+			expect: "/params/:foo",
+		},
+		{
+			name:     "ok, /params/:foo + args",
+			when:     "/params/:foo",
+			whenArgs: []interface{}{"one"},
+			expect:   "/params/one",
+		},
+		{
+			name:   "ok, /params/:foo/bar/:qux",
+			when:   "/params/:foo/bar/:qux",
+			expect: "/params/:foo/bar/:qux",
+		},
+		{
+			name:     "ok, /params/:foo/bar/:qux + args1",
+			when:     "/params/:foo/bar/:qux",
+			whenArgs: []interface{}{"one"},
+			expect:   "/params/one/bar/:qux",
+		},
+		{
+			name:     "ok, /params/:foo/bar/:qux + args2",
+			when:     "/params/:foo/bar/:qux",
+			whenArgs: []interface{}{"one", "two"},
+			expect:   "/params/one/bar/two",
+		},
+		{
+			name:     "ok, /params/:foo/bar/:qux/* + args3",
+			when:     "/params/:foo/bar/:qux/*",
+			whenArgs: []interface{}{"one", "two", "three"},
+			expect:   "/params/one/bar/two/three",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			dummyHandler := func(Context) error { return nil }
+
+			router := NewRouter(New(), RouterConfig{})
+			router.Add(Route{Path: "/static", Name: "/static", Method: http.MethodGet, Handler: dummyHandler})
+			router.Add(Route{Path: "/static/*", Name: "/static/*", Method: http.MethodGet, Handler: dummyHandler})
+			router.Add(Route{Path: "/params/:foo", Name: "/params/:foo", Method: http.MethodGet, Handler: dummyHandler})
+			router.Add(Route{Path: "/params/:foo/bar/:qux", Name: "/params/:foo/bar/:qux", Method: http.MethodGet, Handler: dummyHandler})
+			router.Add(Route{Path: "/params/:foo/bar/:qux/*", Name: "/params/:foo/bar/:qux/*", Method: http.MethodGet, Handler: dummyHandler})
+
+			reversed, err := router.Routes().Reverse(tc.when, tc.whenArgs...)
+			assert.Equal(t, tc.expect, reversed)
+			if tc.expectErr != "" {
+				assert.EqualError(t, err, tc.expectErr)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestRouter_Routes(t *testing.T) {
+	routes := []*Route{
+		{Method: http.MethodGet, Path: "/users/:user/events"},
+		{Method: http.MethodGet, Path: "/users/:user/events/public"},
+		{Method: http.MethodPost, Path: "/repos/:owner/:repo/git/refs"},
+		{Method: http.MethodPost, Path: "/repos/:owner/:repo/git/tags"},
+	}
+	router := NewRouter(New(), RouterConfig{})
+	for _, r := range routes {
+		_, err := router.Add(Route{
+			Method: r.Method,
+			Path:   r.Path,
+			Handler: func(c Context) error {
+				return c.String(http.StatusOK, "OK")
+			},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	assert.Equal(t, len(routes), len(router.Routes()))
+	for _, r := range router.Routes() {
+		found := false
+		for _, rr := range routes {
+			if r.Method() == rr.Method && r.Path() == rr.Path {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Route %s %s not found", r.Method(), r.Path())
+		}
+	}
+}
+
+func benchmarkRouterRoutes(b *testing.B, routes []testRoute, routesToFind []testRoute) {
 	e := New()
 	r := e.router
+	req := httptest.NewRequest("GET", "/", nil)
 	b.ReportAllocs()
 
 	// Add routes
 	for _, route := range routes {
-		r.Add(route.Method, route.Path, func(c Context) error {
-			return nil
+		e.AddRoute(Route{
+			Method: route.Method,
+			Path:   route.Path,
+			Handler: func(c Context) error {
+				return nil
+			},
 		})
 	}
 
@@ -2294,11 +2651,431 @@ func benchmarkRouterRoutes(b *testing.B, routes []*Route, routesToFind []*Route)
 	// Find routes
 	for i := 0; i < b.N; i++ {
 		for _, route := range routesToFind {
-			c := e.pool.Get().(*context)
-			r.Find(route.Method, route.Path, c)
-			e.pool.Put(c)
+			c := e.contextPool.Get().(*context)
+
+			req.Method = route.Method
+			req.URL.Path = route.Path
+
+			match := r.Match(req, c.pathParams)
+			c.route = match.RouteInfo
+
+			e.contextPool.Put(c)
 		}
 	}
+}
+
+func TestDefaultRouter_Remove(t *testing.T) {
+	var testCases = []struct {
+		name       string
+		givenPaths []string
+		whenMethod string
+		whenPath   string
+		expectErr  string
+	}{
+		{
+			name:     "ok, static",
+			whenPath: "/users",
+		},
+		{
+			name:     "ok, static without slash",
+			whenPath: "users",
+		},
+		{
+			name:     "ok, multilevel static",
+			whenPath: "/users/newsee",
+		},
+		{
+			name:     "ok, static with path params",
+			whenPath: "/users/:id/files",
+		},
+		{
+			name:     "ok, path params",
+			whenPath: "/users/:id",
+		},
+		{
+			name:     "ok, any",
+			whenPath: "/users/new/*",
+		},
+		{
+			name:     "ok, any root",
+			whenPath: "/*",
+		},
+		{
+			name:     "ok, multilevel any",
+			whenPath: "/users/dew/*",
+		},
+		{
+			name:       "ok, single root",
+			givenPaths: []string{"/users"},
+			whenPath:   "/users",
+		},
+		{
+			name:       "nok, no routes, nothing to remove",
+			givenPaths: []string{},
+			whenPath:   "/users/",
+			expectErr:  "router has no routes to remove",
+		},
+		{
+			name:      "nok, route not found (matches partial node)",
+			whenPath:  "/users/",
+			expectErr: "could not find route to remove by given path",
+		},
+		{
+			name:      "nok, route not found (matches partial node)",
+			whenPath:  "",
+			expectErr: "could not find route to remove by given path",
+		},
+		{
+			name:      "nok, route not found",
+			whenPath:  "/this_is_not_existent",
+			expectErr: "could not find route to remove by given path",
+		},
+		{
+			name:       "nok, multilevel static but different method",
+			whenPath:   "/users/newsee",
+			whenMethod: http.MethodPost,
+			expectErr:  "could not find route to remove by given path and method",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+
+			paths := []string{
+				"/users",
+				"/users/new",
+				"/users/:id",
+				"/users/dew",
+				"/users/dew/*",
+				"/users/:id/files",
+				"/users/newsee",
+				"/users/new/new",
+				"/users/new/*",
+				"/*",
+			}
+			if tc.givenPaths != nil {
+				paths = tc.givenPaths
+			}
+			index := -1
+			for i, p := range paths {
+				e.GET(p, handlerFunc)
+				if p == tc.whenPath {
+					index = i
+				}
+			}
+			var toCheckPaths []string
+			if index != -1 {
+				toCheckPaths = append(paths[:index], paths[index+1:]...)
+			}
+
+			method := tc.whenMethod
+			if method == "" {
+				method = http.MethodGet
+			}
+
+			err := e.Router().Remove(method, tc.whenPath)
+
+			if tc.expectErr != "" {
+				assert.EqualError(t, err, tc.expectErr)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			for _, p := range toCheckPaths {
+				req := httptest.NewRequest(http.MethodGet, p, nil)
+				params := make(PathParams, 0, 5)
+				match := e.Router().Match(req, &params)
+				assert.Equal(t, p, match.RoutePath, "after removing %v we matched wrong route. when matching: %v, got: %v", tc.whenPath, p, match.RoutePath)
+			}
+		})
+	}
+}
+
+func TestDefaultRouter_AddWithoutHandler(t *testing.T) {
+	e := New()
+	router := NewRouter(e, RouterConfig{})
+
+	ri, err := router.Add(Route{Method: http.MethodGet, Path: "/info", Handler: nil})
+	assert.EqualError(t, err, "GET /info: adding route without handler function")
+	assert.Nil(t, ri)
+}
+
+func TestDefaultRouter_AddDuplicateRouteNotAllowed(t *testing.T) {
+	e := New()
+	router := NewRouter(e, RouterConfig{})
+	e.router = router
+
+	ri, err := router.Add(Route{
+		Method: http.MethodGet,
+		Path:   "/info",
+		Handler: func(c Context) error {
+			return c.String(http.StatusTeapot, "OLD")
+		},
+		Name: "old",
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, ri)
+
+	ri, err = router.Add(Route{Method: http.MethodGet, Path: "/info", Handler: handlerFunc, Name: "new"})
+	assert.Nil(t, ri)
+	assert.EqualError(t, err, "GET /info: adding duplicate route (same method+path) is not allowed")
+	assert.Len(t, router.Routes(), 1)
+
+	status, body := request(http.MethodGet, "/info", e)
+	assert.Equal(t, http.StatusTeapot, status)
+	assert.Equal(t, "OLD", body)
+}
+
+func TestName(t *testing.T) {
+
+}
+
+// See issue #1531, #1258 - there are cases when path parameter need to be unescaped
+func TestDefaultRouter_UnescapePathParamValues(t *testing.T) {
+	var testCases = []struct {
+		name                         string
+		givenUnescapePathParamValues bool
+		whenURL                      string
+		expectPath                   string
+		expectPathParams             PathParams
+	}{
+		{
+			name:                         "ok, unescape = true",
+			givenUnescapePathParamValues: true,
+			whenURL:                      "/first/value%20with%20space",
+			expectPath:                   "/first/:raw",
+			expectPathParams: PathParams{
+				{
+					Name:  "raw",
+					Value: "value with space",
+				},
+			},
+		},
+		{
+			name:                         "ok, multiple, unescape = true",
+			givenUnescapePathParamValues: true,
+			whenURL:                      "/second/%20/with%20space",
+			expectPath:                   "/second/:id/:fileName",
+			expectPathParams: PathParams{
+				{Name: "id", Value: " "},
+				{Name: "fileName", Value: "with space"},
+			},
+		},
+		{
+			name:                         "ok, any route, unescape = true",
+			givenUnescapePathParamValues: true,
+			whenURL:                      "/third/%20%2Fwith%20space",
+			expectPath:                   "/third/*",
+			expectPathParams: PathParams{
+				{Name: "*", Value: " /with space"},
+			},
+		},
+		{
+			name:                         "ok, unescape = false",
+			givenUnescapePathParamValues: false,
+			whenURL:                      "/first/value%20with%20space",
+			expectPath:                   "/first/:raw",
+			expectPathParams: PathParams{
+				{
+					Name:  "raw",
+					Value: "value%20with%20space",
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			router := NewRouter(e, RouterConfig{UnescapePathParamValues: tc.givenUnescapePathParamValues})
+			e.router = router
+
+			_, err := router.Add(Route{Method: http.MethodGet, Path: "/first/:raw", Handler: handlerFunc})
+			assert.NoError(t, err)
+			_, err = router.Add(Route{Method: http.MethodGet, Path: "/second/:id/:fileName", Handler: handlerFunc})
+			assert.NoError(t, err)
+			_, err = router.Add(Route{Method: http.MethodGet, Path: "/third/*", Handler: handlerFunc})
+			assert.NoError(t, err)
+
+			target, _ := url.Parse(tc.whenURL)
+			req := httptest.NewRequest(http.MethodGet, target.String(), nil)
+			req.URL.RawPath = tc.whenURL
+
+			params := make(PathParams, 0, 5)
+			match := e.Router().Match(req, &params)
+
+			assert.Equal(t, tc.expectPath, match.RoutePath)
+			assert.Equal(t, tc.expectPathParams, params)
+		})
+	}
+}
+
+func TestDefaultRouter_AddDuplicateRouteAllowed(t *testing.T) {
+	e := New()
+	router := NewRouter(e, RouterConfig{AllowOverwritingRoute: true})
+	e.router = router
+
+	ri, err := router.Add(Route{Method: http.MethodGet, Path: "/info", Handler: handlerFunc, Name: "old"})
+	assert.NoError(t, err)
+	assert.Equal(t, ri, routeInfo{
+		method: http.MethodGet,
+		path:   "/info",
+		name:   "old",
+	})
+
+	ri, err = router.Add(Route{
+		Method: http.MethodGet,
+		Path:   "/info",
+		Handler: func(c Context) error {
+			return c.String(http.StatusTeapot, "NEW")
+		},
+		Name: "new",
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, ri, routeInfo{
+		method: http.MethodGet,
+		path:   "/info",
+		name:   "new",
+	})
+
+	routes := router.Routes()
+	assert.Len(t, routes, 1)
+	assert.Equal(t, "new", routes[0].Name())
+
+	status, body := request(http.MethodGet, "/info", e)
+	assert.Equal(t, http.StatusTeapot, status)
+	assert.Equal(t, "NEW", body)
+}
+
+func TestDefaultRouter_UseEscapedPathForRouting(t *testing.T) {
+	var testCases = []struct {
+		name                               string
+		givenDoNotUseEscapedPathForRouting bool
+		whenRawPath                        string
+		expectBody                         string
+		expectStatus                       int
+	}{
+		{
+			name:         "ok, static route",
+			whenRawPath:  "/what's%20up",
+			expectBody:   "/what's up",
+			expectStatus: http.StatusTeapot,
+		},
+		{
+			name:                               "nok, rawPath does not match with route path",
+			givenDoNotUseEscapedPathForRouting: true,
+			whenRawPath:                        "/what's%20up", // route is "/what's up"
+			expectBody:                         "{\"message\":\"Not Found\"}\n",
+			expectStatus:                       http.StatusNotFound,
+		},
+		{
+			name:         "ok, match path param",
+			whenRawPath:  "/test/what's%20up",
+			expectBody:   "/test/:param|what's up",
+			expectStatus: http.StatusTeapot,
+		},
+		{
+			name:                               "ok, path param is unescaped as it is in rawPath",
+			givenDoNotUseEscapedPathForRouting: true,
+			whenRawPath:                        "/test/what's%20up",
+			expectBody:                         "/test/:param|what's%20up",
+			expectStatus:                       http.StatusTeapot,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			router := NewRouter(e, RouterConfig{UseEscapedPathForMatching: !tc.givenDoNotUseEscapedPathForRouting})
+			e.router = router
+			e.contextPathParamAllocSize = 1
+
+			ri, err := router.Add(Route{
+				Method: http.MethodGet,
+				Path:   "/what's up",
+				Handler: func(c Context) error {
+					return c.String(http.StatusTeapot, c.RouteInfo().Path())
+				},
+			})
+			assert.NoError(t, err)
+			assert.NotNil(t, ri)
+			ri, err = router.Add(Route{
+				Method: http.MethodGet,
+				Path:   "/test/:param",
+				Handler: func(c Context) error {
+					return c.String(http.StatusTeapot, c.RouteInfo().Path()+"|"+c.PathParam("param"))
+				},
+			})
+			assert.NoError(t, err)
+			assert.NotNil(t, ri)
+
+			status, body := request(http.MethodGet, tc.whenRawPath, e)
+			assert.Equal(t, tc.expectStatus, status)
+			assert.Equal(t, tc.expectBody, body)
+		})
+	}
+}
+
+type mySimpleRouter struct {
+	route Route
+}
+
+func (m *mySimpleRouter) Add(addRoute Routable) (RouteInfo, error) {
+	route := addRoute.ToRoute()
+	h := route.Handler
+	route.Handler = func(c Context) error {
+		c.Set("router", "mySimpleRouter")
+		return h(c)
+	}
+	m.route = route
+	return route.ToRouteInfo([]string{ /* no values */ }), nil
+}
+
+func (m *mySimpleRouter) Remove(method string, path string) error {
+	return nil
+}
+
+func (m *mySimpleRouter) Routes() Routes {
+	return Routes{m.route.ToRouteInfo(nil)}
+}
+
+func (m *mySimpleRouter) Match(req *http.Request, params *PathParams) RouteMatch {
+	return RouteMatch{
+		RoutePath: m.route.Path,
+		Handler:   m.route.Handler,
+	}
+}
+
+func TestCustomRouter_defaultAndVHostRouting(t *testing.T) {
+	e := New()
+	e.ResetRouterCreator(func(e *Echo) Router {
+		return &mySimpleRouter{}
+	})
+
+	e.GET("/info", func(c Context) error {
+		return c.String(http.StatusTeapot, "default from "+c.Get("router").(string))
+	})
+
+	g := e.Host("my.vhost.test")
+	g.GET("/info", func(c Context) error {
+		return c.String(http.StatusTeapot, "my.vhost.test default from "+c.Get("router").(string))
+	})
+
+	// see if default router was our mySimpleRouter
+	req := httptest.NewRequest(http.MethodGet, "/info", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusTeapot, rec.Code)
+	assert.Equal(t, "default from mySimpleRouter", rec.Body.String())
+
+	// see if vhost router was our mySimpleRouter
+	req = httptest.NewRequest(http.MethodGet, "/info", nil)
+	req.Host = "my.vhost.test"
+	rec = httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusTeapot, rec.Code)
+	assert.Equal(t, "my.vhost.test default from mySimpleRouter", rec.Body.String())
 }
 
 func BenchmarkRouterStaticRoutes(b *testing.B) {
@@ -2339,7 +3116,7 @@ func BenchmarkRouterParamsAndAnyAPI(b *testing.B) {
 
 func (n *node) printTree(pfx string, tail bool) {
 	p := prefix(tail, pfx, "└── ", "├── ")
-	fmt.Printf("%s%s, %p: type=%d, parent=%p, handler=%v, pnames=%v\n", p, n.prefix, n, n.kind, n.parent, n.methodHandler, n.pnames)
+	fmt.Printf("%s%s, %p: type=%d, parent=%p, handler=%v, paramNames=%v\n", p, n.prefix, n, n.kind, n.parent, n.methods, n.paramsCount)
 
 	p = prefix(tail, pfx, "    ", "│   ")
 

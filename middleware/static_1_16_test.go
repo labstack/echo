@@ -81,14 +81,16 @@ func TestStatic_CustomFS(t *testing.T) {
 
 			config := StaticConfig{
 				Root:       ".",
-				Filesystem: http.FS(tc.filesystem),
+				Filesystem: tc.filesystem,
 			}
 
 			if tc.root != "" {
 				config.Root = tc.root
 			}
 
-			middlewareFunc := StaticWithConfig(config)
+			middlewareFunc, err := config.ToMiddleware()
+			assert.NoError(t, err)
+
 			e.Use(middlewareFunc)
 
 			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)

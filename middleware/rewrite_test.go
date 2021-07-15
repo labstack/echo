@@ -24,10 +24,10 @@ func TestRewriteAfterRouting(t *testing.T) {
 		},
 	}))
 	e.GET("/public/*", func(c echo.Context) error {
-		return c.String(http.StatusOK, c.Param("*"))
+		return c.String(http.StatusOK, c.PathParam("*"))
 	})
 	e.GET("/*", func(c echo.Context) error {
-		return c.String(http.StatusOK, c.Param("*"))
+		return c.String(http.StatusOK, c.PathParam("*"))
 	})
 
 	var testCases = []struct {
@@ -90,20 +90,74 @@ func TestRewriteAfterRouting(t *testing.T) {
 	}
 }
 
+func TestMustRewriteWithConfig_emptyRulesPanics(t *testing.T) {
+	assert.Panics(t, func() {
+		RewriteWithConfig(RewriteConfig{})
+	})
+}
+
+func TestMustRewriteWithConfig_skipper(t *testing.T) {
+	var testCases = []struct {
+		name         string
+		givenSkipper func(c echo.Context) bool
+		whenURL      string
+		expectURL    string
+		expectStatus int
+	}{
+		{
+			name:         "not skipped",
+			whenURL:      "/old",
+			expectURL:    "/new",
+			expectStatus: http.StatusOK,
+		},
+		{
+			name: "skipped",
+			givenSkipper: func(c echo.Context) bool {
+				return true
+			},
+			whenURL:      "/old",
+			expectURL:    "/old",
+			expectStatus: http.StatusNotFound,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+
+			e.Pre(RewriteWithConfig(
+				RewriteConfig{
+					Skipper: tc.givenSkipper,
+					Rules:   map[string]string{"/old": "/new"}},
+			))
+
+			e.GET("/new", func(c echo.Context) error {
+				return c.NoContent(http.StatusOK)
+			})
+
+			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
+			rec := httptest.NewRecorder()
+
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, tc.expectURL, req.URL.EscapedPath())
+			assert.Equal(t, tc.expectStatus, rec.Code)
+		})
+	}
+}
+
 // Issue #1086
 func TestEchoRewritePreMiddleware(t *testing.T) {
 	e := echo.New()
-	r := e.Router()
 
 	// Rewrite old url to new one
 	// middlewares added with `Pre()` are executed before routing is done and therefore change which handler matches
-	e.Pre(Rewrite(map[string]string{
-		"/old": "/new",
-	},
-	))
+	e.Pre(RewriteWithConfig(RewriteConfig{
+		Rules: map[string]string{"/old": "/new"}}),
+	)
 
 	// Route
-	r.Add(http.MethodGet, "/new", func(c echo.Context) error {
+	e.Add(http.MethodGet, "/new", func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	})
 
@@ -117,7 +171,6 @@ func TestEchoRewritePreMiddleware(t *testing.T) {
 // Issue #1143
 func TestRewriteWithConfigPreMiddleware_Issue1143(t *testing.T) {
 	e := echo.New()
-	r := e.Router()
 
 	// middlewares added with `Pre()` are executed before routing is done and therefore change which handler matches
 	e.Pre(RewriteWithConfig(RewriteConfig{
@@ -127,10 +180,10 @@ func TestRewriteWithConfigPreMiddleware_Issue1143(t *testing.T) {
 		},
 	}))
 
-	r.Add(http.MethodGet, "/api/:version/hosts/:name", func(c echo.Context) error {
+	e.Add(http.MethodGet, "/api/:version/hosts/:name", func(c echo.Context) error {
 		return c.String(http.StatusOK, "hosts")
 	})
-	r.Add(http.MethodGet, "/api/:version/eng", func(c echo.Context) error {
+	e.Add(http.MethodGet, "/api/:version/eng", func(c echo.Context) error {
 		return c.String(http.StatusOK, "eng")
 	})
 

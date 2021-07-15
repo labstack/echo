@@ -300,6 +300,52 @@ func TestBindHeaderParamBadType(t *testing.T) {
 	}
 }
 
+func TestBind_CombineQueryWithHeaderParam(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(http.MethodGet, "/products/999?length=50&page=10&language=et", nil)
+	req.Header.Set("language", "de")
+	req.Header.Set("length", "99")
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetPathParams(PathParams{{
+		Name:  "id",
+		Value: "999",
+	}})
+
+	type SearchOpts struct {
+		ID       int    `param:"id"`
+		Length   int    `query:"length"`
+		Page     int    `query:"page"`
+		Search   string `query:"search"`
+		Language string `query:"language" header:"language"`
+	}
+
+	opts := SearchOpts{
+		Length:   100,
+		Page:     0,
+		Search:   "default value",
+		Language: "en",
+	}
+	err := c.Bind(&opts)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 50, opts.Length)              // bind from query
+	assert.Equal(t, 10, opts.Page)                // bind from query
+	assert.Equal(t, 999, opts.ID)                 // bind from path param
+	assert.Equal(t, "et", opts.Language)          // bind from query
+	assert.Equal(t, "default value", opts.Search) // default value stays
+
+	// make sure another bind will not mess already set values unless there are new values
+	err = (&DefaultBinder{}).BindHeaders(c, &opts)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 50, opts.Length) // does not have tag in struct although header exists
+	assert.Equal(t, 10, opts.Page)
+	assert.Equal(t, 999, opts.ID)
+	assert.Equal(t, "de", opts.Language) // header overwrites now this value
+	assert.Equal(t, "default value", opts.Search)
+}
+
 func TestBindUnmarshalParam(t *testing.T) {
 	e := New()
 	req := httptest.NewRequest(http.MethodGet, "/?ts=2016-12-06T19:09:05Z&sa=one,two,three&ta=2016-12-06T19:09:05Z&ta=2016-12-06T19:09:05Z&ST=baz", nil)
@@ -330,7 +376,7 @@ func TestBindUnmarshalParam(t *testing.T) {
 
 func TestBindUnmarshalText(t *testing.T) {
 	e := New()
-	req := httptest.NewRequest(GET, "/?ts=2016-12-06T19:09:05Z&sa=one,two,three&ta=2016-12-06T19:09:05Z&ta=2016-12-06T19:09:05Z&ST=baz", nil)
+	req := httptest.NewRequest(http.MethodGet, "/?ts=2016-12-06T19:09:05Z&sa=one,two,three&ta=2016-12-06T19:09:05Z&ta=2016-12-06T19:09:05Z&ST=baz", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	result := struct {
@@ -406,7 +452,7 @@ func TestBindUnmarshalParamAnonymousFieldPtrCustomTag(t *testing.T) {
 
 func TestBindUnmarshalTextPtr(t *testing.T) {
 	e := New()
-	req := httptest.NewRequest(GET, "/?ts=2016-12-06T19:09:05Z", nil)
+	req := httptest.NewRequest(http.MethodGet, "/?ts=2016-12-06T19:09:05Z", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	result := struct {
@@ -439,8 +485,7 @@ func TestBindUnsupportedMediaType(t *testing.T) {
 func TestBindbindData(t *testing.T) {
 	a := assert.New(t)
 	ts := new(bindTestStruct)
-	b := new(DefaultBinder)
-	err := b.bindData(ts, values, "form")
+	err := bindData(ts, values, "form")
 	a.NoError(err)
 
 	a.Equal(0, ts.I)
@@ -462,12 +507,15 @@ func TestBindbindData(t *testing.T) {
 
 func TestBindParam(t *testing.T) {
 	e := New()
-	req := httptest.NewRequest(GET, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	c.SetPath("/users/:id/:name")
-	c.SetParamNames("id", "name")
-	c.SetParamValues("1", "Jon Snow")
+	cc := c.(EditableContext)
+	cc.SetRouteInfo(routeInfo{path: "/users/:id/:name"})
+	cc.SetPathParams(PathParams{
+		{Name: "id", Value: "1"},
+		{Name: "name", Value: "Jon Snow"},
+	})
 
 	u := new(user)
 	err := c.Bind(u)
@@ -478,9 +526,11 @@ func TestBindParam(t *testing.T) {
 
 	// Second test for the absence of a param
 	c2 := e.NewContext(req, rec)
-	c2.SetPath("/users/:id")
-	c2.SetParamNames("id")
-	c2.SetParamValues("1")
+	cc2 := c2.(EditableContext)
+	cc2.SetRouteInfo(routeInfo{path: "/users/:id"})
+	cc2.SetPathParams(PathParams{
+		{Name: "id", Value: "1"},
+	})
 
 	u = new(user)
 	err = c2.Bind(u)
@@ -492,15 +542,17 @@ func TestBindParam(t *testing.T) {
 	// Bind something with param and post data payload
 	body := bytes.NewBufferString(`{ "name": "Jon Snow" }`)
 	e2 := New()
-	req2 := httptest.NewRequest(POST, "/", body)
+	req2 := httptest.NewRequest(http.MethodPost, "/", body)
 	req2.Header.Set(HeaderContentType, MIMEApplicationJSON)
 
 	rec2 := httptest.NewRecorder()
 
 	c3 := e2.NewContext(req2, rec2)
-	c3.SetPath("/users/:id")
-	c3.SetParamNames("id")
-	c3.SetParamValues("1")
+	cc3 := c3.(EditableContext)
+	cc3.SetRouteInfo(routeInfo{path: "/users/:id"})
+	cc3.SetPathParams(PathParams{
+		{Name: "id", Value: "1"},
+	})
 
 	u = new(user)
 	err = c3.Bind(u)
@@ -556,47 +608,115 @@ func TestBindSetWithProperType(t *testing.T) {
 	assert.Error(setWithProperType(typ.Field(0).Type.Kind(), "5", val.Field(0)))
 }
 
-func TestBindSetFields(t *testing.T) {
-	assert := assert.New(t)
+func TestSetIntField(t *testing.T) {
+	ts := new(bindTestStruct)
+	ts.I = 100
 
+	val := reflect.ValueOf(ts).Elem()
+
+	// empty value does nothing to field
+	// in that way we can have default values by setting field value before binding
+	err := setIntField("", 0, val.FieldByName("I"))
+	assert.NoError(t, err)
+	assert.Equal(t, 100, ts.I)
+
+	// second set with value sets the value
+	err = setIntField("5", 0, val.FieldByName("I"))
+	assert.NoError(t, err)
+	assert.Equal(t, 5, ts.I)
+
+	// third set without value does nothing to the value
+	// in that way multiple binds (ala query + header) do not reset fields to 0s
+	err = setIntField("", 0, val.FieldByName("I"))
+	assert.NoError(t, err)
+	assert.Equal(t, 5, ts.I)
+}
+
+func TestSetUintField(t *testing.T) {
+	ts := new(bindTestStruct)
+	ts.UI = 100
+
+	val := reflect.ValueOf(ts).Elem()
+
+	// empty value does nothing to field
+	// in that way we can have default values by setting field value before binding
+	err := setUintField("", 0, val.FieldByName("UI"))
+	assert.NoError(t, err)
+	assert.Equal(t, uint(100), ts.UI)
+
+	// second set with value sets the value
+	err = setUintField("5", 0, val.FieldByName("UI"))
+	assert.NoError(t, err)
+	assert.Equal(t, uint(5), ts.UI)
+
+	// third set without value does nothing to the value
+	// in that way multiple binds (ala query + header) do not reset fields to 0s
+	err = setUintField("", 0, val.FieldByName("UI"))
+	assert.NoError(t, err)
+	assert.Equal(t, uint(5), ts.UI)
+}
+
+func TestSetFloatField(t *testing.T) {
+	ts := new(bindTestStruct)
+	ts.F32 = 100
+
+	val := reflect.ValueOf(ts).Elem()
+
+	// empty value does nothing to field
+	// in that way we can have default values by setting field value before binding
+	err := setFloatField("", 0, val.FieldByName("F32"))
+	assert.NoError(t, err)
+	assert.Equal(t, float32(100), ts.F32)
+
+	// second set with value sets the value
+	err = setFloatField("15.5", 0, val.FieldByName("F32"))
+	assert.NoError(t, err)
+	assert.Equal(t, float32(15.5), ts.F32)
+
+	// third set without value does nothing to the value
+	// in that way multiple binds (ala query + header) do not reset fields to 0s
+	err = setFloatField("", 0, val.FieldByName("F32"))
+	assert.NoError(t, err)
+	assert.Equal(t, float32(15.5), ts.F32)
+}
+
+func TestSetBoolField(t *testing.T) {
+	ts := new(bindTestStruct)
+	ts.B = true
+
+	val := reflect.ValueOf(ts).Elem()
+
+	// empty value does nothing to field
+	// in that way we can have default values by setting field value before binding
+	err := setBoolField("", val.FieldByName("B"))
+	assert.NoError(t, err)
+	assert.Equal(t, true, ts.B)
+
+	// second set with value sets the value
+	err = setBoolField("true", val.FieldByName("B"))
+	assert.NoError(t, err)
+	assert.Equal(t, true, ts.B)
+
+	// third set without value does nothing to the value
+	// in that way multiple binds (ala query + header) do not reset fields to 0s
+	err = setBoolField("", val.FieldByName("B"))
+	assert.NoError(t, err)
+	assert.Equal(t, true, ts.B)
+
+	// fourth set to false
+	err = setBoolField("false", val.FieldByName("B"))
+	assert.NoError(t, err)
+	assert.Equal(t, false, ts.B)
+}
+
+func TestUnmarshalFieldNonPtr(t *testing.T) {
 	ts := new(bindTestStruct)
 	val := reflect.ValueOf(ts).Elem()
-	// Int
-	if assert.NoError(setIntField("5", 0, val.FieldByName("I"))) {
-		assert.Equal(5, ts.I)
-	}
-	if assert.NoError(setIntField("", 0, val.FieldByName("I"))) {
-		assert.Equal(0, ts.I)
-	}
-
-	// Uint
-	if assert.NoError(setUintField("10", 0, val.FieldByName("UI"))) {
-		assert.Equal(uint(10), ts.UI)
-	}
-	if assert.NoError(setUintField("", 0, val.FieldByName("UI"))) {
-		assert.Equal(uint(0), ts.UI)
-	}
-
-	// Float
-	if assert.NoError(setFloatField("15.5", 0, val.FieldByName("F32"))) {
-		assert.Equal(float32(15.5), ts.F32)
-	}
-	if assert.NoError(setFloatField("", 0, val.FieldByName("F32"))) {
-		assert.Equal(float32(0.0), ts.F32)
-	}
-
-	// Bool
-	if assert.NoError(setBoolField("true", val.FieldByName("B"))) {
-		assert.Equal(true, ts.B)
-	}
-	if assert.NoError(setBoolField("", val.FieldByName("B"))) {
-		assert.Equal(false, ts.B)
-	}
 
 	ok, err := unmarshalFieldNonPtr("2016-12-06T19:09:05Z", val.FieldByName("T"))
-	if assert.NoError(err) {
-		assert.Equal(ok, true)
-		assert.Equal(Timestamp(time.Date(2016, 12, 6, 19, 9, 5, 0, time.UTC)), ts.T)
+	if assert.NoError(t, err) {
+		assert.True(t, ok)
+		assert.Equal(t, Timestamp(time.Date(2016, 12, 6, 19, 9, 5, 0, time.UTC)), ts.T)
 	}
 }
 
@@ -604,11 +724,10 @@ func BenchmarkBindbindDataWithTags(b *testing.B) {
 	b.ReportAllocs()
 	assert := assert.New(b)
 	ts := new(bindTestStructWithTags)
-	binder := new(DefaultBinder)
 	var err error
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		err = binder.bindData(ts, values, "form")
+		err = bindData(ts, values, "form")
 	}
 	assert.NoError(err)
 	assertBindTestStruct(assert, (*bindTestStruct)(ts))
@@ -840,8 +959,10 @@ func TestDefaultBinder_BindToStructFromMixedSources(t *testing.T) {
 			c := e.NewContext(req, rec)
 
 			if !tc.whenNoPathParams {
-				c.SetParamNames("node")
-				c.SetParamValues("node_from_path")
+				cc := c.(EditableContext)
+				cc.SetPathParams(PathParams{
+					{Name: "node", Value: "node_from_path"},
+				})
 			}
 
 			var bindTarget interface{}
@@ -852,7 +973,7 @@ func TestDefaultBinder_BindToStructFromMixedSources(t *testing.T) {
 			}
 			b := new(DefaultBinder)
 
-			err := b.Bind(bindTarget, c)
+			err := b.Bind(c, bindTarget)
 			if tc.expectError != "" {
 				assert.EqualError(t, err, tc.expectError)
 			} else {
@@ -1021,8 +1142,10 @@ func TestDefaultBinder_BindBody(t *testing.T) {
 			c := e.NewContext(req, rec)
 
 			if !tc.whenNoPathParams {
-				c.SetParamNames("node")
-				c.SetParamValues("real_node")
+				cc := c.(EditableContext)
+				cc.SetPathParams(PathParams{
+					{Name: "node", Value: "real_node"},
+				})
 			}
 
 			var bindTarget interface{}
@@ -1031,9 +1154,8 @@ func TestDefaultBinder_BindBody(t *testing.T) {
 			} else {
 				bindTarget = &Node{}
 			}
-			b := new(DefaultBinder)
 
-			err := b.BindBody(c, bindTarget)
+			err := BindBody(c, bindTarget)
 			if tc.expectError != "" {
 				assert.EqualError(t, err, tc.expectError)
 			} else {

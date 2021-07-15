@@ -30,14 +30,15 @@ func createTestContext15(URL string, body io.Reader, pathParams map[string]strin
 	c := e.NewContext(req, rec)
 
 	if len(pathParams) > 0 {
-		names := make([]string, 0)
-		values := make([]string, 0)
+		params := make(PathParams, 0)
 		for name, value := range pathParams {
-			names = append(names, name)
-			values = append(values, value)
+			params = append(params, PathParam{
+				Name:  name,
+				Value: value,
+			})
 		}
-		c.SetParamNames(names...)
-		c.SetParamValues(values...)
+		cc := c.(EditableContext)
+		cc.SetPathParams(params)
 	}
 
 	return c

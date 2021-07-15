@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"log"
 	"net"
@@ -14,9 +16,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/labstack/echo/v4"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestTimeoutSkipper(t *testing.T) {
@@ -111,7 +110,7 @@ func TestTimeoutOnTimeoutRouteErrorHandler(t *testing.T) {
 	actualErrChan := make(chan error, 1)
 	m := TimeoutWithConfig(TimeoutConfig{
 		Timeout: 1 * time.Millisecond,
-		OnTimeoutRouteErrorHandler: func(err error, c echo.Context) {
+		OnTimeoutRouteErrorHandler: func(c echo.Context, err error) {
 			actualErrChan <- err
 		},
 	})
@@ -360,7 +359,7 @@ func TestTimeoutWithFullEchoStack(t *testing.T) {
 	e := echo.New()
 
 	buf := new(bytes.Buffer)
-	e.Logger.SetOutput(buf)
+	e.Logger = &testLogger{output: buf}
 
 	// NOTE: timeout middleware is first as it changes Response.Writer and causes data race for logger middleware if it is not first
 	// FIXME: I have no idea how to fix this without adding mutexes.
@@ -424,7 +423,7 @@ func startServer(e *echo.Echo) (*http.Server, string, error) {
 
 	s := http.Server{
 		Handler:  e,
-		ErrorLog: log.New(e.Logger.Output(), "echo:", 0),
+		ErrorLog: log.New(e.Logger, "echo:", 0),
 	}
 
 	errCh := make(chan error)
