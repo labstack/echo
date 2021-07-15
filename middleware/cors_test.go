@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,7 +17,7 @@ func TestCORS(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	h := CORS()(echo.NotFoundHandler)
+	h := CORS()(func(c echo.Context) error { return echo.ErrNotFound })
 	req.Header.Set(echo.HeaderOrigin, "localhost")
 	h(c)
 	assert.Equal(t, "*", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
@@ -26,7 +26,7 @@ func TestCORS(t *testing.T) {
 	req = httptest.NewRequest(http.MethodGet, "/", nil)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
-	h = CORS()(echo.NotFoundHandler)
+	h = CORS()(func(c echo.Context) error { return echo.ErrNotFound })
 	h(c)
 	assert.NotContains(t, rec.Header(), echo.HeaderAccessControlAllowOrigin)
 
@@ -38,7 +38,7 @@ func TestCORS(t *testing.T) {
 		AllowOrigins:     []string{"localhost"},
 		AllowCredentials: true,
 		MaxAge:           3600,
-	})(echo.NotFoundHandler)
+	})(func(c echo.Context) error { return echo.ErrNotFound })
 	req.Header.Set(echo.HeaderOrigin, "localhost")
 	h(c)
 	assert.Equal(t, "localhost", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
@@ -55,7 +55,7 @@ func TestCORS(t *testing.T) {
 		AllowCredentials: true,
 		MaxAge:           3600,
 	})
-	h = cors(echo.NotFoundHandler)
+	h = cors(func(c echo.Context) error { return echo.ErrNotFound })
 	h(c)
 	assert.Equal(t, "localhost", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
 	assert.NotEmpty(t, rec.Header().Get(echo.HeaderAccessControlAllowMethods))
@@ -73,7 +73,7 @@ func TestCORS(t *testing.T) {
 		AllowCredentials: true,
 		MaxAge:           3600,
 	})
-	h = cors(echo.NotFoundHandler)
+	h = cors(func(c echo.Context) error { return echo.ErrNotFound })
 	h(c)
 	assert.Equal(t, "localhost", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
 	assert.NotEmpty(t, rec.Header().Get(echo.HeaderAccessControlAllowMethods))
@@ -90,7 +90,7 @@ func TestCORS(t *testing.T) {
 	cors = CORSWithConfig(CORSConfig{
 		AllowOrigins: []string{"*"},
 	})
-	h = cors(echo.NotFoundHandler)
+	h = cors(func(c echo.Context) error { return echo.ErrNotFound })
 	h(c)
 	assert.Equal(t, "*", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
 	assert.Equal(t, "Special-Request-Header", rec.Header().Get(echo.HeaderAccessControlAllowHeaders))
@@ -104,7 +104,7 @@ func TestCORS(t *testing.T) {
 	cors = CORSWithConfig(CORSConfig{
 		AllowOrigins: []string{"http://*.example.com"},
 	})
-	h = cors(echo.NotFoundHandler)
+	h = cors(func(c echo.Context) error { return echo.ErrNotFound })
 	h(c)
 	assert.Equal(t, "http://aaa.example.com", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
 
@@ -149,7 +149,7 @@ func Test_allowOriginScheme(t *testing.T) {
 		cors := CORSWithConfig(CORSConfig{
 			AllowOrigins: []string{tt.pattern},
 		})
-		h := cors(echo.NotFoundHandler)
+		h := cors(func(c echo.Context) error { return echo.ErrNotFound })
 		h(c)
 
 		if tt.expected {
@@ -240,7 +240,7 @@ func Test_allowOriginSubdomain(t *testing.T) {
 		cors := CORSWithConfig(CORSConfig{
 			AllowOrigins: []string{tt.pattern},
 		})
-		h := cors(echo.NotFoundHandler)
+		h := cors(func(c echo.Context) error { return echo.ErrNotFound })
 		h(c)
 
 		if tt.expected {
@@ -324,7 +324,9 @@ func TestCORSWithConfig_AllowMethods(t *testing.T) {
 				c.Set(echo.ContextKeyHeaderAllow, tc.allowContextKey)
 			}
 
-			h := cors(echo.NotFoundHandler)
+			h := cors(func(c echo.Context) error {
+				return c.String(http.StatusOK, "OK")
+			})
 			h(c)
 
 			assert.Equal(t, tc.expectAllow, rec.Header().Get(echo.HeaderAllow))
@@ -511,11 +513,11 @@ func Test_allowOriginFunc(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 		req.Header.Set(echo.HeaderOrigin, origin)
-		cors := CORSWithConfig(CORSConfig{
-			AllowOriginFunc: allowOriginFunc,
-		})
-		h := cors(echo.NotFoundHandler)
-		err := h(c)
+		cors, err := CORSConfig{AllowOriginFunc: allowOriginFunc}.ToMiddleware()
+		assert.NoError(t, err)
+
+		h := cors(func(c echo.Context) error { return echo.ErrNotFound })
+		err = h(c)
 
 		expected, expectedErr := allowOriginFunc(origin)
 		if expectedErr != nil {

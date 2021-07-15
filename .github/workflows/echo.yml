@@ -19,7 +19,7 @@ on:
       - '_fixture/**'
       - '.github/**'
       - 'codecov.yml'
-  workflow_dispatch:
+  workflow_dispatch: # to be able to run workflow manually
 
 jobs:
   test:
@@ -28,7 +28,8 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
         # Each major Go release is supported until there are two newer major releases. https://golang.org/doc/devel/release.html#policy
         # Echo tests with last four major releases
-        go: [1.16, 1.17, 1.18]
+        # except v5 starts from 1.17 until there is last four major releases after that
+        go: [1.17, 1.18]
     name: ${{ matrix.os }} @ Go ${{ matrix.go }}
     runs-on: ${{ matrix.os }}
     steps:
@@ -52,7 +53,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: success() && matrix.go == 1.18 && matrix.os == 'ubuntu-latest'
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v2
         with:
           token:
           fail_ci_if_error: false

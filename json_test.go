@@ -14,7 +14,7 @@ func TestDefaultJSONCodec_Encode(t *testing.T) {
 	e := New()
 	req := httptest.NewRequest(http.MethodPost, "/", nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec).(*context)
+	c := e.NewContext(req, rec).(*DefaultContext)
 
 	assert := testify.New(t)
 
@@ -40,7 +40,7 @@ func TestDefaultJSONCodec_Encode(t *testing.T) {
 
 	req = httptest.NewRequest(http.MethodPost, "/", nil)
 	rec = httptest.NewRecorder()
-	c = e.NewContext(req, rec).(*context)
+	c = e.NewContext(req, rec).(*DefaultContext)
 	err = enc.Serialize(c, user{1, "Jon Snow"}, "  ")
 	if assert.NoError(err) {
 		assert.Equal(userJSONPretty+"\n", rec.Body.String())
@@ -53,7 +53,7 @@ func TestDefaultJSONCodec_Decode(t *testing.T) {
 	e := New()
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userJSON))
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec).(*context)
+	c := e.NewContext(req, rec).(*DefaultContext)
 
 	assert := testify.New(t)
 
@@ -81,7 +81,7 @@ func TestDefaultJSONCodec_Decode(t *testing.T) {
 	var userUnmarshalSyntaxError = user{}
 	req = httptest.NewRequest(http.MethodPost, "/", strings.NewReader(invalidContent))
 	rec = httptest.NewRecorder()
-	c = e.NewContext(req, rec).(*context)
+	c = e.NewContext(req, rec).(*DefaultContext)
 	err = enc.Deserialize(c, &userUnmarshalSyntaxError)
 	assert.IsType(&HTTPError{}, err)
 	assert.EqualError(err, "code=400, message=Syntax error: offset=1, error=invalid character 'i' looking for beginning of value, internal=invalid character 'i' looking for beginning of value")
@@ -93,7 +93,7 @@ func TestDefaultJSONCodec_Decode(t *testing.T) {
 
 	req = httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userJSON))
 	rec = httptest.NewRecorder()
-	c = e.NewContext(req, rec).(*context)
+	c = e.NewContext(req, rec).(*DefaultContext)
 	err = enc.Deserialize(c, &userUnmarshalTypeError)
 	assert.IsType(&HTTPError{}, err)
 	assert.EqualError(err, "code=400, message=Unmarshal type error: expected=string, got=number, field=id, offset=7, internal=json: cannot unmarshal number into Go struct field .id of type string")

@@ -5,97 +5,102 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/gommon/random"
+	"github.com/labstack/echo/v5"
 )
 
-type (
-	// CSRFConfig defines the config for CSRF middleware.
-	CSRFConfig struct {
-		// Skipper defines a function to skip middleware.
-		Skipper Skipper
+// CSRFConfig defines the config for CSRF middleware.
+type CSRFConfig struct {
+	// Skipper defines a function to skip middleware.
+	Skipper Skipper
 
-		// TokenLength is the length of the generated token.
-		TokenLength uint8 `yaml:"token_length"`
-		// Optional. Default value 32.
+	// TokenLength is the length of the generated token.
+	TokenLength uint8
+	// Optional. Default value 32.
 
-		// TokenLookup is a string in the form of "<source>:<name>" or "<source>:<name>,<source>:<name>" that is used
-		// to extract token from the request.
-		// Optional. Default value "header:X-CSRF-Token".
-		// Possible values:
-		// - "header:<name>" or "header:<name>:<cut-prefix>"
-		// - "query:<name>"
-		// - "form:<name>"
-		// Multiple sources example:
-		// - "header:X-CSRF-Token,query:csrf"
-		TokenLookup string `yaml:"token_lookup"`
+	// TokenLookup is a string in the form of "<source>:<name>" or "<source>:<name>,<source>:<name>" that is used
+	// to extract token from the request.
+	// Optional. Default value "header:X-CSRF-Token".
+	// Possible values:
+	// - "header:<name>" or "header:<name>:<cut-prefix>"
+	// - "query:<name>"
+	// - "form:<name>"
+	// Multiple sources example:
+	// - "header:X-CSRF-Token,query:csrf"
+	TokenLookup string `yaml:"token_lookup"`
 
-		// Context key to store generated CSRF token into context.
-		// Optional. Default value "csrf".
-		ContextKey string `yaml:"context_key"`
+	// Generator defines a function to generate token.
+	// Optional. Defaults tp randomString(TokenLength).
+	Generator func() string
 
-		// Name of the CSRF cookie. This cookie will store CSRF token.
-		// Optional. Default value "csrf".
-		CookieName string `yaml:"cookie_name"`
+	// Context key to store generated CSRF token into context.
+	// Optional. Default value "csrf".
+	ContextKey string
 
-		// Domain of the CSRF cookie.
-		// Optional. Default value none.
-		CookieDomain string `yaml:"cookie_domain"`
+	// Name of the CSRF cookie. This cookie will store CSRF token.
+	// Optional. Default value "csrf".
+	CookieName string
 
-		// Path of the CSRF cookie.
-		// Optional. Default value none.
-		CookiePath string `yaml:"cookie_path"`
+	// Domain of the CSRF cookie.
+	// Optional. Default value none.
+	CookieDomain string
 
-		// Max age (in seconds) of the CSRF cookie.
-		// Optional. Default value 86400 (24hr).
-		CookieMaxAge int `yaml:"cookie_max_age"`
+	// Path of the CSRF cookie.
+	// Optional. Default value none.
+	CookiePath string
 
-		// Indicates if CSRF cookie is secure.
-		// Optional. Default value false.
-		CookieSecure bool `yaml:"cookie_secure"`
+	// Max age (in seconds) of the CSRF cookie.
+	// Optional. Default value 86400 (24hr).
+	CookieMaxAge int
 
-		// Indicates if CSRF cookie is HTTP only.
-		// Optional. Default value false.
-		CookieHTTPOnly bool `yaml:"cookie_http_only"`
+	// Indicates if CSRF cookie is secure.
+	// Optional. Default value false.
+	CookieSecure bool
 
-		// Indicates SameSite mode of the CSRF cookie.
-		// Optional. Default value SameSiteDefaultMode.
-		CookieSameSite http.SameSite `yaml:"cookie_same_site"`
-	}
-)
+	// Indicates if CSRF cookie is HTTP only.
+	// Optional. Default value false.
+	CookieHTTPOnly bool
+
+	// Indicates SameSite mode of the CSRF cookie.
+	// Optional. Default value SameSiteDefaultMode.
+	CookieSameSite http.SameSite
+}
 
 // ErrCSRFInvalid is returned when CSRF check fails
 var ErrCSRFInvalid = echo.NewHTTPError(http.StatusForbidden, "invalid csrf token")
 
-var (
-	// DefaultCSRFConfig is the default CSRF middleware config.
-	DefaultCSRFConfig = CSRFConfig{
-		Skipper:        DefaultSkipper,
-		TokenLength:    32,
-		TokenLookup:    "header:" + echo.HeaderXCSRFToken,
-		ContextKey:     "csrf",
-		CookieName:     "_csrf",
-		CookieMaxAge:   86400,
-		CookieSameSite: http.SameSiteDefaultMode,
-	}
-)
+// DefaultCSRFConfig is the default CSRF middleware config.
+var DefaultCSRFConfig = CSRFConfig{
+	Skipper:        DefaultSkipper,
+	TokenLength:    32,
+	TokenLookup:    "header:" + echo.HeaderXCSRFToken,
+	ContextKey:     "csrf",
+	CookieName:     "_csrf",
+	CookieMaxAge:   86400,
+	CookieSameSite: http.SameSiteDefaultMode,
+}
 
 // CSRF returns a Cross-Site Request Forgery (CSRF) middleware.
 // See: https://en.wikipedia.org/wiki/Cross-site_request_forgery
 func CSRF() echo.MiddlewareFunc {
-	c := DefaultCSRFConfig
-	return CSRFWithConfig(c)
+	return CSRFWithConfig(DefaultCSRFConfig)
 }
 
-// CSRFWithConfig returns a CSRF middleware with config.
-// See `CSRF()`.
+// CSRFWithConfig returns a CSRF middleware with config or panics on invalid configuration.
 func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
+	return toMiddlewareOrPanic(config)
+}
+
+// ToMiddleware converts CSRFConfig to middleware or returns an error for invalid configuration
+func (config CSRFConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 	// Defaults
 	if config.Skipper == nil {
 		config.Skipper = DefaultCSRFConfig.Skipper
 	}
 	if config.TokenLength == 0 {
 		config.TokenLength = DefaultCSRFConfig.TokenLength
+	}
+	if config.Generator == nil {
+		config.Generator = createRandomStringGenerator(config.TokenLength)
 	}
 	if config.TokenLookup == "" {
 		config.TokenLookup = DefaultCSRFConfig.TokenLookup
@@ -113,9 +118,9 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 		config.CookieSecure = true
 	}
 
-	extractors, err := createExtractors(config.TokenLookup, "")
+	extractors, err := createExtractors(config.TokenLookup)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -126,7 +131,7 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 
 			token := ""
 			if k, err := c.Cookie(config.CookieName); err != nil {
-				token = random.String(config.TokenLength) // Generate token
+				token = config.Generator() // Generate token
 			} else {
 				token = k.Value // Reuse token
 			}
@@ -157,17 +162,7 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 				if lastTokenErr != nil {
 					return lastTokenErr
 				} else if lastExtractorErr != nil {
-					// ugly part to preserve backwards compatible errors. someone could rely on them
-					if lastExtractorErr == errQueryExtractorValueMissing {
-						lastExtractorErr = echo.NewHTTPError(http.StatusBadRequest, "missing csrf token in the query string")
-					} else if lastExtractorErr == errFormExtractorValueMissing {
-						lastExtractorErr = echo.NewHTTPError(http.StatusBadRequest, "missing csrf token in the form parameter")
-					} else if lastExtractorErr == errHeaderExtractorValueMissing {
-						lastExtractorErr = echo.NewHTTPError(http.StatusBadRequest, "missing csrf token in request header")
-					} else {
-						lastExtractorErr = echo.NewHTTPError(http.StatusBadRequest, lastExtractorErr.Error())
-					}
-					return lastExtractorErr
+					return echo.ErrBadRequest.WithInternal(lastExtractorErr)
 				}
 			}
 
@@ -197,7 +192,7 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 
 			return next(c)
 		}
-	}
+	}, nil
 }
 
 func validateCSRFToken(token, clientToken string) bool {
