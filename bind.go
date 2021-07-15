@@ -11,42 +11,38 @@ import (
 	"strings"
 )
 
-type (
-	// Binder is the interface that wraps the Bind method.
-	Binder interface {
-		Bind(i interface{}, c Context) error
-	}
+// Binder is the interface that wraps the Bind method.
+type Binder interface {
+	Bind(c Context, i interface{}) error
+}
 
-	// DefaultBinder is the default implementation of the Binder interface.
-	DefaultBinder struct{}
+// DefaultBinder is the default implementation of the Binder interface.
+type DefaultBinder struct{}
 
-	// BindUnmarshaler is the interface used to wrap the UnmarshalParam method.
-	// Types that don't implement this, but do implement encoding.TextUnmarshaler
-	// will use that interface instead.
-	BindUnmarshaler interface {
-		// UnmarshalParam decodes and assigns a value from an form or query param.
-		UnmarshalParam(param string) error
-	}
-)
+// BindUnmarshaler is the interface used to wrap the UnmarshalParam method.
+// Types that don't implement this, but do implement encoding.TextUnmarshaler
+// will use that interface instead.
+type BindUnmarshaler interface {
+	// UnmarshalParam decodes and assigns a value from an form or query param.
+	UnmarshalParam(param string) error
+}
 
 // BindPathParams binds path params to bindable object
-func (b *DefaultBinder) BindPathParams(c Context, i interface{}) error {
-	names := c.ParamNames()
-	values := c.ParamValues()
+func BindPathParams(c Context, i interface{}) error {
 	params := map[string][]string{}
-	for i, name := range names {
-		params[name] = []string{values[i]}
+	for _, param := range c.PathParams() {
+		params[param.Name] = []string{param.Value}
 	}
-	if err := b.bindData(i, params, "param"); err != nil {
-		return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
+	if err := bindData(i, params, "param"); err != nil {
+		return NewHTTPErrorWithInternal(http.StatusBadRequest, err, err.Error())
 	}
 	return nil
 }
 
 // BindQueryParams binds query params to bindable object
-func (b *DefaultBinder) BindQueryParams(c Context, i interface{}) error {
-	if err := b.bindData(i, c.QueryParams(), "query"); err != nil {
-		return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
+func BindQueryParams(c Context, i interface{}) error {
+	if err := bindData(i, c.QueryParams(), "query"); err != nil {
+		return NewHTTPErrorWithInternal(http.StatusBadRequest, err, err.Error())
 	}
 	return nil
 }
@@ -56,7 +52,7 @@ func (b *DefaultBinder) BindQueryParams(c Context, i interface{}) error {
 // which parses form data from BOTH URL and BODY if content type is not MIMEMultipartForm
 // See non-MIMEMultipartForm: https://golang.org/pkg/net/http/#Request.ParseForm
 // See MIMEMultipartForm: https://golang.org/pkg/net/http/#Request.ParseMultipartForm
-func (b *DefaultBinder) BindBody(c Context, i interface{}) (err error) {
+func BindBody(c Context, i interface{}) (err error) {
 	req := c.Request()
 	if req.ContentLength == 0 {
 		return
@@ -70,25 +66,25 @@ func (b *DefaultBinder) BindBody(c Context, i interface{}) (err error) {
 			case *HTTPError:
 				return err
 			default:
-				return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
+				return NewHTTPErrorWithInternal(http.StatusBadRequest, err, err.Error())
 			}
 		}
 	case strings.HasPrefix(ctype, MIMEApplicationXML), strings.HasPrefix(ctype, MIMETextXML):
 		if err = xml.NewDecoder(req.Body).Decode(i); err != nil {
 			if ute, ok := err.(*xml.UnsupportedTypeError); ok {
-				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Unsupported type error: type=%v, error=%v", ute.Type, ute.Error())).SetInternal(err)
+				return NewHTTPErrorWithInternal(http.StatusBadRequest, err, fmt.Sprintf("Unsupported type error: type=%v, error=%v", ute.Type, ute.Error()))
 			} else if se, ok := err.(*xml.SyntaxError); ok {
-				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Syntax error: line=%v, error=%v", se.Line, se.Error())).SetInternal(err)
+				return NewHTTPErrorWithInternal(http.StatusBadRequest, err, fmt.Sprintf("Syntax error: line=%v, error=%v", se.Line, se.Error()))
 			}
-			return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
+			return NewHTTPErrorWithInternal(http.StatusBadRequest, err, err.Error())
 		}
 	case strings.HasPrefix(ctype, MIMEApplicationForm), strings.HasPrefix(ctype, MIMEMultipartForm):
-		params, err := c.FormParams()
+		values, err := c.FormValues()
 		if err != nil {
-			return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
+			return NewHTTPErrorWithInternal(http.StatusBadRequest, err, err.Error())
 		}
-		if err = b.bindData(i, params, "form"); err != nil {
-			return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
+		if err = bindData(i, values, "form"); err != nil {
+			return NewHTTPErrorWithInternal(http.StatusBadRequest, err, err.Error())
 		}
 	default:
 		return ErrUnsupportedMediaType
@@ -97,34 +93,34 @@ func (b *DefaultBinder) BindBody(c Context, i interface{}) (err error) {
 }
 
 // BindHeaders binds HTTP headers to a bindable object
-func (b *DefaultBinder) BindHeaders(c Context, i interface{}) error {
-	if err := b.bindData(i, c.Request().Header, "header"); err != nil {
-		return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
+func BindHeaders(c Context, i interface{}) error {
+	if err := bindData(i, c.Request().Header, "header"); err != nil {
+		return NewHTTPErrorWithInternal(http.StatusBadRequest, err, err.Error())
 	}
 	return nil
 }
 
 // Bind implements the `Binder#Bind` function.
 // Binding is done in following order: 1) path params; 2) query params; 3) request body. Each step COULD override previous
-// step binded values. For single source binding use their own methods BindBody, BindQueryParams, BindPathParams.
-func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
-	if err := b.BindPathParams(c, i); err != nil {
+// step bound values. For single source binding use their own methods BindBody, BindQueryParams, BindPathParams.
+func (b *DefaultBinder) Bind(c Context, i interface{}) (err error) {
+	if err := BindPathParams(c, i); err != nil {
 		return err
 	}
 	// Only bind query parameters for GET/DELETE/HEAD to avoid unexpected behavior with destination struct binding from body.
 	// For example a request URL `&id=1&lang=en` with body `{"id":100,"lang":"de"}` would lead to precedence issues.
 	// The HTTP method check restores pre-v4.1.11 behavior to avoid these problems (see issue #1670)
-  method := c.Request().Method
+	method := c.Request().Method
 	if method == http.MethodGet || method == http.MethodDelete || method == http.MethodHead {
-		if err = b.BindQueryParams(c, i); err != nil {
+		if err = BindQueryParams(c, i); err != nil {
 			return err
 		}
 	}
-	return b.BindBody(c, i)
+	return BindBody(c, i)
 }
 
 // bindData will bind data ONLY fields in destination struct that have EXPLICIT tag
-func (b *DefaultBinder) bindData(destination interface{}, data map[string][]string, tag string) error {
+func bindData(destination interface{}, data map[string][]string, tag string) error {
 	if destination == nil || len(data) == 0 {
 		return nil
 	}
@@ -167,10 +163,10 @@ func (b *DefaultBinder) bindData(destination interface{}, data map[string][]stri
 		}
 
 		if inputFieldName == "" {
-			// If tag is nil, we inspect if the field is a not BindUnmarshaler struct and try to bind data into it (might contains fields with tags).
-			// structs that implement BindUnmarshaler are binded only when they have explicit tag
+			// If tag is nil, we inspect if the field is a not BindUnmarshaler struct and try to bind data into it (might contain fields with tags).
+			// structs that implement BindUnmarshaler are bound only when they have explicit tag
 			if _, ok := structField.Addr().Interface().(BindUnmarshaler); !ok && structFieldKind == reflect.Struct {
-				if err := b.bindData(structField.Addr().Interface(), data, tag); err != nil {
+				if err := bindData(structField.Addr().Interface(), data, tag); err != nil {
 					return err
 				}
 			}
@@ -180,10 +176,8 @@ func (b *DefaultBinder) bindData(destination interface{}, data map[string][]stri
 
 		inputValue, exists := data[inputFieldName]
 		if !exists {
-			// Go json.Unmarshal supports case insensitive binding.  However the
-			// url params are bound case sensitive which is inconsistent.  To
-			// fix this we must check all of the map values in a
-			// case-insensitive search.
+			// Go json.Unmarshal supports case-insensitive binding.  However, the url params are bound case-sensitive which
+			// is inconsistent.  To fix this we must check all the map values in a case-insensitive search.
 			for k, v := range data {
 				if strings.EqualFold(k, inputFieldName) {
 					inputValue = v
@@ -297,7 +291,7 @@ func unmarshalFieldPtr(value string, field reflect.Value) (bool, error) {
 
 func setIntField(value string, bitSize int, field reflect.Value) error {
 	if value == "" {
-		value = "0"
+		return nil
 	}
 	intVal, err := strconv.ParseInt(value, 10, bitSize)
 	if err == nil {
@@ -308,7 +302,7 @@ func setIntField(value string, bitSize int, field reflect.Value) error {
 
 func setUintField(value string, bitSize int, field reflect.Value) error {
 	if value == "" {
-		value = "0"
+		return nil
 	}
 	uintVal, err := strconv.ParseUint(value, 10, bitSize)
 	if err == nil {
@@ -319,7 +313,7 @@ func setUintField(value string, bitSize int, field reflect.Value) error {
 
 func setBoolField(value string, field reflect.Value) error {
 	if value == "" {
-		value = "false"
+		return nil
 	}
 	boolVal, err := strconv.ParseBool(value)
 	if err == nil {
@@ -330,7 +324,7 @@ func setBoolField(value string, field reflect.Value) error {
 
 func setFloatField(value string, bitSize int, field reflect.Value) error {
 	if value == "" {
-		value = "0.0"
+		return nil
 	}
 	floatVal, err := strconv.ParseFloat(value, bitSize)
 	if err == nil {

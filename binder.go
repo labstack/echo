@@ -118,10 +118,10 @@ func QueryParamsBinder(c Context) *ValueBinder {
 func PathParamsBinder(c Context) *ValueBinder {
 	return &ValueBinder{
 		failFast:  true,
-		ValueFunc: c.Param,
+		ValueFunc: c.PathParam,
 		ValuesFunc: func(sourceParam string) []string {
 			// path parameter should not have multiple values so getting values does not make sense but lets not error out here
-			value := c.Param(sourceParam)
+			value := c.PathParam(sourceParam)
 			if value == "" {
 				return nil
 			}

@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
@@ -289,7 +289,7 @@ func TestRequestLogger_allFields(t *testing.T) {
 	req.Header.Set(echo.HeaderXRealIP, "8.8.8.8")
 
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
+	c := e.NewContext(req, rec).(echo.ServableContext)
 
 	c.SetPath("/test*")
 

@@ -1,9 +1,8 @@
 package middleware
 
 import (
-	"errors"
 	"fmt"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"net/textproto"
 	"strings"
 )
@@ -14,17 +13,27 @@ const (
 	extractorLimit = 20
 )
 
-var errHeaderExtractorValueMissing = errors.New("missing value in request header")
-var errHeaderExtractorValueInvalid = errors.New("invalid value in request header")
-var errQueryExtractorValueMissing = errors.New("missing value in the query string")
-var errParamExtractorValueMissing = errors.New("missing value in path params")
-var errCookieExtractorValueMissing = errors.New("missing value in cookies")
-var errFormExtractorValueMissing = errors.New("missing value in the form")
+// ValueExtractorError is error type when middleware extractor is unable to extract value from lookups
+type ValueExtractorError struct {
+	message string
+}
+
+// Error returns errors text
+func (e *ValueExtractorError) Error() string {
+	return e.message
+}
+
+var errHeaderExtractorValueMissing = &ValueExtractorError{message: "missing value in request header"}
+var errHeaderExtractorValueInvalid = &ValueExtractorError{message: "invalid value in request header"}
+var errQueryExtractorValueMissing = &ValueExtractorError{message: "missing value in the query string"}
+var errParamExtractorValueMissing = &ValueExtractorError{message: "missing value in path params"}
+var errCookieExtractorValueMissing = &ValueExtractorError{message: "missing value in cookies"}
+var errFormExtractorValueMissing = &ValueExtractorError{message: "missing value in the form"}
 
 // ValuesExtractor defines a function for extracting values (keys/tokens) from the given context.
 type ValuesExtractor func(c echo.Context) ([]string, error)
 
-func createExtractors(lookups string, authScheme string) ([]ValuesExtractor, error) {
+func createExtractors(lookups string) ([]ValuesExtractor, error) {
 	if lookups == "" {
 		return nil, nil
 	}
@@ -49,15 +58,6 @@ func createExtractors(lookups string, authScheme string) ([]ValuesExtractor, err
 			prefix := ""
 			if len(parts) > 2 {
 				prefix = parts[2]
-			} else if authScheme != "" && parts[1] == echo.HeaderAuthorization {
-				// backwards compatibility for JWT and KeyAuth:
-				// * we only apply this fix to Authorization as header we use and uses prefixes like "Bearer <token-value>" etc
-				// * previously header extractor assumed that auth-scheme/prefix had a space as suffix we need to retain that
-				//   behaviour for default values and Authorization header.
-				prefix = authScheme
-				if !strings.HasSuffix(prefix, " ") {
-					prefix += " "
-				}
 			}
 			extractors = append(extractors, valuesFromHeader(parts[1], prefix))
 		}
@@ -125,10 +125,9 @@ func valuesFromQuery(param string) ValuesExtractor {
 func valuesFromParam(param string) ValuesExtractor {
 	return func(c echo.Context) ([]string, error) {
 		result := make([]string, 0)
-		paramVales := c.ParamValues()
-		for i, p := range c.ParamNames() {
-			if param == p {
-				result = append(result, paramVales[i])
+		for i, p := range c.PathParams() {
+			if param == p.Name {
+				result = append(result, p.Value)
 				if i >= extractorLimit-1 {
 					break
 				}

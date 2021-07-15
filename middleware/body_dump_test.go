@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -28,31 +28,48 @@ func TestBodyDump(t *testing.T) {
 
 	requestBody := ""
 	responseBody := ""
-	mw := BodyDump(func(c echo.Context, reqBody, resBody []byte) {
+	mw, err := BodyDumpConfig{Handler: func(c echo.Context, reqBody, resBody []byte) {
 		requestBody = string(reqBody)
 		responseBody = string(resBody)
-	})
+	}}.ToMiddleware()
+	assert.NoError(t, err)
 
-	assert := assert.New(t)
-
-	if assert.NoError(mw(h)(c)) {
-		assert.Equal(requestBody, hw)
-		assert.Equal(responseBody, hw)
-		assert.Equal(http.StatusOK, rec.Code)
-		assert.Equal(hw, rec.Body.String())
+	if assert.NoError(t, mw(h)(c)) {
+		assert.Equal(t, requestBody, hw)
+		assert.Equal(t, responseBody, hw)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, hw, rec.Body.String())
 	}
 
-	// Must set default skipper
-	BodyDumpWithConfig(BodyDumpConfig{
-		Skipper: nil,
-		Handler: func(c echo.Context, reqBody, resBody []byte) {
-			requestBody = string(reqBody)
-			responseBody = string(resBody)
-		},
-	})
 }
 
-func TestBodyDumpFails(t *testing.T) {
+func TestBodyDump_skipper(t *testing.T) {
+	e := echo.New()
+
+	isCalled := false
+	mw, err := BodyDumpConfig{
+		Skipper: func(c echo.Context) bool {
+			return true
+		},
+		Handler: func(c echo.Context, reqBody, resBody []byte) {
+			isCalled = true
+		},
+	}.ToMiddleware()
+	assert.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("{}"))
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	h := func(c echo.Context) error {
+		return errors.New("some error")
+	}
+
+	err = mw(h)(c)
+	assert.EqualError(t, err, "some error")
+	assert.False(t, isCalled)
+}
+
+func TestBodyDump_fails(t *testing.T) {
 	e := echo.New()
 	hw := "Hello, World!"
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(hw))
@@ -62,30 +79,37 @@ func TestBodyDumpFails(t *testing.T) {
 		return errors.New("some error")
 	}
 
-	mw := BodyDump(func(c echo.Context, reqBody, resBody []byte) {})
+	mw, err := BodyDumpConfig{Handler: func(c echo.Context, reqBody, resBody []byte) {}}.ToMiddleware()
+	assert.NoError(t, err)
 
-	if !assert.Error(t, mw(h)(c)) {
-		t.FailNow()
-	}
+	err = mw(h)(c)
+	assert.EqualError(t, err, "some error")
+	assert.Equal(t, http.StatusOK, rec.Code)
 
+}
+
+func TestBodyDumpWithConfig_panic(t *testing.T) {
 	assert.Panics(t, func() {
-		mw = BodyDumpWithConfig(BodyDumpConfig{
+		mw := BodyDumpWithConfig(BodyDumpConfig{
 			Skipper: nil,
 			Handler: nil,
 		})
+		assert.NotNil(t, mw)
 	})
 
 	assert.NotPanics(t, func() {
-		mw = BodyDumpWithConfig(BodyDumpConfig{
-			Skipper: func(c echo.Context) bool {
-				return true
-			},
-			Handler: func(c echo.Context, reqBody, resBody []byte) {
-			},
-		})
+		mw := BodyDumpWithConfig(BodyDumpConfig{Handler: func(c echo.Context, reqBody, resBody []byte) {}})
+		assert.NotNil(t, mw)
+	})
+}
 
-		if !assert.Error(t, mw(h)(c)) {
-			t.FailNow()
-		}
+func TestBodyDump_panic(t *testing.T) {
+	assert.Panics(t, func() {
+		mw := BodyDump(nil)
+		assert.NotNil(t, mw)
+	})
+
+	assert.NotPanics(t, func() {
+		BodyDump(func(c echo.Context, reqBody, resBody []byte) {})
 	})
 }

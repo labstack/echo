@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"fmt"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
@@ -11,27 +11,11 @@ import (
 	"testing"
 )
 
-type pathParam struct {
-	name  string
-	value string
-}
-
-func setPathParams(c echo.Context, params []pathParam) {
-	names := make([]string, 0, len(params))
-	values := make([]string, 0, len(params))
-	for _, pp := range params {
-		names = append(names, pp.name)
-		values = append(values, pp.value)
-	}
-	c.SetParamNames(names...)
-	c.SetParamValues(values...)
-}
-
 func TestCreateExtractors(t *testing.T) {
 	var testCases = []struct {
 		name              string
 		givenRequest      func() *http.Request
-		givenPathParams   []pathParam
+		givenPathParams   echo.PathParams
 		whenLoopups       string
 		expectValues      []string
 		expectCreateError string
@@ -72,8 +56,8 @@ func TestCreateExtractors(t *testing.T) {
 		},
 		{
 			name: "ok, param",
-			givenPathParams: []pathParam{
-				{name: "id", value: "123"},
+			givenPathParams: echo.PathParams{
+				{Name: "id", Value: "123"},
 			},
 			whenLoopups:  "param:id",
 			expectValues: []string{"123"},
@@ -103,12 +87,12 @@ func TestCreateExtractors(t *testing.T) {
 				req = tc.givenRequest()
 			}
 			rec := httptest.NewRecorder()
-			c := e.NewContext(req, rec)
+			c := e.NewContext(req, rec).(echo.ServableContext)
 			if tc.givenPathParams != nil {
-				setPathParams(c, tc.givenPathParams)
+				c.SetRawPathParams(&tc.givenPathParams)
 			}
 
-			extractors, err := createExtractors(tc.whenLoopups, "")
+			extractors, err := createExtractors(tc.whenLoopups)
 			if tc.expectCreateError != "" {
 				assert.EqualError(t, err, tc.expectCreateError)
 				return
@@ -315,19 +299,19 @@ func TestValuesFromQuery(t *testing.T) {
 }
 
 func TestValuesFromParam(t *testing.T) {
-	examplePathParams := []pathParam{
-		{name: "id", value: "123"},
-		{name: "gid", value: "456"},
-		{name: "gid", value: "789"},
+	examplePathParams := echo.PathParams{
+		{Name: "id", Value: "123"},
+		{Name: "gid", Value: "456"},
+		{Name: "gid", Value: "789"},
 	}
-	examplePathParams20 := make([]pathParam, 0)
+	examplePathParams20 := make(echo.PathParams, 0)
 	for i := 1; i < 25; i++ {
-		examplePathParams20 = append(examplePathParams20, pathParam{name: "id", value: fmt.Sprintf("%v", i)})
+		examplePathParams20 = append(examplePathParams20, echo.PathParam{Name: "id", Value: fmt.Sprintf("%v", i)})
 	}
 
 	var testCases = []struct {
 		name            string
-		givenPathParams []pathParam
+		givenPathParams echo.PathParams
 		whenName        string
 		expectValues    []string
 		expectError     string
@@ -375,9 +359,9 @@ func TestValuesFromParam(t *testing.T) {
 
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			rec := httptest.NewRecorder()
-			c := e.NewContext(req, rec)
+			c := e.NewContext(req, rec).(echo.ServableContext)
 			if tc.givenPathParams != nil {
-				setPathParams(c, tc.givenPathParams)
+				c.SetRawPathParams(&tc.givenPathParams)
 			}
 
 			extractor := valuesFromParam(tc.whenName)

@@ -11,12 +11,14 @@
 
 ## Supported Go versions
 
+Echo supports last four major releases. `v5` starts from 1.16 until there is last four major releases after that.
+
 As of version 4.0.0, Echo is available as a [Go module](https://github.com/golang/go/wiki/Modules).
 Therefore a Go version capable of understanding /vN suffixed imports is required:
 
 - 1.9.7+
 - 1.10.3+
-- 1.14+
+- 1.16+
 
 Any of these versions will allow you to import Echo as `github.com/labstack/echo/v4` which is the recommended
 way of using Echo going forward.
@@ -39,24 +41,13 @@ For older versions, please use the latest v3 tag.
 - Automatic TLS via Let’s Encrypt
 - HTTP/2 support
 
-## Benchmarks
-
-Date: 2020/11/11<br>
-Source: https://github.com/vishr/web-framework-benchmark<br>
-Lower is better!
-
-<img src="https://i.imgur.com/qwPNQbl.png">
-<img src="https://i.imgur.com/s8yKQjx.png">
-
-The benchmarks above were run on an Intel(R) Core(TM) i7-6820HQ CPU @ 2.70GHz
-
 ## [Guide](https://echo.labstack.com/guide)
 
 ### Installation
 
 ```sh
 // go get github.com/labstack/echo/{version}
-go get github.com/labstack/echo/v4
+go get github.com/labstack/echo/v5
 ```
 
 ### Example
@@ -65,8 +56,8 @@ go get github.com/labstack/echo/v4
 package main
 
 import (
-  "github.com/labstack/echo/v4"
-  "github.com/labstack/echo/v4/middleware"
+  "github.com/labstack/echo/v5"
+  "github.com/labstack/echo/v5/middleware"
   "net/http"
 )
 
@@ -82,7 +73,9 @@ func main() {
   e.GET("/", hello)
 
   // Start server
-  e.Logger.Fatal(e.Start(":1323"))
+  if err := e.Start(":1323"); err != http.ErrServerClosed {
+    log.Fatal(err)
+  }
 }
 
 // Handler
@@ -93,15 +86,15 @@ func hello(c echo.Context) error {
 
 # Third-party middlewares
 
-| Repository | Description                                                                                                                                                                                                                                                                                                                                                                                                    |
-|------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [github.com/labstack/echo-contrib](https://github.com/labstack/echo-contrib) | (by Echo team) [casbin](https://github.com/casbin/casbin), [gorilla/sessions](https://github.com/gorilla/sessions), [jaegertracing](github.com/uber/jaeger-client-go), [prometheus](https://github.com/prometheus/client_golang/), [pprof](https://pkg.go.dev/net/http/pprof), [zipkin](https://github.com/openzipkin/zipkin-go) middlewares | 
-| [deepmap/oapi-codegen](https://github.com/deepmap/oapi-codegen) | Automatically generate RESTful API documentation with [OpenAPI](https://swagger.io/specification/) Client and Server Code Generator                                                                                                                                                                                                                       |
-| [github.com/swaggo/echo-swagger](https://github.com/swaggo/echo-swagger) | Automatically generate RESTful API documentation with [Swagger](https://swagger.io/) 2.0.                                                                                                                                                                                                                                                        |
-| [github.com/ziflex/lecho](https://github.com/ziflex/lecho) | [Zerolog](https://github.com/rs/zerolog) logging library wrapper for Echo logger interface.                                                                                                                                                                                                                                                                    |
-| [github.com/brpaz/echozap](https://github.com/brpaz/echozap) | Uber´s [Zap](https://github.com/uber-go/zap) logging library wrapper for Echo logger interface.                                                                                                                                                                                                                                                              |
-| [github.com/darkweak/souin/plugins/echo](https://github.com/darkweak/souin/tree/master/plugins/echo) | HTTP cache system based on [Souin](https://github.com/darkweak/souin) to automatically get your endpoints cached. It supports some distributed and non-distributed storage systems depending your needs.                                                                                                             |
-| [github.com/mikestefanello/pagoda](https://github.com/mikestefanello/pagoda) | Rapid, easy full-stack web development starter kit built with Echo.
+| Repository                                                                                           | Description                                                                                                                                                                                                                                                                                                                                  |
+|------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [github.com/labstack/echo-contrib](https://github.com/labstack/echo-contrib)                         | (by Echo team) [casbin](https://github.com/casbin/casbin), [gorilla/sessions](https://github.com/gorilla/sessions), [jaegertracing](github.com/uber/jaeger-client-go), [prometheus](https://github.com/prometheus/client_golang/), [pprof](https://pkg.go.dev/net/http/pprof), [zipkin](https://github.com/openzipkin/zipkin-go) middlewares | 
+| [deepmap/oapi-codegen](https://github.com/deepmap/oapi-codegen)                                      | Automatically generate RESTful API documentation with [OpenAPI](https://swagger.io/specification/) Client and Server Code Generator                                                                                                                                                                                                          |
+| [github.com/swaggo/echo-swagger](https://github.com/swaggo/echo-swagger)                             | Automatically generate RESTful API documentation with [Swagger](https://swagger.io/) 2.0.                                                                                                                                                                                                                                                    |
+| [github.com/ziflex/lecho](https://github.com/ziflex/lecho)                                           | [Zerolog](https://github.com/rs/zerolog) logging library wrapper for Echo logger interface.                                                                                                                                                                                                                                                  |
+| [github.com/brpaz/echozap](https://github.com/brpaz/echozap)                                         | Uber´s [Zap](https://github.com/uber-go/zap) logging library wrapper for Echo logger interface.                                                                                                                                                                                                                                              |
+| [github.com/darkweak/souin/plugins/echo](https://github.com/darkweak/souin/tree/master/plugins/echo) | HTTP cache system based on [Souin](https://github.com/darkweak/souin) to automatically get your endpoints cached. It supports some distributed and non-distributed storage systems depending your needs.                                                                                                                                     |
+| [github.com/mikestefanello/pagoda](https://github.com/mikestefanello/pagoda)                         | Rapid, easy full-stack web development starter kit built with Echo.                                                                                                                                                                                                                                                                          |
 
 Please send a PR to add your own library here.
 

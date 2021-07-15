@@ -6,17 +6,14 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
-type (
-	// Skipper defines a function to skip middleware. Returning true skips processing
-	// the middleware.
-	Skipper func(c echo.Context) bool
+// Skipper defines a function to skip middleware. Returning true skips processing the middleware.
+type Skipper func(c echo.Context) bool
 
-	// BeforeFunc defines a function which is executed just before the middleware.
-	BeforeFunc func(c echo.Context)
-)
+// BeforeFunc defines a function which is executed just before the middleware.
+type BeforeFunc func(c echo.Context)
 
 func captureTokens(pattern *regexp.Regexp, input string) *strings.Replacer {
 	groups := pattern.FindAllStringSubmatch(input, -1)
@@ -86,4 +83,12 @@ func rewriteURL(rewriteRegex map[*regexp.Regexp]string, req *http.Request) error
 // DefaultSkipper returns false which processes the middleware.
 func DefaultSkipper(echo.Context) bool {
 	return false
+}
+
+func toMiddlewareOrPanic(config echo.MiddlewareConfigurator) echo.MiddlewareFunc {
+	mw, err := config.ToMiddleware()
+	if err != nil {
+		panic(err)
+	}
+	return mw
 }

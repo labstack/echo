@@ -4,7 +4,7 @@ package echo_test
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"log"
 	"net/http"
 	"net/http/httptest"

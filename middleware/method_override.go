@@ -3,31 +3,27 @@ package middleware
 import (
 	"net/http"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
-type (
-	// MethodOverrideConfig defines the config for MethodOverride middleware.
-	MethodOverrideConfig struct {
-		// Skipper defines a function to skip middleware.
-		Skipper Skipper
+// MethodOverrideConfig defines the config for MethodOverride middleware.
+type MethodOverrideConfig struct {
+	// Skipper defines a function to skip middleware.
+	Skipper Skipper
 
-		// Getter is a function that gets overridden method from the request.
-		// Optional. Default values MethodFromHeader(echo.HeaderXHTTPMethodOverride).
-		Getter MethodOverrideGetter
-	}
+	// Getter is a function that gets overridden method from the request.
+	// Optional. Default values MethodFromHeader(echo.HeaderXHTTPMethodOverride).
+	Getter MethodOverrideGetter
+}
 
-	// MethodOverrideGetter is a function that gets overridden method from the request
-	MethodOverrideGetter func(echo.Context) string
-)
+// MethodOverrideGetter is a function that gets overridden method from the request
+type MethodOverrideGetter func(echo.Context) string
 
-var (
-	// DefaultMethodOverrideConfig is the default MethodOverride middleware config.
-	DefaultMethodOverrideConfig = MethodOverrideConfig{
-		Skipper: DefaultSkipper,
-		Getter:  MethodFromHeader(echo.HeaderXHTTPMethodOverride),
-	}
-)
+// DefaultMethodOverrideConfig is the default MethodOverride middleware config.
+var DefaultMethodOverrideConfig = MethodOverrideConfig{
+	Skipper: DefaultSkipper,
+	Getter:  MethodFromHeader(echo.HeaderXHTTPMethodOverride),
+}
 
 // MethodOverride returns a MethodOverride middleware.
 // MethodOverride  middleware checks for the overridden method from the request and
@@ -38,9 +34,13 @@ func MethodOverride() echo.MiddlewareFunc {
 	return MethodOverrideWithConfig(DefaultMethodOverrideConfig)
 }
 
-// MethodOverrideWithConfig returns a MethodOverride middleware with config.
-// See: `MethodOverride()`.
+// MethodOverrideWithConfig returns a Method Override middleware with config or panics on invalid configuration.
 func MethodOverrideWithConfig(config MethodOverrideConfig) echo.MiddlewareFunc {
+	return toMiddlewareOrPanic(config)
+}
+
+// ToMiddleware converts MethodOverrideConfig to middleware or returns an error for invalid configuration
+func (config MethodOverrideConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 	// Defaults
 	if config.Skipper == nil {
 		config.Skipper = DefaultMethodOverrideConfig.Skipper
@@ -64,7 +64,7 @@ func MethodOverrideWithConfig(config MethodOverrideConfig) echo.MiddlewareFunc {
 			}
 			return next(c)
 		}
-	}
+	}, nil
 }
 
 // MethodFromHeader is a `MethodOverrideGetter` that gets overridden method from
