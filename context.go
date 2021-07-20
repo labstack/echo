@@ -2,6 +2,7 @@ package echo
 
 import (
 	"bytes"
+	ctx "context"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -13,12 +14,15 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 type (
 	// Context represents the context of the current HTTP request. It holds request and
 	// response objects, path, path parameters, data and registered handler.
 	Context interface {
+		// Context general context interface
+		ctx.Context
 		// Request returns `*http.Request`.
 		Request() *http.Request
 
@@ -653,4 +657,24 @@ func (c *context) Reset(r *http.Request, w http.ResponseWriter) {
 	for i := 0; i < *c.echo.maxParam; i++ {
 		c.pvalues[i] = ""
 	}
+}
+
+/*
+  Make our context implements context.Context
+*/
+
+func (c *context) Deadline() (time.Time, bool) {
+	return c.request.Context().Deadline()
+}
+
+func (c *context) Done() <-chan struct{} {
+	return c.request.Context().Done()
+}
+
+func (c *context) Err() error {
+	return c.request.Context().Err()
+}
+
+func (c *context) Value(key interface{}) interface{} {
+	return c.request.Context().Value(key)
 }
