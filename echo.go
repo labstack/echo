@@ -100,9 +100,10 @@ type (
 
 	// Route contains a handler and information for matching against requests.
 	Route struct {
-		Method string `json:"method"`
-		Path   string `json:"path"`
-		Name   string `json:"name"`
+		Method      string   `json:"method"`
+		Path        string   `json:"path"`
+		Name        string   `json:"name"`
+		Middlewares []string `json:"middlewares"`
 	}
 
 	// HTTPError represents an error that occurred while handling a request.
@@ -548,6 +549,9 @@ func (e *Echo) add(host, method, path string, handler HandlerFunc, middleware ..
 		Path:   path,
 		Name:   name,
 	}
+	for i := len(middleware) - 1; i >= 0; i-- {
+		r.Middlewares = append(r.Middlewares, handlerName(middleware[i]))
+	}
 	e.router.routes[method+path] = r
 	return r
 }
@@ -938,7 +942,7 @@ func (e *Echo) findRouter(host string) *Router {
 	return e.router
 }
 
-func handlerName(h HandlerFunc) string {
+func handlerName(h interface{}) string {
 	t := reflect.ValueOf(h).Type()
 	if t.Kind() == reflect.Func {
 		return runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name()

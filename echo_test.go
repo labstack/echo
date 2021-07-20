@@ -445,10 +445,10 @@ func TestEchoURL(t *testing.T) {
 func TestEchoRoutes(t *testing.T) {
 	e := New()
 	routes := []*Route{
-		{http.MethodGet, "/users/:user/events", ""},
-		{http.MethodGet, "/users/:user/events/public", ""},
-		{http.MethodPost, "/repos/:owner/:repo/git/refs", ""},
-		{http.MethodPost, "/repos/:owner/:repo/git/tags", ""},
+		{Method: http.MethodGet, Path: "/users/:user/events"},
+		{Method: http.MethodGet, Path: "/users/:user/events/public"},
+		{Method: http.MethodPost, Path: "/repos/:owner/:repo/git/refs"},
+		{Method: http.MethodPost, Path: "/repos/:owner/:repo/git/tags"},
 	}
 	for _, r := range routes {
 		e.Add(r.Method, r.Path, func(c Context) error {
@@ -476,10 +476,10 @@ func TestEchoRoutesHandleHostsProperly(t *testing.T) {
 	e := New()
 	h := e.Host("route.com")
 	routes := []*Route{
-		{http.MethodGet, "/users/:user/events", ""},
-		{http.MethodGet, "/users/:user/events/public", ""},
-		{http.MethodPost, "/repos/:owner/:repo/git/refs", ""},
-		{http.MethodPost, "/repos/:owner/:repo/git/tags", ""},
+		{Method: http.MethodGet, Path: "/users/:user/events"},
+		{Method: http.MethodGet, Path: "/users/:user/events/public"},
+		{Method: http.MethodPost, Path: "/repos/:owner/:repo/git/refs"},
+		{Method: http.MethodPost, Path: "/repos/:owner/:repo/git/tags"},
 	}
 	for _, r := range routes {
 		h.Add(r.Method, r.Path, func(c Context) error {
