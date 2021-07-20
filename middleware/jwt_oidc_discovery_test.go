@@ -627,7 +627,7 @@ func TestIsTokenTypeValid(t *testing.T) {
 	}
 }
 
-func TestGetTokenFromString(t *testing.T) {
+func TestGetAndValidateTokenFromString(t *testing.T) {
 	op := server.NewTesting(t)
 	defer op.Close(t)
 
@@ -709,7 +709,7 @@ func TestGetTokenFromString(t *testing.T) {
 	for i, c := range cases {
 		t.Logf("Test iteration %d: %s", i, c.testDescription)
 
-		token, err := getTokenFromString(c.tokenString, c.key)
+		token, err := getAndValidateTokenFromString(c.tokenString, c.key)
 		if c.expectedError {
 			require.Error(t, err)
 		} else {

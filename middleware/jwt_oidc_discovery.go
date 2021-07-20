@@ -105,7 +105,7 @@ func (config *OIDCDiscoveryConfig) parseToken(auth string, c echo.Context) (inte
 		return nil, err
 	}
 
-	token, err := getTokenFromString(auth, key)
+	token, err := getAndValidateTokenFromString(auth, key)
 	if err != nil {
 		return nil, err
 	}
@@ -325,7 +325,7 @@ func isTokenTypeValid(requiredTokenType string, tokenString string) bool {
 	return true
 }
 
-func getTokenFromString(tokenString string, key jwk.Key) (jwt.Token, error) {
+func getAndValidateTokenFromString(tokenString string, key jwk.Key) (jwt.Token, error) {
 	keySet := getKeySetFromKey(key)
 
 	token, err := jwt.ParseString(tokenString, jwt.WithKeySet(keySet))
