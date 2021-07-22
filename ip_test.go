@@ -42,48 +42,48 @@ var (
 	}, ", ")
 
 	requests = map[string]*http.Request{
-		ipTestReqKeyNoHeader: &http.Request{
+		ipTestReqKeyNoHeader: {
 			RemoteAddr: sampleRemoteAddrExternal,
 		},
-		ipTestReqKeyRealIPExternal: &http.Request{
+		ipTestReqKeyRealIPExternal: {
 			Header: http.Header{
 				"X-Real-Ip": []string{ipForRealIP},
 			},
 			RemoteAddr: sampleRemoteAddrExternal,
 		},
-		ipTestReqKeyRealIPInternal: &http.Request{
+		ipTestReqKeyRealIPInternal: {
 			Header: http.Header{
 				"X-Real-Ip": []string{ipForRealIP},
 			},
 			RemoteAddr: sampleRemoteAddrLoopback,
 		},
-		ipTestReqKeyRealIPAndXFFExternal: &http.Request{
+		ipTestReqKeyRealIPAndXFFExternal: {
 			Header: http.Header{
 				"X-Real-Ip":         []string{ipForRealIP},
 				HeaderXForwardedFor: []string{sampleXFF},
 			},
 			RemoteAddr: sampleRemoteAddrExternal,
 		},
-		ipTestReqKeyRealIPAndXFFInternal: &http.Request{
+		ipTestReqKeyRealIPAndXFFInternal: {
 			Header: http.Header{
 				"X-Real-Ip":         []string{ipForRealIP},
 				HeaderXForwardedFor: []string{sampleXFF},
 			},
 			RemoteAddr: sampleRemoteAddrLoopback,
 		},
-		ipTestReqKeyXFFExternal: &http.Request{
+		ipTestReqKeyXFFExternal: {
 			Header: http.Header{
 				HeaderXForwardedFor: []string{sampleXFF},
 			},
 			RemoteAddr: sampleRemoteAddrExternal,
 		},
-		ipTestReqKeyXFFInternal: &http.Request{
+		ipTestReqKeyXFFInternal: {
 			Header: http.Header{
 				HeaderXForwardedFor: []string{sampleXFF},
 			},
 			RemoteAddr: sampleRemoteAddrLoopback,
 		},
-		ipTestReqKeyBrokenXFF: &http.Request{
+		ipTestReqKeyBrokenXFF: {
 			Header: http.Header{
 				HeaderXForwardedFor: []string{ipForXFFBroken + ", " + ipForXFF1LinkLocal},
 			},
