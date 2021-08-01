@@ -1,3 +1,5 @@
+// +build go1.15
+
 package middleware
 
 import (
@@ -9,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
@@ -562,7 +564,7 @@ func TestJWTConfig_custom_ParseTokenFunc_Keyfunc(t *testing.T) {
 		return c.String(http.StatusTeapot, "test")
 	})
 
-	// example of minimal custom ParseTokenFunc implementation. Allows you to use different versions of `github.com/dgrijalva/jwt-go`
+	// example of minimal custom ParseTokenFunc implementation. Allows you to use different versions of `github.com/golang-jwt/jwt`
 	// with current JWT middleware
 	signingKey := []byte("secret")
 
