@@ -126,7 +126,7 @@ func (t echoHandlerFuncWrapper) ServeHTTP(rw http.ResponseWriter, r *http.Reques
 		t.ctx.Error(err)
 		// we pass error from handler to middlewares up in handler chain to act on it if needed. But this means that
 		// global error handler is probably be called twice as `t.ctx.Error` already does that.
-		// NB: later call of thr global error handler will not take any effect, as echo.Response will be marked as `committed`
+		// NB: later call of the global error handler will not take any effect, as echo.Response will be marked as `committed`
 		// when the first call take place.
 		t.ctx.Response().Writer = originalWriter
 		t.errChan <- err
