@@ -116,13 +116,19 @@ func (t echoHandlerFuncWrapper) ServeHTTP(rw http.ResponseWriter, r *http.Reques
 	// we restore original writer only for cases we did not timeout. On timeout we have already sent response to client
 	// and should not anymore send additional headers/data
 	// so on timeout writer stays what http.TimeoutHandler uses and prevents writing headers/body
-	t.ctx.Response().Writer = originalWriter
+	// https://github.com/labstack/echo/issues/1905
+	// error handling is a part of processes in Echo handler, if a handler returns an error
+	// and if it did not timeout, the global error handler shall act on rw (`http.timeoutWriter` in our case)
+	// to avoid superfluous response.WriteHeader call
 	if err != nil {
 		// call global error handler to write error to the client. This is needed or `http.TimeoutHandler` will send status code by itself
 		// and after that our tries to write status code will not work anymore
 		t.ctx.Error(err)
 		// we pass error from handler to middlewares up in handler chain to act on it if needed. But this means that
 		// global error handler is probably be called twice as `t.ctx.Error` already does that.
+		// NB: later call of thr global error handler will not take any effect, as echo.Response will be marked as `committed`
+		// when the first call take place.
+		t.ctx.Response().Writer = originalWriter
 		t.errChan <- err
 	}
 }
