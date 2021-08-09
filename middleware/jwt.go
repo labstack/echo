@@ -295,7 +295,7 @@ func jwtFromHeader(header string, authScheme string) jwtExtractor {
 	return func(c echo.Context) (string, error) {
 		auth := c.Request().Header.Get(header)
 		l := len(authScheme)
-		if len(auth) > l+1 && auth[:l] == authScheme {
+		if len(auth) > l+1 && strings.EqualFold(auth[:l], authScheme) {
 			return auth[l+1:], nil
 		}
 		return "", ErrJWTMissing
