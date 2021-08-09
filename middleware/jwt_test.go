@@ -261,6 +261,11 @@ func TestJWT(t *testing.T) {
 			expErrCode: http.StatusUnauthorized,
 			info:       "Token verification does not pass using a user-defined KeyFunc",
 		},
+		{
+			hdrAuth: strings.ToLower(DefaultJWTConfig.AuthScheme) + " " + token,
+			config:  JWTConfig{SigningKey: validKey},
+			info:    "Valid JWT with lower case AuthScheme",
+		},
 	} {
 		if tc.reqURL == "" {
 			tc.reqURL = "/"
