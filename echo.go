@@ -358,6 +358,11 @@ func (e *Echo) Routers() map[string]*Router {
 // DefaultHTTPErrorHandler is the default HTTP error handler. It sends a JSON response
 // with status code.
 func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
+
+	if c.Response().Committed {
+		return
+	}
+
 	he, ok := err.(*HTTPError)
 	if ok {
 		if he.Internal != nil {
@@ -384,15 +389,13 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 	}
 
 	// Send response
-	if !c.Response().Committed {
-		if c.Request().Method == http.MethodHead { // Issue #608
-			err = c.NoContent(he.Code)
-		} else {
-			err = c.JSON(code, message)
-		}
-		if err != nil {
-			e.Logger.Error(err)
-		}
+	if c.Request().Method == http.MethodHead { // Issue #608
+		err = c.NoContent(he.Code)
+	} else {
+		err = c.JSON(code, message)
+	}
+	if err != nil {
+		e.Logger.Error(err)
 	}
 }
 

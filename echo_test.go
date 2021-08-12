@@ -1124,6 +1124,15 @@ func TestDefaultHTTPErrorHandler(t *testing.T) {
 			"error":   "stackinfo",
 		})
 	})
+	e.Any("/early-return", func(c Context) error {
+		c.String(http.StatusOK, "OK")
+		return errors.New("ERROR")
+	})
+	e.GET("/internal-error", func(c Context) error {
+		err := errors.New("internal error message body")
+		return NewHTTPError(http.StatusBadRequest).SetInternal(err)
+	})
+
 	// With Debug=true plain response contains error message
 	c, b := request(http.MethodGet, "/plain", e)
 	assert.Equal(t, http.StatusInternalServerError, c)
@@ -1136,6 +1145,14 @@ func TestDefaultHTTPErrorHandler(t *testing.T) {
 	c, b = request(http.MethodGet, "/servererror", e)
 	assert.Equal(t, http.StatusInternalServerError, c)
 	assert.Equal(t, "{\n  \"code\": 33,\n  \"error\": \"stackinfo\",\n  \"message\": \"Something bad happened\"\n}\n", b)
+	// if the body is already set HTTPErrorHandler should not add anything to response body
+	c, b = request(http.MethodGet, "/early-return", e)
+	assert.Equal(t, http.StatusOK, c)
+	assert.Equal(t, "OK", b)
+	// internal error should be reflected in the message
+	c, b = request(http.MethodGet, "/internal-error", e)
+	assert.Equal(t, http.StatusBadRequest, c)
+	assert.Equal(t, "{\n  \"error\": \"code=400, message=Bad Request, internal=internal error message body\",\n  \"message\": \"Bad Request\"\n}\n", b)
 
 	e.Debug = false
 	// With Debug=false the error response is shortened
