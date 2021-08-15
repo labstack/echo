@@ -1,6 +1,6 @@
 <a href="https://echo.labstack.com"><img height="80" src="https://cdn.labstack.com/images/echo-logo.svg"></a>
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-3-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-2-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 [![Sourcegraph](https://sourcegraph.com/github.com/labstack/echo/-/badge.svg?style=flat-square)](https://sourcegraph.com/github.com/labstack/echo?badge)
@@ -126,25 +126,3 @@ func hello(c echo.Context) error {
 ## License
 
 [MIT](https://github.com/labstack/echo/blob/master/LICENSE)
-
-## Contributors ✨
-
-Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
-
-<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
-<!-- prettier-ignore-start -->
-<!-- markdownlint-disable -->
-<table>
-  <tr>
-    <td align="center"><a href="http://vishr.com"><img src="https://avatars.githubusercontent.com/u/314036?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Vishal Rana</b></sub></a><br /><a href="#design-vishr" title="Design">🎨</a> <a href="#maintenance-vishr" title="Maintenance">🚧</a></td>
-    <td align="center"><a href="https://github.com/aldas"><img src="https://avatars.githubusercontent.com/u/2320301?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Martti T.</b></sub></a><br /><a href="#maintenance-aldas" title="Maintenance">🚧</a></td>
-    <td align="center"><a href="https://github.com/pafuent"><img src="https://avatars.githubusercontent.com/u/6979945?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Pablo Andres Fuente</b></sub></a><br /><a href="#maintenance-pafuent" title="Maintenance">🚧</a></td>
-  </tr>
-</table>
-
-<!-- markdownlint-restore -->
-<!-- prettier-ignore-end -->
-
-<!-- ALL-CONTRIBUTORS-LIST:END -->
-
-This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!

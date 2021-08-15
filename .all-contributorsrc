@@ -40,6 +40,16 @@
       "contributions": [
         "maintenance"
       ]
+    },
+    {
+      "login": "aldas",
+      "name": "Martti T.",
+      "avatar_url": "https://avatars.githubusercontent.com/u/2320301?v=4",
+      "profile": "https://github.com/aldas",
+      "contributions": [
+        "maintenance",
+        "review"
+      ]
     }
   ],
   "contributorsPerLine": 7,
