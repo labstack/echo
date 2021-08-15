@@ -11,7 +11,15 @@
       "avatar_url": "https://avatars.githubusercontent.com/u/314036?v=4",
       "profile": "http://vishr.com",
       "contributions": [
-        "design",
+        "design"
+      ]
+    },
+    {
+      "login": "lammel",
+      "name": "Roland Lammel",
+      "avatar_url": "https://avatars.githubusercontent.com/u/43678?v=4",
+      "profile": "https://github.com/lammel",
+      "contributions": [
         "maintenance"
       ]
     },
