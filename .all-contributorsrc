@@ -23,6 +23,15 @@
       "contributions": [
         "maintenance"
       ]
+    },
+    {
+      "login": "pafuent",
+      "name": "Pablo Andres Fuente",
+      "avatar_url": "https://avatars.githubusercontent.com/u/6979945?v=4",
+      "profile": "https://github.com/pafuent",
+      "contributions": [
+        "maintenance"
+      ]
     }
   ],
   "contributorsPerLine": 7,
