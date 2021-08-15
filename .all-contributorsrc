@@ -1,0 +1,24 @@
+{
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": false,
+  "contributors": [
+    {
+      "login": "vishr",
+      "name": "Vishal Rana",
+      "avatar_url": "https://avatars.githubusercontent.com/u/314036?v=4",
+      "profile": "http://vishr.com",
+      "contributions": [
+        "design"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7,
+  "projectName": "echo",
+  "projectOwner": "labstack",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "skipCi": true
+}
