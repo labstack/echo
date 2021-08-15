@@ -114,8 +114,11 @@ func hello(c echo.Context) error {
 
 ## Credits
 
-- [Vishal Rana](https://github.com/vishr) - Author
-- [Nitin Rana](https://github.com/nr17) - Consultant
+- [Vishal Rana](https://github.com/vishr) (Author)
+- [Nitin Rana](https://github.com/nr17) (Consultant)
+- [Roland Lammel](https://github.com/lammel) (Maintainer)
+- [Martti T.](https://github.com/aldas) (Maintainer)
+- [Pablo Andres Fuente](https://github.com/pafuent) (Maintainer)
 - [Contributors](https://github.com/labstack/echo/graphs/contributors)
 
 ## License
