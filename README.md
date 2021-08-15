@@ -122,6 +122,7 @@ func hello(c echo.Context) error {
 - [Roland Lammel](https://github.com/lammel) (Maintainer)
 - [Martti T.](https://github.com/aldas) (Maintainer)
 - [Pablo Andres Fuente](https://github.com/pafuent) (Maintainer)
+- [Contributors](https://github.com/labstack/echo/graphs/contributors)
 
 ## License
 
