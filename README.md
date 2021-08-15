@@ -126,24 +126,3 @@ func hello(c echo.Context) error {
 ## License
 
 [MIT](https://github.com/labstack/echo/blob/master/LICENSE)
-
-## Contributors ✨
-
-Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
-
-<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
-<!-- prettier-ignore-start -->
-<!-- markdownlint-disable -->
-<table>
-  <tr>
-    <td align="center"><a href="http://vishr.com"><img src="https://avatars.githubusercontent.com/u/314036?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Vishal Rana</b></sub></a><br /><a href="#design-vishr" title="Design">🎨</a> <a href="#maintenance-vishr" title="Maintenance">🚧</a></td>
-    <td align="center"><a href="https://github.com/aldas"><img src="https://avatars.githubusercontent.com/u/2320301?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Martti T.</b></sub></a><br /><a href="#maintenance-aldas" title="Maintenance">🚧</a> <a href="https://github.com/labstack/echo/pulls?q=is%3Apr+reviewed-by%3Aaldas" title="Reviewed Pull Requests">👀</a></td>
-  </tr>
-</table>
-
-<!-- markdownlint-restore -->
-<!-- prettier-ignore-end -->
-
-<!-- ALL-CONTRIBUTORS-LIST:END -->
-
-This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!
