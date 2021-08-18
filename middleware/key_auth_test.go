@@ -158,6 +158,30 @@ func TestKeyAuthWithConfig(t *testing.T) {
 			expectError:         "code=400, message=missing key in the form",
 		},
 		{
+			name: "ok, custom key lookup, cookie",
+			givenRequest: func(req *http.Request) {
+				req.AddCookie(&http.Cookie{
+					Name:  "key",
+					Value: "valid-key",
+				})
+				q := req.URL.Query()
+				q.Add("key", "valid-key")
+				req.URL.RawQuery = q.Encode()
+			},
+			whenConfig: func(conf *KeyAuthConfig) {
+				conf.KeyLookup = "cookie:key"
+			},
+			expectHandlerCalled: true,
+		},
+		{
+			name: "nok, custom key lookup, missing cookie param",
+			whenConfig: func(conf *KeyAuthConfig) {
+				conf.KeyLookup = "cookie:key"
+			},
+			expectHandlerCalled: false,
+			expectError:         "code=400, message=missing key in cookies: http: named cookie not present",
+		},
+		{
 			name: "nok, custom errorHandler, error from extractor",
 			whenConfig: func(conf *KeyAuthConfig) {
 				conf.KeyLookup = "header:token"

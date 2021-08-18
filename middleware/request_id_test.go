@@ -23,13 +23,20 @@ func TestRequestID(t *testing.T) {
 	h(c)
 	assert.Len(t, rec.Header().Get(echo.HeaderXRequestID), 32)
 
-	// Custom generator
+	// Custom generator and handler
+	customID := "customGenerator"
+	calledHandler := false
 	rid = RequestIDWithConfig(RequestIDConfig{
-		Generator: func() string { return "customGenerator" },
+		Generator: func() string { return customID },
+		RequestIDHandler: func(_ echo.Context, id string) {
+			calledHandler = true
+			assert.Equal(t, customID, id)
+		},
 	})
 	h = rid(handler)
 	h(c)
 	assert.Equal(t, rec.Header().Get(echo.HeaderXRequestID), "customGenerator")
+	assert.True(t, calledHandler)
 }
 
 func TestRequestID_IDNotAltered(t *testing.T) {
