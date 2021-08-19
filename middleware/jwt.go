@@ -68,8 +68,13 @@ type (
 		// - "form:<name>"
 		// Multiply sources example:
 		// - "header: Authorization,cookie: myowncookie"
-
 		TokenLookup string
+
+		// TokenLookupFuncs defines a list of user-defined functions that extract JWT token from the given context.
+		// This is one of the two options to provide a token extractor.
+		// The order of precedence is user-defined TokenLookupFuncs, and TokenLookup.
+		// You can also provide both if you want.
+		TokenLookupFuncs []TokenLookupFunc
 
 		// AuthScheme to be used in the Authorization header.
 		// Optional. Default value "Bearer".
@@ -103,7 +108,8 @@ type (
 	// JWTErrorHandlerWithContext is almost identical to JWTErrorHandler, but it's passed the current context.
 	JWTErrorHandlerWithContext func(error, echo.Context) error
 
-	jwtExtractor func(echo.Context) (string, error)
+	// TokenLookupFunc defines a function for extracting JWT token from the given context.
+	TokenLookupFunc func(echo.Context) (string, error)
 )
 
 // Algorithms
@@ -120,13 +126,14 @@ var (
 var (
 	// DefaultJWTConfig is the default JWT auth middleware config.
 	DefaultJWTConfig = JWTConfig{
-		Skipper:       DefaultSkipper,
-		SigningMethod: AlgorithmHS256,
-		ContextKey:    "user",
-		TokenLookup:   "header:" + echo.HeaderAuthorization,
-		AuthScheme:    "Bearer",
-		Claims:        jwt.MapClaims{},
-		KeyFunc:       nil,
+		Skipper:          DefaultSkipper,
+		SigningMethod:    AlgorithmHS256,
+		ContextKey:       "user",
+		TokenLookup:      "header:" + echo.HeaderAuthorization,
+		TokenLookupFuncs: nil,
+		AuthScheme:       "Bearer",
+		Claims:           jwt.MapClaims{},
+		KeyFunc:          nil,
 	}
 )
 
@@ -163,7 +170,7 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	if config.Claims == nil {
 		config.Claims = DefaultJWTConfig.Claims
 	}
-	if config.TokenLookup == "" {
+	if config.TokenLookup == "" && len(config.TokenLookupFuncs) == 0 {
 		config.TokenLookup = DefaultJWTConfig.TokenLookup
 	}
 	if config.AuthScheme == "" {
@@ -179,7 +186,7 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	// Initialize
 	// Split sources
 	sources := strings.Split(config.TokenLookup, ",")
-	var extractors []jwtExtractor
+	var extractors = config.TokenLookupFuncs
 	for _, source := range sources {
 		parts := strings.Split(source, ":")
 
@@ -290,8 +297,8 @@ func (config *JWTConfig) defaultKeyFunc(t *jwt.Token) (interface{}, error) {
 	return config.SigningKey, nil
 }
 
-// jwtFromHeader returns a `jwtExtractor` that extracts token from the request header.
-func jwtFromHeader(header string, authScheme string) jwtExtractor {
+// jwtFromHeader returns a `TokenLookupFunc` that extracts token from the request header.
+func jwtFromHeader(header string, authScheme string) TokenLookupFunc {
 	return func(c echo.Context) (string, error) {
 		auth := c.Request().Header.Get(header)
 		l := len(authScheme)
@@ -302,8 +309,8 @@ func jwtFromHeader(header string, authScheme string) jwtExtractor {
 	}
 }
 
-// jwtFromQuery returns a `jwtExtractor` that extracts token from the query string.
-func jwtFromQuery(param string) jwtExtractor {
+// jwtFromQuery returns a `TokenLookupFunc` that extracts token from the query string.
+func jwtFromQuery(param string) TokenLookupFunc {
 	return func(c echo.Context) (string, error) {
 		token := c.QueryParam(param)
 		if token == "" {
@@ -313,8 +320,8 @@ func jwtFromQuery(param string) jwtExtractor {
 	}
 }
 
-// jwtFromParam returns a `jwtExtractor` that extracts token from the url param string.
-func jwtFromParam(param string) jwtExtractor {
+// jwtFromParam returns a `TokenLookupFunc` that extracts token from the url param string.
+func jwtFromParam(param string) TokenLookupFunc {
 	return func(c echo.Context) (string, error) {
 		token := c.Param(param)
 		if token == "" {
@@ -324,8 +331,8 @@ func jwtFromParam(param string) jwtExtractor {
 	}
 }
 
-// jwtFromCookie returns a `jwtExtractor` that extracts token from the named cookie.
-func jwtFromCookie(name string) jwtExtractor {
+// jwtFromCookie returns a `TokenLookupFunc` that extracts token from the named cookie.
+func jwtFromCookie(name string) TokenLookupFunc {
 	return func(c echo.Context) (string, error) {
 		cookie, err := c.Cookie(name)
 		if err != nil {
@@ -335,8 +342,8 @@ func jwtFromCookie(name string) jwtExtractor {
 	}
 }
 
-// jwtFromForm returns a `jwtExtractor` that extracts token from the form field.
-func jwtFromForm(name string) jwtExtractor {
+// jwtFromForm returns a `TokenLookupFunc` that extracts token from the form field.
+func jwtFromForm(name string) TokenLookupFunc {
 	return func(c echo.Context) (string, error) {
 		field := c.FormValue(name)
 		if field == "" {

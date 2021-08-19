@@ -603,3 +603,27 @@ func TestJWTConfig_custom_ParseTokenFunc_Keyfunc(t *testing.T) {
 
 	assert.Equal(t, http.StatusTeapot, res.Code)
 }
+
+func TestJWTConfig_TokenLookupFuncs(t *testing.T) {
+	e := echo.New()
+
+	e.GET("/", func(c echo.Context) error {
+		return c.String(http.StatusOK, "test")
+	})
+
+	e.Use(JWTWithConfig(JWTConfig{
+		TokenLookupFuncs: []TokenLookupFunc{
+			func(c echo.Context) (string, error) {
+				return c.Request().Header.Get("X-API-Key"), nil
+			},
+		},
+		SigningKey: []byte("secret"),
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("X-API-Key", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ")
+	res := httptest.NewRecorder()
+	e.ServeHTTP(res, req)
+
+	assert.Equal(t, http.StatusOK, res.Code)
+}
