@@ -48,6 +48,9 @@ type (
 		// Path returns the registered path for the handler.
 		Path() string
 
+		// RouterPath returns the registered path for the handler on server startup.
+		RouterPath() string
+
 		// SetPath sets the registered path for the handler.
 		SetPath(p string)
 
@@ -196,17 +199,18 @@ type (
 	}
 
 	context struct {
-		request  *http.Request
-		response *Response
-		path     string
-		pnames   []string
-		pvalues  []string
-		query    url.Values
-		handler  HandlerFunc
-		store    Map
-		echo     *Echo
-		logger   Logger
-		lock     sync.RWMutex
+		request    *http.Request
+		response   *Response
+		path       string
+		routerPath string
+		pnames     []string
+		pvalues    []string
+		query      url.Values
+		handler    HandlerFunc
+		store      Map
+		echo       *Echo
+		logger     Logger
+		lock       sync.RWMutex
 	}
 )
 
@@ -290,6 +294,10 @@ func (c *context) RealIP() string {
 
 func (c *context) Path() string {
 	return c.path
+}
+
+func (c *context) RouterPath() string {
+	return c.routerPath
 }
 
 func (c *context) SetPath(p string) {
