@@ -485,14 +485,14 @@ func (e *Echo) Match(methods []string, path string, handler HandlerFunc, middlew
 
 // Static registers a new route with path prefix to serve static files from the
 // provided root directory.
-func (e *Echo) Static(prefix, root string) *Route {
+func (e *Echo) Static(prefix, root string, m ...MiddlewareFunc) *Route {
 	if root == "" {
 		root = "." // For security we want to restrict to CWD.
 	}
-	return e.static(prefix, root, e.GET)
+	return e.static(prefix, root, e.GET, m...)
 }
 
-func (common) static(prefix, root string, get func(string, HandlerFunc, ...MiddlewareFunc) *Route) *Route {
+func (common) static(prefix, root string, get func(string, HandlerFunc, ...MiddlewareFunc) *Route, m ...MiddlewareFunc) *Route {
 	h := func(c Context) error {
 		p, err := url.PathUnescape(c.Param("*"))
 		if err != nil {
@@ -522,9 +522,9 @@ func (common) static(prefix, root string, get func(string, HandlerFunc, ...Middl
 			// Only add any route for intentional trailing slash
 			return get(prefix+"*", h)
 		}
-		get(prefix, h)
+		get(prefix, h, m...)
 	}
-	return get(prefix+"/*", h)
+	return get(prefix+"/*", h, m...)
 }
 
 func (common) file(path, file string, get func(string, HandlerFunc, ...MiddlewareFunc) *Route,

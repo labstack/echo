@@ -252,6 +252,32 @@ func TestEchoFile(t *testing.T) {
 	assert.NotEmpty(t, b)
 }
 
+func TestStaticMiddleware(t *testing.T) {
+	e := New()
+
+	e.Use(func(next HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			c.Response().Header().Add("X-E-Use-Test", "working")
+			return next(c)
+		}
+	})
+
+	e.Static("/images", "_fixture/images", func(next HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			c.Response().Header().Add("X-E-Static-Test", "working")
+			return next(c)
+		}
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/images/walle.png", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	assert.NotEqual(t, "", rec.Header().Get("X-E-Use-Test"))
+	assert.NotEqual(t, "", rec.Header().Get("X-E-Static-Test"))
+}
+
 func TestEchoMiddleware(t *testing.T) {
 	e := New()
 	buf := new(bytes.Buffer)
