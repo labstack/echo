@@ -1,7 +1,12 @@
 package middleware
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -312,4 +317,127 @@ func TestTimeoutCanHandleContextDeadlineOnNextHandler(t *testing.T) {
 	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
 	assert.Equal(t, "Timeout! change me", rec.Body.String())
 	assert.False(t, <-handlerFinishedExecution)
+}
+
+func TestTimeoutWithFullEchoStack(t *testing.T) {
+	// test timeout with full http server stack running, do see what http.Server.ErrorLog contains
+	var testCases = []struct {
+		name                 string
+		whenPath             string
+		expectStatusCode     int
+		expectResponse       string
+		expectLogContains    []string
+		expectLogNotContains []string
+	}{
+		{
+			name:                 "404 - write response in global error handler",
+			whenPath:             "/404",
+			expectResponse:       "{\"message\":\"Not Found\"}\n",
+			expectStatusCode:     http.StatusNotFound,
+			expectLogNotContains: []string{"echo:http: superfluous response.WriteHeader call from"},
+			expectLogContains:    []string{`"status":404,"error":"code=404, message=Not Found"`},
+		},
+		{
+			name:                 "418 - write response in handler",
+			whenPath:             "/",
+			expectResponse:       "{\"message\":\"OK\"}\n",
+			expectStatusCode:     http.StatusTeapot,
+			expectLogNotContains: []string{"echo:http: superfluous response.WriteHeader call from"},
+			expectLogContains:    []string{`"status":418,"error":"",`},
+		},
+		{
+			name:             "503 - handler timeouts, write response in timeout middleware",
+			whenPath:         "/?delay=50ms",
+			expectResponse:   "<html><head><title>Timeout</title></head><body><h1>Timeout</h1></body></html>",
+			expectStatusCode: http.StatusServiceUnavailable,
+			expectLogNotContains: []string{
+				"echo:http: superfluous response.WriteHeader call from",
+				"{", // means that logger was not called.
+			},
+		},
+	}
+
+	e := echo.New()
+
+	buf := new(bytes.Buffer)
+	e.Logger.SetOutput(buf)
+
+	// NOTE: timeout middleware is first as it changes Response.Writer and causes data race for logger middleware if it is not first
+	// FIXME: I have no idea how to fix this without adding mutexes.
+	e.Use(TimeoutWithConfig(TimeoutConfig{
+		Timeout: 15 * time.Millisecond,
+	}))
+	e.Use(Logger())
+	e.Use(Recover())
+
+	e.GET("/", func(c echo.Context) error {
+		var delay time.Duration
+		if err := echo.QueryParamsBinder(c).Duration("delay", &delay).BindError(); err != nil {
+			return err
+		}
+		if delay > 0 {
+			time.Sleep(delay)
+		}
+		return c.JSON(http.StatusTeapot, map[string]string{"message": "OK"})
+	})
+
+	server, addr, err := startServer(e)
+	if err != nil {
+		assert.NoError(t, err)
+		return
+	}
+	defer server.Close()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			buf.Reset() // this is design this can not be run in parallel
+
+			res, err := http.Get(fmt.Sprintf("http://%v%v", addr, tc.whenPath))
+			if err != nil {
+				assert.NoError(t, err)
+				return
+			}
+
+			assert.Equal(t, tc.expectStatusCode, res.StatusCode)
+			if body, err := ioutil.ReadAll(res.Body); err == nil {
+				assert.Equal(t, tc.expectResponse, string(body))
+			} else {
+				assert.Fail(t, err.Error())
+			}
+
+			logged := buf.String()
+			for _, subStr := range tc.expectLogContains {
+				assert.True(t, strings.Contains(logged, subStr))
+			}
+			for _, subStr := range tc.expectLogNotContains {
+				assert.False(t, strings.Contains(logged, subStr))
+			}
+		})
+	}
+}
+
+func startServer(e *echo.Echo) (*http.Server, string, error) {
+	l, err := net.Listen("tcp", ":0")
+	if err != nil {
+		return nil, "", err
+	}
+
+	s := http.Server{
+		Handler:  e,
+		ErrorLog: log.New(e.Logger.Output(), "echo:", 0),
+	}
+
+	errCh := make(chan error)
+	go func() {
+		if err := s.Serve(l); err != http.ErrServerClosed {
+			errCh <- err
+		}
+	}()
+
+	select {
+	case <-time.After(10 * time.Millisecond):
+		return &s, l.Addr().String(), nil
+	case err := <-errCh:
+		return nil, "", err
+	}
 }
