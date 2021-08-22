@@ -8,6 +8,53 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+// ---------------------------------------------------------------------------------------------------------------
+// WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING
+// WARNING: Timeout middleware causes more problems than it solves.
+// WARNING: This middleware should be first middleware as it messes with request Writer and could cause data race if
+// 					it is in other position
+//
+// Depending on out requirements you could be better of setting timeout to context and
+// check its deadline from handler.
+//
+// For example: create middleware to set timeout to context
+// func RequestTimeout(timeout time.Duration) echo.MiddlewareFunc {
+//	return func(next echo.HandlerFunc) echo.HandlerFunc {
+//		return func(c echo.Context) error {
+//			timeoutCtx, cancel := context.WithTimeout(c.Request().Context(), timeout)
+//			c.SetRequest(c.Request().WithContext(timeoutCtx))
+//			defer cancel()
+//			return next(c)
+//		}
+//	}
+//}
+//
+// Create handler that checks for context deadline and runs actual task in separate coroutine
+// Note: separate coroutine may not be even if you do not want to process continue executing and
+// just want to stop long-running handler to stop and you are using "context aware" methods (ala db queries with ctx)
+// 	e.GET("/", func(c echo.Context) error {
+//
+//		doneCh := make(chan error)
+//		go func(ctx context.Context) {
+//			doneCh <- myPossiblyLongRunningBackgroundTaskWithCtx(ctx)
+//		}(c.Request().Context())
+//
+//		select { // wait for task to finish or context to timeout/cancelled
+//		case err := <-doneCh:
+//			if err != nil {
+//				return err
+//			}
+//			return c.String(http.StatusOK, "OK")
+//		case <-c.Request().Context().Done():
+//			if c.Request().Context().Err() == context.DeadlineExceeded {
+//				return c.String(http.StatusServiceUnavailable, "timeout")
+//			}
+//			return c.Request().Context().Err()
+//		}
+//
+//	})
+//
+
 type (
 	// TimeoutConfig defines the config for Timeout middleware.
 	TimeoutConfig struct {
@@ -116,13 +163,20 @@ func (t echoHandlerFuncWrapper) ServeHTTP(rw http.ResponseWriter, r *http.Reques
 	// we restore original writer only for cases we did not timeout. On timeout we have already sent response to client
 	// and should not anymore send additional headers/data
 	// so on timeout writer stays what http.TimeoutHandler uses and prevents writing headers/body
-	t.ctx.Response().Writer = originalWriter
 	if err != nil {
-		// call global error handler to write error to the client. This is needed or `http.TimeoutHandler` will send status code by itself
-		// and after that our tries to write status code will not work anymore
+		// Error must be written into Writer created in `http.TimeoutHandler` so to get Response into `commited` state.
+		// So call global error handler to write error to the client. This is needed or `http.TimeoutHandler` will send
+		// status code by itself and after that our tries to write status code will not work anymore and/or create errors in
+		// log about `superfluous response.WriteHeader call from`
 		t.ctx.Error(err)
 		// we pass error from handler to middlewares up in handler chain to act on it if needed. But this means that
 		// global error handler is probably be called twice as `t.ctx.Error` already does that.
+
+		// NB: later call of the global error handler or middlewares will not take any effect, as echo.Response will be
+		// already marked as `committed` because we called global error handler above.
+		t.ctx.Response().Writer = originalWriter // make sure we restore before we signal original coroutine about the error
 		t.errChan <- err
+		return
 	}
+	t.ctx.Response().Writer = originalWriter
 }
