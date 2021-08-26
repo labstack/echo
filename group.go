@@ -103,13 +103,13 @@ func (g *Group) Group(prefix string, middleware ...MiddlewareFunc) (sg *Group) {
 }
 
 // Static implements `Echo#Static()` for sub-routes within the Group.
-func (g *Group) Static(prefix, root string) {
-	g.static(prefix, root, g.GET)
+func (g *Group) Static(prefix, root string) *Route {
+	return g.static(prefix, root, g.GET)
 }
 
 // File implements `Echo#File()` for sub-routes within the Group.
-func (g *Group) File(path, file string) {
-	g.file(path, file, g.GET)
+func (g *Group) File(path, file string) *Route {
+	return g.file(path, file, g.GET)
 }
 
 // Add implements `Echo#Add()` for sub-routes within the Group.
