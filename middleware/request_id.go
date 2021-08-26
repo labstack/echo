@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"net/http"
+
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/random"
 )
@@ -10,6 +12,9 @@ type (
 	RequestIDConfig struct {
 		// Skipper defines a function to skip middleware.
 		Skipper Skipper
+
+		//Define the maximun length for RequestID value
+		MaxLength uint8
 
 		// Generator defines a function to generate an ID.
 		// Optional. Default value random.String(32).
@@ -26,6 +31,8 @@ var (
 		Skipper:   DefaultSkipper,
 		Generator: generator,
 	}
+	ErrRequestIDMaxLength = echo.NewHTTPError(http.StatusNotAcceptable, "request id length should not be greater than MaxLength")
+	RequestIDLength       = uint8(32)
 )
 
 // RequestID returns a X-Request-ID middleware.
@@ -42,6 +49,9 @@ func RequestIDWithConfig(config RequestIDConfig) echo.MiddlewareFunc {
 	if config.Generator == nil {
 		config.Generator = generator
 	}
+	if config.MaxLength == 0 {
+		config.MaxLength = RequestIDLength
+	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -52,6 +62,15 @@ func RequestIDWithConfig(config RequestIDConfig) echo.MiddlewareFunc {
 			req := c.Request()
 			res := c.Response()
 			rid := req.Header.Get(echo.HeaderXRequestID)
+
+			if len(rid) > int(config.MaxLength) {
+				c.Error(&echo.HTTPError{
+					Code:    ErrRequestIDMaxLength.Code,
+					Message: ErrRequestIDMaxLength.Message,
+				})
+				return nil
+			}
+
 			if rid == "" {
 				rid = config.Generator()
 			}
@@ -66,5 +85,5 @@ func RequestIDWithConfig(config RequestIDConfig) echo.MiddlewareFunc {
 }
 
 func generator() string {
-	return random.String(32)
+	return random.String(RequestIDLength)
 }

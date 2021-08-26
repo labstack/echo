@@ -55,3 +55,23 @@ func TestRequestID_IDNotAltered(t *testing.T) {
 	_ = h(c)
 	assert.Equal(t, rec.Header().Get(echo.HeaderXRequestID), "<sample-request-id>")
 }
+
+func TestRequestID_MaxLength(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Add(echo.HeaderXRequestID, "<sample-request-i234234234234d>")
+
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	handler := func(c echo.Context) error {
+		return c.String(http.StatusOK, "test")
+	}
+
+	rid := RequestIDWithConfig(RequestIDConfig{
+		MaxLength: 10,
+	})
+	h := rid(handler)
+	_ = h(c)
+
+	assert.Equal(t, http.StatusNotAcceptable, rec.Code)
+}
