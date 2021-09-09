@@ -180,7 +180,7 @@ func TestRequestLogger_ID(t *testing.T) {
 
 			var expect RequestLoggerValues
 			e.Use(RequestLoggerWithConfig(RequestLoggerConfig{
-				LogID: true,
+				LogRequestID: true,
 				LogValuesFunc: func(c echo.Context, values RequestLoggerValues) error {
 					expect = values
 					return nil
@@ -201,7 +201,7 @@ func TestRequestLogger_ID(t *testing.T) {
 			e.ServeHTTP(rec, req)
 
 			assert.Equal(t, http.StatusTeapot, rec.Code)
-			assert.Equal(t, tc.expect, expect.ID)
+			assert.Equal(t, tc.expect, expect.RequestID)
 		})
 	}
 }
@@ -253,7 +253,7 @@ func TestRequestLogger_allFields(t *testing.T) {
 		LogURI:           true,
 		LogURIPath:       true,
 		LogRoutePath:     true,
-		LogID:            true,
+		LogRequestID:     true,
 		LogReferer:       true,
 		LogUserAgent:     true,
 		LogStatus:        true,
@@ -303,7 +303,7 @@ func TestRequestLogger_allFields(t *testing.T) {
 	assert.Equal(t, "/test?lang=en&checked=1&checked=2", expect.URI)
 	assert.Equal(t, "/test", expect.URIPath)
 	assert.Equal(t, "/test*", expect.RoutePath)
-	assert.Equal(t, "123", expect.ID)
+	assert.Equal(t, "123", expect.RequestID)
 	assert.Equal(t, "https://echo.labstack.com/", expect.Referer)
 	assert.Equal(t, "curl/7.68.0", expect.UserAgent)
 	assert.Equal(t, 418, expect.Status)
@@ -339,7 +339,7 @@ func BenchmarkRequestLogger_withoutMapFields(b *testing.B) {
 		LogURI:           true,
 		LogURIPath:       true,
 		LogRoutePath:     true,
-		LogID:            true,
+		LogRequestID:     true,
 		LogReferer:       true,
 		LogUserAgent:     true,
 		LogStatus:        true,
@@ -380,7 +380,7 @@ func BenchmarkRequestLogger_withMapFields(b *testing.B) {
 		LogURI:           true,
 		LogURIPath:       true,
 		LogRoutePath:     true,
-		LogID:            true,
+		LogRequestID:     true,
 		LogReferer:       true,
 		LogUserAgent:     true,
 		LogStatus:        true,

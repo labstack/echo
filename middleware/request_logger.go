@@ -89,13 +89,14 @@ type RequestLoggerConfig struct {
 	LogURIPath bool
 	// LogRoutePath instructs logger to extract route path part to which request was matched to (i.e. `/user/:id`)
 	LogRoutePath bool
-	// LogID instructs logger to extract request ID from request `X-Request-ID` header or response if request did not have value.
-	LogID bool
-	// LogID instructs logger to extract request referer values.
+	// LogRequestID instructs logger to extract request ID from request `X-Request-ID` header or response if request did not have value.
+	LogRequestID bool
+	// LogReferer instructs logger to extract request referer values.
 	LogReferer bool
 	// LogUserAgent instructs logger to extract request user agent values.
 	LogUserAgent bool
-	// LogStatus instructs logger to extract response status code. Then handler returns an echo.HTTPError then code from there.
+	// LogStatus instructs logger to extract response status code. If handler chain returns an echo.HTTPError,
+	// the status code is extracted from the echo.HTTPError returned
 	LogStatus bool
 	// LogError instructs logger to extract error returned from executed handler chain.
 	LogError bool
@@ -107,12 +108,12 @@ type RequestLoggerConfig struct {
 	LogResponseSize bool
 	// LogHeaders instructs logger to extract given list of headers from request. Note: request can contain more than
 	// one header with same value so slice of values is been logger for each given header.
-	LogHeaders []string
-	// LogQueryParams instructs logger to extract given list of query parameters from request URI. Note: request can
-	// contain more than one query parameter with same name so slice of values is been logger for each given query param name.
 	//
 	// Note: header values are converted to canonical form with http.CanonicalHeaderKey as this how request parser converts header
 	// names to. For example, the canonical key for "accept-encoding" is "Accept-Encoding".
+	LogHeaders []string
+	// LogQueryParams instructs logger to extract given list of query parameters from request URI. Note: request can
+	// contain more than one query parameter with same name so slice of values is been logger for each given query param name.
 	LogQueryParams []string
 	// LogFormValues instructs logger to extract given list of form values from request body+URI. Note: request can
 	// contain more than one form value with same name so slice of values is been logger for each given form value name.
@@ -139,8 +140,8 @@ type RequestLoggerValues struct {
 	URIPath string
 	// RoutePath is route path part to which request was matched to (i.e. `/user/:id`)
 	RoutePath string
-	// ID is request ID from request `X-Request-ID` header or response if request did not have value.
-	ID string
+	// RequestID is request ID from request `X-Request-ID` header or response if request did not have value.
+	RequestID string
 	// Referer is request referer values.
 	Referer string
 	// UserAgent is request user agent values.
@@ -243,12 +244,12 @@ func (config RequestLoggerConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			if config.LogRoutePath {
 				v.RoutePath = c.Path()
 			}
-			if config.LogID {
+			if config.LogRequestID {
 				id := req.Header.Get(echo.HeaderXRequestID)
 				if id == "" {
 					id = res.Header().Get(echo.HeaderXRequestID)
 				}
-				v.ID = id
+				v.RequestID = id
 			}
 			if config.LogReferer {
 				v.Referer = req.Referer()
