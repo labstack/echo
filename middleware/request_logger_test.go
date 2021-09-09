@@ -286,6 +286,7 @@ func TestRequestLogger_allFields(t *testing.T) {
 	req.Header.Set("User-Agent", "curl/7.68.0")
 	req.Header.Set(echo.HeaderContentLength, strconv.Itoa(int(reader.Size())))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationForm)
+	req.Header.Set(echo.HeaderXRealIP, "8.8.8.8")
 
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
@@ -297,7 +298,7 @@ func TestRequestLogger_allFields(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 10*time.Second, expect.Latency)
 	assert.Equal(t, "HTTP/1.1", expect.Protocol)
-	assert.Equal(t, "192.0.2.1", expect.RemoteIP)
+	assert.Equal(t, "8.8.8.8", expect.RemoteIP)
 	assert.Equal(t, "example.com", expect.Host)
 	assert.Equal(t, http.MethodPost, expect.Method)
 	assert.Equal(t, "/test?lang=en&checked=1&checked=2", expect.URI)
