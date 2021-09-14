@@ -171,3 +171,76 @@ func TestLoggerCustomTimestamp(t *testing.T) {
 	_, err := time.Parse(customTimeFormat, loggedTime)
 	assert.Error(t, err)
 }
+
+func BenchmarkLoggerWithConfig_withoutMapFields(b *testing.B) {
+	e := echo.New()
+
+	buf := new(bytes.Buffer)
+	mw := LoggerWithConfig(LoggerConfig{
+		Format: `{"time":"${time_rfc3339_nano}","id":"${id}","remote_ip":"${remote_ip}","host":"${host}","user_agent":"${user_agent}",` +
+			`"method":"${method}","uri":"${uri}","status":${status}, "latency":${latency},` +
+			`"latency_human":"${latency_human}","bytes_in":${bytes_in}, "path":"${path}", "referer":"${referer}",` +
+			`"bytes_out":${bytes_out}, "protocol":"${protocol}"}` + "\n",
+		Output: buf,
+	})(func(c echo.Context) error {
+		c.Request().Header.Set(echo.HeaderXRequestID, "123")
+		c.FormValue("to force parse form")
+		return c.String(http.StatusTeapot, "OK")
+	})
+
+	f := make(url.Values)
+	f.Set("csrf", "token")
+	f.Add("multiple", "1")
+	f.Add("multiple", "2")
+	req := httptest.NewRequest(http.MethodPost, "/test?lang=en&checked=1&checked=2", strings.NewReader(f.Encode()))
+	req.Header.Set("Referer", "https://echo.labstack.com/")
+	req.Header.Set("User-Agent", "curl/7.68.0")
+	req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationForm)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		mw(c)
+		buf.Reset()
+	}
+}
+
+func BenchmarkLoggerWithConfig_withMapFields(b *testing.B) {
+	e := echo.New()
+
+	buf := new(bytes.Buffer)
+	mw := LoggerWithConfig(LoggerConfig{
+		Format: `{"time":"${time_rfc3339_nano}","id":"${id}","remote_ip":"${remote_ip}","host":"${host}","user_agent":"${user_agent}",` +
+			`"method":"${method}","uri":"${uri}","status":${status}, "latency":${latency},` +
+			`"latency_human":"${latency_human}","bytes_in":${bytes_in}, "path":"${path}", "referer":"${referer}",` +
+			`"bytes_out":${bytes_out},"ch":"${header:X-Custom-Header}", "protocol":"${protocol}"` +
+			`"us":"${query:username}", "cf":"${form:csrf}", "Referer2":"${header:Referer}"}` + "\n",
+		Output: buf,
+	})(func(c echo.Context) error {
+		c.Request().Header.Set(echo.HeaderXRequestID, "123")
+		c.FormValue("to force parse form")
+		return c.String(http.StatusTeapot, "OK")
+	})
+
+	f := make(url.Values)
+	f.Set("csrf", "token")
+	f.Add("multiple", "1")
+	f.Add("multiple", "2")
+	req := httptest.NewRequest(http.MethodPost, "/test?lang=en&checked=1&checked=2", strings.NewReader(f.Encode()))
+	req.Header.Set("Referer", "https://echo.labstack.com/")
+	req.Header.Set("User-Agent", "curl/7.68.0")
+	req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationForm)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		mw(c)
+		buf.Reset()
+	}
+}
