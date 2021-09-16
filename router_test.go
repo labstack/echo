@@ -1118,6 +1118,58 @@ func TestRouterParamStaticConflict(t *testing.T) {
 	}
 }
 
+func TestRouterParam_escapeColon(t *testing.T) {
+	// to allow Google cloud API like route paths with colon in them
+	// i.e. https://service.name/v1/some/resource/name:customVerb <- that `:customVerb` is not path param. It is just a string
+	e := New()
+
+	e.POST("/files/a/long/file\\:undelete", handlerFunc)
+	e.POST("/v1/some/resource/name:customVerb", handlerFunc)
+
+	var testCases = []struct {
+		whenURL     string
+		expectRoute interface{}
+		expectParam map[string]string
+		expectError string
+	}{
+		{
+			whenURL:     "/files/a/long/file\\:undelete",
+			expectRoute: "/files/a/long/file\\:undelete",
+			expectParam: map[string]string{},
+		},
+		{
+			whenURL:     "/files/a/long/file\\:notMatching",
+			expectRoute: nil,
+			expectError: "code=404, message=Not Found",
+			expectParam: nil,
+		},
+		{
+			whenURL:     "/v1/some/resource/name:PATCH",
+			expectRoute: "/v1/some/resource/name:customVerb",
+			expectParam: map[string]string{"customVerb": ":PATCH"},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.whenURL, func(t *testing.T) {
+			c := e.NewContext(nil, nil).(*context)
+
+			e.router.Find(http.MethodPost, tc.whenURL, c)
+			err := c.handler(c)
+
+			assert.Equal(t, tc.expectRoute, c.Get("path"))
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+			for param, expectedValue := range tc.expectParam {
+				assert.Equal(t, expectedValue, c.Param(param))
+			}
+			checkUnusedParamValues(t, c, tc.expectParam)
+		})
+	}
+}
+
 func TestRouterMatchAny(t *testing.T) {
 	e := New()
 	r := e.router
