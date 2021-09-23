@@ -296,6 +296,7 @@ func TestRequestLogger_allFields(t *testing.T) {
 	err := mw(c)
 
 	assert.NoError(t, err)
+	assert.Equal(t, time.Unix(1631045377, 0), expect.StartTime)
 	assert.Equal(t, 10*time.Second, expect.Latency)
 	assert.Equal(t, "HTTP/1.1", expect.Protocol)
 	assert.Equal(t, "8.8.8.8", expect.RemoteIP)

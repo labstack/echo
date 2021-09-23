@@ -124,6 +124,8 @@ type RequestLoggerConfig struct {
 
 // RequestLoggerValues contains extracted values from logger.
 type RequestLoggerValues struct {
+	// StartTime is time recorded before next middleware/handler is executed.
+	StartTime time.Time
 	// Latency is duration it took to execute rest of the handler chain (next(c) call).
 	Latency time.Duration
 	// Protocol is request protocol (i.e. `HTTP/1.1` or `HTTP/2`)
@@ -215,7 +217,9 @@ func (config RequestLoggerConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			}
 			err := next(c)
 
-			v := RequestLoggerValues{}
+			v := RequestLoggerValues{
+				StartTime: start,
+			}
 			if config.LogLatency {
 				v.Latency = now().Sub(start)
 			}
