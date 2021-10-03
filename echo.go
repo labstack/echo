@@ -545,6 +545,9 @@ func (e *Echo) File(path, file string, m ...MiddlewareFunc) *Route {
 }
 
 func (e *Echo) add(host, method, path string, handler HandlerFunc, middleware ...MiddlewareFunc) *Route {
+	e.router.lock.Lock()
+	defer e.router.lock.Unlock()
+
 	name := handlerName(handler)
 	router := e.findRouter(host)
 	router.Add(method, path, func(c Context) error {
@@ -594,6 +597,9 @@ func (e *Echo) URL(h HandlerFunc, params ...interface{}) string {
 
 // Reverse generates an URL from route name and provided parameters.
 func (e *Echo) Reverse(name string, params ...interface{}) string {
+	e.router.lock.RLock()
+	defer e.router.lock.RUnlock()
+
 	uri := new(bytes.Buffer)
 	ln := len(params)
 	n := 0
@@ -618,6 +624,9 @@ func (e *Echo) Reverse(name string, params ...interface{}) string {
 
 // Routes returns the registered routes.
 func (e *Echo) Routes() []*Route {
+	e.router.lock.RLock()
+	defer e.router.lock.RUnlock()
+
 	routes := make([]*Route, 0, len(e.router.routes))
 	for _, v := range e.router.routes {
 		routes = append(routes, v)

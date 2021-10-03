@@ -2,6 +2,7 @@ package echo
 
 import (
 	"net/http"
+	"sync"
 )
 
 type (
@@ -10,6 +11,7 @@ type (
 	Router struct {
 		tree   *node
 		routes map[string]*Route
+		lock   sync.RWMutex
 		echo   *Echo
 	}
 	node struct {
@@ -74,6 +76,7 @@ func NewRouter(e *Echo) *Router {
 		tree: &node{
 			methodHandler: new(methodHandler),
 		},
+		lock:   sync.RWMutex{},
 		routes: map[string]*Route{},
 		echo:   e,
 	}
