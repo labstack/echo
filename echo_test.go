@@ -285,13 +285,21 @@ func TestEchoMiddleware(t *testing.T) {
 		}
 	})
 
+	e.Tail(func(next HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			buf.WriteString("4")
+			return next(c)
+		}
+	})
+
 	// Route
 	e.GET("/", func(c Context) error {
 		return c.String(http.StatusOK, "OK")
 	})
 
 	c, b := request(http.MethodGet, "/", e)
-	assert.Equal(t, "-1123", buf.String())
+	fmt.Println("buf.String():", buf.String())
+	assert.Equal(t, "-11234", buf.String())
 	assert.Equal(t, http.StatusOK, c)
 	assert.Equal(t, "OK", b)
 }

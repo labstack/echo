@@ -74,6 +74,7 @@ type (
 		colorer          *color.Color
 		premiddleware    []MiddlewareFunc
 		middleware       []MiddlewareFunc
+		tailmiddleware   []MiddlewareFunc
 		maxParam         *int
 		router           *Router
 		routers          map[string]*Router
@@ -414,6 +415,11 @@ func (e *Echo) Use(middleware ...MiddlewareFunc) {
 	e.middleware = append(e.middleware, middleware...)
 }
 
+// Use adds middleware to the chain which is run after router.
+func (e *Echo) Tail(middleware ...MiddlewareFunc) {
+	e.tailmiddleware = append(e.tailmiddleware, middleware...)
+}
+
 // CONNECT registers a new CONNECT route for a path with matching handler in the
 // router with optional route-level middleware.
 func (e *Echo) CONNECT(path string, h HandlerFunc, m ...MiddlewareFunc) *Route {
@@ -653,6 +659,10 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			e.findRouter(r.Host).Find(r.Method, GetPath(r), c)
 			h := c.Handler()
 			h = applyMiddleware(h, e.middleware...)
+			if e.tailmiddleware != nil {
+				h(c)
+				h = applyTailMiddleware(e.tailmiddleware...)
+			}
 			return h(c)
 		}
 		h = applyMiddleware(h, e.premiddleware...)
@@ -991,6 +1001,14 @@ func newListener(address, network string) (*tcpKeepAliveListener, error) {
 }
 
 func applyMiddleware(h HandlerFunc, middleware ...MiddlewareFunc) HandlerFunc {
+	for i := len(middleware) - 1; i >= 0; i-- {
+		h = middleware[i](h)
+	}
+	return h
+}
+
+func applyTailMiddleware(middleware ...MiddlewareFunc) HandlerFunc {
+	h := func(Context) error { return nil }
 	for i := len(middleware) - 1; i >= 0; i-- {
 		h = middleware[i](h)
 	}
