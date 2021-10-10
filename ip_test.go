@@ -17,6 +17,8 @@ const (
 	sampleRemoteAddrExternal = ipForRemoteAddrExternal + ":8080"
 	// For x-real-ip
 	ipForRealIP = "203.0.113.10"
+	// For internal x-real-ip
+	ipForInternalRealIP = "127.0.0.1"
 	// For XFF
 	ipForXFF1LinkLocal = "169.254.0.101" // From 169.254.0.0/16
 	ipForXFF2Private   = "192.168.0.102" // From 192.168.0.0/16
@@ -53,7 +55,7 @@ var (
 		},
 		ipTestReqKeyRealIPInternal: &http.Request{
 			Header: http.Header{
-				"X-Real-Ip": []string{ipForRealIP},
+				"X-Real-Ip": []string{ipForInternalRealIP},
 			},
 			RemoteAddr: sampleRemoteAddrLoopback,
 		},
@@ -66,7 +68,7 @@ var (
 		},
 		ipTestReqKeyRealIPAndXFFInternal: &http.Request{
 			Header: http.Header{
-				"X-Real-Ip":         []string{ipForRealIP},
+				"X-Real-Ip":         []string{ipForInternalRealIP},
 				HeaderXForwardedFor: []string{sampleXFF},
 			},
 			RemoteAddr: sampleRemoteAddrLoopback,
@@ -120,9 +122,9 @@ func TestExtractIP(t *testing.T) {
 			map[string]string{
 				ipTestReqKeyNoHeader:             ipForRemoteAddrExternal,
 				ipTestReqKeyRealIPExternal:       ipForRemoteAddrExternal,
-				ipTestReqKeyRealIPInternal:       ipForRealIP,
+				ipTestReqKeyRealIPInternal:       ipForInternalRealIP,
 				ipTestReqKeyRealIPAndXFFExternal: ipForRemoteAddrExternal,
-				ipTestReqKeyRealIPAndXFFInternal: ipForRealIP,
+				ipTestReqKeyRealIPAndXFFInternal: ipForInternalRealIP,
 				ipTestReqKeyXFFExternal:          ipForRemoteAddrExternal,
 				ipTestReqKeyXFFInternal:          ipForRemoteAddrLoopback,
 				ipTestReqKeyBrokenXFF:            ipForRemoteAddrLoopback,
@@ -133,11 +135,11 @@ func TestExtractIP(t *testing.T) {
 			map[string]string{
 				ipTestReqKeyNoHeader:             ipForRemoteAddrExternal,
 				ipTestReqKeyRealIPExternal:       ipForRealIP,
-				ipTestReqKeyRealIPInternal:       ipForRemoteAddrLoopback,
+				ipTestReqKeyRealIPInternal:       ipForInternalRealIP,
 				ipTestReqKeyRealIPAndXFFExternal: ipForRealIP,
-				ipTestReqKeyRealIPAndXFFInternal: ipForRemoteAddrLoopback,
+				ipTestReqKeyRealIPAndXFFInternal: ipForInternalRealIP,
 				ipTestReqKeyXFFExternal:          ipForRemoteAddrExternal,
-				ipTestReqKeyXFFInternal:          ipForRemoteAddrLoopback,
+				ipTestReqKeyXFFInternal:          ipForInternalRealIP,
 				ipTestReqKeyBrokenXFF:            ipForRemoteAddrLoopback,
 			},
 		},
@@ -146,9 +148,9 @@ func TestExtractIP(t *testing.T) {
 			map[string]string{
 				ipTestReqKeyNoHeader:             ipForRemoteAddrExternal,
 				ipTestReqKeyRealIPExternal:       ipForRealIP,
-				ipTestReqKeyRealIPInternal:       ipForRealIP,
+				ipTestReqKeyRealIPInternal:       ipForInternalRealIP,
 				ipTestReqKeyRealIPAndXFFExternal: ipForRealIP,
-				ipTestReqKeyRealIPAndXFFInternal: ipForRealIP,
+				ipTestReqKeyRealIPAndXFFInternal: ipForInternalRealIP,
 				ipTestReqKeyXFFExternal:          ipForRemoteAddrExternal,
 				ipTestReqKeyXFFInternal:          ipForRemoteAddrLoopback,
 				ipTestReqKeyBrokenXFF:            ipForRemoteAddrLoopback,
