@@ -544,6 +544,18 @@ func (e *Echo) File(path, file string, m ...MiddlewareFunc) *Route {
 	return e.file(path, file, e.GET, m...)
 }
 
+func (common) attachment(path, file, name string, get func(string, HandlerFunc, ...MiddlewareFunc) *Route,
+	m ...MiddlewareFunc) *Route {
+	return get(path, func(c Context) error {
+		return c.Attachment(file, name)
+	}, m...)
+}
+
+// Attachment registers a new route with path to serve a static file with custom name and optional route-level middleware.
+func (e *Echo) Attachment(path, file, name string, m ...MiddlewareFunc) *Route {
+	return e.attachment(path, file, name, e.GET, m...)
+}
+
 func (e *Echo) add(host, method, path string, handler HandlerFunc, middleware ...MiddlewareFunc) *Route {
 	name := handlerName(handler)
 	router := e.findRouter(host)

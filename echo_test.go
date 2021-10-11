@@ -252,6 +252,14 @@ func TestEchoFile(t *testing.T) {
 	assert.NotEmpty(t, b)
 }
 
+func TestEchoAttachment(t *testing.T) {
+	e := New()
+	e.Attachment("/walle", "_fixture/images/walle.png", "wall-e.png")
+	c, b := request(http.MethodGet, "/walle", e)
+	assert.Equal(t, http.StatusOK, c)
+	assert.NotEmpty(t, b)
+}
+
 func TestEchoMiddleware(t *testing.T) {
 	e := New()
 	buf := new(bytes.Buffer)
