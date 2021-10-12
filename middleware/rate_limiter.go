@@ -199,7 +199,7 @@ Characteristics:
 Example:
 
 	limiterStore := middleware.NewRateLimiterMemoryStoreWithConfig(
-		middleware.RateLimiterMemoryStoreConfig{Rate: 50, Burst: 200, ExpiresIn: 5 * time.Minutes},
+		middleware.RateLimiterMemoryStoreConfig{Rate: 50, Burst: 200, ExpiresIn: 5 * time.Minute},
 	)
 */
 func NewRateLimiterMemoryStoreWithConfig(config RateLimiterMemoryStoreConfig) (store *RateLimiterMemoryStore) {
