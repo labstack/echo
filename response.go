@@ -84,7 +84,9 @@ func (r *Response) Write(b []byte) (n int, err error) {
 // buffered data to the client.
 // See [http.Flusher](https://golang.org/pkg/net/http/#Flusher)
 func (r *Response) Flush() {
-	r.Writer.(http.Flusher).Flush()
+	if fl, ok := r.Writer.(http.Flusher); ok {
+		fl.Flush()
+	}
 }
 
 // Hijack implements the http.Hijacker interface to allow an HTTP handler to
