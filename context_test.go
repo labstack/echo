@@ -496,6 +496,10 @@ func TestContextPathParam(t *testing.T) {
 	// Param
 	testify.Equal(t, "501", c.Param("fid"))
 	testify.Equal(t, "", c.Param("undefined"))
+
+	// ParamDefault
+	testify.Equal(t, "901", c.ParamDefault("xid", "901"))
+	testify.Equal(t, "501", c.ParamDefault("fid", "901"))
 }
 
 func TestContextGetAndSetParam(t *testing.T) {
@@ -596,6 +600,10 @@ func TestContextQueryParam(t *testing.T) {
 	// QueryParam
 	testify.Equal(t, "Jon Snow", c.QueryParam("name"))
 	testify.Equal(t, "jon@labstack.com", c.QueryParam("email"))
+
+	// QueryParamDefault
+	testify.Equal(t, "Targaryen", c.QueryParamDefault("house", "Targaryen"))
+	testify.Equal(t, "Jon Snow", c.QueryParamDefault("name", "Aegon Targaryen"))
 
 	// QueryParams
 	testify.Equal(t, url.Values{

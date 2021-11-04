@@ -54,6 +54,9 @@ type (
 		// Param returns path parameter by name.
 		Param(name string) string
 
+		// ParamDefault sets default path parameter value if empty.
+		ParamDefault(name, value string) string
+
 		// ParamNames returns path parameter names.
 		ParamNames() []string
 
@@ -68,6 +71,9 @@ type (
 
 		// QueryParam returns the query param for the provided name.
 		QueryParam(name string) string
+
+		// QueryParamDefault sets default query param value if empty.
+		QueryParamDefault(name, value string) string
 
 		// QueryParams returns the query parameters as `url.Values`.
 		QueryParams() url.Values
@@ -307,6 +313,15 @@ func (c *context) Param(name string) string {
 	return ""
 }
 
+func (c *context) ParamDefault(name, value string) string {
+	param := c.Param(name)
+	if param == "" {
+		param = value
+	}
+
+	return param
+}
+
 func (c *context) ParamNames() []string {
 	return c.pnames
 }
@@ -349,6 +364,15 @@ func (c *context) QueryParam(name string) string {
 		c.query = c.request.URL.Query()
 	}
 	return c.query.Get(name)
+}
+
+func (c *context) QueryParamDefault(name, value string) string {
+	query := c.QueryParam(name)
+	if query == "" {
+		query = value
+	}
+
+	return query
 }
 
 func (c *context) QueryParams() url.Values {
