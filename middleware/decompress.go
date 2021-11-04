@@ -86,35 +86,51 @@ func DecompressWithConfig(config DecompressConfig) echo.MiddlewareFunc {
 			if config.Skipper(c) {
 				return next(c)
 			}
-			switch c.Request().Header.Get(echo.HeaderContentEncoding) {
-			case GZIPEncoding:
-				b := c.Request().Body
 
-				i := pool.Get()
-				gr, ok := i.(*gzip.Reader)
-				if !ok {
-					return echo.NewHTTPError(http.StatusInternalServerError, i.(error).Error())
-				}
-
-				if err := gr.Reset(b); err != nil {
-					pool.Put(gr)
-					if err == io.EOF { //ignore if body is empty
-						return next(c)
-					}
-					return err
-				}
-				var buf bytes.Buffer
-				io.Copy(&buf, gr)
-
-				gr.Close()
-				pool.Put(gr)
-
-				b.Close() // http.Request.Body is closed by the Server, but because we are replacing it, it must be closed here
-
-				r := ioutil.NopCloser(&buf)
-				c.Request().Body = r
+			if c.Request().Header.Get(echo.HeaderContentEncoding) != GZIPEncoding {
+				return next(c)
 			}
+
+			b := c.Request().Body
+
+			i := pool.Get()
+			gr, ok := i.(*gzip.Reader)
+			if !ok {
+				return echo.NewHTTPError(http.StatusInternalServerError, i.(error).Error())
+			}
+
+			if err := gr.Reset(b); err != nil {
+				pool.Put(gr)
+				if err == io.EOF { //ignore if body is empty
+					return next(c)
+				}
+				return err
+			}
+
+			c.Request().Body = readCloserCustom{
+				gr,
+				func() error {
+					gr.Close()
+					b.Close()
+					pool.Put(gr)
+					return nil
+				},
+			}
+
 			return next(c)
 		}
+
 	}
+}
+
+type readCloserCustom struct {
+	io.Reader
+	closeFunc func() error
+}
+
+func (rc readCloserCustom) Close() error {
+	if rc.closeFunc == nil {
+		return nil
+	}
+	return rc.closeFunc()
 }
