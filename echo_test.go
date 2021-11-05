@@ -1132,6 +1132,14 @@ func TestDefaultHTTPErrorHandler(t *testing.T) {
 		err := errors.New("internal error message body")
 		return NewHTTPError(http.StatusBadRequest).SetInternal(err)
 	})
+	e.GET("/bad-json", func(c Context) error {
+		err := errors.New("test error")
+		return c.JSON(http.StatusOK, err.Error) // <- missing () after 'Error'
+	})
+	e.GET("/bad-json-err", func(c Context) error {
+		err := errors.New("test error")
+		return NewHTTPError(http.StatusBadRequest, err.Error) // <- missing () after 'Error'
+	})
 
 	// With Debug=true plain response contains error message
 	c, b := request(http.MethodGet, "/plain", e)
@@ -1153,6 +1161,12 @@ func TestDefaultHTTPErrorHandler(t *testing.T) {
 	c, b = request(http.MethodGet, "/internal-error", e)
 	assert.Equal(t, http.StatusBadRequest, c)
 	assert.Equal(t, "{\n  \"error\": \"code=400, message=Bad Request, internal=internal error message body\",\n  \"message\": \"Bad Request\"\n}\n", b)
+	c, b = request(http.MethodGet, "/bad-json", e)
+	assert.Equal(t, http.StatusInternalServerError, c)
+	assert.Equal(t, "{\n  \"error\": \"json: unsupported type: func() string\",\n  \"message\": \"Internal Server Error\"\n}\n", b)
+	c, b = request(http.MethodGet, "/bad-json-err", e)
+	assert.Equal(t, http.StatusInternalServerError, c)
+	assert.Equal(t, "{\n  \"error\": \"json: unsupported type: func() string\",\n  \"message\": \"Internal Server Error\"\n}\n", b)
 
 	e.Debug = false
 	// With Debug=false the error response is shortened
