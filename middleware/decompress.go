@@ -107,30 +107,17 @@ func DecompressWithConfig(config DecompressConfig) echo.MiddlewareFunc {
 				return err
 			}
 
-			c.Request().Body = readCloserCustom{
-				gr,
-				func() error {
-					gr.Close()
-					b.Close()
-					pool.Put(gr)
-					return nil
-				},
-			}
+			defer func() error {
+				gr.Close()
+				b.Close()
+				pool.Put(gr)
+				return nil
+			}()
+
+			c.Request().Body = gr
 
 			return next(c)
 		}
 
 	}
-}
-
-type readCloserCustom struct {
-	io.Reader
-	closeFunc func() error
-}
-
-func (rc readCloserCustom) Close() error {
-	if rc.closeFunc == nil {
-		return nil
-	}
-	return rc.closeFunc()
 }
