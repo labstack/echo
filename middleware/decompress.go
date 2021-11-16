@@ -91,29 +91,24 @@ func DecompressWithConfig(config DecompressConfig) echo.MiddlewareFunc {
 				return next(c)
 			}
 
-			b := c.Request().Body
-
 			i := pool.Get()
 			gr, ok := i.(*gzip.Reader)
 			if !ok {
 				return echo.NewHTTPError(http.StatusInternalServerError, i.(error).Error())
 			}
+			defer pool.Put(gr)
+			defer gr.Close()
+
+			b := c.Request().Body
 
 			if err := gr.Reset(b); err != nil {
-				pool.Put(gr)
 				if err == io.EOF { //ignore if body is empty
 					return next(c)
 				}
 				return err
 			}
 
-			defer func() error {
-				gr.Close()
-				b.Close()
-				pool.Put(gr)
-				return nil
-			}()
-
+			defer b.Close()
 			c.Request().Body = gr
 
 			return next(c)
