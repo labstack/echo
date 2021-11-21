@@ -170,7 +170,6 @@ type (
 /*
 NewRateLimiterMemoryStore returns an instance of RateLimiterMemoryStore with
 the provided rate (as req/s). The provided rate less than 1 will be treated as zero.
-Also rate between 0 and 1 will be treated as zero.
 for more info check out Limiter docs - https://pkg.go.dev/golang.org/x/time/rate#Limit.
 
 Burst and ExpiresIn will be set to default values.
