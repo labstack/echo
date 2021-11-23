@@ -1,10 +1,13 @@
 package middleware
 
 import (
+	"bytes"
 	"errors"
-	"github.com/labstack/echo/v4"
+	"io"
 	"net/http"
 	"time"
+
+	"github.com/labstack/echo/v4"
 )
 
 // Example for `fmt.Printf`
@@ -103,6 +106,8 @@ type RequestLoggerConfig struct {
 	// LogContentLength instructs logger to extract content length header value. Note: this value could be different from
 	// actual request body size as it could be spoofed etc.
 	LogContentLength bool
+	// LogResponseBody instructs logger to extract response body. Note: it can be to big.
+	LogResponseBody bool
 	// LogResponseSize instructs logger to extract response content length value. Note: when used with Gzip middleware
 	// this value may not be always correct.
 	LogResponseSize bool
@@ -155,6 +160,8 @@ type RequestLoggerValues struct {
 	// ContentLength is content length header value. Note: this value could be different from actual request body size
 	// as it could be spoofed etc.
 	ContentLength string
+	// ResponseBody is response body value. Note: it can be too big.
+	ResponseBody []byte
 	// ResponseSize is response content length value. Note: when used with Gzip middleware this value may not be always correct.
 	ResponseSize int64
 	// Headers are list of headers from request. Note: request can contain more than one header with same value so slice
@@ -211,15 +218,23 @@ func (config RequestLoggerConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			req := c.Request()
 			res := c.Response()
 			start := now()
+			v := RequestLoggerValues{
+				StartTime: start,
+			}
 
 			if config.BeforeNextFunc != nil {
 				config.BeforeNextFunc(c)
 			}
-			err := next(c)
-
-			v := RequestLoggerValues{
-				StartTime: start,
+			resBody := new(bytes.Buffer)
+			if config.LogResponseBody {
+				mw := io.MultiWriter(res.Writer, resBody)
+				res.Writer = &bodyDumpResponseWriter{Writer: mw, ResponseWriter: res.Writer}
 			}
+			err := next(c)
+			if config.LogResponseBody {
+				v.ResponseBody = resBody.Bytes()
+			}
+
 			if config.LogLatency {
 				v.Latency = now().Sub(start)
 			}

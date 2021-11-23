@@ -1,8 +1,6 @@
 package middleware
 
 import (
-	"github.com/labstack/echo/v4"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -10,6 +8,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRequestLoggerWithConfig(t *testing.T) {
@@ -260,6 +261,7 @@ func TestRequestLogger_allFields(t *testing.T) {
 		LogError:         true,
 		LogContentLength: true,
 		LogResponseSize:  true,
+		LogResponseBody:  true,
 		LogHeaders:       []string{"accept-encoding", "User-Agent"},
 		LogQueryParams:   []string{"lang", "checked"},
 		LogFormValues:    []string{"csrf", "multiple"},
@@ -311,8 +313,8 @@ func TestRequestLogger_allFields(t *testing.T) {
 	assert.Equal(t, 418, expect.Status)
 	assert.Equal(t, nil, expect.Error)
 	assert.Equal(t, "32", expect.ContentLength)
+	assert.Equal(t, "OK", string(expect.ResponseBody))
 	assert.Equal(t, int64(2), expect.ResponseSize)
-
 	assert.Len(t, expect.Headers, 1)
 	assert.Equal(t, []string{"curl/7.68.0"}, expect.Headers["User-Agent"])
 
