@@ -93,6 +93,9 @@ func (r *Router) Add(method, path string, h HandlerFunc) {
 
 	if h == nil && r.echo.Logger != nil {
 		// FIXME: in future we should return error
+		if r.echo.Logger == nil {
+			panic("Adding route without handler function and Logger is not init(ed)")
+		}
 		r.echo.Logger.Errorf("Adding route without handler function: %v:%v", method, path)
 	}
 
