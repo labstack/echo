@@ -91,7 +91,7 @@ func (r *Router) Add(method, path string, h HandlerFunc) {
 	pnames := []string{} // Param names
 	ppath := path        // Pristine path
 
-	if h == nil && r.echo.Logger != nil {
+	if h == nil {
 		// FIXME: in future we should return error
 		if r.echo.Logger == nil {
 			panic("Adding route without handler function and Logger is not init(ed)")
