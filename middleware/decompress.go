@@ -1,10 +1,8 @@
 package middleware
 
 import (
-	"bytes"
 	"compress/gzip"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"sync"
 
@@ -43,26 +41,7 @@ type DefaultGzipDecompressPool struct {
 }
 
 func (d *DefaultGzipDecompressPool) gzipDecompressPool() sync.Pool {
-	return sync.Pool{
-		New: func() interface{} {
-			// create with an empty reader (but with GZIP header)
-			w, err := gzip.NewWriterLevel(ioutil.Discard, gzip.BestSpeed)
-			if err != nil {
-				return err
-			}
-
-			b := new(bytes.Buffer)
-			w.Reset(b)
-			w.Flush()
-			w.Close()
-
-			r, err := gzip.NewReader(bytes.NewReader(b.Bytes()))
-			if err != nil {
-				return err
-			}
-			return r
-		},
-	}
+	return sync.Pool{New: func() interface{} { return new(gzip.Reader) }}
 }
 
 //Decompress decompresses request body based if content encoding type is set to "gzip" with default config
@@ -82,6 +61,7 @@ func DecompressWithConfig(config DecompressConfig) echo.MiddlewareFunc {
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		pool := config.GzipDecompressPool.gzipDecompressPool()
+
 		return func(c echo.Context) error {
 			if config.Skipper(c) {
 				return next(c)
@@ -93,13 +73,13 @@ func DecompressWithConfig(config DecompressConfig) echo.MiddlewareFunc {
 
 			i := pool.Get()
 			gr, ok := i.(*gzip.Reader)
-			if !ok {
+			if !ok || gr == nil {
 				return echo.NewHTTPError(http.StatusInternalServerError, i.(error).Error())
 			}
 			defer pool.Put(gr)
-			defer gr.Close()
 
 			b := c.Request().Body
+			defer b.Close()
 
 			if err := gr.Reset(b); err != nil {
 				if err == io.EOF { //ignore if body is empty
@@ -108,11 +88,12 @@ func DecompressWithConfig(config DecompressConfig) echo.MiddlewareFunc {
 				return err
 			}
 
-			defer b.Close()
+			// only Close gzip reader if it was set to a proper gzip source otherwise it will panic on close.
+			defer gr.Close()
+
 			c.Request().Body = gr
 
 			return next(c)
 		}
-
 	}
 }
