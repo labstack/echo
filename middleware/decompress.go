@@ -1,10 +1,8 @@
 package middleware
 
 import (
-	"bytes"
 	"compress/gzip"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"sync"
 
@@ -43,26 +41,7 @@ type DefaultGzipDecompressPool struct {
 }
 
 func (d *DefaultGzipDecompressPool) gzipDecompressPool() sync.Pool {
-	return sync.Pool{
-		New: func() interface{} {
-			// create with an empty reader (but with GZIP header)
-			w, err := gzip.NewWriterLevel(ioutil.Discard, gzip.BestSpeed)
-			if err != nil {
-				return err
-			}
-
-			b := new(bytes.Buffer)
-			w.Reset(b)
-			w.Flush()
-			w.Close()
-
-			r, err := gzip.NewReader(bytes.NewReader(b.Bytes()))
-			if err != nil {
-				return err
-			}
-			return r
-		},
-	}
+	return sync.Pool{New: func() interface{} { return new(gzip.Reader) }}
 }
 
 //Decompress decompresses request body based if content encoding type is set to "gzip" with default config
@@ -82,38 +61,38 @@ func DecompressWithConfig(config DecompressConfig) echo.MiddlewareFunc {
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		pool := config.GzipDecompressPool.gzipDecompressPool()
+
 		return func(c echo.Context) error {
 			if config.Skipper(c) {
 				return next(c)
 			}
-			switch c.Request().Header.Get(echo.HeaderContentEncoding) {
-			case GZIPEncoding:
-				b := c.Request().Body
 
-				i := pool.Get()
-				gr, ok := i.(*gzip.Reader)
-				if !ok {
-					return echo.NewHTTPError(http.StatusInternalServerError, i.(error).Error())
-				}
-
-				if err := gr.Reset(b); err != nil {
-					pool.Put(gr)
-					if err == io.EOF { //ignore if body is empty
-						return next(c)
-					}
-					return err
-				}
-				var buf bytes.Buffer
-				io.Copy(&buf, gr)
-
-				gr.Close()
-				pool.Put(gr)
-
-				b.Close() // http.Request.Body is closed by the Server, but because we are replacing it, it must be closed here
-
-				r := ioutil.NopCloser(&buf)
-				c.Request().Body = r
+			if c.Request().Header.Get(echo.HeaderContentEncoding) != GZIPEncoding {
+				return next(c)
 			}
+
+			i := pool.Get()
+			gr, ok := i.(*gzip.Reader)
+			if !ok || gr == nil {
+				return echo.NewHTTPError(http.StatusInternalServerError, i.(error).Error())
+			}
+			defer pool.Put(gr)
+
+			b := c.Request().Body
+			defer b.Close()
+
+			if err := gr.Reset(b); err != nil {
+				if err == io.EOF { //ignore if body is empty
+					return next(c)
+				}
+				return err
+			}
+
+			// only Close gzip reader if it was set to a proper gzip source otherwise it will panic on close.
+			defer gr.Close()
+
+			c.Request().Body = gr
+
 			return next(c)
 		}
 	}
