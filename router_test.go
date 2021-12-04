@@ -3,6 +3,7 @@ package echo
 import (
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -725,12 +726,13 @@ func TestMethodNotAllowedAndNotFound(t *testing.T) {
 	r.Add(http.MethodPost, "/users/:id", handlerFunc)
 
 	var testCases = []struct {
-		name        string
-		whenMethod  string
-		whenURL     string
-		expectRoute interface{}
-		expectParam map[string]string
-		expectError error
+		name              string
+		whenMethod        string
+		whenURL           string
+		expectRoute       interface{}
+		expectParam       map[string]string
+		expectError       error
+		expectAllowHeader string
 	}{
 		{
 			name:        "exact match for route+method",
@@ -740,11 +742,12 @@ func TestMethodNotAllowedAndNotFound(t *testing.T) {
 			expectParam: map[string]string{"id": "1"},
 		},
 		{
-			name:        "matches node but not method. sends 405 from best match node",
-			whenMethod:  http.MethodPut,
-			whenURL:     "/users/1",
-			expectRoute: nil,
-			expectError: ErrMethodNotAllowed,
+			name:              "matches node but not method. sends 405 from best match node",
+			whenMethod:        http.MethodPut,
+			whenURL:           "/users/1",
+			expectRoute:       nil,
+			expectError:       ErrMethodNotAllowed,
+			expectAllowHeader: "OPTIONS, POST",
 		},
 		{
 			name:        "best match is any route up in tree",
@@ -756,7 +759,9 @@ func TestMethodNotAllowedAndNotFound(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			c := e.NewContext(nil, nil).(*context)
+			req := httptest.NewRequest(tc.whenMethod, tc.whenURL, nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec).(*context)
 
 			method := http.MethodGet
 			if tc.whenMethod != "" {
@@ -775,8 +780,34 @@ func TestMethodNotAllowedAndNotFound(t *testing.T) {
 				assert.Equal(t, expectedValue, c.Param(param))
 			}
 			checkUnusedParamValues(t, c, tc.expectParam)
+
+			assert.Equal(t, tc.expectAllowHeader, c.Response().Header().Get(HeaderAllow))
 		})
 	}
+}
+
+func TestRouterOptionsMethodHandler(t *testing.T) {
+	e := New()
+
+	var keyInContext interface{}
+	e.Use(func(next HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			err := next(c)
+			keyInContext = c.Get(ContextKeyHeaderAllow)
+			return err
+		}
+	})
+	e.GET("/test", func(c Context) error {
+		return c.String(http.StatusOK, "Echo!")
+	})
+
+	req := httptest.NewRequest(http.MethodOptions, "/test", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+	assert.Equal(t, "OPTIONS, GET", rec.Header().Get(HeaderAllow))
+	assert.Equal(t, "OPTIONS, GET", keyInContext)
 }
 
 func TestRouterTwoParam(t *testing.T) {
@@ -2284,6 +2315,73 @@ func TestRouterPanicWhenParamNoRootOnlyChildsFailsFind(t *testing.T) {
 				assert.Equal(t, expectedValue, c.Param(param))
 			}
 			checkUnusedParamValues(t, c, tc.expectParam)
+		})
+	}
+}
+
+func TestRouterHandleMethodOptions(t *testing.T) {
+	e := New()
+	r := e.router
+
+	r.Add(http.MethodGet, "/users", handlerFunc)
+	r.Add(http.MethodPost, "/users", handlerFunc)
+	r.Add(http.MethodPut, "/users/:id", handlerFunc)
+	r.Add(http.MethodGet, "/users/:id", handlerFunc)
+
+	var testCases = []struct {
+		name              string
+		whenMethod        string
+		whenURL           string
+		expectAllowHeader string
+		expectStatus      int
+	}{
+		{
+			name:              "allows GET and POST handlers",
+			whenMethod:        http.MethodOptions,
+			whenURL:           "/users",
+			expectAllowHeader: "OPTIONS, GET, POST",
+			expectStatus:      http.StatusNoContent,
+		},
+		{
+			name:              "allows GET and PUT handlers",
+			whenMethod:        http.MethodOptions,
+			whenURL:           "/users/1",
+			expectAllowHeader: "OPTIONS, GET, PUT",
+			expectStatus:      http.StatusNoContent,
+		},
+		{
+			name:              "GET does not have allows header",
+			whenMethod:        http.MethodGet,
+			whenURL:           "/users",
+			expectAllowHeader: "",
+			expectStatus:      http.StatusOK,
+		},
+		{
+			name:              "path with no handlers does not set Allows header",
+			whenMethod:        http.MethodOptions,
+			whenURL:           "/notFound",
+			expectAllowHeader: "",
+			expectStatus:      http.StatusNotFound,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(tc.whenMethod, tc.whenURL, nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec).(*context)
+
+			r.Find(tc.whenMethod, tc.whenURL, c)
+			err := c.handler(c)
+
+			if tc.expectStatus >= 400 {
+				assert.Error(t, err)
+				he := err.(*HTTPError)
+				assert.Equal(t, tc.expectStatus, he.Code)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tc.expectStatus, rec.Code)
+			}
+			assert.Equal(t, tc.expectAllowHeader, c.Response().Header().Get("Allow"))
 		})
 	}
 }

@@ -1,6 +1,7 @@
 package echo
 
 import (
+	"bytes"
 	"net/http"
 )
 
@@ -31,17 +32,18 @@ type (
 	kind          uint8
 	children      []*node
 	methodHandler struct {
-		connect  HandlerFunc
-		delete   HandlerFunc
-		get      HandlerFunc
-		head     HandlerFunc
-		options  HandlerFunc
-		patch    HandlerFunc
-		post     HandlerFunc
-		propfind HandlerFunc
-		put      HandlerFunc
-		trace    HandlerFunc
-		report   HandlerFunc
+		connect     HandlerFunc
+		delete      HandlerFunc
+		get         HandlerFunc
+		head        HandlerFunc
+		options     HandlerFunc
+		patch       HandlerFunc
+		post        HandlerFunc
+		propfind    HandlerFunc
+		put         HandlerFunc
+		trace       HandlerFunc
+		report      HandlerFunc
+		allowHeader string
 	}
 )
 
@@ -66,6 +68,51 @@ func (m *methodHandler) isHandler() bool {
 		m.put != nil ||
 		m.trace != nil ||
 		m.report != nil
+}
+
+func (m *methodHandler) updateAllowHeader() {
+	buf := new(bytes.Buffer)
+	buf.WriteString(http.MethodOptions)
+
+	if m.connect != nil {
+		buf.WriteString(", ")
+		buf.WriteString(http.MethodConnect)
+	}
+	if m.delete != nil {
+		buf.WriteString(", ")
+		buf.WriteString(http.MethodDelete)
+	}
+	if m.get != nil {
+		buf.WriteString(", ")
+		buf.WriteString(http.MethodGet)
+	}
+	if m.head != nil {
+		buf.WriteString(", ")
+		buf.WriteString(http.MethodHead)
+	}
+	if m.patch != nil {
+		buf.WriteString(", ")
+		buf.WriteString(http.MethodPatch)
+	}
+	if m.post != nil {
+		buf.WriteString(", ")
+		buf.WriteString(http.MethodPost)
+	}
+	if m.propfind != nil {
+		buf.WriteString(", PROPFIND")
+	}
+	if m.put != nil {
+		buf.WriteString(", ")
+		buf.WriteString(http.MethodPut)
+	}
+	if m.trace != nil {
+		buf.WriteString(", ")
+		buf.WriteString(http.MethodTrace)
+	}
+	if m.report != nil {
+		buf.WriteString(", REPORT")
+	}
+	m.allowHeader = buf.String()
 }
 
 // NewRouter returns a new Router instance.
@@ -326,6 +373,7 @@ func (n *node) addHandler(method string, h HandlerFunc) {
 		n.methodHandler.report = h
 	}
 
+	n.methodHandler.updateAllowHeader()
 	if h != nil {
 		n.isHandler = true
 	} else {
@@ -362,13 +410,14 @@ func (n *node) findHandler(method string) HandlerFunc {
 	}
 }
 
-func (n *node) checkMethodNotAllowed() HandlerFunc {
-	for _, m := range methods {
-		if h := n.findHandler(m); h != nil {
-			return MethodNotAllowedHandler
-		}
+func optionsMethodHandler(allowMethods string) func(c Context) error {
+	return func(c Context) error {
+		// Note: we are not handling most of the CORS headers here. CORS is handled by CORS middleware
+		// 'OPTIONS' method RFC: https://httpwg.org/specs/rfc7231.html#OPTIONS
+		// 'Allow' header RFC: https://datatracker.ietf.org/doc/html/rfc7231#section-7.4.1
+		c.Response().Header().Add(HeaderAllow, allowMethods)
+		return c.NoContent(http.StatusNoContent)
 	}
-	return NotFoundHandler
 }
 
 // Find lookup a handler registered for method and path. It also parses URL for path
@@ -563,7 +612,15 @@ func (r *Router) Find(method, path string, c Context) {
 		// use previous match as basis. although we have no matching handler we have path match.
 		// so we can send http.StatusMethodNotAllowed (405) instead of http.StatusNotFound (404)
 		currentNode = previousBestMatchNode
-		ctx.handler = currentNode.checkMethodNotAllowed()
+
+		ctx.handler = NotFoundHandler
+		if currentNode.isHandler {
+			ctx.Set(ContextKeyHeaderAllow, currentNode.methodHandler.allowHeader)
+			ctx.handler = MethodNotAllowedHandler
+			if method == http.MethodOptions {
+				ctx.handler = optionsMethodHandler(currentNode.methodHandler.allowHeader)
+			}
+		}
 	}
 	ctx.path = currentNode.ppath
 	ctx.pnames = currentNode.pnames
