@@ -102,9 +102,6 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 }
 
 func (w *gzipResponseWriter) WriteHeader(code int) {
-	if code == http.StatusNoContent { // Issue #489
-		w.ResponseWriter.Header().Del(echo.HeaderContentEncoding)
-	}
 	w.Header().Del(echo.HeaderContentLength) // Issue #444
 	w.ResponseWriter.WriteHeader(code)
 }
