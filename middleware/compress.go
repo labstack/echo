@@ -27,7 +27,7 @@ type (
 	gzipResponseWriter struct {
 		io.Writer
 		http.ResponseWriter
-		wroteHeader bool
+		wroteBody bool
 	}
 )
 
@@ -81,7 +81,7 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 				w.Reset(rw)
 				grw := &gzipResponseWriter{Writer: w, ResponseWriter: rw}
 				defer func() {
-					if res.Size == 0 && !grw.wroteHeader {
+					if res.Size == 0 && !grw.wroteBody {
 						if res.Header().Get(echo.HeaderContentEncoding) == gzipScheme {
 							res.Header().Del(echo.HeaderContentEncoding)
 						}
@@ -113,7 +113,7 @@ func (w *gzipResponseWriter) Write(b []byte) (int, error) {
 	if w.Header().Get(echo.HeaderContentType) == "" {
 		w.Header().Set(echo.HeaderContentType, http.DetectContentType(b))
 	}
-	w.wroteHeader = true
+	w.wroteBody = true
 	return w.Writer.Write(b)
 }
 
