@@ -192,9 +192,10 @@ const (
 const (
 	HeaderAccept         = "Accept"
 	HeaderAcceptEncoding = "Accept-Encoding"
-	// HeaderAllow is header field that lists the set of methods advertised as supported by the target resource.
-	// Allow header is mandatory for status 405 (method not found) and useful OPTIONS method responses.
-	// See: https://datatracker.ietf.org/doc/html/rfc7231#section-7.4.1
+	// HeaderAllow is the name of the "Allow" header field used to list the set of methods
+	// advertised as supported by the target resource. Returning an Allow header is mandatory
+	// for status 405 (method not found) and useful for the OPTIONS method in responses.
+	// See RFC 7231: https://datatracker.ietf.org/doc/html/rfc7231#section-7.4.1
 	HeaderAllow               = "Allow"
 	HeaderAuthorization       = "Authorization"
 	HeaderContentDisposition  = "Content-Disposition"
@@ -305,9 +306,8 @@ var (
 	}
 
 	MethodNotAllowedHandler = func(c Context) error {
-		// 'Allow' header RFC: https://datatracker.ietf.org/doc/html/rfc7231#section-7.4.1
-		// >> An origin server MUST generate an Allow field in a 405 (Method Not Allowed) response
-		//    and MAY do so in any other response.
+		// See RFC 7231 section 7.4.1: An origin server MUST generate an Allow field in a 405 (Method Not Allowed)
+		// response and MAY do so in any other response. For disabled resources an empty Allow header may be returned
 		routerAllowMethods, ok := c.Get(ContextKeyHeaderAllow).(string)
 		if ok && routerAllowMethods != "" {
 			c.Response().Header().Set(HeaderAllow, routerAllowMethods)
