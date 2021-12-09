@@ -172,7 +172,7 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 				checkPatterns := false
 				if allowOrigin == "" {
 					// to avoid regex cost by invalid (long) domains (253 is domain name max limit)
-					if len(origin) <= (253+3+4) && strings.Contains(origin, "://") {
+					if len(origin) <= (253+3+5) && strings.Contains(origin, "://") {
 						checkPatterns = true
 					}
 				}
