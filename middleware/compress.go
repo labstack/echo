@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/textproto"
 	"strings"
 	"sync"
 
@@ -67,9 +68,9 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 				return next(c)
 			}
 
-			res := c.Response()
-			res.Header().Add(echo.HeaderVary, echo.HeaderAcceptEncoding)
-			if strings.Contains(c.Request().Header.Get(echo.HeaderAcceptEncoding), gzipScheme) {
+			if gzipAccepted(c.Request().Header) {
+				res := c.Response()
+				res.Header().Add(echo.HeaderVary, echo.HeaderAcceptEncoding)
 				res.Header().Set(echo.HeaderContentEncoding, gzipScheme) // Issue #806
 				i := pool.Get()
 				w, ok := i.(*gzip.Writer)
@@ -83,7 +84,8 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 						if res.Header().Get(echo.HeaderContentEncoding) == gzipScheme {
 							res.Header().Del(echo.HeaderContentEncoding)
 						}
-						// We have to reset response to it's pristine state when
+						removeOneHeaderValue(res.Header(), echo.HeaderVary, echo.HeaderAcceptEncoding)
+						// We have to reset response to its pristine state when
 						// nothing is written to body or error is returned.
 						// See issue #424, #407.
 						res.Writer = rw
@@ -143,4 +145,33 @@ func gzipCompressPool(config GzipConfig) sync.Pool {
 			return w
 		},
 	}
+}
+
+// removeOneHeaderValue manipulates the []string value of one header to
+// remove an unwanted item from it.
+func removeOneHeaderValue(header http.Header, key, unwanted string) {
+	key = textproto.CanonicalMIMEHeaderKey(key)
+	values := header[key]
+	for i, v := range values {
+		if v == unwanted {
+			values = append(values[:i], values[i+1:]...)
+			header[key] = values
+			return
+		}
+	}
+}
+
+// gzipAccepted determines whether the client will accept gzip-encoded responses.
+// This is only an approximation: we don't handle special cases such as "gzip;q=0"
+// that are allowed by IETF RFC.
+func gzipAccepted(header http.Header) bool {
+	ae := header.Get(echo.HeaderAcceptEncoding)
+	parts := strings.Split(ae, ",")
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "gzip" || strings.HasPrefix(part, "gzip;") {
+			return true
+		}
+	}
+	return false
 }

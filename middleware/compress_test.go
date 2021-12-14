@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/textproto"
 	"testing"
 
 	"github.com/labstack/echo/v4"
@@ -32,7 +33,7 @@ func TestGzip(t *testing.T) {
 
 	// Gzip
 	req = httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
+	req.Header.Set(echo.HeaderAcceptEncoding, "br, gzip;q=1.0")
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	h(c)
@@ -50,7 +51,7 @@ func TestGzip(t *testing.T) {
 
 	// Gzip chunked
 	req = httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
+	req.Header.Set(echo.HeaderAcceptEncoding, "br, gzip")
 	rec = httptest.NewRecorder()
 
 	c = e.NewContext(req, rec)
@@ -65,6 +66,7 @@ func TestGzip(t *testing.T) {
 		// Read the first part of the data
 		assert.True(rec.Flushed)
 		assert.Equal(gzipScheme, rec.Header().Get(echo.HeaderContentEncoding))
+		assert.Equal(echo.HeaderAcceptEncoding, rec.Header().Get(echo.HeaderVary))
 		r.Reset(rec.Body)
 
 		_, err = io.ReadFull(r, chunkBuf)
@@ -100,8 +102,9 @@ func TestGzipNoContent(t *testing.T) {
 		return c.NoContent(http.StatusNoContent)
 	})
 	if assert.NoError(t, h(c)) {
-		assert.Empty(t, rec.Header().Get(echo.HeaderContentEncoding))
-		assert.Empty(t, rec.Header().Get(echo.HeaderContentType))
+		//assert.Empty(t, textproto.MIMEHeader(rec.Header())[echo.HeaderVary])
+		assert.Empty(t, textproto.MIMEHeader(rec.Header())[echo.HeaderContentEncoding])
+		assert.Empty(t, textproto.MIMEHeader(rec.Header())[echo.HeaderContentType])
 		assert.Equal(t, 0, len(rec.Body.Bytes()))
 	}
 }
