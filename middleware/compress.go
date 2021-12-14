@@ -69,9 +69,15 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 			}
 
 			if gzipAccepted(c.Request().Header) {
+				// prevent downstream middleware or handlers from gzipping
+				c.Request().Header.Del(echo.HeaderAcceptEncoding)
+
+				// set the Content-Encoding and Vary headers
 				res := c.Response()
 				res.Header().Add(echo.HeaderVary, echo.HeaderAcceptEncoding)
 				res.Header().Set(echo.HeaderContentEncoding, gzipScheme) // Issue #806
+
+				// wrap the response writer in a gzip.Writer from our pool
 				i := pool.Get()
 				w, ok := i.(*gzip.Writer)
 				if !ok {
@@ -79,8 +85,10 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 				}
 				rw := res.Writer
 				w.Reset(rw)
+
 				defer func() {
 					if res.Size == 0 {
+						// undo the response alterations
 						if res.Header().Get(echo.HeaderContentEncoding) == gzipScheme {
 							res.Header().Del(echo.HeaderContentEncoding)
 						}
@@ -91,9 +99,11 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 						res.Writer = rw
 						w.Reset(ioutil.Discard)
 					}
+					// finish the gzip and hand back to the pool
 					w.Close()
 					pool.Put(w)
 				}()
+
 				grw := &gzipResponseWriter{Writer: w, ResponseWriter: rw}
 				res.Writer = grw
 			}

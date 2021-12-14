@@ -67,6 +67,7 @@ func TestGzip(t *testing.T) {
 		assert.True(rec.Flushed)
 		assert.Equal(gzipScheme, rec.Header().Get(echo.HeaderContentEncoding))
 		assert.Equal(echo.HeaderAcceptEncoding, rec.Header().Get(echo.HeaderVary))
+		assert.Empty(c.Request().Header.Get(echo.HeaderAcceptEncoding))
 		r.Reset(rec.Body)
 
 		_, err = io.ReadFull(r, chunkBuf)
