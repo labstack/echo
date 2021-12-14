@@ -54,6 +54,9 @@ type (
 		// Examples: If custom TLS certificates are required.
 		Transport http.RoundTripper
 
+		// ModifyRequest defines function to modify request before passing to ReverseProxy
+		ModifyRequest func(*http.Request) error
+
 		// ModifyResponse defines function to modify response from ProxyTarget.
 		ModifyResponse func(*http.Response) error
 	}
@@ -230,6 +233,13 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 			}
 
 			req := c.Request()
+
+			if config.ModifyRequest != nil {
+				err := config.ModifyRequest(req)
+				if err != nil {
+					return err
+				}
+			}
 			res := c.Response()
 			tgt := config.Balancer.Next(c)
 			c.Set(config.ContextKey, tgt)

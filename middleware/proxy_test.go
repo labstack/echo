@@ -375,3 +375,25 @@ func TestClientCancelConnectionResultsHTTPCode499(t *testing.T) {
 	timeoutStop.Done()
 	assert.Equal(t, 499, rec.Code)
 }
+
+func TestProxyModifyRequestHostHeader(t *testing.T) {
+	// Setup
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	defer upstream.Close()
+	url, _ := url.Parse(upstream.URL)
+	rrb := NewRoundRobinBalancer([]*ProxyTarget{{Name: "upstream", URL: url}})
+	e := echo.New()
+
+	config := DefaultProxyConfig
+	config.Balancer = rrb
+	config.ModifyRequest = func(req *http.Request) error {
+		req.Header.Set("Host", "abc.com")
+		return nil
+	}
+	e.Use(ProxyWithConfig(config))
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, "abc.com", req.Header.Get("Host"), "expected: abc.com / actual: %s", req.Header.Get("Host"))
+}
