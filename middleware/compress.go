@@ -87,10 +87,8 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 				rw := res.Writer
 				w.Reset(rw)
 				grw := &gzipResponseWriter{Writer: w, ResponseWriter: rw}
-
 				defer func() {
 					if !grw.wroteBody {
-						// undo the response alterations
 						if res.Header().Get(echo.HeaderContentEncoding) == gzipScheme {
 							res.Header().Del(echo.HeaderContentEncoding)
 						}
@@ -105,7 +103,6 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 					w.Close()
 					pool.Put(w)
 				}()
-
 				res.Writer = grw
 			}
 			return next(c)
