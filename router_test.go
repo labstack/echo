@@ -1124,6 +1124,8 @@ func TestRouterParam_escapeColon(t *testing.T) {
 	e := New()
 
 	e.POST("/files/a/long/file\\:undelete", handlerFunc)
+	e.POST("/multilevel\\:undelete/second\\:something", handlerFunc)
+	e.POST("/mixed/:id/second\\:something", handlerFunc)
 	e.POST("/v1/some/resource/name:customVerb", handlerFunc)
 
 	var testCases = []struct {
@@ -1133,12 +1135,22 @@ func TestRouterParam_escapeColon(t *testing.T) {
 		expectError string
 	}{
 		{
-			whenURL:     "/files/a/long/file\\:undelete",
+			whenURL:     "/files/a/long/file:undelete",
 			expectRoute: "/files/a/long/file\\:undelete",
 			expectParam: map[string]string{},
 		},
 		{
-			whenURL:     "/files/a/long/file\\:notMatching",
+			whenURL:     "/multilevel:undelete/second:something",
+			expectRoute: "/multilevel\\:undelete/second\\:something",
+			expectParam: map[string]string{},
+		},
+		{
+			whenURL:     "/mixed/123/second:something",
+			expectRoute: "/mixed/:id/second\\:something",
+			expectParam: map[string]string{"id": "123"},
+		},
+		{
+			whenURL:     "/files/a/long/file:notMatching",
 			expectRoute: nil,
 			expectError: "code=404, message=Not Found",
 			expectParam: nil,
