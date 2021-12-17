@@ -32,6 +32,10 @@ type (
 		// ErrorHandlerWithContext is almost identical to ErrorHandler, but it's passed the current context.
 		ErrorHandlerWithContext JWTErrorHandlerWithContext
 
+		// A boolean indicating if the credentials are required or not
+		// Default value: false
+		CredentialsOptional bool
+
 		// Signing key to validate token.
 		// This is one of the three options to provide a token validation key.
 		// The order of precedence is a user-defined KeyFunc, SigningKeys and SigningKey.
@@ -218,6 +222,10 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 			}
 			// If none of extractor has a token, handle error
 			if err != nil {
+				if config.CredentialsOptional {
+					return next(c)
+				}
+
 				if config.ErrorHandler != nil {
 					return config.ErrorHandler(err)
 				}
@@ -235,6 +243,9 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 				if config.SuccessHandler != nil {
 					config.SuccessHandler(c)
 				}
+				return next(c)
+			}
+			if config.CredentialsOptional {
 				return next(c)
 			}
 			if config.ErrorHandler != nil {

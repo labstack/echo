@@ -75,14 +75,15 @@ func TestJWT(t *testing.T) {
 	validAuth := DefaultJWTConfig.AuthScheme + " " + token
 
 	for _, tc := range []struct {
-		expPanic   bool
-		expErrCode int // 0 for Success
-		config     JWTConfig
-		reqURL     string // "/" if empty
-		hdrAuth    string
-		hdrCookie  string // test.Request doesn't provide SetCookie(); use name=val
-		formValues map[string]string
-		info       string
+		expPanic    bool
+		expErrCode  int // 0 for Success
+		expEmptyCtx bool
+		config      JWTConfig
+		reqURL      string // "/" if empty
+		hdrAuth     string
+		hdrCookie   string // test.Request doesn't provide SetCookie(); use name=val
+		formValues  map[string]string
+		info        string
 	}{
 		{
 			expPanic: true,
@@ -266,6 +267,17 @@ func TestJWT(t *testing.T) {
 			config:  JWTConfig{SigningKey: validKey},
 			info:    "Valid JWT with lower case AuthScheme",
 		},
+		{
+			expEmptyCtx: true,
+			config:      JWTConfig{SigningKey: validKey, CredentialsOptional: true},
+			info:        "Valid JWT",
+		},
+		{
+			expEmptyCtx: false,
+			hdrAuth:     validAuth,
+			config:      JWTConfig{SigningKey: validKey, CredentialsOptional: true},
+			info:        "Valid JWT",
+		},
 	} {
 		if tc.reqURL == "" {
 			tc.reqURL = "/"
@@ -309,15 +321,19 @@ func TestJWT(t *testing.T) {
 
 		h := JWTWithConfig(tc.config)(handler)
 		if assert.NoError(t, h(c), tc.info) {
-			user := c.Get("user").(*jwt.Token)
-			switch claims := user.Claims.(type) {
-			case jwt.MapClaims:
-				assert.Equal(t, claims["name"], "John Doe", tc.info)
-			case *jwtCustomClaims:
-				assert.Equal(t, claims.Name, "John Doe", tc.info)
-				assert.Equal(t, claims.Admin, true, tc.info)
-			default:
-				panic("unexpected type of claims")
+			if tc.expEmptyCtx {
+				assert.Nil(t, c.Get("user"), tc.info)
+			} else {
+				user := c.Get("user").(*jwt.Token)
+				switch claims := user.Claims.(type) {
+				case jwt.MapClaims:
+					assert.Equal(t, claims["name"], "John Doe", tc.info)
+				case *jwtCustomClaims:
+					assert.Equal(t, claims.Name, "John Doe", tc.info)
+					assert.Equal(t, claims.Admin, true, tc.info)
+				default:
+					panic("unexpected type of claims")
+				}
 			}
 		}
 	}
