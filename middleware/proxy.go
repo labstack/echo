@@ -56,6 +56,9 @@ type (
 
 		// ModifyResponse defines function to modify response from ProxyTarget.
 		ModifyResponse func(*http.Response) error
+
+		// To modify the outgoing request
+		Director func(*ProxyTarget) func(*http.Request)
 	}
 
 	// ProxyTarget defines the upstream target.
@@ -277,6 +280,7 @@ const StatusCodeContextCanceled = 499
 
 func proxyHTTP(tgt *ProxyTarget, c echo.Context, config ProxyConfig) http.Handler {
 	proxy := httputil.NewSingleHostReverseProxy(tgt.URL)
+
 	proxy.ErrorHandler = func(resp http.ResponseWriter, req *http.Request, err error) {
 		desc := tgt.URL.String()
 		if tgt.Name != "" {
@@ -297,6 +301,11 @@ func proxyHTTP(tgt *ProxyTarget, c echo.Context, config ProxyConfig) http.Handle
 			c.Set("_error", httpError)
 		}
 	}
+
+	if config.Director != nil {
+		proxy.Director = config.Director(tgt)
+	}
+
 	proxy.Transport = config.Transport
 	proxy.ModifyResponse = config.ModifyResponse
 	return proxy
