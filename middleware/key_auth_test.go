@@ -76,7 +76,7 @@ func TestKeyAuthWithConfig(t *testing.T) {
 				req.Header.Set(echo.HeaderAuthorization, "Bearer invalid-key")
 			},
 			expectHandlerCalled: false,
-			expectError:         "code=401, message=Unauthorized",
+			expectError:         "code=401, message=Unauthorized, internal=invalid key",
 		},
 		{
 			name: "nok, defaults, invalid scheme in header",
@@ -179,7 +179,7 @@ func TestKeyAuthWithConfig(t *testing.T) {
 				conf.KeyLookup = "cookie:key"
 			},
 			expectHandlerCalled: false,
-			expectError:         "code=400, message=missing key in cookies: http: named cookie not present",
+			expectError:         "code=400, message=missing key in cookies",
 		},
 		{
 			name: "nok, custom errorHandler, error from extractor",
@@ -216,7 +216,7 @@ func TestKeyAuthWithConfig(t *testing.T) {
 			},
 			whenConfig:          func(conf *KeyAuthConfig) {},
 			expectHandlerCalled: false,
-			expectError:         "code=401, message=invalid key, internal=some user defined error",
+			expectError:         "code=401, message=Unauthorized, internal=some user defined error",
 		},
 	}
 
@@ -256,4 +256,35 @@ func TestKeyAuthWithConfig(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestKeyAuthWithConfig_panicsOnInvalidLookup(t *testing.T) {
+	assert.PanicsWithError(
+		t,
+		"extractor source for lookup could not be split into needed parts: a",
+		func() {
+			handler := func(c echo.Context) error {
+				return c.String(http.StatusOK, "test")
+			}
+			KeyAuthWithConfig(KeyAuthConfig{
+				Validator: testKeyValidator,
+				KeyLookup: "a",
+			})(handler)
+		},
+	)
+}
+
+func TestKeyAuthWithConfig_panicsOnEmptyValidator(t *testing.T) {
+	assert.PanicsWithValue(
+		t,
+		"echo: key-auth middleware requires a validator function",
+		func() {
+			handler := func(c echo.Context) error {
+				return c.String(http.StatusOK, "test")
+			}
+			KeyAuthWithConfig(KeyAuthConfig{
+				Validator: nil,
+			})(handler)
+		},
+	)
 }

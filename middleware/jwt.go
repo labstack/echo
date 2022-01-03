@@ -1,3 +1,4 @@
+//go:build go1.15
 // +build go1.15
 
 package middleware
@@ -5,12 +6,10 @@ package middleware
 import (
 	"errors"
 	"fmt"
-	"net/http"
-	"reflect"
-	"strings"
-
 	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
+	"net/http"
+	"reflect"
 )
 
 type (
@@ -61,20 +60,20 @@ type (
 		// to extract token from the request.
 		// Optional. Default value "header:Authorization".
 		// Possible values:
-		// - "header:<name>"
+		// - "header:<name>" or "header:<name>:<cut-prefix>"
 		// - "query:<name>"
 		// - "param:<name>"
 		// - "cookie:<name>"
 		// - "form:<name>"
-		// Multiply sources example:
-		// - "header: Authorization,cookie: myowncookie"
+		// Multiple sources example:
+		// - "header:Authorization ,cookie:myowncookie"
 		TokenLookup string
 
 		// TokenLookupFuncs defines a list of user-defined functions that extract JWT token from the given context.
 		// This is one of the two options to provide a token extractor.
 		// The order of precedence is user-defined TokenLookupFuncs, and TokenLookup.
 		// You can also provide both if you want.
-		TokenLookupFuncs []TokenLookupFunc
+		TokenLookupFuncs []ValuesExtractor
 
 		// AuthScheme to be used in the Authorization header.
 		// Optional. Default value "Bearer".
@@ -100,16 +99,13 @@ type (
 	}
 
 	// JWTSuccessHandler defines a function which is executed for a valid token.
-	JWTSuccessHandler func(echo.Context)
+	JWTSuccessHandler func(c echo.Context)
 
 	// JWTErrorHandler defines a function which is executed for an invalid token.
-	JWTErrorHandler func(error) error
+	JWTErrorHandler func(err error) error
 
 	// JWTErrorHandlerWithContext is almost identical to JWTErrorHandler, but it's passed the current context.
-	JWTErrorHandlerWithContext func(error, echo.Context) error
-
-	// TokenLookupFunc defines a function for extracting JWT token from the given context.
-	TokenLookupFunc func(echo.Context) (string, error)
+	JWTErrorHandlerWithContext func(err error, c echo.Context) error
 )
 
 // Algorithms
@@ -183,25 +179,12 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 		config.ParseTokenFunc = config.defaultParseToken
 	}
 
-	// Initialize
-	// Split sources
-	sources := strings.Split(config.TokenLookup, ",")
-	var extractors = config.TokenLookupFuncs
-	for _, source := range sources {
-		parts := strings.Split(source, ":")
-
-		switch parts[0] {
-		case "query":
-			extractors = append(extractors, jwtFromQuery(parts[1]))
-		case "param":
-			extractors = append(extractors, jwtFromParam(parts[1]))
-		case "cookie":
-			extractors = append(extractors, jwtFromCookie(parts[1]))
-		case "form":
-			extractors = append(extractors, jwtFromForm(parts[1]))
-		case "header":
-			extractors = append(extractors, jwtFromHeader(parts[1], config.AuthScheme))
-		}
+	extractors, err := createExtractors(config.TokenLookup, config.AuthScheme)
+	if err != nil {
+		panic(err)
+	}
+	if len(config.TokenLookupFuncs) > 0 {
+		extractors = append(config.TokenLookupFuncs, extractors...)
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -213,36 +196,33 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 			if config.BeforeFunc != nil {
 				config.BeforeFunc(c)
 			}
-			var auth string
-			var err error
+
+			var lastExtractorErr error
+			var lastTokenErr error
 			for _, extractor := range extractors {
-				// Extract token from extractor, if it's not fail break the loop and
-				// set auth
-				auth, err = extractor(c)
-				if err == nil {
-					break
+				auths, err := extractor(c)
+				if err != nil {
+					lastExtractorErr = ErrJWTMissing // backwards compatibility: all extraction errors are same (unlike KeyAuth)
+					continue
+				}
+				for _, auth := range auths {
+					token, err := config.ParseTokenFunc(auth, c)
+					if err != nil {
+						lastTokenErr = err
+						continue
+					}
+					// Store user information from token into context.
+					c.Set(config.ContextKey, token)
+					if config.SuccessHandler != nil {
+						config.SuccessHandler(c)
+					}
+					return next(c)
 				}
 			}
-			// If none of extractor has a token, handle error
-			if err != nil {
-				if config.ErrorHandler != nil {
-					return config.ErrorHandler(err)
-				}
-
-				if config.ErrorHandlerWithContext != nil {
-					return config.ErrorHandlerWithContext(err, c)
-				}
-				return err
-			}
-
-			token, err := config.ParseTokenFunc(auth, c)
-			if err == nil {
-				// Store user information from token into context.
-				c.Set(config.ContextKey, token)
-				if config.SuccessHandler != nil {
-					config.SuccessHandler(c)
-				}
-				return next(c)
+			// we are here only when we did not successfully extract or parse any of the tokens
+			err := lastTokenErr
+			if err == nil { // prioritize token errors over extracting errors
+				err = lastExtractorErr
 			}
 			if config.ErrorHandler != nil {
 				return config.ErrorHandler(err)
@@ -250,11 +230,16 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 			if config.ErrorHandlerWithContext != nil {
 				return config.ErrorHandlerWithContext(err, c)
 			}
-			return &echo.HTTPError{
-				Code:     ErrJWTInvalid.Code,
-				Message:  ErrJWTInvalid.Message,
-				Internal: err,
+
+			// backwards compatible errors codes
+			if lastTokenErr != nil {
+				return &echo.HTTPError{
+					Code:     ErrJWTInvalid.Code,
+					Message:  ErrJWTInvalid.Message,
+					Internal: err,
+				}
 			}
+			return err // this is lastExtractorErr value
 		}
 	}
 }
@@ -295,60 +280,4 @@ func (config *JWTConfig) defaultKeyFunc(t *jwt.Token) (interface{}, error) {
 	}
 
 	return config.SigningKey, nil
-}
-
-// jwtFromHeader returns a `TokenLookupFunc` that extracts token from the request header.
-func jwtFromHeader(header string, authScheme string) TokenLookupFunc {
-	return func(c echo.Context) (string, error) {
-		auth := c.Request().Header.Get(header)
-		l := len(authScheme)
-		if len(auth) > l+1 && strings.EqualFold(auth[:l], authScheme) {
-			return auth[l+1:], nil
-		}
-		return "", ErrJWTMissing
-	}
-}
-
-// jwtFromQuery returns a `TokenLookupFunc` that extracts token from the query string.
-func jwtFromQuery(param string) TokenLookupFunc {
-	return func(c echo.Context) (string, error) {
-		token := c.QueryParam(param)
-		if token == "" {
-			return "", ErrJWTMissing
-		}
-		return token, nil
-	}
-}
-
-// jwtFromParam returns a `TokenLookupFunc` that extracts token from the url param string.
-func jwtFromParam(param string) TokenLookupFunc {
-	return func(c echo.Context) (string, error) {
-		token := c.Param(param)
-		if token == "" {
-			return "", ErrJWTMissing
-		}
-		return token, nil
-	}
-}
-
-// jwtFromCookie returns a `TokenLookupFunc` that extracts token from the named cookie.
-func jwtFromCookie(name string) TokenLookupFunc {
-	return func(c echo.Context) (string, error) {
-		cookie, err := c.Cookie(name)
-		if err != nil {
-			return "", ErrJWTMissing
-		}
-		return cookie.Value, nil
-	}
-}
-
-// jwtFromForm returns a `TokenLookupFunc` that extracts token from the form field.
-func jwtFromForm(name string) TokenLookupFunc {
-	return func(c echo.Context) (string, error) {
-		field := c.FormValue(name)
-		if field == "" {
-			return "", ErrJWTMissing
-		}
-		return field, nil
-	}
 }
