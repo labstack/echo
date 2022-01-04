@@ -288,3 +288,78 @@ func TestKeyAuthWithConfig_panicsOnEmptyValidator(t *testing.T) {
 		},
 	)
 }
+
+func TestKeyAuthWithConfig_NoErrorContinuesExecution(t *testing.T) {
+	var testCases = []struct {
+		name                          string
+		whenNoErrorContinuesExecution bool
+		givenKey                      string
+		expectStatus                  int
+		expectBody                    string
+	}{
+		{
+			name:                          "no error handler is called",
+			whenNoErrorContinuesExecution: true,
+			givenKey:                      "valid-key",
+			expectStatus:                  http.StatusTeapot,
+			expectBody:                    "",
+		},
+		{
+			name:                          "NoErrorContinuesExecution is false and error handler is called for missing token",
+			whenNoErrorContinuesExecution: false,
+			givenKey:                      "",
+			// empty response with 200. This emulates previous behaviour when error handler swallowed the error
+			expectStatus: http.StatusOK,
+			expectBody:   "",
+		},
+		{
+			name:                          "error handler is called for missing token",
+			whenNoErrorContinuesExecution: true,
+			givenKey:                      "",
+			expectStatus:                  http.StatusTeapot,
+			expectBody:                    "public-auth",
+		},
+		{
+			name:                          "error handler is called for invalid token",
+			whenNoErrorContinuesExecution: true,
+			givenKey:                      "x.x.x",
+			expectStatus:                  http.StatusUnauthorized,
+			expectBody:                    "{\"message\":\"Unauthorized\"}\n",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+
+			e.GET("/", func(c echo.Context) error {
+				testValue, _ := c.Get("test").(string)
+				return c.String(http.StatusTeapot, testValue)
+			})
+
+			e.Use(KeyAuthWithConfig(KeyAuthConfig{
+				Validator: testKeyValidator,
+				ErrorHandler: func(err error, c echo.Context) error {
+					if _, ok := err.(*ErrKeyAuthMissing); ok {
+						c.Set("test", "public-auth")
+						return nil
+					}
+					return echo.ErrUnauthorized
+				},
+				KeyLookup:                 "header:X-API-Key",
+				NoErrorContinuesExecution: tc.whenNoErrorContinuesExecution,
+			}))
+
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			if tc.givenKey != "" {
+				req.Header.Set("X-API-Key", tc.givenKey)
+			}
+			res := httptest.NewRecorder()
+
+			e.ServeHTTP(res, req)
+
+			assert.Equal(t, tc.expectStatus, res.Code)
+			assert.Equal(t, tc.expectBody, res.Body.String())
+		})
+	}
+}

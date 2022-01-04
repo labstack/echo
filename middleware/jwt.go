@@ -21,7 +21,8 @@ type (
 		// BeforeFunc defines a function which is executed just before the middleware.
 		BeforeFunc BeforeFunc
 
-		// SuccessHandler defines a function which is executed for a valid token.
+		// SuccessHandler defines a function which is executed for a valid token before middleware chain continues with next
+		// middleware or handler.
 		SuccessHandler JWTSuccessHandler
 
 		// ErrorHandler defines a function which is executed for an invalid token.
@@ -30,6 +31,13 @@ type (
 
 		// ErrorHandlerWithContext is almost identical to ErrorHandler, but it's passed the current context.
 		ErrorHandlerWithContext JWTErrorHandlerWithContext
+
+		// NoErrorContinuesExecution allows next middleware/handler to be called when ErrorHandlerWithContext decides to
+		// swallow the error (returns nil).
+		// This is useful in cases when portion of your site/api is publicly accessible and has extra features for authorized
+		// users. In that case you can use ErrorHandlerWithContext to set default public JWT token value to request and
+		// continue with handler chain. Assuming logic downstream execution chain has to check that (public) token value.
+		NoErrorContinuesExecution bool
 
 		// Signing key to validate token.
 		// This is one of the three options to provide a token validation key.
@@ -228,7 +236,11 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 				return config.ErrorHandler(err)
 			}
 			if config.ErrorHandlerWithContext != nil {
-				return config.ErrorHandlerWithContext(err, c)
+				tmpErr := config.ErrorHandlerWithContext(err, c)
+				if config.NoErrorContinuesExecution && tmpErr == nil {
+					return next(c)
+				}
+				return tmpErr
 			}
 
 			// backwards compatible errors codes

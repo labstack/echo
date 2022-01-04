@@ -35,6 +35,13 @@ type (
 		// ErrorHandler defines a function which is executed for an invalid key.
 		// It may be used to define a custom error.
 		ErrorHandler KeyAuthErrorHandler
+
+		// NoErrorContinuesExecution allows next middleware/handler to be called when ErrorHandler decides to swallow
+		// the error (returns nil).
+		// This is useful in cases when portion of your site/api is publicly accessible and has extra features for valid
+		// requests. In that case you can use ErrorHandler to set default public auth values to request and continue with
+		// handler chain. Assuming logic downstream execution chain has to check that (public) auth value.
+		NoErrorContinuesExecution bool
 	}
 
 	// KeyAuthValidator defines a function to validate KeyAuth credentials.
@@ -52,6 +59,21 @@ var (
 		AuthScheme: "Bearer",
 	}
 )
+
+// ErrKeyAuthMissing is error type when KeyAuth middleware is unable to extract value from lookups
+type ErrKeyAuthMissing struct {
+	Err error
+}
+
+// Error returns errors text
+func (e *ErrKeyAuthMissing) Error() string {
+	return e.Err.Error()
+}
+
+// Unwrap unwraps error
+func (e *ErrKeyAuthMissing) Unwrap() error {
+	return e.Err
+}
 
 // KeyAuth returns an KeyAuth middleware.
 //
@@ -131,10 +153,15 @@ func KeyAuthWithConfig(config KeyAuthConfig) echo.MiddlewareFunc {
 				} else {
 					err = lastExtractorErr
 				}
+				err = &ErrKeyAuthMissing{Err: err}
 			}
 
 			if config.ErrorHandler != nil {
-				return config.ErrorHandler(err, c)
+				tmpErr := config.ErrorHandler(err, c)
+				if config.NoErrorContinuesExecution && tmpErr == nil {
+					return next(c)
+				}
+				return tmpErr
 			}
 			if lastValidatorErr != nil { // prioritize validator errors over extracting errors
 				return &echo.HTTPError{
