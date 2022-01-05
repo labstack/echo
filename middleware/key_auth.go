@@ -17,6 +17,10 @@ type (
 		// Optional. Default value "header:Authorization".
 		// Possible values:
 		// - "header:<name>" or "header:<name>:<cut-prefix>"
+		// 			`<cut-prefix>` is argument value to cut/trim prefix of the extracted value. This is useful if header
+		//			value has static prefix like `Authorization: <auth-scheme> <authorisation-parameters>` where part that we
+		//			want to cut is `<auth-scheme> ` note the space at the end.
+		//			In case of basic authentication `Authorization: Basic <credentials>` prefix we want to remove is `Basic `.
 		// - "query:<name>"
 		// - "form:<name>"
 		// - "cookie:<name>"

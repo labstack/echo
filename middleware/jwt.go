@@ -69,6 +69,11 @@ type (
 		// Optional. Default value "header:Authorization".
 		// Possible values:
 		// - "header:<name>" or "header:<name>:<cut-prefix>"
+		// 			`<cut-prefix>` is argument value to cut/trim prefix of the extracted value. This is useful if header
+		//			value has static prefix like `Authorization: <auth-scheme> <authorisation-parameters>` where part that we
+		//			want to cut is `<auth-scheme> ` note the space at the end.
+		//			In case of JWT tokens `Authorization: Bearer <token>` prefix we cut is `Bearer `.
+		// If prefix is left empty the whole value is returned.
 		// - "query:<name>"
 		// - "param:<name>"
 		// - "cookie:<name>"

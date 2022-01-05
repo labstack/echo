@@ -66,6 +66,11 @@ func createExtractors(lookups string, authScheme string) ([]ValuesExtractor, err
 }
 
 // valuesFromHeader returns a functions that extracts values from the request header.
+// valuePrefix is parameter to remove first part (prefix) of the extracted value. This is useful if header value has static
+// prefix like `Authorization: <auth-scheme> <authorisation-parameters>` where part that we want to remove is `<auth-scheme> `
+// note the space at the end. In case of basic authentication `Authorization: Basic <credentials>` prefix we want to remove
+// is `Basic `. In case of JWT tokens `Authorization: Bearer <token>` prefix is `Bearer `.
+// If prefix is left empty the whole value is returned.
 func valuesFromHeader(header string, valuePrefix string) ValuesExtractor {
 	prefixLen := len(valuePrefix)
 	// standard library parses http.Request header keys in canonical form but we may provide something else so fix this
