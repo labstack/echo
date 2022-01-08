@@ -47,9 +47,6 @@ import (
 	stdLog "log"
 	"net"
 	"net/http"
-	"net/url"
-	"os"
-	"path/filepath"
 	"reflect"
 	"runtime"
 	"sync"
@@ -66,6 +63,7 @@ import (
 type (
 	// Echo is the top-level framework instance.
 	Echo struct {
+		filesystem
 		common
 		// startupMutex is mutex to lock Echo instance access during server configuration and startup. Useful for to get
 		// listener address info (on which interface/port was listener binded) without having data races.
@@ -319,8 +317,9 @@ var (
 // New creates an instance of Echo.
 func New() (e *Echo) {
 	e = &Echo{
-		Server:    new(http.Server),
-		TLSServer: new(http.Server),
+		filesystem: createFilesystem(),
+		Server:     new(http.Server),
+		TLSServer:  new(http.Server),
 		AutoTLSManager: autocert.Manager{
 			Prompt: autocert.AcceptTOS,
 		},
@@ -497,50 +496,6 @@ func (e *Echo) Match(methods []string, path string, handler HandlerFunc, middlew
 		routes[i] = e.Add(m, path, handler, middleware...)
 	}
 	return routes
-}
-
-// Static registers a new route with path prefix to serve static files from the
-// provided root directory.
-func (e *Echo) Static(prefix, root string) *Route {
-	if root == "" {
-		root = "." // For security we want to restrict to CWD.
-	}
-	return e.static(prefix, root, e.GET)
-}
-
-func (common) static(prefix, root string, get func(string, HandlerFunc, ...MiddlewareFunc) *Route) *Route {
-	h := func(c Context) error {
-		p, err := url.PathUnescape(c.Param("*"))
-		if err != nil {
-			return err
-		}
-
-		name := filepath.Join(root, filepath.Clean("/"+p)) // "/"+ for security
-		fi, err := os.Stat(name)
-		if err != nil {
-			// The access path does not exist
-			return NotFoundHandler(c)
-		}
-
-		// If the request is for a directory and does not end with "/"
-		p = c.Request().URL.Path // path must not be empty.
-		if fi.IsDir() && p[len(p)-1] != '/' {
-			// Redirect to ends with "/"
-			return c.Redirect(http.StatusMovedPermanently, p+"/")
-		}
-		return c.File(name)
-	}
-	// Handle added routes based on trailing slash:
-	// 	/prefix  => exact route "/prefix" + any route "/prefix/*"
-	// 	/prefix/ => only any route "/prefix/*"
-	if prefix != "" {
-		if prefix[len(prefix)-1] == '/' {
-			// Only add any route for intentional trailing slash
-			return get(prefix+"*", h)
-		}
-		get(prefix, h)
-	}
-	return get(prefix+"/*", h)
 }
 
 func (common) file(path, file string, get func(string, HandlerFunc, ...MiddlewareFunc) *Route,
