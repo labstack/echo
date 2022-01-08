@@ -211,7 +211,6 @@ func TestEchoStatic(t *testing.T) {
 }
 
 func TestEchoStaticRedirectIndex(t *testing.T) {
-	assert := assert.New(t)
 	e := New()
 
 	// HandlerFunc
@@ -220,23 +219,25 @@ func TestEchoStaticRedirectIndex(t *testing.T) {
 	errCh := make(chan error)
 
 	go func() {
-		errCh <- e.Start("127.0.0.1:1323")
+		errCh <- e.Start(":0")
 	}()
 
-	time.Sleep(200 * time.Millisecond)
+	err := waitForServerStart(e, errCh, false)
+	assert.NoError(t, err)
 
-	if resp, err := http.Get("http://127.0.0.1:1323/static"); err == nil {
+	addr := e.ListenerAddr().String()
+	if resp, err := http.Get("http://" + addr + "/static"); err == nil { // http.Get follows redirects by default
 		defer resp.Body.Close()
-		assert.Equal(http.StatusOK, resp.StatusCode)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 		if body, err := ioutil.ReadAll(resp.Body); err == nil {
-			assert.Equal(true, strings.HasPrefix(string(body), "<!doctype html>"))
+			assert.Equal(t, true, strings.HasPrefix(string(body), "<!doctype html>"))
 		} else {
-			assert.Fail(err.Error())
+			assert.Fail(t, err.Error())
 		}
 
 	} else {
-		assert.Fail(err.Error())
+		assert.NoError(t, err)
 	}
 
 	if err := e.Close(); err != nil {
