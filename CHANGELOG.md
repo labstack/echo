@@ -1,5 +1,28 @@
 # Changelog
 
+## v4.6.3 - 2022-01-10
+
+**Fixes**
+
+* Fixed Echo version number in greeting message which was not incremented to `4.6.2` [#2066](https://github.com/labstack/echo/issues/2066)
+
+
+## v4.6.2 - 2022-01-08
+
+**Fixes**
+
+* Fixed route containing escaped colon should be matchable but is not matched to request path [#2047](https://github.com/labstack/echo/pull/2047)
+* Fixed a problem that returned wrong content-encoding when the gzip compressed content was empty. [#1921](https://github.com/labstack/echo/pull/1921)
+* Update (test) dependencies [#2021](https://github.com/labstack/echo/pull/2021)
+
+
+**Enhancements**
+
+* Add support for configurable target header for the request_id middleware [#2040](https://github.com/labstack/echo/pull/2040)
+* Change decompress middleware to use stream decompression instead of buffering [#2018](https://github.com/labstack/echo/pull/2018)
+* Documentation updates
+
+
 ## v4.6.1 - 2021-09-26
 
 **Enhancements**
