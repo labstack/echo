@@ -32,12 +32,12 @@ type (
 		// ErrorHandlerWithContext is almost identical to ErrorHandler, but it's passed the current context.
 		ErrorHandlerWithContext JWTErrorHandlerWithContext
 
-		// NoErrorContinuesExecution allows next middleware/handler to be called when ErrorHandlerWithContext decides to
-		// swallow the error (returns nil).
-		// This is useful in cases when portion of your site/api is publicly accessible and has extra features for authorized
-		// users. In that case you can use ErrorHandlerWithContext to set default public JWT token value to request and
-		// continue with handler chain. Assuming logic downstream execution chain has to check that (public) token value.
-		NoErrorContinuesExecution bool
+		// ContinueOnIgnoredError allows the next middleware/handler to be called when ErrorHandlerWithContext decides to
+		// ignore the error (by returning `nil`).
+		// This is useful when parts of your site/api allow public access and some authorized routes provide extra functionality.
+		// In that case you can use ErrorHandlerWithContext to set a default public JWT token value in the request context
+		// and continue. Some logic down the remaining execution chain needs to check that (public) token value then.
+		ContinueOnIgnoredError bool
 
 		// Signing key to validate token.
 		// This is one of the three options to provide a token validation key.
@@ -79,7 +79,7 @@ type (
 		// - "cookie:<name>"
 		// - "form:<name>"
 		// Multiple sources example:
-		// - "header:Authorization ,cookie:myowncookie"
+		// - "header:Authorization,cookie:myowncookie"
 		TokenLookup string
 
 		// TokenLookupFuncs defines a list of user-defined functions that extract JWT token from the given context.
@@ -242,7 +242,7 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 			}
 			if config.ErrorHandlerWithContext != nil {
 				tmpErr := config.ErrorHandlerWithContext(err, c)
-				if config.NoErrorContinuesExecution && tmpErr == nil {
+				if config.ContinueOnIgnoredError && tmpErr == nil {
 					return next(c)
 				}
 				return tmpErr

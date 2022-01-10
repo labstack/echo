@@ -40,12 +40,12 @@ type (
 		// It may be used to define a custom error.
 		ErrorHandler KeyAuthErrorHandler
 
-		// NoErrorContinuesExecution allows next middleware/handler to be called when ErrorHandler decides to swallow
-		// the error (returns nil).
-		// This is useful in cases when portion of your site/api is publicly accessible and has extra features for valid
-		// requests. In that case you can use ErrorHandler to set default public auth values to request and continue with
-		// handler chain. Assuming logic downstream execution chain has to check that (public) auth value.
-		NoErrorContinuesExecution bool
+		// ContinueOnIgnoredError allows the next middleware/handler to be called when ErrorHandler decides to
+		// ignore the error (by returning `nil`).
+		// This is useful when parts of your site/api allow public access and some authorized routes provide extra functionality.
+		// In that case you can use ErrorHandler to set a default public key auth value in the request context
+		// and continue. Some logic down the remaining execution chain needs to check that (public) key auth value then.
+		ContinueOnIgnoredError bool
 	}
 
 	// KeyAuthValidator defines a function to validate KeyAuth credentials.
@@ -162,7 +162,7 @@ func KeyAuthWithConfig(config KeyAuthConfig) echo.MiddlewareFunc {
 
 			if config.ErrorHandler != nil {
 				tmpErr := config.ErrorHandler(err, c)
-				if config.NoErrorContinuesExecution && tmpErr == nil {
+				if config.ContinueOnIgnoredError && tmpErr == nil {
 					return next(c)
 				}
 				return tmpErr

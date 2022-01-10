@@ -25,6 +25,18 @@ func TestCSRF_tokenExtractors(t *testing.T) {
 		expectError       string
 	}{
 		{
+			name:            "ok, multiple token lookups sources, succeeds on last one",
+			whenTokenLookup: "header:X-CSRF-Token,form:csrf",
+			givenCSRFCookie: "token",
+			givenMethod:     http.MethodPost,
+			givenHeaderTokens: map[string][]string{
+				echo.HeaderXCSRFToken: {"invalid_token"},
+			},
+			givenFormTokens: map[string][]string{
+				"csrf": {"token"},
+			},
+		},
+		{
 			name:            "ok, token from POST form",
 			whenTokenLookup: "form:csrf",
 			givenCSRFCookie: "token",

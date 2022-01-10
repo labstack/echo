@@ -704,42 +704,42 @@ func TestJWTConfig_SuccessHandler(t *testing.T) {
 	}
 }
 
-func TestJWTConfig_NoErrorContinuesExecution(t *testing.T) {
+func TestJWTConfig_ContinueOnIgnoredError(t *testing.T) {
 	var testCases = []struct {
-		name                          string
-		whenNoErrorContinuesExecution bool
-		givenToken                    string
-		expectStatus                  int
-		expectBody                    string
+		name                       string
+		whenContinueOnIgnoredError bool
+		givenToken                 string
+		expectStatus               int
+		expectBody                 string
 	}{
 		{
-			name:                          "no error handler is called",
-			whenNoErrorContinuesExecution: true,
-			givenToken:                    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ",
-			expectStatus:                  http.StatusTeapot,
-			expectBody:                    "",
+			name:                       "no error handler is called",
+			whenContinueOnIgnoredError: true,
+			givenToken:                 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ",
+			expectStatus:               http.StatusTeapot,
+			expectBody:                 "",
 		},
 		{
-			name:                          "NoErrorContinuesExecution is false and error handler is called for missing token",
-			whenNoErrorContinuesExecution: false,
-			givenToken:                    "",
+			name:                       "ContinueOnIgnoredError is false and error handler is called for missing token",
+			whenContinueOnIgnoredError: false,
+			givenToken:                 "",
 			// empty response with 200. This emulates previous behaviour when error handler swallowed the error
 			expectStatus: http.StatusOK,
 			expectBody:   "",
 		},
 		{
-			name:                          "error handler is called for missing token",
-			whenNoErrorContinuesExecution: true,
-			givenToken:                    "",
-			expectStatus:                  http.StatusTeapot,
-			expectBody:                    "public-token",
+			name:                       "error handler is called for missing token",
+			whenContinueOnIgnoredError: true,
+			givenToken:                 "",
+			expectStatus:               http.StatusTeapot,
+			expectBody:                 "public-token",
 		},
 		{
-			name:                          "error handler is called for invalid token",
-			whenNoErrorContinuesExecution: true,
-			givenToken:                    "x.x.x",
-			expectStatus:                  http.StatusUnauthorized,
-			expectBody:                    "{\"message\":\"Unauthorized\"}\n",
+			name:                       "error handler is called for invalid token",
+			whenContinueOnIgnoredError: true,
+			givenToken:                 "x.x.x",
+			expectStatus:               http.StatusUnauthorized,
+			expectBody:                 "{\"message\":\"Unauthorized\"}\n",
 		},
 	}
 
@@ -753,8 +753,8 @@ func TestJWTConfig_NoErrorContinuesExecution(t *testing.T) {
 			})
 
 			e.Use(JWTWithConfig(JWTConfig{
-				NoErrorContinuesExecution: tc.whenNoErrorContinuesExecution,
-				SigningKey:                []byte("secret"),
+				ContinueOnIgnoredError: tc.whenContinueOnIgnoredError,
+				SigningKey:             []byte("secret"),
 				ErrorHandlerWithContext: func(err error, c echo.Context) error {
 					if err == ErrJWTMissing {
 						c.Set("test", "public-token")

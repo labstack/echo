@@ -93,6 +93,17 @@ func TestKeyAuthWithConfig(t *testing.T) {
 			expectError:         "code=400, message=missing key in request header",
 		},
 		{
+			name: "ok, custom key lookup from multiple places, query and header",
+			givenRequest: func(req *http.Request) {
+				req.URL.RawQuery = "key=invalid-key"
+				req.Header.Set("API-Key", "valid-key")
+			},
+			whenConfig: func(conf *KeyAuthConfig) {
+				conf.KeyLookup = "query:key,header:API-Key"
+			},
+			expectHandlerCalled: true,
+		},
+		{
 			name: "ok, custom key lookup, header",
 			givenRequest: func(req *http.Request) {
 				req.Header.Set("API-Key", "valid-key")
@@ -289,42 +300,42 @@ func TestKeyAuthWithConfig_panicsOnEmptyValidator(t *testing.T) {
 	)
 }
 
-func TestKeyAuthWithConfig_NoErrorContinuesExecution(t *testing.T) {
+func TestKeyAuthWithConfig_ContinueOnIgnoredError(t *testing.T) {
 	var testCases = []struct {
-		name                          string
-		whenNoErrorContinuesExecution bool
-		givenKey                      string
-		expectStatus                  int
-		expectBody                    string
+		name                       string
+		whenContinueOnIgnoredError bool
+		givenKey                   string
+		expectStatus               int
+		expectBody                 string
 	}{
 		{
-			name:                          "no error handler is called",
-			whenNoErrorContinuesExecution: true,
-			givenKey:                      "valid-key",
-			expectStatus:                  http.StatusTeapot,
-			expectBody:                    "",
+			name:                       "no error handler is called",
+			whenContinueOnIgnoredError: true,
+			givenKey:                   "valid-key",
+			expectStatus:               http.StatusTeapot,
+			expectBody:                 "",
 		},
 		{
-			name:                          "NoErrorContinuesExecution is false and error handler is called for missing token",
-			whenNoErrorContinuesExecution: false,
-			givenKey:                      "",
+			name:                       "ContinueOnIgnoredError is false and error handler is called for missing token",
+			whenContinueOnIgnoredError: false,
+			givenKey:                   "",
 			// empty response with 200. This emulates previous behaviour when error handler swallowed the error
 			expectStatus: http.StatusOK,
 			expectBody:   "",
 		},
 		{
-			name:                          "error handler is called for missing token",
-			whenNoErrorContinuesExecution: true,
-			givenKey:                      "",
-			expectStatus:                  http.StatusTeapot,
-			expectBody:                    "public-auth",
+			name:                       "error handler is called for missing token",
+			whenContinueOnIgnoredError: true,
+			givenKey:                   "",
+			expectStatus:               http.StatusTeapot,
+			expectBody:                 "public-auth",
 		},
 		{
-			name:                          "error handler is called for invalid token",
-			whenNoErrorContinuesExecution: true,
-			givenKey:                      "x.x.x",
-			expectStatus:                  http.StatusUnauthorized,
-			expectBody:                    "{\"message\":\"Unauthorized\"}\n",
+			name:                       "error handler is called for invalid token",
+			whenContinueOnIgnoredError: true,
+			givenKey:                   "x.x.x",
+			expectStatus:               http.StatusUnauthorized,
+			expectBody:                 "{\"message\":\"Unauthorized\"}\n",
 		},
 	}
 
@@ -346,8 +357,8 @@ func TestKeyAuthWithConfig_NoErrorContinuesExecution(t *testing.T) {
 					}
 					return echo.ErrUnauthorized
 				},
-				KeyLookup:                 "header:X-API-Key",
-				NoErrorContinuesExecution: tc.whenNoErrorContinuesExecution,
+				KeyLookup:              "header:X-API-Key",
+				ContinueOnIgnoredError: tc.whenContinueOnIgnoredError,
 			}))
 
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
