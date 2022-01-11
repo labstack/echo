@@ -244,7 +244,7 @@ func TestEcho_StaticPanic(t *testing.T) {
 			e.Filesystem = os.DirFS("./")
 
 			assert.PanicsWithError(t, tc.expectError, func() {
-				e.Static("/assets", tc.givenRoot)
+				e.Static("../assets", tc.givenRoot)
 			})
 		})
 	}
