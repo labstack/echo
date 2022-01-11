@@ -62,7 +62,7 @@ func StaticDirectoryHandler(fileSystem fs.FS, disablePathUnescaping bool) Handle
 		}
 
 		// fs.FS.Open() already assumes that file names are relative to FS root path and considers name with prefix `/` as invalid
-		name := filepath.Clean(strings.TrimPrefix(p, "/"))
+		name := filepath.ToSlash(filepath.Clean(strings.TrimPrefix(p, "/")))
 		fi, err := fs.Stat(fileSystem, name)
 		if err != nil {
 			return ErrNotFound
@@ -113,6 +113,7 @@ func (fs defaultFS) Open(name string) (fs.File, error) {
 }
 
 func subFS(currentFs fs.FS, root string) (fs.FS, error) {
+	root = filepath.ToSlash(filepath.Clean(root)) // note: fs.FS operates only with slashes. `ToSlash` is necessary for Windows
 	if dFS, ok := currentFs.(*defaultFS); ok {
 		// we need to make exception for `defaultFS` instances as it interprets root prefix differently from fs.FS to
 		// allow cases when root is given as `../somepath` which is not valid for fs.FS
@@ -122,5 +123,5 @@ func subFS(currentFs fs.FS, root string) (fs.FS, error) {
 			fs:     os.DirFS(root),
 		}, nil
 	}
-	return fs.Sub(currentFs, filepath.Clean(root))
+	return fs.Sub(currentFs, root)
 }

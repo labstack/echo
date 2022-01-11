@@ -28,7 +28,7 @@ func fsFile(c Context, file string, filesystem fs.FS) error {
 
 	fi, _ := f.Stat()
 	if fi.IsDir() {
-		file = filepath.Join(file, indexPage)
+		file = filepath.ToSlash(filepath.Join(file, indexPage))
 		f, err = filesystem.Open(file)
 		if err != nil {
 			return ErrNotFound
