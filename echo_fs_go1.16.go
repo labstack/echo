@@ -16,6 +16,10 @@ import (
 type filesystem struct {
 	// Filesystem is file system used by Static and File handlers to access files.
 	// Defaults to os.DirFS(".")
+	//
+	// When dealing with `embed.FS` use `fs := echo.MustSubFS(fs, "rootDirectory") to create sub fs which uses necessary
+	// prefix for directory path. This is necessary as `//go:embed assets/images` embeds files with paths
+	// including `assets/images` as their prefix.
 	Filesystem fs.FS
 }
 
@@ -26,12 +30,8 @@ func createFilesystem() filesystem {
 }
 
 // Static registers a new route with path prefix to serve static files from the provided root directory.
-func (e *Echo) Static(pathPrefix, root string) *Route {
-	subFs, err := subFS(e.Filesystem, root)
-	if err != nil {
-		// happens when `root` contains invalid path according to `fs.ValidPath` rules and we are unable to create FS
-		panic(fmt.Errorf("invalid root given to echo.Static, err %w", err))
-	}
+func (e *Echo) Static(pathPrefix, fsRoot string) *Route {
+	subFs := MustSubFS(e.Filesystem, fsRoot)
 	return e.Add(
 		http.MethodGet,
 		pathPrefix+"*",
@@ -40,11 +40,15 @@ func (e *Echo) Static(pathPrefix, root string) *Route {
 }
 
 // StaticFS registers a new route with path prefix to serve static files from the provided file system.
-func (e *Echo) StaticFS(pathPrefix string, fileSystem fs.FS) *Route {
+//
+// When dealing with `embed.FS` use `fs := echo.MustSubFS(fs, "rootDirectory") to create sub fs which uses necessary
+// prefix for directory path. This is necessary as `//go:embed assets/images` embeds files with paths
+// including `assets/images` as their prefix.
+func (e *Echo) StaticFS(pathPrefix string, filesystem fs.FS) *Route {
 	return e.Add(
 		http.MethodGet,
 		pathPrefix+"*",
-		StaticDirectoryHandler(fileSystem, false),
+		StaticDirectoryHandler(filesystem, false),
 	)
 }
 
@@ -124,4 +128,18 @@ func subFS(currentFs fs.FS, root string) (fs.FS, error) {
 		}, nil
 	}
 	return fs.Sub(currentFs, root)
+}
+
+// MustSubFS creates sub FS from current filesystem or panic on failure.
+// Panic happens when `fsRoot` contains invalid path according to `fs.ValidPath` rules.
+//
+// MustSubFS is helpful when dealing with `embed.FS` because for example `//go:embed assets/images` embeds files with
+// paths including `assets/images` as their prefix. In that case use `fs := echo.MustSubFS(fs, "rootDirectory") to
+// create sub fs which uses necessary prefix for directory path.
+func MustSubFS(currentFs fs.FS, fsRoot string) fs.FS {
+	subFs, err := subFS(currentFs, fsRoot)
+	if err != nil {
+		panic(fmt.Errorf("can not create sub FS, invalid root given, err: %w", err))
+	}
+	return subFs
 }

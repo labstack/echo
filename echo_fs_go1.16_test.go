@@ -18,6 +18,7 @@ func TestEcho_StaticFS(t *testing.T) {
 		name                 string
 		givenPrefix          string
 		givenFs              fs.FS
+		givenFsRoot          string
 		whenURL              string
 		expectStatus         int
 		expectHeaderLocation string
@@ -27,6 +28,14 @@ func TestEcho_StaticFS(t *testing.T) {
 			name:                 "ok",
 			givenPrefix:          "/images",
 			givenFs:              os.DirFS("./_fixture/images"),
+			whenURL:              "/images/walle.png",
+			expectStatus:         http.StatusOK,
+			expectBodyStartsWith: string([]byte{0x89, 0x50, 0x4e, 0x47}),
+		},
+		{
+			name:                 "ok, from sub fs",
+			givenPrefix:          "/images",
+			givenFs:              MustSubFS(os.DirFS("./_fixture/"), "images"),
 			whenURL:              "/images/walle.png",
 			expectStatus:         http.StatusOK,
 			expectBodyStartsWith: string([]byte{0x89, 0x50, 0x4e, 0x47}),
@@ -135,7 +144,12 @@ func TestEcho_StaticFS(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			e := New()
-			e.StaticFS(tc.givenPrefix, tc.givenFs)
+
+			tmpFs := tc.givenFs
+			if tc.givenFsRoot != "" {
+				tmpFs = MustSubFS(tmpFs, tc.givenFsRoot)
+			}
+			e.StaticFS(tc.givenPrefix, tmpFs)
 
 			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
 			rec := httptest.NewRecorder()
@@ -229,12 +243,12 @@ func TestEcho_StaticPanic(t *testing.T) {
 		{
 			name:        "panics for ../",
 			givenRoot:   "../assets",
-			expectError: "invalid root given to echo.Static, err sub ../assets: invalid name",
+			expectError: "can not create sub FS, invalid root given, err: sub ../assets: invalid name",
 		},
 		{
 			name:        "panics for /",
 			givenRoot:   "/assets",
-			expectError: "invalid root given to echo.Static, err sub /assets: invalid name",
+			expectError: "can not create sub FS, invalid root given, err: sub /assets: invalid name",
 		},
 	}
 
