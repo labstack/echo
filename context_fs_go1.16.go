@@ -33,7 +33,7 @@ func fsFile(c Context, file string, filesystem fs.FS) error {
 
 	fi, _ := f.Stat()
 	if fi.IsDir() {
-		file = filepath.ToSlash(filepath.Join(file, indexPage)) // ToSlash is necessary for Windows
+		file = filepath.ToSlash(filepath.Join(file, indexPage)) // ToSlash is necessary for Windows. fs.Open and os.Open are different in that aspect.
 		f, err = filesystem.Open(file)
 		if err != nil {
 			return ErrNotFound
