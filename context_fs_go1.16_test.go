@@ -4,7 +4,7 @@
 package echo
 
 import (
-	testify "github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/assert"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
@@ -62,18 +62,18 @@ func TestContext_File(t *testing.T) {
 
 			err := handler(c)
 
-			testify.Equal(t, tc.expectStatus, rec.Code)
+			assert.Equal(t, tc.expectStatus, rec.Code)
 			if tc.expectError != "" {
-				testify.EqualError(t, err, tc.expectError)
+				assert.EqualError(t, err, tc.expectError)
 			} else {
-				testify.NoError(t, err)
+				assert.NoError(t, err)
 			}
 
 			body := rec.Body.Bytes()
 			if len(body) > len(tc.expectStartsWith) {
 				body = body[:len(tc.expectStartsWith)]
 			}
-			testify.Equal(t, tc.expectStartsWith, body)
+			assert.Equal(t, tc.expectStartsWith, body)
 		})
 	}
 }
@@ -118,18 +118,18 @@ func TestContext_FileFS(t *testing.T) {
 
 			err := handler(c)
 
-			testify.Equal(t, tc.expectStatus, rec.Code)
+			assert.Equal(t, tc.expectStatus, rec.Code)
 			if tc.expectError != "" {
-				testify.EqualError(t, err, tc.expectError)
+				assert.EqualError(t, err, tc.expectError)
 			} else {
-				testify.NoError(t, err)
+				assert.NoError(t, err)
 			}
 
 			body := rec.Body.Bytes()
 			if len(body) > len(tc.expectStartsWith) {
 				body = body[:len(tc.expectStartsWith)]
 			}
-			testify.Equal(t, tc.expectStartsWith, body)
+			assert.Equal(t, tc.expectStartsWith, body)
 		})
 	}
 }

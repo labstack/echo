@@ -4,27 +4,26 @@
 package echo
 
 import (
-	"fmt"
 	"io/fs"
 	"net/http"
 )
 
 // Static implements `Echo#Static()` for sub-routes within the Group.
-func (g *Group) Static(pathPrefix, root string) {
-	subFs, err := subFS(g.echo.Filesystem, root)
-	if err != nil {
-		// happens when `root` contains invalid path according to `fs.ValidPath` rules and we are unable to create FS
-		panic(fmt.Errorf("invalid root given to group.Static, err %w", err))
-	}
+func (g *Group) Static(pathPrefix, fsRoot string) {
+	subFs := MustSubFS(g.echo.Filesystem, fsRoot)
 	g.StaticFS(pathPrefix, subFs)
 }
 
 // StaticFS implements `Echo#StaticFS()` for sub-routes within the Group.
-func (g *Group) StaticFS(pathPrefix string, fileSystem fs.FS) {
+//
+// When dealing with `embed.FS` use `fs := echo.MustSubFS(fs, "rootDirectory") to create sub fs which uses necessary
+// prefix for directory path. This is necessary as `//go:embed assets/images` embeds files with paths
+// including `assets/images` as their prefix.
+func (g *Group) StaticFS(pathPrefix string, filesystem fs.FS) {
 	g.Add(
 		http.MethodGet,
 		pathPrefix+"*",
-		StaticDirectoryHandler(fileSystem, false),
+		StaticDirectoryHandler(filesystem, false),
 	)
 }
 

@@ -15,6 +15,11 @@ func (c *context) File(file string) error {
 	return fsFile(c, file, c.echo.Filesystem)
 }
 
+// FileFS serves file from given file system.
+//
+// When dealing with `embed.FS` use `fs := echo.MustSubFS(fs, "rootDirectory") to create sub fs which uses necessary
+// prefix for directory path. This is necessary as `//go:embed assets/images` embeds files with paths
+// including `assets/images` as their prefix.
 func (c *context) FileFS(file string, filesystem fs.FS) error {
 	return fsFile(c, file, filesystem)
 }
@@ -28,7 +33,7 @@ func fsFile(c Context, file string, filesystem fs.FS) error {
 
 	fi, _ := f.Stat()
 	if fi.IsDir() {
-		file = filepath.ToSlash(filepath.Join(file, indexPage))
+		file = filepath.Join(file, indexPage)
 		f, err = filesystem.Open(file)
 		if err != nil {
 			return ErrNotFound
