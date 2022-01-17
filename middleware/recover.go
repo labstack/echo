@@ -9,6 +9,9 @@ import (
 )
 
 type (
+	// LogLevelSetter defines a function to get log level for the recovered value.
+	LogLevelSetter func(value interface{}) log.Lvl
+
 	// RecoverConfig defines the config for Recover middleware.
 	RecoverConfig struct {
 		// Skipper defines a function to skip middleware.
@@ -30,6 +33,10 @@ type (
 		// LogLevel is log level to printing stack trace.
 		// Optional. Default value 0 (Print).
 		LogLevel log.Lvl
+
+		// LogLevelSetter defines a function to get log level for the recovered value.
+		// LogLevelSetter has higher priority than LogLevel when it's set.
+		LogLevelSetter LogLevelSetter
 	}
 )
 
@@ -41,6 +48,7 @@ var (
 		DisableStackAll:   false,
 		DisablePrintStack: false,
 		LogLevel:          0,
+		LogLevelSetter:    nil,
 	}
 )
 
@@ -73,11 +81,15 @@ func RecoverWithConfig(config RecoverConfig) echo.MiddlewareFunc {
 					if !ok {
 						err = fmt.Errorf("%v", r)
 					}
+					logLevel := config.LogLevel
+					if config.LogLevelSetter != nil {
+						logLevel = config.LogLevelSetter(r)
+					}
 					stack := make([]byte, config.StackSize)
 					length := runtime.Stack(stack, !config.DisableStackAll)
 					if !config.DisablePrintStack {
 						msg := fmt.Sprintf("[PANIC RECOVER] %v %s\n", err, stack[:length])
-						switch config.LogLevel {
+						switch logLevel {
 						case log.DEBUG:
 							c.Logger().Debug(msg)
 						case log.INFO:

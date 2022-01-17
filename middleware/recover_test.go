@@ -81,3 +81,36 @@ func TestRecoverWithConfig_LogLevel(t *testing.T) {
 		})
 	}
 }
+
+func TestRecoverWithConfig_LogLevelSetter(t *testing.T) {
+	e := echo.New()
+	e.Logger.SetLevel(log.DEBUG)
+
+	buf := new(bytes.Buffer)
+	e.Logger.SetOutput(buf)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	config := DefaultRecoverConfig
+	config.LogLevelSetter = func(value interface{}) log.Lvl {
+		if s, ok := value.(string); ok {
+			if s == "test" {
+				return log.DEBUG
+			}
+		}
+		return log.ERROR
+	}
+	h := RecoverWithConfig(config)(echo.HandlerFunc(func(c echo.Context) error {
+		panic("test")
+	}))
+
+	h(c)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+
+	output := buf.String()
+	assert.Contains(t, output, "PANIC RECOVER")
+	assert.Contains(t, output, `"level":"DEBUG"`)
+}
