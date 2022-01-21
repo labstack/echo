@@ -207,6 +207,7 @@ const (
 	HeaderIfModifiedSince     = "If-Modified-Since"
 	HeaderLastModified        = "Last-Modified"
 	HeaderLocation            = "Location"
+	HeaderRetryAfter          = "Retry-After"
 	HeaderUpgrade             = "Upgrade"
 	HeaderVary                = "Vary"
 	HeaderWWWAuthenticate     = "WWW-Authenticate"
