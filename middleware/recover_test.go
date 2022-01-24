@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -80,4 +81,56 @@ func TestRecoverWithConfig_LogLevel(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRecoverWithConfig_LogErrorFunc(t *testing.T) {
+	e := echo.New()
+	e.Logger.SetLevel(log.DEBUG)
+
+	buf := new(bytes.Buffer)
+	e.Logger.SetOutput(buf)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	testError := errors.New("test")
+	config := DefaultRecoverConfig
+	config.LogErrorFunc = func(c echo.Context, err error, stack []byte) error {
+		msg := fmt.Sprintf("[PANIC RECOVER] %v %s\n", err, stack)
+		if errors.Is(err, testError) {
+			c.Logger().Debug(msg)
+		} else {
+			c.Logger().Error(msg)
+		}
+		return err
+	}
+
+	t.Run("first branch case for LogErrorFunc", func(t *testing.T) {
+		buf.Reset()
+		h := RecoverWithConfig(config)(echo.HandlerFunc(func(c echo.Context) error {
+			panic(testError)
+		}))
+
+		h(c)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+
+		output := buf.String()
+		assert.Contains(t, output, "PANIC RECOVER")
+		assert.Contains(t, output, `"level":"DEBUG"`)
+	})
+
+	t.Run("else branch case for LogErrorFunc", func(t *testing.T) {
+		buf.Reset()
+		h := RecoverWithConfig(config)(echo.HandlerFunc(func(c echo.Context) error {
+			panic("other")
+		}))
+
+		h(c)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+
+		output := buf.String()
+		assert.Contains(t, output, "PANIC RECOVER")
+		assert.Contains(t, output, `"level":"ERROR"`)
+	})
 }
