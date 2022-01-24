@@ -2,11 +2,8 @@ package middleware
 
 import (
 	"errors"
-	"fmt"
-	"net/http"
-	"strings"
-
 	"github.com/labstack/echo/v4"
+	"net/http"
 )
 
 type (
@@ -15,15 +12,21 @@ type (
 		// Skipper defines a function to skip middleware.
 		Skipper Skipper
 
-		// KeyLookup is a string in the form of "<source>:<name>" that is used
+		// KeyLookup is a string in the form of "<source>:<name>" or "<source>:<name>,<source>:<name>" that is used
 		// to extract key from the request.
 		// Optional. Default value "header:Authorization".
 		// Possible values:
-		// - "header:<name>"
+		// - "header:<name>" or "header:<name>:<cut-prefix>"
+		// 			`<cut-prefix>` is argument value to cut/trim prefix of the extracted value. This is useful if header
+		//			value has static prefix like `Authorization: <auth-scheme> <authorisation-parameters>` where part that we
+		//			want to cut is `<auth-scheme> ` note the space at the end.
+		//			In case of basic authentication `Authorization: Basic <credentials>` prefix we want to remove is `Basic `.
 		// - "query:<name>"
 		// - "form:<name>"
 		// - "cookie:<name>"
-		KeyLookup string `yaml:"key_lookup"`
+		// Multiple sources example:
+		// - "header:Authorization,header:X-Api-Key"
+		KeyLookup string
 
 		// AuthScheme to be used in the Authorization header.
 		// Optional. Default value "Bearer".
@@ -36,15 +39,20 @@ type (
 		// ErrorHandler defines a function which is executed for an invalid key.
 		// It may be used to define a custom error.
 		ErrorHandler KeyAuthErrorHandler
+
+		// ContinueOnIgnoredError allows the next middleware/handler to be called when ErrorHandler decides to
+		// ignore the error (by returning `nil`).
+		// This is useful when parts of your site/api allow public access and some authorized routes provide extra functionality.
+		// In that case you can use ErrorHandler to set a default public key auth value in the request context
+		// and continue. Some logic down the remaining execution chain needs to check that (public) key auth value then.
+		ContinueOnIgnoredError bool
 	}
 
 	// KeyAuthValidator defines a function to validate KeyAuth credentials.
-	KeyAuthValidator func(string, echo.Context) (bool, error)
-
-	keyExtractor func(echo.Context) (string, error)
+	KeyAuthValidator func(auth string, c echo.Context) (bool, error)
 
 	// KeyAuthErrorHandler defines a function which is executed for an invalid key.
-	KeyAuthErrorHandler func(error, echo.Context) error
+	KeyAuthErrorHandler func(err error, c echo.Context) error
 )
 
 var (
@@ -55,6 +63,21 @@ var (
 		AuthScheme: "Bearer",
 	}
 )
+
+// ErrKeyAuthMissing is error type when KeyAuth middleware is unable to extract value from lookups
+type ErrKeyAuthMissing struct {
+	Err error
+}
+
+// Error returns errors text
+func (e *ErrKeyAuthMissing) Error() string {
+	return e.Err.Error()
+}
+
+// Unwrap unwraps error
+func (e *ErrKeyAuthMissing) Unwrap() error {
+	return e.Err
+}
 
 // KeyAuth returns an KeyAuth middleware.
 //
@@ -85,16 +108,9 @@ func KeyAuthWithConfig(config KeyAuthConfig) echo.MiddlewareFunc {
 		panic("echo: key-auth middleware requires a validator function")
 	}
 
-	// Initialize
-	parts := strings.Split(config.KeyLookup, ":")
-	extractor := keyFromHeader(parts[1], config.AuthScheme)
-	switch parts[0] {
-	case "query":
-		extractor = keyFromQuery(parts[1])
-	case "form":
-		extractor = keyFromForm(parts[1])
-	case "cookie":
-		extractor = keyFromCookie(parts[1])
+	extractors, err := createExtractors(config.KeyLookup, config.AuthScheme)
+	if err != nil {
+		panic(err)
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -103,79 +119,62 @@ func KeyAuthWithConfig(config KeyAuthConfig) echo.MiddlewareFunc {
 				return next(c)
 			}
 
-			// Extract and verify key
-			key, err := extractor(c)
-			if err != nil {
-				if config.ErrorHandler != nil {
-					return config.ErrorHandler(err, c)
+			var lastExtractorErr error
+			var lastValidatorErr error
+			for _, extractor := range extractors {
+				keys, err := extractor(c)
+				if err != nil {
+					lastExtractorErr = err
+					continue
 				}
-				return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+				for _, key := range keys {
+					valid, err := config.Validator(key, c)
+					if err != nil {
+						lastValidatorErr = err
+						continue
+					}
+					if valid {
+						return next(c)
+					}
+					lastValidatorErr = errors.New("invalid key")
+				}
 			}
-			valid, err := config.Validator(key, c)
-			if err != nil {
-				if config.ErrorHandler != nil {
-					return config.ErrorHandler(err, c)
+
+			// we are here only when we did not successfully extract and validate any of keys
+			err := lastValidatorErr
+			if err == nil { // prioritize validator errors over extracting errors
+				// ugly part to preserve backwards compatible errors. someone could rely on them
+				if lastExtractorErr == errQueryExtractorValueMissing {
+					err = errors.New("missing key in the query string")
+				} else if lastExtractorErr == errCookieExtractorValueMissing {
+					err = errors.New("missing key in cookies")
+				} else if lastExtractorErr == errFormExtractorValueMissing {
+					err = errors.New("missing key in the form")
+				} else if lastExtractorErr == errHeaderExtractorValueMissing {
+					err = errors.New("missing key in request header")
+				} else if lastExtractorErr == errHeaderExtractorValueInvalid {
+					err = errors.New("invalid key in the request header")
+				} else {
+					err = lastExtractorErr
 				}
+				err = &ErrKeyAuthMissing{Err: err}
+			}
+
+			if config.ErrorHandler != nil {
+				tmpErr := config.ErrorHandler(err, c)
+				if config.ContinueOnIgnoredError && tmpErr == nil {
+					return next(c)
+				}
+				return tmpErr
+			}
+			if lastValidatorErr != nil { // prioritize validator errors over extracting errors
 				return &echo.HTTPError{
 					Code:     http.StatusUnauthorized,
-					Message:  "invalid key",
-					Internal: err,
+					Message:  "Unauthorized",
+					Internal: lastValidatorErr,
 				}
-			} else if valid {
-				return next(c)
 			}
-			return echo.ErrUnauthorized
+			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 		}
-	}
-}
-
-// keyFromHeader returns a `keyExtractor` that extracts key from the request header.
-func keyFromHeader(header string, authScheme string) keyExtractor {
-	return func(c echo.Context) (string, error) {
-		auth := c.Request().Header.Get(header)
-		if auth == "" {
-			return "", errors.New("missing key in request header")
-		}
-		if header == echo.HeaderAuthorization {
-			l := len(authScheme)
-			if len(auth) > l+1 && auth[:l] == authScheme {
-				return auth[l+1:], nil
-			}
-			return "", errors.New("invalid key in the request header")
-		}
-		return auth, nil
-	}
-}
-
-// keyFromQuery returns a `keyExtractor` that extracts key from the query string.
-func keyFromQuery(param string) keyExtractor {
-	return func(c echo.Context) (string, error) {
-		key := c.QueryParam(param)
-		if key == "" {
-			return "", errors.New("missing key in the query string")
-		}
-		return key, nil
-	}
-}
-
-// keyFromForm returns a `keyExtractor` that extracts key from the form.
-func keyFromForm(param string) keyExtractor {
-	return func(c echo.Context) (string, error) {
-		key := c.FormValue(param)
-		if key == "" {
-			return "", errors.New("missing key in the form")
-		}
-		return key, nil
-	}
-}
-
-// keyFromCookie returns a `keyExtractor` that extracts key from the form.
-func keyFromCookie(cookieName string) keyExtractor {
-	return func(c echo.Context) (string, error) {
-		key, err := c.Cookie(cookieName)
-		if err != nil {
-			return "", fmt.Errorf("missing key in cookies: %w", err)
-		}
-		return key.Value, nil
 	}
 }

@@ -76,7 +76,7 @@ func TestKeyAuthWithConfig(t *testing.T) {
 				req.Header.Set(echo.HeaderAuthorization, "Bearer invalid-key")
 			},
 			expectHandlerCalled: false,
-			expectError:         "code=401, message=Unauthorized",
+			expectError:         "code=401, message=Unauthorized, internal=invalid key",
 		},
 		{
 			name: "nok, defaults, invalid scheme in header",
@@ -91,6 +91,17 @@ func TestKeyAuthWithConfig(t *testing.T) {
 			givenRequest:        func(req *http.Request) {},
 			expectHandlerCalled: false,
 			expectError:         "code=400, message=missing key in request header",
+		},
+		{
+			name: "ok, custom key lookup from multiple places, query and header",
+			givenRequest: func(req *http.Request) {
+				req.URL.RawQuery = "key=invalid-key"
+				req.Header.Set("API-Key", "valid-key")
+			},
+			whenConfig: func(conf *KeyAuthConfig) {
+				conf.KeyLookup = "query:key,header:API-Key"
+			},
+			expectHandlerCalled: true,
 		},
 		{
 			name: "ok, custom key lookup, header",
@@ -179,7 +190,7 @@ func TestKeyAuthWithConfig(t *testing.T) {
 				conf.KeyLookup = "cookie:key"
 			},
 			expectHandlerCalled: false,
-			expectError:         "code=400, message=missing key in cookies: http: named cookie not present",
+			expectError:         "code=400, message=missing key in cookies",
 		},
 		{
 			name: "nok, custom errorHandler, error from extractor",
@@ -216,7 +227,7 @@ func TestKeyAuthWithConfig(t *testing.T) {
 			},
 			whenConfig:          func(conf *KeyAuthConfig) {},
 			expectHandlerCalled: false,
-			expectError:         "code=401, message=invalid key, internal=some user defined error",
+			expectError:         "code=401, message=Unauthorized, internal=some user defined error",
 		},
 	}
 
@@ -254,6 +265,112 @@ func TestKeyAuthWithConfig(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 			}
+		})
+	}
+}
+
+func TestKeyAuthWithConfig_panicsOnInvalidLookup(t *testing.T) {
+	assert.PanicsWithError(
+		t,
+		"extractor source for lookup could not be split into needed parts: a",
+		func() {
+			handler := func(c echo.Context) error {
+				return c.String(http.StatusOK, "test")
+			}
+			KeyAuthWithConfig(KeyAuthConfig{
+				Validator: testKeyValidator,
+				KeyLookup: "a",
+			})(handler)
+		},
+	)
+}
+
+func TestKeyAuthWithConfig_panicsOnEmptyValidator(t *testing.T) {
+	assert.PanicsWithValue(
+		t,
+		"echo: key-auth middleware requires a validator function",
+		func() {
+			handler := func(c echo.Context) error {
+				return c.String(http.StatusOK, "test")
+			}
+			KeyAuthWithConfig(KeyAuthConfig{
+				Validator: nil,
+			})(handler)
+		},
+	)
+}
+
+func TestKeyAuthWithConfig_ContinueOnIgnoredError(t *testing.T) {
+	var testCases = []struct {
+		name                       string
+		whenContinueOnIgnoredError bool
+		givenKey                   string
+		expectStatus               int
+		expectBody                 string
+	}{
+		{
+			name:                       "no error handler is called",
+			whenContinueOnIgnoredError: true,
+			givenKey:                   "valid-key",
+			expectStatus:               http.StatusTeapot,
+			expectBody:                 "",
+		},
+		{
+			name:                       "ContinueOnIgnoredError is false and error handler is called for missing token",
+			whenContinueOnIgnoredError: false,
+			givenKey:                   "",
+			// empty response with 200. This emulates previous behaviour when error handler swallowed the error
+			expectStatus: http.StatusOK,
+			expectBody:   "",
+		},
+		{
+			name:                       "error handler is called for missing token",
+			whenContinueOnIgnoredError: true,
+			givenKey:                   "",
+			expectStatus:               http.StatusTeapot,
+			expectBody:                 "public-auth",
+		},
+		{
+			name:                       "error handler is called for invalid token",
+			whenContinueOnIgnoredError: true,
+			givenKey:                   "x.x.x",
+			expectStatus:               http.StatusUnauthorized,
+			expectBody:                 "{\"message\":\"Unauthorized\"}\n",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+
+			e.GET("/", func(c echo.Context) error {
+				testValue, _ := c.Get("test").(string)
+				return c.String(http.StatusTeapot, testValue)
+			})
+
+			e.Use(KeyAuthWithConfig(KeyAuthConfig{
+				Validator: testKeyValidator,
+				ErrorHandler: func(err error, c echo.Context) error {
+					if _, ok := err.(*ErrKeyAuthMissing); ok {
+						c.Set("test", "public-auth")
+						return nil
+					}
+					return echo.ErrUnauthorized
+				},
+				KeyLookup:              "header:X-API-Key",
+				ContinueOnIgnoredError: tc.whenContinueOnIgnoredError,
+			}))
+
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			if tc.givenKey != "" {
+				req.Header.Set("X-API-Key", tc.givenKey)
+			}
+			res := httptest.NewRecorder()
+
+			e.ServeHTTP(res, req)
+
+			assert.Equal(t, tc.expectStatus, res.Code)
+			assert.Equal(t, tc.expectBody, res.Body.String())
 		})
 	}
 }
