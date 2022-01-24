@@ -624,6 +624,4 @@ func (r *Router) Find(method, path string, c Context) {
 	}
 	ctx.path = currentNode.ppath
 	ctx.pnames = currentNode.pnames
-
-	return
 }
