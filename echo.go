@@ -604,6 +604,18 @@ func (e *Echo) ReleaseContext(c Context) {
 	e.pool.Put(c)
 }
 
+// Reset the routers
+func (e *Echo) Reset(names ...string) *Echo {
+	if len(names) == 0 {
+		e.router = NewRouter(e)
+		return e
+	}
+	for _, name := range names {
+		e.routers[name] = NewRouter(e)
+	}
+	return e
+}
+
 // ServeHTTP implements `http.Handler` interface, which serves HTTP requests.
 func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Acquire context
