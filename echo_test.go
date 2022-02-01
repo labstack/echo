@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -965,7 +966,11 @@ func TestEcho_Start(t *testing.T) {
 	case <-time.After(250 * time.Millisecond):
 		t.Fatal("start did not error out")
 	case err := <-errChan:
-		assert.Contains(t, err.Error(), "bind: address already in use")
+		expectContains := "bind: address already in use"
+		if runtime.GOOS == "windows" {
+			expectContains = "bind: Only one usage of each socket address"
+		}
+		assert.Contains(t, err.Error(), expectContains)
 	}
 }
 
