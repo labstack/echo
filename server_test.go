@@ -15,6 +15,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -119,7 +120,11 @@ func TestStartConfig_Start(t *testing.T) {
 		t.Errorf("missing error")
 		return
 	}
-	assert.True(t, strings.Contains(err.Error(), "connect: connection refused"))
+	expectContains := "connect: connection refused"
+	if runtime.GOOS == "windows" {
+		expectContains = "No connection could be made"
+	}
+	assert.True(t, strings.Contains(err.Error(), expectContains))
 }
 
 func TestStartConfig_GracefulShutdown(t *testing.T) {
@@ -207,7 +212,11 @@ func TestStartConfig_GracefulShutdown(t *testing.T) {
 			code, body, err = doGet(fmt.Sprintf("http://%v/ok", addr))
 			assert.Error(t, err)
 			if err != nil {
-				assert.True(t, strings.Contains(err.Error(), "connect: connection refused"))
+				expectContains := "connect: connection refused"
+				if runtime.GOOS == "windows" {
+					expectContains = "No connection could be made"
+				}
+				assert.True(t, strings.Contains(err.Error(), expectContains))
 			}
 			assert.Equal(t, 0, code)
 			assert.Equal(t, "", body)
