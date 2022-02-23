@@ -75,7 +75,6 @@ type (
 		maxParam         *int
 		router           *Router
 		routers          map[string]*Router
-		notFoundHandler  HandlerFunc
 		pool             sync.Pool
 		Server           *http.Server
 		TLSServer        *http.Server
