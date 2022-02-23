@@ -61,9 +61,6 @@ func TestEcho(t *testing.T) {
 	// Router
 	assert.NotNil(t, e.Router())
 
-	// Routers
-	assert.NotNil(t, e.Routers())
-
 	// DefaultHTTPErrorHandler
 	e.DefaultHTTPErrorHandler(errors.New("error"), c)
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
