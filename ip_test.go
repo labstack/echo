@@ -67,10 +67,10 @@ func TestTrustIPRange(t *testing.T) {
 	}{
 		{
 			name: "ip is within trust range, IPV6 network range",
-			// CIDR Notation: 	2001:0db8:0000:0000:0000:0000:0000:0000/48
-			// Address: 				2001:0db8:0000:0000:0000:0000:0000:0103
-			// Range start: 		2001:0db8:0000:0000:0000:0000:0000:0000
-			// Range end: 			2001:0db8:0000:ffff:ffff:ffff:ffff:ffff
+			// CIDR Notation: 2001:0db8:0000:0000:0000:0000:0000:0000/48
+			// Address:       2001:0db8:0000:0000:0000:0000:0000:0103
+			// Range start:   2001:0db8:0000:0000:0000:0000:0000:0000
+			// Range end:     2001:0db8:0000:ffff:ffff:ffff:ffff:ffff
 			givenRange: "2001:db8::103/48",
 			whenIP:     "2001:0db8:0000:0000:0000:0000:0000:0103",
 			expect:     true,
@@ -89,21 +89,21 @@ func TestTrustIPRange(t *testing.T) {
 		},
 		{
 			name: "ip is within trust range, IPV4 network range",
-			// CIDR Notation: 	8.8.8.8/24
-			// Address: 				8.8.8.8
-			// Range start: 		8.8.8.0
-			// Range end: 			8.8.8.255
-			givenRange: "8.8.8.8/24",
+			// CIDR Notation: 8.8.8.8/24
+			// Address:       8.8.8.8
+			// Range start:   8.8.8.0
+			// Range end:     8.8.8.255
+			givenRange: "8.8.8.0/24",
 			whenIP:     "8.8.8.8",
 			expect:     true,
 		},
 		{
 			name: "ip is within trust range, IPV4 network range",
-			// CIDR Notation: 	8.8.8.8/24
-			// Address: 				8.8.8.8
-			// Range start: 		8.8.8.0
-			// Range end: 			8.8.8.255
-			givenRange: "8.8.8.8/24",
+			// CIDR Notation: 8.8.8.8/24
+			// Address:       8.8.8.8
+			// Range start:   8.8.8.0
+			// Range end:     8.8.8.255
+			givenRange: "8.8.8.0/24",
 			whenIP:     "8.8.8.8",
 			expect:     true,
 		},
@@ -242,7 +242,8 @@ func TestTrustPrivateNet(t *testing.T) {
 			expect: true,
 		},
 
-		{ // fc00::/7 address block = RFC 4193 Unique Local Addresses (ULA) // splits the address block in two equally sized halves, fc00::/8 and fd00::/8.
+		{ // fc00::/7 address block = RFC 4193 Unique Local Addresses (ULA)
+			// splits the address block in two equally sized halves, fc00::/8 and fd00::/8.
 			// https://en.wikipedia.org/wiki/Unique_local_address
 			name:   "trust IPv6 private address",
 			whenIP: "fdfc:3514:2cb3:4bd5::",
