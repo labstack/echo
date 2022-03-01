@@ -220,6 +220,8 @@ const (
 	HeaderXRequestedWith      = "X-Requested-With"
 	HeaderServer              = "Server"
 	HeaderOrigin              = "Origin"
+	HeaderCacheControl        = "Cache-Control"
+	HeaderConnection          = "Connection"
 
 	// Access control
 	HeaderAccessControlRequestMethod    = "Access-Control-Request-Method"
