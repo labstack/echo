@@ -1,5 +1,26 @@
 # Changelog
 
+## v4.7.0 - 2022-03-01
+
+**Enhancements**
+
+* Add JWT, KeyAuth, CSRF multivalue extractors [#2060](https://github.com/labstack/echo/pull/2060)
+* Add LogErrorFunc to recover middleware [#2072](https://github.com/labstack/echo/pull/2072)
+* Add support for HEAD method query params binding [#2027](https://github.com/labstack/echo/pull/2027)
+* Improve filesystem support with echo.FileFS, echo.StaticFS, group.FileFS, group.StaticFS [#2064](https://github.com/labstack/echo/pull/2064)
+
+**Fixes**
+
+* Fix X-Real-IP bug, improve tests [#2007](https://github.com/labstack/echo/pull/2007)
+* Minor syntax fixes [#1994](https://github.com/labstack/echo/pull/1994), [#2102](https://github.com/labstack/echo/pull/2102), [#2102](https://github.com/labstack/echo/pull/2102)
+
+**General**
+
+* Add cache-control and connection headers [#2103](https://github.com/labstack/echo/pull/2103)
+* Add Retry-After header constant [#2078](https://github.com/labstack/echo/pull/2078)
+* Upgrade `go` directive in `go.mod` to 1.17 [#2049](https://github.com/labstack/echo/pull/2049)
+* Add Pagoda [#2077](https://github.com/labstack/echo/pull/2077) and Souin [#2069](https://github.com/labstack/echo/pull/2069) to 3rd-party middlewares in README
+
 ## v4.6.3 - 2022-01-10
 
 **Fixes**
