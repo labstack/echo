@@ -232,6 +232,10 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 			req := c.Request()
 			res := c.Response()
 			tgt := config.Balancer.Next(c)
+
+			// if target server Using reverse proxy, didn't work, so i change req.Host.
+			req.Host = tgt.URL.Host
+
 			c.Set(config.ContextKey, tgt)
 
 			if err := rewriteURL(config.RegexRewrite, req); err != nil {
