@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func createTestContext(URL string, body io.Reader, pathParams map[string]string) Context {
@@ -54,7 +55,7 @@ func TestBindingError_Error(t *testing.T) {
 func TestBindingError_ErrorJSON(t *testing.T) {
 	err := NewBindingError("id", []string{"1", "nope"}, "bind failed", errors.New("internal error"))
 
-	resp, err := json.Marshal(err)
+	resp, _ := json.Marshal(err)
 
 	assert.Equal(t, `{"field":"id","message":"bind failed"}`, string(resp))
 }
