@@ -75,7 +75,6 @@ type (
 		maxParam         *int
 		router           *Router
 		routers          map[string]*Router
-		notFoundHandler  HandlerFunc
 		pool             sync.Pool
 		Server           *http.Server
 		TLSServer        *http.Server
@@ -215,12 +214,14 @@ const (
 	HeaderXForwardedSsl       = "X-Forwarded-Ssl"
 	HeaderXUrlScheme          = "X-Url-Scheme"
 	HeaderXHTTPMethodOverride = "X-HTTP-Method-Override"
-	HeaderXRealIP             = "X-Real-IP"
-	HeaderXRequestID          = "X-Request-ID"
-	HeaderXCorrelationID      = "X-Correlation-ID"
+	HeaderXRealIP             = "X-Real-Ip"
+	HeaderXRequestID          = "X-Request-Id"
+	HeaderXCorrelationID      = "X-Correlation-Id"
 	HeaderXRequestedWith      = "X-Requested-With"
 	HeaderServer              = "Server"
 	HeaderOrigin              = "Origin"
+	HeaderCacheControl        = "Cache-Control"
+	HeaderConnection          = "Connection"
 
 	// Access control
 	HeaderAccessControlRequestMethod    = "Access-Control-Request-Method"
@@ -245,7 +246,7 @@ const (
 
 const (
 	// Version of Echo
-	Version = "4.6.3"
+	Version = "4.7.0"
 	website = "https://echo.labstack.com"
 	// http://patorjk.com/software/taag/#p=display&f=Small%20Slant&t=Echo
 	banner = `

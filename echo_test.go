@@ -964,7 +964,7 @@ func TestEchoStartTLSByteString(t *testing.T) {
 			e := New()
 			e.HideBanner = true
 
-			errChan := make(chan error, 0)
+			errChan := make(chan error)
 
 			go func() {
 				errChan <- e.StartTLS(":0", test.cert, test.key)
@@ -1002,7 +1002,7 @@ func TestEcho_StartAutoTLS(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			e := New()
-			errChan := make(chan error, 0)
+			errChan := make(chan error)
 
 			go func() {
 				errChan <- e.StartAutoTLS(tc.addr)
