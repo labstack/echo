@@ -113,7 +113,7 @@ func newDefaultFS() *defaultFS {
 }
 
 func (fs defaultFS) Open(name string) (fs.File, error) {
-	return fs.fs.Open(name)
+	return fs.fs.Open(filepath.ToSlash(filepath.Clean(name)))
 }
 
 func subFS(currentFs fs.FS, root string) (fs.FS, error) {

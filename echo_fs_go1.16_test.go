@@ -263,3 +263,48 @@ func TestEcho_StaticPanic(t *testing.T) {
 		})
 	}
 }
+
+func TestEchoStatic16(t *testing.T) { // when we drop Go1.15 support merge these testcases with `TestEchoStatic()`
+	var testCases = []struct {
+		name                 string
+		givenPrefix          string
+		givenRoot            string
+		whenURL              string
+		expectStatus         int
+		expectHeaderLocation string
+		expectBodyStartsWith string
+	}{
+		{ // `e.Static` is not meant to work by pointing `root` to file. This would be insecure.
+			name:                 "nok, should not work when relative path for root points to file",
+			givenPrefix:          "/images",
+			givenRoot:            "./_fixture/images/walle.png",
+			whenURL:              "/images",
+			expectStatus:         http.StatusNotFound,
+			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			e.Static(tc.givenPrefix, tc.givenRoot)
+			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+			assert.Equal(t, tc.expectStatus, rec.Code)
+			body := rec.Body.String()
+			if tc.expectBodyStartsWith != "" {
+				assert.True(t, strings.HasPrefix(body, tc.expectBodyStartsWith))
+			} else {
+				assert.Equal(t, "", body)
+			}
+
+			if tc.expectHeaderLocation != "" {
+				assert.Equal(t, tc.expectHeaderLocation, rec.Result().Header["Location"][0])
+			} else {
+				_, ok := rec.Result().Header["Location"]
+				assert.False(t, ok)
+			}
+		})
+	}
+}
