@@ -54,7 +54,7 @@ func TestBindingError_Error(t *testing.T) {
 func TestBindingError_ErrorJSON(t *testing.T) {
 	err := NewBindingError("id", []string{"1", "nope"}, "bind failed", errors.New("internal error"))
 
-	resp, err := json.Marshal(err)
+	resp, _ := json.Marshal(err)
 
 	assert.Equal(t, `{"field":"id","message":"bind failed"}`, string(resp))
 }

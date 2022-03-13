@@ -1,7 +1,6 @@
 package echo
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -2445,34 +2444,4 @@ func BenchmarkRouterGooglePlusAPIMisses(b *testing.B) {
 
 func BenchmarkRouterParamsAndAnyAPI(b *testing.B) {
 	benchmarkRouterRoutes(b, paramAndAnyAPI, paramAndAnyAPIToFind)
-}
-
-func (n *node) printTree(pfx string, tail bool) {
-	p := prefix(tail, pfx, "└── ", "├── ")
-	fmt.Printf("%s%s, %p: type=%d, parent=%p, handler=%v, pnames=%v\n", p, n.prefix, n, n.kind, n.parent, n.methodHandler, n.pnames)
-
-	p = prefix(tail, pfx, "    ", "│   ")
-
-	children := n.staticChildren
-	l := len(children)
-
-	if n.paramChild != nil {
-		n.paramChild.printTree(p, n.anyChild == nil && l == 0)
-	}
-	if n.anyChild != nil {
-		n.anyChild.printTree(p, l == 0)
-	}
-	for i := 0; i < l-1; i++ {
-		children[i].printTree(p, false)
-	}
-	if l > 0 {
-		children[l-1].printTree(p, true)
-	}
-}
-
-func prefix(tail bool, p, on, off string) string {
-	if tail {
-		return fmt.Sprintf("%s%s", p, on)
-	}
-	return fmt.Sprintf("%s%s", p, off)
 }
