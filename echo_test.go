@@ -85,6 +85,14 @@ func TestEchoStatic(t *testing.T) {
 			expectBodyStartsWith: string([]byte{0x89, 0x50, 0x4e, 0x47}),
 		},
 		{
+			name:                 "ok with relative path for root points to directory",
+			givenPrefix:          "/images",
+			givenRoot:            "./_fixture/images",
+			whenURL:              "/images/walle.png",
+			expectStatus:         http.StatusOK,
+			expectBodyStartsWith: string([]byte{0x89, 0x50, 0x4e, 0x47}),
+		},
+		{
 			name:                 "No file",
 			givenPrefix:          "/images",
 			givenRoot:            "_fixture/scripts",
@@ -246,11 +254,54 @@ func TestEchoStaticRedirectIndex(t *testing.T) {
 }
 
 func TestEchoFile(t *testing.T) {
-	e := New()
-	e.File("/walle", "_fixture/images/walle.png")
-	c, b := request(http.MethodGet, "/walle", e)
-	assert.Equal(t, http.StatusOK, c)
-	assert.NotEmpty(t, b)
+	var testCases = []struct {
+		name             string
+		givenPath        string
+		givenFile        string
+		whenPath         string
+		expectCode       int
+		expectStartsWith string
+	}{
+		{
+			name:             "ok",
+			givenPath:        "/walle",
+			givenFile:        "_fixture/images/walle.png",
+			whenPath:         "/walle",
+			expectCode:       http.StatusOK,
+			expectStartsWith: string([]byte{0x89, 0x50, 0x4e}),
+		},
+		{
+			name:             "ok with relative path",
+			givenPath:        "/",
+			givenFile:        "./go.mod",
+			whenPath:         "/",
+			expectCode:       http.StatusOK,
+			expectStartsWith: "module github.com/labstack/echo/v",
+		},
+		{
+			name:             "nok file does not exist",
+			givenPath:        "/",
+			givenFile:        "./this-file-does-not-exist",
+			whenPath:         "/",
+			expectCode:       http.StatusNotFound,
+			expectStartsWith: "{\"message\":\"Not Found\"}\n",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New() // we are using echo.defaultFS instance
+			e.File(tc.givenPath, tc.givenFile)
+
+			c, b := request(http.MethodGet, tc.whenPath, e)
+			assert.Equal(t, tc.expectCode, c)
+
+			if len(b) > len(tc.expectStartsWith) {
+				b = b[:len(tc.expectStartsWith)]
+			}
+			assert.Equal(t, tc.expectStartsWith, b)
+		})
+	}
 }
 
 func TestEchoMiddleware(t *testing.T) {
