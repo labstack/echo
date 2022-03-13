@@ -74,13 +74,18 @@ func TestTimeoutErrorOutInHandler(t *testing.T) {
 	e := echo.New()
 	c := e.NewContext(req, rec)
 
+	rec.Code = 1 // we want to be sure that even 200 will not be sent
 	err := m(func(c echo.Context) error {
+		// this error must not be written to the client response. Middlewares upstream of timeout middleware must be able
+		// to handle returned error and this can be done only then handler has not yet committed (written status code)
+		// the response.
 		return echo.NewHTTPError(http.StatusTeapot, "err")
 	})(c)
 
 	assert.Error(t, err)
-	assert.Equal(t, http.StatusTeapot, rec.Code)
-	assert.Equal(t, "{\"message\":\"err\"}\n", rec.Body.String())
+	assert.EqualError(t, err, "code=418, message=err")
+	assert.Equal(t, 1, rec.Code)
+	assert.Equal(t, "", rec.Body.String())
 }
 
 func TestTimeoutSuccessfulRequest(t *testing.T) {
