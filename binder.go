@@ -1,6 +1,8 @@
 package echo
 
 import (
+	"encoding"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -52,8 +54,11 @@ import (
 		* time
 		* duration
 		* BindUnmarshaler() interface
+		* TextUnmarshaler() interface
+		* JSONUnmarshaler() interface
 		* UnixTime() - converts unix time (integer) to time.Time
-		* UnixTimeNano() - converts unix time with nano second precision (integer) to time.Time
+		* UnixTimeMilli() - converts unix time with millisecond precision (integer) to time.Time
+		* UnixTimeNano() - converts unix time with nanosecond precision (integer) to time.Time
 		* CustomFunc() - callback function for your custom conversion logic. Signature `func(values []string) []error`
 */
 
@@ -317,6 +322,78 @@ func (b *ValueBinder) MustBindUnmarshaler(sourceParam string, dest BindUnmarshal
 
 	if err := dest.UnmarshalParam(value); err != nil {
 		b.setError(b.ErrorFunc(sourceParam, []string{value}, "failed to bind field value to BindUnmarshaler interface", err))
+	}
+	return b
+}
+
+// JSONUnmarshaler binds parameter to destination implementing json.Unmarshaler interface
+func (b *ValueBinder) JSONUnmarshaler(sourceParam string, dest json.Unmarshaler) *ValueBinder {
+	if b.failFast && b.errors != nil {
+		return b
+	}
+
+	tmp := b.ValueFunc(sourceParam)
+	if tmp == "" {
+		return b
+	}
+
+	if err := dest.UnmarshalJSON([]byte(tmp)); err != nil {
+		b.setError(b.ErrorFunc(sourceParam, []string{tmp}, "failed to bind field value to json.Unmarshaler interface", err))
+	}
+	return b
+}
+
+// MustJSONUnmarshaler requires parameter value to exist to be bind to destination implementing json.Unmarshaler interface.
+// Returns error when value does not exist
+func (b *ValueBinder) MustJSONUnmarshaler(sourceParam string, dest json.Unmarshaler) *ValueBinder {
+	if b.failFast && b.errors != nil {
+		return b
+	}
+
+	tmp := b.ValueFunc(sourceParam)
+	if tmp == "" {
+		b.setError(b.ErrorFunc(sourceParam, []string{tmp}, "required field value is empty", nil))
+		return b
+	}
+
+	if err := dest.UnmarshalJSON([]byte(tmp)); err != nil {
+		b.setError(b.ErrorFunc(sourceParam, []string{tmp}, "failed to bind field value to json.Unmarshaler interface", err))
+	}
+	return b
+}
+
+// TextUnmarshaler binds parameter to destination implementing encoding.TextUnmarshaler interface
+func (b *ValueBinder) TextUnmarshaler(sourceParam string, dest encoding.TextUnmarshaler) *ValueBinder {
+	if b.failFast && b.errors != nil {
+		return b
+	}
+
+	tmp := b.ValueFunc(sourceParam)
+	if tmp == "" {
+		return b
+	}
+
+	if err := dest.UnmarshalText([]byte(tmp)); err != nil {
+		b.setError(b.ErrorFunc(sourceParam, []string{tmp}, "failed to bind field value to encoding.TextUnmarshaler interface", err))
+	}
+	return b
+}
+
+// MustTextUnmarshaler requires parameter value to exist to be bind to destination implementing encoding.TextUnmarshaler interface.
+// Returns error when value does not exist
+func (b *ValueBinder) MustTextUnmarshaler(sourceParam string, dest encoding.TextUnmarshaler) *ValueBinder {
+	if b.failFast && b.errors != nil {
+		return b
+	}
+
+	tmp := b.ValueFunc(sourceParam)
+	if tmp == "" {
+		b.setError(b.ErrorFunc(sourceParam, []string{tmp}, "required field value is empty", nil))
+		return b
+	}
+
+	if err := dest.UnmarshalText([]byte(tmp)); err != nil {
+		b.setError(b.ErrorFunc(sourceParam, []string{tmp}, "failed to bind field value to encoding.TextUnmarshaler interface", err))
 	}
 	return b
 }
@@ -1161,7 +1238,7 @@ func (b *ValueBinder) durations(sourceParam string, values []string, dest *[]tim
 // Note:
 //  * time.Time{} (param is empty) and time.Unix(0,0) (param = "0") are not equal
 func (b *ValueBinder) UnixTime(sourceParam string, dest *time.Time) *ValueBinder {
-	return b.unixTime(sourceParam, dest, false, false)
+	return b.unixTime(sourceParam, dest, false, time.Second)
 }
 
 // MustUnixTime requires parameter value to exist to be bind to time.Duration variable  (in local Time corresponding
@@ -1172,10 +1249,31 @@ func (b *ValueBinder) UnixTime(sourceParam string, dest *time.Time) *ValueBinder
 // Note:
 //  * time.Time{} (param is empty) and time.Unix(0,0) (param = "0") are not equal
 func (b *ValueBinder) MustUnixTime(sourceParam string, dest *time.Time) *ValueBinder {
-	return b.unixTime(sourceParam, dest, true, false)
+	return b.unixTime(sourceParam, dest, true, time.Second)
 }
 
-// UnixTimeNano binds parameter to time.Time variable (in local Time corresponding to the given Unix time in nano second precision).
+// UnixTimeMilli binds parameter to time.Time variable (in local Time corresponding to the given Unix time in millisecond precision).
+//
+// Example: 1647184410140 bind to 2022-03-13T15:13:30.140000000+00:00
+//
+// Note:
+//  * time.Time{} (param is empty) and time.Unix(0,0) (param = "0") are not equal
+func (b *ValueBinder) UnixTimeMilli(sourceParam string, dest *time.Time) *ValueBinder {
+	return b.unixTime(sourceParam, dest, false, time.Millisecond)
+}
+
+// MustUnixTimeMilli requires parameter value to exist to be bind to time.Duration variable  (in local Time corresponding
+// to the given Unix time in millisecond precision). Returns error when value does not exist.
+//
+// Example: 1647184410140 bind to 2022-03-13T15:13:30.140000000+00:00
+//
+// Note:
+//  * time.Time{} (param is empty) and time.Unix(0,0) (param = "0") are not equal
+func (b *ValueBinder) MustUnixTimeMilli(sourceParam string, dest *time.Time) *ValueBinder {
+	return b.unixTime(sourceParam, dest, true, time.Millisecond)
+}
+
+// UnixTimeNano binds parameter to time.Time variable (in local Time corresponding to the given Unix time in nanosecond precision).
 //
 // Example: 1609180603123456789 binds to 2020-12-28T18:36:43.123456789+00:00
 // Example:          1000000000 binds to 1970-01-01T00:00:01.000000000+00:00
@@ -1185,7 +1283,7 @@ func (b *ValueBinder) MustUnixTime(sourceParam string, dest *time.Time) *ValueBi
 //  * time.Time{} (param is empty) and time.Unix(0,0) (param = "0") are not equal
 //  * Javascript's Number type only has about 53 bits of precision (Number.MAX_SAFE_INTEGER = 9007199254740991). Compare it to 1609180603123456789 in example.
 func (b *ValueBinder) UnixTimeNano(sourceParam string, dest *time.Time) *ValueBinder {
-	return b.unixTime(sourceParam, dest, false, true)
+	return b.unixTime(sourceParam, dest, false, time.Nanosecond)
 }
 
 // MustUnixTimeNano requires parameter value to exist to be bind to time.Duration variable  (in local Time corresponding
@@ -1199,10 +1297,10 @@ func (b *ValueBinder) UnixTimeNano(sourceParam string, dest *time.Time) *ValueBi
 //  * time.Time{} (param is empty) and time.Unix(0,0) (param = "0") are not equal
 //  * Javascript's Number type only has about 53 bits of precision (Number.MAX_SAFE_INTEGER = 9007199254740991). Compare it to 1609180603123456789 in example.
 func (b *ValueBinder) MustUnixTimeNano(sourceParam string, dest *time.Time) *ValueBinder {
-	return b.unixTime(sourceParam, dest, true, true)
+	return b.unixTime(sourceParam, dest, true, time.Nanosecond)
 }
 
-func (b *ValueBinder) unixTime(sourceParam string, dest *time.Time, valueMustExist bool, isNano bool) *ValueBinder {
+func (b *ValueBinder) unixTime(sourceParam string, dest *time.Time, valueMustExist bool, precision time.Duration) *ValueBinder {
 	if b.failFast && b.errors != nil {
 		return b
 	}
@@ -1221,10 +1319,13 @@ func (b *ValueBinder) unixTime(sourceParam string, dest *time.Time, valueMustExi
 		return b
 	}
 
-	if isNano {
-		*dest = time.Unix(0, n)
-	} else {
+	switch precision {
+	case time.Second:
 		*dest = time.Unix(n, 0)
+	case time.Millisecond:
+		*dest = time.Unix(n/1e3, (n%1e3)*1e6) // TODO: time.UnixMilli(n) exists since Go1.17 switch to that when min version allows
+	case time.Nanosecond:
+		*dest = time.Unix(0, n)
 	}
 	return b
 }
