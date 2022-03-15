@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"fmt"
+	"net/http"
 	"runtime"
 
 	"github.com/labstack/echo/v4"
@@ -77,6 +78,9 @@ func RecoverWithConfig(config RecoverConfig) echo.MiddlewareFunc {
 
 			defer func() {
 				if r := recover(); r != nil {
+					if r == http.ErrAbortHandler {
+						panic(r)
+					}
 					err, ok := r.(error)
 					if !ok {
 						err = fmt.Errorf("%v", r)
