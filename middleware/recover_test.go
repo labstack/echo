@@ -28,6 +28,35 @@ func TestRecover(t *testing.T) {
 	assert.Contains(t, buf.String(), "PANIC RECOVER")
 }
 
+func TestRecoverErrAbortHandler(t *testing.T) {
+	e := echo.New()
+	buf := new(bytes.Buffer)
+	e.Logger.SetOutput(buf)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	h := Recover()(echo.HandlerFunc(func(c echo.Context) error {
+		panic(http.ErrAbortHandler)
+	}))
+	defer func() {
+		r := recover()
+		if r == nil {
+			assert.Fail(t, "expecting `http.ErrAbortHandler`, got `nil`")
+		} else {
+			if err, ok := r.(error); ok {
+				assert.ErrorIs(t, err, http.ErrAbortHandler)
+			} else {
+				assert.Fail(t, "not of error type")
+			}
+		}
+	}()
+
+	h(c)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.NotContains(t, buf.String(), "PANIC RECOVER")
+}
+
 func TestRecoverWithConfig_LogLevel(t *testing.T) {
 	tests := []struct {
 		logLevel  log.Lvl
