@@ -1,9 +1,11 @@
 package middleware
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -499,6 +501,25 @@ func TestValuesFromForm(t *testing.T) {
 		return req
 	}
 
+	exampleMultiPartFormRequest := func(mod func(w *multipart.Writer)) *http.Request {
+		var b bytes.Buffer
+		w := multipart.NewWriter(&b)
+		w.WriteField("name", "Jon Snow")
+		w.WriteField("emails[]", "jon@labstack.com")
+		if mod != nil {
+			mod(w)
+		}
+
+		fw, _ := w.CreateFormFile("upload", "my.file")
+		fw.Write([]byte(`<div>hi</div>`))
+		w.Close()
+
+		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(b.String()))
+		req.Header.Add(echo.HeaderContentType, w.FormDataContentType())
+
+		return req
+	}
+
 	var testCases = []struct {
 		name         string
 		givenRequest *http.Request
@@ -516,6 +537,14 @@ func TestValuesFromForm(t *testing.T) {
 			name: "ok, POST form, multiple value",
 			givenRequest: examplePostFormRequest(func(v *url.Values) {
 				v.Add("emails[]", "snow@labstack.com")
+			}),
+			whenName:     "emails[]",
+			expectValues: []string{"jon@labstack.com", "snow@labstack.com"},
+		},
+		{
+			name: "ok, POST multipart/form, multiple value",
+			givenRequest: exampleMultiPartFormRequest(func(w *multipart.Writer) {
+				w.WriteField("emails[]", "snow@labstack.com")
 			}),
 			whenName:     "emails[]",
 			expectValues: []string{"jon@labstack.com", "snow@labstack.com"},
@@ -539,16 +568,6 @@ func TestValuesFromForm(t *testing.T) {
 			givenRequest: examplePostFormRequest(nil),
 			whenName:     "nope",
 			expectError:  errFormExtractorValueMissing.Error(),
-		},
-		{
-			name: "nok, POST form, form parsing error",
-			givenRequest: func() *http.Request {
-				req := httptest.NewRequest(http.MethodPost, "/", nil)
-				req.Body = nil
-				return req
-			}(),
-			whenName:    "name",
-			expectError: "valuesFromForm parse form failed: missing form body",
 		},
 		{
 			name: "ok, cut values over extractorLimit",

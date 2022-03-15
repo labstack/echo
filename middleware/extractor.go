@@ -168,8 +168,8 @@ func valuesFromCookie(name string) ValuesExtractor {
 // valuesFromForm returns a function that extracts values from the form field.
 func valuesFromForm(name string) ValuesExtractor {
 	return func(c echo.Context) ([]string, error) {
-		if parseErr := c.Request().ParseForm(); parseErr != nil {
-			return nil, fmt.Errorf("valuesFromForm parse form failed: %w", parseErr)
+		if c.Request().Form == nil {
+			_ = c.Request().ParseMultipartForm(32 << 20) // same what `c.Request().FormValue(name)` does
 		}
 		values := c.Request().Form[name]
 		if len(values) == 0 {
