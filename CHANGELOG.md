@@ -1,5 +1,18 @@
 # Changelog
 
+## v4.7.2 - 2022-03-16
+
+**Fixes**
+
+* Fix nil pointer exception when calling Start again after address binding error [#2131](https://github.com/labstack/echo/pull/2131)
+* Fix CSRF middleware not being able to extract token from multipart/form-data form [#2136](https://github.com/labstack/echo/pull/2136)
+* Fix Timeout middleware write race [#2126](https://github.com/labstack/echo/pull/2126)
+
+**Enhancements**
+
+* Recover middleware should not log panic for aborted handler [#2134](https://github.com/labstack/echo/pull/2134)
+
+
 ## v4.7.1 - 2022-03-13
 
 **Fixes**
