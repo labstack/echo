@@ -47,6 +47,7 @@ import (
 	stdLog "log"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"runtime"
 	"sync"
@@ -77,6 +78,7 @@ type (
 		routers          map[string]*Router
 		pool             sync.Pool
 		Server           *http.Server
+		TestServer       *httptest.Server
 		TLSServer        *http.Server
 		Listener         net.Listener
 		TLSListener      net.Listener
