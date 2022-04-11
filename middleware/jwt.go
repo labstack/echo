@@ -6,10 +6,11 @@ package middleware
 import (
 	"errors"
 	"fmt"
-	"github.com/golang-jwt/jwt"
-	"github.com/labstack/echo/v4"
 	"net/http"
 	"reflect"
+
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/labstack/echo/v4"
 )
 
 type (
@@ -107,7 +108,7 @@ type (
 
 		// ParseTokenFunc defines a user-defined function that parses token from given auth. Returns an error when token
 		// parsing fails or parsed token is invalid.
-		// Defaults to implementation using `github.com/golang-jwt/jwt` as JWT implementation library
+		// Defaults to implementation using `github.com/golang-jwt/jwt/v4` as JWT implementation library
 		ParseTokenFunc func(auth string, c echo.Context) (interface{}, error)
 	}
 
