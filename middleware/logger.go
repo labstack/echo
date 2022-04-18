@@ -54,6 +54,9 @@ type (
 		// Optional. Default value DefaultLoggerConfig.CustomTimeFormat.
 		CustomTimeFormat string `yaml:"custom_time_format"`
 
+		// Optional. Default value false.
+		NoColor bool `yaml:"no_color"`
+
 		// Output is a writer where logs in JSON format are written.
 		// Optional. Default value os.Stdout.
 		Output io.Writer
@@ -99,6 +102,9 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 	config.template = fasttemplate.New(config.Format, "${", "}")
 	config.colorer = color.New()
 	config.colorer.SetOutput(config.Output)
+	if config.NoColor {
+		config.colorer.Disable()
+	}
 	config.pool = &sync.Pool{
 		New: func() interface{} {
 			return bytes.NewBuffer(make([]byte, 256))
