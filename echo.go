@@ -81,6 +81,7 @@ type (
 		Listener         net.Listener
 		TLSListener      net.Listener
 		AutoTLSManager   autocert.Manager
+		NoColor          bool
 		DisableHTTP2     bool
 		Debug            bool
 		HideBanner       bool
@@ -735,6 +736,9 @@ func (e *Echo) StartServer(s *http.Server) (err error) {
 func (e *Echo) configureServer(s *http.Server) error {
 	// Setup
 	e.colorer.SetOutput(e.Logger.Output())
+	if e.NoColor {
+		e.colorer.Disable()
+	}
 	s.ErrorLog = e.StdLogger
 	s.Handler = e
 	if e.Debug {
@@ -798,6 +802,9 @@ func (e *Echo) StartH2CServer(address string, h2s *http2.Server) error {
 	s := e.Server
 	s.Addr = address
 	e.colorer.SetOutput(e.Logger.Output())
+	if e.NoColor {
+		e.colorer.Disable()
+	}
 	s.ErrorLog = e.StdLogger
 	s.Handler = h2c.NewHandler(e, h2s)
 	if e.Debug {
