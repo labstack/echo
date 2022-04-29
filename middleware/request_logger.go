@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"errors"
-	"github.com/labstack/echo/v4"
+	"github.com/siyual-park/echo-slim/v4"
 	"net/http"
 	"time"
 )

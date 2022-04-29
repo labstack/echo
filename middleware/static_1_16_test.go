@@ -1,3 +1,4 @@
+//go:build go1.16
 // +build go1.16
 
 package middleware
@@ -10,7 +11,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/labstack/echo/v4"
+	"github.com/siyual-park/echo-slim/v4"
 	"github.com/stretchr/testify/assert"
 )
 

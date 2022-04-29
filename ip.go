@@ -7,11 +7,11 @@ import (
 )
 
 /**
-By: https://github.com/tmshn (See: https://github.com/labstack/echo/pull/1478 , https://github.com/labstack/echox/pull/134 )
+By: https://github.com/tmshn (See: https://github.com/siyual-park/echo-slim/pull/1478 , https://github.com/siyual-park/echo-slimx/pull/134 )
 Source: https://echo.labstack.com/guide/ip-address/
 
 IP address plays fundamental role in HTTP; it's used for access control, auditing, geo-based access analysis and more.
-Echo provides handy method [`Context#RealIP()`](https://godoc.org/github.com/labstack/echo#Context) for that.
+Echo provides handy method [`Context#RealIP()`](https://godoc.org/github.com/siyual-park/echo-slim#Context) for that.
 
 However, it is not trivial to retrieve the _real_ IP address from requests especially when you put L7 proxies before the application.
 In such situation, _real_ IP needs to be relayed on HTTP layer from proxies to your app, but you must not trust HTTP headers unconditionally.
@@ -76,7 +76,7 @@ e.IPExtractor = echo.ExtractIPFromXFFHeader()
 By default, it trusts internal IP addresses (loopback, link-local unicast, private-use and unique local address
 from [RFC6890](https://tools.ietf.org/html/rfc6890), [RFC4291](https://tools.ietf.org/html/rfc4291) and
 [RFC4193](https://tools.ietf.org/html/rfc4193)).
-To control this behavior, use [`TrustOption`](https://godoc.org/github.com/labstack/echo#TrustOption)s.
+To control this behavior, use [`TrustOption`](https://godoc.org/github.com/siyual-park/echo-slim#TrustOption)s.
 
 E.g.:
 
@@ -87,7 +87,7 @@ e.IPExtractor = echo.ExtractIPFromXFFHeader(
 )
 ```
 
-- Ref: https://godoc.org/github.com/labstack/echo#TrustOption
+- Ref: https://godoc.org/github.com/siyual-park/echo-slim#TrustOption
 
 ## Case 3. With proxies using `X-Real-IP` header
 
@@ -102,9 +102,9 @@ e.IPExtractor = echo.ExtractIPFromRealIPHeader()
 Again, it trusts internal IP addresses by default (loopback, link-local unicast, private-use and unique local address
 from [RFC6890](https://tools.ietf.org/html/rfc6890), [RFC4291](https://tools.ietf.org/html/rfc4291) and
 [RFC4193](https://tools.ietf.org/html/rfc4193)).
-To control this behavior, use [`TrustOption`](https://godoc.org/github.com/labstack/echo#TrustOption)s.
+To control this behavior, use [`TrustOption`](https://godoc.org/github.com/siyual-park/echo-slim#TrustOption)s.
 
-- Ref: https://godoc.org/github.com/labstack/echo#TrustOption
+- Ref: https://godoc.org/github.com/siyual-park/echo-slim#TrustOption
 
 > **Never forget** to configure the outermost proxy (i.e.; at the edge of your infrastructure) **not to pass through incoming headers**.
 > Otherwise there is a chance of fraud, as it is what clients can control.

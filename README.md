@@ -1,11 +1,11 @@
 <a href="https://echo.labstack.com"><img height="80" src="https://cdn.labstack.com/images/echo-logo.svg"></a>
 
-[![Sourcegraph](https://sourcegraph.com/github.com/labstack/echo/-/badge.svg?style=flat-square)](https://sourcegraph.com/github.com/labstack/echo?badge)
-[![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://pkg.go.dev/github.com/labstack/echo/v4)
-[![Go Report Card](https://goreportcard.com/badge/github.com/labstack/echo?style=flat-square)](https://goreportcard.com/report/github.com/labstack/echo)
+[![Sourcegraph](https://sourcegraph.com/github.com/siyual-park/echo-slim/-/badge.svg?style=flat-square)](https://sourcegraph.com/github.com/siyual-park/echo-slim?badge)
+[![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://pkg.go.dev/github.com/siyual-park/echo-slim/v4)
+[![Go Report Card](https://goreportcard.com/badge/github.com/siyual-park/echo-slim?style=flat-square)](https://goreportcard.com/report/github.com/siyual-park/echo-slim)
 [![Build Status](http://img.shields.io/travis/labstack/echo.svg?style=flat-square)](https://travis-ci.org/labstack/echo)
 [![Codecov](https://img.shields.io/codecov/c/github/labstack/echo.svg?style=flat-square)](https://codecov.io/gh/labstack/echo)
-[![Forum](https://img.shields.io/badge/community-forum-00afd1.svg?style=flat-square)](https://github.com/labstack/echo/discussions)
+[![Forum](https://img.shields.io/badge/community-forum-00afd1.svg?style=flat-square)](https://github.com/siyual-park/echo-slim/discussions)
 [![Twitter](https://img.shields.io/badge/twitter-@labstack-55acee.svg?style=flat-square)](https://twitter.com/labstack)
 [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/labstack/echo/master/LICENSE)
 
@@ -18,7 +18,7 @@ Therefore a Go version capable of understanding /vN suffixed imports is required
 - 1.10.3+
 - 1.14+
 
-Any of these versions will allow you to import Echo as `github.com/labstack/echo/v4` which is the recommended
+Any of these versions will allow you to import Echo as `github.com/siyual-park/echo-slim/v4` which is the recommended
 way of using Echo going forward.
 
 For older versions, please use the latest v3 tag.
@@ -55,8 +55,8 @@ The benchmarks above were run on an Intel(R) Core(TM) i7-6820HQ CPU @ 2.70GHz
 ### Installation
 
 ```sh
-// go get github.com/labstack/echo/{version}
-go get github.com/labstack/echo/v4
+// go get github.com/siyual-park/echo-slim/{version}
+go get github.com/siyual-park/echo-slim/v4
 ```
 
 ### Example
@@ -65,8 +65,8 @@ go get github.com/labstack/echo/v4
 package main
 
 import (
-  "github.com/labstack/echo/v4"
-  "github.com/labstack/echo/v4/middleware"
+  "github.com/siyual-park/echo-slim/v4"
+  "github.com/siyual-park/echo-slim/v4/middleware"
   "net/http"
 )
 
@@ -95,7 +95,7 @@ func hello(c echo.Context) error {
 
 | Repository | Description                                                                                                                                                                                                                                                                                                                                                                                                    |
 |------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [github.com/labstack/echo-contrib](https://github.com/labstack/echo-contrib) | (by Echo team) [casbin](https://github.com/casbin/casbin), [gorilla/sessions](https://github.com/gorilla/sessions), [jaegertracing](github.com/uber/jaeger-client-go), [prometheus](https://github.com/prometheus/client_golang/), [pprof](https://pkg.go.dev/net/http/pprof), [zipkin](https://github.com/openzipkin/zipkin-go) middlewares | 
+| [github.com/siyual-park/echo-slim-contrib](https://github.com/siyual-park/echo-slim-contrib) | (by Echo team) [casbin](https://github.com/casbin/casbin), [gorilla/sessions](https://github.com/gorilla/sessions), [jaegertracing](github.com/uber/jaeger-client-go), [prometheus](https://github.com/prometheus/client_golang/), [pprof](https://pkg.go.dev/net/http/pprof), [zipkin](https://github.com/openzipkin/zipkin-go) middlewares | 
 | [deepmap/oapi-codegen](https://github.com/deepmap/oapi-codegen) | Automatically generate RESTful API documentation with [OpenAPI](https://swagger.io/specification/) Client and Server Code Generator                                                                                                                                                                                                                       |
 | [github.com/swaggo/echo-swagger](https://github.com/swaggo/echo-swagger) | Automatically generate RESTful API documentation with [Swagger](https://swagger.io/) 2.0.                                                                                                                                                                                                                                                        |
 | [github.com/ziflex/lecho](https://github.com/ziflex/lecho) | [Zerolog](https://github.com/rs/zerolog) logging library wrapper for Echo logger interface.                                                                                                                                                                                                                                                                    |
@@ -107,7 +107,7 @@ Please send a PR to add your own library here.
 
 ## Help
 
-- [Forum](https://github.com/labstack/echo/discussions)
+- [Forum](https://github.com/siyual-park/echo-slim/discussions)
 
 ## Contribute
 
@@ -131,8 +131,8 @@ Please send a PR to add your own library here.
 - [Roland Lammel](https://github.com/lammel) (Maintainer)
 - [Martti T.](https://github.com/aldas) (Maintainer)
 - [Pablo Andres Fuente](https://github.com/pafuent) (Maintainer)
-- [Contributors](https://github.com/labstack/echo/graphs/contributors)
+- [Contributors](https://github.com/siyual-park/echo-slim/graphs/contributors)
 
 ## License
 
-[MIT](https://github.com/labstack/echo/blob/master/LICENSE)
+[MIT](https://github.com/siyual-park/echo-slim/blob/master/LICENSE)

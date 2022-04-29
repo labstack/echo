@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/random"
+	"github.com/siyual-park/echo-slim/v4"
 	"github.com/stretchr/testify/assert"
 )
 
