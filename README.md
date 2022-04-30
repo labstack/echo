@@ -65,10 +65,18 @@ go get github.com/siyual-park/echo-slim/v4
 package main
 
 import (
+  "net/http"
+
   "github.com/siyual-park/echo-slim/v4"
   "github.com/siyual-park/echo-slim/v4/middleware"
-  "net/http"
 )
+
+// Middleware
+func hello(next echo.HandlerFunc) echo.HandlerFunc {
+  return func(c echo.Context) error {
+    return c.String(http.StatusOK, "Hello, World!")
+  }
+}
 
 func main() {
   // Echo instance
@@ -79,15 +87,13 @@ func main() {
   e.Use(middleware.Recover())
 
   // Routes
-  e.GET("/", hello)
+  r := middleware.NewRouter()
+  r.GET("/", hello)
+  
+  e.Use(r.Routes())
 
   // Start server
   e.Logger.Fatal(e.Start(":1323"))
-}
-
-// Handler
-func hello(c echo.Context) error {
-  return c.String(http.StatusOK, "Hello, World!")
 }
 ```
 

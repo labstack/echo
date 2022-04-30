@@ -3,34 +3,39 @@ Package echo implements high performance, minimalist Go web framework.
 
 Example:
 
-  package main
+	package main
 
-  import (
-    "net/http"
+	import (
+		"net/http"
 
-    "github.com/siyual-park/echo-slim/v4"
-    "github.com/siyual-park/echo-slim/v4/middleware"
-  )
+		"github.com/siyual-park/echo-slim/v4"
+		"github.com/siyual-park/echo-slim/v4/middleware"
+	)
 
-  // Handler
-  func hello(c echo.Context) error {
-    return c.String(http.StatusOK, "Hello, World!")
-  }
+	// Middleware
+	func hello(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			return c.String(http.StatusOK, "Hello, World!")
+		}
+	}
 
-  func main() {
-    // Echo instance
-    e := echo.New()
+	func main() {
+		// Echo instance
+		e := echo.New()
 
-    // Middleware
-    e.Use(middleware.Logger())
-    e.Use(middleware.Recover())
+		// Middleware
+		e.Use(middleware.Logger())
+		e.Use(middleware.Recover())
 
-    // Routes
-    e.GET("/", hello)
+		// Routes
+		r := middleware.NewRouter()
+		r.GET("/", hello)
 
-    // Start server
-    e.Logger.Fatal(e.Start(":1323"))
-  }
+		e.Use(r.Routes())
+
+		// Start server
+		e.Logger.Fatal(e.Start(":1323"))
+	}
 
 Learn more at https://echo.labstack.com
 */
