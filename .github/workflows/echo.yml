@@ -19,7 +19,7 @@ on:
       - '_fixture/**'
       - '.github/**'
       - 'codecov.yml'
-  workflow_dispatch: # to be able to run workflow manually
+  workflow_dispatch:
 
 jobs:
   test:
@@ -44,16 +44,18 @@ jobs:
           go-version: ${{ matrix.go }}
 
       - name: Install Dependencies
-        run: go install golang.org/x/lint/golint@latest
+        run: |
+          go install golang.org/x/lint/golint@latest
+          go install honnef.co/go/tools/cmd/staticcheck@latest
 
       - name: Run Tests
         run: |
           golint -set_exit_status ./...
+          staticcheck ./...
           go test -race --coverprofile=coverage.coverprofile --covermode=atomic ./...
-
       - name: Upload coverage to Codecov
         if: success() && matrix.go == 1.18 && matrix.os == 'ubuntu-latest'
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v1
         with:
           token:
           fail_ci_if_error: false
@@ -89,12 +91,10 @@ jobs:
         run: |
           cd previous
           go test -run="-" -bench=".*" -count=8 ./... > benchmark.txt
-
       - name: Run Benchmark (New)
         run: |
           cd new
           go test -run="-" -bench=".*" -count=8 ./... > benchmark.txt
-
       - name: Run Benchstat
         run: |
           benchstat previous/benchmark.txt new/benchmark.txt

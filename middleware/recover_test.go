@@ -56,9 +56,9 @@ func TestRecoverErrAbortHandler(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	h := Recover()(echo.HandlerFunc(func(c echo.Context) error {
+	h := Recover()(func(c echo.Context) error {
 		panic(http.ErrAbortHandler)
-	}))
+	})
 	defer func() {
 		r := recover()
 		if r == nil {

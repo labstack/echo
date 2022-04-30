@@ -10,6 +10,7 @@ check: lint vet race ## Check project
 
 init:
 	@go install golang.org/x/lint/golint@latest
+	@go install honnef.co/go/tools/cmd/staticcheck@latest
 
 lint: ## Lint the files
 	@golint -set_exit_status ${PKG_LIST}
