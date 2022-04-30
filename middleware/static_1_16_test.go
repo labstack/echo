@@ -89,8 +89,8 @@ func TestStatic_CustomFS(t *testing.T) {
 				config.Root = tc.root
 			}
 
-			middlewareFunc := StaticWithConfig(config)
-			e.Use(middlewareFunc)
+			e.Use(StaticWithConfig(config))
+			e.Use(NewRouter().Routes())
 
 			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
 			rec := httptest.NewRecorder()

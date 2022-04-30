@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -129,10 +128,17 @@ func TestGzipEmpty(t *testing.T) {
 
 func TestGzipErrorReturned(t *testing.T) {
 	e := echo.New()
+	r := NewRouter()
+
 	e.Use(Gzip())
-	e.GET("/", func(c echo.Context) error {
-		return echo.ErrNotFound
+	e.Use(r.Routes())
+
+	r.GET("/", func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			return echo.ErrNotFound
+		}
 	})
+
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
 	rec := httptest.NewRecorder()
@@ -143,45 +149,25 @@ func TestGzipErrorReturned(t *testing.T) {
 
 func TestGzipErrorReturnedInvalidConfig(t *testing.T) {
 	e := echo.New()
+	r := NewRouter()
+
 	// Invalid level
 	e.Use(GzipWithConfig(GzipConfig{Level: 12}))
-	e.GET("/", func(c echo.Context) error {
-		c.Response().Write([]byte("test"))
-		return nil
+	e.Use(r.Routes())
+
+	r.GET("/", func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			_, err := c.Response().Write([]byte("test"))
+			return err
+		}
 	})
+
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	assert.Contains(t, rec.Body.String(), "gzip")
-}
-
-// Issue #806
-func TestGzipWithStatic(t *testing.T) {
-	e := echo.New()
-	e.Use(Gzip())
-	e.Static("/test", "../_fixture/images")
-	req := httptest.NewRequest(http.MethodGet, "/test/walle.png", nil)
-	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
-	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, http.StatusOK, rec.Code)
-	// Data is written out in chunks when Content-Length == "", so only
-	// validate the content length if it's not set.
-	if cl := rec.Header().Get("Content-Length"); cl != "" {
-		assert.Equal(t, cl, rec.Body.Len())
-	}
-	r, err := gzip.NewReader(rec.Body)
-	if assert.NoError(t, err) {
-		defer r.Close()
-		want, err := ioutil.ReadFile("../_fixture/images/walle.png")
-		if assert.NoError(t, err) {
-			buf := new(bytes.Buffer)
-			buf.ReadFrom(r)
-			assert.Equal(t, want, buf.Bytes())
-		}
-	}
 }
 
 func BenchmarkGzip(b *testing.B) {

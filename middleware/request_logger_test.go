@@ -14,6 +14,7 @@ import (
 
 func TestRequestLoggerWithConfig(t *testing.T) {
 	e := echo.New()
+	r := NewRouter()
 
 	var expect RequestLoggerValues
 	e.Use(RequestLoggerWithConfig(RequestLoggerConfig{
@@ -25,9 +26,12 @@ func TestRequestLoggerWithConfig(t *testing.T) {
 		},
 	}))
 
-	e.GET("/test", func(c echo.Context) error {
-		return c.String(http.StatusTeapot, "OK")
+	r.GET("/test", func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			return c.String(http.StatusTeapot, "OK")
+		}
 	})
+	e.Use(r.Routes())
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
@@ -48,6 +52,7 @@ func TestRequestLoggerWithConfig_missingOnLogValuesPanics(t *testing.T) {
 
 func TestRequestLogger_skipper(t *testing.T) {
 	e := echo.New()
+	r := NewRouter()
 
 	loggerCalled := false
 	e.Use(RequestLoggerWithConfig(RequestLoggerConfig{
@@ -60,9 +65,12 @@ func TestRequestLogger_skipper(t *testing.T) {
 		},
 	}))
 
-	e.GET("/test", func(c echo.Context) error {
-		return c.String(http.StatusTeapot, "OK")
+	r.GET("/test", func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			return c.String(http.StatusTeapot, "OK")
+		}
 	})
+	e.Use(r.Routes())
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
@@ -75,6 +83,7 @@ func TestRequestLogger_skipper(t *testing.T) {
 
 func TestRequestLogger_beforeNextFunc(t *testing.T) {
 	e := echo.New()
+	r := NewRouter()
 
 	var myLoggerInstance int
 	e.Use(RequestLoggerWithConfig(RequestLoggerConfig{
@@ -87,9 +96,12 @@ func TestRequestLogger_beforeNextFunc(t *testing.T) {
 		},
 	}))
 
-	e.GET("/test", func(c echo.Context) error {
-		return c.String(http.StatusTeapot, "OK")
+	r.GET("/test", func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			return c.String(http.StatusTeapot, "OK")
+		}
 	})
+	e.Use(r.Routes())
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
@@ -102,6 +114,7 @@ func TestRequestLogger_beforeNextFunc(t *testing.T) {
 
 func TestRequestLogger_logError(t *testing.T) {
 	e := echo.New()
+	r := NewRouter()
 
 	var expect RequestLoggerValues
 	e.Use(RequestLoggerWithConfig(RequestLoggerConfig{
@@ -113,9 +126,12 @@ func TestRequestLogger_logError(t *testing.T) {
 		},
 	}))
 
-	e.GET("/test", func(c echo.Context) error {
-		return echo.NewHTTPError(http.StatusNotAcceptable, "nope")
+	r.GET("/test", func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			return echo.NewHTTPError(http.StatusNotAcceptable, "nope")
+		}
 	})
+	e.Use(r.Routes())
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
@@ -129,6 +145,7 @@ func TestRequestLogger_logError(t *testing.T) {
 
 func TestRequestLogger_LogValuesFuncError(t *testing.T) {
 	e := echo.New()
+	r := NewRouter()
 
 	var expect RequestLoggerValues
 	e.Use(RequestLoggerWithConfig(RequestLoggerConfig{
@@ -140,9 +157,12 @@ func TestRequestLogger_LogValuesFuncError(t *testing.T) {
 		},
 	}))
 
-	e.GET("/test", func(c echo.Context) error {
-		return c.String(http.StatusTeapot, "OK")
+	r.GET("/test", func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			return c.String(http.StatusTeapot, "OK")
+		}
 	})
+	e.Use(r.Routes())
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
@@ -177,6 +197,7 @@ func TestRequestLogger_ID(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			e := echo.New()
+			r := NewRouter()
 
 			var expect RequestLoggerValues
 			e.Use(RequestLoggerWithConfig(RequestLoggerConfig{
@@ -187,10 +208,13 @@ func TestRequestLogger_ID(t *testing.T) {
 				},
 			}))
 
-			e.GET("/test", func(c echo.Context) error {
-				c.Response().Header().Set(echo.HeaderXRequestID, "321")
-				return c.String(http.StatusTeapot, "OK")
+			r.GET("/test", func(next echo.HandlerFunc) echo.HandlerFunc {
+				return func(c echo.Context) error {
+					c.Response().Header().Set(echo.HeaderXRequestID, "321")
+					return c.String(http.StatusTeapot, "OK")
+				}
 			})
+			e.Use(r.Routes())
 
 			req := httptest.NewRequest(http.MethodGet, "/test", nil)
 			if tc.whenFromRequest {

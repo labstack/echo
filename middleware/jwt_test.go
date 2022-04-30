@@ -6,15 +6,14 @@ package middleware
 import (
 	"errors"
 	"fmt"
+	"github.com/golang-jwt/jwt"
+	"github.com/siyual-park/echo-slim/v4"
+	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
-
-	"github.com/golang-jwt/jwt"
-	"github.com/siyual-park/echo-slim/v4"
-	"github.com/stretchr/testify/assert"
 )
 
 // jwtCustomInfo defines some custom types we're going to use within our tokens.
@@ -31,13 +30,17 @@ type jwtCustomClaims struct {
 
 func TestJWT(t *testing.T) {
 	e := echo.New()
+	r := NewRouter()
 
-	e.GET("/", func(c echo.Context) error {
-		token := c.Get("user").(*jwt.Token)
-		return c.JSON(http.StatusOK, token.Claims)
+	r.GET("/", func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			token := c.Get("user").(*jwt.Token)
+			return c.JSON(http.StatusOK, token.Claims)
+		}
 	})
 
 	e.Use(JWT([]byte("secret")))
+	e.Use(r.Routes())
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set(echo.HeaderAuthorization, "bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ")
@@ -439,6 +442,7 @@ func TestJWTwithKID(t *testing.T) {
 
 func TestJWTConfig_skipper(t *testing.T) {
 	e := echo.New()
+	r := NewRouter()
 
 	e.Use(JWTWithConfig(JWTConfig{
 		Skipper: func(context echo.Context) bool {
@@ -446,11 +450,14 @@ func TestJWTConfig_skipper(t *testing.T) {
 		},
 		SigningKey: []byte("secret"),
 	}))
+	e.Use(r.Routes())
 
 	isCalled := false
-	e.GET("/", func(c echo.Context) error {
-		isCalled = true
-		return c.String(http.StatusTeapot, "test")
+	r.GET("/", func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			isCalled = true
+			return c.String(http.StatusTeapot, "test")
+		}
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -463,8 +470,12 @@ func TestJWTConfig_skipper(t *testing.T) {
 
 func TestJWTConfig_BeforeFunc(t *testing.T) {
 	e := echo.New()
-	e.GET("/", func(c echo.Context) error {
-		return c.String(http.StatusTeapot, "test")
+	r := NewRouter()
+
+	r.GET("/", func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			return c.String(http.StatusTeapot, "test")
+		}
 	})
 
 	isCalled := false
@@ -474,6 +485,7 @@ func TestJWTConfig_BeforeFunc(t *testing.T) {
 		},
 		SigningKey: []byte("secret"),
 	}))
+	e.Use(r.Routes())
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set(echo.HeaderAuthorization, DefaultJWTConfig.AuthScheme+" eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ")
@@ -515,11 +527,16 @@ func TestJWTConfig_extractorErrorHandling(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			e := echo.New()
-			e.GET("/", func(c echo.Context) error {
-				return c.String(http.StatusNotImplemented, "should not end up here")
+			r := NewRouter()
+
+			r.GET("/", func(next echo.HandlerFunc) echo.HandlerFunc {
+				return func(c echo.Context) error {
+					return c.String(http.StatusNotImplemented, "should not end up here")
+				}
 			})
 
 			e.Use(JWTWithConfig(tc.given))
+			e.Use(r.Routes())
 
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			res := httptest.NewRecorder()
@@ -561,9 +578,13 @@ func TestJWTConfig_parseTokenErrorHandling(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			e := echo.New()
+			r := NewRouter()
+
 			//e.Debug = true
-			e.GET("/", func(c echo.Context) error {
-				return c.String(http.StatusNotImplemented, "should not end up here")
+			r.GET("/", func(next echo.HandlerFunc) echo.HandlerFunc {
+				return func(c echo.Context) error {
+					return c.String(http.StatusNotImplemented, "should not end up here")
+				}
 			})
 
 			config := tc.given
@@ -573,6 +594,7 @@ func TestJWTConfig_parseTokenErrorHandling(t *testing.T) {
 				return nil, errors.New("parsing failed")
 			}
 			e.Use(JWTWithConfig(config))
+			e.Use(r.Routes())
 
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			req.Header.Set(echo.HeaderAuthorization, DefaultJWTConfig.AuthScheme+" eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ")
@@ -589,8 +611,12 @@ func TestJWTConfig_parseTokenErrorHandling(t *testing.T) {
 
 func TestJWTConfig_custom_ParseTokenFunc_Keyfunc(t *testing.T) {
 	e := echo.New()
-	e.GET("/", func(c echo.Context) error {
-		return c.String(http.StatusTeapot, "test")
+	r := NewRouter()
+
+	r.GET("/", func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			return c.String(http.StatusTeapot, "test")
+		}
 	})
 
 	// example of minimal custom ParseTokenFunc implementation. Allows you to use different versions of `github.com/golang-jwt/jwt`
@@ -619,6 +645,7 @@ func TestJWTConfig_custom_ParseTokenFunc_Keyfunc(t *testing.T) {
 	}
 
 	e.Use(JWTWithConfig(config))
+	e.Use(r.Routes())
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set(echo.HeaderAuthorization, DefaultJWTConfig.AuthScheme+" eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ")
@@ -630,10 +657,13 @@ func TestJWTConfig_custom_ParseTokenFunc_Keyfunc(t *testing.T) {
 
 func TestJWTConfig_TokenLookupFuncs(t *testing.T) {
 	e := echo.New()
+	r := NewRouter()
 
-	e.GET("/", func(c echo.Context) error {
-		token := c.Get("user").(*jwt.Token)
-		return c.JSON(http.StatusOK, token.Claims)
+	r.GET("/", func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			token := c.Get("user").(*jwt.Token)
+			return c.JSON(http.StatusOK, token.Claims)
+		}
 	})
 
 	e.Use(JWTWithConfig(JWTConfig{
@@ -644,6 +674,7 @@ func TestJWTConfig_TokenLookupFuncs(t *testing.T) {
 		},
 		SigningKey: []byte("secret"),
 	}))
+	e.Use(r.Routes())
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("X-API-Key", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ")
@@ -678,10 +709,13 @@ func TestJWTConfig_SuccessHandler(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			e := echo.New()
+			r := NewRouter()
 
-			e.GET("/", func(c echo.Context) error {
-				token := c.Get("user").(*jwt.Token)
-				return c.JSON(http.StatusOK, token.Claims)
+			r.GET("/", func(next echo.HandlerFunc) echo.HandlerFunc {
+				return func(c echo.Context) error {
+					token := c.Get("user").(*jwt.Token)
+					return c.JSON(http.StatusOK, token.Claims)
+				}
 			})
 
 			wasCalled := false
@@ -691,6 +725,7 @@ func TestJWTConfig_SuccessHandler(t *testing.T) {
 				},
 				SigningKey: []byte("secret"),
 			}))
+			e.Use(r.Routes())
 
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			req.Header.Set(echo.HeaderAuthorization, "bearer "+tc.givenToken)
@@ -725,7 +760,6 @@ func TestJWTConfig_ContinueOnIgnoredError(t *testing.T) {
 			givenToken:                 "",
 			// empty response with 200. This emulates previous behaviour when error handler swallowed the error
 			expectStatus: http.StatusOK,
-			expectBody:   "",
 		},
 		{
 			name:                       "error handler is called for missing token",
@@ -746,10 +780,13 @@ func TestJWTConfig_ContinueOnIgnoredError(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			e := echo.New()
+			r := NewRouter()
 
-			e.GET("/", func(c echo.Context) error {
-				testValue, _ := c.Get("test").(string)
-				return c.String(http.StatusTeapot, testValue)
+			r.GET("/", func(next echo.HandlerFunc) echo.HandlerFunc {
+				return func(c echo.Context) error {
+					testValue, _ := c.Get("test").(string)
+					return c.String(http.StatusTeapot, testValue)
+				}
 			})
 
 			e.Use(JWTWithConfig(JWTConfig{
@@ -763,6 +800,7 @@ func TestJWTConfig_ContinueOnIgnoredError(t *testing.T) {
 					return echo.ErrUnauthorized
 				},
 			}))
+			e.Use(r.Routes())
 
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			if tc.givenToken != "" {

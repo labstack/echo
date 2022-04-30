@@ -2,13 +2,12 @@ package middleware
 
 import (
 	"errors"
+	"github.com/siyual-park/echo-slim/v4"
+	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
-
-	"github.com/siyual-park/echo-slim/v4"
-	"github.com/stretchr/testify/assert"
 )
 
 func testKeyValidator(key string, c echo.Context) (bool, error) {
@@ -321,7 +320,6 @@ func TestKeyAuthWithConfig_ContinueOnIgnoredError(t *testing.T) {
 			givenKey:                   "",
 			// empty response with 200. This emulates previous behaviour when error handler swallowed the error
 			expectStatus: http.StatusOK,
-			expectBody:   "",
 		},
 		{
 			name:                       "error handler is called for missing token",
@@ -342,10 +340,13 @@ func TestKeyAuthWithConfig_ContinueOnIgnoredError(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			e := echo.New()
+			r := NewRouter()
 
-			e.GET("/", func(c echo.Context) error {
-				testValue, _ := c.Get("test").(string)
-				return c.String(http.StatusTeapot, testValue)
+			r.GET("/", func(next echo.HandlerFunc) echo.HandlerFunc {
+				return func(c echo.Context) error {
+					testValue, _ := c.Get("test").(string)
+					return c.String(http.StatusTeapot, testValue)
+				}
 			})
 
 			e.Use(KeyAuthWithConfig(KeyAuthConfig{
@@ -360,6 +361,7 @@ func TestKeyAuthWithConfig_ContinueOnIgnoredError(t *testing.T) {
 				KeyLookup:              "header:X-API-Key",
 				ContinueOnIgnoredError: tc.whenContinueOnIgnoredError,
 			}))
+			e.Use(r.Routes())
 
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			if tc.givenKey != "" {

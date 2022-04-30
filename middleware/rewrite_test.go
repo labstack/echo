@@ -1,20 +1,21 @@
 package middleware
 
 import (
+	"github.com/siyual-park/echo-slim/v4"
+	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"regexp"
 	"testing"
-
-	"github.com/siyual-park/echo-slim/v4"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestRewriteAfterRouting(t *testing.T) {
 	e := echo.New()
-	// middlewares added with `Use()` are executed after routing is done and do not affect which route handler is matched
+	r := NewRouter()
+
+	e.Use(r.Routes())
 	e.Use(RewriteWithConfig(RewriteConfig{
 		Rules: map[string]string{
 			"/old":              "/new",
@@ -23,11 +24,24 @@ func TestRewriteAfterRouting(t *testing.T) {
 			"/users/*/orders/*": "/user/$1/order/$2",
 		},
 	}))
-	e.GET("/public/*", func(c echo.Context) error {
-		return c.String(http.StatusOK, c.Param("*"))
+
+	r.GET("/public/*", func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			err := c.String(http.StatusOK, c.Param("*"))
+			if err != nil {
+				return err
+			}
+			return next(c)
+		}
 	})
-	e.GET("/*", func(c echo.Context) error {
-		return c.String(http.StatusOK, c.Param("*"))
+	r.GET("/*", func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			err := c.String(http.StatusOK, c.Param("*"))
+			if err != nil {
+				return err
+			}
+			return next(c)
+		}
 	})
 
 	var testCases = []struct {
@@ -93,19 +107,22 @@ func TestRewriteAfterRouting(t *testing.T) {
 // Issue #1086
 func TestEchoRewritePreMiddleware(t *testing.T) {
 	e := echo.New()
-	r := e.Router()
+	r := NewRouter()
 
 	// Rewrite old url to new one
 	// middlewares added with `Pre()` are executed before routing is done and therefore change which handler matches
-	e.Pre(Rewrite(map[string]string{
+	e.Use(Rewrite(map[string]string{
 		"/old": "/new",
 	},
 	))
 
 	// Route
-	r.Add(http.MethodGet, "/new", func(c echo.Context) error {
-		return c.NoContent(http.StatusOK)
+	r.Add(http.MethodGet, "/new", func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			return c.NoContent(http.StatusOK)
+		}
 	})
+	e.Use(r.Routes())
 
 	req := httptest.NewRequest(http.MethodGet, "/old", nil)
 	rec := httptest.NewRecorder()
@@ -117,22 +134,27 @@ func TestEchoRewritePreMiddleware(t *testing.T) {
 // Issue #1143
 func TestRewriteWithConfigPreMiddleware_Issue1143(t *testing.T) {
 	e := echo.New()
-	r := e.Router()
+	r := NewRouter()
 
 	// middlewares added with `Pre()` are executed before routing is done and therefore change which handler matches
-	e.Pre(RewriteWithConfig(RewriteConfig{
+	e.Use(RewriteWithConfig(RewriteConfig{
 		Rules: map[string]string{
 			"/api/*/mgmt/proj/*/agt": "/api/$1/hosts/$2",
 			"/api/*/mgmt/proj":       "/api/$1/eng",
 		},
 	}))
 
-	r.Add(http.MethodGet, "/api/:version/hosts/:name", func(c echo.Context) error {
-		return c.String(http.StatusOK, "hosts")
+	r.Add(http.MethodGet, "/api/:version/hosts/:name", func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			return c.String(http.StatusOK, "hosts")
+		}
 	})
-	r.Add(http.MethodGet, "/api/:version/eng", func(c echo.Context) error {
-		return c.String(http.StatusOK, "eng")
+	r.Add(http.MethodGet, "/api/:version/eng", func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			return c.String(http.StatusOK, "eng")
+		}
 	})
+	e.Use(r.Routes())
 
 	for i := 0; i < 100; i++ {
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/mgmt/proj/test/agt", nil)
@@ -151,7 +173,7 @@ func TestRewriteWithConfigPreMiddleware_Issue1143(t *testing.T) {
 func TestEchoRewriteWithCaret(t *testing.T) {
 	e := echo.New()
 
-	e.Pre(RewriteWithConfig(RewriteConfig{
+	e.Use(RewriteWithConfig(RewriteConfig{
 		Rules: map[string]string{
 			"^/abc/*": "/v1/abc/$1",
 		},
@@ -178,7 +200,7 @@ func TestEchoRewriteWithCaret(t *testing.T) {
 func TestEchoRewriteWithRegexRules(t *testing.T) {
 	e := echo.New()
 
-	e.Pre(RewriteWithConfig(RewriteConfig{
+	e.Use(RewriteWithConfig(RewriteConfig{
 		Rules: map[string]string{
 			"^/a/*":     "/v1/$1",
 			"^/b/*/c/*": "/v2/$2/$1",
@@ -222,7 +244,7 @@ func TestEchoRewriteReplacementEscaping(t *testing.T) {
 
 	// NOTE: these are incorrect regexps as they do not factor in that URI we are replacing could contain ? (query) and # (fragment) parts
 	// so in reality they append query and fragment part as `$1` matches everything after that prefix
-	e.Pre(RewriteWithConfig(RewriteConfig{
+	e.Use(RewriteWithConfig(RewriteConfig{
 		Rules: map[string]string{
 			"^/a/*": "/$1?query=param",
 			"^/b/*": "/$1;part#one",

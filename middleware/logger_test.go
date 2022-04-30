@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"github.com/siyual-park/echo-slim/v4"
+	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -11,9 +13,6 @@ import (
 	"testing"
 	"time"
 	"unsafe"
-
-	"github.com/siyual-park/echo-slim/v4"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestLogger(t *testing.T) {
@@ -88,6 +87,8 @@ func TestLoggerTemplate(t *testing.T) {
 	buf := new(bytes.Buffer)
 
 	e := echo.New()
+	r := NewRouter()
+
 	e.Use(LoggerWithConfig(LoggerConfig{
 		Format: `{"time":"${time_rfc3339_nano}","id":"${id}","remote_ip":"${remote_ip}","host":"${host}","user_agent":"${user_agent}",` +
 			`"method":"${method}","uri":"${uri}","status":${status}, "latency":${latency},` +
@@ -97,9 +98,12 @@ func TestLoggerTemplate(t *testing.T) {
 		Output: buf,
 	}))
 
-	e.GET("/", func(c echo.Context) error {
-		return c.String(http.StatusOK, "Header Logged")
+	r.GET("/", func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			return c.String(http.StatusOK, "Header Logged")
+		}
 	})
+	e.Use(r.Routes())
 
 	req := httptest.NewRequest(http.MethodGet, "/?username=apagano-param&password=secret", nil)
 	req.RequestURI = "/"
@@ -145,6 +149,8 @@ func TestLoggerCustomTimestamp(t *testing.T) {
 	buf := new(bytes.Buffer)
 	customTimeFormat := "2006-01-02 15:04:05.00000"
 	e := echo.New()
+	r := NewRouter()
+
 	e.Use(LoggerWithConfig(LoggerConfig{
 		Format: `{"time":"${time_custom}","id":"${id}","remote_ip":"${remote_ip}","host":"${host}","user_agent":"${user_agent}",` +
 			`"method":"${method}","uri":"${uri}","status":${status}, "latency":${latency},` +
@@ -155,9 +161,12 @@ func TestLoggerCustomTimestamp(t *testing.T) {
 		Output:           buf,
 	}))
 
-	e.GET("/", func(c echo.Context) error {
-		return c.String(http.StatusOK, "custom time stamp test")
+	r.GET("/", func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			return c.String(http.StatusOK, "custom time stamp test")
+		}
 	})
+	e.Use(r.Routes())
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()

@@ -172,12 +172,6 @@ type (
 		// Error invokes the registered HTTP error handler. Generally used by middleware.
 		Error(err error)
 
-		// Handler returns the matched handler by router.
-		Handler() HandlerFunc
-
-		// SetHandler sets the matched handler by router.
-		SetHandler(h HandlerFunc)
-
 		// Logger returns the `Logger` instance.
 		Logger() Logger
 
@@ -339,10 +333,14 @@ func (c *context) ParamValues() []string {
 
 func (c *context) SetParamValues(values ...string) {
 	// NOTE: Don't just set c.pvalues = values, because it has to have length c.echo.maxParam at all times
-	// It will brake the Router#Find code
+	// It will brake the Router#find code
 	limit := len(values)
 	if limit > *c.echo.maxParam {
-		limit = *c.echo.maxParam
+		*c.echo.maxParam = limit
+
+		newPvalues := make([]string, limit)
+		copy(newPvalues, c.pvalues)
+		c.pvalues = newPvalues
 	}
 	for i := 0; i < limit; i++ {
 		c.pvalues[i] = values[i]
@@ -600,14 +598,6 @@ func (c *context) Error(err error) {
 
 func (c *context) Echo() *Echo {
 	return c.echo
-}
-
-func (c *context) Handler() HandlerFunc {
-	return c.handler
-}
-
-func (c *context) SetHandler(h HandlerFunc) {
-	c.handler = h
 }
 
 func (c *context) Logger() Logger {

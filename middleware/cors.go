@@ -129,6 +129,7 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 			// handler does.
 			routerAllowMethods := ""
 			if preflight {
+				_ = next(c)
 				tmpAllowMethods, ok := c.Get(echo.ContextKeyHeaderAllow).(string)
 				if ok && tmpAllowMethods != "" {
 					routerAllowMethods = tmpAllowMethods

@@ -2,12 +2,11 @@ package middleware
 
 import (
 	"errors"
+	"github.com/siyual-park/echo-slim/v4"
+	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"github.com/siyual-park/echo-slim/v4"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestCORS(t *testing.T) {
@@ -306,9 +305,15 @@ func TestCORSWithConfig_AllowMethods(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			e := echo.New()
-			e.GET("/test", func(c echo.Context) error {
-				return c.String(http.StatusOK, "OK")
+			r := NewRouter()
+
+			r.GET("/test", func(next echo.HandlerFunc) echo.HandlerFunc {
+				return func(c echo.Context) error {
+					return c.String(http.StatusOK, "OK")
+				}
 			})
+
+			e.Use(r.Routes())
 
 			cors := CORSWithConfig(CORSConfig{
 				AllowOrigins: tc.allowOrigins,
@@ -433,18 +438,24 @@ func TestCorsHeaders(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			e := echo.New()
+			r := NewRouter()
 
 			e.Use(CORSWithConfig(CORSConfig{
 				AllowOrigins: []string{tc.allowedOrigin},
 				//AllowCredentials: true,
 				//MaxAge:           3600,
 			}))
+			e.Use(r.Routes())
 
-			e.GET("/", func(c echo.Context) error {
-				return c.String(http.StatusOK, "OK")
+			r.GET("/", func(next echo.HandlerFunc) echo.HandlerFunc {
+				return func(c echo.Context) error {
+					return c.String(http.StatusOK, "OK")
+				}
 			})
-			e.POST("/", func(c echo.Context) error {
-				return c.String(http.StatusCreated, "OK")
+			r.POST("/", func(next echo.HandlerFunc) echo.HandlerFunc {
+				return func(c echo.Context) error {
+					return c.String(http.StatusCreated, "OK")
+				}
 			})
 
 			req := httptest.NewRequest(tc.method, "/", nil)

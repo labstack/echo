@@ -99,6 +99,6 @@ func (r *Response) reset(w http.ResponseWriter) {
 	r.afterFuncs = nil
 	r.Writer = w
 	r.Size = 0
-	r.Status = http.StatusOK
+	r.Status = 0
 	r.Committed = false
 }

@@ -460,26 +460,6 @@ func TestContextCookie(t *testing.T) {
 	assert.Contains(rec.Header().Get(HeaderSetCookie), "HttpOnly")
 }
 
-func TestContextPath(t *testing.T) {
-	e := New()
-	r := e.Router()
-
-	handler := func(c Context) error { return c.String(http.StatusOK, "OK") }
-
-	r.Add(http.MethodGet, "/users/:id", handler)
-	c := e.NewContext(nil, nil)
-	r.Find(http.MethodGet, "/users/1", c)
-
-	assert := testify.New(t)
-
-	assert.Equal("/users/:id", c.Path())
-
-	r.Add(http.MethodGet, "/users/:uid/files/:fid", handler)
-	c = e.NewContext(nil, nil)
-	r.Find(http.MethodGet, "/users/1/files/1", c)
-	assert.Equal("/users/:uid/files/:fid", c.Path())
-}
-
 func TestContextPathParam(t *testing.T) {
 	e := New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -496,27 +476,6 @@ func TestContextPathParam(t *testing.T) {
 	// Param
 	testify.Equal(t, "501", c.Param("fid"))
 	testify.Equal(t, "", c.Param("undefined"))
-}
-
-func TestContextGetAndSetParam(t *testing.T) {
-	e := New()
-	r := e.Router()
-	r.Add(http.MethodGet, "/:foo", func(Context) error { return nil })
-	req := httptest.NewRequest(http.MethodGet, "/:foo", nil)
-	c := e.NewContext(req, nil)
-	c.SetParamNames("foo")
-
-	// round-trip param values with modification
-	paramVals := c.ParamValues()
-	testify.EqualValues(t, []string{""}, c.ParamValues())
-	paramVals[0] = "bar"
-	c.SetParamValues(paramVals...)
-	testify.EqualValues(t, []string{"bar"}, c.ParamValues())
-
-	// shouldn't explode during Reset() afterwards!
-	testify.NotPanics(t, func() {
-		c.Reset(nil, nil)
-	})
 }
 
 // Issue #1655
@@ -548,7 +507,7 @@ func TestContextSetParamNamesShouldUpdateEchoMaxParam(t *testing.T) {
 	assert.EqualValues(expectedThreeParams, c.ParamValues())
 
 	c.SetParamValues("A", "B", "C", "D")
-	assert.Equal(3, *e.maxParam)
+	assert.Equal(4, *e.maxParam)
 	// Here D shouldn't be returned
 	assert.EqualValues(expectedABCParams, c.ParamValues())
 }
@@ -669,33 +628,6 @@ func BenchmarkContext_Store(b *testing.B) {
 			b.Fail()
 		}
 	}
-}
-
-func TestContextHandler(t *testing.T) {
-	e := New()
-	r := e.Router()
-	b := new(bytes.Buffer)
-
-	r.Add(http.MethodGet, "/handler", func(Context) error {
-		_, err := b.Write([]byte("handler"))
-		return err
-	})
-	c := e.NewContext(nil, nil)
-	r.Find(http.MethodGet, "/handler", c)
-	err := c.Handler()(c)
-	testify.Equal(t, "handler", b.String())
-	testify.NoError(t, err)
-}
-
-func TestContext_SetHandler(t *testing.T) {
-	var c Context = new(context)
-
-	testify.Nil(t, c.Handler())
-
-	c.SetHandler(func(c Context) error {
-		return nil
-	})
-	testify.NotNil(t, c.Handler())
 }
 
 func TestContext_Path(t *testing.T) {

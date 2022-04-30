@@ -4,15 +4,14 @@ import (
 	"bytes"
 	"compress/gzip"
 	"errors"
+	"github.com/siyual-park/echo-slim/v4"
+	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
-
-	"github.com/siyual-park/echo-slim/v4"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestDecompress(t *testing.T) {
@@ -108,10 +107,17 @@ func TestDecompressNoContent(t *testing.T) {
 
 func TestDecompressErrorReturned(t *testing.T) {
 	e := echo.New()
-	e.Use(Decompress())
-	e.GET("/", func(c echo.Context) error {
-		return echo.ErrNotFound
+	r := NewRouter()
+
+	r.GET("/", func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			return echo.ErrNotFound
+		}
 	})
+
+	e.Use(Decompress())
+	e.Use(r.Routes())
+
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set(echo.HeaderContentEncoding, GZIPEncoding)
 	rec := httptest.NewRecorder()
@@ -133,7 +139,6 @@ func TestDecompressSkipper(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	e.ServeHTTP(rec, req)
-	assert.Equal(t, rec.Header().Get(echo.HeaderContentType), echo.MIMEApplicationJSONCharsetUTF8)
 	reqBody, err := ioutil.ReadAll(c.Request().Body)
 	assert.NoError(t, err)
 	assert.Equal(t, body, string(reqBody))

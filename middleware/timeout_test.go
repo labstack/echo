@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/siyual-park/echo-slim/v4"
+	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"log"
 	"net"
@@ -14,9 +16,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/siyual-park/echo-slim/v4"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestTimeoutSkipper(t *testing.T) {
@@ -179,13 +178,18 @@ func TestTimeoutTestRequestClone(t *testing.T) {
 func TestTimeoutRecoversPanic(t *testing.T) {
 	t.Parallel()
 	e := echo.New()
+	r := NewRouter()
+
 	e.Use(Recover()) // recover middleware will handler our panic
 	e.Use(TimeoutWithConfig(TimeoutConfig{
 		Timeout: 50 * time.Millisecond,
 	}))
+	e.Use(r.Routes())
 
-	e.GET("/", func(c echo.Context) error {
-		panic("panic!!!")
+	r.GET("/", func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			panic("panic!!!")
+		}
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -363,6 +367,7 @@ func TestTimeoutWithFullEchoStack(t *testing.T) {
 	}
 
 	e := echo.New()
+	r := NewRouter()
 
 	buf := new(bytes.Buffer)
 	e.Logger.SetOutput(buf)
@@ -374,16 +379,19 @@ func TestTimeoutWithFullEchoStack(t *testing.T) {
 	}))
 	e.Use(Logger())
 	e.Use(Recover())
+	e.Use(r.Routes())
 
-	e.GET("/", func(c echo.Context) error {
-		var delay time.Duration
-		if err := echo.QueryParamsBinder(c).Duration("delay", &delay).BindError(); err != nil {
-			return err
+	r.GET("/", func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			var delay time.Duration
+			if err := echo.QueryParamsBinder(c).Duration("delay", &delay).BindError(); err != nil {
+				return err
+			}
+			if delay > 0 {
+				time.Sleep(delay)
+			}
+			return c.JSON(http.StatusTeapot, map[string]string{"message": "OK"})
 		}
-		if delay > 0 {
-			time.Sleep(delay)
-		}
-		return c.JSON(http.StatusTeapot, map[string]string{"message": "OK"})
 	})
 
 	server, addr, err := startServer(e)

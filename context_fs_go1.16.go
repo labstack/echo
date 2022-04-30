@@ -15,6 +15,7 @@ func (c *context) File(file string) error {
 	return fsFile(c, file, c.echo.Filesystem)
 }
 
+//
 // FileFS serves file from given file system.
 //
 // When dealing with `embed.FS` use `fs := echo.MustSubFS(fs, "rootDirectory") to create sub fs which uses necessary
