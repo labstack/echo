@@ -858,8 +858,8 @@ func TestNestedRouter(t *testing.T) {
 	r1 := NewRouter()
 	r2 := NewRouter()
 
-	r2.Add(http.MethodGet, "/*/b/c", middlewareFunc)
-	r1.Any("/a/*", r2.Routes())
+	r2.Add(http.MethodGet, "/b/c", middlewareFunc)
+	r1.Use("/a", r2.Routes())
 
 	req := httptest.NewRequest(http.MethodGet, "/a/b/c", nil)
 	c := e.NewContext(req, echo.NewResponse(httptest.NewRecorder(), e))
@@ -867,7 +867,7 @@ func TestNestedRouter(t *testing.T) {
 	err := r1.Routes()(passHandler)(c)
 
 	assert.NoError(t, err)
-	assert.Equal(t, "/*/b/c", c.Get("path"))
+	assert.Equal(t, "/b/c", c.Get("path"))
 }
 
 // Issue #378

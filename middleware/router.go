@@ -36,10 +36,9 @@ type (
 	// Router is the registry of all registered routes for an `Echo` instance for
 	// request matching and URL path parameter parsing.
 	Router struct {
-		middleware []echo.MiddlewareFunc
-		maxParam   int
-		tree       *node
-		routes     map[string]*Route
+		maxParam int
+		tree     *node
+		routes   map[string]*Route
 	}
 	node struct {
 		kind           kind
@@ -82,6 +81,8 @@ const (
 
 	paramLabel = byte(':')
 	anyLabel   = byte('*')
+
+	routePath = "_echo_route_path"
 )
 
 var (
@@ -181,8 +182,8 @@ func NewRouter() *Router {
 }
 
 // Use adds middleware to the chain
-func (r *Router) Use(middleware ...echo.MiddlewareFunc) {
-	r.middleware = append(r.middleware, middleware...)
+func (r *Router) Use(path string, middleware ...echo.MiddlewareFunc) {
+	r.Any(path+"/:"+routePath, middleware...)
 }
 
 // CONNECT registers a new CONNECT route for a path with matching handler in the
@@ -299,14 +300,13 @@ func (r *Router) Add(method, path string, middleware ...echo.MiddlewareFunc) {
 func (r *Router) Routes() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			m := echo.ComposeMiddleware(r.middleware...)
-			matchedMiddleware := r.find(c.Request().Method, GetPath(c.Request()), c)
+			matchedMiddleware := r.find(c.Request().Method, GetPath(c), c)
 
 			if matchedMiddleware == nil {
-				return m(next)(c)
+				return next(c)
 			}
 
-			return m(matchedMiddleware(next))(c)
+			return matchedMiddleware(next)(c)
 		}
 	}
 }
@@ -768,11 +768,18 @@ func (r *Router) find(method, path string, c echo.Context) echo.MiddlewareFunc {
 	return matchedHandler
 }
 
-// GetPath returns RawPath, if it's empty returns Path from URL
-// Difference between RawPath and Path is:
+// GetPath returns RawPath, if it's empty returns Path from URL and RoutePath
+// Difference between RawPath and Path, RoutePath is:
 //  * Path is where request path is stored. Value is stored in decoded form: /%47%6f%2f becomes /Go/.
 //  * RawPath is an optional field which only gets set if the default encoding is different from Path.
-func GetPath(r *http.Request) string {
+//  * RoutePath is an optional field which only set if parent router is exited.
+func GetPath(c echo.Context) string {
+	subPath := c.Param(routePath)
+	if subPath != "" {
+		return "/" + subPath
+	}
+
+	r := c.Request()
 	path := r.URL.RawPath
 	if path == "" {
 		path = r.URL.Path
