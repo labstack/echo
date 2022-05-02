@@ -870,6 +870,26 @@ func TestNestedRouter(t *testing.T) {
 	assert.Equal(t, "/b/c", c.Get("path"))
 }
 
+func TestDeepNestedRouter(t *testing.T) {
+	e := echo.New()
+
+	r1 := NewRouter()
+	r2 := NewRouter()
+	r3 := NewRouter()
+
+	r3.Add(http.MethodGet, "/c", middlewareFunc)
+	r2.Use("/b", r3.Routes())
+	r1.Use("/a", r2.Routes())
+
+	req := httptest.NewRequest(http.MethodGet, "/a/b/c", nil)
+	c := e.NewContext(req, echo.NewResponse(httptest.NewRecorder(), e))
+
+	err := r1.Routes()(passHandler)(c)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "/c", c.Get("path"))
+}
+
 // Issue #378
 func TestRouterParamWithSlash(t *testing.T) {
 	e := echo.New()
