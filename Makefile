@@ -9,7 +9,7 @@ tag:
 check: lint vet race ## Check project
 
 init:
-	@go get -u golang.org/x/lint/golint
+	@go install golang.org/x/lint/golint@latest
 
 lint: ## Lint the files
 	@golint -set_exit_status ${PKG_LIST}
@@ -29,6 +29,6 @@ benchmark: ## Run benchmarks
 help: ## Display this help screen
 	@grep -h -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-goversion ?= "1.15"
-test_version: ## Run tests inside Docker with given version (defaults to 1.15 oldest supported). Example: make test_version goversion=1.15
+goversion ?= "1.16"
+test_version: ## Run tests inside Docker with given version (defaults to 1.15 oldest supported). Example: make test_version goversion=1.16
 	@docker run --rm -it -v $(shell pwd):/project golang:$(goversion) /bin/sh -c "cd /project && make init check"
