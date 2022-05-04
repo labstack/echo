@@ -73,7 +73,13 @@ func (m *methodHandler) isHandler() bool {
 		m.propfind != nil ||
 		m.put != nil ||
 		m.trace != nil ||
-		m.report != nil
+		m.report != nil ||
+		m.mkcol != nil ||
+		m.copy != nil ||
+		m.move != nil ||
+		m.lock != nil ||
+		m.unlock != nil ||
+		m.proppatch != nil
 }
 
 func (m *methodHandler) updateAllowHeader() {
@@ -118,6 +124,25 @@ func (m *methodHandler) updateAllowHeader() {
 	if m.report != nil {
 		buf.WriteString(", REPORT")
 	}
+	if m.mkcol != nil {
+		buf.WriteString(", MKCOL")
+	}
+	if m.copy != nil {
+		buf.WriteString(", COPY")
+	}
+	if m.move != nil {
+		buf.WriteString(", MOVE")
+	}
+	if m.lock != nil {
+		buf.WriteString(", LOCK")
+	}
+	if m.unlock != nil {
+		buf.WriteString(", UNLOCK")
+	}
+	if m.proppatch != nil {
+		buf.WriteString(", PROPPATCH")
+	}
+
 	m.allowHeader = buf.String()
 }
 
