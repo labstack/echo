@@ -2242,6 +2242,64 @@ func TestRouter_Match_DifferentParamNamesForSamePlace(t *testing.T) {
 	}
 }
 
+// Issue #2164 - this test is meant to document path parameter behaviour when request url has empty value in place
+// of the path parameter. As tests show the result is different depending on where parameter exists in the route path.
+func TestDefaultRouter_PathParamsCanMatchEmptyValues(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		whenURL     string
+		expectRoute string
+		expectParam map[string]string
+		expectError error
+	}{
+		{
+			name:        "ok, route is matched with even empty param is in the middle and between slashes",
+			whenURL:     "/a//b",
+			expectRoute: "/a/:id/b",
+			expectParam: map[string]string{"id": ""},
+		},
+		{
+			name:        "ok, route is matched with even empty param is in the middle",
+			whenURL:     "/a2/b",
+			expectRoute: "/a2:id/b",
+			expectParam: map[string]string{"id": ""},
+		},
+		{
+			name:        "ok, route is NOT matched with even empty param is at the end",
+			whenURL:     "/a3/",
+			expectRoute: "",
+			expectParam: map[string]string{},
+			expectError: ErrNotFound,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+
+			e.GET("/a/:id/b", handlerFunc)
+			e.GET("/a2:id/b", handlerFunc)
+			e.GET("/a3/:id", handlerFunc)
+
+			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
+			c := e.NewContext(req, nil).(*DefaultContext)
+			handler := e.router.Route(c)
+
+			err := handler(c)
+			if tc.expectError != nil {
+				assert.Equal(t, tc.expectError, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, tc.expectRoute, c.Path())
+			for param, expectedValue := range tc.expectParam {
+				assert.Equal(t, expectedValue, c.pathParams.Get(param, ""))
+			}
+			checkUnusedParamValues(t, c, tc.expectParam)
+		})
+	}
+}
+
 // Issue #729
 func TestRouterParamAlias(t *testing.T) {
 	api := []testRoute{

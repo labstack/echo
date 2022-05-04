@@ -8,6 +8,15 @@ import (
 )
 
 // Router is interface for routing request contexts to registered routes.
+//
+// Contract between Echo/Context instance and the router:
+// * all routes must be added through methods on echo.Echo instance.
+//   Reason: Echo instance uses RouteInfo.Params() length to allocate slice for paths parameters (see `Echo.contextPathParamAllocSize`).
+// * Router must populate Context during Router.Route call with:
+//   * RoutableContext.SetPath
+//   * RoutableContext.SetRawPathParams (IMPORTANT! with same slice pointer that c.RawPathParams() returns)
+//   * RoutableContext.SetRouteInfo
+//   And optionally can set additional information to Context with RoutableContext.Set
 type Router interface {
 	// Add registers Routable with the Router and returns registered RouteInfo
 	Add(routable Routable) (RouteInfo, error)
@@ -19,11 +28,6 @@ type Router interface {
 	// Route searches Router for matching route and applies it to the given context. In case when no matching method
 	// was not found (405) or no matching route exists for path (404), router will return its implementation of 405/404
 	// handler function.
-	// When implementing custom Router make sure to populate Context during Router.Route call with:
-	// * RoutableContext.SetPath
-	// * RoutableContext.SetRawPathParams (IMPORTANT! with same slice pointer that c.RawPathParams() returns)
-	// * RoutableContext.SetRouteInfo
-	// And optionally can set additional information to Context with RoutableContext.Set
 	Route(c RoutableContext) HandlerFunc
 }
 

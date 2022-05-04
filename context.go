@@ -55,6 +55,16 @@ type Context interface {
 	// PathParam returns path parameter by name.
 	PathParam(name string) string
 
+	// PathParamDefault returns the path parameter or default value for the provided name.
+	//
+	// Notes for DefaultRouter implementation:
+	// Path parameter could be empty for cases like that:
+	// * route `/release-:version/bin` and request URL is `/release-/bin`
+	// * route `/api/:version/image.jpg` and request URL is `/api//image.jpg`
+	// but not when path parameter is last part of route path
+	// * route `/download/file.:ext` will not match request `/download/file.`
+	PathParamDefault(name string, defaultValue string) string
+
 	// PathParams returns path parameter values.
 	PathParams() PathParams
 
@@ -176,6 +186,9 @@ type Context interface {
 	Redirect(code int, url string) error
 
 	// Echo returns the `Echo` instance.
+	//
+	// WARNING: Remember that Echo public fields and methods are coroutine safe ONLY when you are NOT mutating them
+	// anywhere in your code after Echo server has started.
 	Echo() *Echo
 }
 
@@ -379,7 +392,10 @@ func (c *DefaultContext) PathParam(name string) string {
 	return c.pathParams.Get(name, "")
 }
 
-// PathParamDefault does not exist as expecting empty path param makes no sense
+// PathParamDefault returns the path parameter or default value for the provided name.
+func (c *DefaultContext) PathParamDefault(name, defaultValue string) string {
+	return c.pathParams.Get(name, defaultValue)
+}
 
 // PathParams returns path parameter values.
 func (c *DefaultContext) PathParams() PathParams {
@@ -406,7 +422,8 @@ func (c *DefaultContext) QueryParam(name string) string {
 }
 
 // QueryParamDefault returns the query param or default value for the provided name.
-// Note: QueryParamDefault does not distinguish if form had no value by that name or value was empty string
+// Note: QueryParamDefault does not distinguish if query had no value by that name or value was empty string
+// This means URLs `/test?search=` and `/test` would both return `1` for `c.QueryParamDefault("search", "1")`
 func (c *DefaultContext) QueryParamDefault(name, defaultValue string) string {
 	value := c.QueryParam(name)
 	if value == "" {

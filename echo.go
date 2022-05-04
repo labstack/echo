@@ -55,7 +55,9 @@ import (
 )
 
 // Echo is the top-level framework instance.
-// Note: replacing/nilling public fields is not coroutine/thread-safe and can cause data-races/panics.
+//
+// Note: replacing/nilling public fields is not coroutine/thread-safe and can cause data-races/panics. This is very likely
+// to happen when you access Echo instances through Context.Echo() method.
 type Echo struct {
 	// premiddleware are middlewares that are run for every request before routing is done
 	premiddleware []MiddlewareFunc
@@ -67,8 +69,8 @@ type Echo struct {
 	routerCreator func(e *Echo) Router
 
 	contextPool sync.Pool
-	// contextPathParamAllocSize holds maximum parameter count for all added routes. This is necessary info for context
-	// creation time so we can allocate path parameter values slice.
+	// contextPathParamAllocSize holds maximum parameter count for all added routes. This is necessary info at context
+	// creation moment so we can allocate path parameter values slice with correct size.
 	contextPathParamAllocSize int
 
 	// NewContextFunc allows using custom context implementations, instead of default *echo.context
