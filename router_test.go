@@ -2445,3 +2445,200 @@ func BenchmarkRouterGooglePlusAPIMisses(b *testing.B) {
 func BenchmarkRouterParamsAndAnyAPI(b *testing.B) {
 	benchmarkRouterRoutes(b, paramAndAnyAPI, paramAndAnyAPIToFind)
 }
+
+func TestRouterMatch(t *testing.T) {
+	e := New()
+	r := e.router
+
+	r.Add(http.MethodGet, "/", handlerFunc)
+	r.Add(http.MethodGet, "/?name=zkep", handlerFunc)
+
+	r.Add(http.MethodGet, "/user/*?name=zkep", handlerFunc)
+	r.Add(http.MethodGet, "/user/*", handlerFunc)
+
+	r.Add(http.MethodGet, "/profile?name=zkep", handlerFunc)   //   name=zkep  in URL
+	r.Add(http.MethodGet, "/profile#Content-Md5", handlerFunc) //  Content-Md5 exists in headers
+
+	r.Add(http.MethodGet, "/:key", handlerFunc)
+
+	// Query And Header
+	r.Add(http.MethodGet, "/:key?uploadId={.*}#Content-Type=video/mp4", handlerFunc)
+
+	// Header
+	r.Add(http.MethodGet, "/:key#Content-Type=video/mp4", handlerFunc)
+
+	// NewMultipartUpload
+	r.Add(http.MethodPost, "/:key?uploads", handlerFunc) // Check uploads exists in URL
+
+	// PutObjectPart
+	// you can use echo implement AWS UploadPart API
+	// https://docs.aws.amazon.com/AmazonS3/latest/API/API_UploadPart.html
+	r.Add(http.MethodPut, "/:key?partNumber={[0-9]+}&uploadId={.*}", handlerFunc)
+
+	// ListObjectParts
+	r.Add(http.MethodGet, "/:key?uploadId={.*}", handlerFunc)
+
+	// CompleteMultipartUpload
+	r.Add(http.MethodPost, "/:key?uploadId={.*}", handlerFunc)
+
+	var testCases = []struct {
+		name         string
+		whenMethod   string
+		whenURL      string
+		expectURL    string
+		queries      []string
+		headers      []string
+		expectStatus int
+	}{
+		{
+			name:         "Test Root",
+			whenMethod:   http.MethodGet,
+			whenURL:      "/",
+			queries:      []string{},
+			expectURL:    "/",
+			expectStatus: http.StatusOK,
+		},
+		{
+			name:         "Test Root",
+			whenMethod:   http.MethodGet,
+			whenURL:      "/",
+			queries:      []string{"name", "zkep"},
+			expectURL:    "/?name=zkep",
+			expectStatus: http.StatusOK,
+		},
+		{
+			name:         "Test * Query",
+			whenMethod:   http.MethodGet,
+			whenURL:      "/user/*",
+			queries:      []string{"name", "zkep"},
+			expectURL:    "/user/*?name=zkep",
+			expectStatus: http.StatusOK,
+		},
+		{
+			name:         "Test *",
+			whenMethod:   http.MethodGet,
+			whenURL:      "/user/*",
+			queries:      []string{},
+			expectURL:    "/user/*",
+			expectStatus: http.StatusOK,
+		},
+		{
+			name:         "Test Query",
+			whenMethod:   http.MethodGet,
+			whenURL:      "/profile",
+			queries:      []string{"name", "zkep"},
+			expectURL:    "/profile?name=zkep",
+			expectStatus: http.StatusOK,
+		},
+		{
+			name:         "Test Header",
+			whenMethod:   http.MethodGet,
+			whenURL:      "/profile",
+			headers:      []string{"Content-Md5", ""},
+			expectURL:    "/profile#Content-Md5",
+			expectStatus: http.StatusOK,
+		},
+		{
+			name:         "Test *",
+			whenMethod:   http.MethodGet,
+			whenURL:      "/user/*",
+			queries:      []string{},
+			expectURL:    "/user/*",
+			expectStatus: http.StatusOK,
+		},
+		{
+			name:         "Test Normal",
+			whenMethod:   http.MethodGet,
+			whenURL:      "/:key",
+			headers:      []string{},
+			queries:      []string{},
+			expectURL:    "/:key",
+			expectStatus: http.StatusOK,
+		},
+		{
+			name:         "Query And Header",
+			whenMethod:   http.MethodGet,
+			whenURL:      "/:key",
+			headers:      []string{"Content-Type", "video/mp4"},
+			queries:      []string{"uploadId", ""},
+			expectURL:    "/:key?uploadId={.*}#Content-Type=video/mp4",
+			expectStatus: http.StatusOK,
+		},
+		{
+			name:         "Header",
+			whenMethod:   http.MethodGet,
+			whenURL:      "/:key",
+			headers:      []string{"Content-Type", "video/mp4"},
+			expectURL:    "/:key#Content-Type=video/mp4",
+			expectStatus: http.StatusOK,
+		},
+		{
+			name:         "NewMultipartUpload",
+			whenMethod:   http.MethodPost,
+			whenURL:      "/:key",
+			queries:      []string{"uploads", ""},
+			expectURL:    "/:key?uploads",
+			expectStatus: http.StatusOK,
+		},
+		{
+			name:         "PutObjectPart",
+			whenMethod:   http.MethodPut,
+			whenURL:      "/:key",
+			queries:      []string{"partNumber", "1", "uploadId", "some string"},
+			expectURL:    "/:key?partNumber={[0-9]+}&uploadId={.*}",
+			expectStatus: http.StatusOK,
+		},
+		{
+			name:         "ListObjectParts",
+			whenMethod:   http.MethodGet,
+			whenURL:      "/:key",
+			queries:      []string{"uploadId", "some string"},
+			expectURL:    "/:key?uploadId={.*}",
+			expectStatus: http.StatusOK,
+		},
+		{
+			name:         "CompleteMultipartUpload",
+			whenMethod:   http.MethodPost,
+			whenURL:      "/:key",
+			queries:      []string{"uploadId", "some string"},
+			expectURL:    "/:key?uploadId={.*}",
+			expectStatus: http.StatusOK,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(tc.whenMethod, tc.whenURL, nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec).(*context)
+			vals := c.Request().URL.Query()
+			if len(tc.queries) > 0 && len(tc.queries)%2 == 0 {
+				for i := 0; i < len(tc.queries)-1; i += 2 {
+					vals.Set(tc.queries[i], tc.queries[i+1])
+				}
+			}
+			c.Request().URL.RawQuery = vals.Encode()
+
+			headers := c.Request().Header
+			if len(tc.headers) > 0 && len(tc.headers)%2 == 0 {
+				for i := 0; i < len(tc.headers)-1; i += 2 {
+					headers.Set(tc.headers[i], tc.headers[i+1])
+				}
+			}
+			c.Request().Header = headers
+
+			r.Find(tc.whenMethod, tc.whenURL, c)
+			err := c.handler(c)
+			if tc.expectStatus >= 400 {
+				assert.Error(t, err)
+				he := err.(*HTTPError)
+				assert.Equal(t, tc.expectStatus, he.Code)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tc.expectStatus, rec.Code)
+				assert.Equal(t, tc.expectURL, c.Path())
+			}
+		})
+	}
+
+}

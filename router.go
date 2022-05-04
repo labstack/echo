@@ -2,7 +2,10 @@ package echo
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
+	"regexp"
+	"strings"
 )
 
 type (
@@ -19,6 +22,7 @@ type (
 		prefix         string
 		parent         *node
 		staticChildren children
+		matchChildren  children
 		ppath          string
 		pnames         []string
 		methodHandler  *methodHandler
@@ -28,6 +32,8 @@ type (
 		isLeaf bool
 		// isHandler indicates that node has at least one handler registered to it
 		isHandler bool
+
+		match *routeMatch
 	}
 	kind          uint8
 	children      []*node
@@ -44,6 +50,10 @@ type (
 		trace       HandlerFunc
 		report      HandlerFunc
 		allowHeader string
+	}
+	routeMatch struct {
+		queries []string
+		headers []string
 	}
 )
 
@@ -143,6 +153,7 @@ func (r *Router) Add(method, path string, h HandlerFunc) {
 		r.echo.Logger.Errorf("Adding route without handler function: %v:%v", method, path)
 	}
 
+	m := routeMatch{}
 	for i, lcpIndex := 0, len(path); i < lcpIndex; i++ {
 		if path[i] == ':' {
 			if i > 0 && path[i-1] == '\\' {
@@ -154,7 +165,7 @@ func (r *Router) Add(method, path string, h HandlerFunc) {
 			j := i + 1
 
 			r.insert(method, path[:i], nil, staticKind, "", nil)
-			for ; i < lcpIndex && path[i] != '/'; i++ {
+			for ; i < lcpIndex && path[i] != '/' && path[i] != '?' && path[i] != '#'; i++ {
 			}
 
 			pnames = append(pnames, path[j:i])
@@ -167,17 +178,82 @@ func (r *Router) Add(method, path string, h HandlerFunc) {
 			} else {
 				r.insert(method, path[:i], nil, paramKind, "", nil)
 			}
+			if i < lcpIndex && (path[i] == '?' || path[i] == '#') {
+				i--
+			}
 		} else if path[i] == '*' {
 			r.insert(method, path[:i], nil, staticKind, "", nil)
-			pnames = append(pnames, "*")
-			r.insert(method, path[:i+1], h, anyKind, ppath, pnames)
+			j := i + 1
+			if j < lcpIndex && (path[j] == '?' || path[j] == '#') {
+				r.insert(method, path[:i+1], nil, anyKind, "", nil)
+			} else {
+				pnames = append(pnames, "*")
+				r.insert(method, path[:i+1], h, anyKind, ppath, pnames)
+			}
+		} else if path[i] == '?' || path[i] == '#' {
+			isHeader := path[i] == '#'
+			query := path[i+1:]
+			for query != "" {
+				key := query
+				if i := strings.IndexAny(key, "&"); i >= 0 {
+					key, query = key[:i], key[i+1:]
+				} else {
+					query = ""
+				}
+				if strings.Contains(key, ";") {
+					continue
+				}
+				if key == "" {
+					continue
+				}
+				value := ""
+				if i := strings.Index(key, "="); i >= 0 {
+					key, value = key[:i], key[i+1:]
+				}
+				tmpValue := value
+				if i := strings.Index(tmpValue, "#"); i >= 0 {
+					value = tmpValue[:i]
+					query = tmpValue[i+1:]
+					if !isHeader {
+						m.queries = append(m.queries, key, value)
+					} else {
+						m.headers = append(m.headers, key, value)
+					}
+					isHeader = true
+					continue
+				}
+
+				if i := strings.Index(tmpValue, "?"); i >= 0 {
+					value = tmpValue[:i]
+					query = tmpValue[i+1:]
+					if !isHeader {
+						m.queries = append(m.queries, key, value)
+					} else {
+						m.headers = append(m.headers, key, value)
+					}
+					isHeader = false
+					continue
+				}
+
+				if isHeader {
+					m.headers = append(m.headers, key, value)
+				} else {
+					m.queries = append(m.queries, key, value)
+				}
+			}
+			path = path[:i]
+			lcpIndex = len(path)
 		}
 	}
 
-	r.insert(method, path, h, staticKind, ppath, pnames)
+	if len(m.queries) > 0 || len(m.headers) > 0 {
+		r.insert(method, path, h, staticKind, ppath, pnames, m)
+	} else {
+		r.insert(method, path, h, staticKind, ppath, pnames)
+	}
 }
 
-func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string, pnames []string) {
+func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string, pnames []string, matchers ...routeMatch) {
 	// Adjust max param
 	paramLen := len(pnames)
 	if *r.echo.maxParam < paramLen {
@@ -188,8 +264,8 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 	if currentNode == nil {
 		panic("echo: invalid method")
 	}
-	search := path
 
+	search := path
 	for {
 		searchLen := len(search)
 		prefixLen := len(currentNode.prefix)
@@ -202,18 +278,25 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 		}
 		for ; lcpLen < max && search[lcpLen] == currentNode.prefix[lcpLen]; lcpLen++ {
 		}
-
 		if lcpLen == 0 {
 			// At root node
 			currentNode.label = search[0]
 			currentNode.prefix = search
 			if h != nil {
-				currentNode.kind = t
-				currentNode.addHandler(method, h)
-				currentNode.ppath = ppath
-				currentNode.pnames = pnames
+				if len(matchers) > 0 && equalPath(path, currentNode) {
+					n := newNode(t, search, currentNode, nil, nil, new(methodHandler), ppath, pnames, nil, nil)
+					n.addHandler(method, h)
+					n.match = &matchers[0]
+					currentNode.addMatchChild(n)
+					break
+				} else {
+					currentNode.kind = t
+					currentNode.addHandler(method, h)
+					currentNode.ppath = ppath
+					currentNode.pnames = pnames
+				}
 			}
-			currentNode.isLeaf = currentNode.staticChildren == nil && currentNode.paramChild == nil && currentNode.anyChild == nil
+			currentNode.isLeaf = currentNode.staticChildren == nil && currentNode.paramChild == nil && currentNode.anyChild == nil && currentNode.matchChildren == nil
 		} else if lcpLen < prefixLen {
 			// Split node
 			n := newNode(
@@ -221,6 +304,7 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 				currentNode.prefix[lcpLen:],
 				currentNode,
 				currentNode.staticChildren,
+				currentNode.matchChildren,
 				currentNode.methodHandler,
 				currentNode.ppath,
 				currentNode.pnames,
@@ -243,6 +327,7 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 			currentNode.label = currentNode.prefix[0]
 			currentNode.prefix = currentNode.prefix[:lcpLen]
 			currentNode.staticChildren = nil
+			currentNode.matchChildren = nil
 			currentNode.methodHandler = new(methodHandler)
 			currentNode.ppath = ""
 			currentNode.pnames = nil
@@ -262,59 +347,95 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 				currentNode.pnames = pnames
 			} else {
 				// Create child node
-				n = newNode(t, search[lcpLen:], currentNode, nil, new(methodHandler), ppath, pnames, nil, nil)
+				n = newNode(t, search[lcpLen:], currentNode, nil, nil, new(methodHandler), ppath, pnames, nil, nil)
 				n.addHandler(method, h)
 				// Only Static children could reach here
 				currentNode.addStaticChild(n)
 			}
-			currentNode.isLeaf = currentNode.staticChildren == nil && currentNode.paramChild == nil && currentNode.anyChild == nil
+			currentNode.isLeaf = currentNode.staticChildren == nil && currentNode.paramChild == nil && currentNode.anyChild == nil && currentNode.matchChildren == nil
 		} else if lcpLen < searchLen {
 			search = search[lcpLen:]
 			c := currentNode.findChildWithLabel(search[0])
 			if c != nil {
 				// Go deeper
 				currentNode = c
+				if len(matchers) > 0 && equalPath(path, currentNode) {
+					n := newNode(t, search, currentNode, nil, nil, new(methodHandler), ppath, pnames, nil, nil)
+					n.addHandler(method, h)
+					n.match = &matchers[0]
+					currentNode.addMatchChild(n)
+					currentNode.isLeaf = currentNode.staticChildren == nil && currentNode.paramChild == nil && currentNode.anyChild == nil && currentNode.matchChildren == nil
+					break
+				}
 				continue
 			}
-			// Create child node
-			n := newNode(t, search, currentNode, nil, new(methodHandler), ppath, pnames, nil, nil)
-			n.addHandler(method, h)
-			switch t {
-			case staticKind:
-				currentNode.addStaticChild(n)
-			case paramKind:
-				currentNode.paramChild = n
-			case anyKind:
-				currentNode.anyChild = n
+
+			if len(matchers) > 0 {
+				// Create match child node
+				n := newNode(t, search, currentNode, nil, nil, new(methodHandler), "", nil, nil, nil)
+				switch t {
+				case staticKind:
+					currentNode.addStaticChild(n)
+				case paramKind:
+					currentNode.paramChild = n
+				case anyKind:
+					currentNode.anyChild = n
+				}
+				if equalPath(path, n) {
+					m := newNode(t, search, n, nil, nil, new(methodHandler), ppath, pnames, nil, nil)
+					m.addHandler(method, h)
+					m.match = &matchers[0]
+					m.isLeaf = m.staticChildren == nil && m.paramChild == nil && m.anyChild == nil && m.matchChildren == nil
+					n.addMatchChild(m)
+				}
+			} else {
+				// Create child node
+				n := newNode(t, search, currentNode, nil, nil, new(methodHandler), ppath, pnames, nil, nil)
+				n.addHandler(method, h)
+				switch t {
+				case staticKind:
+					currentNode.addStaticChild(n)
+				case paramKind:
+					currentNode.paramChild = n
+				case anyKind:
+					currentNode.anyChild = n
+				}
+				currentNode.isLeaf = currentNode.staticChildren == nil && currentNode.paramChild == nil && currentNode.anyChild == nil && currentNode.matchChildren == nil
 			}
-			currentNode.isLeaf = currentNode.staticChildren == nil && currentNode.paramChild == nil && currentNode.anyChild == nil
 		} else {
 			// Node already exists
-			if h != nil {
+			if h != nil && len(matchers) == 0 {
 				currentNode.addHandler(method, h)
 				currentNode.ppath = ppath
 				if len(currentNode.pnames) == 0 { // Issue #729
 					currentNode.pnames = pnames
 				}
+			} else if len(matchers) > 0 && equalPath(path, currentNode) {
+				n := newNode(t, search, currentNode, nil, nil, new(methodHandler), ppath, pnames, nil, nil)
+				n.addHandler(method, h)
+				n.match = &matchers[0]
+				currentNode.addMatchChild(n)
+				currentNode.isLeaf = currentNode.staticChildren == nil && currentNode.paramChild == nil && currentNode.anyChild == nil && currentNode.matchChildren == nil
 			}
 		}
 		return
 	}
 }
 
-func newNode(t kind, pre string, p *node, sc children, mh *methodHandler, ppath string, pnames []string, paramChildren, anyChildren *node) *node {
+func newNode(t kind, pre string, p *node, sc, mc children, mh *methodHandler, ppath string, pnames []string, paramChildren, anyChildren *node) *node {
 	return &node{
 		kind:           t,
 		label:          pre[0],
 		prefix:         pre,
 		parent:         p,
 		staticChildren: sc,
+		matchChildren:  mc,
 		ppath:          ppath,
 		pnames:         pnames,
 		methodHandler:  mh,
 		paramChild:     paramChildren,
 		anyChild:       anyChildren,
-		isLeaf:         sc == nil && paramChildren == nil && anyChildren == nil,
+		isLeaf:         sc == nil && paramChildren == nil && anyChildren == nil && mc == nil,
 		isHandler:      mh.isHandler(),
 	}
 }
@@ -345,6 +466,10 @@ func (n *node) findChildWithLabel(l byte) *node {
 		return n.anyChild
 	}
 	return nil
+}
+
+func (n *node) addMatchChild(c *node) {
+	n.matchChildren = append(n.matchChildren, c)
 }
 
 func (n *node) addHandler(method string, h HandlerFunc) {
@@ -432,7 +557,6 @@ func (r *Router) Find(method, path string, c Context) {
 	ctx := c.(*context)
 	ctx.path = path
 	currentNode := r.tree // Current node as root
-
 	var (
 		previousBestMatchNode *node
 		matchedHandler        HandlerFunc
@@ -470,11 +594,13 @@ func (r *Router) Find(method, path string, c Context) {
 		if previous.kind == staticKind {
 			searchIndex -= len(previous.prefix)
 		} else {
-			paramIndex--
-			// for param/any node.prefix value is always `:` so we can not deduce searchIndex from that and must use pValue
-			// for that index as it would also contain part of path we cut off before moving into node we are backtracking from
-			searchIndex -= len(paramValues[paramIndex])
-			paramValues[paramIndex] = ""
+			if len(paramValues) > 0 {
+				paramIndex--
+				// for param/any node.prefix value is always `:` so we can not deduce searchIndex from that and must use pValue
+				// for that index as it would also contain part of path we cut off before moving into node we are backtracking from
+				searchIndex -= len(paramValues[paramIndex])
+				paramValues[paramIndex] = ""
+			}
 		}
 		search = path[searchIndex:]
 		return
@@ -525,15 +651,33 @@ func (r *Router) Find(method, path string, c Context) {
 		searchIndex = searchIndex + lcpLen
 
 		// Finish routing if no remaining search and we are on a node with handler and matching method type
-		if search == "" && currentNode.isHandler {
+		if search == "" {
 			// check if current node has handler registered for http method we are looking for. we store currentNode as
 			// best matching in case we do no find no more routes matching this path+method
 			if previousBestMatchNode == nil {
 				previousBestMatchNode = currentNode
 			}
-			if h := currentNode.findHandler(method); h != nil {
-				matchedHandler = h
-				break
+			if currentNode.matchChildren != nil {
+				hasMatch := false
+				for _, matchChild := range currentNode.matchChildren {
+					if matchChild.match != nil && routeMatcher(matchChild.match, ctx) {
+						if h := matchChild.findHandler(method); h != nil {
+							currentNode = matchChild
+							matchedHandler = h
+							hasMatch = true
+							break
+						}
+					}
+				}
+				if hasMatch {
+					break
+				}
+			}
+			if currentNode.isHandler {
+				if h := currentNode.findHandler(method); h != nil {
+					matchedHandler = h
+					break
+				}
 			}
 		}
 
@@ -571,7 +715,25 @@ func (r *Router) Find(method, path string, c Context) {
 		if child := currentNode.anyChild; child != nil {
 			// If any node is found, use remaining path for paramValues
 			currentNode = child
-			paramValues[len(currentNode.pnames)-1] = search
+			if currentNode.matchChildren != nil {
+				hasMatch := false
+				for _, matchChild := range currentNode.matchChildren {
+					if matchChild.match != nil && routeMatcher(matchChild.match, ctx) {
+						if h := matchChild.findHandler(method); h != nil {
+							currentNode = matchChild
+							matchedHandler = h
+							hasMatch = true
+							break
+						}
+					}
+				}
+				if hasMatch {
+					break
+				}
+			}
+			if len(currentNode.pnames) > 0 {
+				paramValues[len(currentNode.pnames)-1] = search
+			}
 			// update indexes/search in case we need to backtrack when no handler match is found
 			paramIndex++
 			searchIndex += +len(search)
@@ -614,7 +776,7 @@ func (r *Router) Find(method, path string, c Context) {
 		currentNode = previousBestMatchNode
 
 		ctx.handler = NotFoundHandler
-		if currentNode.isHandler {
+		if currentNode != nil && currentNode.isHandler {
 			ctx.Set(ContextKeyHeaderAllow, currentNode.methodHandler.allowHeader)
 			ctx.handler = MethodNotAllowedHandler
 			if method == http.MethodOptions {
@@ -624,4 +786,90 @@ func (r *Router) Find(method, path string, c Context) {
 	}
 	ctx.path = currentNode.ppath
 	ctx.pnames = currentNode.pnames
+}
+
+func routeMatcher(reg *routeMatch, c Context) bool {
+	if reg == nil {
+		return false
+	}
+	match := true
+	values := c.Request().URL.Query()
+	for i := 0; i < len(reg.queries)-1; i += 2 {
+		key := reg.queries[i]
+		value := reg.queries[i+1]
+		if !values.Has(key) {
+			match = false
+			break
+		}
+		if len(value) == 0 {
+			continue
+		}
+		if value[0] == '{' && value[len(value)-1] == '}' {
+			patt := value[1 : len(value)-1]
+			if patt == "" {
+				patt = ".*"
+			}
+			regx, err := regexp.Compile(fmt.Sprintf("^%s$", patt))
+			if err != nil {
+				c.Echo().Logger.Errorf("Adding route without handler function: %v:%v", reg, patt)
+				match = false
+				break
+			}
+			if !regx.MatchString(values.Get(key)) {
+				match = false
+				break
+			}
+		} else if values.Get(key) != value {
+			match = false
+			break
+		}
+	}
+
+	headers := c.Request().Header
+	for i := 0; i < len(reg.headers)-1; i += 2 {
+		key := reg.headers[i]
+		value := reg.headers[i+1]
+		_, ok := headers[key]
+		if !ok {
+			match = false
+			break
+		}
+		if len(value) == 0 {
+			continue
+		}
+		if value[0] == '{' && value[len(value)-1] == '}' {
+			patt := value[1 : len(value)-1]
+			if patt == "" {
+				patt = ".*"
+			}
+			regx, err := regexp.Compile(fmt.Sprintf("^%s$", patt))
+			if err != nil {
+				c.Echo().Logger.Errorf("Adding route without handler function: %v:%v", reg, patt)
+				match = false
+				break
+			}
+			if !regx.MatchString(headers.Get(key)) {
+				match = false
+				break
+			}
+		} else if headers.Get(key) != value {
+			match = false
+			break
+		}
+	}
+	return match
+}
+
+func equalPath(path string, currentNode *node) bool {
+	parent := currentNode.parent
+	prefixs := []string{currentNode.prefix}
+	for parent != nil {
+		prefixs = append(prefixs, parent.prefix)
+		parent = parent.parent
+	}
+	nodePrefix := ""
+	for i := len(prefixs) - 1; i >= 0; i-- {
+		nodePrefix += prefixs[i]
+	}
+	return nodePrefix == path
 }
