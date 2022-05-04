@@ -183,6 +183,14 @@ const (
 	PROPFIND = "PROPFIND"
 	// REPORT Method can be used to get information about a resource, see rfc 3253
 	REPORT = "REPORT"
+	// RFC 4918: HTTP Extensions for Web Distributed Authoring and Versioning (WebDAV)
+	// https://tools.ietf.org/html/rfc4918
+	MKCOL     = "MKCOL"
+	COPY      = "COPY"
+	MOVE      = "MOVE"
+	LOCK      = "LOCK"
+	UNLOCK    = "UNLOCK"
+	PROPPATCH = "PROPPATCH"
 )
 
 // Headers
@@ -274,6 +282,12 @@ var (
 		http.MethodPut,
 		http.MethodTrace,
 		REPORT,
+		MKCOL,
+		COPY,
+		MOVE,
+		LOCK,
+		UNLOCK,
+		PROPPATCH,
 	}
 )
 

@@ -43,6 +43,12 @@ type (
 		put         HandlerFunc
 		trace       HandlerFunc
 		report      HandlerFunc
+		mkcol       HandlerFunc
+		copy        HandlerFunc
+		move        HandlerFunc
+		lock        HandlerFunc
+		unlock      HandlerFunc
+		proppatch   HandlerFunc
 		allowHeader string
 	}
 )
@@ -371,6 +377,18 @@ func (n *node) addHandler(method string, h HandlerFunc) {
 		n.methodHandler.trace = h
 	case REPORT:
 		n.methodHandler.report = h
+	case MKCOL:
+		n.methodHandler.mkcol = h
+	case COPY:
+		n.methodHandler.copy = h
+	case MOVE:
+		n.methodHandler.move = h
+	case LOCK:
+		n.methodHandler.lock = h
+	case UNLOCK:
+		n.methodHandler.unlock = h
+	case PROPPATCH:
+		n.methodHandler.proppatch = h
 	}
 
 	n.methodHandler.updateAllowHeader()
@@ -405,6 +423,18 @@ func (n *node) findHandler(method string) HandlerFunc {
 		return n.methodHandler.trace
 	case REPORT:
 		return n.methodHandler.report
+	case MKCOL:
+		return n.methodHandler.mkcol
+	case COPY:
+		return n.methodHandler.copy
+	case MOVE:
+		return n.methodHandler.move
+	case LOCK:
+		return n.methodHandler.lock
+	case UNLOCK:
+		return n.methodHandler.unlock
+	case PROPPATCH:
+		return n.methodHandler.proppatch
 	default:
 		return nil
 	}
