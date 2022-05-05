@@ -81,8 +81,6 @@ const (
 
 	paramLabel = byte(':')
 	anyLabel   = byte('*')
-
-	routePath = "_echo_route_path"
 )
 
 var (
@@ -179,11 +177,6 @@ func NewRouter() *Router {
 		},
 		routes: map[string]*Route{},
 	}
-}
-
-// Use adds middleware to the chain
-func (r *Router) Use(path string, middleware ...echo.MiddlewareFunc) {
-	r.Any(path+"/:"+routePath, middleware...)
 }
 
 // CONNECT registers a new CONNECT route for a path with matching handler in the
@@ -300,7 +293,7 @@ func (r *Router) Add(method, path string, middleware ...echo.MiddlewareFunc) {
 func (r *Router) Routes() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			matchedMiddleware := r.find(c.Request().Method, GetPath(c), c)
+			matchedMiddleware := r.find(c.Request().Method, GetPath(c.Request()), c)
 
 			if matchedMiddleware == nil {
 				return next(c)
@@ -768,18 +761,11 @@ func (r *Router) find(method, path string, c echo.Context) echo.MiddlewareFunc {
 	return matchedHandler
 }
 
-// GetPath returns RawPath, if it's empty returns Path from URL and RoutePath
-// Difference between RawPath and Path, RoutePath is:
+// GetPath returns RawPath, if it's empty returns Path from URL
+// Difference between RawPath and Path is:
 //  * Path is where request path is stored. Value is stored in decoded form: /%47%6f%2f becomes /Go/.
 //  * RawPath is an optional field which only gets set if the default encoding is different from Path.
-//  * RoutePath is an optional field which only set if parent router is exited.
-func GetPath(c echo.Context) string {
-	subPath := c.Param(routePath)
-	if subPath != "" {
-		return "/" + subPath
-	}
-
-	r := c.Request()
+func GetPath(r *http.Request) string {
 	path := r.URL.RawPath
 	if path == "" {
 		path = r.URL.Path
