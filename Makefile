@@ -1,4 +1,4 @@
-PKG := "github.com/siyual-park/echo-slim"
+PKG := "github.com/partialize/echo-slim"
 PKG_LIST := $(shell go list ${PKG}/...)
 
 tag:

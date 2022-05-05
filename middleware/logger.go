@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/labstack/gommon/color"
-	"github.com/siyual-park/echo-slim/v4"
+	"github.com/partialize/echo-slim/v4"
 	"github.com/valyala/fasttemplate"
 )
 

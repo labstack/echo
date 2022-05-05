@@ -4,67 +4,67 @@
 
 **Fixes**
 
-* Fix nil pointer exception when calling Start again after address binding error [#2131](https://github.com/siyual-park/echo-slim/pull/2131)
-* Fix CSRF middleware not being able to extract token from multipart/form-data form [#2136](https://github.com/siyual-park/echo-slim/pull/2136)
-* Fix Timeout middleware write race [#2126](https://github.com/siyual-park/echo-slim/pull/2126)
+* Fix nil pointer exception when calling Start again after address binding error [#2131](https://github.com/partialize/echo-slim/pull/2131)
+* Fix CSRF middleware not being able to extract token from multipart/form-data form [#2136](https://github.com/partialize/echo-slim/pull/2136)
+* Fix Timeout middleware write race [#2126](https://github.com/partialize/echo-slim/pull/2126)
 
 **Enhancements**
 
-* Recover middleware should not log panic for aborted handler [#2134](https://github.com/siyual-park/echo-slim/pull/2134)
+* Recover middleware should not log panic for aborted handler [#2134](https://github.com/partialize/echo-slim/pull/2134)
 
 
 ## v4.7.1 - 2022-03-13
 
 **Fixes**
 
-* Fix `e.Static`, `.File()`, `c.Attachment()` being picky with paths starting with `./`, `../` and `/` after 4.7.0 introduced echo.Filesystem support (Go1.16+) [#2123](https://github.com/siyual-park/echo-slim/pull/2123)
+* Fix `e.Static`, `.File()`, `c.Attachment()` being picky with paths starting with `./`, `../` and `/` after 4.7.0 introduced echo.Filesystem support (Go1.16+) [#2123](https://github.com/partialize/echo-slim/pull/2123)
 
 **Enhancements**
 
-* Remove some unused code [#2116](https://github.com/siyual-park/echo-slim/pull/2116)
+* Remove some unused code [#2116](https://github.com/partialize/echo-slim/pull/2116)
 
 
 ## v4.7.0 - 2022-03-01
 
 **Enhancements**
 
-* Add JWT, KeyAuth, CSRF multivalue extractors [#2060](https://github.com/siyual-park/echo-slim/pull/2060)
-* Add LogErrorFunc to recover middleware [#2072](https://github.com/siyual-park/echo-slim/pull/2072)
-* Add support for HEAD method query params binding [#2027](https://github.com/siyual-park/echo-slim/pull/2027)
-* Improve filesystem support with echo.FileFS, echo.StaticFS, group.FileFS, group.StaticFS [#2064](https://github.com/siyual-park/echo-slim/pull/2064)
+* Add JWT, KeyAuth, CSRF multivalue extractors [#2060](https://github.com/partialize/echo-slim/pull/2060)
+* Add LogErrorFunc to recover middleware [#2072](https://github.com/partialize/echo-slim/pull/2072)
+* Add support for HEAD method query params binding [#2027](https://github.com/partialize/echo-slim/pull/2027)
+* Improve filesystem support with echo.FileFS, echo.StaticFS, group.FileFS, group.StaticFS [#2064](https://github.com/partialize/echo-slim/pull/2064)
 
 **Fixes**
 
-* Fix X-Real-IP bug, improve tests [#2007](https://github.com/siyual-park/echo-slim/pull/2007)
-* Minor syntax fixes [#1994](https://github.com/siyual-park/echo-slim/pull/1994), [#2102](https://github.com/siyual-park/echo-slim/pull/2102), [#2102](https://github.com/siyual-park/echo-slim/pull/2102)
+* Fix X-Real-IP bug, improve tests [#2007](https://github.com/partialize/echo-slim/pull/2007)
+* Minor syntax fixes [#1994](https://github.com/partialize/echo-slim/pull/1994), [#2102](https://github.com/partialize/echo-slim/pull/2102), [#2102](https://github.com/partialize/echo-slim/pull/2102)
 
 **General**
 
-* Add cache-control and connection headers [#2103](https://github.com/siyual-park/echo-slim/pull/2103)
-* Add Retry-After header constant [#2078](https://github.com/siyual-park/echo-slim/pull/2078)
-* Upgrade `go` directive in `go.mod` to 1.17 [#2049](https://github.com/siyual-park/echo-slim/pull/2049)
-* Add Pagoda [#2077](https://github.com/siyual-park/echo-slim/pull/2077) and Souin [#2069](https://github.com/siyual-park/echo-slim/pull/2069) to 3rd-party middlewares in README
+* Add cache-control and connection headers [#2103](https://github.com/partialize/echo-slim/pull/2103)
+* Add Retry-After header constant [#2078](https://github.com/partialize/echo-slim/pull/2078)
+* Upgrade `go` directive in `go.mod` to 1.17 [#2049](https://github.com/partialize/echo-slim/pull/2049)
+* Add Pagoda [#2077](https://github.com/partialize/echo-slim/pull/2077) and Souin [#2069](https://github.com/partialize/echo-slim/pull/2069) to 3rd-party middlewares in README
 
 ## v4.6.3 - 2022-01-10
 
 **Fixes**
 
-* Fixed Echo version number in greeting message which was not incremented to `4.6.2` [#2066](https://github.com/siyual-park/echo-slim/issues/2066)
+* Fixed Echo version number in greeting message which was not incremented to `4.6.2` [#2066](https://github.com/partialize/echo-slim/issues/2066)
 
 
 ## v4.6.2 - 2022-01-08
 
 **Fixes**
 
-* Fixed route containing escaped colon should be matchable but is not matched to request path [#2047](https://github.com/siyual-park/echo-slim/pull/2047)
-* Fixed a problem that returned wrong content-encoding when the gzip compressed content was empty. [#1921](https://github.com/siyual-park/echo-slim/pull/1921)
-* Update (test) dependencies [#2021](https://github.com/siyual-park/echo-slim/pull/2021)
+* Fixed route containing escaped colon should be matchable but is not matched to request path [#2047](https://github.com/partialize/echo-slim/pull/2047)
+* Fixed a problem that returned wrong content-encoding when the gzip compressed content was empty. [#1921](https://github.com/partialize/echo-slim/pull/1921)
+* Update (test) dependencies [#2021](https://github.com/partialize/echo-slim/pull/2021)
 
 
 **Enhancements**
 
-* Add support for configurable target header for the request_id middleware [#2040](https://github.com/siyual-park/echo-slim/pull/2040)
-* Change decompress middleware to use stream decompression instead of buffering [#2018](https://github.com/siyual-park/echo-slim/pull/2018)
+* Add support for configurable target header for the request_id middleware [#2040](https://github.com/partialize/echo-slim/pull/2040)
+* Change decompress middleware to use stream decompression instead of buffering [#2018](https://github.com/partialize/echo-slim/pull/2018)
 * Documentation updates
 
 
@@ -72,24 +72,24 @@
 
 **Enhancements**
 
-* Add start time to request logger middleware values [#1991](https://github.com/siyual-park/echo-slim/pull/1991)
+* Add start time to request logger middleware values [#1991](https://github.com/partialize/echo-slim/pull/1991)
 
 ## v4.6.0 - 2021-09-20
 
-Introduced a new [request logger](https://github.com/siyual-park/echo-slim/blob/master/middleware/request_logger.go) middleware 
+Introduced a new [request logger](https://github.com/partialize/echo-slim/blob/master/middleware/request_logger.go) middleware 
 to help with cases when you want to use some other logging library in your application.
 
 **Fixes**
 
-* fix timeout middleware warning: superfluous response.WriteHeader [#1905](https://github.com/siyual-park/echo-slim/issues/1905)
+* fix timeout middleware warning: superfluous response.WriteHeader [#1905](https://github.com/partialize/echo-slim/issues/1905)
 
 **Enhancements**
 
-* Add Cookie to KeyAuth middleware's KeyLookup [#1929](https://github.com/siyual-park/echo-slim/pull/1929)
-* JWT middleware should ignore case of auth scheme in request header [#1951](https://github.com/siyual-park/echo-slim/pull/1951)
-* Refactor default error handler to return first if response is already committed [#1956](https://github.com/siyual-park/echo-slim/pull/1956)
-* Added request logger middleware which helps to use custom logger library for logging requests. [#1980](https://github.com/siyual-park/echo-slim/pull/1980)
-* Allow escaping of colon in route path so Google Cloud API "custom methods" could be implemented [#1988](https://github.com/siyual-park/echo-slim/pull/1988)
+* Add Cookie to KeyAuth middleware's KeyLookup [#1929](https://github.com/partialize/echo-slim/pull/1929)
+* JWT middleware should ignore case of auth scheme in request header [#1951](https://github.com/partialize/echo-slim/pull/1951)
+* Refactor default error handler to return first if response is already committed [#1956](https://github.com/partialize/echo-slim/pull/1956)
+* Added request logger middleware which helps to use custom logger library for logging requests. [#1980](https://github.com/partialize/echo-slim/pull/1980)
+* Allow escaping of colon in route path so Google Cloud API "custom methods" could be implemented [#1988](https://github.com/partialize/echo-slim/pull/1988)
 
 ## v4.5.0 - 2021-08-01
 
@@ -100,7 +100,7 @@ The JWT library used for the JWT middleware had to be changed from [github.com/d
 [github.com/golang-jwt/jwt](https://github.com/golang-jwt/jwt) due former library being unmaintained and affected by security
 issues.
 The [github.com/golang-jwt/jwt](https://github.com/golang-jwt/jwt) project is a drop-in replacement, but supports only the latest 2 Go versions.
-So for JWT middleware users Go 1.15+ is required. For detailed information please read [#1940](https://github.com/siyual-park/echo-slim/discussions/)
+So for JWT middleware users Go 1.15+ is required. For detailed information please read [#1940](https://github.com/partialize/echo-slim/discussions/)
 
 To change the library imports in all .go files in your project replace all occurrences of `dgrijalva/jwt-go` with `golang-jwt/jwt`.
 
@@ -112,22 +112,22 @@ go mod tidy
 
 **Fixes**
 
-* Change JWT library to `github.com/golang-jwt/jwt` [#1946](https://github.com/siyual-park/echo-slim/pull/1946)
+* Change JWT library to `github.com/golang-jwt/jwt` [#1946](https://github.com/partialize/echo-slim/pull/1946)
 
 ## v4.4.0 - 2021-07-12
 
 **Fixes**
 
-* Split HeaderXForwardedFor header only by comma [#1878](https://github.com/siyual-park/echo-slim/pull/1878)
-* Fix Timeout middleware Context propagation [#1910](https://github.com/siyual-park/echo-slim/pull/1910)
+* Split HeaderXForwardedFor header only by comma [#1878](https://github.com/partialize/echo-slim/pull/1878)
+* Fix Timeout middleware Context propagation [#1910](https://github.com/partialize/echo-slim/pull/1910)
  
 **Enhancements**
 
-* Bind data using headers as source [#1866](https://github.com/siyual-park/echo-slim/pull/1866)
-* Adds JWTConfig.ParseTokenFunc to JWT middleware to allow different libraries implementing JWT parsing. [#1887](https://github.com/siyual-park/echo-slim/pull/1887)
-* Adding tests for Echo#Host [#1895](https://github.com/siyual-park/echo-slim/pull/1895)
-* Adds RequestIDHandler function to RequestID middleware [#1898](https://github.com/siyual-park/echo-slim/pull/1898)
-* Allow for custom JSON encoding implementations [#1880](https://github.com/siyual-park/echo-slim/pull/1880)
+* Bind data using headers as source [#1866](https://github.com/partialize/echo-slim/pull/1866)
+* Adds JWTConfig.ParseTokenFunc to JWT middleware to allow different libraries implementing JWT parsing. [#1887](https://github.com/partialize/echo-slim/pull/1887)
+* Adding tests for Echo#Host [#1895](https://github.com/partialize/echo-slim/pull/1895)
+* Adds RequestIDHandler function to RequestID middleware [#1898](https://github.com/partialize/echo-slim/pull/1898)
+* Allow for custom JSON encoding implementations [#1880](https://github.com/partialize/echo-slim/pull/1880)
 
 ## v4.3.0 - 2021-05-08
 
@@ -140,18 +140,18 @@ go mod tidy
 
 **Fixes**
 
-* When url ends with slash first param route is the match [#1804](https://github.com/siyual-park/echo-slim/pull/1812)
-* Router should check if node is suitable as matching route by path+method and if not then continue search in tree [#1808](https://github.com/siyual-park/echo-slim/issues/1808)
-* Fix timeout middleware not writing response correctly when handler panics [#1864](https://github.com/siyual-park/echo-slim/pull/1864)
-* Fix binder not working with embedded pointer structs [#1861](https://github.com/siyual-park/echo-slim/pull/1861)
-* Add Go 1.16 to CI and drop 1.12 specific code [#1850](https://github.com/siyual-park/echo-slim/pull/1850)
+* When url ends with slash first param route is the match [#1804](https://github.com/partialize/echo-slim/pull/1812)
+* Router should check if node is suitable as matching route by path+method and if not then continue search in tree [#1808](https://github.com/partialize/echo-slim/issues/1808)
+* Fix timeout middleware not writing response correctly when handler panics [#1864](https://github.com/partialize/echo-slim/pull/1864)
+* Fix binder not working with embedded pointer structs [#1861](https://github.com/partialize/echo-slim/pull/1861)
+* Add Go 1.16 to CI and drop 1.12 specific code [#1850](https://github.com/partialize/echo-slim/pull/1850)
 
 **Enhancements**
 
-* Make KeyFunc public in JWT middleware [#1756](https://github.com/siyual-park/echo-slim/pull/1756)
-* Add support for optional filesystem to the static middleware [#1797](https://github.com/siyual-park/echo-slim/pull/1797)
-* Add a custom error handler to key-auth middleware [#1847](https://github.com/siyual-park/echo-slim/pull/1847)
-* Allow JWT token to be looked up from multiple sources [#1845](https://github.com/siyual-park/echo-slim/pull/1845)
+* Make KeyFunc public in JWT middleware [#1756](https://github.com/partialize/echo-slim/pull/1756)
+* Add support for optional filesystem to the static middleware [#1797](https://github.com/partialize/echo-slim/pull/1797)
+* Add a custom error handler to key-auth middleware [#1847](https://github.com/partialize/echo-slim/pull/1847)
+* Allow JWT token to be looked up from multiple sources [#1845](https://github.com/partialize/echo-slim/pull/1845)
 
 ## v4.2.2 - 2021-04-07
 

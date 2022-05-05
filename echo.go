@@ -8,8 +8,8 @@ Example:
 	import (
 		"net/http"
 
-		"github.com/siyual-park/echo-slim/v4"
-		"github.com/siyual-park/echo-slim/v4/middleware"
+		"github.com/partialize/echo-slim/v4"
+		"github.com/partialize/echo-slim/v4/middleware"
 	)
 
 	// Middleware
@@ -239,7 +239,7 @@ const (
 const (
 	// Version of Echo
 	Version = "4.7.2-slim"
-	website = "https://github.com/siyual-park/echo-slim"
+	website = "https://github.com/partialize/echo-slim"
 	// http://patorjk.com/software/taag/#p=display&f=Small%20Slant&t=Echo
 	banner = `
    ____    __

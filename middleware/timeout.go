@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"context"
-	"github.com/siyual-park/echo-slim/v4"
+	"github.com/partialize/echo-slim/v4"
 	"net/http"
 	"sync"
 	"time"

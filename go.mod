@@ -1,4 +1,4 @@
-module github.com/siyual-park/echo-slim/v4
+module github.com/partialize/echo-slim/v4
 
 go 1.17
 

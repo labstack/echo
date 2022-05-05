@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/siyual-park/echo-slim/v4"
+	"github.com/partialize/echo-slim/v4"
 	"github.com/stretchr/testify/assert"
 )
 

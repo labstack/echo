@@ -4,7 +4,7 @@ package echo_test
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/siyual-park/echo-slim/v4"
+	"github.com/partialize/echo-slim/v4"
 	"log"
 	"net/http"
 	"net/http/httptest"

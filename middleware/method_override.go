@@ -2,8 +2,6 @@ package middleware
 
 import (
 	"net/http"
-
-	"github.com/siyual-park/echo-slim/v4"
 )
 
 type (
