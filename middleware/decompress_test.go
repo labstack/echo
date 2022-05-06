@@ -109,10 +109,8 @@ func TestDecompressErrorReturned(t *testing.T) {
 	e := echo.New()
 	r := NewRouter()
 
-	r.GET("/", func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			return echo.ErrNotFound
-		}
+	r.GET("/", func(c echo.Context) error {
+		return echo.ErrNotFound
 	})
 
 	e.Use(Decompress())

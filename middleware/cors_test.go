@@ -307,10 +307,8 @@ func TestCORSWithConfig_AllowMethods(t *testing.T) {
 			e := echo.New()
 			r := NewRouter()
 
-			r.GET("/test", func(next echo.HandlerFunc) echo.HandlerFunc {
-				return func(c echo.Context) error {
-					return c.String(http.StatusOK, "OK")
-				}
+			r.GET("/test", func(c echo.Context) error {
+				return c.String(http.StatusOK, "OK")
 			})
 
 			e.Use(r.Routes())
@@ -447,15 +445,11 @@ func TestCorsHeaders(t *testing.T) {
 			}))
 			e.Use(r.Routes())
 
-			r.GET("/", func(next echo.HandlerFunc) echo.HandlerFunc {
-				return func(c echo.Context) error {
-					return c.String(http.StatusOK, "OK")
-				}
+			r.GET("/", func(c echo.Context) error {
+				return c.String(http.StatusOK, "OK")
 			})
-			r.POST("/", func(next echo.HandlerFunc) echo.HandlerFunc {
-				return func(c echo.Context) error {
-					return c.String(http.StatusCreated, "OK")
-				}
+			r.POST("/", func(c echo.Context) error {
+				return c.String(http.StatusCreated, "OK")
 			})
 
 			req := httptest.NewRequest(tc.method, "/", nil)

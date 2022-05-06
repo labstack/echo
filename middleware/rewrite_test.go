@@ -15,7 +15,6 @@ func TestRewriteAfterRouting(t *testing.T) {
 	e := echo.New()
 	r := NewRouter()
 
-	e.Use(r.Routes())
 	e.Use(RewriteWithConfig(RewriteConfig{
 		Rules: map[string]string{
 			"/old":              "/new",
@@ -24,24 +23,13 @@ func TestRewriteAfterRouting(t *testing.T) {
 			"/users/*/orders/*": "/user/$1/order/$2",
 		},
 	}))
+	e.Use(r.Routes())
 
-	r.GET("/public/*", func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			err := c.String(http.StatusOK, c.Param("*"))
-			if err != nil {
-				return err
-			}
-			return next(c)
-		}
+	r.GET("/public/*", func(c echo.Context) error {
+		return c.String(http.StatusOK, c.Param("*"))
 	})
-	r.GET("/*", func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			err := c.String(http.StatusOK, c.Param("*"))
-			if err != nil {
-				return err
-			}
-			return next(c)
-		}
+	r.GET("/*", func(c echo.Context) error {
+		return c.String(http.StatusOK, c.Param("*"))
 	})
 
 	var testCases = []struct {
@@ -52,19 +40,19 @@ func TestRewriteAfterRouting(t *testing.T) {
 	}{
 		{
 			whenPath:             "/api/users",
-			expectRoutePath:      "api/users",
+			expectRoutePath:      "users",
 			expectRequestPath:    "/users",
 			expectRequestRawPath: "",
 		},
 		{
 			whenPath:             "/js/main.js",
-			expectRoutePath:      "js/main.js",
+			expectRoutePath:      "javascripts/main.js",
 			expectRequestPath:    "/public/javascripts/main.js",
 			expectRequestRawPath: "",
 		},
 		{
 			whenPath:             "/users/jack/orders/1",
-			expectRoutePath:      "users/jack/orders/1",
+			expectRoutePath:      "user/jack/order/1",
 			expectRequestPath:    "/user/jack/order/1",
 			expectRequestRawPath: "",
 		},
@@ -76,13 +64,13 @@ func TestRewriteAfterRouting(t *testing.T) {
 		},
 		{ // just rewrite but do not touch encoding. already encoded URL should not be double encoded
 			whenPath:             "/users/jill/orders/T%2FcO4lW%2Ft%2FVp%2F",
-			expectRoutePath:      "users/jill/orders/T%2FcO4lW%2Ft%2FVp%2F",
+			expectRoutePath:      "user/jill/order/T%2FcO4lW%2Ft%2FVp%2F",
 			expectRequestPath:    "/user/jill/order/T/cO4lW/t/Vp/", // this is equal to `url.Parse(tc.whenPath)` result
 			expectRequestRawPath: "/user/jill/order/T%2FcO4lW%2Ft%2FVp%2F",
 		},
 		{ // ` ` (space) is encoded by httpClient to `%20` when doing request to Echo. `%20` should not be double escaped or changed in any way when rewriting request
 			whenPath:             "/api/new users",
-			expectRoutePath:      "api/new users",
+			expectRoutePath:      "new users",
 			expectRequestPath:    "/new users",
 			expectRequestRawPath: "",
 		},
@@ -117,10 +105,8 @@ func TestEchoRewritePreMiddleware(t *testing.T) {
 	))
 
 	// Route
-	r.Add(http.MethodGet, "/new", func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			return c.NoContent(http.StatusOK)
-		}
+	r.Add(http.MethodGet, "/new", func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
 	})
 	e.Use(r.Routes())
 
@@ -144,15 +130,11 @@ func TestRewriteWithConfigPreMiddleware_Issue1143(t *testing.T) {
 		},
 	}))
 
-	r.Add(http.MethodGet, "/api/:version/hosts/:name", func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			return c.String(http.StatusOK, "hosts")
-		}
+	r.Add(http.MethodGet, "/api/:version/hosts/:name", func(c echo.Context) error {
+		return c.String(http.StatusOK, "hosts")
 	})
-	r.Add(http.MethodGet, "/api/:version/eng", func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			return c.String(http.StatusOK, "eng")
-		}
+	r.Add(http.MethodGet, "/api/:version/eng", func(c echo.Context) error {
+		return c.String(http.StatusOK, "eng")
 	})
 	e.Use(r.Routes())
 

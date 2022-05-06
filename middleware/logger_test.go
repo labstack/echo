@@ -98,10 +98,8 @@ func TestLoggerTemplate(t *testing.T) {
 		Output: buf,
 	}))
 
-	r.GET("/", func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			return c.String(http.StatusOK, "Header Logged")
-		}
+	r.GET("/", func(c echo.Context) error {
+		return c.String(http.StatusOK, "Header Logged")
 	})
 	e.Use(r.Routes())
 
@@ -161,10 +159,8 @@ func TestLoggerCustomTimestamp(t *testing.T) {
 		Output:           buf,
 	}))
 
-	r.GET("/", func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			return c.String(http.StatusOK, "custom time stamp test")
-		}
+	r.GET("/", func(c echo.Context) error {
+		return c.String(http.StatusOK, "custom time stamp test")
 	})
 	e.Use(r.Routes())
 

@@ -26,10 +26,8 @@ func TestRequestLoggerWithConfig(t *testing.T) {
 		},
 	}))
 
-	r.GET("/test", func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			return c.String(http.StatusTeapot, "OK")
-		}
+	r.GET("/test", func(c echo.Context) error {
+		return c.String(http.StatusTeapot, "OK")
 	})
 	e.Use(r.Routes())
 
@@ -65,10 +63,8 @@ func TestRequestLogger_skipper(t *testing.T) {
 		},
 	}))
 
-	r.GET("/test", func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			return c.String(http.StatusTeapot, "OK")
-		}
+	r.GET("/test", func(c echo.Context) error {
+		return c.String(http.StatusTeapot, "OK")
 	})
 	e.Use(r.Routes())
 
@@ -96,10 +92,8 @@ func TestRequestLogger_beforeNextFunc(t *testing.T) {
 		},
 	}))
 
-	r.GET("/test", func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			return c.String(http.StatusTeapot, "OK")
-		}
+	r.GET("/test", func(c echo.Context) error {
+		return c.String(http.StatusTeapot, "OK")
 	})
 	e.Use(r.Routes())
 
@@ -126,10 +120,8 @@ func TestRequestLogger_logError(t *testing.T) {
 		},
 	}))
 
-	r.GET("/test", func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			return echo.NewHTTPError(http.StatusNotAcceptable, "nope")
-		}
+	r.GET("/test", func(c echo.Context) error {
+		return echo.NewHTTPError(http.StatusNotAcceptable, "nope")
 	})
 	e.Use(r.Routes())
 
@@ -157,10 +149,8 @@ func TestRequestLogger_LogValuesFuncError(t *testing.T) {
 		},
 	}))
 
-	r.GET("/test", func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			return c.String(http.StatusTeapot, "OK")
-		}
+	r.GET("/test", func(c echo.Context) error {
+		return c.String(http.StatusTeapot, "OK")
 	})
 	e.Use(r.Routes())
 
@@ -208,11 +198,9 @@ func TestRequestLogger_ID(t *testing.T) {
 				},
 			}))
 
-			r.GET("/test", func(next echo.HandlerFunc) echo.HandlerFunc {
-				return func(c echo.Context) error {
-					c.Response().Header().Set(echo.HeaderXRequestID, "321")
-					return c.String(http.StatusTeapot, "OK")
-				}
+			r.GET("/test", func(c echo.Context) error {
+				c.Response().Header().Set(echo.HeaderXRequestID, "321")
+				return c.String(http.StatusTeapot, "OK")
 			})
 			e.Use(r.Routes())
 

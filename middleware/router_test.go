@@ -634,20 +634,16 @@ var (
 	}
 
 	// middlewareHelper created a function that will set a context key for assertion
-	middlewareHelper = func(key string, value int) echo.MiddlewareFunc {
-		return func(next echo.HandlerFunc) echo.HandlerFunc {
-			return func(c echo.Context) error {
-				c.Set(key, value)
-				c.Set("path", c.Path())
-				return nil
-			}
-		}
-	}
-	middlewareFunc = func(next echo.HandlerFunc) echo.HandlerFunc {
+	middlewareHelper = func(key string, value int) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			c.Set(key, value)
 			c.Set("path", c.Path())
 			return nil
 		}
+	}
+	middlewareFunc = func(c echo.Context) error {
+		c.Set("path", c.Path())
+		return nil
 	}
 	passHandler = func(c echo.Context) error {
 		return nil
@@ -804,10 +800,8 @@ func TestRouterOptionsMethodHandler(t *testing.T) {
 	})
 	e.Use(r.Routes())
 
-	r.GET("/test", func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			return c.String(http.StatusOK, "Echo!")
-		}
+	r.GET("/test", func(c echo.Context) error {
+		return c.String(http.StatusOK, "Echo!")
 	})
 
 	req := httptest.NewRequest(http.MethodOptions, "/test", nil)
@@ -850,26 +844,6 @@ func TestMultiRouter(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, "/a/b/d", c.Get("path"))
-}
-
-func TestDeepNestedRouter(t *testing.T) {
-	e := echo.New()
-
-	r1 := NewRouter()
-	r2 := NewRouter()
-	r3 := NewRouter()
-
-	r3.Add(http.MethodGet, "/c", middlewareFunc)
-	r2.Use("/b", r3.Routes())
-	r1.Use("/a", r2.Routes())
-
-	req := httptest.NewRequest(http.MethodGet, "/a/b/c", nil)
-	c := e.NewContext(req, echo.NewResponse(httptest.NewRecorder(), e))
-
-	err := r1.Routes()(passHandler)(c)
-
-	assert.NoError(t, err)
-	assert.Equal(t, "/c", c.Get("path"))
 }
 
 // Issue #378
@@ -2246,12 +2220,10 @@ func TestRouterFindNotPanicOrLoopsWhenContextSetParamValuesIsCalledWithLessValue
 	e := echo.New()
 	r := NewRouter()
 
-	r.GET("/:version/admin", func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			c.SetParamNames("version")
-			c.SetParamValues("v1")
-			return nil
-		}
+	r.GET("/:version/admin", func(c echo.Context) error {
+		c.SetParamNames("version")
+		c.SetParamValues("v1")
+		return nil
 	})
 
 	r.GET("/:version/images/view/:id", middlewareHelper("iv", 1))

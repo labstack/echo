@@ -691,6 +691,14 @@ func ComposeMiddleware(middleware ...MiddlewareFunc) MiddlewareFunc {
 	}
 }
 
+func ComposeHandler(handler HandlerFunc, middleware ...MiddlewareFunc) HandlerFunc {
+	c := handler
+	for i := len(middleware) - 1; i >= 0; i -= 1 {
+		c = middleware[i](c)
+	}
+	return c
+}
+
 // // PathUnescape is wraps `url.PathUnescape`
 // func PathUnescape(s string) (string, error) {
 // 	return url.PathUnescape(s)

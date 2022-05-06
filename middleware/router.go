@@ -59,17 +59,17 @@ type (
 	kind          uint8
 	children      []*node
 	methodHandler struct {
-		connect     echo.MiddlewareFunc
-		delete      echo.MiddlewareFunc
-		get         echo.MiddlewareFunc
-		head        echo.MiddlewareFunc
-		options     echo.MiddlewareFunc
-		patch       echo.MiddlewareFunc
-		post        echo.MiddlewareFunc
-		propfind    echo.MiddlewareFunc
-		put         echo.MiddlewareFunc
-		trace       echo.MiddlewareFunc
-		report      echo.MiddlewareFunc
+		connect     echo.HandlerFunc
+		delete      echo.HandlerFunc
+		get         echo.HandlerFunc
+		head        echo.HandlerFunc
+		options     echo.HandlerFunc
+		patch       echo.HandlerFunc
+		post        echo.HandlerFunc
+		propfind    echo.HandlerFunc
+		put         echo.HandlerFunc
+		trace       echo.HandlerFunc
+		report      echo.HandlerFunc
 		allowHeader string
 	}
 )
@@ -181,69 +181,69 @@ func NewRouter() *Router {
 
 // CONNECT registers a new CONNECT route for a path with matching handler in the
 // router with optional route-level middleware.
-func (r *Router) CONNECT(path string, m ...echo.MiddlewareFunc) {
-	r.Add(http.MethodConnect, path, m...)
+func (r *Router) CONNECT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) {
+	r.Add(http.MethodConnect, path, h, m...)
 }
 
 // DELETE registers a new DELETE route for a path with matching handler in the router
 // with optional route-level middleware.
-func (r *Router) DELETE(path string, m ...echo.MiddlewareFunc) {
-	r.Add(http.MethodDelete, path, m...)
+func (r *Router) DELETE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) {
+	r.Add(http.MethodDelete, path, h, m...)
 }
 
 // GET registers a new GET route for a path with matching handler in the router
 // with optional route-level middleware.
-func (r *Router) GET(path string, m ...echo.MiddlewareFunc) {
-	r.Add(http.MethodGet, path, m...)
+func (r *Router) GET(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) {
+	r.Add(http.MethodGet, path, h, m...)
 }
 
 // HEAD registers a new HEAD route for a path with matching handler in the
 // router with optional route-level middleware.
-func (r *Router) HEAD(path string, m ...echo.MiddlewareFunc) {
-	r.Add(http.MethodHead, path, m...)
+func (r *Router) HEAD(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) {
+	r.Add(http.MethodHead, path, h, m...)
 }
 
 // OPTIONS registers a new OPTIONS route for a path with matching handler in the
 // router with optional route-level middleware.
-func (r *Router) OPTIONS(path string, m ...echo.MiddlewareFunc) {
-	r.Add(http.MethodOptions, path, m...)
+func (r *Router) OPTIONS(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) {
+	r.Add(http.MethodOptions, path, h, m...)
 }
 
 // PATCH registers a new PATCH route for a path with matching handler in the
 // router with optional route-level middleware.
-func (r *Router) PATCH(path string, m ...echo.MiddlewareFunc) {
-	r.Add(http.MethodPatch, path, m...)
+func (r *Router) PATCH(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) {
+	r.Add(http.MethodPatch, path, h, m...)
 }
 
 // POST registers a new POST route for a path with matching handler in the
 // router with optional route-level middleware.
-func (r *Router) POST(path string, m ...echo.MiddlewareFunc) {
-	r.Add(http.MethodPost, path, m...)
+func (r *Router) POST(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) {
+	r.Add(http.MethodPost, path, h, m...)
 }
 
 // PUT registers a new PUT route for a path with matching handler in the
 // router with optional route-level middleware.
-func (r *Router) PUT(path string, m ...echo.MiddlewareFunc) {
-	r.Add(http.MethodPut, path, m...)
+func (r *Router) PUT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) {
+	r.Add(http.MethodPut, path, h, m...)
 }
 
 // TRACE registers a new TRACE route for a path with matching handler in the
 // router with optional route-level middleware.
-func (r *Router) TRACE(path string, m ...echo.MiddlewareFunc) {
-	r.Add(http.MethodTrace, path, m...)
+func (r *Router) TRACE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) {
+	r.Add(http.MethodTrace, path, h, m...)
 }
 
 // Any registers a new route for all HTTP methods and path with matching handler
 // in the router with optional route-level middleware.
-func (r *Router) Any(path string, middleware ...echo.MiddlewareFunc) {
+func (r *Router) Any(path string, h echo.HandlerFunc, middleware ...echo.MiddlewareFunc) {
 	for _, m := range methods {
-		r.Add(m, path, middleware...)
+		r.Add(m, path, h, middleware...)
 	}
 }
 
 // Add registers a new route for method and path with matching handler.
-func (r *Router) Add(method, path string, middleware ...echo.MiddlewareFunc) {
-	m := echo.ComposeMiddleware(middleware...)
+func (r *Router) Add(method, path string, handler echo.HandlerFunc, middleware ...echo.MiddlewareFunc) {
+	h := echo.ComposeHandler(handler, middleware...)
 
 	// Validate path
 	if path == "" {
@@ -275,18 +275,18 @@ func (r *Router) Add(method, path string, middleware ...echo.MiddlewareFunc) {
 
 			if i == lcpIndex {
 				// path node is last fragment of route path. ie. `/users/:id`
-				r.insert(method, path[:i], m, paramKind, ppath, pnames)
+				r.insert(method, path[:i], h, paramKind, ppath, pnames)
 			} else {
 				r.insert(method, path[:i], nil, paramKind, "", nil)
 			}
 		} else if path[i] == '*' {
 			r.insert(method, path[:i], nil, staticKind, "", nil)
 			pnames = append(pnames, "*")
-			r.insert(method, path[:i+1], m, anyKind, ppath, pnames)
+			r.insert(method, path[:i+1], h, anyKind, ppath, pnames)
 		}
 	}
 
-	r.insert(method, path, m, staticKind, ppath, pnames)
+	r.insert(method, path, h, staticKind, ppath, pnames)
 }
 
 // Routes return echo middlewareFunc
@@ -294,7 +294,6 @@ func (r *Router) Routes() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			matchedMiddleware := r.find(c.Request().Method, GetPath(c.Request()), c)
-
 			if matchedMiddleware == nil {
 				return next(c)
 			}
@@ -304,7 +303,7 @@ func (r *Router) Routes() echo.MiddlewareFunc {
 	}
 }
 
-func (r *Router) insert(method, path string, m echo.MiddlewareFunc, t kind, ppath string, pnames []string) {
+func (r *Router) insert(method, path string, h echo.HandlerFunc, t kind, ppath string, pnames []string) {
 	// Adjust max param
 	paramLen := len(pnames)
 	if r.maxParam < paramLen {
@@ -334,9 +333,9 @@ func (r *Router) insert(method, path string, m echo.MiddlewareFunc, t kind, ppat
 			// At root node
 			currentNode.label = search[0]
 			currentNode.prefix = search
-			if m != nil {
+			if h != nil {
 				currentNode.kind = t
-				currentNode.addMiddleware(method, m)
+				currentNode.addHandler(method, h)
 				currentNode.ppath = ppath
 				currentNode.pnames = pnames
 			}
@@ -384,13 +383,13 @@ func (r *Router) insert(method, path string, m echo.MiddlewareFunc, t kind, ppat
 			if lcpLen == searchLen {
 				// At parent node
 				currentNode.kind = t
-				currentNode.addMiddleware(method, m)
+				currentNode.addHandler(method, h)
 				currentNode.ppath = ppath
 				currentNode.pnames = pnames
 			} else {
 				// Create child node
 				n = newNode(t, search[lcpLen:], currentNode, nil, new(methodHandler), ppath, pnames, nil, nil)
-				n.addMiddleware(method, m)
+				n.addHandler(method, h)
 				// Only Static children could reach here
 				currentNode.addStaticChild(n)
 			}
@@ -405,7 +404,7 @@ func (r *Router) insert(method, path string, m echo.MiddlewareFunc, t kind, ppat
 			}
 			// Create child node
 			n := newNode(t, search, currentNode, nil, new(methodHandler), ppath, pnames, nil, nil)
-			n.addMiddleware(method, m)
+			n.addHandler(method, h)
 			switch t {
 			case staticKind:
 				currentNode.addStaticChild(n)
@@ -417,8 +416,8 @@ func (r *Router) insert(method, path string, m echo.MiddlewareFunc, t kind, ppat
 			currentNode.isLeaf = currentNode.staticChildren == nil && currentNode.paramChild == nil && currentNode.anyChild == nil
 		} else {
 			// Node already exists
-			if m != nil {
-				currentNode.addMiddleware(method, m)
+			if h != nil {
+				currentNode.addHandler(method, h)
 				currentNode.ppath = ppath
 				if len(currentNode.pnames) == 0 { // Issue #729
 					currentNode.pnames = pnames
@@ -474,41 +473,41 @@ func (n *node) findChildWithLabel(l byte) *node {
 	return nil
 }
 
-func (n *node) addMiddleware(method string, m echo.MiddlewareFunc) {
+func (n *node) addHandler(method string, h echo.HandlerFunc) {
 	switch method {
 	case http.MethodConnect:
-		n.methodHandler.connect = m
+		n.methodHandler.connect = h
 	case http.MethodDelete:
-		n.methodHandler.delete = m
+		n.methodHandler.delete = h
 	case http.MethodGet:
-		n.methodHandler.get = m
+		n.methodHandler.get = h
 	case http.MethodHead:
-		n.methodHandler.head = m
+		n.methodHandler.head = h
 	case http.MethodOptions:
-		n.methodHandler.options = m
+		n.methodHandler.options = h
 	case http.MethodPatch:
-		n.methodHandler.patch = m
+		n.methodHandler.patch = h
 	case http.MethodPost:
-		n.methodHandler.post = m
+		n.methodHandler.post = h
 	case echo.PROPFIND:
-		n.methodHandler.propfind = m
+		n.methodHandler.propfind = h
 	case http.MethodPut:
-		n.methodHandler.put = m
+		n.methodHandler.put = h
 	case http.MethodTrace:
-		n.methodHandler.trace = m
+		n.methodHandler.trace = h
 	case echo.REPORT:
-		n.methodHandler.report = m
+		n.methodHandler.report = h
 	}
 
 	n.methodHandler.updateAllowHeader()
-	if m != nil {
+	if h != nil {
 		n.isHandler = true
 	} else {
 		n.isHandler = n.methodHandler.isHandler()
 	}
 }
 
-func (n *node) findMiddleware(method string) echo.MiddlewareFunc {
+func (n *node) findMiddleware(method string) echo.HandlerFunc {
 	switch method {
 	case http.MethodConnect:
 		return n.methodHandler.connect
@@ -561,7 +560,7 @@ func (r *Router) find(method, path string, c echo.Context) echo.MiddlewareFunc {
 
 	var (
 		previousBestMatchNode *node
-		matchedHandler        echo.MiddlewareFunc
+		matchedMiddleware     echo.MiddlewareFunc
 		// search stores the remaining path to check for match. By each iteration we move from start of path to end of the path
 		// and search value gets shorter and shorter.
 		search      = path
@@ -664,7 +663,9 @@ func (r *Router) find(method, path string, c echo.Context) echo.MiddlewareFunc {
 				previousBestMatchNode = currentNode
 			}
 			if h := currentNode.findMiddleware(method); h != nil {
-				matchedHandler = h
+				matchedMiddleware = func(next echo.HandlerFunc) echo.HandlerFunc {
+					return h
+				}
 				break
 			}
 		}
@@ -715,7 +716,9 @@ func (r *Router) find(method, path string, c echo.Context) echo.MiddlewareFunc {
 				previousBestMatchNode = currentNode
 			}
 			if h := currentNode.findMiddleware(method); h != nil {
-				matchedHandler = h
+				matchedMiddleware = func(next echo.HandlerFunc) echo.HandlerFunc {
+					return h
+				}
 				break
 			}
 		}
@@ -738,16 +741,16 @@ func (r *Router) find(method, path string, c echo.Context) echo.MiddlewareFunc {
 		return NotFoundMiddleware // nothing matched at all
 	}
 
-	if matchedHandler == nil {
+	if matchedMiddleware == nil {
 		// use previous match as basis. although we have no matching handler we have path match.
 		// so we can send http.StatusMethodNotAllowed (405) instead of http.StatusNotFound (404)
 		currentNode = previousBestMatchNode
-		matchedHandler = NotFoundMiddleware
+		matchedMiddleware = NotFoundMiddleware
 		if currentNode.isHandler {
 			c.Set(echo.ContextKeyHeaderAllow, currentNode.methodHandler.allowHeader)
-			matchedHandler = MethodNotAllowedMiddleware
+			matchedMiddleware = MethodNotAllowedMiddleware
 			if method == http.MethodOptions {
-				matchedHandler = func(next echo.HandlerFunc) echo.HandlerFunc {
+				matchedMiddleware = func(next echo.HandlerFunc) echo.HandlerFunc {
 					return optionsMethodHandler(currentNode.methodHandler.allowHeader)
 				}
 			}
@@ -758,7 +761,7 @@ func (r *Router) find(method, path string, c echo.Context) echo.MiddlewareFunc {
 	c.SetPath(currentNode.ppath)
 	c.SetParamNames(currentNode.pnames...)
 
-	return matchedHandler
+	return matchedMiddleware
 }
 
 // GetPath returns RawPath, if it's empty returns Path from URL

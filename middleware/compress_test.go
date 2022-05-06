@@ -133,10 +133,8 @@ func TestGzipErrorReturned(t *testing.T) {
 	e.Use(Gzip())
 	e.Use(r.Routes())
 
-	r.GET("/", func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			return echo.ErrNotFound
-		}
+	r.GET("/", func(c echo.Context) error {
+		return echo.ErrNotFound
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -155,11 +153,9 @@ func TestGzipErrorReturnedInvalidConfig(t *testing.T) {
 	e.Use(GzipWithConfig(GzipConfig{Level: 12}))
 	e.Use(r.Routes())
 
-	r.GET("/", func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			_, err := c.Response().Write([]byte("test"))
-			return err
-		}
+	r.GET("/", func(c echo.Context) error {
+		_, err := c.Response().Write([]byte("test"))
+		return err
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)

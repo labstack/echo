@@ -133,18 +133,22 @@ func TestStatic(t *testing.T) {
 			}
 			middlewareFunc := StaticWithConfig(config)
 			if tc.givenAttachedToGroup != "" {
-				r.Any(tc.givenAttachedToGroup+"/*", middlewareFunc, func(next echo.HandlerFunc) echo.HandlerFunc {
-					return echo.NotFoundHandler
-				})
+				r.Any(tc.givenAttachedToGroup+"/*",
+					func(c echo.Context) error {
+						return nil
+					},
+					middlewareFunc,
+					func(next echo.HandlerFunc) echo.HandlerFunc {
+						return echo.NotFoundHandler
+					},
+				)
 			} else {
 				// middleware is on root level
 				e.Use(middlewareFunc, func(next echo.HandlerFunc) echo.HandlerFunc {
 					return echo.NotFoundHandler
 				})
-				r.GET("/regular-handler", func(next echo.HandlerFunc) echo.HandlerFunc {
-					return func(c echo.Context) error {
-						return c.String(http.StatusOK, "ok")
-					}
+				r.GET("/regular-handler", func(c echo.Context) error {
+					return c.String(http.StatusOK, "ok")
 				})
 			}
 

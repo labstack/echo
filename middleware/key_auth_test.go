@@ -342,11 +342,9 @@ func TestKeyAuthWithConfig_ContinueOnIgnoredError(t *testing.T) {
 			e := echo.New()
 			r := NewRouter()
 
-			r.GET("/", func(next echo.HandlerFunc) echo.HandlerFunc {
-				return func(c echo.Context) error {
-					testValue, _ := c.Get("test").(string)
-					return c.String(http.StatusTeapot, testValue)
-				}
+			r.GET("/", func(c echo.Context) error {
+				testValue, _ := c.Get("test").(string)
+				return c.String(http.StatusTeapot, testValue)
 			})
 
 			e.Use(KeyAuthWithConfig(KeyAuthConfig{

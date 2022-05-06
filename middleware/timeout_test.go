@@ -186,10 +186,8 @@ func TestTimeoutRecoversPanic(t *testing.T) {
 	}))
 	e.Use(r.Routes())
 
-	r.GET("/", func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			panic("panic!!!")
-		}
+	r.GET("/", func(c echo.Context) error {
+		panic("panic!!!")
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -381,17 +379,15 @@ func TestTimeoutWithFullEchoStack(t *testing.T) {
 	e.Use(Recover())
 	e.Use(r.Routes())
 
-	r.GET("/", func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			var delay time.Duration
-			if err := echo.QueryParamsBinder(c).Duration("delay", &delay).BindError(); err != nil {
-				return err
-			}
-			if delay > 0 {
-				time.Sleep(delay)
-			}
-			return c.JSON(http.StatusTeapot, map[string]string{"message": "OK"})
+	r.GET("/", func(c echo.Context) error {
+		var delay time.Duration
+		if err := echo.QueryParamsBinder(c).Duration("delay", &delay).BindError(); err != nil {
+			return err
 		}
+		if delay > 0 {
+			time.Sleep(delay)
+		}
+		return c.JSON(http.StatusTeapot, map[string]string{"message": "OK"})
 	})
 
 	server, addr, err := startServer(e)

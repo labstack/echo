@@ -2,6 +2,8 @@ package middleware
 
 import (
 	"net/http"
+
+	"github.com/partialize/echo-slim/v4"
 )
 
 type (
