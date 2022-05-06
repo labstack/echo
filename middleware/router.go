@@ -289,13 +289,15 @@ func (r *Router) Add(method, path string, handler echo.HandlerFunc, middleware .
 	r.insert(method, path, h, staticKind, ppath, pnames)
 }
 
-// Routes return echo middlewareFunc
+// Routes return echo handlerFunc
 func (r *Router) Routes() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			matchedMiddleware := r.find(c.Request().Method, GetPath(c.Request()), c)
 			if matchedMiddleware == nil {
-				return next(c)
+				matchedMiddleware = NotFoundMiddleware
+			} else {
+				c.Response().Status = http.StatusOK
 			}
 
 			return matchedMiddleware(next)(c)
@@ -738,14 +740,13 @@ func (r *Router) find(method, path string, c echo.Context) echo.MiddlewareFunc {
 	}
 
 	if currentNode == nil && previousBestMatchNode == nil {
-		return NotFoundMiddleware // nothing matched at all
+		return nil // nothing matched at all
 	}
 
 	if matchedMiddleware == nil {
 		// use previous match as basis. although we have no matching handler we have path match.
 		// so we can send http.StatusMethodNotAllowed (405) instead of http.StatusNotFound (404)
 		currentNode = previousBestMatchNode
-		matchedMiddleware = NotFoundMiddleware
 		if currentNode.isHandler {
 			c.Set(echo.ContextKeyHeaderAllow, currentNode.methodHandler.allowHeader)
 			matchedMiddleware = MethodNotAllowedMiddleware

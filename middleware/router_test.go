@@ -633,15 +633,15 @@ var (
 		{"DELETE", "/miss/four/levels/nooo", ""},
 	}
 
-	// middlewareHelper created a function that will set a context key for assertion
-	middlewareHelper = func(key string, value int) echo.HandlerFunc {
+	// handlerHelper created a function that will set a context key for assertion
+	handlerHelper = func(key string, value int) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			c.Set(key, value)
 			c.Set("path", c.Path())
 			return nil
 		}
 	}
-	middlewareFunc = func(c echo.Context) error {
+	handlerFunc = func(c echo.Context) error {
 		c.Set("path", c.Path())
 		return nil
 	}
@@ -670,7 +670,7 @@ func TestRouterStatic(t *testing.T) {
 	r := NewRouter()
 
 	path := "/folders/a/files/echo.gif"
-	r.Add(http.MethodGet, path, middlewareFunc)
+	r.Add(http.MethodGet, path, handlerFunc)
 
 	req := httptest.NewRequest(http.MethodGet, path, nil)
 	c := e.NewContext(req, echo.NewResponse(httptest.NewRecorder(), e))
@@ -684,7 +684,7 @@ func TestRouterParam(t *testing.T) {
 	e := echo.New()
 	r := NewRouter()
 
-	r.Add(http.MethodGet, "/users/:id", middlewareFunc)
+	r.Add(http.MethodGet, "/users/:id", handlerFunc)
 
 	var testCases = []struct {
 		name        string
@@ -727,8 +727,8 @@ func TestMethodNotAllowedAndNotFound(t *testing.T) {
 	r := NewRouter()
 
 	// Routes
-	r.Add(http.MethodGet, "/*", middlewareFunc)
-	r.Add(http.MethodPost, "/users/:id", middlewareFunc)
+	r.Add(http.MethodGet, "/*", handlerFunc)
+	r.Add(http.MethodPost, "/users/:id", handlerFunc)
 
 	var testCases = []struct {
 		name              string
@@ -817,7 +817,7 @@ func TestRouterTwoParam(t *testing.T) {
 	e := echo.New()
 	r := NewRouter()
 
-	r.Add(http.MethodGet, "/users/:uid/files/:fid", middlewareFunc)
+	r.Add(http.MethodGet, "/users/:uid/files/:fid", handlerFunc)
 
 	req := httptest.NewRequest(http.MethodGet, "/users/1/files/1", nil)
 	c := e.NewContext(req, echo.NewResponse(httptest.NewRecorder(), e))
@@ -834,8 +834,8 @@ func TestMultiRouter(t *testing.T) {
 	r1 := NewRouter()
 	r2 := NewRouter()
 
-	r1.Add(http.MethodGet, "/a/b/c", middlewareFunc)
-	r2.Add(http.MethodGet, "/a/b/d", middlewareFunc)
+	r1.Add(http.MethodGet, "/a/b/c", handlerFunc)
+	r2.Add(http.MethodGet, "/a/b/d", handlerFunc)
 
 	req := httptest.NewRequest(http.MethodGet, "/a/b/d", nil)
 	c := e.NewContext(req, echo.NewResponse(httptest.NewRecorder(), e))
@@ -851,8 +851,8 @@ func TestRouterParamWithSlash(t *testing.T) {
 	e := echo.New()
 	r := NewRouter()
 
-	r.Add(http.MethodGet, "/a/:b/c/d/:e", middlewareFunc)
-	r.Add(http.MethodGet, "/a/:b/c/:d/:f", middlewareFunc)
+	r.Add(http.MethodGet, "/a/:b/c/d/:e", handlerFunc)
+	r.Add(http.MethodGet, "/a/:b/c/:d/:f", handlerFunc)
 
 	req := httptest.NewRequest(http.MethodGet, "/a/1/c/d/2/3", nil)
 	c := e.NewContext(req, echo.NewResponse(httptest.NewRecorder(), e))
@@ -937,12 +937,12 @@ func TestRouteMultiLevelBacktracking(t *testing.T) {
 			e := echo.New()
 			r := NewRouter()
 
-			r.Add(http.MethodGet, "/a/:b/c", middlewareHelper("case", 1))
-			r.Add(http.MethodGet, "/a/c/d", middlewareHelper("case", 2))
-			r.Add(http.MethodGet, "/a/c/df", middlewareHelper("case", 3))
-			r.Add(http.MethodGet, "/a/*/f", middlewareHelper("case", 4))
-			r.Add(http.MethodGet, "/:e/c/f", middlewareHelper("case", 5))
-			r.Add(http.MethodGet, "/*", middlewareHelper("case", 6))
+			r.Add(http.MethodGet, "/a/:b/c", handlerHelper("case", 1))
+			r.Add(http.MethodGet, "/a/c/d", handlerHelper("case", 2))
+			r.Add(http.MethodGet, "/a/c/df", handlerHelper("case", 3))
+			r.Add(http.MethodGet, "/a/*/f", handlerHelper("case", 4))
+			r.Add(http.MethodGet, "/:e/c/f", handlerHelper("case", 5))
+			r.Add(http.MethodGet, "/*", handlerHelper("case", 6))
 
 			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
 			c := e.NewContext(req, echo.NewResponse(httptest.NewRecorder(), e))
@@ -983,11 +983,11 @@ func TestRouteMultiLevelBacktracking2(t *testing.T) {
 	e := echo.New()
 	r := NewRouter()
 
-	r.Add(http.MethodGet, "/a/:b/c", middlewareFunc)
-	r.Add(http.MethodGet, "/a/c/d", middlewareFunc)
-	r.Add(http.MethodGet, "/a/c/df", middlewareFunc)
-	r.Add(http.MethodGet, "/:e/c/f", middlewareFunc)
-	r.Add(http.MethodGet, "/*", middlewareFunc)
+	r.Add(http.MethodGet, "/a/:b/c", handlerFunc)
+	r.Add(http.MethodGet, "/a/c/d", handlerFunc)
+	r.Add(http.MethodGet, "/a/c/df", handlerFunc)
+	r.Add(http.MethodGet, "/:e/c/f", handlerFunc)
+	r.Add(http.MethodGet, "/*", handlerFunc)
 
 	var testCases = []struct {
 		name        string
@@ -1064,12 +1064,12 @@ func TestRouterBacktrackingFromMultipleParamKinds(t *testing.T) {
 	e := echo.New()
 	r := NewRouter()
 
-	r.Add(http.MethodGet, "/*", middlewareFunc) // this can match only path that does not have slash in it
-	r.Add(http.MethodGet, "/:1/second", middlewareFunc)
-	r.Add(http.MethodGet, "/:1/:2", middlewareFunc) // this acts as match ANY for all routes that have at least one slash
-	r.Add(http.MethodGet, "/:1/:2/third", middlewareFunc)
-	r.Add(http.MethodGet, "/:1/:2/:3/fourth", middlewareFunc)
-	r.Add(http.MethodGet, "/:1/:2/:3/:4/fifth", middlewareFunc)
+	r.Add(http.MethodGet, "/*", handlerFunc) // this can match only path that does not have slash in it
+	r.Add(http.MethodGet, "/:1/second", handlerFunc)
+	r.Add(http.MethodGet, "/:1/:2", handlerFunc) // this acts as match ANY for all routes that have at least one slash
+	r.Add(http.MethodGet, "/:1/:2/third", handlerFunc)
+	r.Add(http.MethodGet, "/:1/:2/:3/fourth", handlerFunc)
+	r.Add(http.MethodGet, "/:1/:2/:3/:4/fifth", handlerFunc)
 
 	var testCases = []struct {
 		name        string
@@ -1133,9 +1133,9 @@ func TestRouterParamStaticConflict(t *testing.T) {
 	e := echo.New()
 	r := NewRouter()
 
-	r.GET("/g/skills", middlewareFunc)
-	r.GET("/g/status", middlewareFunc)
-	r.GET("/g/:name", middlewareFunc)
+	r.GET("/g/skills", handlerFunc)
+	r.GET("/g/status", handlerFunc)
+	r.GET("/g/:name", handlerFunc)
 
 	var testCases = []struct {
 		whenURL     string
@@ -1174,10 +1174,10 @@ func TestRouterParam_escapeColon(t *testing.T) {
 	e := echo.New()
 	r := NewRouter()
 
-	r.POST("/files/a/long/file\\:undelete", middlewareFunc)
-	r.POST("/multilevel\\:undelete/second\\:something", middlewareFunc)
-	r.POST("/mixed/:id/second\\:something", middlewareFunc)
-	r.POST("/v1/some/resource/name:customVerb", middlewareFunc)
+	r.POST("/files/a/long/file\\:undelete", handlerFunc)
+	r.POST("/multilevel\\:undelete/second\\:something", handlerFunc)
+	r.POST("/mixed/:id/second\\:something", handlerFunc)
+	r.POST("/v1/some/resource/name:customVerb", handlerFunc)
 
 	var testCases = []struct {
 		whenURL     string
@@ -1237,9 +1237,9 @@ func TestRouterMatchAny(t *testing.T) {
 	r := NewRouter()
 
 	// Routes
-	r.Add(http.MethodGet, "/", middlewareFunc)
-	r.Add(http.MethodGet, "/*", middlewareFunc)
-	r.Add(http.MethodGet, "/users/*", middlewareFunc)
+	r.Add(http.MethodGet, "/", handlerFunc)
+	r.Add(http.MethodGet, "/*", handlerFunc)
+	r.Add(http.MethodGet, "/users/*", handlerFunc)
 
 	var testCases = []struct {
 		whenURL     string
@@ -1287,8 +1287,8 @@ func TestRouterAnyMatchesLastAddedAnyRoute(t *testing.T) {
 	e := echo.New()
 	r := NewRouter()
 
-	r.Add(http.MethodGet, "/users/*", middlewareHelper("case", 1))
-	r.Add(http.MethodGet, "/users/*/action*", middlewareHelper("case", 2))
+	r.Add(http.MethodGet, "/users/*", handlerHelper("case", 1))
+	r.Add(http.MethodGet, "/users/*/action*", handlerHelper("case", 2))
 
 	req := httptest.NewRequest(http.MethodGet, "/users/xxx/action/sea", nil)
 	c := e.NewContext(req, echo.NewResponse(httptest.NewRecorder(), e))
@@ -1299,7 +1299,7 @@ func TestRouterAnyMatchesLastAddedAnyRoute(t *testing.T) {
 	assert.Equal(t, "xxx/action/sea", c.Param("*"))
 
 	// if we add another route then it is the last added and so it is matched
-	r.Add(http.MethodGet, "/users/*/action/search", middlewareHelper("case", 3))
+	r.Add(http.MethodGet, "/users/*/action/search", handlerHelper("case", 3))
 
 	err = r.Routes()(passHandler)(c)
 	assert.NoError(t, err)
@@ -1314,8 +1314,8 @@ func TestRouterMatchAnyPrefixIssue(t *testing.T) {
 	r := NewRouter()
 
 	// Routes
-	r.Add(http.MethodGet, "/*", middlewareFunc)
-	r.Add(http.MethodGet, "/users/*", middlewareFunc)
+	r.Add(http.MethodGet, "/*", handlerFunc)
+	r.Add(http.MethodGet, "/users/*", handlerFunc)
 
 	var testCases = []struct {
 		whenURL     string
@@ -1371,12 +1371,12 @@ func TestRouterMatchAnySlash(t *testing.T) {
 	r := NewRouter()
 
 	// Routes
-	r.Add(http.MethodGet, "/users", middlewareFunc)
-	r.Add(http.MethodGet, "/users/*", middlewareFunc)
-	r.Add(http.MethodGet, "/img/*", middlewareFunc)
-	r.Add(http.MethodGet, "/img/load", middlewareFunc)
-	r.Add(http.MethodGet, "/img/load/*", middlewareFunc)
-	r.Add(http.MethodGet, "/assets/*", middlewareFunc)
+	r.Add(http.MethodGet, "/users", handlerFunc)
+	r.Add(http.MethodGet, "/users/*", handlerFunc)
+	r.Add(http.MethodGet, "/img/*", handlerFunc)
+	r.Add(http.MethodGet, "/img/load", handlerFunc)
+	r.Add(http.MethodGet, "/img/load/*", handlerFunc)
+	r.Add(http.MethodGet, "/assets/*", handlerFunc)
 
 	var testCases = []struct {
 		whenURL     string
@@ -1455,12 +1455,12 @@ func TestRouterMatchAnyMultiLevel(t *testing.T) {
 	r := NewRouter()
 
 	// Routes
-	r.Add(http.MethodGet, "/api/users/jack", middlewareFunc)
-	r.Add(http.MethodGet, "/api/users/jill", middlewareFunc)
-	r.Add(http.MethodGet, "/api/users/*", middlewareFunc)
-	r.Add(http.MethodGet, "/api/*", middlewareFunc)
-	r.Add(http.MethodGet, "/other/*", middlewareFunc)
-	r.Add(http.MethodGet, "/*", middlewareFunc)
+	r.Add(http.MethodGet, "/api/users/jack", handlerFunc)
+	r.Add(http.MethodGet, "/api/users/jill", handlerFunc)
+	r.Add(http.MethodGet, "/api/users/*", handlerFunc)
+	r.Add(http.MethodGet, "/api/*", handlerFunc)
+	r.Add(http.MethodGet, "/other/*", handlerFunc)
+	r.Add(http.MethodGet, "/*", handlerFunc)
 
 	var testCases = []struct {
 		whenURL     string
@@ -1528,10 +1528,10 @@ func TestRouterMatchAnyMultiLevelWithPost(t *testing.T) {
 	r := NewRouter()
 
 	// Routes
-	r.POST("/api/auth/login", middlewareFunc)
-	r.POST("/api/auth/forgotPassword", middlewareFunc)
-	r.Any("/api/*", middlewareFunc)
-	r.Any("/*", middlewareFunc)
+	r.POST("/api/auth/login", handlerFunc)
+	r.POST("/api/auth/forgotPassword", handlerFunc)
+	r.Any("/api/*", handlerFunc)
+	r.Any("/*", handlerFunc)
 
 	var testCases = []struct {
 		whenMethod  string
@@ -1592,7 +1592,7 @@ func TestRouterMatchAnyMultiLevelWithPost(t *testing.T) {
 func TestRouterMicroParam(t *testing.T) {
 	e := echo.New()
 	r := NewRouter()
-	r.Add(http.MethodGet, "/:a/:b/:c", middlewareFunc)
+	r.Add(http.MethodGet, "/:a/:b/:c", handlerFunc)
 	req := httptest.NewRequest(http.MethodGet, "/1/2/3", nil)
 	c := e.NewContext(req, echo.NewResponse(httptest.NewRecorder(), e))
 	err := r.Routes()(passHandler)(c)
@@ -1607,7 +1607,7 @@ func TestRouterMixParamMatchAny(t *testing.T) {
 	r := NewRouter()
 
 	// Route
-	r.Add(http.MethodGet, "/users/:id/*", middlewareFunc)
+	r.Add(http.MethodGet, "/users/:id/*", handlerFunc)
 
 	req := httptest.NewRequest(http.MethodGet, "/users/joe/comments", nil)
 	c := e.NewContext(req, echo.NewResponse(httptest.NewRecorder(), e))
@@ -1622,8 +1622,8 @@ func TestRouterMultiRoute(t *testing.T) {
 	r := NewRouter()
 
 	// Routes
-	r.Add(http.MethodGet, "/users", middlewareFunc)
-	r.Add(http.MethodGet, "/users/:id", middlewareFunc)
+	r.Add(http.MethodGet, "/users", handlerFunc)
+	r.Add(http.MethodGet, "/users/:id", handlerFunc)
 
 	var testCases = []struct {
 		whenMethod  string
@@ -1646,6 +1646,7 @@ func TestRouterMultiRoute(t *testing.T) {
 			whenURL:     "/user",
 			expectRoute: nil,
 			expectParam: map[string]string{"*": ""},
+			expectError: echo.ErrNotFound,
 		},
 	}
 	for _, tc := range testCases {
@@ -1677,15 +1678,15 @@ func TestRouterPriority(t *testing.T) {
 	r := NewRouter()
 
 	// Routes
-	r.Add(http.MethodGet, "/users", middlewareFunc)
-	r.Add(http.MethodGet, "/users/new", middlewareFunc)
-	r.Add(http.MethodGet, "/users/:id", middlewareFunc)
-	r.Add(http.MethodGet, "/users/dew", middlewareFunc)
-	r.Add(http.MethodGet, "/users/:id/files", middlewareFunc)
-	r.Add(http.MethodGet, "/users/newsee", middlewareFunc)
-	r.Add(http.MethodGet, "/users/*", middlewareFunc)
-	r.Add(http.MethodGet, "/users/new/*", middlewareFunc)
-	r.Add(http.MethodGet, "/*", middlewareFunc)
+	r.Add(http.MethodGet, "/users", handlerFunc)
+	r.Add(http.MethodGet, "/users/new", handlerFunc)
+	r.Add(http.MethodGet, "/users/:id", handlerFunc)
+	r.Add(http.MethodGet, "/users/dew", handlerFunc)
+	r.Add(http.MethodGet, "/users/:id/files", handlerFunc)
+	r.Add(http.MethodGet, "/users/newsee", handlerFunc)
+	r.Add(http.MethodGet, "/users/*", handlerFunc)
+	r.Add(http.MethodGet, "/users/new/*", handlerFunc)
+	r.Add(http.MethodGet, "/*", handlerFunc)
 
 	var testCases = []struct {
 		whenMethod  string
@@ -1790,8 +1791,8 @@ func TestRouterPriorityNotFound(t *testing.T) {
 	r := NewRouter()
 
 	// Add
-	r.Add(http.MethodGet, "/a/foo", middlewareFunc)
-	r.Add(http.MethodGet, "/a/bar", middlewareFunc)
+	r.Add(http.MethodGet, "/a/foo", handlerFunc)
+	r.Add(http.MethodGet, "/a/bar", handlerFunc)
 
 	var testCases = []struct {
 		whenMethod  string
@@ -1811,6 +1812,7 @@ func TestRouterPriorityNotFound(t *testing.T) {
 		{
 			whenURL:     "/abc/def",
 			expectRoute: nil,
+			expectError: echo.ErrNotFound,
 		},
 	}
 	for _, tc := range testCases {
@@ -1842,9 +1844,9 @@ func TestRouterParamNames(t *testing.T) {
 	r := NewRouter()
 
 	// Routes
-	r.Add(http.MethodGet, "/users", middlewareFunc)
-	r.Add(http.MethodGet, "/users/:id", middlewareFunc)
-	r.Add(http.MethodGet, "/users/:uid/files/:fid", middlewareFunc)
+	r.Add(http.MethodGet, "/users", handlerFunc)
+	r.Add(http.MethodGet, "/users/:id", handlerFunc)
+	r.Add(http.MethodGet, "/users/:uid/files/:fid", handlerFunc)
 
 	var testCases = []struct {
 		whenMethod  string
@@ -1900,12 +1902,12 @@ func TestRouterStaticDynamicConflict(t *testing.T) {
 	e := echo.New()
 	r := NewRouter()
 
-	r.Add(http.MethodGet, "/dictionary/skills", middlewareHelper("a", 1))
-	r.Add(http.MethodGet, "/dictionary/:name", middlewareHelper("b", 2))
-	r.Add(http.MethodGet, "/users/new", middlewareHelper("d", 4))
-	r.Add(http.MethodGet, "/users/:name", middlewareHelper("e", 5))
-	r.Add(http.MethodGet, "/server", middlewareHelper("c", 3))
-	r.Add(http.MethodGet, "/", middlewareHelper("f", 6))
+	r.Add(http.MethodGet, "/dictionary/skills", handlerHelper("a", 1))
+	r.Add(http.MethodGet, "/dictionary/:name", handlerHelper("b", 2))
+	r.Add(http.MethodGet, "/users/new", handlerHelper("d", 4))
+	r.Add(http.MethodGet, "/users/:name", handlerHelper("e", 5))
+	r.Add(http.MethodGet, "/server", handlerHelper("c", 3))
+	r.Add(http.MethodGet, "/", handlerHelper("f", 6))
 
 	var testCases = []struct {
 		whenMethod  string
@@ -1977,10 +1979,10 @@ func TestRouterParamBacktraceNotFound(t *testing.T) {
 	r := NewRouter()
 
 	// Add
-	r.Add(http.MethodGet, "/:param1", middlewareFunc)
-	r.Add(http.MethodGet, "/:param1/foo", middlewareFunc)
-	r.Add(http.MethodGet, "/:param1/bar", middlewareFunc)
-	r.Add(http.MethodGet, "/:param1/bar/:param2", middlewareFunc)
+	r.Add(http.MethodGet, "/:param1", handlerFunc)
+	r.Add(http.MethodGet, "/:param1/foo", handlerFunc)
+	r.Add(http.MethodGet, "/:param1/bar", handlerFunc)
+	r.Add(http.MethodGet, "/:param1/bar/:param2", handlerFunc)
 
 	var testCases = []struct {
 		name        string
@@ -2053,7 +2055,7 @@ func testRouterAPI(t *testing.T, api []*Route) {
 	r := NewRouter()
 
 	for _, route := range api {
-		r.Add(route.Method, route.Path, middlewareFunc)
+		r.Add(route.Method, route.Path, handlerFunc)
 	}
 	for _, route := range api {
 		t.Run(route.Path, func(t *testing.T) {
@@ -2127,16 +2129,16 @@ func TestRouterParam1466(t *testing.T) {
 	e := echo.New()
 	r := NewRouter()
 
-	r.Add(http.MethodPost, "/users/signup", middlewareFunc)
-	r.Add(http.MethodPost, "/users/signup/bulk", middlewareFunc)
-	r.Add(http.MethodPost, "/users/survey", middlewareFunc)
-	r.Add(http.MethodGet, "/users/:username", middlewareFunc)
-	r.Add(http.MethodGet, "/interests/:name/users", middlewareFunc)
-	r.Add(http.MethodGet, "/skills/:name/users", middlewareFunc)
+	r.Add(http.MethodPost, "/users/signup", handlerFunc)
+	r.Add(http.MethodPost, "/users/signup/bulk", handlerFunc)
+	r.Add(http.MethodPost, "/users/survey", handlerFunc)
+	r.Add(http.MethodGet, "/users/:username", handlerFunc)
+	r.Add(http.MethodGet, "/interests/:name/users", handlerFunc)
+	r.Add(http.MethodGet, "/skills/:name/users", handlerFunc)
 	// Additional routes for Issue 1479
-	r.Add(http.MethodGet, "/users/:username/likes/projects/ids", middlewareFunc)
-	r.Add(http.MethodGet, "/users/:username/profile", middlewareFunc)
-	r.Add(http.MethodGet, "/users/:username/uploads/:type", middlewareFunc)
+	r.Add(http.MethodGet, "/users/:username/likes/projects/ids", handlerFunc)
+	r.Add(http.MethodGet, "/users/:username/profile", handlerFunc)
+	r.Add(http.MethodGet, "/users/:username/uploads/:type", handlerFunc)
 
 	var testCases = []struct {
 		whenURL     string
@@ -2226,9 +2228,9 @@ func TestRouterFindNotPanicOrLoopsWhenContextSetParamValuesIsCalledWithLessValue
 		return nil
 	})
 
-	r.GET("/:version/images/view/:id", middlewareHelper("iv", 1))
-	r.GET("/:version/images/:id", middlewareHelper("i", 1))
-	r.GET("/:version/view/*", middlewareHelper("v", 1))
+	r.GET("/:version/images/view/:id", handlerHelper("iv", 1))
+	r.GET("/:version/images/:id", handlerHelper("i", 1))
+	r.GET("/:version/view/*", handlerHelper("v", 1))
 
 	//If this API is called before the next two one panic the other loops ( of course without my fix ;) )
 	req := httptest.NewRequest(http.MethodGet, "/v1/admin", nil)
@@ -2259,9 +2261,9 @@ func TestRouterPanicWhenParamNoRootOnlyChildsFailsFind(t *testing.T) {
 	e := echo.New()
 	r := NewRouter()
 
-	r.Add(http.MethodGet, "/users/create", middlewareFunc)
-	r.Add(http.MethodGet, "/users/:id/edit", middlewareFunc)
-	r.Add(http.MethodGet, "/users/:id/active", middlewareFunc)
+	r.Add(http.MethodGet, "/users/create", handlerFunc)
+	r.Add(http.MethodGet, "/users/:id/edit", handlerFunc)
+	r.Add(http.MethodGet, "/users/:id/active", handlerFunc)
 
 	var testCases = []struct {
 		whenURL      string
@@ -2313,10 +2315,10 @@ func TestRouterHandleMethodOptions(t *testing.T) {
 	e := echo.New()
 	r := NewRouter()
 
-	r.Add(http.MethodGet, "/users", middlewareFunc)
-	r.Add(http.MethodPost, "/users", middlewareFunc)
-	r.Add(http.MethodPut, "/users/:id", middlewareFunc)
-	r.Add(http.MethodGet, "/users/:id", middlewareFunc)
+	r.Add(http.MethodGet, "/users", handlerFunc)
+	r.Add(http.MethodPost, "/users", handlerFunc)
+	r.Add(http.MethodPut, "/users/:id", handlerFunc)
+	r.Add(http.MethodGet, "/users/:id", handlerFunc)
 
 	var testCases = []struct {
 		name              string
@@ -2351,7 +2353,7 @@ func TestRouterHandleMethodOptions(t *testing.T) {
 			whenMethod:        http.MethodOptions,
 			whenURL:           "/notFound",
 			expectAllowHeader: "",
-			expectStatus:      http.StatusOK,
+			expectStatus:      http.StatusNotFound,
 		},
 	}
 	for _, tc := range testCases {
@@ -2382,7 +2384,7 @@ func benchmarkRouterRoutes(b *testing.B, routes []*Route, routesToFind []*Route)
 
 	// Add routes
 	for _, route := range routes {
-		r.Add(route.Method, route.Path, middlewareFunc)
+		r.Add(route.Method, route.Path, handlerFunc)
 	}
 
 	// Routes adding are performed just once, so it doesn't make sense to see that in the benchmark
