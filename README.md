@@ -71,11 +71,9 @@ import (
   "github.com/partialize/echo-slim/v4/middleware"
 )
 
-// Middleware
-func hello(next echo.HandlerFunc) echo.HandlerFunc {
-  return func(c echo.Context) error {
-    return c.String(http.StatusOK, "Hello, World!")
-  }
+// Handler
+func hello(c echo.Context) error {
+  return c.String(http.StatusOK, "Hello, World!")
 }
 
 func main() {
