@@ -83,6 +83,7 @@ const (
 	anyLabel   = byte('*')
 )
 
+// Error handlers
 var (
 	MethodNotAllowedMiddleware = func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {

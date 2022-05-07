@@ -679,19 +679,21 @@ func WrapMiddleware(m func(http.Handler) http.Handler) MiddlewareFunc {
 	}
 }
 
+// ComposeMiddleware compose MiddlewareFunc
 func ComposeMiddleware(middleware ...MiddlewareFunc) MiddlewareFunc {
 	return func(next HandlerFunc) HandlerFunc {
 		c := next
-		for i := len(middleware) - 1; i >= 0; i -= 1 {
+		for i := len(middleware) - 1; i >= 0; i-- {
 			c = middleware[i](c)
 		}
 		return c
 	}
 }
 
+// ComposeHandler compose HandlerFunc and MiddlewareFunc
 func ComposeHandler(handler HandlerFunc, middleware ...MiddlewareFunc) HandlerFunc {
 	c := handler
-	for i := len(middleware) - 1; i >= 0; i -= 1 {
+	for i := len(middleware) - 1; i >= 0; i-- {
 		c = middleware[i](c)
 	}
 	return c
