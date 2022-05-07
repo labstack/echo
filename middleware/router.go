@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"reflect"
 	"runtime"
@@ -244,8 +245,20 @@ func (r *Router) Any(path string, h echo.HandlerFunc, middleware ...echo.Middlew
 
 // Add registers a new route for method and path with matching handler.
 func (r *Router) Add(method, path string, handler echo.HandlerFunc, middleware ...echo.MiddlewareFunc) {
-	h := echo.ComposeHandler(handler, middleware...)
+	name := handlerName(handler)
+	r.add(method, path, func(c echo.Context) error {
+		h := echo.ComposeHandler(handler, middleware...)
+		return h(c)
+	})
+	route := &Route{
+		Method: method,
+		Path:   path,
+		Name:   name,
+	}
+	r.routes[method+path] = route
+}
 
+func (r *Router) add(method, path string, h echo.HandlerFunc) {
 	// Validate path
 	if path == "" {
 		path = "/"
@@ -288,6 +301,41 @@ func (r *Router) Add(method, path string, handler echo.HandlerFunc, middleware .
 	}
 
 	r.insert(method, path, h, staticKind, ppath, pnames)
+}
+
+// URI generates a URI from handler.
+func (r *Router) URI(handler echo.HandlerFunc, params ...interface{}) string {
+	name := handlerName(handler)
+	return r.Reverse(name, params...)
+}
+
+// URL is an alias for `URI` function.
+func (r *Router) URL(h echo.HandlerFunc, params ...interface{}) string {
+	return r.URI(h, params...)
+}
+
+// Reverse generates an URL from route name and provided parameters.
+func (r *Router) Reverse(name string, params ...interface{}) string {
+	uri := new(bytes.Buffer)
+	ln := len(params)
+	n := 0
+	for _, r := range r.routes {
+		if r.Name == name {
+			for i, l := 0, len(r.Path); i < l; i++ {
+				if (r.Path[i] == ':' || r.Path[i] == '*') && n < ln {
+					for ; i < l && r.Path[i] != '/'; i++ {
+					}
+					uri.WriteString(fmt.Sprintf("%v", params[n]))
+					n++
+				}
+				if i < l {
+					uri.WriteByte(r.Path[i])
+				}
+			}
+			break
+		}
+	}
+	return uri.String()
 }
 
 // Routes return echo handlerFunc
