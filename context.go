@@ -194,7 +194,6 @@ type (
 		pnames   []string
 		pvalues  []string
 		query    url.Values
-		handler  HandlerFunc
 		store    Map
 		echo     *Echo
 		logger   Logger
@@ -616,7 +615,6 @@ func (c *context) Reset(r *http.Request, w http.ResponseWriter) {
 	c.request = r
 	c.response.reset(w)
 	c.query = nil
-	c.handler = NotFoundHandler
 	c.store = nil
 	c.path = ""
 	c.pnames = nil
