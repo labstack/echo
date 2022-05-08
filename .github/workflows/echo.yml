@@ -55,6 +55,7 @@ jobs:
         uses: codecov/codecov-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage.coverprofile
           fail_ci_if_error: false
   benchmark:
     needs: test
