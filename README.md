@@ -4,8 +4,7 @@
 [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://pkg.go.dev/github.com/partialize/echo-slim/v4)
 [![Go Report Card](https://goreportcard.com/badge/github.com/partialize/echo-slim?style=flat-square)](https://goreportcard.com/report/github.com/partialize/echo-slim)
 [![Build Status](http://img.shields.io/travis/labstack/echo.svg?style=flat-square)](https://travis-ci.org/labstack/echo)
-[![Codecov](https://codecov.io/gh/siyual-park/echo-slim/branch/main/graph/badge.svg?token=imNan6S5d6)](https://codecov.io/gh/siyual-park/echo-slim)
-[![Forum](https://img.shields.io/badge/community-forum-00afd1.svg?style=flat-square)](https://github.com/partialize/echo-slim/discussions)
+[![Codecov](https://codecov.io/gh/partialize/echo-slim/branch/master/graph/badge.svg?token=ahog2e7EIa)](https://codecov.io/gh/partialize/echo-slim)
 [![Twitter](https://img.shields.io/badge/twitter-@labstack-55acee.svg?style=flat-square)](https://twitter.com/labstack)
 [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/labstack/echo/master/LICENSE)
 
