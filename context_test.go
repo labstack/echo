@@ -907,6 +907,30 @@ func TestContext_RealIP(t *testing.T) {
 		{
 			&context{
 				request: &http.Request{
+					Header: http.Header{HeaderXForwardedFor: []string{"[2001:db8:85a3:8d3:1319:8a2e:370:7348], 2001:db8::1, "}},
+				},
+			},
+			"2001:db8:85a3:8d3:1319:8a2e:370:7348",
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderXForwardedFor: []string{"[2001:db8:85a3:8d3:1319:8a2e:370:7348],[2001:db8::1]"}},
+				},
+			},
+			"2001:db8:85a3:8d3:1319:8a2e:370:7348",
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderXForwardedFor: []string{"2001:db8:85a3:8d3:1319:8a2e:370:7348"}},
+				},
+			},
+			"2001:db8:85a3:8d3:1319:8a2e:370:7348",
+		},
+		{
+			&context{
+				request: &http.Request{
 					Header: http.Header{
 						"X-Real-Ip": []string{"192.168.0.1"},
 					},

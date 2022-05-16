@@ -248,6 +248,8 @@ func ExtractIPFromXFFHeader(options ...TrustOption) IPExtractor {
 		}
 		ips := append(strings.Split(strings.Join(xffs, ","), ","), directIP)
 		for i := len(ips) - 1; i >= 0; i-- {
+			ips[i] = strings.ReplaceAll(ips[i], "[", "")
+			ips[i] = strings.ReplaceAll(ips[i], "]", "")
 			ip := net.ParseIP(strings.TrimSpace(ips[i]))
 			if ip == nil {
 				// Unable to parse IP; cannot trust entire records
