@@ -362,40 +362,38 @@ func TestTimeoutWithFullEchoStack(t *testing.T) {
 		},
 	}
 
-	e := echo.New()
-
-	buf := new(bytes.Buffer)
-	e.Logger.SetOutput(buf)
-
-	// NOTE: timeout middleware is first as it changes Response.Writer and causes data race for logger middleware if it is not first
-	// FIXME: I have no idea how to fix this without adding mutexes.
-	e.Use(TimeoutWithConfig(TimeoutConfig{
-		Timeout: 15 * time.Millisecond,
-	}))
-	e.Use(Logger())
-	e.Use(Recover())
-
-	e.GET("/", func(c echo.Context) error {
-		var delay time.Duration
-		if err := echo.QueryParamsBinder(c).Duration("delay", &delay).BindError(); err != nil {
-			return err
-		}
-		if delay > 0 {
-			time.Sleep(delay)
-		}
-		return c.JSON(http.StatusTeapot, map[string]string{"message": "OK"})
-	})
-
-	server, addr, err := startServer(e)
-	if err != nil {
-		assert.NoError(t, err)
-		return
-	}
-	defer server.Close()
-
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			buf.Reset() // this is design this can not be run in parallel
+			e := echo.New()
+
+			buf := new(bytes.Buffer)
+			e.Logger.SetOutput(buf)
+
+			// NOTE: timeout middleware is first as it changes Response.Writer and causes data race for logger middleware if it is not first
+			// FIXME: I have no idea how to fix this without adding mutexes.
+			e.Use(TimeoutWithConfig(TimeoutConfig{
+				Timeout: 15 * time.Millisecond,
+			}))
+			e.Use(Logger())
+			e.Use(Recover())
+
+			e.GET("/", func(c echo.Context) error {
+				var delay time.Duration
+				if err := echo.QueryParamsBinder(c).Duration("delay", &delay).BindError(); err != nil {
+					return err
+				}
+				if delay > 0 {
+					time.Sleep(delay)
+				}
+				return c.JSON(http.StatusTeapot, map[string]string{"message": "OK"})
+			})
+
+			server, addr, err := startServer(e)
+			if err != nil {
+				assert.NoError(t, err)
+				return
+			}
+			defer server.Close()
 
 			res, err := http.Get(fmt.Sprintf("http://%v%v", addr, tc.whenPath))
 			if err != nil {
