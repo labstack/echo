@@ -97,7 +97,6 @@ func (responseWriterErr) Write([]byte) (int, error) {
 }
 
 func (responseWriterErr) WriteHeader(statusCode int) {
-
 }
 
 func TestContext(t *testing.T) {
@@ -938,6 +937,17 @@ func TestContext_RealIP(t *testing.T) {
 			},
 			"192.168.0.1",
 		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{
+						"X-Real-Ip": []string{"[2001:db8::1]"},
+					},
+				},
+			},
+			"2001:db8::1",
+		},
+
 		{
 			&context{
 				request: &http.Request{
