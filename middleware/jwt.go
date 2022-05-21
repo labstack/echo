@@ -64,7 +64,7 @@ type JWTConfig struct {
 	// ParseTokenFunc defines a user-defined function that parses token from given auth. Returns an error when token
 	// parsing fails or parsed token is invalid.
 	// Defaults to implementation using `github.com/golang-jwt/jwt` as JWT implementation library
-	ParseTokenFunc func(c echo.Context, auth string) (interface{}, error)
+	ParseTokenFunc func(c echo.Context, auth string, source ExtractorSource) (interface{}, error)
 }
 
 // JWTSuccessHandler defines a function which is executed for a valid token.
@@ -101,7 +101,7 @@ var DefaultJWTConfig = JWTConfig{
 // For missing token, it returns "400 - Bad Request" error.
 //
 // See: https://jwt.io/introduction
-func JWT(parseTokenFunc func(c echo.Context, auth string) (interface{}, error)) echo.MiddlewareFunc {
+func JWT(parseTokenFunc func(c echo.Context, auth string, source ExtractorSource) (interface{}, error)) echo.MiddlewareFunc {
 	c := DefaultJWTConfig
 	c.ParseTokenFunc = parseTokenFunc
 	return JWTWithConfig(c)
@@ -152,13 +152,13 @@ func (config JWTConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			var lastExtractorErr error
 			var lastTokenErr error
 			for _, extractor := range extractors {
-				auths, extrErr := extractor(c)
+				auths, source, extrErr := extractor(c)
 				if extrErr != nil {
 					lastExtractorErr = extrErr
 					continue
 				}
 				for _, auth := range auths {
-					token, err := config.ParseTokenFunc(c, auth)
+					token, err := config.ParseTokenFunc(c, auth, source)
 					if err != nil {
 						lastTokenErr = err
 						continue

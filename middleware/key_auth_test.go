@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func testKeyValidator(c echo.Context, key string) (bool, error) {
+func testKeyValidator(c echo.Context, key string, source ExtractorSource) (bool, error) {
 	switch key {
 	case "valid-key":
 		return true, nil
@@ -218,6 +218,25 @@ func TestKeyAuthWithConfig(t *testing.T) {
 			expectHandlerCalled: false,
 			expectError:         "code=401, message=Unauthorized, internal=some user defined error",
 		},
+		{
+			name: "ok, custom validator checks source",
+			givenRequest: func(req *http.Request) {
+				q := req.URL.Query()
+				q.Add("key", "valid-key")
+				req.URL.RawQuery = q.Encode()
+			},
+			whenConfig: func(conf *KeyAuthConfig) {
+				conf.KeyLookup = "query:key"
+				conf.Validator = func(c echo.Context, key string, source ExtractorSource) (bool, error) {
+					if source == ExtractorSourceQuery {
+						return true, nil
+					}
+					return false, errors.New("invalid source")
+				}
+
+			},
+			expectHandlerCalled: true,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -267,7 +286,7 @@ func TestKeyAuthWithConfig_errors(t *testing.T) {
 		{
 			name: "ok, no error",
 			whenConfig: KeyAuthConfig{
-				Validator: func(c echo.Context, key string) (bool, error) {
+				Validator: func(c echo.Context, key string, source ExtractorSource) (bool, error) {
 					return false, nil
 				},
 			},
@@ -283,7 +302,7 @@ func TestKeyAuthWithConfig_errors(t *testing.T) {
 			name: "ok, extractor source can not be split",
 			whenConfig: KeyAuthConfig{
 				KeyLookup: "nope",
-				Validator: func(c echo.Context, key string) (bool, error) {
+				Validator: func(c echo.Context, key string, source ExtractorSource) (bool, error) {
 					return false, nil
 				},
 			},
@@ -293,7 +312,7 @@ func TestKeyAuthWithConfig_errors(t *testing.T) {
 			name: "ok, no extractors",
 			whenConfig: KeyAuthConfig{
 				KeyLookup: "nope:nope",
-				Validator: func(c echo.Context, key string) (bool, error) {
+				Validator: func(c echo.Context, key string, source ExtractorSource) (bool, error) {
 					return false, nil
 				},
 			},

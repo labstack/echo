@@ -20,6 +20,7 @@ func TestCreateExtractors(t *testing.T) {
 		givenPathParams   echo.PathParams
 		whenLoopups       string
 		expectValues      []string
+		expectSource      ExtractorSource
 		expectCreateError string
 		expectError       string
 	}{
@@ -32,6 +33,7 @@ func TestCreateExtractors(t *testing.T) {
 			},
 			whenLoopups:  "header:Authorization:Bearer ",
 			expectValues: []string{"token"},
+			expectSource: ExtractorSourceHeader,
 		},
 		{
 			name: "ok, form",
@@ -45,6 +47,7 @@ func TestCreateExtractors(t *testing.T) {
 			},
 			whenLoopups:  "form:name",
 			expectValues: []string{"Jon Snow"},
+			expectSource: ExtractorSourceForm,
 		},
 		{
 			name: "ok, cookie",
@@ -55,6 +58,7 @@ func TestCreateExtractors(t *testing.T) {
 			},
 			whenLoopups:  "cookie:_csrf",
 			expectValues: []string{"token"},
+			expectSource: ExtractorSourceCookie,
 		},
 		{
 			name: "ok, param",
@@ -63,6 +67,7 @@ func TestCreateExtractors(t *testing.T) {
 			},
 			whenLoopups:  "param:id",
 			expectValues: []string{"123"},
+			expectSource: ExtractorSourcePathParam,
 		},
 		{
 			name: "ok, query",
@@ -72,6 +77,7 @@ func TestCreateExtractors(t *testing.T) {
 			},
 			whenLoopups:  "query:id",
 			expectValues: []string{"999"},
+			expectSource: ExtractorSourceQuery,
 		},
 		{
 			name:              "nok, invalid lookup",
@@ -102,8 +108,9 @@ func TestCreateExtractors(t *testing.T) {
 			assert.NoError(t, err)
 
 			for _, e := range extractors {
-				values, eErr := e(c)
+				values, source, eErr := e(c)
 				assert.Equal(t, tc.expectValues, values)
+				assert.Equal(t, tc.expectSource, source)
 				if tc.expectError != "" {
 					assert.EqualError(t, eErr, tc.expectError)
 					return
@@ -228,8 +235,9 @@ func TestValuesFromHeader(t *testing.T) {
 
 			extractor := valuesFromHeader(tc.whenName, tc.whenValuePrefix)
 
-			values, err := extractor(c)
+			values, source, err := extractor(c)
 			assert.Equal(t, tc.expectValues, values)
+			assert.Equal(t, ExtractorSourceHeader, source)
 			if tc.expectError != "" {
 				assert.EqualError(t, err, tc.expectError)
 			} else {
@@ -289,8 +297,9 @@ func TestValuesFromQuery(t *testing.T) {
 
 			extractor := valuesFromQuery(tc.whenName)
 
-			values, err := extractor(c)
+			values, source, err := extractor(c)
 			assert.Equal(t, tc.expectValues, values)
+			assert.Equal(t, ExtractorSourceQuery, source)
 			if tc.expectError != "" {
 				assert.EqualError(t, err, tc.expectError)
 			} else {
@@ -368,8 +377,9 @@ func TestValuesFromParam(t *testing.T) {
 
 			extractor := valuesFromParam(tc.whenName)
 
-			values, err := extractor(c)
+			values, source, err := extractor(c)
 			assert.Equal(t, tc.expectValues, values)
+			assert.Equal(t, ExtractorSourcePathParam, source)
 			if tc.expectError != "" {
 				assert.EqualError(t, err, tc.expectError)
 			} else {
@@ -448,8 +458,9 @@ func TestValuesFromCookie(t *testing.T) {
 
 			extractor := valuesFromCookie(tc.whenName)
 
-			values, err := extractor(c)
+			values, source, err := extractor(c)
 			assert.Equal(t, tc.expectValues, values)
+			assert.Equal(t, ExtractorSourceCookie, source)
 			if tc.expectError != "" {
 				assert.EqualError(t, err, tc.expectError)
 			} else {
@@ -578,8 +589,9 @@ func TestValuesFromForm(t *testing.T) {
 
 			extractor := valuesFromForm(tc.whenName)
 
-			values, err := extractor(c)
+			values, source, err := extractor(c)
 			assert.Equal(t, tc.expectValues, values)
+			assert.Equal(t, ExtractorSourceForm, source)
 			if tc.expectError != "" {
 				assert.EqualError(t, err, tc.expectError)
 			} else {

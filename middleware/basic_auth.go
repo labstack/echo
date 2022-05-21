@@ -74,7 +74,7 @@ func (config BasicAuthConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 
 				b, errDecode := base64.StdEncoding.DecodeString(auth[l+1:])
 				if errDecode != nil {
-					lastError = fmt.Errorf("invalid basic auth value: %w", errDecode)
+					lastError = echo.ErrUnauthorized.WithInternal(fmt.Errorf("invalid basic auth value: %w", errDecode))
 					continue
 				}
 				idx := bytes.IndexByte(b, ':')
