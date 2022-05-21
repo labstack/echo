@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -360,8 +361,8 @@ func TestTimeoutWithFullEchoStack(t *testing.T) {
 			expectStatusCode:        http.StatusServiceUnavailable,
 			expectLogNotContains: []string{
 				"echo:http: superfluous response.WriteHeader call from",
-				"{", // means that logger was not called.
 			},
+			expectLogContains: []string{"http: Handler timeout"},
 		},
 	}
 
@@ -402,6 +403,10 @@ func TestTimeoutWithFullEchoStack(t *testing.T) {
 			}
 			if tc.whenForceHandlerTimeout {
 				wg.Done()
+				// shutdown waits for server to shutdown. this way we wait logger mw to be executed
+				ctx, cancel := context.WithTimeout(context.Background(), 150*time.Millisecond)
+				defer cancel()
+				server.Shutdown(ctx)
 			}
 
 			assert.Equal(t, tc.expectStatusCode, res.StatusCode)
