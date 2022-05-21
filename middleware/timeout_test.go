@@ -328,12 +328,13 @@ func TestTimeoutCanHandleContextDeadlineOnNextHandler(t *testing.T) {
 func TestTimeoutWithFullEchoStack(t *testing.T) {
 	// test timeout with full http server stack running, do see what http.Server.ErrorLog contains
 	var testCases = []struct {
-		name                 string
-		whenPath             string
-		expectStatusCode     int
-		expectResponse       string
-		expectLogContains    []string
-		expectLogNotContains []string
+		name                    string
+		whenPath                string
+		whenForceHandlerTimeout bool
+		expectStatusCode        int
+		expectResponse          string
+		expectLogContains       []string
+		expectLogNotContains    []string
 	}{
 		{
 			name:                 "404 - write response in global error handler",
@@ -352,10 +353,11 @@ func TestTimeoutWithFullEchoStack(t *testing.T) {
 			expectLogContains:    []string{`"status":418,"error":"",`},
 		},
 		{
-			name:             "503 - handler timeouts, write response in timeout middleware",
-			whenPath:         "/?delay=50ms",
-			expectResponse:   "<html><head><title>Timeout</title></head><body><h1>Timeout</h1></body></html>",
-			expectStatusCode: http.StatusServiceUnavailable,
+			name:                    "503 - handler timeouts, write response in timeout middleware",
+			whenForceHandlerTimeout: true,
+			whenPath:                "/",
+			expectResponse:          "<html><head><title>Timeout</title></head><body><h1>Timeout</h1></body></html>",
+			expectStatusCode:        http.StatusServiceUnavailable,
 			expectLogNotContains: []string{
 				"echo:http: superfluous response.WriteHeader call from",
 				"{", // means that logger was not called.
@@ -371,21 +373,18 @@ func TestTimeoutWithFullEchoStack(t *testing.T) {
 			e.Logger.SetOutput(buf)
 
 			// NOTE: timeout middleware is first as it changes Response.Writer and causes data race for logger middleware if it is not first
-			// FIXME: I have no idea how to fix this without adding mutexes.
 			e.Use(TimeoutWithConfig(TimeoutConfig{
 				Timeout: 15 * time.Millisecond,
 			}))
 			e.Use(Logger())
 			e.Use(Recover())
 
+			wg := sync.WaitGroup{}
+			if tc.whenForceHandlerTimeout {
+				wg.Add(1) // make `wg.Wait()` block until we release it with `wg.Done()`
+			}
 			e.GET("/", func(c echo.Context) error {
-				var delay time.Duration
-				if err := echo.QueryParamsBinder(c).Duration("delay", &delay).BindError(); err != nil {
-					return err
-				}
-				if delay > 0 {
-					time.Sleep(delay)
-				}
+				wg.Wait()
 				return c.JSON(http.StatusTeapot, map[string]string{"message": "OK"})
 			})
 
@@ -401,6 +400,9 @@ func TestTimeoutWithFullEchoStack(t *testing.T) {
 				assert.NoError(t, err)
 				return
 			}
+			if tc.whenForceHandlerTimeout {
+				wg.Done()
+			}
 
 			assert.Equal(t, tc.expectStatusCode, res.StatusCode)
 			if body, err := ioutil.ReadAll(res.Body); err == nil {
@@ -411,10 +413,10 @@ func TestTimeoutWithFullEchoStack(t *testing.T) {
 
 			logged := buf.String()
 			for _, subStr := range tc.expectLogContains {
-				assert.True(t, strings.Contains(logged, subStr))
+				assert.True(t, strings.Contains(logged, subStr), "expected logs to contain: %v, logged: '%v'", subStr, logged)
 			}
 			for _, subStr := range tc.expectLogNotContains {
-				assert.False(t, strings.Contains(logged, subStr))
+				assert.False(t, strings.Contains(logged, subStr), "expected logs not to contain: %v, logged: '%v'", subStr, logged)
 			}
 		})
 	}
