@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -366,7 +367,7 @@ func TestTimeoutWithFullEchoStack(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			e := echo.New()
 
-			buf := new(bytes.Buffer)
+			buf := new(coroutineSafeBuffer)
 			e.Logger.SetOutput(buf)
 
 			// NOTE: timeout middleware is first as it changes Response.Writer and causes data race for logger middleware if it is not first
@@ -417,6 +418,36 @@ func TestTimeoutWithFullEchoStack(t *testing.T) {
 			}
 		})
 	}
+}
+
+// as we are spawning multiple coroutines - one for http server, one for request, one by timeout middleware, one by testcase
+// we are accessing logger (writing/reading) from multiple coroutines and causing dataraces (most often reported on macos)
+// we could be writing to logger in logger middleware and at the same time our tests is getting logger buffer contents
+// in testcase coroutine.
+type coroutineSafeBuffer struct {
+	bytes.Buffer
+	lock sync.RWMutex
+}
+
+func (b *coroutineSafeBuffer) Write(p []byte) (n int, err error) {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+
+	return b.Buffer.Write(p)
+}
+
+func (b *coroutineSafeBuffer) Bytes() []byte {
+	b.lock.RLock()
+	defer b.lock.RUnlock()
+
+	return b.Buffer.Bytes()
+}
+
+func (b *coroutineSafeBuffer) String() string {
+	b.lock.RLock()
+	defer b.lock.RUnlock()
+
+	return b.Buffer.String()
 }
 
 func startServer(e *echo.Echo) (*http.Server, string, error) {
