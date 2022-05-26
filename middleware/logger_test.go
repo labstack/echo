@@ -213,37 +213,64 @@ func TestLoggerCustomContext(t *testing.T) {
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
-	cases := map[string]bool{
-		userID:                                 true,
-		"apagano-param":                        true, // ↓ check whether existing values are broken
-		"apagano-form":                         true,
-		"AAA-CUSTOM-VALUE":                     true,
-		"BBB-CUSTOM-VALUE":                     false,
-		"secret-form":                          false,
-		"hexvalue":                             false,
-		"GET":                                  true,
-		"127.0.0.1":                            true,
-		"\"path\":\"/\"":                       true,
-		"\"uri\":\"/\"":                        true,
-		"\"status\":200":                       true,
-		"\"bytes_in\":0":                       true,
-		"google.com":                           true,
-		"echo-tests-agent":                     true,
-		"6ba7b810-9dad-11d1-80b4-00c04fd430c8": true,
-		"ac08034cd216a647fc2eb62f2bcf7b810":    true,
+	cases := map[string]string{
+		"user_id":    userID,
+		"us":         "apagano-param", // ↓ check whether existing values are broken
+		"cf":         "apagano-form",
+		"ch":         "AAA-CUSTOM-VALUE",
+		"method":     "GET",
+		"remote_ip":  "127.0.0.1",
+		"path":       "/",
+		"uri":        "/",
+		"referer":    "google.com",
+		"user_agent": "echo-tests-agent",
+		"id":         "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+		"session":    "ac08034cd216a647fc2eb62f2bcf7b810",
 	}
+	var obj map[string]interface{}
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &obj))
 
-	for token, present := range cases {
-		assert.True(t, strings.Contains(buf.String(), token) == present, "Case: "+token)
+	for key, value := range cases {
+		assert.Equal(t, value, obj[key])
 	}
 
 	t.Run("overwite existing tag", func(t *testing.T) {
 		customContextMap["User-Agent"] = "echo-overwritten-agent" // overwrite
-		cases["echo-invalid-agent"] = false
-		var obj interface{}
 		require.NoError(t, json.Unmarshal(buf.Bytes(), &obj))
-		assert.Equal(t, "echo-tests-agent", obj.(map[string]interface{})["user_agent"]) // existing tag is never overwritten
+		assert.Equal(t, "echo-tests-agent", obj["user_agent"]) // existing tag is never overwritten
 	})
+}
+
+func TestLoggerCustomOverwrittenContext(t *testing.T) {
+	customContextMap := map[string]string{}
+	customContextMap["User-Agent"] = "echo-overwritten-agent" // overwrite
+	buf := new(bytes.Buffer)
+	e := echo.New()
+	e.Use(LoggerWithConfig(LoggerConfig{
+		Format: `{"time":"${time_rfc3399_nano}","id":"${id}","user_id":"${id_custom}","remote_ip":"${remote_ip}","host":"${host}","user_agent":"${user_agent}",` +
+			`"method":"${method}","uri":"${uri}","status":${status}, "latency":${latency},` +
+			`"latency_human":"${latency_human}","bytes_in":${bytes_in}, "path":"${path}", "referer":"${referer}",` +
+			`"bytes_out":${bytes_out},"ch":"${header:X-Custom-Header}",` +
+			`"us":"${query:username}", "cf":"${form:username}", "session":"${cookie:session}"}` + "\n",
+		CustomContextMap: customContextMap,
+		Output:           buf,
+	}))
+
+	e.GET("/", func(c echo.Context) error {
+		return c.String(http.StatusOK, "custom context test")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/?username=apagano-param&password=secret", nil)
+	req.Header.Add("User-Agent", "echo-tests-agent")
+	req.RequestURI = "/"
+
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	var obj map[string]interface{}
+
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &obj))
+	assert.Equal(t, "echo-tests-agent", obj["user_agent"]) // existing tag is never overwritten
 }
 
 func BenchmarkLoggerWithConfig_withoutMapFields(b *testing.B) {
