@@ -58,6 +58,13 @@ func TestBasicAuth(t *testing.T) {
 	assert.Equal(http.StatusUnauthorized, he.Code)
 	assert.Equal(basic+` realm="someRealm"`, res.Header().Get(echo.HeaderWWWAuthenticate))
 
+	// Invalid base64 string
+	auth = basic + " invalidString"
+	req.Header.Set(echo.HeaderAuthorization, auth)
+	he = h(c).(*echo.HTTPError)
+	assert.Equal(http.StatusUnauthorized, he.Code)
+	assert.Equal(basic+` realm="someRealm"`, res.Header().Get(echo.HeaderWWWAuthenticate))
+
 	// Missing Authorization header
 	req.Header.Del(echo.HeaderAuthorization)
 	he = h(c).(*echo.HTTPError)
