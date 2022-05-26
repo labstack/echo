@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"strconv"
 	"strings"
+	"net/http"
 
 	"github.com/labstack/echo/v4"
 )
@@ -76,7 +77,11 @@ func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 			if len(auth) > l+1 && strings.EqualFold(auth[:l], basic) {
 				// Invalid base64 shouldn't be treated as error
 				// instead should be treated as invalid client input
-				b, _ := base64.StdEncoding.DecodeString(auth[l+1:])
+				b, err := base64.StdEncoding.DecodeString(auth[l+1:])
+				if err != nil {
+					return echo.NewHTTPError(http.StatusBadRequest).SetInternal(err)
+				}
+
 				cred := string(b)
 				for i := 0; i < len(cred); i++ {
 					if cred[i] == ':' {
