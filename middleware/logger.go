@@ -54,6 +54,9 @@ type (
 		// Optional. Default value DefaultLoggerConfig.CustomTimeFormat.
 		CustomTimeFormat string `yaml:"custom_time_format"`
 
+		// Optional. Default vaule null.
+		CustomContextMap map[string]string
+
 		// Output is a writer where logs in JSON format are written.
 		// Optional. Default value os.Stdout.
 		Output io.Writer
@@ -205,6 +208,12 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 						if err == nil {
 							return buf.Write([]byte(cookie.Value))
 						}
+					}
+				}
+				if contextKey, ok := config.CustomContextMap[tag]; ok {
+					customContext, valid := c.Get(contextKey).(string)
+					if valid {
+						return buf.WriteString(customContext)
 					}
 				}
 				return 0, nil
