@@ -35,13 +35,11 @@ const (
 	gzipScheme = "gzip"
 )
 
-var (
-	// DefaultGzipConfig is the default Gzip middleware config.
-	DefaultGzipConfig = GzipConfig{
-		Skipper: DefaultSkipper,
-		Level:   -1,
-	}
-)
+// DefaultGzipConfig is the default Gzip middleware config.
+var DefaultGzipConfig = GzipConfig{
+	Skipper: DefaultSkipper,
+	Level:   -1,
+}
 
 // Gzip returns a middleware which compresses HTTP response using gzip compression
 // scheme.
@@ -81,6 +79,8 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 				w.Reset(rw)
 				grw := &gzipResponseWriter{Writer: w, ResponseWriter: rw}
 				defer func() {
+					defer pool.Put(w)
+
 					if !grw.wroteBody {
 						if res.Header().Get(echo.HeaderContentEncoding) == gzipScheme {
 							res.Header().Del(echo.HeaderContentEncoding)
@@ -92,7 +92,6 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 						w.Reset(ioutil.Discard)
 					}
 					w.Close()
-					pool.Put(w)
 				}()
 				res.Writer = grw
 			}
