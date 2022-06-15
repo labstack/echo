@@ -10,6 +10,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type (
+	benchmarkRouterTestCase struct {
+		whenMethod  string
+		whenURL     string
+		expectError error
+	}
+)
+
 var (
 	staticRoutes = []*Route{
 		{"GET", "/", ""},
@@ -2377,7 +2385,7 @@ func TestRouterHandleMethodOptions(t *testing.T) {
 	}
 }
 
-func benchmarkRouterRoutes(b *testing.B, routes []*Route, routesToFind []*Route) {
+func benchmarkRouterRoutes(b *testing.B, routes []*Route, testCases []*benchmarkRouterTestCase) {
 	e := echo.New()
 	r := NewRouter()
 	b.ReportAllocs()
@@ -2392,48 +2400,65 @@ func benchmarkRouterRoutes(b *testing.B, routes []*Route, routesToFind []*Route)
 
 	// find routes
 	for i := 0; i < b.N; i++ {
-		for _, route := range routesToFind {
-			req := httptest.NewRequest(route.Method, route.Path, nil)
+		for _, tc := range testCases {
+			req := httptest.NewRequest(tc.whenMethod, tc.whenURL, nil)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 			err := r.Routes()(passHandler)(c)
-			assert.NoError(b, err)
+			if tc.expectError != nil {
+				assert.Equal(b, tc.expectError, err)
+			} else {
+				assert.NoError(b, err)
+			}
 		}
 	}
 }
 
+func changeToBenchmarkRouterTestCase(routes []*Route, err error) []*benchmarkRouterTestCase {
+	var testCases []*benchmarkRouterTestCase
+	for _, route := range routes {
+		testCases = append(testCases, &benchmarkRouterTestCase{
+			whenMethod:  route.Method,
+			whenURL:     route.Path,
+			expectError: err,
+		})
+	}
+
+	return testCases
+}
+
 func BenchmarkRouterStaticRoutes(b *testing.B) {
-	benchmarkRouterRoutes(b, staticRoutes, staticRoutes)
+	benchmarkRouterRoutes(b, staticRoutes, changeToBenchmarkRouterTestCase(staticRoutes, nil))
 }
 
 func BenchmarkRouterStaticRoutesMisses(b *testing.B) {
-	benchmarkRouterRoutes(b, staticRoutes, missesAPI)
+	benchmarkRouterRoutes(b, staticRoutes, changeToBenchmarkRouterTestCase(missesAPI, echo.ErrNotFound))
 }
 
 func BenchmarkRouterGitHubAPI(b *testing.B) {
-	benchmarkRouterRoutes(b, gitHubAPI, gitHubAPI)
+	benchmarkRouterRoutes(b, gitHubAPI, changeToBenchmarkRouterTestCase(gitHubAPI, nil))
 }
 
 func BenchmarkRouterGitHubAPIMisses(b *testing.B) {
-	benchmarkRouterRoutes(b, gitHubAPI, missesAPI)
+	benchmarkRouterRoutes(b, gitHubAPI, changeToBenchmarkRouterTestCase(missesAPI, echo.ErrNotFound))
 }
 
 func BenchmarkRouterParseAPI(b *testing.B) {
-	benchmarkRouterRoutes(b, parseAPI, parseAPI)
+	benchmarkRouterRoutes(b, parseAPI, changeToBenchmarkRouterTestCase(parseAPI, nil))
 }
 
 func BenchmarkRouterParseAPIMisses(b *testing.B) {
-	benchmarkRouterRoutes(b, parseAPI, missesAPI)
+	benchmarkRouterRoutes(b, parseAPI, changeToBenchmarkRouterTestCase(missesAPI, echo.ErrNotFound))
 }
 
 func BenchmarkRouterGooglePlusAPI(b *testing.B) {
-	benchmarkRouterRoutes(b, googlePlusAPI, googlePlusAPI)
+	benchmarkRouterRoutes(b, googlePlusAPI, changeToBenchmarkRouterTestCase(googlePlusAPI, nil))
 }
 
 func BenchmarkRouterGooglePlusAPIMisses(b *testing.B) {
-	benchmarkRouterRoutes(b, googlePlusAPI, missesAPI)
+	benchmarkRouterRoutes(b, googlePlusAPI, changeToBenchmarkRouterTestCase(missesAPI, echo.ErrNotFound))
 }
 
 func BenchmarkRouterParamsAndAnyAPI(b *testing.B) {
-	benchmarkRouterRoutes(b, paramAndAnyAPI, paramAndAnyAPIToFind)
+	benchmarkRouterRoutes(b, paramAndAnyAPI, changeToBenchmarkRouterTestCase(paramAndAnyAPIToFind, nil))
 }
