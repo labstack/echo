@@ -2,10 +2,9 @@ package middleware
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
-	"github.com/partialize/echo-slim/v4"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"log"
 	"net"
@@ -14,8 +13,12 @@ import (
 	"net/url"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 	"time"
+
+	"github.com/partialize/echo-slim/v4"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestTimeoutSkipper(t *testing.T) {
@@ -329,12 +332,13 @@ func TestTimeoutCanHandleContextDeadlineOnNextHandler(t *testing.T) {
 func TestTimeoutWithFullEchoStack(t *testing.T) {
 	// test timeout with full http server stack running, do see what http.Server.ErrorLog contains
 	var testCases = []struct {
-		name                 string
-		whenPath             string
-		expectStatusCode     int
-		expectResponse       string
-		expectLogContains    []string
-		expectLogNotContains []string
+		name                    string
+		whenPath                string
+		whenForceHandlerTimeout bool
+		expectStatusCode        int
+		expectResponse          string
+		expectLogContains       []string
+		expectLogNotContains    []string
 	}{
 		{
 			name:                 "404 - write response in global error handler",
@@ -353,58 +357,61 @@ func TestTimeoutWithFullEchoStack(t *testing.T) {
 			expectLogContains:    []string{`"status":418,"error":"",`},
 		},
 		{
-			name:             "503 - handler timeouts, write response in timeout middleware",
-			whenPath:         "/?delay=50ms",
-			expectResponse:   "<html><head><title>Timeout</title></head><body><h1>Timeout</h1></body></html>",
-			expectStatusCode: http.StatusServiceUnavailable,
+			name:                    "503 - handler timeouts, write response in timeout middleware",
+			whenForceHandlerTimeout: true,
+			whenPath:                "/",
+			expectResponse:          "<html><head><title>Timeout</title></head><body><h1>Timeout</h1></body></html>",
+			expectStatusCode:        http.StatusServiceUnavailable,
 			expectLogNotContains: []string{
 				"echo:http: superfluous response.WriteHeader call from",
-				"{", // means that logger was not called.
 			},
+			expectLogContains: []string{"http: Handler timeout"},
 		},
 	}
 
-	e := echo.New()
-	r := NewRouter()
-
-	buf := new(bytes.Buffer)
-	e.Logger.SetOutput(buf)
-
-	// NOTE: timeout middleware is first as it changes Response.Writer and causes data race for logger middleware if it is not first
-	// FIXME: I have no idea how to fix this without adding mutexes.
-	e.Use(TimeoutWithConfig(TimeoutConfig{
-		Timeout: 15 * time.Millisecond,
-	}))
-	e.Use(Logger())
-	e.Use(Recover())
-	e.Use(r.Routes())
-
-	r.GET("/", func(c echo.Context) error {
-		var delay time.Duration
-		if err := echo.QueryParamsBinder(c).Duration("delay", &delay).BindError(); err != nil {
-			return err
-		}
-		if delay > 0 {
-			time.Sleep(delay)
-		}
-		return c.JSON(http.StatusTeapot, map[string]string{"message": "OK"})
-	})
-
-	server, addr, err := startServer(e)
-	if err != nil {
-		assert.NoError(t, err)
-		return
-	}
-	defer server.Close()
-
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			buf.Reset() // this is design this can not be run in parallel
+			e := echo.New()
+			r := NewRouter()
+
+			buf := new(coroutineSafeBuffer)
+			e.Logger.SetOutput(buf)
+
+			// NOTE: timeout middleware is first as it changes Response.Writer and causes data race for logger middleware if it is not first
+			e.Use(TimeoutWithConfig(TimeoutConfig{
+				Timeout: 15 * time.Millisecond,
+			}))
+			e.Use(Logger())
+			e.Use(Recover())
+			e.Use(r.Routes())
+
+			wg := sync.WaitGroup{}
+			if tc.whenForceHandlerTimeout {
+				wg.Add(1) // make `wg.Wait()` block until we release it with `wg.Done()`
+			}
+			r.GET("/", func(c echo.Context) error {
+				wg.Wait()
+				return c.JSON(http.StatusTeapot, map[string]string{"message": "OK"})
+			})
+
+			server, addr, err := startServer(e)
+			if err != nil {
+				assert.NoError(t, err)
+				return
+			}
+			defer server.Close()
 
 			res, err := http.Get(fmt.Sprintf("http://%v%v", addr, tc.whenPath))
 			if err != nil {
 				assert.NoError(t, err)
 				return
+			}
+			if tc.whenForceHandlerTimeout {
+				wg.Done()
+				// shutdown waits for server to shutdown. this way we wait logger mw to be executed
+				ctx, cancel := context.WithTimeout(context.Background(), 150*time.Millisecond)
+				defer cancel()
+				server.Shutdown(ctx)
 			}
 
 			assert.Equal(t, tc.expectStatusCode, res.StatusCode)
@@ -416,13 +423,43 @@ func TestTimeoutWithFullEchoStack(t *testing.T) {
 
 			logged := buf.String()
 			for _, subStr := range tc.expectLogContains {
-				assert.True(t, strings.Contains(logged, subStr))
+				assert.True(t, strings.Contains(logged, subStr), "expected logs to contain: %v, logged: '%v'", subStr, logged)
 			}
 			for _, subStr := range tc.expectLogNotContains {
-				assert.False(t, strings.Contains(logged, subStr))
+				assert.False(t, strings.Contains(logged, subStr), "expected logs not to contain: %v, logged: '%v'", subStr, logged)
 			}
 		})
 	}
+}
+
+// as we are spawning multiple coroutines - one for http server, one for request, one by timeout middleware, one by testcase
+// we are accessing logger (writing/reading) from multiple coroutines and causing dataraces (most often reported on macos)
+// we could be writing to logger in logger middleware and at the same time our tests is getting logger buffer contents
+// in testcase coroutine.
+type coroutineSafeBuffer struct {
+	bytes.Buffer
+	lock sync.RWMutex
+}
+
+func (b *coroutineSafeBuffer) Write(p []byte) (n int, err error) {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+
+	return b.Buffer.Write(p)
+}
+
+func (b *coroutineSafeBuffer) Bytes() []byte {
+	b.lock.RLock()
+	defer b.lock.RUnlock()
+
+	return b.Buffer.Bytes()
+}
+
+func (b *coroutineSafeBuffer) String() string {
+	b.lock.RLock()
+	defer b.lock.RUnlock()
+
+	return b.Buffer.String()
 }
 
 func startServer(e *echo.Echo) (*http.Server, string, error) {

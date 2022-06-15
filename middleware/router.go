@@ -510,10 +510,8 @@ func (n *node) findStaticChild(l byte) *node {
 }
 
 func (n *node) findChildWithLabel(l byte) *node {
-	for _, c := range n.staticChildren {
-		if c.label == l {
-			return c
-		}
+	if c := n.findStaticChild(l); c != nil {
+		return c
 	}
 	if l == paramLabel {
 		return n.paramChild
