@@ -854,6 +854,61 @@ func TestMultiRouter(t *testing.T) {
 	assert.Equal(t, "/a/b/d", c.Get("path"))
 }
 
+func TestRouterRemove(t *testing.T) {
+	e := echo.New()
+	r := NewRouter()
+
+	r.Add(http.MethodGet, "/a/:b/c", handlerFunc)
+	r.Add(http.MethodGet, "/a/c/d", handlerFunc)
+	r.Add(http.MethodGet, "/a/c/df", handlerFunc) // Not Removed
+	r.Add(http.MethodGet, "/a/*/f", handlerFunc)
+	r.Add(http.MethodGet, "/a/*/d", handlerFunc)
+	r.Add(http.MethodGet, "/:e/c/f", handlerFunc)
+	r.Add(http.MethodGet, "/*", handlerFunc)
+
+	r.Remove(http.MethodGet, "/a/:b/c", handlerFunc)
+	r.Remove(http.MethodGet, "/a/c/d", handlerFunc)
+	r.Remove(http.MethodGet, "/a/*/f", handlerFunc)
+	r.Remove(http.MethodGet, "/a/*/d", handlerFunc)
+	r.Remove(http.MethodGet, "/:e/c/f", handlerFunc)
+	r.Remove(http.MethodGet, "/*", handlerFunc)
+
+	var testCases = []struct {
+		whenURL     string
+		expectError error
+	}{
+		{
+			whenURL:     "/a/c/df",
+			expectError: nil,
+		},
+		{
+			whenURL:     "/a/x/c",
+			expectError: echo.ErrNotFound,
+		},
+		{
+			whenURL:     "/a/x/f",
+			expectError: echo.ErrNotFound,
+		},
+		{
+			whenURL:     "/b/c/f",
+			expectError: echo.ErrNotFound,
+		},
+		{
+			whenURL:     "/b/c/c",
+			expectError: echo.ErrNotFound,
+		},
+	}
+
+	for _, tc := range testCases {
+		req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
+		c := e.NewContext(req, echo.NewResponse(httptest.NewRecorder(), e))
+
+		err := r.Routes()(passHandler)(c)
+
+		assert.Equal(t, tc.expectError, err)
+	}
+}
+
 // Issue #378
 func TestRouterParamWithSlash(t *testing.T) {
 	e := echo.New()
