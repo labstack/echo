@@ -23,6 +23,8 @@ type (
 		// Tags to construct the logger format.
 		//
 		// - time_unix
+		// - time_unix_milli
+		// - time_unix_micro
 		// - time_unix_nano
 		// - time_rfc3339
 		// - time_rfc3339_nano
@@ -126,6 +128,12 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 				switch tag {
 				case "time_unix":
 					return buf.WriteString(strconv.FormatInt(time.Now().Unix(), 10))
+				case "time_unix_milli":
+					// go 1.17 or later, it supports time#UnixMilli()
+					return buf.WriteString(strconv.FormatInt(time.Now().UnixNano()/1000000, 10))
+				case "time_unix_micro":
+					// go 1.17 or later, it supports time#UnixMicro()
+					return buf.WriteString(strconv.FormatInt(time.Now().UnixNano()/1000, 10))
 				case "time_unix_nano":
 					return buf.WriteString(strconv.FormatInt(time.Now().UnixNano(), 10))
 				case "time_rfc3339":
