@@ -2380,7 +2380,7 @@ func TestRouterHandleMethodOptions(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Equal(t, tc.expectStatus, rec.Code)
 			}
-			assert.Equal(t, tc.expectAllowHeader, c.Response().Header().Get("Allow"))
+			assert.Equal(t, tc.expectAllowHeader, c.Response().Header().Get(HeaderAllow))
 		})
 	}
 }

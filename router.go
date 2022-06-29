@@ -13,6 +13,9 @@ type (
 		routes map[string]*Route
 		echo   *Echo
 	}
+	methodContext struct {
+		handler HandlerFunc
+	}
 	node struct {
 		kind           kind
 		label          byte
@@ -32,17 +35,17 @@ type (
 	kind          uint8
 	children      []*node
 	methodHandler struct {
-		connect     HandlerFunc
-		delete      HandlerFunc
-		get         HandlerFunc
-		head        HandlerFunc
-		options     HandlerFunc
-		patch       HandlerFunc
-		post        HandlerFunc
-		propfind    HandlerFunc
-		put         HandlerFunc
-		trace       HandlerFunc
-		report      HandlerFunc
+		connect     *methodContext
+		delete      *methodContext
+		get         *methodContext
+		head        *methodContext
+		options     *methodContext
+		patch       *methodContext
+		post        *methodContext
+		propfind    *methodContext
+		put         *methodContext
+		trace       *methodContext
+		report      *methodContext
 		allowHeader string
 	}
 )
@@ -209,7 +212,9 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 			currentNode.prefix = search
 			if h != nil {
 				currentNode.kind = t
-				currentNode.addHandler(method, h)
+				currentNode.addHandler(method, &methodContext{
+					handler: h,
+				})
 				currentNode.ppath = ppath
 				currentNode.pnames = pnames
 			}
@@ -257,13 +262,17 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 			if lcpLen == searchLen {
 				// At parent node
 				currentNode.kind = t
-				currentNode.addHandler(method, h)
+				currentNode.addHandler(method, &methodContext{
+					handler: h,
+				})
 				currentNode.ppath = ppath
 				currentNode.pnames = pnames
 			} else {
 				// Create child node
 				n = newNode(t, search[lcpLen:], currentNode, nil, new(methodHandler), ppath, pnames, nil, nil)
-				n.addHandler(method, h)
+				n.addHandler(method, &methodContext{
+					handler: h,
+				})
 				// Only Static children could reach here
 				currentNode.addStaticChild(n)
 			}
@@ -278,7 +287,9 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 			}
 			// Create child node
 			n := newNode(t, search, currentNode, nil, new(methodHandler), ppath, pnames, nil, nil)
-			n.addHandler(method, h)
+			n.addHandler(method, &methodContext{
+				handler: h,
+			})
 			switch t {
 			case staticKind:
 				currentNode.addStaticChild(n)
@@ -291,7 +302,9 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 		} else {
 			// Node already exists
 			if h != nil {
-				currentNode.addHandler(method, h)
+				currentNode.addHandler(method, &methodContext{
+					handler: h,
+				})
 				currentNode.ppath = ppath
 				if len(currentNode.pnames) == 0 { // Issue #729
 					currentNode.pnames = pnames
@@ -345,7 +358,12 @@ func (n *node) findChildWithLabel(l byte) *node {
 	return nil
 }
 
-func (n *node) addHandler(method string, h HandlerFunc) {
+func (n *node) addHandler(method string, h *methodContext) {
+	if h.handler == nil {
+		n.isHandler = n.methodHandler.isHandler()
+		return
+	}
+
 	switch method {
 	case http.MethodConnect:
 		n.methodHandler.connect = h
@@ -372,14 +390,10 @@ func (n *node) addHandler(method string, h HandlerFunc) {
 	}
 
 	n.methodHandler.updateAllowHeader()
-	if h != nil {
-		n.isHandler = true
-	} else {
-		n.isHandler = n.methodHandler.isHandler()
-	}
+	n.isHandler = true
 }
 
-func (n *node) findHandler(method string) HandlerFunc {
+func (n *node) findHandler(method string) *methodContext {
 	switch method {
 	case http.MethodConnect:
 		return n.methodHandler.connect
@@ -530,7 +544,7 @@ func (r *Router) Find(method, path string, c Context) {
 				previousBestMatchNode = currentNode
 			}
 			if h := currentNode.findHandler(method); h != nil {
-				matchedHandler = h
+				matchedHandler = h.handler
 				break
 			}
 		}
@@ -581,7 +595,7 @@ func (r *Router) Find(method, path string, c Context) {
 				previousBestMatchNode = currentNode
 			}
 			if h := currentNode.findHandler(method); h != nil {
-				matchedHandler = h
+				matchedHandler = h.handler
 				break
 			}
 		}
