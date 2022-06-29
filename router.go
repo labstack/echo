@@ -14,6 +14,8 @@ type (
 		echo   *Echo
 	}
 	methodContext struct {
+		ppath   string
+		pnames  []string
 		handler HandlerFunc
 	}
 	node struct {
@@ -22,8 +24,6 @@ type (
 		prefix         string
 		parent         *node
 		staticChildren children
-		ppath          string
-		pnames         []string
 		methodHandler  *methodHandler
 		paramChild     *node
 		anyChild       *node
@@ -213,10 +213,10 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 			if h != nil {
 				currentNode.kind = t
 				currentNode.addHandler(method, &methodContext{
+					ppath:   ppath,
+					pnames:  pnames,
 					handler: h,
 				})
-				currentNode.ppath = ppath
-				currentNode.pnames = pnames
 			}
 			currentNode.isLeaf = currentNode.staticChildren == nil && currentNode.paramChild == nil && currentNode.anyChild == nil
 		} else if lcpLen < prefixLen {
@@ -227,8 +227,6 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 				currentNode,
 				currentNode.staticChildren,
 				currentNode.methodHandler,
-				currentNode.ppath,
-				currentNode.pnames,
 				currentNode.paramChild,
 				currentNode.anyChild,
 			)
@@ -249,8 +247,6 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 			currentNode.prefix = currentNode.prefix[:lcpLen]
 			currentNode.staticChildren = nil
 			currentNode.methodHandler = new(methodHandler)
-			currentNode.ppath = ""
-			currentNode.pnames = nil
 			currentNode.paramChild = nil
 			currentNode.anyChild = nil
 			currentNode.isLeaf = false
@@ -263,14 +259,16 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 				// At parent node
 				currentNode.kind = t
 				currentNode.addHandler(method, &methodContext{
+					ppath:   ppath,
+					pnames:  pnames,
 					handler: h,
 				})
-				currentNode.ppath = ppath
-				currentNode.pnames = pnames
 			} else {
 				// Create child node
-				n = newNode(t, search[lcpLen:], currentNode, nil, new(methodHandler), ppath, pnames, nil, nil)
+				n = newNode(t, search[lcpLen:], currentNode, nil, new(methodHandler), nil, nil)
 				n.addHandler(method, &methodContext{
+					ppath:   ppath,
+					pnames:  pnames,
 					handler: h,
 				})
 				// Only Static children could reach here
@@ -286,8 +284,10 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 				continue
 			}
 			// Create child node
-			n := newNode(t, search, currentNode, nil, new(methodHandler), ppath, pnames, nil, nil)
+			n := newNode(t, search, currentNode, nil, new(methodHandler), nil, nil)
 			n.addHandler(method, &methodContext{
+				ppath:   ppath,
+				pnames:  pnames,
 				handler: h,
 			})
 			switch t {
@@ -303,27 +303,23 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 			// Node already exists
 			if h != nil {
 				currentNode.addHandler(method, &methodContext{
+					ppath:   ppath,
+					pnames:  pnames,
 					handler: h,
 				})
-				currentNode.ppath = ppath
-				if len(currentNode.pnames) == 0 { // Issue #729
-					currentNode.pnames = pnames
-				}
 			}
 		}
 		return
 	}
 }
 
-func newNode(t kind, pre string, p *node, sc children, mh *methodHandler, ppath string, pnames []string, paramChildren, anyChildren *node) *node {
+func newNode(t kind, pre string, p *node, sc children, mh *methodHandler, paramChildren, anyChildren *node) *node {
 	return &node{
 		kind:           t,
 		label:          pre[0],
 		prefix:         pre,
 		parent:         p,
 		staticChildren: sc,
-		ppath:          ppath,
-		pnames:         pnames,
 		methodHandler:  mh,
 		paramChild:     paramChildren,
 		anyChild:       anyChildren,
@@ -583,7 +579,11 @@ func (r *Router) Find(method, path string, c Context) {
 		if child := currentNode.anyChild; child != nil {
 			// If any node is found, use remaining path for paramValues
 			currentNode = child
-			paramValues[len(currentNode.pnames)-1] = search
+			if m := currentNode.findHandler(method); m != nil {
+				paramValues[len(m.pnames)-1] = search
+			} else {
+				break
+			}
 			// update indexes/search in case we need to backtrack when no handler match is found
 			paramIndex++
 			searchIndex += +len(search)
@@ -634,6 +634,8 @@ func (r *Router) Find(method, path string, c Context) {
 			}
 		}
 	}
-	ctx.path = currentNode.ppath
-	ctx.pnames = currentNode.pnames
+	if m := currentNode.findHandler(method); m != nil {
+		ctx.path = m.ppath
+		ctx.pnames = m.pnames
+	}
 }
