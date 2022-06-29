@@ -13,15 +13,22 @@ type (
 		routes map[string]*Route
 		echo   *Echo
 	}
+	methodContext struct {
+		ppath   string
+		pnames  []string
+		handler HandlerFunc
+	}
+	nodeMethods struct {
+		context     map[string]*methodContext
+		allowHeader string
+	}
 	node struct {
 		kind           kind
 		label          byte
 		prefix         string
 		parent         *node
 		staticChildren children
-		ppath          string
-		pnames         []string
-		methodHandler  *methodHandler
+		methods        *nodeMethods
 		paramChild     *node
 		anyChild       *node
 		// isLeaf indicates that node does not have child routes
@@ -29,22 +36,8 @@ type (
 		// isHandler indicates that node has at least one handler registered to it
 		isHandler bool
 	}
-	kind          uint8
-	children      []*node
-	methodHandler struct {
-		connect     HandlerFunc
-		delete      HandlerFunc
-		get         HandlerFunc
-		head        HandlerFunc
-		options     HandlerFunc
-		patch       HandlerFunc
-		post        HandlerFunc
-		propfind    HandlerFunc
-		put         HandlerFunc
-		trace       HandlerFunc
-		report      HandlerFunc
-		allowHeader string
-	}
+	kind     uint8
+	children []*node
 )
 
 const (
@@ -56,70 +49,33 @@ const (
 	anyLabel   = byte('*')
 )
 
-func (m *methodHandler) isHandler() bool {
-	return m.connect != nil ||
-		m.delete != nil ||
-		m.get != nil ||
-		m.head != nil ||
-		m.options != nil ||
-		m.patch != nil ||
-		m.post != nil ||
-		m.propfind != nil ||
-		m.put != nil ||
-		m.trace != nil ||
-		m.report != nil
+func newNodeMethods() *nodeMethods {
+	return &nodeMethods{
+		context: map[string]*methodContext{},
+	}
 }
 
-func (m *methodHandler) updateAllowHeader() {
+func (nm *nodeMethods) isHandler() bool {
+	return len(nm.context) != 0
+}
+
+func (nm *nodeMethods) updateAllowHeader() {
 	buf := new(bytes.Buffer)
 	buf.WriteString(http.MethodOptions)
 
-	if m.connect != nil {
+	for k, _ := range nm.context {
 		buf.WriteString(", ")
-		buf.WriteString(http.MethodConnect)
+		buf.WriteString(k)
 	}
-	if m.delete != nil {
-		buf.WriteString(", ")
-		buf.WriteString(http.MethodDelete)
-	}
-	if m.get != nil {
-		buf.WriteString(", ")
-		buf.WriteString(http.MethodGet)
-	}
-	if m.head != nil {
-		buf.WriteString(", ")
-		buf.WriteString(http.MethodHead)
-	}
-	if m.patch != nil {
-		buf.WriteString(", ")
-		buf.WriteString(http.MethodPatch)
-	}
-	if m.post != nil {
-		buf.WriteString(", ")
-		buf.WriteString(http.MethodPost)
-	}
-	if m.propfind != nil {
-		buf.WriteString(", PROPFIND")
-	}
-	if m.put != nil {
-		buf.WriteString(", ")
-		buf.WriteString(http.MethodPut)
-	}
-	if m.trace != nil {
-		buf.WriteString(", ")
-		buf.WriteString(http.MethodTrace)
-	}
-	if m.report != nil {
-		buf.WriteString(", REPORT")
-	}
-	m.allowHeader = buf.String()
+
+	nm.allowHeader = buf.String()
 }
 
 // NewRouter returns a new Router instance.
 func NewRouter(e *Echo) *Router {
 	return &Router{
 		tree: &node{
-			methodHandler: new(methodHandler),
+			methods: newNodeMethods(),
 		},
 		routes: map[string]*Route{},
 		echo:   e,
@@ -209,9 +165,11 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 			currentNode.prefix = search
 			if h != nil {
 				currentNode.kind = t
-				currentNode.addHandler(method, h)
-				currentNode.ppath = ppath
-				currentNode.pnames = pnames
+				currentNode.addHandler(method, &methodContext{
+					ppath:   ppath,
+					pnames:  pnames,
+					handler: h,
+				})
 			}
 			currentNode.isLeaf = currentNode.staticChildren == nil && currentNode.paramChild == nil && currentNode.anyChild == nil
 		} else if lcpLen < prefixLen {
@@ -221,9 +179,7 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 				currentNode.prefix[lcpLen:],
 				currentNode,
 				currentNode.staticChildren,
-				currentNode.methodHandler,
-				currentNode.ppath,
-				currentNode.pnames,
+				currentNode.methods,
 				currentNode.paramChild,
 				currentNode.anyChild,
 			)
@@ -243,9 +199,7 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 			currentNode.label = currentNode.prefix[0]
 			currentNode.prefix = currentNode.prefix[:lcpLen]
 			currentNode.staticChildren = nil
-			currentNode.methodHandler = new(methodHandler)
-			currentNode.ppath = ""
-			currentNode.pnames = nil
+			currentNode.methods = newNodeMethods()
 			currentNode.paramChild = nil
 			currentNode.anyChild = nil
 			currentNode.isLeaf = false
@@ -257,13 +211,19 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 			if lcpLen == searchLen {
 				// At parent node
 				currentNode.kind = t
-				currentNode.addHandler(method, h)
-				currentNode.ppath = ppath
-				currentNode.pnames = pnames
+				currentNode.addHandler(method, &methodContext{
+					ppath:   ppath,
+					pnames:  pnames,
+					handler: h,
+				})
 			} else {
 				// Create child node
-				n = newNode(t, search[lcpLen:], currentNode, nil, new(methodHandler), ppath, pnames, nil, nil)
-				n.addHandler(method, h)
+				n = newNode(t, search[lcpLen:], currentNode, nil, newNodeMethods(), nil, nil)
+				n.addHandler(method, &methodContext{
+					ppath:   ppath,
+					pnames:  pnames,
+					handler: h,
+				})
 				// Only Static children could reach here
 				currentNode.addStaticChild(n)
 			}
@@ -277,8 +237,12 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 				continue
 			}
 			// Create child node
-			n := newNode(t, search, currentNode, nil, new(methodHandler), ppath, pnames, nil, nil)
-			n.addHandler(method, h)
+			n := newNode(t, search, currentNode, nil, newNodeMethods(), nil, nil)
+			n.addHandler(method, &methodContext{
+				ppath:   ppath,
+				pnames:  pnames,
+				handler: h,
+			})
 			switch t {
 			case staticKind:
 				currentNode.addStaticChild(n)
@@ -291,31 +255,29 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 		} else {
 			// Node already exists
 			if h != nil {
-				currentNode.addHandler(method, h)
-				currentNode.ppath = ppath
-				if len(currentNode.pnames) == 0 { // Issue #729
-					currentNode.pnames = pnames
-				}
+				currentNode.addHandler(method, &methodContext{
+					ppath:   ppath,
+					pnames:  pnames,
+					handler: h,
+				})
 			}
 		}
 		return
 	}
 }
 
-func newNode(t kind, pre string, p *node, sc children, mh *methodHandler, ppath string, pnames []string, paramChildren, anyChildren *node) *node {
+func newNode(t kind, pre string, p *node, sc children, methods *nodeMethods, paramChildren, anyChildren *node) *node {
 	return &node{
 		kind:           t,
 		label:          pre[0],
 		prefix:         pre,
 		parent:         p,
 		staticChildren: sc,
-		ppath:          ppath,
-		pnames:         pnames,
-		methodHandler:  mh,
+		methods:        methods,
 		paramChild:     paramChildren,
 		anyChild:       anyChildren,
 		isLeaf:         sc == nil && paramChildren == nil && anyChildren == nil,
-		isHandler:      mh.isHandler(),
+		isHandler:      methods.isHandler(),
 	}
 }
 
@@ -345,67 +307,52 @@ func (n *node) findChildWithLabel(l byte) *node {
 	return nil
 }
 
-func (n *node) addHandler(method string, h HandlerFunc) {
+func (n *node) addHandler(method string, context *methodContext) {
+	// check that method exist
 	switch method {
 	case http.MethodConnect:
-		n.methodHandler.connect = h
+
 	case http.MethodDelete:
-		n.methodHandler.delete = h
+
 	case http.MethodGet:
-		n.methodHandler.get = h
+
 	case http.MethodHead:
-		n.methodHandler.head = h
+
 	case http.MethodOptions:
-		n.methodHandler.options = h
+
 	case http.MethodPatch:
-		n.methodHandler.patch = h
+
 	case http.MethodPost:
-		n.methodHandler.post = h
+
 	case PROPFIND:
-		n.methodHandler.propfind = h
+
 	case http.MethodPut:
-		n.methodHandler.put = h
+
 	case http.MethodTrace:
-		n.methodHandler.trace = h
+
 	case REPORT:
-		n.methodHandler.report = h
+
+	default:
+		return
 	}
 
-	n.methodHandler.updateAllowHeader()
-	if h != nil {
+	if context.handler != nil {
+		n.methods.context[method] = context
+	}
+
+	n.methods.updateAllowHeader()
+	if context.handler != nil {
 		n.isHandler = true
 	} else {
-		n.isHandler = n.methodHandler.isHandler()
+		n.isHandler = n.methods.isHandler()
 	}
 }
 
 func (n *node) findHandler(method string) HandlerFunc {
-	switch method {
-	case http.MethodConnect:
-		return n.methodHandler.connect
-	case http.MethodDelete:
-		return n.methodHandler.delete
-	case http.MethodGet:
-		return n.methodHandler.get
-	case http.MethodHead:
-		return n.methodHandler.head
-	case http.MethodOptions:
-		return n.methodHandler.options
-	case http.MethodPatch:
-		return n.methodHandler.patch
-	case http.MethodPost:
-		return n.methodHandler.post
-	case PROPFIND:
-		return n.methodHandler.propfind
-	case http.MethodPut:
-		return n.methodHandler.put
-	case http.MethodTrace:
-		return n.methodHandler.trace
-	case REPORT:
-		return n.methodHandler.report
-	default:
-		return nil
+	if m, ok := n.methods.context[method]; ok {
+		return m.handler
 	}
+	return nil
 }
 
 func optionsMethodHandler(allowMethods string) func(c Context) error {
@@ -569,7 +516,11 @@ func (r *Router) Find(method, path string, c Context) {
 		if child := currentNode.anyChild; child != nil {
 			// If any node is found, use remaining path for paramValues
 			currentNode = child
-			paramValues[len(currentNode.pnames)-1] = search
+			if m, ok := currentNode.methods.context[method]; ok {
+				paramValues[len(m.pnames)-1] = search
+			} else {
+				break
+			}
 			// update indexes/search in case we need to backtrack when no handler match is found
 			paramIndex++
 			searchIndex += +len(search)
@@ -613,13 +564,15 @@ func (r *Router) Find(method, path string, c Context) {
 
 		ctx.handler = NotFoundHandler
 		if currentNode.isHandler {
-			ctx.Set(ContextKeyHeaderAllow, currentNode.methodHandler.allowHeader)
+			ctx.Set(ContextKeyHeaderAllow, currentNode.methods.allowHeader)
 			ctx.handler = MethodNotAllowedHandler
 			if method == http.MethodOptions {
-				ctx.handler = optionsMethodHandler(currentNode.methodHandler.allowHeader)
+				ctx.handler = optionsMethodHandler(currentNode.methods.allowHeader)
 			}
 		}
 	}
-	ctx.path = currentNode.ppath
-	ctx.pnames = currentNode.pnames
+	if m, ok := currentNode.methods.context[method]; ok {
+		ctx.path = m.ppath
+		ctx.pnames = m.pnames
+	}
 }
