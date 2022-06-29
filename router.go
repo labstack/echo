@@ -1,8 +1,9 @@
 package echo
 
 import (
-	"bytes"
 	"net/http"
+	"sort"
+	"strings"
 )
 
 type (
@@ -115,6 +116,12 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 		*r.echo.maxParam = paramLen
 	}
 
+	handler := methodHandler{
+		ppath:       ppath,
+		pnames:      pnames,
+		handlerFunc: h,
+	}
+
 	currentNode := r.tree // Current node as root
 	if currentNode == nil {
 		panic("echo: invalid method")
@@ -140,11 +147,7 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 			currentNode.prefix = search
 			if h != nil {
 				currentNode.kind = t
-				currentNode.addHandler(method, methodHandler{
-					ppath:       ppath,
-					pnames:      pnames,
-					handlerFunc: h,
-				})
+				currentNode.addHandler(method, handler)
 			}
 			currentNode.isLeaf = currentNode.staticChildren == nil && currentNode.paramChild == nil && currentNode.anyChild == nil
 		} else if lcpLen < prefixLen {
@@ -186,19 +189,11 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 			if lcpLen == searchLen {
 				// At parent node
 				currentNode.kind = t
-				currentNode.addHandler(method, methodHandler{
-					ppath:       ppath,
-					pnames:      pnames,
-					handlerFunc: h,
-				})
+				currentNode.addHandler(method, handler)
 			} else {
 				// Create child node
 				n = newNode(t, search[lcpLen:], currentNode, nil, nil, nil, nil)
-				n.addHandler(method, methodHandler{
-					ppath:       ppath,
-					pnames:      pnames,
-					handlerFunc: h,
-				})
+				n.addHandler(method, handler)
 				// Only Static children could reach here
 				currentNode.addStaticChild(n)
 			}
@@ -213,11 +208,7 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 			}
 			// Create child node
 			n := newNode(t, search, currentNode, nil, nil, nil, nil)
-			n.addHandler(method, methodHandler{
-				ppath:       ppath,
-				pnames:      pnames,
-				handlerFunc: h,
-			})
+			n.addHandler(method, handler)
 			switch t {
 			case staticKind:
 				currentNode.addStaticChild(n)
@@ -230,11 +221,7 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 		} else {
 			// Node already exists
 			if h != nil {
-				currentNode.addHandler(method, methodHandler{
-					ppath:       ppath,
-					pnames:      pnames,
-					handlerFunc: h,
-				})
+				currentNode.addHandler(method, handler)
 			}
 		}
 		return
@@ -291,11 +278,7 @@ func (n *node) addHandler(method string, handler methodHandler) {
 	}
 
 	n.updateAllowHeader()
-	if handler.handlerFunc != nil {
-		n.isHandler = true
-	} else {
-		n.isHandler = len(n.handlers) != 0
-	}
+	n.isHandler = len(n.handlers) != 0
 }
 
 func (n *node) findHandler(method string) HandlerFunc {
@@ -306,17 +289,14 @@ func (n *node) findHandler(method string) HandlerFunc {
 }
 
 func (n *node) updateAllowHeader() {
-	buf := new(bytes.Buffer)
-	buf.WriteString(http.MethodOptions)
-
-	// Iterate through `methods` variable to match expected methods order
-	for _, method := range methods {
-		if _, exists := n.handlers[method]; exists {
-			buf.WriteString(", ")
-			buf.WriteString(method)
-		}
+	allowedMethods := []string{http.MethodOptions}
+	for method := range n.handlers {
+		allowedMethods = append(allowedMethods, method)
 	}
-	n.allowHeader = buf.String()
+	sort.Slice(allowedMethods[1:], func(i, j int) bool {
+		return allowedMethods[i+1] < allowedMethods[j+1]
+	})
+	n.allowHeader = strings.Join(allowedMethods, ", ")
 }
 
 func optionsMethodHandler(allowMethods string) func(c Context) error {
