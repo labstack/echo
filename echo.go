@@ -489,17 +489,7 @@ func StaticDirectoryHandler(fileSystem fs.FS, disablePathUnescaping bool) Handle
 
 		// fs.FS.Open() already assumes that file names are relative to FS root path and considers name with prefix `/` as invalid
 		name := filepath.ToSlash(filepath.Clean(strings.TrimPrefix(p, "/")))
-		fi, err := fs.Stat(fileSystem, name)
-		if err != nil {
-			return ErrNotFound
-		}
 
-		// If the request is for a directory and does not end with "/"
-		p = c.Request().URL.Path // path must not be empty.
-		if fi.IsDir() && len(p) > 0 && p[len(p)-1] != '/' {
-			// Redirect to ends with "/"
-			return c.Redirect(http.StatusMovedPermanently, p+"/")
-		}
 		return fsFile(c, name, fileSystem)
 	}
 }

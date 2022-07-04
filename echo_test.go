@@ -105,39 +105,12 @@ func TestEcho_StaticFS(t *testing.T) {
 			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
 		},
 		{
-			name:                 "Directory Redirect",
-			givenPrefix:          "/",
-			givenFs:              os.DirFS("_fixture/"),
-			whenURL:              "/folder",
-			expectStatus:         http.StatusMovedPermanently,
-			expectHeaderLocation: "/folder/",
-			expectBodyStartsWith: "",
-		},
-		{
-			name:                 "Directory Redirect with non-root path",
-			givenPrefix:          "/static",
-			givenFs:              os.DirFS("_fixture"),
-			whenURL:              "/static",
-			expectStatus:         http.StatusMovedPermanently,
-			expectHeaderLocation: "/static/",
-			expectBodyStartsWith: "",
-		},
-		{
 			name:                 "Prefixed directory 404 (request URL without slash)",
 			givenPrefix:          "/folder/", // trailing slash will intentionally not match "/folder"
 			givenFs:              os.DirFS("_fixture"),
 			whenURL:              "/folder", // no trailing slash
 			expectStatus:         http.StatusNotFound,
 			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
-		},
-		{
-			name:                 "Prefixed directory redirect (without slash redirect to slash)",
-			givenPrefix:          "/folder", // no trailing slash shall match /folder and /folder/*
-			givenFs:              os.DirFS("_fixture"),
-			whenURL:              "/folder", // no trailing slash
-			expectStatus:         http.StatusMovedPermanently,
-			expectHeaderLocation: "/folder/",
-			expectBodyStartsWith: "",
 		},
 		{
 			name:                 "Directory with index.html",
@@ -156,7 +129,15 @@ func TestEcho_StaticFS(t *testing.T) {
 			expectBodyStartsWith: "<!doctype html>",
 		},
 		{
-			name:                 "Prefixed directory with index.html (prefix ending without slash)",
+			name:                 "Prefixed directory with index.html (prefix ending without slash and url without ending slash)",
+			givenPrefix:          "/assets",
+			givenFs:              os.DirFS("_fixture"),
+			whenURL:              "/assets",
+			expectStatus:         http.StatusOK,
+			expectBodyStartsWith: "<!doctype html>",
+		},
+		{
+			name:                 "Prefixed directory with index.html (prefix ending without slash and url with ending slash)",
 			givenPrefix:          "/assets",
 			givenFs:              os.DirFS("_fixture"),
 			whenURL:              "/assets/",
@@ -164,10 +145,18 @@ func TestEcho_StaticFS(t *testing.T) {
 			expectBodyStartsWith: "<!doctype html>",
 		},
 		{
-			name:                 "Sub-directory with index.html",
+			name:                 "Sub-directory with index.html (url with ending slash)",
 			givenPrefix:          "/",
 			givenFs:              os.DirFS("_fixture"),
 			whenURL:              "/folder/",
+			expectStatus:         http.StatusOK,
+			expectBodyStartsWith: "<!doctype html>",
+		},
+		{
+			name:                 "Sub-directory with index.html (url without ending slash)",
+			givenPrefix:          "/",
+			givenFs:              os.DirFS("_fixture"),
+			whenURL:              "/folder",
 			expectStatus:         http.StatusOK,
 			expectBodyStartsWith: "<!doctype html>",
 		},

@@ -1,7 +1,6 @@
 package echo
 
 import (
-	"github.com/stretchr/testify/assert"
 	"io/fs"
 	"io/ioutil"
 	"net/http"
@@ -9,6 +8,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGroup_withoutRouteWillNotExecuteMiddleware(t *testing.T) {
@@ -485,39 +486,12 @@ func TestGroup_StaticMultiTest(t *testing.T) {
 			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
 		},
 		{
-			name:                 "Directory Redirect",
-			givenPrefix:          "/",
-			givenRoot:            "_fixture",
-			whenURL:              "/test/folder",
-			expectStatus:         http.StatusMovedPermanently,
-			expectHeaderLocation: "/test/folder/",
-			expectBodyStartsWith: "",
-		},
-		{
-			name:                 "Directory Redirect with non-root path",
-			givenPrefix:          "/static",
-			givenRoot:            "_fixture",
-			whenURL:              "/test/static",
-			expectStatus:         http.StatusMovedPermanently,
-			expectHeaderLocation: "/test/static/",
-			expectBodyStartsWith: "",
-		},
-		{
 			name:                 "Prefixed directory 404 (request URL without slash)",
 			givenPrefix:          "/folder/", // trailing slash will intentionally not match "/folder"
 			givenRoot:            "_fixture",
 			whenURL:              "/test/folder", // no trailing slash
 			expectStatus:         http.StatusNotFound,
 			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
-		},
-		{
-			name:                 "Prefixed directory redirect (without slash redirect to slash)",
-			givenPrefix:          "/folder", // no trailing slash shall match /folder and /folder/*
-			givenRoot:            "_fixture",
-			whenURL:              "/test/folder", // no trailing slash
-			expectStatus:         http.StatusMovedPermanently,
-			expectHeaderLocation: "/test/folder/",
-			expectBodyStartsWith: "",
 		},
 		{
 			name:                 "Directory with index.html",
@@ -536,7 +510,7 @@ func TestGroup_StaticMultiTest(t *testing.T) {
 			expectBodyStartsWith: "<!doctype html>",
 		},
 		{
-			name:                 "Prefixed directory with index.html (prefix ending without slash)",
+			name:                 "Prefixed directory with index.html (prefix ending without slash and url with ending slash)",
 			givenPrefix:          "/assets",
 			givenRoot:            "_fixture",
 			whenURL:              "/test/assets/",
@@ -544,10 +518,26 @@ func TestGroup_StaticMultiTest(t *testing.T) {
 			expectBodyStartsWith: "<!doctype html>",
 		},
 		{
-			name:                 "Sub-directory with index.html",
+			name:                 "Prefixed directory with index.html (prefix ending without slash and url without ending slash)",
+			givenPrefix:          "/assets",
+			givenRoot:            "_fixture",
+			whenURL:              "/test/assets",
+			expectStatus:         http.StatusOK,
+			expectBodyStartsWith: "<!doctype html>",
+		},
+		{
+			name:                 "Sub-directory with index.html (url with ending slash)",
 			givenPrefix:          "/",
 			givenRoot:            "_fixture",
 			whenURL:              "/test/folder/",
+			expectStatus:         http.StatusOK,
+			expectBodyStartsWith: "<!doctype html>",
+		},
+		{
+			name:                 "Sub-directory with index.html (url without ending slash)",
+			givenPrefix:          "/",
+			givenRoot:            "_fixture",
+			whenURL:              "/test/folder",
 			expectStatus:         http.StatusOK,
 			expectBodyStartsWith: "<!doctype html>",
 		},
