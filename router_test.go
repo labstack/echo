@@ -821,6 +821,28 @@ func TestRouterTwoParam(t *testing.T) {
 	assert.Equal(t, "1", c.Param("fid"))
 }
 
+// Issue #1726
+// Issue #2201
+func TestRouterTwoDifferentParam(t *testing.T) {
+	e := New()
+	r := e.router
+	r.Add(http.MethodPut, "/users/:vid/files/:gid", func(Context) error {
+		return nil
+	})
+	r.Add(http.MethodGet, "/users/:uid/files/:fid", func(Context) error {
+		return nil
+	})
+	c := e.NewContext(nil, nil).(*context)
+
+	r.Find(http.MethodGet, "/users/1/files/2", c)
+	assert.Equal(t, "1", c.Param("uid"))
+	assert.Equal(t, "2", c.Param("fid"))
+
+	r.Find(http.MethodPut, "/users/3/files/4", c)
+	assert.Equal(t, "3", c.Param("vid"))
+	assert.Equal(t, "4", c.Param("gid"))
+}
+
 // Issue #378
 func TestRouterParamWithSlash(t *testing.T) {
 	e := New()
