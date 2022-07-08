@@ -2322,6 +2322,9 @@ func TestRouterPanicWhenParamNoRootOnlyChildsFailsFind(t *testing.T) {
 func TestRouterDifferentParamsInPath(t *testing.T) {
 	e := New()
 	r := e.router
+	r.Add(http.MethodPut, "/*", func(Context) error {
+		return nil
+	})
 	r.Add(http.MethodPut, "/users/:vid/files/:gid", func(Context) error {
 		return nil
 	})
@@ -2333,6 +2336,9 @@ func TestRouterDifferentParamsInPath(t *testing.T) {
 	r.Find(http.MethodGet, "/users/1/files/2", c)
 	assert.Equal(t, "1", c.Param("uid"))
 	assert.Equal(t, "2", c.Param("fid"))
+
+	r.Find(http.MethodGet, "/users/1/shouldBacktrackToFirstAnyRouteAnd405", c)
+	assert.Equal(t, "/*", c.Path())
 
 	r.Find(http.MethodPut, "/users/3/files/4", c)
 	assert.Equal(t, "3", c.Param("vid"))

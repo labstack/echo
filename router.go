@@ -19,6 +19,7 @@ type (
 		prefix         string
 		parent         *node
 		staticChildren children
+		originalPath   string
 		methods        *routeMethods
 		paramChild     *node
 		anyChild       *node
@@ -215,6 +216,7 @@ func (r *Router) insert(method, path string, t kind, rm routeMethod) {
 				currentNode.kind = t
 				currentNode.addMethod(method, &rm)
 				currentNode.paramsCount = len(rm.pnames)
+				currentNode.originalPath = rm.ppath
 			}
 			currentNode.isLeaf = currentNode.staticChildren == nil && currentNode.paramChild == nil && currentNode.anyChild == nil
 		} else if lcpLen < prefixLen {
@@ -224,6 +226,7 @@ func (r *Router) insert(method, path string, t kind, rm routeMethod) {
 				currentNode.prefix[lcpLen:],
 				currentNode,
 				currentNode.staticChildren,
+				currentNode.originalPath,
 				currentNode.methods,
 				currentNode.paramsCount,
 				currentNode.paramChild,
@@ -245,6 +248,7 @@ func (r *Router) insert(method, path string, t kind, rm routeMethod) {
 			currentNode.label = currentNode.prefix[0]
 			currentNode.prefix = currentNode.prefix[:lcpLen]
 			currentNode.staticChildren = nil
+			currentNode.originalPath = ""
 			currentNode.methods = new(routeMethods)
 			currentNode.paramsCount = 0
 			currentNode.paramChild = nil
@@ -261,13 +265,15 @@ func (r *Router) insert(method, path string, t kind, rm routeMethod) {
 				if rm.handler != nil {
 					currentNode.addMethod(method, &rm)
 					currentNode.paramsCount = len(rm.pnames)
+					currentNode.originalPath = rm.ppath
 				}
 			} else {
 				// Create child node
-				n = newNode(t, search[lcpLen:], currentNode, nil, new(routeMethods), 0, nil, nil)
+				n = newNode(t, search[lcpLen:], currentNode, nil, "", new(routeMethods), 0, nil, nil)
 				if rm.handler != nil {
 					n.addMethod(method, &rm)
 					n.paramsCount = len(rm.pnames)
+					n.originalPath = rm.ppath
 				}
 				// Only Static children could reach here
 				currentNode.addStaticChild(n)
@@ -282,7 +288,7 @@ func (r *Router) insert(method, path string, t kind, rm routeMethod) {
 				continue
 			}
 			// Create child node
-			n := newNode(t, search, currentNode, nil, new(routeMethods), 0, nil, nil)
+			n := newNode(t, search, currentNode, nil, rm.ppath, new(routeMethods), 0, nil, nil)
 			if rm.handler != nil {
 				n.addMethod(method, &rm)
 				n.paramsCount = len(rm.pnames)
@@ -302,19 +308,21 @@ func (r *Router) insert(method, path string, t kind, rm routeMethod) {
 			if rm.handler != nil {
 				currentNode.addMethod(method, &rm)
 				currentNode.paramsCount = len(rm.pnames)
+				currentNode.originalPath = rm.ppath
 			}
 		}
 		return
 	}
 }
 
-func newNode(t kind, pre string, p *node, sc children, mh *routeMethods, paramsCount int, paramChildren, anyChildren *node) *node {
+func newNode(t kind, pre string, p *node, sc children, originalPath string, mh *routeMethods, paramsCount int, paramChildren, anyChildren *node) *node {
 	return &node{
 		kind:           t,
 		label:          pre[0],
 		prefix:         pre,
 		parent:         p,
 		staticChildren: sc,
+		originalPath:   originalPath,
 		methods:        mh,
 		paramsCount:    paramsCount,
 		paramChild:     paramChildren,
@@ -606,16 +614,19 @@ func (r *Router) Find(method, path string, c Context) {
 		return // nothing matched at all
 	}
 
+	var rPath string
+	var rPNames []string
 	if matchedRouteMethod != nil {
 		ctx.handler = matchedRouteMethod.handler
-		ctx.path = matchedRouteMethod.ppath
-		ctx.pnames = matchedRouteMethod.pnames
+		rPath = matchedRouteMethod.ppath
+		rPNames = matchedRouteMethod.pnames
 	} else {
 		// use previous match as basis. although we have no matching handler we have path match.
 		// so we can send http.StatusMethodNotAllowed (405) instead of http.StatusNotFound (404)
 		currentNode = previousBestMatchNode
 
-		ctx.path = path
+		rPath = currentNode.originalPath
+		rPNames = paramValues[:currentNode.paramsCount]
 		ctx.handler = NotFoundHandler
 		if currentNode.isHandler {
 			ctx.Set(ContextKeyHeaderAllow, currentNode.methods.allowHeader)
@@ -625,4 +636,6 @@ func (r *Router) Find(method, path string, c Context) {
 			}
 		}
 	}
+	ctx.path = rPath
+	ctx.pnames = rPNames
 }
