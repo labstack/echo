@@ -626,7 +626,7 @@ func (r *Router) Find(method, path string, c Context) {
 		currentNode = previousBestMatchNode
 
 		rPath = currentNode.originalPath
-		rPNames = paramValues[:currentNode.paramsCount]
+		rPNames = nil // no params here
 		ctx.handler = NotFoundHandler
 		if currentNode.isHandler {
 			ctx.Set(ContextKeyHeaderAllow, currentNode.methods.allowHeader)
