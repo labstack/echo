@@ -107,6 +107,13 @@ func (g *Group) File(path, file string) {
 	g.file(path, file, g.GET)
 }
 
+// RouteNotFound implements `Echo#RouteNotFound()` for sub-routes within the Group.
+//
+// Example: `g.RouteNotFound("/*", func(c echo.Context) error { return c.NoContent(http.StatusNotFound) })`
+func (g *Group) RouteNotFound(path string, h HandlerFunc, m ...MiddlewareFunc) *Route {
+	return g.Add(RouteNotFound, path, h, m...)
+}
+
 // Add implements `Echo#Add()` for sub-routes within the Group.
 func (g *Group) Add(method, path string, handler HandlerFunc, middleware ...MiddlewareFunc) *Route {
 	// Combine into a new slice to avoid accidentally passing the same slice for

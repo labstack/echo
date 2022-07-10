@@ -119,3 +119,68 @@ func TestGroupRouteMiddlewareWithMatchAny(t *testing.T) {
 	assert.Equal(t, "/*", m)
 
 }
+
+func TestGroup_RouteNotFound(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		whenURL     string
+		expectRoute interface{}
+		expectCode  int
+	}{
+		{
+			name:        "404, route to static not found handler /group/a/c/xx",
+			whenURL:     "/group/a/c/xx",
+			expectRoute: "GET /group/a/c/xx",
+			expectCode:  http.StatusNotFound,
+		},
+		{
+			name:        "404, route to path param not found handler /group/a/:file",
+			whenURL:     "/group/a/echo.exe",
+			expectRoute: "GET /group/a/:file",
+			expectCode:  http.StatusNotFound,
+		},
+		{
+			name:        "404, route to any not found handler /group/*",
+			whenURL:     "/group/b/echo.exe",
+			expectRoute: "GET /group/*",
+			expectCode:  http.StatusNotFound,
+		},
+		{
+			name:        "200, route /group/a/c/df to /group/a/c/df",
+			whenURL:     "/group/a/c/df",
+			expectRoute: "GET /group/a/c/df",
+			expectCode:  http.StatusOK,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			g := e.Group("/group")
+
+			okHandler := func(c Context) error {
+				return c.String(http.StatusOK, c.Request().Method+" "+c.Path())
+			}
+			notFoundHandler := func(c Context) error {
+				return c.String(http.StatusNotFound, c.Request().Method+" "+c.Path())
+			}
+
+			g.GET("/", okHandler)
+			g.GET("/a/c/df", okHandler)
+			g.GET("/a/b*", okHandler)
+			g.PUT("/*", okHandler)
+
+			g.RouteNotFound("/a/c/xx", notFoundHandler)  // static
+			g.RouteNotFound("/a/:file", notFoundHandler) // param
+			g.RouteNotFound("/*", notFoundHandler)       // any
+
+			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
+			rec := httptest.NewRecorder()
+
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, tc.expectCode, rec.Code)
+			assert.Equal(t, tc.expectRoute, rec.Body.String())
+		})
+	}
+}
