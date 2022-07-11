@@ -67,7 +67,7 @@ func (b *DefaultBinder) BindBody(c Context, i interface{}) (err error) {
 	case strings.HasPrefix(ctype, MIMEApplicationJSON):
 		if err = c.Echo().JSONSerializer.Deserialize(c, i); err != nil {
 			// Call JSONSerializerErr func
-			return JSONSerializerErr(err)
+			return jsonSerializerErr(err)
 		}
 	case strings.HasPrefix(ctype, MIMEApplicationXML), strings.HasPrefix(ctype, MIMETextXML):
 		if err = xml.NewDecoder(req.Body).Decode(i); err != nil {
@@ -336,7 +336,7 @@ func setFloatField(value string, bitSize int, field reflect.Value) error {
 }
 
 // Handle JSONSerializer error
-func JSONSerializerErr(err error) error {
+func jsonSerializerErr(err error) error {
 	switch err.(type) {
 	case *HTTPError:
 		return err
