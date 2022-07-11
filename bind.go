@@ -66,12 +66,8 @@ func (b *DefaultBinder) BindBody(c Context, i interface{}) (err error) {
 	switch {
 	case strings.HasPrefix(ctype, MIMEApplicationJSON):
 		if err = c.Echo().JSONSerializer.Deserialize(c, i); err != nil {
-			switch err.(type) {
-			case *HTTPError:
-				return err
-			default:
-				return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
-			}
+			// Call JSONSerializerErr func
+			return JSONSerializerErr(err)
 		}
 	case strings.HasPrefix(ctype, MIMEApplicationXML), strings.HasPrefix(ctype, MIMETextXML):
 		if err = xml.NewDecoder(req.Body).Decode(i); err != nil {
@@ -114,7 +110,7 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 	// Only bind query parameters for GET/DELETE/HEAD to avoid unexpected behavior with destination struct binding from body.
 	// For example a request URL `&id=1&lang=en` with body `{"id":100,"lang":"de"}` would lead to precedence issues.
 	// The HTTP method check restores pre-v4.1.11 behavior to avoid these problems (see issue #1670)
-  method := c.Request().Method
+	method := c.Request().Method
 	if method == http.MethodGet || method == http.MethodDelete || method == http.MethodHead {
 		if err = b.BindQueryParams(c, i); err != nil {
 			return err
@@ -337,4 +333,14 @@ func setFloatField(value string, bitSize int, field reflect.Value) error {
 		field.SetFloat(floatVal)
 	}
 	return err
+}
+
+// Handle JSONSerializer error
+func JSONSerializerErr(err error) error {
+	switch err.(type) {
+	case *HTTPError:
+		return err
+	default:
+		return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
+	}
 }
