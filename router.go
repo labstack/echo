@@ -224,7 +224,12 @@ func (r *Router) insert(method, path string, t kind, rm routeMethod) {
 			}
 			currentNode.isLeaf = currentNode.staticChildren == nil && currentNode.paramChild == nil && currentNode.anyChild == nil
 		} else if lcpLen < prefixLen {
-			// Split node
+			// Split node into two before we insert new node.
+			// This happens when we are inserting path that is submatch of any existing inserted paths.
+			// For example, we have node `/test` and now are about to insert `/te/*`. In that case
+			// 1. overlapping part is `/te` that is used as parent node
+			// 2. `st` is part from existing node that is not matching - it gets its own node (child to `/te`)
+			// 3. `/*` is the new part we are about to insert (child to `/te`)
 			n := newNode(
 				currentNode.kind,
 				currentNode.prefix[lcpLen:],
@@ -235,6 +240,7 @@ func (r *Router) insert(method, path string, t kind, rm routeMethod) {
 				currentNode.paramsCount,
 				currentNode.paramChild,
 				currentNode.anyChild,
+				currentNode.notFoundHandler,
 			)
 			// Update parent path for all children to new node
 			for _, child := range currentNode.staticChildren {
@@ -259,6 +265,7 @@ func (r *Router) insert(method, path string, t kind, rm routeMethod) {
 			currentNode.anyChild = nil
 			currentNode.isLeaf = false
 			currentNode.isHandler = false
+			currentNode.notFoundHandler = nil
 
 			// Only Static children could reach here
 			currentNode.addStaticChild(n)
@@ -273,7 +280,7 @@ func (r *Router) insert(method, path string, t kind, rm routeMethod) {
 				}
 			} else {
 				// Create child node
-				n = newNode(t, search[lcpLen:], currentNode, nil, "", new(routeMethods), 0, nil, nil)
+				n = newNode(t, search[lcpLen:], currentNode, nil, "", new(routeMethods), 0, nil, nil, nil)
 				if rm.handler != nil {
 					n.addMethod(method, &rm)
 					n.paramsCount = len(rm.pnames)
@@ -292,7 +299,7 @@ func (r *Router) insert(method, path string, t kind, rm routeMethod) {
 				continue
 			}
 			// Create child node
-			n := newNode(t, search, currentNode, nil, rm.ppath, new(routeMethods), 0, nil, nil)
+			n := newNode(t, search, currentNode, nil, rm.ppath, new(routeMethods), 0, nil, nil, nil)
 			if rm.handler != nil {
 				n.addMethod(method, &rm)
 				n.paramsCount = len(rm.pnames)
@@ -319,20 +326,32 @@ func (r *Router) insert(method, path string, t kind, rm routeMethod) {
 	}
 }
 
-func newNode(t kind, pre string, p *node, sc children, originalPath string, mh *routeMethods, paramsCount int, paramChildren, anyChildren *node) *node {
+func newNode(
+	t kind,
+	pre string,
+	p *node,
+	sc children,
+	originalPath string,
+	methods *routeMethods,
+	paramsCount int,
+	paramChildren,
+	anyChildren *node,
+	notFoundHandler *routeMethod,
+) *node {
 	return &node{
-		kind:           t,
-		label:          pre[0],
-		prefix:         pre,
-		parent:         p,
-		staticChildren: sc,
-		originalPath:   originalPath,
-		methods:        mh,
-		paramsCount:    paramsCount,
-		paramChild:     paramChildren,
-		anyChild:       anyChildren,
-		isLeaf:         sc == nil && paramChildren == nil && anyChildren == nil,
-		isHandler:      mh.isHandler(),
+		kind:            t,
+		label:           pre[0],
+		prefix:          pre,
+		parent:          p,
+		staticChildren:  sc,
+		originalPath:    originalPath,
+		methods:         methods,
+		paramsCount:     paramsCount,
+		paramChild:      paramChildren,
+		anyChild:        anyChildren,
+		isLeaf:          sc == nil && paramChildren == nil && anyChildren == nil,
+		isHandler:       methods.isHandler(),
+		notFoundHandler: notFoundHandler,
 	}
 }
 
