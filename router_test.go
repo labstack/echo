@@ -1101,6 +1101,191 @@ func TestRouterBacktrackingFromMultipleParamKinds(t *testing.T) {
 	}
 }
 
+func TestNotFoundRouteAnyKind(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		whenURL     string
+		expectRoute interface{}
+		expectID    int
+		expectParam map[string]string
+	}{
+		{
+			name:        "route not existent /xx to not found handler /*",
+			whenURL:     "/xx",
+			expectRoute: "/*",
+			expectID:    4,
+			expectParam: map[string]string{"*": "xx"},
+		},
+		{
+			name:        "route not existent /a/xx to not found handler /a/*",
+			whenURL:     "/a/xx",
+			expectRoute: "/a/*",
+			expectID:    5,
+			expectParam: map[string]string{"*": "xx"},
+		},
+		{
+			name:        "route not existent /a/c/dxxx to not found handler /a/c/d*",
+			whenURL:     "/a/c/dxxx",
+			expectRoute: "/a/c/d*",
+			expectID:    6,
+			expectParam: map[string]string{"*": "xxx"},
+		},
+		{
+			name:        "route /a/c/df to /a/c/df",
+			whenURL:     "/a/c/df",
+			expectRoute: "/a/c/df",
+			expectID:    1,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			r := e.router
+
+			r.Add(http.MethodGet, "/", handlerHelper("ID", 0))
+			r.Add(http.MethodGet, "/a/c/df", handlerHelper("ID", 1))
+			r.Add(http.MethodGet, "/a/b*", handlerHelper("ID", 2))
+			r.Add(http.MethodPut, "/*", handlerHelper("ID", 3))
+
+			r.Add(RouteNotFound, "/a/c/d*", handlerHelper("ID", 6))
+			r.Add(RouteNotFound, "/a/*", handlerHelper("ID", 5))
+			r.Add(RouteNotFound, "/*", handlerHelper("ID", 4))
+
+			c := e.NewContext(nil, nil).(*context)
+			r.Find(http.MethodGet, tc.whenURL, c)
+
+			c.handler(c)
+
+			testValue, _ := c.Get("ID").(int)
+			assert.Equal(t, tc.expectID, testValue)
+			assert.Equal(t, tc.expectRoute, c.Path())
+			for param, expectedValue := range tc.expectParam {
+				assert.Equal(t, expectedValue, c.Param(param))
+			}
+			checkUnusedParamValues(t, c, tc.expectParam)
+		})
+	}
+}
+
+func TestNotFoundRouteParamKind(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		whenURL     string
+		expectRoute interface{}
+		expectID    int
+		expectParam map[string]string
+	}{
+		{
+			name:        "route not existent /xx to not found handler /:file",
+			whenURL:     "/xx",
+			expectRoute: "/:file",
+			expectID:    4,
+			expectParam: map[string]string{"file": "xx"},
+		},
+		{
+			name:        "route not existent /a/xx to not found handler /a/:file",
+			whenURL:     "/a/xx",
+			expectRoute: "/a/:file",
+			expectID:    5,
+			expectParam: map[string]string{"file": "xx"},
+		},
+		{
+			name:        "route not existent /a/c/dxxx to not found handler /a/c/d:file",
+			whenURL:     "/a/c/dxxx",
+			expectRoute: "/a/c/d:file",
+			expectID:    6,
+			expectParam: map[string]string{"file": "xxx"},
+		},
+		{
+			name:        "route /a/c/df to /a/c/df",
+			whenURL:     "/a/c/df",
+			expectRoute: "/a/c/df",
+			expectID:    1,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			r := e.router
+
+			r.Add(http.MethodGet, "/", handlerHelper("ID", 0))
+			r.Add(http.MethodGet, "/a/c/df", handlerHelper("ID", 1))
+			r.Add(http.MethodGet, "/a/b*", handlerHelper("ID", 2))
+			r.Add(http.MethodPut, "/*", handlerHelper("ID", 3))
+
+			r.Add(RouteNotFound, "/a/c/d:file", handlerHelper("ID", 6))
+			r.Add(RouteNotFound, "/a/:file", handlerHelper("ID", 5))
+			r.Add(RouteNotFound, "/:file", handlerHelper("ID", 4))
+
+			c := e.NewContext(nil, nil).(*context)
+			r.Find(http.MethodGet, tc.whenURL, c)
+
+			c.handler(c)
+
+			testValue, _ := c.Get("ID").(int)
+			assert.Equal(t, tc.expectID, testValue)
+			assert.Equal(t, tc.expectRoute, c.Path())
+			for param, expectedValue := range tc.expectParam {
+				assert.Equal(t, expectedValue, c.Param(param))
+			}
+			checkUnusedParamValues(t, c, tc.expectParam)
+		})
+	}
+}
+
+func TestNotFoundRouteStaticKind(t *testing.T) {
+	// note: static not found handler is quite silly thing to have but we still support it
+	var testCases = []struct {
+		name        string
+		whenURL     string
+		expectRoute interface{}
+		expectID    int
+		expectParam map[string]string
+	}{
+		{
+			name:        "route not existent / to not found handler /",
+			whenURL:     "/",
+			expectRoute: "/",
+			expectID:    3,
+			expectParam: map[string]string{},
+		},
+		{
+			name:        "route /a to /a",
+			whenURL:     "/a",
+			expectRoute: "/a",
+			expectID:    1,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			r := e.router
+
+			r.Add(http.MethodPut, "/", handlerHelper("ID", 0))
+			r.Add(http.MethodGet, "/a", handlerHelper("ID", 1))
+			r.Add(http.MethodPut, "/*", handlerHelper("ID", 2))
+
+			r.Add(RouteNotFound, "/", handlerHelper("ID", 3))
+
+			c := e.NewContext(nil, nil).(*context)
+			r.Find(http.MethodGet, tc.whenURL, c)
+
+			c.handler(c)
+
+			testValue, _ := c.Get("ID").(int)
+			assert.Equal(t, tc.expectID, testValue)
+			assert.Equal(t, tc.expectRoute, c.Path())
+			for param, expectedValue := range tc.expectParam {
+				assert.Equal(t, expectedValue, c.Param(param))
+			}
+			checkUnusedParamValues(t, c, tc.expectParam)
+		})
+	}
+}
+
 // Issue #1509
 func TestRouterParamStaticConflict(t *testing.T) {
 	e := New()

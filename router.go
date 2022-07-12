@@ -28,6 +28,9 @@ type (
 		isLeaf bool
 		// isHandler indicates that node has at least one handler registered to it
 		isHandler bool
+
+		// notFoundHandler is handler registered with RouteNotFound method and is executed for 404 cases
+		notFoundHandler *routeMethod
 	}
 	kind        uint8
 	children    []*node
@@ -73,6 +76,7 @@ func (m *routeMethods) isHandler() bool {
 		m.put != nil ||
 		m.trace != nil ||
 		m.report != nil
+	// RouteNotFound/404 is not considered as a handler
 }
 
 func (m *routeMethods) updateAllowHeader() {
@@ -382,6 +386,9 @@ func (n *node) addMethod(method string, h *routeMethod) {
 		n.methods.trace = h
 	case REPORT:
 		n.methods.report = h
+	case RouteNotFound:
+		n.notFoundHandler = h
+		return // RouteNotFound/404 is not considered as a handler so no further logic needs to be executed
 	}
 
 	n.methods.updateAllowHeader()
@@ -412,7 +419,7 @@ func (n *node) findMethod(method string) *routeMethod {
 		return n.methods.trace
 	case REPORT:
 		return n.methods.report
-	default:
+	default: // RouteNotFound/404 is not considered as a handler
 		return nil
 	}
 }
@@ -515,7 +522,7 @@ func (r *Router) Find(method, path string, c Context) {
 			// No matching prefix, let's backtrack to the first possible alternative node of the decision path
 			nk, ok := backtrackToNextNodeKind(staticKind)
 			if !ok {
-				return // No other possibilities on the decision path
+				return // No other possibilities on the decision path, handler will be whatever context is reset to.
 			} else if nk == paramKind {
 				goto Param
 				// NOTE: this case (backtracking from static node to previous any node) can not happen by current any matching logic. Any node is end of search currently
@@ -531,15 +538,21 @@ func (r *Router) Find(method, path string, c Context) {
 		search = search[lcpLen:]
 		searchIndex = searchIndex + lcpLen
 
-		// Finish routing if no remaining search and we are on a node with handler and matching method type
-		if search == "" && currentNode.isHandler {
-			// check if current node has handler registered for http method we are looking for. we store currentNode as
-			// best matching in case we do no find no more routes matching this path+method
-			if previousBestMatchNode == nil {
-				previousBestMatchNode = currentNode
-			}
-			if h := currentNode.findMethod(method); h != nil {
-				matchedRouteMethod = h
+		// Finish routing if is no request path remaining to search
+		if search == "" {
+			// in case of node that is handler we have exact method type match or something for 405 to use
+			if currentNode.isHandler {
+				// check if current node has handler registered for http method we are looking for. we store currentNode as
+				// best matching in case we do no find no more routes matching this path+method
+				if previousBestMatchNode == nil {
+					previousBestMatchNode = currentNode
+				}
+				if h := currentNode.findMethod(method); h != nil {
+					matchedRouteMethod = h
+					break
+				}
+			} else if currentNode.notFoundHandler != nil {
+				matchedRouteMethod = currentNode.notFoundHandler
 				break
 			}
 		}
@@ -559,7 +572,8 @@ func (r *Router) Find(method, path string, c Context) {
 			i := 0
 			l := len(search)
 			if currentNode.isLeaf {
-				// when param node does not have any children then param node should act similarly to any node - consider all remaining search as match
+				// when param node does not have any children (path param is last piece of route path) then param node should
+				// act similarly to any node - consider all remaining search as match
 				i = l
 			} else {
 				for ; i < l && search[i] != '/'; i++ {
@@ -585,13 +599,16 @@ func (r *Router) Find(method, path string, c Context) {
 			searchIndex += +len(search)
 			search = ""
 
-			// check if current node has handler registered for http method we are looking for. we store currentNode as
-			// best matching in case we do no find no more routes matching this path+method
+			if h := currentNode.findMethod(method); h != nil {
+				matchedRouteMethod = h
+				break
+			}
+			// we store currentNode as best matching in case we do not find more routes matching this path+method. Needed for 405
 			if previousBestMatchNode == nil {
 				previousBestMatchNode = currentNode
 			}
-			if h := currentNode.findMethod(method); h != nil {
-				matchedRouteMethod = h
+			if currentNode.notFoundHandler != nil {
+				matchedRouteMethod = currentNode.notFoundHandler
 				break
 			}
 		}
@@ -614,12 +631,14 @@ func (r *Router) Find(method, path string, c Context) {
 		return // nothing matched at all
 	}
 
+	// matchedHandler could be method+path handler that we matched or notFoundHandler from node with matching path
+	// user provided not found (404) handler has priority over generic method not found (405) handler or global 404 handler
 	var rPath string
 	var rPNames []string
 	if matchedRouteMethod != nil {
-		ctx.handler = matchedRouteMethod.handler
 		rPath = matchedRouteMethod.ppath
 		rPNames = matchedRouteMethod.pnames
+		ctx.handler = matchedRouteMethod.handler
 	} else {
 		// use previous match as basis. although we have no matching handler we have path match.
 		// so we can send http.StatusMethodNotAllowed (405) instead of http.StatusNotFound (404)
@@ -628,7 +647,11 @@ func (r *Router) Find(method, path string, c Context) {
 		rPath = currentNode.originalPath
 		rPNames = nil // no params here
 		ctx.handler = NotFoundHandler
-		if currentNode.isHandler {
+		if currentNode.notFoundHandler != nil {
+			rPath = currentNode.notFoundHandler.ppath
+			rPNames = currentNode.notFoundHandler.pnames
+			ctx.handler = currentNode.notFoundHandler.handler
+		} else if currentNode.isHandler {
 			ctx.Set(ContextKeyHeaderAllow, currentNode.methods.allowHeader)
 			ctx.handler = MethodNotAllowedHandler
 			if method == http.MethodOptions {

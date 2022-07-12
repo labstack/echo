@@ -766,6 +766,70 @@ func TestEchoNotFound(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 }
 
+func TestEcho_RouteNotFound(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		whenURL     string
+		expectRoute interface{}
+		expectCode  int
+	}{
+		{
+			name:        "404, route to static not found handler /a/c/xx",
+			whenURL:     "/a/c/xx",
+			expectRoute: "GET /a/c/xx",
+			expectCode:  http.StatusNotFound,
+		},
+		{
+			name:        "404, route to path param not found handler /a/:file",
+			whenURL:     "/a/echo.exe",
+			expectRoute: "GET /a/:file",
+			expectCode:  http.StatusNotFound,
+		},
+		{
+			name:        "404, route to any not found handler /*",
+			whenURL:     "/b/echo.exe",
+			expectRoute: "GET /*",
+			expectCode:  http.StatusNotFound,
+		},
+		{
+			name:        "200, route /a/c/df to /a/c/df",
+			whenURL:     "/a/c/df",
+			expectRoute: "GET /a/c/df",
+			expectCode:  http.StatusOK,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+
+			okHandler := func(c Context) error {
+				return c.String(http.StatusOK, c.Request().Method+" "+c.Path())
+			}
+			notFoundHandler := func(c Context) error {
+				return c.String(http.StatusNotFound, c.Request().Method+" "+c.Path())
+			}
+
+			e.GET("/", okHandler)
+			e.GET("/a/c/df", okHandler)
+			e.GET("/a/b*", okHandler)
+			e.PUT("/*", okHandler)
+
+			e.RouteNotFound("/a/c/xx", notFoundHandler)  // static
+			e.RouteNotFound("/a/:file", notFoundHandler) // param
+			e.RouteNotFound("/*", notFoundHandler)       // any
+
+			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
+			rec := httptest.NewRecorder()
+
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, tc.expectCode, rec.Code)
+			assert.Equal(t, tc.expectRoute, rec.Body.String())
+		})
+	}
+}
+
 func TestEchoMethodNotAllowed(t *testing.T) {
 	e := New()
 
