@@ -1286,6 +1286,43 @@ func TestNotFoundRouteStaticKind(t *testing.T) {
 	}
 }
 
+func TestRouter_notFoundRouteWithNodeSplitting(t *testing.T) {
+	e := New()
+	r := e.router
+
+	r.Add(http.MethodGet, "/test*", handlerHelper("ID", 0))
+	r.Add(RouteNotFound, "/*", handlerHelper("ID", 1))
+	r.Add(RouteNotFound, "/test", handlerHelper("ID", 2))
+
+	// Tree before:
+	// 1    `/`
+	// 1.1      `*` (any) ID=1
+	// 1.2      `test` (static) ID=2
+	// 1.2.1        `*` (any) ID=0
+
+	// node with path `test` has routeNotFound handler from previous Add call. Now when we insert `/te/st*` into router tree
+	// This means that node `test` is split into `te` and `st` nodes and new node `/st*` is inserted.
+	// On that split `/test` routeNotFound handler must not be lost.
+	r.Add(http.MethodGet, "/te/st*", handlerHelper("ID", 3))
+	// Tree after:
+	// 1    `/`
+	// 1.1      `*` (any) ID=1
+	// 1.2      `te` (static)
+	// 1.2.1        `st` (static) ID=2
+	// 1.2.1.1          `*` (any) ID=0
+	// 1.2.2        `/st` (static)
+	// 1.2.2.1          `*` (any) ID=3
+
+	c := e.NewContext(nil, nil).(*context)
+	r.Find(http.MethodPut, "/test", c)
+
+	c.handler(c)
+
+	testValue, _ := c.Get("ID").(int)
+	assert.Equal(t, 2, testValue)
+	assert.Equal(t, "/test", c.Path())
+}
+
 // Issue #1509
 func TestRouterParamStaticConflict(t *testing.T) {
 	e := New()
