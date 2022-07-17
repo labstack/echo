@@ -153,6 +153,8 @@ const (
 	PROPFIND = "PROPFIND"
 	// REPORT Method can be used to get information about a resource, see rfc 3253
 	REPORT = "REPORT"
+	// RouteNotFound is special method type for routes handling "route not found" (404) cases
+	RouteNotFound = "echo_route_not_found"
 )
 
 // Headers
@@ -406,6 +408,16 @@ func (e *Echo) PUT(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo {
 // router with optional route-level middleware. Panics on error.
 func (e *Echo) TRACE(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo {
 	return e.Add(http.MethodTrace, path, h, m...)
+}
+
+// RouteNotFound registers a special-case route which is executed when no other route is found (i.e. HTTP 404 cases)
+// for current request URL.
+// Path supports static and named/any parameters just like other http method is defined. Generally path is ended with
+// wildcard/match-any character (`/*`, `/download/*` etc).
+//
+// Example: `e.RouteNotFound("/*", func(c echo.Context) error { return c.NoContent(http.StatusNotFound) })`
+func (e *Echo) RouteNotFound(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo {
+	return e.Add(RouteNotFound, path, h, m...)
 }
 
 // Any registers a new route for all supported HTTP methods and path with matching handler

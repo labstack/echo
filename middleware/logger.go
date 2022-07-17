@@ -22,6 +22,8 @@ type LoggerConfig struct {
 	// Tags to construct the logger format.
 	//
 	// - time_unix
+	// - time_unix_milli
+	// - time_unix_micro
 	// - time_unix_nano
 	// - time_rfc3339
 	// - time_rfc3339_nano
@@ -119,6 +121,10 @@ func (config LoggerConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				switch tag {
 				case "time_unix":
 					return buf.WriteString(strconv.FormatInt(time.Now().Unix(), 10))
+				case "time_unix_milli":
+					return buf.WriteString(strconv.FormatInt(time.Now().UnixMilli(), 10))
+				case "time_unix_micro":
+					return buf.WriteString(strconv.FormatInt(time.Now().UnixMicro(), 10))
 				case "time_unix_nano":
 					return buf.WriteString(strconv.FormatInt(time.Now().UnixNano(), 10))
 				case "time_rfc3339":

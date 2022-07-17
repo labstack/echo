@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -170,6 +171,52 @@ func TestLoggerCustomTimestamp(t *testing.T) {
 	loggedTime := *(*string)(unsafe.Pointer(objs["time"]))
 	_, err := time.Parse(customTimeFormat, loggedTime)
 	assert.Error(t, err)
+}
+
+func TestLoggerTemplateWithTimeUnixMilli(t *testing.T) {
+	buf := new(bytes.Buffer)
+
+	e := echo.New()
+	e.Use(LoggerWithConfig(LoggerConfig{
+		Format: `${time_unix_milli}`,
+		Output: buf,
+	}))
+
+	e.GET("/", func(c echo.Context) error {
+		return c.String(http.StatusOK, "OK")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	unixMillis, err := strconv.ParseInt(buf.String(), 10, 64)
+	assert.NoError(t, err)
+	assert.WithinDuration(t, time.Unix(unixMillis/1000, 0), time.Now(), 3*time.Second)
+}
+
+func TestLoggerTemplateWithTimeUnixMicro(t *testing.T) {
+	buf := new(bytes.Buffer)
+
+	e := echo.New()
+	e.Use(LoggerWithConfig(LoggerConfig{
+		Format: `${time_unix_micro}`,
+		Output: buf,
+	}))
+
+	e.GET("/", func(c echo.Context) error {
+		return c.String(http.StatusOK, "OK")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	unixMicros, err := strconv.ParseInt(buf.String(), 10, 64)
+	assert.NoError(t, err)
+	assert.WithinDuration(t, time.Unix(unixMicros/1000000, 0), time.Now(), 3*time.Second)
 }
 
 func BenchmarkLoggerWithConfig_withoutMapFields(b *testing.B) {

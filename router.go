@@ -214,18 +214,22 @@ type routeMethod struct {
 }
 
 type routeMethods struct {
-	connect     *routeMethod
-	delete      *routeMethod
-	get         *routeMethod
-	head        *routeMethod
-	options     *routeMethod
-	patch       *routeMethod
-	post        *routeMethod
-	propfind    *routeMethod
-	put         *routeMethod
-	trace       *routeMethod
-	report      *routeMethod
-	anyOther    map[string]*routeMethod
+	connect  *routeMethod
+	delete   *routeMethod
+	get      *routeMethod
+	head     *routeMethod
+	options  *routeMethod
+	patch    *routeMethod
+	post     *routeMethod
+	propfind *routeMethod
+	put      *routeMethod
+	trace    *routeMethod
+	report   *routeMethod
+	anyOther map[string]*routeMethod
+
+	// notFoundHandler is handler registered with RouteNotFound method and is executed for 404 cases
+	notFoundHandler *routeMethod
+
 	allowHeader string
 }
 
@@ -253,6 +257,9 @@ func (m *routeMethods) set(method string, r *routeMethod) {
 		m.trace = r
 	case REPORT:
 		m.report = r
+	case RouteNotFound:
+		m.notFoundHandler = r
+		return // RouteNotFound/404 is not considered as a handler so no further logic needs to be executed
 	default:
 		if m.anyOther == nil {
 			m.anyOther = make(map[string]*routeMethod)
@@ -357,6 +364,7 @@ func (m *routeMethods) isHandler() bool {
 		m.trace != nil ||
 		m.report != nil ||
 		len(m.anyOther) != 0
+	// RouteNotFound/404 is not considered as a handler
 }
 
 // Routes returns all registered routes
@@ -615,7 +623,12 @@ func (r *DefaultRouter) insert(t kind, path string, method string, ri routeMetho
 			}
 			currentNode.isLeaf = currentNode.staticChildren == nil && currentNode.paramChild == nil && currentNode.anyChild == nil
 		} else if lcpLen < prefixLen {
-			// Split node
+			// Split node into two before we insert new node.
+			// This happens when we are inserting path that is submatch of any existing inserted paths.
+			// For example, we have node `/test` and now are about to insert `/te/*`. In that case
+			// 1. overlapping part is `/te` that is used as parent node
+			// 2. `st` is part from existing node that is not matching - it gets its own node (child to `/te`)
+			// 3. `/*` is the new part we are about to insert (child to `/te`)
 			n := newNode(
 				currentNode.kind,
 				currentNode.prefix[lcpLen:],
@@ -739,10 +752,8 @@ func (n *node) findStaticChild(l byte) *node {
 }
 
 func (n *node) findChildWithLabel(l byte) *node {
-	for _, c := range n.staticChildren {
-		if c.label == l {
-			return c
-		}
+	if c := n.findStaticChild(l); c != nil {
+		return c
 	}
 	if l == paramLabel {
 		return n.paramChild
@@ -755,11 +766,7 @@ func (n *node) findChildWithLabel(l byte) *node {
 
 func (n *node) setHandler(method string, r *routeMethod) {
 	n.methods.set(method, r)
-	if r != nil && r.handler != nil {
-		n.isHandler = true
-	} else {
-		n.isHandler = n.methods.isHandler()
-	}
+	n.isHandler = n.methods.isHandler()
 }
 
 // Note: notFoundRouteInfo exists to avoid allocations when setting 404 RouteInfo to Context
@@ -904,7 +911,7 @@ func (r *DefaultRouter) Route(c RoutableContext) HandlerFunc {
 			// No matching prefix, let's backtrack to the first possible alternative node of the decision path
 			nk, ok := backtrackToNextNodeKind(staticKind)
 			if !ok {
-				break // No other possibilities on the decision path
+				break // No other possibilities on the decision path, handler will be whatever context is reset to.
 			} else if nk == paramKind {
 				goto Param
 				// NOTE: this case (backtracking from static node to previous any node) can not happen by current any matching logic. Any node is end of search currently
@@ -920,15 +927,21 @@ func (r *DefaultRouter) Route(c RoutableContext) HandlerFunc {
 		search = search[lcpLen:]
 		searchIndex = searchIndex + lcpLen
 
-		// Finish routing if no remaining search and we are on a node with handler and matching method type
-		if search == "" && currentNode.isHandler {
-			// check if current node has handler registered for http method we are looking for. we store currentNode as
-			// best matching in case we do no find no more routes matching this path+method
-			if previousBestMatchNode == nil {
-				previousBestMatchNode = currentNode
-			}
-			if rMethod := currentNode.methods.find(req.Method); rMethod != nil {
-				matchedRouteMethod = rMethod
+		// Finish routing if is no request path remaining to search
+		if search == "" {
+			// in case of node that is handler we have exact method type match or something for 405 to use
+			if currentNode.isHandler {
+				// check if current node has handler registered for http method we are looking for. we store currentNode as
+				// best matching in case we do no find no more routes matching this path+method
+				if previousBestMatchNode == nil {
+					previousBestMatchNode = currentNode
+				}
+				if h := currentNode.methods.find(req.Method); h != nil {
+					matchedRouteMethod = h
+					break
+				}
+			} else if currentNode.methods.notFoundHandler != nil {
+				matchedRouteMethod = currentNode.methods.notFoundHandler
 				break
 			}
 		}
@@ -948,7 +961,8 @@ func (r *DefaultRouter) Route(c RoutableContext) HandlerFunc {
 			i := 0
 			l := len(search)
 			if currentNode.isLeaf {
-				// when param node does not have any children then param node should act similarly to any node - consider all remaining search as match
+				// when param node does not have any children (path param is last piece of route path) then param node should
+				// act similarly to any node - consider all remaining search as match
 				i = l
 			} else {
 				for ; i < l && search[i] != '/'; i++ {
@@ -973,13 +987,16 @@ func (r *DefaultRouter) Route(c RoutableContext) HandlerFunc {
 			searchIndex += +len(search)
 			search = ""
 
-			// check if current node has handler registered for http method we are looking for. we store currentNode as
-			// best matching in case we do no find no more routes matching this path+method
+			if rMethod := currentNode.methods.find(req.Method); rMethod != nil {
+				matchedRouteMethod = rMethod
+				break
+			}
+			// we store currentNode as best matching in case we do not find more routes matching this path+method. Needed for 405
 			if previousBestMatchNode == nil {
 				previousBestMatchNode = currentNode
 			}
-			if rMethod := currentNode.methods.find(req.Method); rMethod != nil {
-				matchedRouteMethod = rMethod
+			if currentNode.methods.notFoundHandler != nil {
+				matchedRouteMethod = currentNode.methods.notFoundHandler
 				break
 			}
 		}
@@ -1021,7 +1038,13 @@ func (r *DefaultRouter) Route(c RoutableContext) HandlerFunc {
 
 		rPath = currentNode.originalPath
 		rInfo = notFoundRouteInfo
-		if currentNode.isHandler {
+		if currentNode.methods.notFoundHandler != nil {
+			matchedRouteMethod = currentNode.methods.notFoundHandler
+
+			rInfo = matchedRouteMethod.routeInfo
+			rPath = matchedRouteMethod.path
+			rHandler = matchedRouteMethod.handler
+		} else if currentNode.isHandler {
 			rInfo = methodNotAllowedRouteInfo
 
 			c.Set(ContextKeyHeaderAllow, currentNode.methods.allowHeader)
