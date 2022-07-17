@@ -79,9 +79,6 @@ func TestDecompressWithConfig_DefaultConfig_noDecode(t *testing.T) {
 
 func TestDecompressWithConfig_DefaultConfig(t *testing.T) {
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("test"))
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
 
 	h := Decompress()(func(c echo.Context) error {
 		c.Response().Write([]byte("test")) // For Content-Type sniffing
@@ -91,10 +88,10 @@ func TestDecompressWithConfig_DefaultConfig(t *testing.T) {
 	// Decompress
 	body := `{"name": "echo"}`
 	gz, _ := gzipString(body)
-	req = httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(gz)))
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(gz)))
 	req.Header.Set(echo.HeaderContentEncoding, GZIPEncoding)
-	rec = httptest.NewRecorder()
-	c = e.NewContext(req, rec)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
 
 	err := h(c)
 	assert.NoError(t, err)

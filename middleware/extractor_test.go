@@ -1,9 +1,11 @@
 package middleware
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -18,6 +20,7 @@ func TestCreateExtractors(t *testing.T) {
 		givenPathParams   echo.PathParams
 		whenLoopups       string
 		expectValues      []string
+		expectSource      ExtractorSource
 		expectCreateError string
 		expectError       string
 	}{
@@ -30,6 +33,7 @@ func TestCreateExtractors(t *testing.T) {
 			},
 			whenLoopups:  "header:Authorization:Bearer ",
 			expectValues: []string{"token"},
+			expectSource: ExtractorSourceHeader,
 		},
 		{
 			name: "ok, form",
@@ -43,6 +47,7 @@ func TestCreateExtractors(t *testing.T) {
 			},
 			whenLoopups:  "form:name",
 			expectValues: []string{"Jon Snow"},
+			expectSource: ExtractorSourceForm,
 		},
 		{
 			name: "ok, cookie",
@@ -53,6 +58,7 @@ func TestCreateExtractors(t *testing.T) {
 			},
 			whenLoopups:  "cookie:_csrf",
 			expectValues: []string{"token"},
+			expectSource: ExtractorSourceCookie,
 		},
 		{
 			name: "ok, param",
@@ -61,6 +67,7 @@ func TestCreateExtractors(t *testing.T) {
 			},
 			whenLoopups:  "param:id",
 			expectValues: []string{"123"},
+			expectSource: ExtractorSourcePathParam,
 		},
 		{
 			name: "ok, query",
@@ -70,6 +77,7 @@ func TestCreateExtractors(t *testing.T) {
 			},
 			whenLoopups:  "query:id",
 			expectValues: []string{"999"},
+			expectSource: ExtractorSourceQuery,
 		},
 		{
 			name:              "nok, invalid lookup",
@@ -100,8 +108,9 @@ func TestCreateExtractors(t *testing.T) {
 			assert.NoError(t, err)
 
 			for _, e := range extractors {
-				values, eErr := e(c)
+				values, source, eErr := e(c)
 				assert.Equal(t, tc.expectValues, values)
+				assert.Equal(t, tc.expectSource, source)
 				if tc.expectError != "" {
 					assert.EqualError(t, eErr, tc.expectError)
 					return
@@ -226,8 +235,9 @@ func TestValuesFromHeader(t *testing.T) {
 
 			extractor := valuesFromHeader(tc.whenName, tc.whenValuePrefix)
 
-			values, err := extractor(c)
+			values, source, err := extractor(c)
 			assert.Equal(t, tc.expectValues, values)
+			assert.Equal(t, ExtractorSourceHeader, source)
 			if tc.expectError != "" {
 				assert.EqualError(t, err, tc.expectError)
 			} else {
@@ -287,8 +297,9 @@ func TestValuesFromQuery(t *testing.T) {
 
 			extractor := valuesFromQuery(tc.whenName)
 
-			values, err := extractor(c)
+			values, source, err := extractor(c)
 			assert.Equal(t, tc.expectValues, values)
+			assert.Equal(t, ExtractorSourceQuery, source)
 			if tc.expectError != "" {
 				assert.EqualError(t, err, tc.expectError)
 			} else {
@@ -366,8 +377,9 @@ func TestValuesFromParam(t *testing.T) {
 
 			extractor := valuesFromParam(tc.whenName)
 
-			values, err := extractor(c)
+			values, source, err := extractor(c)
 			assert.Equal(t, tc.expectValues, values)
+			assert.Equal(t, ExtractorSourcePathParam, source)
 			if tc.expectError != "" {
 				assert.EqualError(t, err, tc.expectError)
 			} else {
@@ -446,8 +458,9 @@ func TestValuesFromCookie(t *testing.T) {
 
 			extractor := valuesFromCookie(tc.whenName)
 
-			values, err := extractor(c)
+			values, source, err := extractor(c)
 			assert.Equal(t, tc.expectValues, values)
+			assert.Equal(t, ExtractorSourceCookie, source)
 			if tc.expectError != "" {
 				assert.EqualError(t, err, tc.expectError)
 			} else {
@@ -483,6 +496,25 @@ func TestValuesFromForm(t *testing.T) {
 		return req
 	}
 
+	exampleMultiPartFormRequest := func(mod func(w *multipart.Writer)) *http.Request {
+		var b bytes.Buffer
+		w := multipart.NewWriter(&b)
+		w.WriteField("name", "Jon Snow")
+		w.WriteField("emails[]", "jon@labstack.com")
+		if mod != nil {
+			mod(w)
+		}
+
+		fw, _ := w.CreateFormFile("upload", "my.file")
+		fw.Write([]byte(`<div>hi</div>`))
+		w.Close()
+
+		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(b.String()))
+		req.Header.Add(echo.HeaderContentType, w.FormDataContentType())
+
+		return req
+	}
+
 	var testCases = []struct {
 		name         string
 		givenRequest *http.Request
@@ -500,6 +532,14 @@ func TestValuesFromForm(t *testing.T) {
 			name: "ok, POST form, multiple value",
 			givenRequest: examplePostFormRequest(func(v *url.Values) {
 				v.Add("emails[]", "snow@labstack.com")
+			}),
+			whenName:     "emails[]",
+			expectValues: []string{"jon@labstack.com", "snow@labstack.com"},
+		},
+		{
+			name: "ok, POST multipart/form, multiple value",
+			givenRequest: exampleMultiPartFormRequest(func(w *multipart.Writer) {
+				w.WriteField("emails[]", "snow@labstack.com")
 			}),
 			whenName:     "emails[]",
 			expectValues: []string{"jon@labstack.com", "snow@labstack.com"},
@@ -523,16 +563,6 @@ func TestValuesFromForm(t *testing.T) {
 			givenRequest: examplePostFormRequest(nil),
 			whenName:     "nope",
 			expectError:  errFormExtractorValueMissing.Error(),
-		},
-		{
-			name: "nok, POST form, form parsing error",
-			givenRequest: func() *http.Request {
-				req := httptest.NewRequest(http.MethodPost, "/", nil)
-				req.Body = nil
-				return req
-			}(),
-			whenName:    "name",
-			expectError: "valuesFromForm parse form failed: missing form body",
 		},
 		{
 			name: "ok, cut values over extractorLimit",
@@ -559,8 +589,9 @@ func TestValuesFromForm(t *testing.T) {
 
 			extractor := valuesFromForm(tc.whenName)
 
-			values, err := extractor(c)
+			values, source, err := extractor(c)
 			assert.Equal(t, tc.expectValues, values)
+			assert.Equal(t, ExtractorSourceForm, source)
 			if tc.expectError != "" {
 				assert.EqualError(t, err, tc.expectError)
 			} else {

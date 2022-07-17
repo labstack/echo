@@ -336,16 +336,54 @@ func TestEchoStaticRedirectIndex(t *testing.T) {
 }
 
 func TestEchoFile(t *testing.T) {
-	e := New()
-	ri := e.File("/walle", "_fixture/images/walle.png")
-	assert.Equal(t, http.MethodGet, ri.Method())
-	assert.Equal(t, "/walle", ri.Path())
-	assert.Equal(t, "GET:/walle", ri.Name())
-	assert.Nil(t, ri.Params())
+	var testCases = []struct {
+		name             string
+		givenPath        string
+		givenFile        string
+		whenPath         string
+		expectCode       int
+		expectStartsWith string
+	}{
+		{
+			name:             "ok",
+			givenPath:        "/walle",
+			givenFile:        "_fixture/images/walle.png",
+			whenPath:         "/walle",
+			expectCode:       http.StatusOK,
+			expectStartsWith: string([]byte{0x89, 0x50, 0x4e}),
+		},
+		{
+			name:             "ok with relative path",
+			givenPath:        "/",
+			givenFile:        "./go.mod",
+			whenPath:         "/",
+			expectCode:       http.StatusOK,
+			expectStartsWith: "module github.com/labstack/echo/v",
+		},
+		{
+			name:             "nok file does not exist",
+			givenPath:        "/",
+			givenFile:        "./this-file-does-not-exist",
+			whenPath:         "/",
+			expectCode:       http.StatusNotFound,
+			expectStartsWith: "{\"message\":\"Not Found\"}\n",
+		},
+	}
 
-	c, b := request(http.MethodGet, "/walle", e)
-	assert.Equal(t, http.StatusOK, c)
-	assert.NotEmpty(t, b)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New() // we are using echo.defaultFS instance
+			e.File(tc.givenPath, tc.givenFile)
+
+			c, b := request(http.MethodGet, tc.whenPath, e)
+			assert.Equal(t, tc.expectCode, c)
+
+			if len(b) > len(tc.expectStartsWith) {
+				b = b[:len(tc.expectStartsWith)]
+			}
+			assert.Equal(t, tc.expectStartsWith, b)
+		})
+	}
 }
 
 func TestEchoMiddleware(t *testing.T) {
@@ -878,6 +916,70 @@ func TestEchoGroup(t *testing.T) {
 	buf.Reset()
 	request(http.MethodGet, "/group2/group3", e)
 	assert.Equal(t, "023", buf.String())
+}
+
+func TestEcho_RouteNotFound(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		whenURL     string
+		expectRoute interface{}
+		expectCode  int
+	}{
+		{
+			name:        "404, route to static not found handler /a/c/xx",
+			whenURL:     "/a/c/xx",
+			expectRoute: "GET /a/c/xx",
+			expectCode:  http.StatusNotFound,
+		},
+		{
+			name:        "404, route to path param not found handler /a/:file",
+			whenURL:     "/a/echo.exe",
+			expectRoute: "GET /a/:file",
+			expectCode:  http.StatusNotFound,
+		},
+		{
+			name:        "404, route to any not found handler /*",
+			whenURL:     "/b/echo.exe",
+			expectRoute: "GET /*",
+			expectCode:  http.StatusNotFound,
+		},
+		{
+			name:        "200, route /a/c/df to /a/c/df",
+			whenURL:     "/a/c/df",
+			expectRoute: "GET /a/c/df",
+			expectCode:  http.StatusOK,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+
+			okHandler := func(c Context) error {
+				return c.String(http.StatusOK, c.Request().Method+" "+c.Path())
+			}
+			notFoundHandler := func(c Context) error {
+				return c.String(http.StatusNotFound, c.Request().Method+" "+c.Path())
+			}
+
+			e.GET("/", okHandler)
+			e.GET("/a/c/df", okHandler)
+			e.GET("/a/b*", okHandler)
+			e.PUT("/*", okHandler)
+
+			e.RouteNotFound("/a/c/xx", notFoundHandler)  // static
+			e.RouteNotFound("/a/:file", notFoundHandler) // param
+			e.RouteNotFound("/*", notFoundHandler)       // any
+
+			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
+			rec := httptest.NewRecorder()
+
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, tc.expectCode, rec.Code)
+			assert.Equal(t, tc.expectRoute, rec.Body.String())
+		})
+	}
 }
 
 func TestEchoNotFound(t *testing.T) {

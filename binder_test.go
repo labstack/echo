@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"io"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -55,7 +56,7 @@ func TestBindingError_Error(t *testing.T) {
 func TestBindingError_ErrorJSON(t *testing.T) {
 	err := NewBindingError("id", []string{"1", "nope"}, "bind failed", errors.New("internal error"))
 
-	resp, err := json.Marshal(err)
+	resp, _ := json.Marshal(err)
 
 	assert.Equal(t, `{"field":"id","message":"bind failed"}`, string(resp))
 }
@@ -2188,6 +2189,188 @@ func TestValueBinder_BindUnmarshaler(t *testing.T) {
 	}
 }
 
+func TestValueBinder_JSONUnmarshaler(t *testing.T) {
+	example := big.NewInt(999)
+
+	var testCases = []struct {
+		name            string
+		givenFailFast   bool
+		givenBindErrors []error
+		whenURL         string
+		whenMust        bool
+		expectValue     big.Int
+		expectError     string
+	}{
+		{
+			name:        "ok, binds value",
+			whenURL:     "/search?param=999&param=998",
+			expectValue: *example,
+		},
+		{
+			name:        "ok, params values empty, value is not changed",
+			whenURL:     "/search?nope=1",
+			expectValue: big.Int{},
+		},
+		{
+			name:          "nok, previous errors fail fast without binding value",
+			givenFailFast: true,
+			whenURL:       "/search?param=1&param=100",
+			expectValue:   big.Int{},
+			expectError:   "previous error",
+		},
+		{
+			name:        "nok, conversion fails, value is not changed",
+			whenURL:     "/search?param=nope&param=xxx",
+			expectValue: big.Int{},
+			expectError: "code=400, message=failed to bind field value to json.Unmarshaler interface, internal=math/big: cannot unmarshal \"nope\" into a *big.Int, field=param",
+		},
+		{
+			name:        "ok (must), binds value",
+			whenMust:    true,
+			whenURL:     "/search?param=999&param=998",
+			expectValue: *example,
+		},
+		{
+			name:        "ok (must), params values empty, returns error, value is not changed",
+			whenMust:    true,
+			whenURL:     "/search?nope=1",
+			expectValue: big.Int{},
+			expectError: "code=400, message=required field value is empty, field=param",
+		},
+		{
+			name:          "nok (must), previous errors fail fast without binding value",
+			givenFailFast: true,
+			whenMust:      true,
+			whenURL:       "/search?param=1&param=xxx",
+			expectValue:   big.Int{},
+			expectError:   "previous error",
+		},
+		{
+			name:        "nok (must), conversion fails, value is not changed",
+			whenMust:    true,
+			whenURL:     "/search?param=nope&param=xxx",
+			expectValue: big.Int{},
+			expectError: "code=400, message=failed to bind field value to json.Unmarshaler interface, internal=math/big: cannot unmarshal \"nope\" into a *big.Int, field=param",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			c := createTestContext(tc.whenURL, nil, nil)
+			b := QueryParamsBinder(c).FailFast(tc.givenFailFast)
+			if tc.givenFailFast {
+				b.errors = []error{errors.New("previous error")}
+			}
+
+			var dest big.Int
+			var err error
+			if tc.whenMust {
+				err = b.MustJSONUnmarshaler("param", &dest).BindError()
+			} else {
+				err = b.JSONUnmarshaler("param", &dest).BindError()
+			}
+
+			assert.Equal(t, tc.expectValue, dest)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValueBinder_TextUnmarshaler(t *testing.T) {
+	example := big.NewInt(999)
+
+	var testCases = []struct {
+		name            string
+		givenFailFast   bool
+		givenBindErrors []error
+		whenURL         string
+		whenMust        bool
+		expectValue     big.Int
+		expectError     string
+	}{
+		{
+			name:        "ok, binds value",
+			whenURL:     "/search?param=999&param=998",
+			expectValue: *example,
+		},
+		{
+			name:        "ok, params values empty, value is not changed",
+			whenURL:     "/search?nope=1",
+			expectValue: big.Int{},
+		},
+		{
+			name:          "nok, previous errors fail fast without binding value",
+			givenFailFast: true,
+			whenURL:       "/search?param=1&param=100",
+			expectValue:   big.Int{},
+			expectError:   "previous error",
+		},
+		{
+			name:        "nok, conversion fails, value is not changed",
+			whenURL:     "/search?param=nope&param=xxx",
+			expectValue: big.Int{},
+			expectError: "code=400, message=failed to bind field value to encoding.TextUnmarshaler interface, internal=math/big: cannot unmarshal \"nope\" into a *big.Int, field=param",
+		},
+		{
+			name:        "ok (must), binds value",
+			whenMust:    true,
+			whenURL:     "/search?param=999&param=998",
+			expectValue: *example,
+		},
+		{
+			name:        "ok (must), params values empty, returns error, value is not changed",
+			whenMust:    true,
+			whenURL:     "/search?nope=1",
+			expectValue: big.Int{},
+			expectError: "code=400, message=required field value is empty, field=param",
+		},
+		{
+			name:          "nok (must), previous errors fail fast without binding value",
+			givenFailFast: true,
+			whenMust:      true,
+			whenURL:       "/search?param=1&param=xxx",
+			expectValue:   big.Int{},
+			expectError:   "previous error",
+		},
+		{
+			name:        "nok (must), conversion fails, value is not changed",
+			whenMust:    true,
+			whenURL:     "/search?param=nope&param=xxx",
+			expectValue: big.Int{},
+			expectError: "code=400, message=failed to bind field value to encoding.TextUnmarshaler interface, internal=math/big: cannot unmarshal \"nope\" into a *big.Int, field=param",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			c := createTestContext(tc.whenURL, nil, nil)
+			b := QueryParamsBinder(c).FailFast(tc.givenFailFast)
+			if tc.givenFailFast {
+				b.errors = []error{errors.New("previous error")}
+			}
+
+			var dest big.Int
+			var err error
+			if tc.whenMust {
+				err = b.MustTextUnmarshaler("param", &dest).BindError()
+			} else {
+				err = b.TextUnmarshaler("param", &dest).BindError()
+			}
+
+			assert.Equal(t, tc.expectValue, dest)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestValueBinder_BindWithDelimiter_types(t *testing.T) {
 	var testCases = []struct {
 		name    string
@@ -2517,6 +2700,97 @@ func TestValueBinder_UnixTime(t *testing.T) {
 				err = b.MustUnixTime("param", &dest).BindError()
 			} else {
 				err = b.UnixTime("param", &dest).BindError()
+			}
+
+			assert.Equal(t, tc.expectValue.UnixNano(), dest.UnixNano())
+			assert.Equal(t, tc.expectValue.In(time.UTC), dest.In(time.UTC))
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValueBinder_UnixTimeMilli(t *testing.T) {
+	exampleTime, _ := time.Parse(time.RFC3339Nano, "2022-03-13T15:13:30.140000000+00:00") // => 1647184410140
+	var testCases = []struct {
+		name            string
+		givenFailFast   bool
+		givenBindErrors []error
+		whenURL         string
+		whenMust        bool
+		expectValue     time.Time
+		expectError     string
+	}{
+		{
+			name:        "ok, binds value, unix time in milliseconds",
+			whenURL:     "/search?param=1647184410140&param=1647184410199",
+			expectValue: exampleTime,
+		},
+		{
+			name:        "ok, params values empty, value is not changed",
+			whenURL:     "/search?nope=1",
+			expectValue: time.Time{},
+		},
+		{
+			name:          "nok, previous errors fail fast without binding value",
+			givenFailFast: true,
+			whenURL:       "/search?param=1&param=100",
+			expectValue:   time.Time{},
+			expectError:   "previous error",
+		},
+		{
+			name:        "nok, conversion fails, value is not changed",
+			whenURL:     "/search?param=nope&param=100",
+			expectValue: time.Time{},
+			expectError: "code=400, message=failed to bind field value to Time, internal=strconv.ParseInt: parsing \"nope\": invalid syntax, field=param",
+		},
+		{
+			name:        "ok (must), binds value",
+			whenMust:    true,
+			whenURL:     "/search?param=1647184410140&param=1647184410199",
+			expectValue: exampleTime,
+		},
+		{
+			name:        "ok (must), params values empty, returns error, value is not changed",
+			whenMust:    true,
+			whenURL:     "/search?nope=1",
+			expectValue: time.Time{},
+			expectError: "code=400, message=required field value is empty, field=param",
+		},
+		{
+			name:          "nok (must), previous errors fail fast without binding value",
+			givenFailFast: true,
+			whenMust:      true,
+			whenURL:       "/search?param=1&param=100",
+			expectValue:   time.Time{},
+			expectError:   "previous error",
+		},
+		{
+			name:        "nok (must), conversion fails, value is not changed",
+			whenMust:    true,
+			whenURL:     "/search?param=nope&param=100",
+			expectValue: time.Time{},
+			expectError: "code=400, message=failed to bind field value to Time, internal=strconv.ParseInt: parsing \"nope\": invalid syntax, field=param",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			c := createTestContext(tc.whenURL, nil, nil)
+			b := QueryParamsBinder(c).FailFast(tc.givenFailFast)
+			if tc.givenFailFast {
+				b.errors = []error{errors.New("previous error")}
+			}
+
+			dest := time.Time{}
+			var err error
+			if tc.whenMust {
+				err = b.MustUnixTimeMilli("param", &dest).BindError()
+			} else {
+				err = b.UnixTimeMilli("param", &dest).BindError()
 			}
 
 			assert.Equal(t, tc.expectValue.UnixNano(), dest.UnixNano())

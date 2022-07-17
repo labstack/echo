@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func createTestParseTokenFuncForJWTGo(signingMethod string, signingKey interface{}) func(c echo.Context, auth string) (interface{}, error) {
+func createTestParseTokenFuncForJWTGo(signingMethod string, signingKey interface{}) func(c echo.Context, auth string, source ExtractorSource) (interface{}, error) {
 	// This is minimal implementation for github.com/golang-jwt/jwt as JWT parser library. good enough to get old tests running
 	keyFunc := func(t *jwt.Token) (interface{}, error) {
 		if t.Method.Alg() != signingMethod {
@@ -23,7 +23,7 @@ func createTestParseTokenFuncForJWTGo(signingMethod string, signingKey interface
 		return signingKey, nil
 	}
 
-	return func(c echo.Context, auth string) (interface{}, error) {
+	return func(c echo.Context, auth string, source ExtractorSource) (interface{}, error) {
 		token, err := jwt.ParseWithClaims(auth, jwt.MapClaims{}, keyFunc)
 		if err != nil {
 			return nil, err
@@ -405,7 +405,6 @@ func TestJWTConfig_parseTokenErrorHandling(t *testing.T) {
 		{
 			name: "ok, ErrorHandler is executed",
 			given: JWTConfig{
-				ParseTokenFunc: createTestParseTokenFuncForJWTGo(AlgorithmHS256, []byte("secret")),
 				ErrorHandler: func(c echo.Context, err error) error {
 					return echo.NewHTTPError(http.StatusTeapot, "ErrorHandler: "+err.Error())
 				},
@@ -424,7 +423,7 @@ func TestJWTConfig_parseTokenErrorHandling(t *testing.T) {
 
 			config := tc.given
 			parseTokenCalled := false
-			config.ParseTokenFunc = func(c echo.Context, auth string) (interface{}, error) {
+			config.ParseTokenFunc = func(c echo.Context, auth string, source ExtractorSource) (interface{}, error) {
 				parseTokenCalled = true
 				return nil, errors.New("parsing failed")
 			}
@@ -453,8 +452,10 @@ func TestJWTConfig_custom_ParseTokenFunc_Keyfunc(t *testing.T) {
 	// with current JWT middleware
 	signingKey := []byte("secret")
 
+	var fromSource ExtractorSource
 	config := JWTConfig{
-		ParseTokenFunc: func(c echo.Context, auth string) (interface{}, error) {
+		ParseTokenFunc: func(c echo.Context, auth string, source ExtractorSource) (interface{}, error) {
+			fromSource = source
 			keyFunc := func(t *jwt.Token) (interface{}, error) {
 				if t.Method.Alg() != "HS256" {
 					return nil, fmt.Errorf("unexpected jwt signing method=%v", t.Header["alg"])
@@ -481,6 +482,7 @@ func TestJWTConfig_custom_ParseTokenFunc_Keyfunc(t *testing.T) {
 	res := httptest.NewRecorder()
 	e.ServeHTTP(res, req)
 
+	assert.Equal(t, fromSource, ExtractorSourceHeader)
 	assert.Equal(t, http.StatusTeapot, res.Code)
 }
 
@@ -494,7 +496,7 @@ func TestMustJWTWithConfig_SuccessHandler(t *testing.T) {
 	})
 
 	mw, err := JWTConfig{
-		ParseTokenFunc: func(c echo.Context, auth string) (interface{}, error) {
+		ParseTokenFunc: func(c echo.Context, auth string, source ExtractorSource) (interface{}, error) {
 			return auth, nil
 		},
 		SuccessHandler: func(c echo.Context) {
@@ -616,7 +618,7 @@ func TestJWTWithConfig_ContinueOnIgnoredError(t *testing.T) {
 			mw, err := JWTConfig{
 				ContinueOnIgnoredError: tc.givenContinueOnIgnoredError,
 				TokenLookup:            tc.givenTokenLookup,
-				ParseTokenFunc: func(c echo.Context, auth string) (interface{}, error) {
+				ParseTokenFunc: func(c echo.Context, auth string, source ExtractorSource) (interface{}, error) {
 					return tc.whenParseReturn, tc.whenParseError
 				},
 				ErrorHandler: tc.givenErrorHandler,
@@ -648,8 +650,8 @@ func TestJWTConfig_TokenLookupFuncs(t *testing.T) {
 	e.Use(JWTWithConfig(JWTConfig{
 		ParseTokenFunc: createTestParseTokenFuncForJWTGo(AlgorithmHS256, []byte("secret")),
 		TokenLookupFuncs: []ValuesExtractor{
-			func(c echo.Context) ([]string, error) {
-				return []string{c.Request().Header.Get("X-API-Key")}, nil
+			func(c echo.Context) ([]string, ExtractorSource, error) {
+				return []string{c.Request().Header.Get("X-API-Key")}, ExtractorSourceCustom, nil
 			},
 		},
 	}))

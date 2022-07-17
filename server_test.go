@@ -696,8 +696,7 @@ func TestStartConfig_WithHidePort(t *testing.T) {
 			}
 			assert.NoError(t, <-errCh)
 
-			portMsg := fmt.Sprintf("http(s) server started on")
-			contains := strings.Contains(buf.String(), portMsg)
+			contains := strings.Contains(buf.String(), "http(s) server started on")
 			if tc.hidePort {
 				assert.False(t, contains)
 			} else {

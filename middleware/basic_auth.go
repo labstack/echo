@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"errors"
-	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 
@@ -72,9 +72,11 @@ func (config BasicAuthConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 					continue
 				}
 
+				// Invalid base64 shouldn't be treated as error
+				// instead should be treated as invalid client input
 				b, errDecode := base64.StdEncoding.DecodeString(auth[l+1:])
 				if errDecode != nil {
-					lastError = fmt.Errorf("invalid basic auth value: %w", errDecode)
+					lastError = echo.NewHTTPError(http.StatusBadRequest).WithInternal(errDecode)
 					continue
 				}
 				idx := bytes.IndexByte(b, ':')

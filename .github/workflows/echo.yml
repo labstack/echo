@@ -19,7 +19,7 @@ on:
       - '_fixture/**'
       - '.github/**'
       - 'codecov.yml'
-  workflow_dispatch: # to be able to run workflow manually
+  workflow_dispatch:
 
 jobs:
   test:
@@ -29,72 +29,72 @@ jobs:
         # Each major Go release is supported until there are two newer major releases. https://golang.org/doc/devel/release.html#policy
         # Echo tests with last four major releases
         # except v5 starts from 1.17 until there is last four major releases after that
-        go: [1.17]
+        go: [1.17, 1.18]
     name: ${{ matrix.os }} @ Go ${{ matrix.go }}
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Set up Go ${{ matrix.go }}
-        uses: actions/setup-go@v2
-        with:
-          go-version: ${{ matrix.go }}
-
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           ref: ${{ github.ref }}
 
+      - name: Set up Go ${{ matrix.go }}
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ matrix.go }}
+
       - name: Install Dependencies
-        run: go get -v golang.org/x/lint/golint
+        run: |
+          go install golang.org/x/lint/golint@latest
+          go install honnef.co/go/tools/cmd/staticcheck@latest
 
       - name: Run Tests
         run: |
           golint -set_exit_status ./...
+          staticcheck ./...
           go test -race --coverprofile=coverage.coverprofile --covermode=atomic ./...
-
       - name: Upload coverage to Codecov
-        if: success() && matrix.go == 1.17 && matrix.os == 'ubuntu-latest'
-        uses: codecov/codecov-action@v2
+        if: success() && matrix.go == 1.18 && matrix.os == 'ubuntu-latest'
+        uses: codecov/codecov-action@v1
         with:
+          token:
           fail_ci_if_error: false
-
   benchmark:
     needs: test
     strategy:
       matrix:
         os: [ubuntu-latest]
-        go: [1.17]
+        go: [1.18]
     name: Benchmark comparison ${{ matrix.os }} @ Go ${{ matrix.go }}
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Set up Go ${{ matrix.go }}
-        uses: actions/setup-go@v2
-        with:
-          go-version: ${{ matrix.go }}
-
       - name: Checkout Code (Previous)
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           ref: ${{ github.base_ref }}
           path: previous
 
       - name: Checkout Code (New)
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: new
 
+      - name: Set up Go ${{ matrix.go }}
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ matrix.go }}
+
       - name: Install Dependencies
-        run: go get -v golang.org/x/perf/cmd/benchstat
+        run: go install golang.org/x/perf/cmd/benchstat@latest
 
       - name: Run Benchmark (Previous)
         run: |
           cd previous
           go test -run="-" -bench=".*" -count=8 ./... > benchmark.txt
-
       - name: Run Benchmark (New)
         run: |
           cd new
           go test -run="-" -bench=".*" -count=8 ./... > benchmark.txt
-
       - name: Run Benchstat
         run: |
           benchstat previous/benchmark.txt new/benchmark.txt

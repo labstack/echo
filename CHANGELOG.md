@@ -1,5 +1,50 @@
 # Changelog
 
+## v4.7.2 - 2022-03-16
+
+**Fixes**
+
+* Fix nil pointer exception when calling Start again after address binding error [#2131](https://github.com/labstack/echo/pull/2131)
+* Fix CSRF middleware not being able to extract token from multipart/form-data form [#2136](https://github.com/labstack/echo/pull/2136)
+* Fix Timeout middleware write race [#2126](https://github.com/labstack/echo/pull/2126)
+
+**Enhancements**
+
+* Recover middleware should not log panic for aborted handler [#2134](https://github.com/labstack/echo/pull/2134)
+
+
+## v4.7.1 - 2022-03-13
+
+**Fixes**
+
+* Fix `e.Static`, `.File()`, `c.Attachment()` being picky with paths starting with `./`, `../` and `/` after 4.7.0 introduced echo.Filesystem support (Go1.16+) [#2123](https://github.com/labstack/echo/pull/2123)
+
+**Enhancements**
+
+* Remove some unused code [#2116](https://github.com/labstack/echo/pull/2116)
+
+
+## v4.7.0 - 2022-03-01
+
+**Enhancements**
+
+* Add JWT, KeyAuth, CSRF multivalue extractors [#2060](https://github.com/labstack/echo/pull/2060)
+* Add LogErrorFunc to recover middleware [#2072](https://github.com/labstack/echo/pull/2072)
+* Add support for HEAD method query params binding [#2027](https://github.com/labstack/echo/pull/2027)
+* Improve filesystem support with echo.FileFS, echo.StaticFS, group.FileFS, group.StaticFS [#2064](https://github.com/labstack/echo/pull/2064)
+
+**Fixes**
+
+* Fix X-Real-IP bug, improve tests [#2007](https://github.com/labstack/echo/pull/2007)
+* Minor syntax fixes [#1994](https://github.com/labstack/echo/pull/1994), [#2102](https://github.com/labstack/echo/pull/2102), [#2102](https://github.com/labstack/echo/pull/2102)
+
+**General**
+
+* Add cache-control and connection headers [#2103](https://github.com/labstack/echo/pull/2103)
+* Add Retry-After header constant [#2078](https://github.com/labstack/echo/pull/2078)
+* Upgrade `go` directive in `go.mod` to 1.17 [#2049](https://github.com/labstack/echo/pull/2049)
+* Add Pagoda [#2077](https://github.com/labstack/echo/pull/2077) and Souin [#2069](https://github.com/labstack/echo/pull/2069) to 3rd-party middlewares in README
+
 ## v4.6.3 - 2022-01-10
 
 **Fixes**

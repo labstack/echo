@@ -56,7 +56,7 @@ func TestBasicAuth(t *testing.T) {
 			name:        "nok, not base64 Authorization header",
 			givenConfig: defaultConfig,
 			whenAuth:    []string{strings.ToUpper(basic) + " NOT_BASE64"},
-			expectErr:   "invalid basic auth value: illegal base64 data at input byte 3",
+			expectErr:   "code=400, message=Bad Request, internal=illegal base64 data at input byte 3",
 		},
 		{
 			name:         "nok, missing Authorization header",

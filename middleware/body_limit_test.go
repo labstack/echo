@@ -43,6 +43,7 @@ func TestBodyLimitConfig_ToMiddleware(t *testing.T) {
 
 	// Based on content read (within limit)
 	req = httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(hw))
+	req.ContentLength = -1
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 
@@ -55,6 +56,7 @@ func TestBodyLimitConfig_ToMiddleware(t *testing.T) {
 
 	// Based on content read (overlimit)
 	req = httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(hw))
+	req.ContentLength = -1
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	mw, err = BodyLimitConfig{LimitBytes: 2}.ToMiddleware()

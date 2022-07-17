@@ -21,7 +21,7 @@ import (
 // This is one of the options to provide a token validation key.
 // The order of precedence is a user-defined SigningKeys and SigningKey.
 // Required if signingKey is not provided
-func CreateJWTGoParseTokenFunc(signingKey interface{}, signingKeys map[string]interface{}) func(c echo.Context, auth string) (interface{}, error) {
+func CreateJWTGoParseTokenFunc(signingKey interface{}, signingKeys map[string]interface{}) func(c echo.Context, auth string, source middleware.ExtractorSource) (interface{}, error) {
 	// keyFunc defines a user-defined function that supplies the public key for a token validation.
 	// The function shall take care of verifying the signing algorithm and selecting the proper key.
 	// A user-defined KeyFunc can be useful if tokens are issued by an external party.
@@ -41,7 +41,7 @@ func CreateJWTGoParseTokenFunc(signingKey interface{}, signingKeys map[string]in
 		return nil, fmt.Errorf("unexpected jwt key id=%v", t.Header["kid"])
 	}
 
-	return func(c echo.Context, auth string) (interface{}, error) {
+	return func(c echo.Context, auth string, source middleware.ExtractorSource) (interface{}, error) {
 		token, err := jwt.ParseWithClaims(auth, jwt.MapClaims{}, keyFunc) // you could add your default claims here
 		if err != nil {
 			return nil, err

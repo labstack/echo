@@ -144,7 +144,7 @@ func (config CSRFConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				var lastTokenErr error
 			outer:
 				for _, extractor := range extractors {
-					clientTokens, err := extractor(c)
+					clientTokens, _, err := extractor(c)
 					if err != nil {
 						lastExtractorErr = err
 						continue

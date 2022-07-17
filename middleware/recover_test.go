@@ -51,6 +51,33 @@ func TestRecover_skipper(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code) // status is still untouched. err is returned from middleware chain
 }
 
+func TestRecoverErrAbortHandler(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	h := Recover()(func(c echo.Context) error {
+		panic(http.ErrAbortHandler)
+	})
+	defer func() {
+		r := recover()
+		if r == nil {
+			assert.Fail(t, "expecting `http.ErrAbortHandler`, got `nil`")
+		} else {
+			if err, ok := r.(error); ok {
+				assert.ErrorIs(t, err, http.ErrAbortHandler)
+			} else {
+				assert.Fail(t, "not of error type")
+			}
+		}
+	}()
+
+	hErr := h(c)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.NotContains(t, hErr.Error(), "PANIC RECOVER")
+}
+
 func TestRecoverWithConfig(t *testing.T) {
 	var testCases = []struct {
 		name             string

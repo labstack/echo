@@ -49,12 +49,15 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 )
 
 // Echo is the top-level framework instance.
-// Note: replacing/nilling public fields is not coroutine/thread-safe and can cause data-races/panics.
+//
+// Note: replacing/nilling public fields is not coroutine/thread-safe and can cause data-races/panics. This is very likely
+// to happen when you access Echo instances through Context.Echo() method.
 type Echo struct {
 	// premiddleware are middlewares that are run for every request before routing is done
 	premiddleware []MiddlewareFunc
@@ -66,8 +69,8 @@ type Echo struct {
 	routerCreator func(e *Echo) Router
 
 	contextPool sync.Pool
-	// contextPathParamAllocSize holds maximum parameter count for all added routes. This is necessary info for context
-	// creation time so we can allocate path parameter values slice.
+	// contextPathParamAllocSize holds maximum parameter count for all added routes. This is necessary info at context
+	// creation moment so we can allocate path parameter values slice with correct size.
 	contextPathParamAllocSize int
 
 	// NewContextFunc allows using custom context implementations, instead of default *echo.context
@@ -150,6 +153,8 @@ const (
 	PROPFIND = "PROPFIND"
 	// REPORT Method can be used to get information about a resource, see rfc 3253
 	REPORT = "REPORT"
+	// RouteNotFound is special method type for routes handling "route not found" (404) cases
+	RouteNotFound = "echo_route_not_found"
 )
 
 // Headers
@@ -181,12 +186,14 @@ const (
 	HeaderXForwardedSsl       = "X-Forwarded-Ssl"
 	HeaderXUrlScheme          = "X-Url-Scheme"
 	HeaderXHTTPMethodOverride = "X-HTTP-Method-Override"
-	HeaderXRealIP             = "X-Real-IP"
-	HeaderXRequestID          = "X-Request-ID"
-	HeaderXCorrelationID      = "X-Correlation-ID"
+	HeaderXRealIP             = "X-Real-Ip"
+	HeaderXRequestID          = "X-Request-Id"
+	HeaderXCorrelationID      = "X-Correlation-Id"
 	HeaderXRequestedWith      = "X-Requested-With"
 	HeaderServer              = "Server"
 	HeaderOrigin              = "Origin"
+	HeaderCacheControl        = "Cache-Control"
+	HeaderConnection          = "Connection"
 
 	// Access control
 	HeaderAccessControlRequestMethod    = "Access-Control-Request-Method"
@@ -401,6 +408,16 @@ func (e *Echo) PUT(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo {
 // router with optional route-level middleware. Panics on error.
 func (e *Echo) TRACE(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo {
 	return e.Add(http.MethodTrace, path, h, m...)
+}
+
+// RouteNotFound registers a special-case route which is executed when no other route is found (i.e. HTTP 404 cases)
+// for current request URL.
+// Path supports static and named/any parameters just like other http method is defined. Generally path is ended with
+// wildcard/match-any character (`/*`, `/download/*` etc).
+//
+// Example: `e.RouteNotFound("/*", func(c echo.Context) error { return c.NoContent(http.StatusNotFound) })`
+func (e *Echo) RouteNotFound(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo {
+	return e.Add(RouteNotFound, path, h, m...)
 }
 
 // Any registers a new route for all supported HTTP methods and path with matching handler
@@ -707,26 +724,47 @@ func newDefaultFS() *defaultFS {
 	dir, _ := os.Getwd()
 	return &defaultFS{
 		prefix: dir,
-		fs:     os.DirFS(dir),
+		fs:     nil,
 	}
 }
 
 func (fs defaultFS) Open(name string) (fs.File, error) {
+	if fs.fs == nil {
+		return os.Open(name)
+	}
 	return fs.fs.Open(name)
 }
 
 func subFS(currentFs fs.FS, root string) (fs.FS, error) {
 	root = filepath.ToSlash(filepath.Clean(root)) // note: fs.FS operates only with slashes. `ToSlash` is necessary for Windows
 	if dFS, ok := currentFs.(*defaultFS); ok {
-		// we need to make exception for `defaultFS` instances as it interprets root prefix differently from fs.FS to
-		// allow cases when root is given as `../somepath` which is not valid for fs.FS
-		root = filepath.Join(dFS.prefix, root)
+		// we need to make exception for `defaultFS` instances as it interprets root prefix differently from fs.FS.
+		// fs.Fs.Open does not like relative paths ("./", "../") and absolute paths at all but prior echo.Filesystem we
+		// were able to use paths like `./myfile.log`, `/etc/hosts` and these would work fine with `os.Open` but not with fs.Fs
+		if isRelativePath(root) {
+			root = filepath.Join(dFS.prefix, root)
+		}
 		return &defaultFS{
 			prefix: root,
 			fs:     os.DirFS(root),
 		}, nil
 	}
 	return fs.Sub(currentFs, root)
+}
+
+func isRelativePath(path string) bool {
+	if path == "" {
+		return true
+	}
+	if path[0] == '/' {
+		return false
+	}
+	if runtime.GOOS == "windows" && strings.IndexByte(path, ':') != -1 {
+		// https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file?redirectedfrom=MSDN#file_and_directory_names
+		// https://docs.microsoft.com/en-us/dotnet/standard/io/file-path-formats
+		return false
+	}
+	return true
 }
 
 // MustSubFS creates sub FS from current filesystem or panic on failure.

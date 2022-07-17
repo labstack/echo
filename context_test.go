@@ -448,22 +448,142 @@ func TestContextCookie(t *testing.T) {
 	assert.Contains(t, rec.Header().Get(HeaderSetCookie), "HttpOnly")
 }
 
-func TestContextPathParam(t *testing.T) {
-	e := New()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	c := e.NewContext(req, nil).(*DefaultContext)
-
-	params := &PathParams{
-		{Name: "uid", Value: "101"},
-		{Name: "fid", Value: "501"},
+func TestContext_PathParams(t *testing.T) {
+	var testCases = []struct {
+		name   string
+		given  *PathParams
+		expect PathParams
+	}{
+		{
+			name: "param exists",
+			given: &PathParams{
+				{Name: "uid", Value: "101"},
+				{Name: "fid", Value: "501"},
+			},
+			expect: PathParams{
+				{Name: "uid", Value: "101"},
+				{Name: "fid", Value: "501"},
+			},
+		},
+		{
+			name:   "params is empty",
+			given:  &PathParams{},
+			expect: PathParams{},
+		},
 	}
-	// ParamNames
-	c.pathParams = params
-	assert.EqualValues(t, *params, c.PathParams())
 
-	// Param
-	assert.Equal(t, "501", c.PathParam("fid"))
-	assert.Equal(t, "", c.PathParam("undefined"))
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			c := e.NewContext(req, nil)
+
+			c.(RoutableContext).SetRawPathParams(tc.given)
+
+			assert.EqualValues(t, tc.expect, c.PathParams())
+		})
+	}
+}
+
+func TestContext_PathParam(t *testing.T) {
+	var testCases = []struct {
+		name          string
+		given         *PathParams
+		whenParamName string
+		expect        string
+	}{
+		{
+			name: "param exists",
+			given: &PathParams{
+				{Name: "uid", Value: "101"},
+				{Name: "fid", Value: "501"},
+			},
+			whenParamName: "uid",
+			expect:        "101",
+		},
+		{
+			name: "multiple same param values exists - return first",
+			given: &PathParams{
+				{Name: "uid", Value: "101"},
+				{Name: "uid", Value: "202"},
+				{Name: "fid", Value: "501"},
+			},
+			whenParamName: "uid",
+			expect:        "101",
+		},
+		{
+			name: "param does not exists",
+			given: &PathParams{
+				{Name: "uid", Value: "101"},
+			},
+			whenParamName: "nope",
+			expect:        "",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			c := e.NewContext(req, nil)
+
+			c.(RoutableContext).SetRawPathParams(tc.given)
+
+			assert.EqualValues(t, tc.expect, c.PathParam(tc.whenParamName))
+		})
+	}
+}
+
+func TestContext_PathParamDefault(t *testing.T) {
+	var testCases = []struct {
+		name             string
+		given            *PathParams
+		whenParamName    string
+		whenDefaultValue string
+		expect           string
+	}{
+		{
+			name: "param exists",
+			given: &PathParams{
+				{Name: "uid", Value: "101"},
+				{Name: "fid", Value: "501"},
+			},
+			whenParamName:    "uid",
+			whenDefaultValue: "999",
+			expect:           "101",
+		},
+		{
+			name: "param exists and is empty",
+			given: &PathParams{
+				{Name: "uid", Value: ""},
+				{Name: "fid", Value: "501"},
+			},
+			whenParamName:    "uid",
+			whenDefaultValue: "999",
+			expect:           "", // <-- this is different from QueryParamDefault behaviour
+		},
+		{
+			name: "param does not exists",
+			given: &PathParams{
+				{Name: "uid", Value: "101"},
+			},
+			whenParamName:    "nope",
+			whenDefaultValue: "999",
+			expect:           "999",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			c := e.NewContext(req, nil)
+
+			c.(RoutableContext).SetRawPathParams(tc.given)
+
+			assert.EqualValues(t, tc.expect, c.PathParamDefault(tc.whenParamName, tc.whenDefaultValue))
+		})
+	}
 }
 
 func TestContextGetAndSetParam(t *testing.T) {
@@ -568,27 +688,129 @@ func TestContextFormValue(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestContextQueryParam(t *testing.T) {
-	q := make(url.Values)
-	q.Set("name", "Jon Snow")
-	q.Set("email", "jon@labstack.com")
-	req := httptest.NewRequest(http.MethodGet, "/?"+q.Encode(), nil)
-	e := New()
-	c := e.NewContext(req, nil)
+func TestContext_QueryParams(t *testing.T) {
+	var testCases = []struct {
+		name     string
+		givenURL string
+		expect   url.Values
+	}{
+		{
+			name:     "multiple values in url",
+			givenURL: "/?test=1&test=2&email=jon%40labstack.com",
+			expect: url.Values{
+				"test":  []string{"1", "2"},
+				"email": []string{"jon@labstack.com"},
+			},
+		},
+		{
+			name:     "single value  in url",
+			givenURL: "/?nope=1",
+			expect: url.Values{
+				"nope": []string{"1"},
+			},
+		},
+		{
+			name:     "no query params in url",
+			givenURL: "/?",
+			expect:   url.Values{},
+		},
+	}
 
-	// QueryParam
-	assert.Equal(t, "Jon Snow", c.QueryParam("name"))
-	assert.Equal(t, "jon@labstack.com", c.QueryParam("email"))
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tc.givenURL, nil)
+			e := New()
+			c := e.NewContext(req, nil)
 
-	// QueryParamDefault
-	assert.Equal(t, "Jon Snow", c.QueryParamDefault("name", "nope"))
-	assert.Equal(t, "default", c.QueryParamDefault("missing", "default"))
+			assert.Equal(t, tc.expect, c.QueryParams())
+		})
+	}
+}
 
-	// QueryParams
-	assert.Equal(t, url.Values{
-		"name":  []string{"Jon Snow"},
-		"email": []string{"jon@labstack.com"},
-	}, c.QueryParams())
+func TestContext_QueryParam(t *testing.T) {
+	var testCases = []struct {
+		name          string
+		givenURL      string
+		whenParamName string
+		expect        string
+	}{
+		{
+			name:          "value exists in url",
+			givenURL:      "/?test=1",
+			whenParamName: "test",
+			expect:        "1",
+		},
+		{
+			name:          "multiple values exists in url",
+			givenURL:      "/?test=9&test=8",
+			whenParamName: "test",
+			expect:        "9", // <-- first value in returned
+		},
+		{
+			name:          "value does not exists in url",
+			givenURL:      "/?nope=1",
+			whenParamName: "test",
+			expect:        "",
+		},
+		{
+			name:          "value is empty in url",
+			givenURL:      "/?test=",
+			whenParamName: "test",
+			expect:        "",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tc.givenURL, nil)
+			e := New()
+			c := e.NewContext(req, nil)
+
+			assert.Equal(t, tc.expect, c.QueryParam(tc.whenParamName))
+		})
+	}
+}
+
+func TestContext_QueryParamDefault(t *testing.T) {
+	var testCases = []struct {
+		name             string
+		givenURL         string
+		whenParamName    string
+		whenDefaultValue string
+		expect           string
+	}{
+		{
+			name:             "value exists in url",
+			givenURL:         "/?test=1",
+			whenParamName:    "test",
+			whenDefaultValue: "999",
+			expect:           "1",
+		},
+		{
+			name:             "value does not exists in url",
+			givenURL:         "/?nope=1",
+			whenParamName:    "test",
+			whenDefaultValue: "999",
+			expect:           "999",
+		},
+		{
+			name:             "value is empty in url",
+			givenURL:         "/?test=",
+			whenParamName:    "test",
+			whenDefaultValue: "999",
+			expect:           "999",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tc.givenURL, nil)
+			e := New()
+			c := e.NewContext(req, nil)
+
+			assert.Equal(t, tc.expect, c.QueryParamDefault(tc.whenParamName, tc.whenDefaultValue))
+		})
+	}
 }
 
 func TestContextFormFile(t *testing.T) {

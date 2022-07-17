@@ -32,7 +32,6 @@ func TestMethodOverride(t *testing.T) {
 
 func TestMethodOverride_formParam(t *testing.T) {
 	e := echo.New()
-	m := MethodOverride()
 	h := func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}
@@ -53,7 +52,6 @@ func TestMethodOverride_formParam(t *testing.T) {
 
 func TestMethodOverride_queryParam(t *testing.T) {
 	e := echo.New()
-	m := MethodOverride()
 	h := func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}
