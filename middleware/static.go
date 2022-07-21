@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"errors"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -196,8 +197,8 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 					return err
 				}
 
-				he, ok := err.(*echo.HTTPError)
-				if !(ok && config.HTML5 && he.Code == http.StatusNotFound) {
+				var he *echo.HTTPError
+				if !(errors.As(err, &he) && config.HTML5 && he.Code == http.StatusNotFound) {
 					return err
 				}
 

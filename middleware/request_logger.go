@@ -2,9 +2,10 @@ package middleware
 
 import (
 	"errors"
-	"github.com/labstack/echo/v4"
 	"net/http"
 	"time"
+
+	"github.com/labstack/echo/v4"
 )
 
 // Example for `fmt.Printf`
@@ -264,7 +265,8 @@ func (config RequestLoggerConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			if config.LogStatus {
 				v.Status = res.Status
 				if err != nil {
-					if httpErr, ok := err.(*echo.HTTPError); ok {
+					var httpErr *echo.HTTPError
+					if errors.As(err, &httpErr) {
 						v.Status = httpErr.Code
 					}
 				}
