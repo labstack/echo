@@ -378,7 +378,7 @@ func TestEchoWrapHandler(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	h := WrapHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := WrapHandler(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("test"))
 	}))
@@ -687,7 +687,7 @@ func TestEchoHost(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(tc.name, func(_ *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, tc.whenPath, nil)
 			req.Host = tc.whenHost
 			rec := httptest.NewRecorder()
@@ -1247,7 +1247,7 @@ func TestDefaultHTTPErrorHandler(t *testing.T) {
 		c.String(http.StatusOK, "OK")
 		return errors.New("ERROR")
 	})
-	e.GET("/internal-error", func(c Context) error {
+	e.GET("/internal-error", func(_ Context) error {
 		err := errors.New("internal error message body")
 		return NewHTTPError(http.StatusBadRequest).SetInternal(err)
 	})
