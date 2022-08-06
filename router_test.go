@@ -716,6 +716,67 @@ func TestRouterParam(t *testing.T) {
 	}
 }
 
+func TestRouter_addAndMatchAllSupportedMethods(t *testing.T) {
+	var testCases = []struct {
+		name            string
+		givenNoAddRoute bool
+		whenMethod      string
+		expectPath      string
+		expectError     string
+	}{
+		{name: "ok, CONNECT", whenMethod: http.MethodConnect},
+		{name: "ok, DELETE", whenMethod: http.MethodDelete},
+		{name: "ok, GET", whenMethod: http.MethodGet},
+		{name: "ok, HEAD", whenMethod: http.MethodHead},
+		{name: "ok, OPTIONS", whenMethod: http.MethodOptions},
+		{name: "ok, PATCH", whenMethod: http.MethodPatch},
+		{name: "ok, POST", whenMethod: http.MethodPost},
+		{name: "ok, PROPFIND", whenMethod: PROPFIND},
+		{name: "ok, PUT", whenMethod: http.MethodPut},
+		{name: "ok, TRACE", whenMethod: http.MethodTrace},
+		{name: "ok, REPORT", whenMethod: REPORT},
+		{name: "ok, NON_TRADITIONAL_METHOD", whenMethod: "NON_TRADITIONAL_METHOD"},
+		{
+			name:            "ok, NOT_EXISTING_METHOD",
+			whenMethod:      "NOT_EXISTING_METHOD",
+			givenNoAddRoute: true,
+			expectPath:      "/*",
+			expectError:     "code=405, message=Method Not Allowed",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+
+			e.GET("/*", handlerFunc)
+
+			if !tc.givenNoAddRoute {
+				e.Add(tc.whenMethod, "/my/*", handlerFunc)
+			}
+
+			req := httptest.NewRequest(tc.whenMethod, "/my/some-url", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec).(*context)
+
+			e.router.Find(tc.whenMethod, "/my/some-url", c)
+			err := c.handler(c)
+
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			expectPath := "/my/*"
+			if tc.expectPath != "" {
+				expectPath = tc.expectPath
+			}
+			assert.Equal(t, expectPath, c.Path())
+		})
+	}
+}
+
 func TestMethodNotAllowedAndNotFound(t *testing.T) {
 	e := New()
 	r := e.router
@@ -2632,6 +2693,25 @@ func TestRouterHandleMethodOptions(t *testing.T) {
 			assert.Equal(t, tc.expectAllowHeader, c.Response().Header().Get(HeaderAllow))
 		})
 	}
+}
+
+func TestRouterAllowHeaderForAnyOtherMethodType(t *testing.T) {
+	e := New()
+	r := e.router
+
+	r.Add(http.MethodGet, "/users", handlerFunc)
+	r.Add("COPY", "/users", handlerFunc)
+	r.Add("LOCK", "/users", handlerFunc)
+
+	req := httptest.NewRequest("TEST", "/users", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec).(*context)
+
+	r.Find("TEST", "/users", c)
+	err := c.handler(c)
+
+	assert.EqualError(t, err, "code=405, message=Method Not Allowed")
+	assert.ElementsMatch(t, []string{"COPY", "GET", "LOCK", "OPTIONS"}, strings.Split(c.Response().Header().Get(HeaderAllow), ", "))
 }
 
 func benchmarkRouterRoutes(b *testing.B, routes []*Route, routesToFind []*Route) {
