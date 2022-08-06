@@ -28,7 +28,7 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
         # Each major Go release is supported until there are two newer major releases. https://golang.org/doc/devel/release.html#policy
         # Echo tests with last four major releases
-        go: [1.16, 1.17, 1.18]
+        go: [1.16, 1.17, 1.18, 1.19]
     name: ${{ matrix.os }} @ Go ${{ matrix.go }}
     runs-on: ${{ matrix.os }}
     steps:
@@ -51,8 +51,8 @@ jobs:
           go test -race --coverprofile=coverage.coverprofile --covermode=atomic ./...
 
       - name: Upload coverage to Codecov
-        if: success() && matrix.go == 1.18 && matrix.os == 'ubuntu-latest'
-        uses: codecov/codecov-action@v1
+        if: success() && matrix.go == 1.19 && matrix.os == 'ubuntu-latest'
+        uses: codecov/codecov-action@v3
         with:
           token:
           fail_ci_if_error: false
@@ -61,7 +61,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        go: [1.18]
+        go: [1.19]
     name: Benchmark comparison ${{ matrix.os }} @ Go ${{ matrix.go }}
     runs-on: ${{ matrix.os }}
     steps:
