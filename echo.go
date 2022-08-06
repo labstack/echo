@@ -492,8 +492,11 @@ func (e *Echo) RouteNotFound(path string, h HandlerFunc, m ...MiddlewareFunc) *R
 	return e.Add(RouteNotFound, path, h, m...)
 }
 
-// Any registers a new route for all HTTP methods and path with matching handler
+// Any registers a new route for all HTTP methods (supported by Echo) and path with matching handler
 // in the router with optional route-level middleware.
+//
+// Note: this method only adds specific set of supported HTTP methods as handler and is not true
+// "catch-any-arbitrary-method" way of matching requests.
 func (e *Echo) Any(path string, handler HandlerFunc, middleware ...MiddlewareFunc) []*Route {
 	routes := make([]*Route, len(methods))
 	for i, m := range methods {

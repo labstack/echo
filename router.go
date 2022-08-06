@@ -51,6 +51,7 @@ type (
 		put         *routeMethod
 		trace       *routeMethod
 		report      *routeMethod
+		anyOther    map[string]*routeMethod
 		allowHeader string
 	}
 )
@@ -75,7 +76,8 @@ func (m *routeMethods) isHandler() bool {
 		m.propfind != nil ||
 		m.put != nil ||
 		m.trace != nil ||
-		m.report != nil
+		m.report != nil ||
+		len(m.anyOther) != 0
 	// RouteNotFound/404 is not considered as a handler
 }
 
@@ -120,6 +122,10 @@ func (m *routeMethods) updateAllowHeader() {
 	}
 	if m.report != nil {
 		buf.WriteString(", REPORT")
+	}
+	for method := range m.anyOther { // for simplicity, we use map and therefore order is not deterministic here
+		buf.WriteString(", ")
+		buf.WriteString(method)
 	}
 	m.allowHeader = buf.String()
 }
@@ -408,6 +414,15 @@ func (n *node) addMethod(method string, h *routeMethod) {
 	case RouteNotFound:
 		n.notFoundHandler = h
 		return // RouteNotFound/404 is not considered as a handler so no further logic needs to be executed
+	default:
+		if n.methods.anyOther == nil {
+			n.methods.anyOther = make(map[string]*routeMethod)
+		}
+		if h.handler == nil {
+			delete(n.methods.anyOther, method)
+		} else {
+			n.methods.anyOther[method] = h
+		}
 	}
 
 	n.methods.updateAllowHeader()
@@ -439,7 +454,7 @@ func (n *node) findMethod(method string) *routeMethod {
 	case REPORT:
 		return n.methods.report
 	default: // RouteNotFound/404 is not considered as a handler
-		return nil
+		return n.methods.anyOther[method]
 	}
 }
 
