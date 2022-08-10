@@ -1,5 +1,36 @@
 # Changelog
 
+## v4.8.0 - 2022-08-10
+
+**Most notable things**
+
+You can now add any arbitrary HTTP method type as a route [#2237](https://github.com/labstack/echo/pull/2237)
+```go
+e.Add("COPY", "/*", func(c echo.Context) error 
+  return c.String(http.StatusOK, "OK COPY")
+})
+```
+
+You can add custom 404 handler for specific paths [#2217](https://github.com/labstack/echo/pull/2217)
+```go
+e.RouteNotFound("/*", func(c echo.Context) error { return c.NoContent(http.StatusNotFound) })
+
+g := e.Group("/images")
+g.RouteNotFound("/*", func(c echo.Context) error { return c.NoContent(http.StatusNotFound) })
+```
+
+**Enhancements**
+
+* Add new value binding methods (UnixTimeMilli,TextUnmarshaler,JSONUnmarshaler) to Valuebinder [#2127](https://github.com/labstack/echo/pull/2127)
+* Refactor: body_limit middleware unit test [#2145](https://github.com/labstack/echo/pull/2145)
+* Refactor: Timeout mw: rework how test waits for timeout. [#2187](https://github.com/labstack/echo/pull/2187)
+* BasicAuth middleware returns 500 InternalServerError on invalid base64 strings but should return 400 [#2191](https://github.com/labstack/echo/pull/2191)
+* Refactor: duplicated findStaticChild process at findChildWithLabel [#2176](https://github.com/labstack/echo/pull/2176)
+* Allow different param names in different methods with same path scheme [#2209](https://github.com/labstack/echo/pull/2209)
+* Add support for registering handlers for different 404 routes [#2217](https://github.com/labstack/echo/pull/2217)
+* Middlewares should use errors.As() instead of type assertion on HTTPError [#2227](https://github.com/labstack/echo/pull/2227)
+* Allow arbitrary HTTP method types to be added as routes [#2237](https://github.com/labstack/echo/pull/2237)
+
 ## v4.7.2 - 2022-03-16
 
 **Fixes**
