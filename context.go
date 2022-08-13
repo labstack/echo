@@ -282,7 +282,7 @@ func (c *context) RealIP() string {
 	if ip := c.request.Header.Get(HeaderXForwardedFor); ip != "" {
 		i := strings.IndexAny(ip, ",")
 		if i > 0 {
-			xffip := ip[:i]
+			xffip := strings.TrimSpace(ip[:i])
 			xffip = strings.TrimPrefix(xffip, "[")
 			xffip = strings.TrimSuffix(xffip, "]")
 			return xffip
