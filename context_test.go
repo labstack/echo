@@ -728,7 +728,7 @@ func TestContext_QueryString(t *testing.T) {
 
 	queryString := "query=string&var=val"
 
-	req := httptest.NewRequest(GET, "/?"+queryString, nil)
+	req := httptest.NewRequest(http.MethodGet, "/?"+queryString, nil)
 	c := e.NewContext(req, nil)
 
 	testify.Equal(t, queryString, c.QueryString())
@@ -739,7 +739,7 @@ func TestContext_Request(t *testing.T) {
 
 	testify.Nil(t, c.Request())
 
-	req := httptest.NewRequest(GET, "/path", nil)
+	req := httptest.NewRequest(http.MethodGet, "/path", nil)
 	c.SetRequest(req)
 
 	testify.Equal(t, req, c.Request())
