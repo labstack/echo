@@ -492,7 +492,7 @@ func TestBindParam(t *testing.T) {
 	// Bind something with param and post data payload
 	body := bytes.NewBufferString(`{ "name": "Jon Snow" }`)
 	e2 := New()
-	req2 := httptest.NewRequest(POST, "/", body)
+	req2 := httptest.NewRequest(http.MethodPost, "/", body)
 	req2.Header.Set(HeaderContentType, MIMEApplicationJSON)
 
 	rec2 := httptest.NewRecorder()
