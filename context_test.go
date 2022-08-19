@@ -32,7 +32,7 @@ var testUser = user{1, "Jon Snow"}
 
 func BenchmarkAllocJSONP(b *testing.B) {
 	e := New()
-	req := httptest.NewRequest(POST, "/", strings.NewReader(userJSON))
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userJSON))
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec).(*context)
 
@@ -46,7 +46,7 @@ func BenchmarkAllocJSONP(b *testing.B) {
 
 func BenchmarkAllocJSON(b *testing.B) {
 	e := New()
-	req := httptest.NewRequest(POST, "/", strings.NewReader(userJSON))
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userJSON))
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec).(*context)
 
@@ -60,7 +60,7 @@ func BenchmarkAllocJSON(b *testing.B) {
 
 func BenchmarkAllocXML(b *testing.B) {
 	e := New()
-	req := httptest.NewRequest(POST, "/", strings.NewReader(userJSON))
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userJSON))
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec).(*context)
 
@@ -849,7 +849,7 @@ func TestContext_IsWebSocket(t *testing.T) {
 
 func TestContext_Bind(t *testing.T) {
 	e := New()
-	req := httptest.NewRequest(POST, "/", strings.NewReader(userJSON))
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userJSON))
 	c := e.NewContext(req, nil)
 	u := new(user)
 
