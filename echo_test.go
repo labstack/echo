@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -235,7 +236,12 @@ func TestEchoStaticRedirectIndex(t *testing.T) {
 
 	addr := e.ListenerAddr().String()
 	if resp, err := http.Get("http://" + addr + "/static"); err == nil { // http.Get follows redirects by default
-		defer resp.Body.Close()
+		defer func(Body io.ReadCloser) {
+			err := Body.Close()
+			if err != nil {
+				assert.Fail(t, err.Error())
+			}
+		}(resp.Body)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 		if body, err := ioutil.ReadAll(resp.Body); err == nil {
@@ -1231,7 +1237,7 @@ func TestDefaultHTTPErrorHandler(t *testing.T) {
 	e := New()
 	e.Debug = true
 	e.Any("/plain", func(c Context) error {
-		return errors.New("An error occurred")
+		return errors.New("an error occurred")
 	})
 	e.Any("/badrequest", func(c Context) error {
 		return NewHTTPError(http.StatusBadRequest, "Invalid request")
@@ -1255,7 +1261,7 @@ func TestDefaultHTTPErrorHandler(t *testing.T) {
 	// With Debug=true plain response contains error message
 	c, b := request(http.MethodGet, "/plain", e)
 	assert.Equal(t, http.StatusInternalServerError, c)
-	assert.Equal(t, "{\n  \"error\": \"An error occurred\",\n  \"message\": \"Internal Server Error\"\n}\n", b)
+	assert.Equal(t, "{\n  \"error\": \"an error occurred\",\n  \"message\": \"Internal Server Error\"\n}\n", b)
 	// and special handling for HTTPError
 	c, b = request(http.MethodGet, "/badrequest", e)
 	assert.Equal(t, http.StatusBadRequest, c)
