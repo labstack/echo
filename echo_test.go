@@ -386,7 +386,10 @@ func TestEchoWrapHandler(t *testing.T) {
 	c := e.NewContext(req, rec)
 	h := WrapHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("test"))
+		_, err := w.Write([]byte("test"))
+		if err != nil {
+			assert.Fail(t, err.Error())
+		}
 	}))
 	if assert.NoError(t, h(c)) {
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -1250,7 +1253,10 @@ func TestDefaultHTTPErrorHandler(t *testing.T) {
 		})
 	})
 	e.Any("/early-return", func(c Context) error {
-		c.String(http.StatusOK, "OK")
+		err := c.String(http.StatusOK, "OK")
+		if err != nil {
+			assert.Fail(t, err.Error())
+		}
 		return errors.New("ERROR")
 	})
 	e.GET("/internal-error", func(c Context) error {
