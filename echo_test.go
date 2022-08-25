@@ -1385,7 +1385,12 @@ func TestEchoListenerNetwork(t *testing.T) {
 			assert.NoError(t, err)
 
 			if resp, err := http.Get(fmt.Sprintf("http://%s/ok", tt.address)); err == nil {
-				defer resp.Body.Close()
+				defer func(Body io.ReadCloser) {
+					err := Body.Close()
+					if err != nil {
+						assert.Fail(t, err.Error())
+					}
+				}(resp.Body)
 				assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 				if body, err := ioutil.ReadAll(resp.Body); err == nil {
