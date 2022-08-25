@@ -181,7 +181,7 @@ type (
 		// Logger returns the `Logger` instance.
 		Logger() Logger
 
-		// Set the logger
+		// SetLogger Set the logger
 		SetLogger(l Logger)
 
 		// Echo returns the `Echo` instance.
@@ -389,7 +389,10 @@ func (c *context) FormFile(name string) (*multipart.FileHeader, error) {
 	if err != nil {
 		return nil, err
 	}
-	f.Close()
+	err = f.Close()
+	if err != nil {
+		return nil, err
+	}
 	return fh, nil
 }
 
