@@ -488,16 +488,16 @@ func TestEchoURL(t *testing.T) {
 	g := e.Group("/group")
 	g.GET("/users/:uid/files/:fid", getFile)
 
-	assert := assert.New(t)
+	assertion := assert.New(t)
 
-	assert.Equal("/static/file", e.URL(static))
-	assert.Equal("/users/:id", e.URL(getUser))
-	assert.Equal("/users/1", e.URL(getUser, "1"))
-	assert.Equal("/users/1", e.URL(getUser, "1"))
-	assert.Equal("/documents/foo.txt", e.URL(getAny, "foo.txt"))
-	assert.Equal("/documents/*", e.URL(getAny))
-	assert.Equal("/group/users/1/files/:fid", e.URL(getFile, "1"))
-	assert.Equal("/group/users/1/files/1", e.URL(getFile, "1", "1"))
+	assertion.Equal("/static/file", e.URL(static))
+	assertion.Equal("/users/:id", e.URL(getUser))
+	assertion.Equal("/users/1", e.URL(getUser, "1"))
+	assertion.Equal("/users/1", e.URL(getUser, "1"))
+	assertion.Equal("/documents/foo.txt", e.URL(getAny, "foo.txt"))
+	assertion.Equal("/documents/*", e.URL(getAny))
+	assertion.Equal("/group/users/1/files/:fid", e.URL(getFile, "1"))
+	assertion.Equal("/group/users/1/files/1", e.URL(getFile, "1", "1"))
 }
 
 func TestEchoRoutes(t *testing.T) {
@@ -604,7 +604,7 @@ func TestEchoServeHTTPPathEncoding(t *testing.T) {
 }
 
 func TestEchoHost(t *testing.T) {
-	assert := assert.New(t)
+	assertion := assert.New(t)
 
 	okHandler := func(c Context) error { return c.String(http.StatusOK, http.StatusText(http.StatusOK)) }
 	teapotHandler := func(c Context) error { return c.String(http.StatusTeapot, http.StatusText(http.StatusTeapot)) }
@@ -700,8 +700,8 @@ func TestEchoHost(t *testing.T) {
 
 			e.ServeHTTP(rec, req)
 
-			assert.Equal(tc.expectStatus, rec.Code)
-			assert.Equal(tc.expectBody, rec.Body.String())
+			assertion.Equal(tc.expectStatus, rec.Code)
+			assertion.Equal(tc.expectBody, rec.Body.String())
 		})
 	}
 }
