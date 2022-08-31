@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -355,6 +356,56 @@ func TestCSRFConfig_skipper(t *testing.T) {
 			assert.NoError(t, r)
 			cookie := rec.Header()["Set-Cookie"]
 			assert.Len(t, cookie, tc.expectCookies)
+		})
+	}
+}
+
+func TestCSRFErrorHandling(t *testing.T) {
+	testCases := []struct {
+		name        string
+		cfg         CSRFConfig
+		expectedErr *echo.HTTPError
+	}{
+		{
+			name: "ok, ErrorHandler is executed",
+			cfg: CSRFConfig{
+				ErrorHandler: func(err error) error {
+					return echo.NewHTTPError(http.StatusTeapot, "error_handler_executed")
+				},
+			},
+			expectedErr: echo.NewHTTPError(http.StatusTeapot, "error_handler_executed"),
+		},
+		{
+			name: "ok, ErrorHandlerWithContext is executed",
+			cfg: CSRFConfig{
+				ErrorHandlerWithContext: func(err error, c echo.Context) error {
+					return echo.NewHTTPError(http.StatusTeapot, "error_handler_with_context_executed")
+				},
+			},
+			expectedErr: echo.NewHTTPError(http.StatusTeapot, "error_handler_with_context_executed"),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+			e.POST("/", func(c echo.Context) error {
+				return c.String(http.StatusNotImplemented, "should not end up here")
+			})
+
+			e.Use(CSRFWithConfig(tc.cfg))
+
+			req := httptest.NewRequest(http.MethodPost, "/", nil)
+			res := httptest.NewRecorder()
+			e.ServeHTTP(res, req)
+
+			var response struct {
+				Message string `json:"message"`
+			}
+
+			assert.NoError(t, json.Unmarshal(res.Body.Bytes(), &response))
+			assert.Equal(t, tc.expectedErr.Code, res.Code)
+			assert.Equal(t, tc.expectedErr.Message, response.Message)
 		})
 	}
 }

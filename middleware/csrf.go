@@ -61,7 +61,15 @@ type (
 		// Indicates SameSite mode of the CSRF cookie.
 		// Optional. Default value SameSiteDefaultMode.
 		CookieSameSite http.SameSite `yaml:"cookie_same_site"`
+
+		ErrorHandler CSRFErrorHandler
+
+		ErrorHandlerWithContext CSRFErrorHandlerWithContext
 	}
+
+	CSRFErrorHandler func(err error) error
+
+	CSRFErrorHandlerWithContext func(err error, c echo.Context) error
 )
 
 // ErrCSRFInvalid is returned when CSRF check fails
@@ -154,8 +162,9 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 						lastTokenErr = ErrCSRFInvalid
 					}
 				}
+				var finalErr error
 				if lastTokenErr != nil {
-					return lastTokenErr
+					finalErr = lastTokenErr
 				} else if lastExtractorErr != nil {
 					// ugly part to preserve backwards compatible errors. someone could rely on them
 					if lastExtractorErr == errQueryExtractorValueMissing {
@@ -167,8 +176,16 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 					} else {
 						lastExtractorErr = echo.NewHTTPError(http.StatusBadRequest, lastExtractorErr.Error())
 					}
-					return lastExtractorErr
+					finalErr = lastExtractorErr
 				}
+
+				if config.ErrorHandler != nil {
+					return config.ErrorHandler(finalErr)
+				}
+				if config.ErrorHandlerWithContext != nil {
+					return config.ErrorHandlerWithContext(finalErr, c)
+				}
+				return finalErr
 			}
 
 			// Set CSRF cookie
