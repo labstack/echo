@@ -62,8 +62,10 @@ type (
 		// Optional. Default value SameSiteDefaultMode.
 		CookieSameSite http.SameSite `yaml:"cookie_same_site"`
 
+		// ErrorHandler defines a function which is executed for returning custom errors.
 		ErrorHandler CSRFErrorHandler
 
+		// ErrorHandlerWithContext is almost identical to ErrorHandler, but it's passed the current context.
 		ErrorHandlerWithContext CSRFErrorHandlerWithContext
 	}
 
@@ -179,13 +181,15 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 					finalErr = lastExtractorErr
 				}
 
-				if config.ErrorHandler != nil {
-					return config.ErrorHandler(finalErr)
+				if finalErr != nil {
+					if config.ErrorHandler != nil {
+						return config.ErrorHandler(finalErr)
+					}
+					if config.ErrorHandlerWithContext != nil {
+						return config.ErrorHandlerWithContext(finalErr, c)
+					}
+					return finalErr
 				}
-				if config.ErrorHandlerWithContext != nil {
-					return config.ErrorHandlerWithContext(finalErr, c)
-				}
-				return finalErr
 			}
 
 			// Set CSRF cookie
