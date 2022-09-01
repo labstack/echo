@@ -358,3 +358,25 @@ func TestCSRFConfig_skipper(t *testing.T) {
 		})
 	}
 }
+
+func TestCSRFErrorHandling(t *testing.T) {
+	cfg := CSRFConfig{
+		ErrorHandler: func(err error, c echo.Context) error {
+			return echo.NewHTTPError(http.StatusTeapot, "error_handler_executed")
+		},
+	}
+
+	e := echo.New()
+	e.POST("/", func(c echo.Context) error {
+		return c.String(http.StatusNotImplemented, "should not end up here")
+	})
+
+	e.Use(CSRFWithConfig(cfg))
+
+	req := httptest.NewRequest(http.MethodPost, "/", nil)
+	res := httptest.NewRecorder()
+	e.ServeHTTP(res, req)
+
+	assert.Equal(t, http.StatusTeapot, res.Code)
+	assert.Equal(t, "{\"message\":\"error_handler_executed\"}\n", res.Body.String())
+}
