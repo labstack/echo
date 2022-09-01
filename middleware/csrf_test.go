@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -366,7 +365,6 @@ func TestCSRFErrorHandling(t *testing.T) {
 			return echo.NewHTTPError(http.StatusTeapot, "error_handler_executed")
 		},
 	}
-	expectedErr := echo.NewHTTPError(http.StatusTeapot, "error_handler_executed")
 
 	e := echo.New()
 	e.POST("/", func(c echo.Context) error {
@@ -379,11 +377,6 @@ func TestCSRFErrorHandling(t *testing.T) {
 	res := httptest.NewRecorder()
 	e.ServeHTTP(res, req)
 
-	var response struct {
-		Message string `json:"message"`
-	}
-
-	assert.NoError(t, json.Unmarshal(res.Body.Bytes(), &response))
-	assert.Equal(t, expectedErr.Code, res.Code)
-	assert.Equal(t, expectedErr.Message, response.Message)
+	assert.Equal(t, http.StatusTeapot, res.Code)
+	assert.Equal(t, "{\"message\":\"error_handler_executed\"}\n", res.Body.String())
 }
