@@ -66,6 +66,7 @@ type (
 		ErrorHandler CSRFErrorHandler
 	}
 
+	// CSRFErrorHandler is a function which is executed for creating custom errors.
 	CSRFErrorHandler func(err error, c echo.Context) error
 )
 
