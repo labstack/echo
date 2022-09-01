@@ -64,14 +64,9 @@ type (
 
 		// ErrorHandler defines a function which is executed for returning custom errors.
 		ErrorHandler CSRFErrorHandler
-
-		// ErrorHandlerWithContext is almost identical to ErrorHandler, but it's passed the current context.
-		ErrorHandlerWithContext CSRFErrorHandlerWithContext
 	}
 
-	CSRFErrorHandler func(err error) error
-
-	CSRFErrorHandlerWithContext func(err error, c echo.Context) error
+	CSRFErrorHandler func(err error, c echo.Context) error
 )
 
 // ErrCSRFInvalid is returned when CSRF check fails
@@ -183,10 +178,7 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 
 				if finalErr != nil {
 					if config.ErrorHandler != nil {
-						return config.ErrorHandler(finalErr)
-					}
-					if config.ErrorHandlerWithContext != nil {
-						return config.ErrorHandlerWithContext(finalErr, c)
+						return config.ErrorHandler(finalErr, c)
 					}
 					return finalErr
 				}
