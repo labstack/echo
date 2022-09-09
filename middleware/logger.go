@@ -39,6 +39,7 @@ type (
 		// - referer
 		// - user_agent
 		// - status
+		// - level
 		// - error
 		// - latency (In nanoseconds)
 		// - latency_human (Human readable)
@@ -180,6 +181,11 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 						s = config.colorer.Cyan(n)
 					}
 					return buf.WriteString(s)
+				case "level":
+					if err != nil {
+						return buf.WriteString("error")
+					}
+					return buf.WriteString("info")
 				case "error":
 					if err != nil {
 						// Error may contain invalid JSON e.g. `"`

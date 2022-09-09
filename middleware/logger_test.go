@@ -291,3 +291,45 @@ func TestLoggerTemplateWithTimeUnixMicro(t *testing.T) {
 	assert.NoError(t, err)
 	assert.WithinDuration(t, time.Unix(unixMicros/1000000, 0), time.Now(), 3*time.Second)
 }
+
+func TestLoggerTemplateWithLevel_withError(t *testing.T) {
+	buf := new(bytes.Buffer)
+
+	e := echo.New()
+	e.Use(LoggerWithConfig(LoggerConfig{
+		Format: `${level}`,
+		Output: buf,
+	}))
+
+	e.GET("/", func(c echo.Context) error {
+		return errors.New("error")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, "error", buf.String())
+}
+
+func TestLoggerTemplateWithLevel_withoutError(t *testing.T) {
+	buf := new(bytes.Buffer)
+
+	e := echo.New()
+	e.Use(LoggerWithConfig(LoggerConfig{
+		Format: `${level}`,
+		Output: buf,
+	}))
+
+	e.GET("/", func(c echo.Context) error {
+		return c.String(http.StatusOK, "OK")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, "info", buf.String())
+}
