@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"bufio"
+	"bytes"
 	"compress/gzip"
 	"io"
 	"io/ioutil"
@@ -22,12 +23,20 @@ type (
 		// Gzip compression level.
 		// Optional. Default value -1.
 		Level int `yaml:"level"`
+
+		// Length threshold before gzip compression
+		// is applied. Optional. Default value 0
+		MinLength int
 	}
 
 	gzipResponseWriter struct {
 		io.Writer
 		http.ResponseWriter
-		wroteBody bool
+		wroteBody         bool
+		minLength         int
+		minLengthExceeded bool
+		buffer            bytes.Buffer
+		code              int
 	}
 )
 
@@ -38,8 +47,9 @@ const (
 var (
 	// DefaultGzipConfig is the default Gzip middleware config.
 	DefaultGzipConfig = GzipConfig{
-		Skipper: DefaultSkipper,
-		Level:   -1,
+		Skipper:   DefaultSkipper,
+		Level:     -1,
+		MinLength: 0,
 	}
 )
 
@@ -59,6 +69,9 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 	if config.Level == 0 {
 		config.Level = DefaultGzipConfig.Level
 	}
+	if config.MinLength < 0 {
+		config.MinLength = DefaultGzipConfig.MinLength
+	}
 
 	pool := gzipCompressPool(config)
 
@@ -71,7 +84,6 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 			res := c.Response()
 			res.Header().Add(echo.HeaderVary, echo.HeaderAcceptEncoding)
 			if strings.Contains(c.Request().Header.Get(echo.HeaderAcceptEncoding), gzipScheme) {
-				res.Header().Set(echo.HeaderContentEncoding, gzipScheme) // Issue #806
 				i := pool.Get()
 				w, ok := i.(*gzip.Writer)
 				if !ok {
@@ -79,7 +91,7 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 				}
 				rw := res.Writer
 				w.Reset(rw)
-				grw := &gzipResponseWriter{Writer: w, ResponseWriter: rw}
+				grw := &gzipResponseWriter{Writer: w, ResponseWriter: rw, minLength: config.MinLength}
 				defer func() {
 					if !grw.wroteBody {
 						if res.Header().Get(echo.HeaderContentEncoding) == gzipScheme {
@@ -90,6 +102,12 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 						// See issue #424, #407.
 						res.Writer = rw
 						w.Reset(ioutil.Discard)
+					} else if !grw.minLengthExceeded {
+						// Write uncompressed response
+						res.Writer = rw
+						grw.ResponseWriter.WriteHeader(grw.code)
+						grw.buffer.WriteTo(rw)
+						w.Reset(io.Discard)
 					}
 					w.Close()
 					pool.Put(w)
@@ -103,7 +121,9 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 
 func (w *gzipResponseWriter) WriteHeader(code int) {
 	w.Header().Del(echo.HeaderContentLength) // Issue #444
-	w.ResponseWriter.WriteHeader(code)
+
+	// Delay writing of the header until we know if we'll actually compress the response
+	w.code = code
 }
 
 func (w *gzipResponseWriter) Write(b []byte) (int, error) {
@@ -111,6 +131,23 @@ func (w *gzipResponseWriter) Write(b []byte) (int, error) {
 		w.Header().Set(echo.HeaderContentType, http.DetectContentType(b))
 	}
 	w.wroteBody = true
+
+	if !w.minLengthExceeded {
+		n, err := w.buffer.Write(b)
+
+		if w.buffer.Len() >= w.minLength {
+			w.minLengthExceeded = true
+
+			// The minimum length is exceeded, add Content-Encoding header and write the header
+			w.Header().Set(echo.HeaderContentEncoding, gzipScheme) // Issue #806
+			w.ResponseWriter.WriteHeader(w.code)
+
+			return w.Writer.Write(w.buffer.Bytes())
+		} else {
+			return n, err
+		}
+	}
+
 	return w.Writer.Write(b)
 }
 

@@ -90,6 +90,39 @@ func TestGzip(t *testing.T) {
 	assert.Equal("test", buf.String())
 }
 
+func TestGzipWithMinLength(t *testing.T) {
+	e := echo.New()
+	// Minimal response length
+	e.Use(GzipWithConfig(GzipConfig{MinLength: 5}))
+	e.GET("/", func(c echo.Context) error {
+		c.Response().Write([]byte("test"))
+		return nil
+	})
+	e.GET("/gzip", func(c echo.Context) error {
+		c.Response().Write([]byte("foobar"))
+		return nil
+	})
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, "", rec.Header().Get(echo.HeaderContentEncoding))
+	assert.Contains(t, rec.Body.String(), "test")
+
+	req = httptest.NewRequest(http.MethodGet, "/gzip", nil)
+	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
+	rec = httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, gzipScheme, rec.Header().Get(echo.HeaderContentEncoding))
+	r, err := gzip.NewReader(rec.Body)
+	if assert.NoError(t, err) {
+		buf := new(bytes.Buffer)
+		defer r.Close()
+		buf.ReadFrom(r)
+		assert.Equal(t, "foobar", buf.String())
+	}
+}
+
 func TestGzipNoContent(t *testing.T) {
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
