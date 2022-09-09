@@ -61,6 +61,10 @@ type (
 		// Optional. Default value os.Stdout.
 		Output io.Writer
 
+		// LevelSetter is a logging level setting function.
+		// Optional. Default value is DefaultLoggingLevelSetter.
+		LevelSetter LoggingLevelSetterFunc
+
 		template *fasttemplate.Template
 		colorer  *color.Color
 		pool     *sync.Pool
@@ -76,6 +80,7 @@ var (
 			`"status":${status},"error":"${error}","latency":${latency},"latency_human":"${latency_human}"` +
 			`,"bytes_in":${bytes_in},"bytes_out":${bytes_out}}` + "\n",
 		CustomTimeFormat: "2006-01-02 15:04:05.00000",
+		LevelSetter:      DefaultLoggingLevelSetter,
 		colorer:          color.New(),
 	}
 )
@@ -97,6 +102,9 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 	}
 	if config.Output == nil {
 		config.Output = DefaultLoggerConfig.Output
+	}
+	if config.LevelSetter == nil {
+		config.LevelSetter = DefaultLoggerConfig.LevelSetter
 	}
 
 	config.template = fasttemplate.New(config.Format, "${", "}")
@@ -182,10 +190,8 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 					}
 					return buf.WriteString(s)
 				case "level":
-					if err != nil {
-						return buf.WriteString("error")
-					}
-					return buf.WriteString("info")
+					level := config.LevelSetter(c, err)
+					return buf.WriteString(level)
 				case "error":
 					if err != nil {
 						// Error may contain invalid JSON e.g. `"`

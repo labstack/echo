@@ -16,6 +16,9 @@ type (
 
 	// BeforeFunc defines a function which is executed just before the middleware.
 	BeforeFunc func(c echo.Context)
+
+	// LoggingLevelSetterFunc allow set login level based on context and error.
+	LoggingLevelSetterFunc func(c echo.Context, err error) string
 )
 
 func captureTokens(pattern *regexp.Regexp, input string) *strings.Replacer {
@@ -86,4 +89,12 @@ func rewriteURL(rewriteRegex map[*regexp.Regexp]string, req *http.Request) error
 // DefaultSkipper returns false which processes the middleware.
 func DefaultSkipper(echo.Context) bool {
 	return false
+}
+
+// DefaultLoggingLevelSetter returns "error" when error is not nil and returns info when error is nil.
+func DefaultLoggingLevelSetter(_ echo.Context, err error) string {
+	if err != nil {
+		return "error"
+	}
+	return "info"
 }

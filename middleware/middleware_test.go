@@ -1,11 +1,13 @@
 package middleware
 
 import (
-	"github.com/stretchr/testify/assert"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRewriteURL(t *testing.T) {
@@ -89,4 +91,14 @@ func TestRewriteURL(t *testing.T) {
 			assert.Equal(t, tc.expectQuery, req.URL.RawQuery)
 		})
 	}
+}
+
+func TestDefaultLoggingLevelSetter_withError(t *testing.T) {
+	level := DefaultLoggingLevelSetter(nil, errors.New("error"))
+	assert.Equal(t, "error", level)
+}
+
+func TestDefaultLoggingLevelSetter_withoutError(t *testing.T) {
+	level := DefaultLoggingLevelSetter(nil, nil)
+	assert.Equal(t, "info", level)
 }

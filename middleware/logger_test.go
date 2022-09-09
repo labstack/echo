@@ -94,7 +94,7 @@ func TestLoggerTemplate(t *testing.T) {
 			`"method":"${method}","uri":"${uri}","status":${status}, "latency":${latency},` +
 			`"latency_human":"${latency_human}","bytes_in":${bytes_in}, "path":"${path}", "referer":"${referer}",` +
 			`"bytes_out":${bytes_out},"ch":"${header:X-Custom-Header}", "protocol":"${protocol}"` +
-			`"us":"${query:username}", "cf":"${form:username}", "session":"${cookie:session}"}` + "\n",
+			`"us":"${query:username}", "cf":"${form:username}", "session":"${cookie:session}"}, "level":"${level}"}` + "\n",
 		Output: buf,
 	}))
 
@@ -135,6 +135,7 @@ func TestLoggerTemplate(t *testing.T) {
 		"echo-tests-agent":                     true,
 		"6ba7b810-9dad-11d1-80b4-00c04fd430c8": true,
 		"ac08034cd216a647fc2eb62f2bcf7b810":    true,
+		"info":                                 true,
 	}
 
 	for token, present := range cases {
@@ -292,34 +293,19 @@ func TestLoggerTemplateWithTimeUnixMicro(t *testing.T) {
 	assert.WithinDuration(t, time.Unix(unixMicros/1000000, 0), time.Now(), 3*time.Second)
 }
 
-func TestLoggerTemplateWithLevel_withError(t *testing.T) {
+func TestLoggerTemplateWithLevel_withNoError(t *testing.T) {
 	buf := new(bytes.Buffer)
 
 	e := echo.New()
 	e.Use(LoggerWithConfig(LoggerConfig{
 		Format: `${level}`,
 		Output: buf,
-	}))
-
-	e.GET("/", func(c echo.Context) error {
-		return errors.New("error")
-	})
-
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-
-	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-
-	assert.Equal(t, "error", buf.String())
-}
-
-func TestLoggerTemplateWithLevel_withoutError(t *testing.T) {
-	buf := new(bytes.Buffer)
-
-	e := echo.New()
-	e.Use(LoggerWithConfig(LoggerConfig{
-		Format: `${level}`,
-		Output: buf,
+		LevelSetter: func(_ echo.Context, err error) string {
+			if err != nil {
+				return "foo"
+			}
+			return "bar"
+		},
 	}))
 
 	e.GET("/", func(c echo.Context) error {
@@ -331,5 +317,125 @@ func TestLoggerTemplateWithLevel_withoutError(t *testing.T) {
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
+	assert.Equal(t, "bar", buf.String())
+}
+
+func TestLoggerTemplateWithLevel_withError(t *testing.T) {
+	buf := new(bytes.Buffer)
+
+	e := echo.New()
+	e.Use(LoggerWithConfig(LoggerConfig{
+		Format: `${level}`,
+		Output: buf,
+		LevelSetter: func(_ echo.Context, err error) string {
+			if err != nil {
+				return "foo"
+			}
+			return "bar"
+		},
+	}))
+
+	e.GET("/", func(c echo.Context) error {
+		return errors.New("error")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, "foo", buf.String())
+}
+
+func TestLoggerTemplateWithLevel_withStatusCodeOK(t *testing.T) {
+	buf := new(bytes.Buffer)
+
+	e := echo.New()
+	e.Use(LoggerWithConfig(LoggerConfig{
+		Format: `${level}`,
+		Output: buf,
+		LevelSetter: func(c echo.Context, err error) string {
+			res := c.Response().Status
+			switch {
+			case res >= 500:
+				return "error"
+			case res >= 400:
+				return "warn"
+			default:
+				return "info"
+			}
+		},
+	}))
+
+	e.GET("/", func(c echo.Context) error {
+		return c.String(200, "foo")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
 	assert.Equal(t, "info", buf.String())
+}
+
+func TestLoggerTemplateWithLevel_withStatusCodeBadRequest(t *testing.T) {
+	buf := new(bytes.Buffer)
+
+	e := echo.New()
+	e.Use(LoggerWithConfig(LoggerConfig{
+		Format: `${level}`,
+		Output: buf,
+		LevelSetter: func(c echo.Context, err error) string {
+			res := c.Response().Status
+			switch {
+			case res >= 500:
+				return "error"
+			case res >= 400:
+				return "warn"
+			default:
+				return "info"
+			}
+		},
+	}))
+
+	e.GET("/", func(c echo.Context) error {
+		return c.String(400, "foo")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, "warn", buf.String())
+}
+
+func TestLoggerTemplateWithLevel_withStatusCodeInternalServerError(t *testing.T) {
+	buf := new(bytes.Buffer)
+
+	e := echo.New()
+	e.Use(LoggerWithConfig(LoggerConfig{
+		Format: `${level}`,
+		Output: buf,
+		LevelSetter: func(c echo.Context, err error) string {
+			res := c.Response().Status
+			switch {
+			case res >= 500:
+				return "error"
+			case res >= 400:
+				return "warn"
+			default:
+				return "info"
+			}
+		},
+	}))
+
+	e.GET("/", func(c echo.Context) error {
+		return c.String(500, "foo")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, "error", buf.String())
 }
