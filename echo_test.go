@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -235,7 +236,12 @@ func TestEchoStaticRedirectIndex(t *testing.T) {
 
 	addr := e.ListenerAddr().String()
 	if resp, err := http.Get("http://" + addr + "/static"); err == nil { // http.Get follows redirects by default
-		defer resp.Body.Close()
+		defer func(Body io.ReadCloser) {
+			err := Body.Close()
+			if err != nil {
+				assert.Fail(t, err.Error())
+			}
+		}(resp.Body)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 		if body, err := ioutil.ReadAll(resp.Body); err == nil {
@@ -380,7 +386,10 @@ func TestEchoWrapHandler(t *testing.T) {
 	c := e.NewContext(req, rec)
 	h := WrapHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("test"))
+		_, err := w.Write([]byte("test"))
+		if err != nil {
+			assert.Fail(t, err.Error())
+		}
 	}))
 	if assert.NoError(t, h(c)) {
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -482,16 +491,16 @@ func TestEchoURL(t *testing.T) {
 	g := e.Group("/group")
 	g.GET("/users/:uid/files/:fid", getFile)
 
-	assert := assert.New(t)
+	assertion := assert.New(t)
 
-	assert.Equal("/static/file", e.URL(static))
-	assert.Equal("/users/:id", e.URL(getUser))
-	assert.Equal("/users/1", e.URL(getUser, "1"))
-	assert.Equal("/users/1", e.URL(getUser, "1"))
-	assert.Equal("/documents/foo.txt", e.URL(getAny, "foo.txt"))
-	assert.Equal("/documents/*", e.URL(getAny))
-	assert.Equal("/group/users/1/files/:fid", e.URL(getFile, "1"))
-	assert.Equal("/group/users/1/files/1", e.URL(getFile, "1", "1"))
+	assertion.Equal("/static/file", e.URL(static))
+	assertion.Equal("/users/:id", e.URL(getUser))
+	assertion.Equal("/users/1", e.URL(getUser, "1"))
+	assertion.Equal("/users/1", e.URL(getUser, "1"))
+	assertion.Equal("/documents/foo.txt", e.URL(getAny, "foo.txt"))
+	assertion.Equal("/documents/*", e.URL(getAny))
+	assertion.Equal("/group/users/1/files/:fid", e.URL(getFile, "1"))
+	assertion.Equal("/group/users/1/files/1", e.URL(getFile, "1", "1"))
 }
 
 func TestEchoRoutes(t *testing.T) {
@@ -598,7 +607,7 @@ func TestEchoServeHTTPPathEncoding(t *testing.T) {
 }
 
 func TestEchoHost(t *testing.T) {
-	assert := assert.New(t)
+	assertion := assert.New(t)
 
 	okHandler := func(c Context) error { return c.String(http.StatusOK, http.StatusText(http.StatusOK)) }
 	teapotHandler := func(c Context) error { return c.String(http.StatusTeapot, http.StatusText(http.StatusTeapot)) }
@@ -694,8 +703,8 @@ func TestEchoHost(t *testing.T) {
 
 			e.ServeHTTP(rec, req)
 
-			assert.Equal(tc.expectStatus, rec.Code)
-			assert.Equal(tc.expectBody, rec.Body.String())
+			assertion.Equal(tc.expectStatus, rec.Code)
+			assertion.Equal(tc.expectBody, rec.Body.String())
 		})
 	}
 }
@@ -1231,7 +1240,7 @@ func TestDefaultHTTPErrorHandler(t *testing.T) {
 	e := New()
 	e.Debug = true
 	e.Any("/plain", func(c Context) error {
-		return errors.New("An error occurred")
+		return errors.New("an error occurred")
 	})
 	e.Any("/badrequest", func(c Context) error {
 		return NewHTTPError(http.StatusBadRequest, "Invalid request")
@@ -1244,7 +1253,10 @@ func TestDefaultHTTPErrorHandler(t *testing.T) {
 		})
 	})
 	e.Any("/early-return", func(c Context) error {
-		c.String(http.StatusOK, "OK")
+		err := c.String(http.StatusOK, "OK")
+		if err != nil {
+			assert.Fail(t, err.Error())
+		}
 		return errors.New("ERROR")
 	})
 	e.GET("/internal-error", func(c Context) error {
@@ -1255,7 +1267,7 @@ func TestDefaultHTTPErrorHandler(t *testing.T) {
 	// With Debug=true plain response contains error message
 	c, b := request(http.MethodGet, "/plain", e)
 	assert.Equal(t, http.StatusInternalServerError, c)
-	assert.Equal(t, "{\n  \"error\": \"An error occurred\",\n  \"message\": \"Internal Server Error\"\n}\n", b)
+	assert.Equal(t, "{\n  \"error\": \"an error occurred\",\n  \"message\": \"Internal Server Error\"\n}\n", b)
 	// and special handling for HTTPError
 	c, b = request(http.MethodGet, "/badrequest", e)
 	assert.Equal(t, http.StatusBadRequest, c)
@@ -1379,7 +1391,12 @@ func TestEchoListenerNetwork(t *testing.T) {
 			assert.NoError(t, err)
 
 			if resp, err := http.Get(fmt.Sprintf("http://%s/ok", tt.address)); err == nil {
-				defer resp.Body.Close()
+				defer func(Body io.ReadCloser) {
+					err := Body.Close()
+					if err != nil {
+						assert.Fail(t, err.Error())
+					}
+				}(resp.Body)
 				assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 				if body, err := ioutil.ReadAll(resp.Body); err == nil {
