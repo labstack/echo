@@ -190,13 +190,13 @@ func TestToMultipleFields(t *testing.T) {
 }
 
 func TestBindJSON(t *testing.T) {
-	assert := assert.New(t)
-	testBindOkay(assert, strings.NewReader(userJSON), nil, MIMEApplicationJSON)
-	testBindOkay(assert, strings.NewReader(userJSON), dummyQuery, MIMEApplicationJSON)
-	testBindArrayOkay(assert, strings.NewReader(usersJSON), nil, MIMEApplicationJSON)
-	testBindArrayOkay(assert, strings.NewReader(usersJSON), dummyQuery, MIMEApplicationJSON)
-	testBindError(assert, strings.NewReader(invalidContent), MIMEApplicationJSON, &json.SyntaxError{})
-	testBindError(assert, strings.NewReader(userJSONInvalidType), MIMEApplicationJSON, &json.UnmarshalTypeError{})
+	assertion := assert.New(t)
+	testBindOkay(assertion, strings.NewReader(userJSON), nil, MIMEApplicationJSON)
+	testBindOkay(assertion, strings.NewReader(userJSON), dummyQuery, MIMEApplicationJSON)
+	testBindArrayOkay(assertion, strings.NewReader(usersJSON), nil, MIMEApplicationJSON)
+	testBindArrayOkay(assertion, strings.NewReader(usersJSON), dummyQuery, MIMEApplicationJSON)
+	testBindError(assertion, strings.NewReader(invalidContent), MIMEApplicationJSON, &json.SyntaxError{})
+	testBindError(assertion, strings.NewReader(userJSONInvalidType), MIMEApplicationJSON, &json.UnmarshalTypeError{})
 }
 
 func TestBindXML(t *testing.T) {
@@ -217,17 +217,17 @@ func TestBindXML(t *testing.T) {
 }
 
 func TestBindForm(t *testing.T) {
-	assert := assert.New(t)
+	assertion := assert.New(t)
 
-	testBindOkay(assert, strings.NewReader(userForm), nil, MIMEApplicationForm)
-	testBindOkay(assert, strings.NewReader(userForm), dummyQuery, MIMEApplicationForm)
+	testBindOkay(assertion, strings.NewReader(userForm), nil, MIMEApplicationForm)
+	testBindOkay(assertion, strings.NewReader(userForm), dummyQuery, MIMEApplicationForm)
 	e := New()
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userForm))
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	req.Header.Set(HeaderContentType, MIMEApplicationForm)
 	err := c.Bind(&[]struct{ Field string }{})
-	assert.Error(err)
+	assertion.Error(err)
 }
 
 func TestBindQueryParams(t *testing.T) {
@@ -317,14 +317,14 @@ func TestBindUnmarshalParam(t *testing.T) {
 	err := c.Bind(&result)
 	ts := Timestamp(time.Date(2016, 12, 6, 19, 9, 5, 0, time.UTC))
 
-	assert := assert.New(t)
-	if assert.NoError(err) {
+	assertion := assert.New(t)
+	if assertion.NoError(err) {
 		//		assert.Equal( Timestamp(reflect.TypeOf(&Timestamp{}), time.Date(2016, 12, 6, 19, 9, 5, 0, time.UTC)), result.T)
-		assert.Equal(ts, result.T)
-		assert.Equal(StringArray([]string{"one", "two", "three"}), result.SA)
-		assert.Equal([]Timestamp{ts, ts}, result.TA)
-		assert.Equal(Struct{""}, result.ST)       // child struct does not have a field with matching tag
-		assert.Equal("baz", result.StWithTag.Foo) // child struct has field with matching tag
+		assertion.Equal(ts, result.T)
+		assertion.Equal(StringArray([]string{"one", "two", "three"}), result.SA)
+		assertion.Equal([]Timestamp{ts, ts}, result.TA)
+		assertion.Equal(Struct{""}, result.ST)       // child struct does not have a field with matching tag
+		assertion.Equal("baz", result.StWithTag.Foo) // child struct has field with matching tag
 	}
 }
 
