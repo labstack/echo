@@ -1,6 +1,3 @@
-//go:build go1.16
-// +build go1.16
-
 package echo
 
 import (
@@ -138,6 +135,15 @@ func TestEcho_StaticFS(t *testing.T) {
 			whenURL:              `/../middleware/basic_auth.go`,
 			expectStatus:         http.StatusNotFound,
 			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
+		},
+		{
+			name:                 "open redirect vulnerability",
+			givenPrefix:          "/",
+			givenFs:              os.DirFS("_fixture/"),
+			whenURL:              "/open.redirect.hackercom%2f..",
+			expectStatus:         http.StatusMovedPermanently,
+			expectHeaderLocation: "/open.redirect.hackercom/../", // location starting with `//open` would be very bad
+			expectBodyStartsWith: "",
 		},
 	}
 
