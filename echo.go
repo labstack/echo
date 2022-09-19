@@ -294,7 +294,7 @@ var (
 	ErrGone                          = NewHTTPError(http.StatusGone)
 	ErrLengthRequired                = NewHTTPError(http.StatusLengthRequired)
 	ErrPreconditionFailed            = NewHTTPError(http.StatusPreconditionFailed)
-	ErrRequestEntityTooLarge         = NewHTTPError(http.StatusRequestEntityTooLarge)
+	ErrStatusRequestEntityTooLarge   = NewHTTPError(http.StatusRequestEntityTooLarge)
 	ErrRequestURITooLong             = NewHTTPError(http.StatusRequestURITooLong)
 	ErrUnsupportedMediaType          = NewHTTPError(http.StatusUnsupportedMediaType)
 	ErrRequestedRangeNotSatisfiable  = NewHTTPError(http.StatusRequestedRangeNotSatisfiable)
