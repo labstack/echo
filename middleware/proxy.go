@@ -72,20 +72,21 @@ type (
 		Next(echo.Context) *ProxyTarget
 	}
 
-	commonBalancer struct {
+	// CommonBalancer defines common methods for load balancing, such as Addtarget and RemoveTarget
+	CommonBalancer struct {
 		targets []*ProxyTarget
 		mutex   sync.RWMutex
 	}
 
 	// RandomBalancer implements a random load balancing technique.
 	randomBalancer struct {
-		*commonBalancer
+		*CommonBalancer
 		random *rand.Rand
 	}
 
 	// RoundRobinBalancer implements a round-robin load balancing technique.
 	roundRobinBalancer struct {
-		*commonBalancer
+		*CommonBalancer
 		i uint32
 	}
 )
@@ -138,20 +139,20 @@ func proxyRaw(t *ProxyTarget, c echo.Context) http.Handler {
 
 // NewRandomBalancer returns a random proxy balancer.
 func NewRandomBalancer(targets []*ProxyTarget) ProxyBalancer {
-	b := &randomBalancer{commonBalancer: new(commonBalancer)}
+	b := &randomBalancer{CommonBalancer: new(CommonBalancer)}
 	b.targets = targets
 	return b
 }
 
 // NewRoundRobinBalancer returns a round-robin proxy balancer.
 func NewRoundRobinBalancer(targets []*ProxyTarget) ProxyBalancer {
-	b := &roundRobinBalancer{commonBalancer: new(commonBalancer)}
+	b := &roundRobinBalancer{CommonBalancer: new(CommonBalancer)}
 	b.targets = targets
 	return b
 }
 
 // AddTarget adds an upstream target to the list.
-func (b *commonBalancer) AddTarget(target *ProxyTarget) bool {
+func (b *CommonBalancer) AddTarget(target *ProxyTarget) bool {
 	for _, t := range b.targets {
 		if t.Name == target.Name {
 			return false
@@ -164,7 +165,7 @@ func (b *commonBalancer) AddTarget(target *ProxyTarget) bool {
 }
 
 // RemoveTarget removes an upstream target from the list.
-func (b *commonBalancer) RemoveTarget(name string) bool {
+func (b *CommonBalancer) RemoveTarget(name string) bool {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 	for i, t := range b.targets {
