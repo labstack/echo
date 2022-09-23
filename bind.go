@@ -5,6 +5,8 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"github.com/golang/protobuf/proto"
+	"io"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -90,6 +92,14 @@ func (b *DefaultBinder) BindBody(c Context, i interface{}) (err error) {
 		if err = b.bindData(i, params, "form"); err != nil {
 			return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
 		}
+	case strings.HasPrefix(ctype, MIMEApplicationProtobuf), strings.HasPrefix(ctype, MIMEApplicationXProtobuf):
+		b, err := io.ReadAll(req.Body)
+		if err != nil {
+			return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
+		}
+		if err = proto.Unmarshal(b, i.(proto.Message)); err != nil {
+			return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
+		}
 	default:
 		return ErrUnsupportedMediaType
 	}
@@ -114,7 +124,7 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 	// Only bind query parameters for GET/DELETE/HEAD to avoid unexpected behavior with destination struct binding from body.
 	// For example a request URL `&id=1&lang=en` with body `{"id":100,"lang":"de"}` would lead to precedence issues.
 	// The HTTP method check restores pre-v4.1.11 behavior to avoid these problems (see issue #1670)
-  method := c.Request().Method
+	method := c.Request().Method
 	if method == http.MethodGet || method == http.MethodDelete || method == http.MethodHead {
 		if err = b.BindQueryParams(c, i); err != nil {
 			return err
