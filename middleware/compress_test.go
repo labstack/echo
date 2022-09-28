@@ -91,36 +91,81 @@ func TestGzip(t *testing.T) {
 }
 
 func TestGzipWithMinLength(t *testing.T) {
+	assert := assert.New(t)
+
 	e := echo.New()
 	// Minimal response length
-	e.Use(GzipWithConfig(GzipConfig{MinLength: 5}))
+	e.Use(GzipWithConfig(GzipConfig{MinLength: 10}))
 	e.GET("/", func(c echo.Context) error {
 		c.Response().Write([]byte("test"))
 		return nil
 	})
 	e.GET("/gzip", func(c echo.Context) error {
-		c.Response().Write([]byte("foobar"))
+		c.Response().Write([]byte("foobarfoobar"))
 		return nil
 	})
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
-	assert.Equal(t, "", rec.Header().Get(echo.HeaderContentEncoding))
-	assert.Contains(t, rec.Body.String(), "test")
+	assert.Equal("", rec.Header().Get(echo.HeaderContentEncoding))
+	assert.Contains(rec.Body.String(), "test")
 
 	req = httptest.NewRequest(http.MethodGet, "/gzip", nil)
 	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
-	assert.Equal(t, gzipScheme, rec.Header().Get(echo.HeaderContentEncoding))
+	assert.Equal(gzipScheme, rec.Header().Get(echo.HeaderContentEncoding))
 	r, err := gzip.NewReader(rec.Body)
-	if assert.NoError(t, err) {
+	if assert.NoError(err) {
 		buf := new(bytes.Buffer)
 		defer r.Close()
 		buf.ReadFrom(r)
-		assert.Equal(t, "foobar", buf.String())
+		assert.Equal("foobarfoobar", buf.String())
 	}
+
+	// Gzip chunked
+	chunkBuf := make([]byte, 5)
+
+	req = httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
+	rec = httptest.NewRecorder()
+
+	c := e.NewContext(req, rec)
+	GzipWithConfig(GzipConfig{MinLength: 10})(func(c echo.Context) error {
+		c.Response().Header().Set("Content-Type", "text/event-stream")
+		c.Response().Header().Set("Transfer-Encoding", "chunked")
+
+		// Write and flush the first part of the data
+		c.Response().Write([]byte("test\n"))
+		c.Response().Flush()
+
+		// Read the first part of the data
+		assert.True(rec.Flushed)
+		assert.Equal(gzipScheme, rec.Header().Get(echo.HeaderContentEncoding))
+		r.Reset(rec.Body)
+
+		_, err = io.ReadFull(r, chunkBuf)
+		assert.NoError(err)
+		assert.Equal("test\n", string(chunkBuf))
+
+		// Write and flush the second part of the data
+		c.Response().Write([]byte("test\n"))
+		c.Response().Flush()
+
+		_, err = io.ReadFull(r, chunkBuf)
+		assert.NoError(err)
+		assert.Equal("test\n", string(chunkBuf))
+
+		// Write the final part of the data and return
+		c.Response().Write([]byte("test"))
+		return nil
+	})(c)
+
+	buf := new(bytes.Buffer)
+	defer r.Close()
+	buf.ReadFrom(r)
+	assert.Equal("test", buf.String())
 }
 
 func TestGzipNoContent(t *testing.T) {
