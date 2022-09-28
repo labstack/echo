@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"strings"
@@ -107,7 +106,7 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 						// nothing is written to body or error is returned.
 						// See issue #424, #407.
 						res.Writer = rw
-						w.Reset(ioutil.Discard)
+						w.Reset(io.Discard)
 					} else if !grw.minLengthExceeded {
 						// Write uncompressed response
 						res.Writer = rw
@@ -196,7 +195,7 @@ func (w *gzipResponseWriter) Push(target string, opts *http.PushOptions) error {
 func gzipCompressPool(config GzipConfig) sync.Pool {
 	return sync.Pool{
 		New: func() interface{} {
-			w, err := gzip.NewWriterLevel(ioutil.Discard, config.Level)
+			w, err := gzip.NewWriterLevel(io.Discard, config.Level)
 			if err != nil {
 				return err
 			}
