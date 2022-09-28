@@ -36,7 +36,7 @@ type (
 		wroteBody         bool
 		minLength         int
 		minLengthExceeded bool
-		buffer            bytes.Buffer
+		buffer            *bytes.Buffer
 		code              int
 	}
 )
@@ -75,6 +75,7 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 	}
 
 	pool := gzipCompressPool(config)
+	bpool := bufferPool()
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -93,7 +94,10 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 				rw := res.Writer
 				w.Reset(rw)
 
-				grw := &gzipResponseWriter{Writer: w, ResponseWriter: rw, minLength: config.MinLength}
+				buf := bpool.Get().(*bytes.Buffer)
+				buf.Reset()
+
+				grw := &gzipResponseWriter{Writer: w, ResponseWriter: rw, minLength: config.MinLength, buffer: buf}
 				defer func() {
 					if !grw.wroteBody {
 						if res.Header().Get(echo.HeaderContentEncoding) == gzipScheme {
@@ -114,6 +118,7 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 						w.Reset(io.Discard)
 					}
 					w.Close()
+					bpool.Put(buf)
 					pool.Put(w)
 				}()
 				res.Writer = grw
@@ -196,6 +201,15 @@ func gzipCompressPool(config GzipConfig) sync.Pool {
 				return err
 			}
 			return w
+		},
+	}
+}
+
+func bufferPool() sync.Pool {
+	return sync.Pool{
+		New: func() interface{} {
+			b := &bytes.Buffer{}
+			return b
 		},
 	}
 }
