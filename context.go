@@ -389,10 +389,7 @@ func (c *context) FormFile(name string) (*multipart.FileHeader, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = f.Close()
-	if err != nil {
-		return nil, err
-	}
+	f.Close()
 	return fh, nil
 }
 
