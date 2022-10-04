@@ -63,7 +63,6 @@ type JWTConfig struct {
 
 	// ParseTokenFunc defines a user-defined function that parses token from given auth. Returns an error when token
 	// parsing fails or parsed token is invalid.
-	// Defaults to implementation using `github.com/golang-jwt/jwt` as JWT implementation library
 	ParseTokenFunc func(c echo.Context, auth string, source ExtractorSource) (interface{}, error)
 }
 
