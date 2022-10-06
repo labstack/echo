@@ -190,44 +190,40 @@ func TestToMultipleFields(t *testing.T) {
 }
 
 func TestBindJSON(t *testing.T) {
-	assertion := assert.New(t)
-	testBindOkay(assertion, strings.NewReader(userJSON), nil, MIMEApplicationJSON)
-	testBindOkay(assertion, strings.NewReader(userJSON), dummyQuery, MIMEApplicationJSON)
-	testBindArrayOkay(assertion, strings.NewReader(usersJSON), nil, MIMEApplicationJSON)
-	testBindArrayOkay(assertion, strings.NewReader(usersJSON), dummyQuery, MIMEApplicationJSON)
-	testBindError(assertion, strings.NewReader(invalidContent), MIMEApplicationJSON, &json.SyntaxError{})
-	testBindError(assertion, strings.NewReader(userJSONInvalidType), MIMEApplicationJSON, &json.UnmarshalTypeError{})
+	testBindOkay(t, strings.NewReader(userJSON), nil, MIMEApplicationJSON)
+	testBindOkay(t, strings.NewReader(userJSON), dummyQuery, MIMEApplicationJSON)
+	testBindArrayOkay(t, strings.NewReader(usersJSON), nil, MIMEApplicationJSON)
+	testBindArrayOkay(t, strings.NewReader(usersJSON), dummyQuery, MIMEApplicationJSON)
+	testBindError(t, strings.NewReader(invalidContent), MIMEApplicationJSON, &json.SyntaxError{})
+	testBindError(t, strings.NewReader(userJSONInvalidType), MIMEApplicationJSON, &json.UnmarshalTypeError{})
 }
 
 func TestBindXML(t *testing.T) {
-	assert := assert.New(t)
-
-	testBindOkay(assert, strings.NewReader(userXML), nil, MIMEApplicationXML)
-	testBindOkay(assert, strings.NewReader(userXML), dummyQuery, MIMEApplicationXML)
-	testBindArrayOkay(assert, strings.NewReader(userXML), nil, MIMEApplicationXML)
-	testBindArrayOkay(assert, strings.NewReader(userXML), dummyQuery, MIMEApplicationXML)
-	testBindError(assert, strings.NewReader(invalidContent), MIMEApplicationXML, errors.New(""))
-	testBindError(assert, strings.NewReader(userXMLConvertNumberError), MIMEApplicationXML, &strconv.NumError{})
-	testBindError(assert, strings.NewReader(userXMLUnsupportedTypeError), MIMEApplicationXML, &xml.SyntaxError{})
-	testBindOkay(assert, strings.NewReader(userXML), nil, MIMETextXML)
-	testBindOkay(assert, strings.NewReader(userXML), dummyQuery, MIMETextXML)
-	testBindError(assert, strings.NewReader(invalidContent), MIMETextXML, errors.New(""))
-	testBindError(assert, strings.NewReader(userXMLConvertNumberError), MIMETextXML, &strconv.NumError{})
-	testBindError(assert, strings.NewReader(userXMLUnsupportedTypeError), MIMETextXML, &xml.SyntaxError{})
+	testBindOkay(t, strings.NewReader(userXML), nil, MIMEApplicationXML)
+	testBindOkay(t, strings.NewReader(userXML), dummyQuery, MIMEApplicationXML)
+	testBindArrayOkay(t, strings.NewReader(userXML), nil, MIMEApplicationXML)
+	testBindArrayOkay(t, strings.NewReader(userXML), dummyQuery, MIMEApplicationXML)
+	testBindError(t, strings.NewReader(invalidContent), MIMEApplicationXML, errors.New(""))
+	testBindError(t, strings.NewReader(userXMLConvertNumberError), MIMEApplicationXML, &strconv.NumError{})
+	testBindError(t, strings.NewReader(userXMLUnsupportedTypeError), MIMEApplicationXML, &xml.SyntaxError{})
+	testBindOkay(t, strings.NewReader(userXML), nil, MIMETextXML)
+	testBindOkay(t, strings.NewReader(userXML), dummyQuery, MIMETextXML)
+	testBindError(t, strings.NewReader(invalidContent), MIMETextXML, errors.New(""))
+	testBindError(t, strings.NewReader(userXMLConvertNumberError), MIMETextXML, &strconv.NumError{})
+	testBindError(t, strings.NewReader(userXMLUnsupportedTypeError), MIMETextXML, &xml.SyntaxError{})
 }
 
 func TestBindForm(t *testing.T) {
-	assertion := assert.New(t)
 
-	testBindOkay(assertion, strings.NewReader(userForm), nil, MIMEApplicationForm)
-	testBindOkay(assertion, strings.NewReader(userForm), dummyQuery, MIMEApplicationForm)
+	testBindOkay(t, strings.NewReader(userForm), nil, MIMEApplicationForm)
+	testBindOkay(t, strings.NewReader(userForm), dummyQuery, MIMEApplicationForm)
 	e := New()
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userForm))
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	req.Header.Set(HeaderContentType, MIMEApplicationForm)
 	err := c.Bind(&[]struct{ Field string }{})
-	assertion.Error(err)
+	assert.Error(t, err)
 }
 
 func TestBindQueryParams(t *testing.T) {
@@ -426,14 +422,12 @@ func TestBindMultipartForm(t *testing.T) {
 	mw.Close()
 	body := bodyBuffer.Bytes()
 
-	assert := assert.New(t)
-	testBindOkay(assert, bytes.NewReader(body), nil, mw.FormDataContentType())
-	testBindOkay(assert, bytes.NewReader(body), dummyQuery, mw.FormDataContentType())
+	testBindOkay(t, bytes.NewReader(body), nil, mw.FormDataContentType())
+	testBindOkay(t, bytes.NewReader(body), dummyQuery, mw.FormDataContentType())
 }
 
 func TestBindUnsupportedMediaType(t *testing.T) {
-	assert := assert.New(t)
-	testBindError(assert, strings.NewReader(invalidContent), MIMEApplicationJSON, &json.SyntaxError{})
+	testBindError(t, strings.NewReader(invalidContent), MIMEApplicationJSON, &json.SyntaxError{})
 }
 
 func TestBindbindData(t *testing.T) {
@@ -528,7 +522,6 @@ func TestBindUnmarshalTypeError(t *testing.T) {
 }
 
 func TestBindSetWithProperType(t *testing.T) {
-	assert := assert.New(t)
 	ts := new(bindTestStruct)
 	typ := reflect.TypeOf(ts).Elem()
 	val := reflect.ValueOf(ts).Elem()
@@ -543,9 +536,10 @@ func TestBindSetWithProperType(t *testing.T) {
 		}
 		val := values[typeField.Name][0]
 		err := setWithProperType(typeField.Type.Kind(), val, structField)
-		assert.NoError(err)
+		assert.NoError(t, err)
 	}
-	assertBindTestStruct(assert, ts)
+	assertion := assert.New(t)
+	assertBindTestStruct(assertion, ts)
 
 	type foo struct {
 		Bar bytes.Buffer
@@ -553,7 +547,7 @@ func TestBindSetWithProperType(t *testing.T) {
 	v := &foo{}
 	typ = reflect.TypeOf(v).Elem()
 	val = reflect.ValueOf(v).Elem()
-	assert.Error(setWithProperType(typ.Field(0).Type.Kind(), "5", val.Field(0)))
+	assert.Error(t, setWithProperType(typ.Field(0).Type.Kind(), "5", val.Field(0)))
 }
 
 func TestBindSetFields(t *testing.T) {
@@ -632,7 +626,7 @@ func assertBindTestStruct(a *assert.Assertions, ts *bindTestStruct) {
 	a.Equal("", ts.GetCantSet())
 }
 
-func testBindOkay(assert *assert.Assertions, r io.Reader, query url.Values, ctype string) {
+func testBindOkay(t *testing.T, r io.Reader, query url.Values, ctype string) {
 	e := New()
 	path := "/"
 	if len(query) > 0 {
@@ -644,13 +638,13 @@ func testBindOkay(assert *assert.Assertions, r io.Reader, query url.Values, ctyp
 	req.Header.Set(HeaderContentType, ctype)
 	u := new(user)
 	err := c.Bind(u)
-	if assert.NoError(err) {
-		assert.Equal(1, u.ID)
-		assert.Equal("Jon Snow", u.Name)
+	if assert.Equal(t, nil, err) {
+		assert.Equal(t, 1, u.ID)
+		assert.Equal(t, "Jon Snow", u.Name)
 	}
 }
 
-func testBindArrayOkay(assert *assert.Assertions, r io.Reader, query url.Values, ctype string) {
+func testBindArrayOkay(t *testing.T, r io.Reader, query url.Values, ctype string) {
 	e := New()
 	path := "/"
 	if len(query) > 0 {
@@ -662,14 +656,14 @@ func testBindArrayOkay(assert *assert.Assertions, r io.Reader, query url.Values,
 	req.Header.Set(HeaderContentType, ctype)
 	u := []user{}
 	err := c.Bind(&u)
-	if assert.NoError(err) {
-		assert.Equal(1, len(u))
-		assert.Equal(1, u[0].ID)
-		assert.Equal("Jon Snow", u[0].Name)
+	if assert.NoError(t, err) {
+		assert.Equal(t, 1, len(u))
+		assert.Equal(t, 1, u[0].ID)
+		assert.Equal(t, "Jon Snow", u[0].Name)
 	}
 }
 
-func testBindError(assert *assert.Assertions, r io.Reader, ctype string, expectedInternal error) {
+func testBindError(t *testing.T, r io.Reader, ctype string, expectedInternal error) {
 	e := New()
 	req := httptest.NewRequest(http.MethodPost, "/", r)
 	rec := httptest.NewRecorder()
@@ -681,14 +675,14 @@ func testBindError(assert *assert.Assertions, r io.Reader, ctype string, expecte
 	switch {
 	case strings.HasPrefix(ctype, MIMEApplicationJSON), strings.HasPrefix(ctype, MIMEApplicationXML), strings.HasPrefix(ctype, MIMETextXML),
 		strings.HasPrefix(ctype, MIMEApplicationForm), strings.HasPrefix(ctype, MIMEMultipartForm):
-		if assert.IsType(new(HTTPError), err) {
-			assert.Equal(http.StatusBadRequest, err.(*HTTPError).Code)
-			assert.IsType(expectedInternal, err.(*HTTPError).Internal)
+		if assert.IsType(t, new(HTTPError), err) {
+			assert.Equal(t, http.StatusBadRequest, err.(*HTTPError).Code)
+			assert.IsType(t, expectedInternal, err.(*HTTPError).Internal)
 		}
 	default:
-		if assert.IsType(new(HTTPError), err) {
-			assert.Equal(ErrUnsupportedMediaType, err)
-			assert.IsType(expectedInternal, err.(*HTTPError).Internal)
+		if assert.IsType(t, new(HTTPError), err) {
+			assert.Equal(t, ErrUnsupportedMediaType, err)
+			assert.IsType(t, expectedInternal, err.(*HTTPError).Internal)
 		}
 	}
 }
