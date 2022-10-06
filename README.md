@@ -11,12 +11,11 @@
 
 ## Supported Go versions
 
+Latest version of Echo supports last four Go major [releases](https://go.dev/doc/devel/release) and might work with older versions.
+
 As of version 4.0.0, Echo is available as a [Go module](https://github.com/golang/go/wiki/Modules).
 Therefore a Go version capable of understanding /vN suffixed imports is required:
 
-- 1.9.7+
-- 1.10.3+
-- 1.14+
 
 Any of these versions will allow you to import Echo as `github.com/labstack/echo/v4` which is the recommended
 way of using Echo going forward.
