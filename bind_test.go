@@ -536,8 +536,7 @@ func TestBindSetWithProperType(t *testing.T) {
 		err := setWithProperType(typeField.Type.Kind(), val, structField)
 		assert.NoError(t, err)
 	}
-	assertion := assert.New(t)
-	assertBindTestStruct(assertion, ts)
+	assertBindTestStruct(t, ts)
 
 	type foo struct {
 		Bar bytes.Buffer
@@ -593,7 +592,6 @@ func TestBindSetFields(t *testing.T) {
 
 func BenchmarkBindbindDataWithTags(b *testing.B) {
 	b.ReportAllocs()
-	assertion := assert.New(b)
 	ts := new(bindTestStructWithTags)
 	binder := new(DefaultBinder)
 	var err error
@@ -601,26 +599,26 @@ func BenchmarkBindbindDataWithTags(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		err = binder.bindData(ts, values, "form")
 	}
-	assertion.NoError(err)
-	assertBindTestStruct(assertion, (*bindTestStruct)(ts))
+	assert.NoError(b, err)
+	assertBindTestStruct(b, (*bindTestStruct)(ts))
 }
 
-func assertBindTestStruct(a *assert.Assertions, ts *bindTestStruct) {
-	a.Equal(0, ts.I)
-	a.Equal(int8(8), ts.I8)
-	a.Equal(int16(16), ts.I16)
-	a.Equal(int32(32), ts.I32)
-	a.Equal(int64(64), ts.I64)
-	a.Equal(uint(0), ts.UI)
-	a.Equal(uint8(8), ts.UI8)
-	a.Equal(uint16(16), ts.UI16)
-	a.Equal(uint32(32), ts.UI32)
-	a.Equal(uint64(64), ts.UI64)
-	a.Equal(true, ts.B)
-	a.Equal(float32(32.5), ts.F32)
-	a.Equal(float64(64.5), ts.F64)
-	a.Equal("test", ts.S)
-	a.Equal("", ts.GetCantSet())
+func assertBindTestStruct(tb testing.TB, ts *bindTestStruct) {
+	assert.Equal(tb, 0, ts.I)
+	assert.Equal(tb, int8(8), ts.I8)
+	assert.Equal(tb, int16(16), ts.I16)
+	assert.Equal(tb, int32(32), ts.I32)
+	assert.Equal(tb, int64(64), ts.I64)
+	assert.Equal(tb, uint(0), ts.UI)
+	assert.Equal(tb, uint8(8), ts.UI8)
+	assert.Equal(tb, uint16(16), ts.UI16)
+	assert.Equal(tb, uint32(32), ts.UI32)
+	assert.Equal(tb, uint64(64), ts.UI64)
+	assert.Equal(tb, true, ts.B)
+	assert.Equal(tb, float32(32.5), ts.F32)
+	assert.Equal(tb, float64(64.5), ts.F64)
+	assert.Equal(tb, "test", ts.S)
+	assert.Equal(tb, "", ts.GetCantSet())
 }
 
 func testBindOkay(t *testing.T, r io.Reader, query url.Values, ctype string) {
