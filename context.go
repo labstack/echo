@@ -181,7 +181,7 @@ type (
 		// Logger returns the `Logger` instance.
 		Logger() Logger
 
-		// Set the logger
+		// SetLogger Set the logger
 		SetLogger(l Logger)
 
 		// Echo returns the `Echo` instance.
