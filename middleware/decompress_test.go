@@ -28,8 +28,7 @@ func TestDecompress(t *testing.T) {
 	})
 	h(c)
 
-	assert := assert.New(t)
-	assert.Equal("test", rec.Body.String())
+	assert.Equal(t, "test", rec.Body.String())
 
 	// Decompress
 	body := `{"name": "echo"}`
@@ -39,10 +38,10 @@ func TestDecompress(t *testing.T) {
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	h(c)
-	assert.Equal(GZIPEncoding, req.Header.Get(echo.HeaderContentEncoding))
+	assert.Equal(t, GZIPEncoding, req.Header.Get(echo.HeaderContentEncoding))
 	b, err := ioutil.ReadAll(req.Body)
-	assert.NoError(err)
-	assert.Equal(body, string(b))
+	assert.NoError(t, err)
+	assert.Equal(t, body, string(b))
 }
 
 func TestDecompressDefaultConfig(t *testing.T) {
@@ -57,8 +56,7 @@ func TestDecompressDefaultConfig(t *testing.T) {
 	})
 	h(c)
 
-	assert := assert.New(t)
-	assert.Equal("test", rec.Body.String())
+	assert.Equal(t, "test", rec.Body.String())
 
 	// Decompress
 	body := `{"name": "echo"}`
@@ -68,10 +66,10 @@ func TestDecompressDefaultConfig(t *testing.T) {
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	h(c)
-	assert.Equal(GZIPEncoding, req.Header.Get(echo.HeaderContentEncoding))
+	assert.Equal(t, GZIPEncoding, req.Header.Get(echo.HeaderContentEncoding))
 	b, err := ioutil.ReadAll(req.Body)
-	assert.NoError(err)
-	assert.Equal(body, string(b))
+	assert.NoError(t, err)
+	assert.Equal(t, body, string(b))
 }
 
 func TestCompressRequestWithoutDecompressMiddleware(t *testing.T) {
