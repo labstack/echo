@@ -33,13 +33,11 @@ func TestBodyDump(t *testing.T) {
 		responseBody = string(resBody)
 	})
 
-	assert := assert.New(t)
-
-	if assert.NoError(mw(h)(c)) {
-		assert.Equal(requestBody, hw)
-		assert.Equal(responseBody, hw)
-		assert.Equal(http.StatusOK, rec.Code)
-		assert.Equal(hw, rec.Body.String())
+	if assert.NoError(t, mw(h)(c)) {
+		assert.Equal(t, requestBody, hw)
+		assert.Equal(t, responseBody, hw)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, hw, rec.Body.String())
 	}
 
 	// Must set default skipper
