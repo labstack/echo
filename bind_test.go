@@ -313,14 +313,13 @@ func TestBindUnmarshalParam(t *testing.T) {
 	err := c.Bind(&result)
 	ts := Timestamp(time.Date(2016, 12, 6, 19, 9, 5, 0, time.UTC))
 
-	assertion := assert.New(t)
-	if assertion.NoError(err) {
+	if assert.NoError(t, err) {
 		//		assert.Equal( Timestamp(reflect.TypeOf(&Timestamp{}), time.Date(2016, 12, 6, 19, 9, 5, 0, time.UTC)), result.T)
-		assertion.Equal(ts, result.T)
-		assertion.Equal(StringArray([]string{"one", "two", "three"}), result.SA)
-		assertion.Equal([]Timestamp{ts, ts}, result.TA)
-		assertion.Equal(Struct{""}, result.ST)       // child struct does not have a field with matching tag
-		assertion.Equal("baz", result.StWithTag.Foo) // child struct has field with matching tag
+		assert.Equal(t, ts, result.T)
+		assert.Equal(t, StringArray([]string{"one", "two", "three"}), result.SA)
+		assert.Equal(t, []Timestamp{ts, ts}, result.TA)
+		assert.Equal(t, Struct{""}, result.ST)       // child struct does not have a field with matching tag
+		assert.Equal(t, "baz", result.StWithTag.Foo) // child struct has field with matching tag
 	}
 }
 
@@ -431,27 +430,26 @@ func TestBindUnsupportedMediaType(t *testing.T) {
 }
 
 func TestBindbindData(t *testing.T) {
-	a := assert.New(t)
 	ts := new(bindTestStruct)
 	b := new(DefaultBinder)
 	err := b.bindData(ts, values, "form")
-	a.NoError(err)
+	assert.NoError(t, err)
 
-	a.Equal(0, ts.I)
-	a.Equal(int8(0), ts.I8)
-	a.Equal(int16(0), ts.I16)
-	a.Equal(int32(0), ts.I32)
-	a.Equal(int64(0), ts.I64)
-	a.Equal(uint(0), ts.UI)
-	a.Equal(uint8(0), ts.UI8)
-	a.Equal(uint16(0), ts.UI16)
-	a.Equal(uint32(0), ts.UI32)
-	a.Equal(uint64(0), ts.UI64)
-	a.Equal(false, ts.B)
-	a.Equal(float32(0), ts.F32)
-	a.Equal(float64(0), ts.F64)
-	a.Equal("", ts.S)
-	a.Equal("", ts.cantSet)
+	assert.Equal(t, 0, ts.I)
+	assert.Equal(t, int8(0), ts.I8)
+	assert.Equal(t, int16(0), ts.I16)
+	assert.Equal(t, int32(0), ts.I32)
+	assert.Equal(t, int64(0), ts.I64)
+	assert.Equal(t, uint(0), ts.UI)
+	assert.Equal(t, uint8(0), ts.UI8)
+	assert.Equal(t, uint16(0), ts.UI16)
+	assert.Equal(t, uint32(0), ts.UI32)
+	assert.Equal(t, uint64(0), ts.UI64)
+	assert.Equal(t, false, ts.B)
+	assert.Equal(t, float32(0), ts.F32)
+	assert.Equal(t, float64(0), ts.F64)
+	assert.Equal(t, "", ts.S)
+	assert.Equal(t, "", ts.cantSet)
 }
 
 func TestBindParam(t *testing.T) {
@@ -551,52 +549,51 @@ func TestBindSetWithProperType(t *testing.T) {
 }
 
 func TestBindSetFields(t *testing.T) {
-	assert := assert.New(t)
 
 	ts := new(bindTestStruct)
 	val := reflect.ValueOf(ts).Elem()
 	// Int
-	if assert.NoError(setIntField("5", 0, val.FieldByName("I"))) {
-		assert.Equal(5, ts.I)
+	if assert.NoError(t, setIntField("5", 0, val.FieldByName("I"))) {
+		assert.Equal(t, 5, ts.I)
 	}
-	if assert.NoError(setIntField("", 0, val.FieldByName("I"))) {
-		assert.Equal(0, ts.I)
+	if assert.NoError(t, setIntField("", 0, val.FieldByName("I"))) {
+		assert.Equal(t, 0, ts.I)
 	}
 
 	// Uint
-	if assert.NoError(setUintField("10", 0, val.FieldByName("UI"))) {
-		assert.Equal(uint(10), ts.UI)
+	if assert.NoError(t, setUintField("10", 0, val.FieldByName("UI"))) {
+		assert.Equal(t, uint(10), ts.UI)
 	}
-	if assert.NoError(setUintField("", 0, val.FieldByName("UI"))) {
-		assert.Equal(uint(0), ts.UI)
+	if assert.NoError(t, setUintField("", 0, val.FieldByName("UI"))) {
+		assert.Equal(t, uint(0), ts.UI)
 	}
 
 	// Float
-	if assert.NoError(setFloatField("15.5", 0, val.FieldByName("F32"))) {
-		assert.Equal(float32(15.5), ts.F32)
+	if assert.NoError(t, setFloatField("15.5", 0, val.FieldByName("F32"))) {
+		assert.Equal(t, float32(15.5), ts.F32)
 	}
-	if assert.NoError(setFloatField("", 0, val.FieldByName("F32"))) {
-		assert.Equal(float32(0.0), ts.F32)
+	if assert.NoError(t, setFloatField("", 0, val.FieldByName("F32"))) {
+		assert.Equal(t, float32(0.0), ts.F32)
 	}
 
 	// Bool
-	if assert.NoError(setBoolField("true", val.FieldByName("B"))) {
-		assert.Equal(true, ts.B)
+	if assert.NoError(t, setBoolField("true", val.FieldByName("B"))) {
+		assert.Equal(t, true, ts.B)
 	}
-	if assert.NoError(setBoolField("", val.FieldByName("B"))) {
-		assert.Equal(false, ts.B)
+	if assert.NoError(t, setBoolField("", val.FieldByName("B"))) {
+		assert.Equal(t, false, ts.B)
 	}
 
 	ok, err := unmarshalFieldNonPtr("2016-12-06T19:09:05Z", val.FieldByName("T"))
-	if assert.NoError(err) {
-		assert.Equal(ok, true)
-		assert.Equal(Timestamp(time.Date(2016, 12, 6, 19, 9, 5, 0, time.UTC)), ts.T)
+	if assert.NoError(t, err) {
+		assert.Equal(t, ok, true)
+		assert.Equal(t, Timestamp(time.Date(2016, 12, 6, 19, 9, 5, 0, time.UTC)), ts.T)
 	}
 }
 
 func BenchmarkBindbindDataWithTags(b *testing.B) {
 	b.ReportAllocs()
-	assert := assert.New(b)
+	assertion := assert.New(b)
 	ts := new(bindTestStructWithTags)
 	binder := new(DefaultBinder)
 	var err error
@@ -604,8 +601,8 @@ func BenchmarkBindbindDataWithTags(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		err = binder.bindData(ts, values, "form")
 	}
-	assert.NoError(err)
-	assertBindTestStruct(assert, (*bindTestStruct)(ts))
+	assertion.NoError(err)
+	assertBindTestStruct(assertion, (*bindTestStruct)(ts))
 }
 
 func assertBindTestStruct(a *assert.Assertions, ts *bindTestStruct) {
