@@ -491,16 +491,14 @@ func TestEchoURL(t *testing.T) {
 	g := e.Group("/group")
 	g.GET("/users/:uid/files/:fid", getFile)
 
-	assertion := assert.New(t)
-
-	assertion.Equal("/static/file", e.URL(static))
-	assertion.Equal("/users/:id", e.URL(getUser))
-	assertion.Equal("/users/1", e.URL(getUser, "1"))
-	assertion.Equal("/users/1", e.URL(getUser, "1"))
-	assertion.Equal("/documents/foo.txt", e.URL(getAny, "foo.txt"))
-	assertion.Equal("/documents/*", e.URL(getAny))
-	assertion.Equal("/group/users/1/files/:fid", e.URL(getFile, "1"))
-	assertion.Equal("/group/users/1/files/1", e.URL(getFile, "1", "1"))
+	assert.Equal(t, "/static/file", e.URL(static))
+	assert.Equal(t, "/users/:id", e.URL(getUser))
+	assert.Equal(t, "/users/1", e.URL(getUser, "1"))
+	assert.Equal(t, "/users/1", e.URL(getUser, "1"))
+	assert.Equal(t, "/documents/foo.txt", e.URL(getAny, "foo.txt"))
+	assert.Equal(t, "/documents/*", e.URL(getAny))
+	assert.Equal(t, "/group/users/1/files/:fid", e.URL(getFile, "1"))
+	assert.Equal(t, "/group/users/1/files/1", e.URL(getFile, "1", "1"))
 }
 
 func TestEchoRoutes(t *testing.T) {
@@ -607,8 +605,6 @@ func TestEchoServeHTTPPathEncoding(t *testing.T) {
 }
 
 func TestEchoHost(t *testing.T) {
-	assertion := assert.New(t)
-
 	okHandler := func(c Context) error { return c.String(http.StatusOK, http.StatusText(http.StatusOK)) }
 	teapotHandler := func(c Context) error { return c.String(http.StatusTeapot, http.StatusText(http.StatusTeapot)) }
 	acceptHandler := func(c Context) error { return c.String(http.StatusAccepted, http.StatusText(http.StatusAccepted)) }
@@ -703,8 +699,8 @@ func TestEchoHost(t *testing.T) {
 
 			e.ServeHTTP(rec, req)
 
-			assertion.Equal(tc.expectStatus, rec.Code)
-			assertion.Equal(tc.expectBody, rec.Body.String())
+			assert.Equal(t, tc.expectStatus, rec.Code)
+			assert.Equal(t, tc.expectBody, rec.Body.String())
 		})
 	}
 }
@@ -1429,8 +1425,6 @@ func TestEchoListenerNetworkInvalid(t *testing.T) {
 }
 
 func TestEchoReverse(t *testing.T) {
-	assert := assert.New(t)
-
 	e := New()
 	dummyHandler := func(Context) error { return nil }
 
@@ -1440,22 +1434,20 @@ func TestEchoReverse(t *testing.T) {
 	e.GET("/params/:foo/bar/:qux", dummyHandler).Name = "/params/:foo/bar/:qux"
 	e.GET("/params/:foo/bar/:qux/*", dummyHandler).Name = "/params/:foo/bar/:qux/*"
 
-	assert.Equal("/static", e.Reverse("/static"))
-	assert.Equal("/static", e.Reverse("/static", "missing param"))
-	assert.Equal("/static/*", e.Reverse("/static/*"))
-	assert.Equal("/static/foo.txt", e.Reverse("/static/*", "foo.txt"))
+	assert.Equal(t, "/static", e.Reverse("/static"))
+	assert.Equal(t, "/static", e.Reverse("/static", "missing param"))
+	assert.Equal(t, "/static/*", e.Reverse("/static/*"))
+	assert.Equal(t, "/static/foo.txt", e.Reverse("/static/*", "foo.txt"))
 
-	assert.Equal("/params/:foo", e.Reverse("/params/:foo"))
-	assert.Equal("/params/one", e.Reverse("/params/:foo", "one"))
-	assert.Equal("/params/:foo/bar/:qux", e.Reverse("/params/:foo/bar/:qux"))
-	assert.Equal("/params/one/bar/:qux", e.Reverse("/params/:foo/bar/:qux", "one"))
-	assert.Equal("/params/one/bar/two", e.Reverse("/params/:foo/bar/:qux", "one", "two"))
-	assert.Equal("/params/one/bar/two/three", e.Reverse("/params/:foo/bar/:qux/*", "one", "two", "three"))
+	assert.Equal(t, "/params/:foo", e.Reverse("/params/:foo"))
+	assert.Equal(t, "/params/one", e.Reverse("/params/:foo", "one"))
+	assert.Equal(t, "/params/:foo/bar/:qux", e.Reverse("/params/:foo/bar/:qux"))
+	assert.Equal(t, "/params/one/bar/:qux", e.Reverse("/params/:foo/bar/:qux", "one"))
+	assert.Equal(t, "/params/one/bar/two", e.Reverse("/params/:foo/bar/:qux", "one", "two"))
+	assert.Equal(t, "/params/one/bar/two/three", e.Reverse("/params/:foo/bar/:qux/*", "one", "two", "three"))
 }
 
 func TestEchoReverseHandleHostProperly(t *testing.T) {
-	assert := assert.New(t)
-
 	dummyHandler := func(Context) error { return nil }
 
 	e := New()
@@ -1463,10 +1455,10 @@ func TestEchoReverseHandleHostProperly(t *testing.T) {
 	h.GET("/static", dummyHandler).Name = "/static"
 	h.GET("/static/*", dummyHandler).Name = "/static/*"
 
-	assert.Equal("/static", e.Reverse("/static"))
-	assert.Equal("/static", e.Reverse("/static", "missing param"))
-	assert.Equal("/static/*", e.Reverse("/static/*"))
-	assert.Equal("/static/foo.txt", e.Reverse("/static/*", "foo.txt"))
+	assert.Equal(t, "/static", e.Reverse("/static"))
+	assert.Equal(t, "/static", e.Reverse("/static", "missing param"))
+	assert.Equal(t, "/static/*", e.Reverse("/static/*"))
+	assert.Equal(t, "/static/foo.txt", e.Reverse("/static/*", "foo.txt"))
 }
 
 func TestEcho_ListenerAddr(t *testing.T) {
