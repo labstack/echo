@@ -416,9 +416,12 @@ func TestBindUnmarshalTextPtr(t *testing.T) {
 func TestBindMultipartForm(t *testing.T) {
 	bodyBuffer := new(bytes.Buffer)
 	mw := multipart.NewWriter(bodyBuffer)
-	mw.WriteField("id", "1")
-	mw.WriteField("name", "Jon Snow")
-	mw.Close()
+	err := mw.WriteField("id", "1")
+	assert.Equal(t, nil, err)
+	err = mw.WriteField("name", "Jon Snow")
+	assert.Equal(t, nil, err)
+	err = mw.Close()
+	assert.Equal(t, nil, err)
 	body := bodyBuffer.Bytes()
 
 	testBindOkay(t, bytes.NewReader(body), nil, mw.FormDataContentType())
