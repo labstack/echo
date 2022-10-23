@@ -157,8 +157,81 @@ func TestFormFieldBinder(t *testing.T) {
 	assert.Equal(t, "foo", texta)
 	assert.Equal(t, int64(1), id)
 	assert.Equal(t, int64(2), nr)
-	assert.Equal(t, []int64{5, 3, 4}, slice)
 	assert.Equal(t, []int64{}, notExisting)
+
+	// NB: when binding forms take note that this implementation uses standard library form parsing
+	// which parses form data from BOTH URL and BODY if content type is not MIMEMultipartForm
+	assert.Equal(t, []int64{5, 3, 4}, slice) // so we have value from body and query here
+}
+
+func TestValueBinder_UseBefore(t *testing.T) {
+	c := createTestContext("/dosomething?lang=en&slice=51&slice=52&csv=1", nil, map[string]string{
+		"id":    "999",
+		"slice": "1",
+		"csv":   "2",
+		// no `lang` here so value should be taken from query
+	})
+
+	// bound path params should have priority over query params
+	b := PathParamsBinder(c).UseBefore(QueryParamsBinder(c))
+
+	var lang string
+	var csv int8
+	id := int64(42)
+	var slice = make([]int64, 0)
+	var notExisting = make([]int64, 0)
+	err := b.
+		Int8("csv", &csv).
+		Int64("id", &id).
+		String("lang", &lang).
+		Int64s("slice", &slice).
+		Int64s("notExisting", &notExisting).
+		BindError()
+
+	assert.NoError(t, err)
+	assert.Equal(t, int8(2), csv)      // from path params because path has priority
+	assert.Equal(t, []int64{1}, slice) // from path params because path has priority, we test slices here
+	assert.Equal(t, int64(999), id)    // from path params because path has priority also query does not contain this param
+
+	assert.Equal(t, "en", lang) // from query params because path does not have it
+
+	assert.Equal(t, []int64{}, notExisting) // no value
+}
+
+func TestValueBinder_UseBefore_3binders(t *testing.T) {
+	body := `first=3&second=23&third=33`
+	req := httptest.NewRequest(http.MethodPost, "/dosomething?first=2&second=22", strings.NewReader(body))
+	req.Header.Set(HeaderContentLength, strconv.Itoa(len(body)))
+	req.Header.Set(HeaderContentType, MIMEApplicationForm)
+
+	rec := httptest.NewRecorder()
+	c := (New()).NewContext(req, rec)
+	c.SetParamNames("first")
+	c.SetParamValues("1")
+
+	// bound params priority:
+	// 1. Path params
+	// 2. Query params
+	// 3. Form fields
+	b := PathParamsBinder(c).UseBefore(QueryParamsBinder(c)).UseBefore(FormFieldBinder(c))
+
+	var first int64
+	var second int64
+	var third int64
+	var notExisting = make([]int64, 0)
+	err := b.
+		Int64("first", &first).
+		Int64("second", &second).
+		Int64("third", &third).
+		Int64s("notExisting", &notExisting).
+		BindError()
+
+	assert.NoError(t, err)
+	assert.Equal(t, int64(1), first)   // from path params because path has priority
+	assert.Equal(t, int64(22), second) // from query params because query has priority over form and path does not have this param
+	assert.Equal(t, int64(33), third)  // from form params because path and query does not have this param
+
+	assert.Equal(t, []int64{}, notExisting) // no value
 }
 
 func TestValueBinder_errorStopsBinding(t *testing.T) {
