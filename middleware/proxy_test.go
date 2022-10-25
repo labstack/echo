@@ -43,7 +43,6 @@ func TestProxy(t *testing.T) {
 	}))
 	defer t2.Close()
 	url2, _ := url.Parse(t2.URL)
-	fmt.Println(url1, url2)
 	targets := []*ProxyTarget{
 		{
 			Name: "target 1",
