@@ -18,7 +18,19 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-//Assert expected with url.EscapedPath method to obtain the path.
+type testProvider struct {
+	*commonBalancer
+}
+
+func (p *testProvider) Next(c echo.Context) *ProxyTarget {
+	return p.commonBalancer.targets[0]
+}
+
+func (p *testProvider) GetTarget(c echo.Context) (*ProxyTarget, error) {
+	return p.commonBalancer.targets[1], nil
+}
+
+// Assert expected with url.EscapedPath method to obtain the path.
 func TestProxy(t *testing.T) {
 	// Setup
 	t1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -31,7 +43,7 @@ func TestProxy(t *testing.T) {
 	}))
 	defer t2.Close()
 	url2, _ := url.Parse(t2.URL)
-
+	fmt.Println(url1, url2)
 	targets := []*ProxyTarget{
 		{
 			Name: "target 1",
@@ -84,6 +96,16 @@ func TestProxy(t *testing.T) {
 	body = rec.Body.String()
 	assert.Equal(t, "target 1", body)
 
+	rec = httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	body = rec.Body.String()
+	assert.Equal(t, "target 2", body)
+
+	// Provider
+	e = echo.New()
+	tp := &testProvider{commonBalancer: new(commonBalancer)}
+	tp.targets = targets
+	e.Use(Proxy(tp))
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	body = rec.Body.String()

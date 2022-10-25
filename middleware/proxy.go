@@ -72,6 +72,11 @@ type (
 		Next(echo.Context) *ProxyTarget
 	}
 
+	// TargetProvider defines an interface that gives the opportunity for balancer to return custom errors when selecting target.
+	TargetProvider interface {
+		GetTarget(echo.Context) (*ProxyTarget, error)
+	}
+
 	commonBalancer struct {
 		targets []*ProxyTarget
 		mutex   sync.RWMutex
@@ -231,7 +236,17 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 
 			req := c.Request()
 			res := c.Response()
-			tgt := config.Balancer.Next(c)
+
+			var tgt *ProxyTarget
+			provider, ok := config.Balancer.(TargetProvider)
+			if ok {
+				tgt, err = provider.GetTarget(c)
+				if err != nil {
+					return err
+				}
+			} else {
+				tgt = config.Balancer.Next(c)
+			}
 			c.Set(config.ContextKey, tgt)
 
 			if err := rewriteURL(config.RegexRewrite, req); err != nil {
