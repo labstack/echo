@@ -74,7 +74,7 @@ type (
 
 	// TargetProvider defines an interface that gives the opportunity for balancer to return custom errors when selecting target.
 	TargetProvider interface {
-		GetTarget(echo.Context) (*ProxyTarget, error)
+		NextTarget(echo.Context) (*ProxyTarget, error)
 	}
 
 	commonBalancer struct {
@@ -228,6 +228,7 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 		}
 	}
 
+	provider, isTargetProvider := config.Balancer.(TargetProvider)
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) (err error) {
 			if config.Skipper(c) {
@@ -238,9 +239,8 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 			res := c.Response()
 
 			var tgt *ProxyTarget
-			provider, ok := config.Balancer.(TargetProvider)
-			if ok {
-				tgt, err = provider.GetTarget(c)
+			if isTargetProvider {
+				tgt, err = provider.NextTarget(c)
 				if err != nil {
 					return err
 				}

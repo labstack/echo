@@ -18,18 +18,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type testProvider struct {
-	*commonBalancer
-}
-
-func (p *testProvider) Next(c echo.Context) *ProxyTarget {
-	return p.commonBalancer.targets[0]
-}
-
-func (p *testProvider) GetTarget(c echo.Context) (*ProxyTarget, error) {
-	return p.commonBalancer.targets[1], nil
-}
-
 // Assert expected with url.EscapedPath method to obtain the path.
 func TestProxy(t *testing.T) {
 	// Setup
@@ -100,16 +88,6 @@ func TestProxy(t *testing.T) {
 	body = rec.Body.String()
 	assert.Equal(t, "target 2", body)
 
-	// Provider
-	e = echo.New()
-	tp := &testProvider{commonBalancer: new(commonBalancer)}
-	tp.targets = targets
-	e.Use(Proxy(tp))
-	rec = httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-	body = rec.Body.String()
-	assert.Equal(t, "target 2", body)
-
 	// ModifyResponse
 	e = echo.New()
 	e.Use(ProxyWithConfig(ProxyConfig{
@@ -141,6 +119,42 @@ func TestProxy(t *testing.T) {
 	e.Use(Proxy(rrb1))
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
+}
+
+type testProvider struct {
+	*commonBalancer
+}
+
+func (p *testProvider) Next(c echo.Context) *ProxyTarget {
+	return &ProxyTarget{}
+}
+
+func (p *testProvider) NextTarget(c echo.Context) (*ProxyTarget, error) {
+	return p.commonBalancer.targets[0], nil
+}
+
+func TestTargetProvider(t *testing.T) {
+	t1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "target 1")
+	}))
+	defer t1.Close()
+	url1, _ := url.Parse(t1.URL)
+	targets := []*ProxyTarget{
+		{
+			Name: "target 1",
+			URL:  url1,
+		},
+	}
+
+	e := echo.New()
+	tp := &testProvider{commonBalancer: new(commonBalancer)}
+	tp.targets = targets
+	e.Use(Proxy(tp))
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	e.ServeHTTP(rec, req)
+	body := rec.Body.String()
+	assert.Equal(t, "target 1", body)
 }
 
 func TestProxyRealIPHeader(t *testing.T) {
