@@ -626,7 +626,7 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Acquire context
 	c := e.pool.Get().(*context)
 	c.Reset(r, w)
-	var h func(Context) error
+	var h HandlerFunc
 
 	if e.premiddleware == nil {
 		e.findRouter(r.Host).Find(r.Method, GetPath(r), c)
