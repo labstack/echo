@@ -161,7 +161,7 @@ func TestFailNextTarget(t *testing.T) {
 	msg := "method could not select target"
 	tp := &testProvider{commonBalancer: new(commonBalancer)}
 	tp.target = &ProxyTarget{Name: "target 1", URL: url1}
-	tp.err = fmt.Errorf("method could not select target")
+	tp.err = fmt.Errorf(msg)
 
 	e.Use(Proxy(tp))
 	rec := httptest.NewRecorder()
