@@ -123,6 +123,8 @@ func TestProxy(t *testing.T) {
 
 type testProvider struct {
 	*commonBalancer
+	target *ProxyTarget
+	err    error
 }
 
 func (p *testProvider) Next(c echo.Context) *ProxyTarget {
@@ -130,7 +132,7 @@ func (p *testProvider) Next(c echo.Context) *ProxyTarget {
 }
 
 func (p *testProvider) NextTarget(c echo.Context) (*ProxyTarget, error) {
-	return p.commonBalancer.targets[0], nil
+	return p.target, p.err
 }
 
 func TestTargetProvider(t *testing.T) {
@@ -139,22 +141,34 @@ func TestTargetProvider(t *testing.T) {
 	}))
 	defer t1.Close()
 	url1, _ := url.Parse(t1.URL)
-	targets := []*ProxyTarget{
-		{
-			Name: "target 1",
-			URL:  url1,
-		},
-	}
 
 	e := echo.New()
 	tp := &testProvider{commonBalancer: new(commonBalancer)}
-	tp.targets = targets
+	tp.target = &ProxyTarget{Name: "target 1", URL: url1}
 	e.Use(Proxy(tp))
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	e.ServeHTTP(rec, req)
 	body := rec.Body.String()
 	assert.Equal(t, "target 1", body)
+}
+
+func TestFailNextTarget(t *testing.T) {
+	url1, err := url.Parse("http://dummy:8080")
+	assert.Nil(t, err)
+
+	e := echo.New()
+	msg := "method could not select target"
+	tp := &testProvider{commonBalancer: new(commonBalancer)}
+	tp.target = &ProxyTarget{Name: "target 1", URL: url1}
+	tp.err = fmt.Errorf("method could not select target")
+
+	e.Use(Proxy(tp))
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	e.ServeHTTP(rec, req)
+	body := rec.Body.String()
+	assert.Equal(t, msg, body)
 }
 
 func TestProxyRealIPHeader(t *testing.T) {
