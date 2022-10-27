@@ -158,17 +158,16 @@ func TestFailNextTarget(t *testing.T) {
 	assert.Nil(t, err)
 
 	e := echo.New()
-	msg := "method could not select target"
 	tp := &testProvider{commonBalancer: new(commonBalancer)}
 	tp.target = &ProxyTarget{Name: "target 1", URL: url1}
-	tp.err = fmt.Errorf(msg)
+	tp.err = echo.NewHTTPError(http.StatusInternalServerError, "method could not select target")
 
 	e.Use(Proxy(tp))
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	e.ServeHTTP(rec, req)
 	body := rec.Body.String()
-	assert.Equal(t, msg, body)
+	assert.Equal(t, "{\"message\":\"method could not select target\"}\n", body)
 }
 
 func TestProxyRealIPHeader(t *testing.T) {

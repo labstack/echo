@@ -242,8 +242,7 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 			if isTargetProvider {
 				tgt, err = provider.NextTarget(c)
 				if err != nil {
-					c.String(http.StatusInternalServerError, err.Error())
-					return
+					return err
 				}
 			} else {
 				tgt = config.Balancer.Next(c)
