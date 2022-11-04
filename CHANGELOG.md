@@ -1,5 +1,17 @@
 # Changelog
 
+## v4.10.0 - 2022-xx-xx
+
+**Security**
+
+This minor version bumps minimum Go version to 1.17 (from 1.16) due `golang.org/x/` packages we depend on. There are 
+several vulnerabilities fixed in these libraries. 
+
+Echo still tries to support last 4 Go versions but there are occasions we can not guarantee this promise.
+
+
+
+
 ## v4.9.1 - 2022-10-12
 
 **Fixes**
