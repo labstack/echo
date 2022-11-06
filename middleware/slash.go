@@ -33,7 +33,7 @@ func AddTrailingSlash() echo.MiddlewareFunc {
 	return AddTrailingSlashWithConfig(DefaultTrailingSlashConfig)
 }
 
-// AddTrailingSlashWithConfig returns a AddTrailingSlash middleware with config.
+// AddTrailingSlashWithConfig returns an AddTrailingSlash middleware with config.
 // See `AddTrailingSlash()`.
 func AddTrailingSlashWithConfig(config TrailingSlashConfig) echo.MiddlewareFunc {
 	// Defaults

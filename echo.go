@@ -565,7 +565,7 @@ func (e *Echo) Group(prefix string, m ...MiddlewareFunc) (g *Group) {
 	return
 }
 
-// URI generates a URI from handler.
+// URI generates an URI from handler.
 func (e *Echo) URI(handler HandlerFunc, params ...interface{}) string {
 	name := handlerName(handler)
 	return e.Reverse(name, params...)
