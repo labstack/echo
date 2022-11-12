@@ -3,41 +3,40 @@ Package echo implements high performance, minimalist Go web framework.
 
 Example:
 
-  package main
+	package main
 
-  import (
-    "net/http"
+	import (
+	  "net/http"
 
-    "github.com/labstack/echo/v4"
-    "github.com/labstack/echo/v4/middleware"
-  )
+	  "github.com/labstack/echo/v4"
+	  "github.com/labstack/echo/v4/middleware"
+	)
 
-  // Handler
-  func hello(c echo.Context) error {
-    return c.String(http.StatusOK, "Hello, World!")
-  }
+	// Handler
+	func hello(c echo.Context) error {
+	  return c.String(http.StatusOK, "Hello, World!")
+	}
 
-  func main() {
-    // Echo instance
-    e := echo.New()
+	func main() {
+	  // Echo instance
+	  e := echo.New()
 
-    // Middleware
-    e.Use(middleware.Logger())
-    e.Use(middleware.Recover())
+	  // Middleware
+	  e.Use(middleware.Logger())
+	  e.Use(middleware.Recover())
 
-    // Routes
-    e.GET("/", hello)
+	  // Routes
+	  e.GET("/", hello)
 
-    // Start server
-    e.Logger.Fatal(e.Start(":1323"))
-  }
+	  // Start server
+	  e.Logger.Fatal(e.Start(":1323"))
+	}
 
 Learn more at https://echo.labstack.com
 */
 package echo
 
 import (
-	"bytes"
 	stdContext "context"
 	"crypto/tls"
 	"errors"
@@ -528,20 +527,13 @@ func (e *Echo) File(path, file string, m ...MiddlewareFunc) *Route {
 }
 
 func (e *Echo) add(host, method, path string, handler HandlerFunc, middleware ...MiddlewareFunc) *Route {
-	name := handlerName(handler)
 	router := e.findRouter(host)
-	// FIXME: when handler+middleware are both nil ... make it behave like handler removal
-	router.Add(method, path, func(c Context) error {
+	//FIXME: when handler+middleware are both nil ... make it behave like handler removal
+	name := handlerName(handler)
+	return router.add(method, path, name, func(c Context) error {
 		h := applyMiddleware(handler, middleware...)
 		return h(c)
 	})
-	r := &Route{
-		Method: method,
-		Path:   path,
-		Name:   name,
-	}
-	e.router.routes[method+path] = r
-	return r
 }
 
 // Add registers a new route for an HTTP method and path with matching handler
@@ -578,35 +570,13 @@ func (e *Echo) URL(h HandlerFunc, params ...interface{}) string {
 
 // Reverse generates an URL from route name and provided parameters.
 func (e *Echo) Reverse(name string, params ...interface{}) string {
-	uri := new(bytes.Buffer)
-	ln := len(params)
-	n := 0
-	for _, r := range e.router.routes {
-		if r.Name == name {
-			for i, l := 0, len(r.Path); i < l; i++ {
-				if (r.Path[i] == ':' || r.Path[i] == '*') && n < ln {
-					for ; i < l && r.Path[i] != '/'; i++ {
-					}
-					uri.WriteString(fmt.Sprintf("%v", params[n]))
-					n++
-				}
-				if i < l {
-					uri.WriteByte(r.Path[i])
-				}
-			}
-			break
-		}
-	}
-	return uri.String()
+	return e.router.Reverse(name, params...)
 }
 
-// Routes returns the registered routes.
+// Routes returns the registered routes for default router.
+// In case when Echo serves multiple hosts/domains use `e.Routers()["domain2.site"].Routes()` to get specific host routes.
 func (e *Echo) Routes() []*Route {
-	routes := make([]*Route, 0, len(e.router.routes))
-	for _, v := range e.router.routes {
-		routes = append(routes, v)
-	}
-	return routes
+	return e.router.Routes()
 }
 
 // AcquireContext returns an empty `Context` instance from the pool.
@@ -913,8 +883,8 @@ func WrapMiddleware(m func(http.Handler) http.Handler) MiddlewareFunc {
 
 // GetPath returns RawPath, if it's empty returns Path from URL
 // Difference between RawPath and Path is:
-//  * Path is where request path is stored. Value is stored in decoded form: /%47%6f%2f becomes /Go/.
-//  * RawPath is an optional field which only gets set if the default encoding is different from Path.
+//   - Path is where request path is stored. Value is stored in decoded form: /%47%6f%2f becomes /Go/.
+//   - RawPath is an optional field which only gets set if the default encoding is different from Path.
 func GetPath(r *http.Request) string {
 	path := r.URL.RawPath
 	if path == "" {
