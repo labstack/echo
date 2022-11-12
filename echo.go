@@ -61,20 +61,28 @@ import (
 
 type (
 	// Echo is the top-level framework instance.
+	//
+	// Goroutine safety: Do not mutate Echo instance fields after server has started. Accessing these
+	// fields from handlers/middlewares and changing field values at the same time leads to data-races.
+	// Same rule applies to adding new routes after server has been started - Adding a route is not Goroutine safe action.
 	Echo struct {
 		filesystem
 		common
 		// startupMutex is mutex to lock Echo instance access during server configuration and startup. Useful for to get
 		// listener address info (on which interface/port was listener binded) without having data races.
-		startupMutex     sync.RWMutex
+		startupMutex sync.RWMutex
+		colorer      *color.Color
+
+		// premiddleware are middlewares that are run before routing is done. In case pre-middleware returns an error router
+		// will not be called at all and execution ends up in global error handler.
+		premiddleware []MiddlewareFunc
+		middleware    []MiddlewareFunc
+		maxParam      *int
+		router        *Router
+		routers       map[string]*Router
+		pool          sync.Pool
+
 		StdLogger        *stdLog.Logger
-		colorer          *color.Color
-		premiddleware    []MiddlewareFunc
-		middleware       []MiddlewareFunc
-		maxParam         *int
-		router           *Router
-		routers          map[string]*Router
-		pool             sync.Pool
 		Server           *http.Server
 		TLSServer        *http.Server
 		Listener         net.Listener
@@ -92,6 +100,9 @@ type (
 		Logger           Logger
 		IPExtractor      IPExtractor
 		ListenerNetwork  string
+
+		// OnAddRouteHandler is called when Echo adds new route to specific host router.
+		OnAddRouteHandler func(host string, route Route, handler HandlerFunc, middleware []MiddlewareFunc)
 	}
 
 	// Route contains a handler and information for matching against requests.
@@ -526,14 +537,20 @@ func (e *Echo) File(path, file string, m ...MiddlewareFunc) *Route {
 	return e.file(path, file, e.GET, m...)
 }
 
-func (e *Echo) add(host, method, path string, handler HandlerFunc, middleware ...MiddlewareFunc) *Route {
+func (e *Echo) add(host, method, path string, handler HandlerFunc, middlewares ...MiddlewareFunc) *Route {
 	router := e.findRouter(host)
 	//FIXME: when handler+middleware are both nil ... make it behave like handler removal
 	name := handlerName(handler)
-	return router.add(method, path, name, func(c Context) error {
-		h := applyMiddleware(handler, middleware...)
+	route := router.add(method, path, name, func(c Context) error {
+		h := applyMiddleware(handler, middlewares...)
 		return h(c)
 	})
+
+	if e.OnAddRouteHandler != nil {
+		e.OnAddRouteHandler(host, *route, handler, middlewares)
+	}
+
+	return route
 }
 
 // Add registers a new route for an HTTP method and path with matching handler

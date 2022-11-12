@@ -1478,6 +1478,44 @@ func TestEchoListenerNetworkInvalid(t *testing.T) {
 	assert.Equal(t, ErrInvalidListenerNetwork, e.Start(":1323"))
 }
 
+func TestEcho_OnAddRouteHandler(t *testing.T) {
+	type rr struct {
+		host       string
+		route      Route
+		handler    HandlerFunc
+		middleware []MiddlewareFunc
+	}
+	dummyHandler := func(Context) error { return nil }
+	e := New()
+
+	added := make([]rr, 0)
+	e.OnAddRouteHandler = func(host string, route Route, handler HandlerFunc, middleware []MiddlewareFunc) {
+		added = append(added, rr{
+			host:       host,
+			route:      route,
+			handler:    handler,
+			middleware: middleware,
+		})
+	}
+
+	e.GET("/static", NotFoundHandler)
+	e.Host("domain.site").GET("/static/*", dummyHandler, func(next HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			return next(c)
+		}
+	})
+
+	assert.Len(t, added, 2)
+
+	assert.Equal(t, "", added[0].host)
+	assert.Equal(t, Route{Method: http.MethodGet, Path: "/static", Name: "github.com/labstack/echo/v4.glob..func1"}, added[0].route)
+	assert.Len(t, added[0].middleware, 0)
+
+	assert.Equal(t, "domain.site", added[1].host)
+	assert.Equal(t, Route{Method: http.MethodGet, Path: "/static/*", Name: "github.com/labstack/echo/v4.TestEcho_OnAddRouteHandler.func1"}, added[1].route)
+	assert.Len(t, added[1].middleware, 1)
+}
+
 func TestEchoReverse(t *testing.T) {
 	e := New()
 	dummyHandler := func(Context) error { return nil }
