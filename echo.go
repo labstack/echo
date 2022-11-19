@@ -3,34 +3,34 @@ Package echo implements high performance, minimalist Go web framework.
 
 Example:
 
-  package main
+	package main
 
-  import (
-    "net/http"
+	import (
+	  "net/http"
 
-    "github.com/labstack/echo/v4"
-    "github.com/labstack/echo/v4/middleware"
-  )
+	  "github.com/labstack/echo/v4"
+	  "github.com/labstack/echo/v4/middleware"
+	)
 
-  // Handler
-  func hello(c echo.Context) error {
-    return c.String(http.StatusOK, "Hello, World!")
-  }
+	// Handler
+	func hello(c echo.Context) error {
+	  return c.String(http.StatusOK, "Hello, World!")
+	}
 
-  func main() {
-    // Echo instance
-    e := echo.New()
+	func main() {
+	  // Echo instance
+	  e := echo.New()
 
-    // Middleware
-    e.Use(middleware.Logger())
-    e.Use(middleware.Recover())
+	  // Middleware
+	  e.Use(middleware.Logger())
+	  e.Use(middleware.Recover())
 
-    // Routes
-    e.GET("/", hello)
+	  // Routes
+	  e.GET("/", hello)
 
-    // Start server
-    e.Logger.Fatal(e.Start(":1323"))
-  }
+	  // Start server
+	  e.Logger.Fatal(e.Start(":1323"))
+	}
 
 Learn more at https://echo.labstack.com
 */
@@ -884,6 +884,15 @@ func (he *HTTPError) SetInternal(err error) *HTTPError {
 	return he
 }
 
+// WithInternal returns clone of HTTPError with err set to HTTPError.Internal field
+func (he *HTTPError) WithInternal(err error) *HTTPError {
+	return &HTTPError{
+		Code:     he.Code,
+		Message:  he.Message,
+		Internal: err,
+	}
+}
+
 // Unwrap satisfies the Go 1.13 error wrapper interface.
 func (he *HTTPError) Unwrap() error {
 	return he.Internal
@@ -913,8 +922,8 @@ func WrapMiddleware(m func(http.Handler) http.Handler) MiddlewareFunc {
 
 // GetPath returns RawPath, if it's empty returns Path from URL
 // Difference between RawPath and Path is:
-//  * Path is where request path is stored. Value is stored in decoded form: /%47%6f%2f becomes /Go/.
-//  * RawPath is an optional field which only gets set if the default encoding is different from Path.
+//   - Path is where request path is stored. Value is stored in decoded form: /%47%6f%2f becomes /Go/.
+//   - RawPath is an optional field which only gets set if the default encoding is different from Path.
 func GetPath(r *http.Request) string {
 	path := r.URL.RawPath
 	if path == "" {
