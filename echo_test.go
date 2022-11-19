@@ -1206,11 +1206,20 @@ func TestHTTPError(t *testing.T) {
 
 		assert.Equal(t, "code=400, message=map[code:12]", err.Error())
 	})
-	t.Run("internal", func(t *testing.T) {
+
+	t.Run("internal and SetInternal", func(t *testing.T) {
 		err := NewHTTPError(http.StatusBadRequest, map[string]interface{}{
 			"code": 12,
 		})
 		err.SetInternal(errors.New("internal error"))
+		assert.Equal(t, "code=400, message=map[code:12], internal=internal error", err.Error())
+	})
+
+	t.Run("internal and WithInternal", func(t *testing.T) {
+		err := NewHTTPError(http.StatusBadRequest, map[string]interface{}{
+			"code": 12,
+		})
+		err = err.WithInternal(errors.New("internal error"))
 		assert.Equal(t, "code=400, message=map[code:12], internal=internal error", err.Error())
 	})
 }
@@ -1223,11 +1232,20 @@ func TestHTTPError_Unwrap(t *testing.T) {
 
 		assert.Nil(t, errors.Unwrap(err))
 	})
-	t.Run("internal", func(t *testing.T) {
+
+	t.Run("unwrap internal and SetInternal", func(t *testing.T) {
 		err := NewHTTPError(http.StatusBadRequest, map[string]interface{}{
 			"code": 12,
 		})
 		err.SetInternal(errors.New("internal error"))
+		assert.Equal(t, "internal error", errors.Unwrap(err).Error())
+	})
+
+	t.Run("unwrap internal and WithInternal", func(t *testing.T) {
+		err := NewHTTPError(http.StatusBadRequest, map[string]interface{}{
+			"code": 12,
+		})
+		err = err.WithInternal(errors.New("internal error"))
 		assert.Equal(t, "internal error", errors.Unwrap(err).Error())
 	})
 }
