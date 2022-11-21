@@ -173,6 +173,28 @@ func TestLoggerCustomTimestamp(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestLoggerCustomTagFunc(t *testing.T) {
+	e := echo.New()
+	buf := new(bytes.Buffer)
+	e.Use(LoggerWithConfig(LoggerConfig{
+		Format: `{"method":"${method}",${custom}}` + "\n",
+		CustomTagFunc: func(c echo.Context, buf *bytes.Buffer) (int, error) {
+			return buf.WriteString(`"tag":"my-value"`)
+		},
+		Output: buf,
+	}))
+
+	e.GET("/", func(c echo.Context) error {
+		return c.String(http.StatusOK, "custom time stamp test")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, `{"method":"GET","tag":"my-value"}`+"\n", buf.String())
+}
+
 func BenchmarkLoggerWithConfig_withoutMapFields(b *testing.B) {
 	e := echo.New()
 
