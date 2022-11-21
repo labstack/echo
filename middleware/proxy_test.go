@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -93,7 +93,7 @@ func TestProxy(t *testing.T) {
 	e.Use(ProxyWithConfig(ProxyConfig{
 		Balancer: rrb,
 		ModifyResponse: func(res *http.Response) error {
-			res.Body = ioutil.NopCloser(bytes.NewBuffer([]byte("modified")))
+			res.Body = io.NopCloser(bytes.NewBuffer([]byte("modified")))
 			res.Header.Set("X-Modified", "1")
 			return nil
 		},

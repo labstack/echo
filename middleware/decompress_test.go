@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -39,7 +39,7 @@ func TestDecompress(t *testing.T) {
 	c = e.NewContext(req, rec)
 	h(c)
 	assert.Equal(t, GZIPEncoding, req.Header.Get(echo.HeaderContentEncoding))
-	b, err := ioutil.ReadAll(req.Body)
+	b, err := io.ReadAll(req.Body)
 	assert.NoError(t, err)
 	assert.Equal(t, body, string(b))
 }
@@ -67,7 +67,7 @@ func TestDecompressDefaultConfig(t *testing.T) {
 	c = e.NewContext(req, rec)
 	h(c)
 	assert.Equal(t, GZIPEncoding, req.Header.Get(echo.HeaderContentEncoding))
-	b, err := ioutil.ReadAll(req.Body)
+	b, err := io.ReadAll(req.Body)
 	assert.NoError(t, err)
 	assert.Equal(t, body, string(b))
 }
@@ -82,7 +82,7 @@ func TestCompressRequestWithoutDecompressMiddleware(t *testing.T) {
 	e.NewContext(req, rec)
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, GZIPEncoding, req.Header.Get(echo.HeaderContentEncoding))
-	b, err := ioutil.ReadAll(req.Body)
+	b, err := io.ReadAll(req.Body)
 	assert.NoError(t, err)
 	assert.NotEqual(t, b, body)
 	assert.Equal(t, b, gz)
@@ -132,7 +132,7 @@ func TestDecompressSkipper(t *testing.T) {
 	c := e.NewContext(req, rec)
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, rec.Header().Get(echo.HeaderContentType), echo.MIMEApplicationJSONCharsetUTF8)
-	reqBody, err := ioutil.ReadAll(c.Request().Body)
+	reqBody, err := io.ReadAll(c.Request().Body)
 	assert.NoError(t, err)
 	assert.Equal(t, body, string(reqBody))
 }
@@ -161,7 +161,7 @@ func TestDecompressPoolError(t *testing.T) {
 	c := e.NewContext(req, rec)
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, GZIPEncoding, req.Header.Get(echo.HeaderContentEncoding))
-	reqBody, err := ioutil.ReadAll(c.Request().Body)
+	reqBody, err := io.ReadAll(c.Request().Body)
 	assert.NoError(t, err)
 	assert.Equal(t, body, string(reqBody))
 	assert.Equal(t, rec.Code, http.StatusInternalServerError)

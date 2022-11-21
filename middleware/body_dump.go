@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 
@@ -68,9 +67,9 @@ func BodyDumpWithConfig(config BodyDumpConfig) echo.MiddlewareFunc {
 			// Request
 			reqBody := []byte{}
 			if c.Request().Body != nil { // Read
-				reqBody, _ = ioutil.ReadAll(c.Request().Body)
+				reqBody, _ = io.ReadAll(c.Request().Body)
 			}
-			c.Request().Body = ioutil.NopCloser(bytes.NewBuffer(reqBody)) // Reset
+			c.Request().Body = io.NopCloser(bytes.NewBuffer(reqBody)) // Reset
 
 			// Response
 			resBody := new(bytes.Buffer)

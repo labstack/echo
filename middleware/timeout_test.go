@@ -5,7 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -410,7 +410,7 @@ func TestTimeoutWithFullEchoStack(t *testing.T) {
 			}
 
 			assert.Equal(t, tc.expectStatusCode, res.StatusCode)
-			if body, err := ioutil.ReadAll(res.Body); err == nil {
+			if body, err := io.ReadAll(res.Body); err == nil {
 				assert.Equal(t, tc.expectResponse, string(body))
 			} else {
 				assert.Fail(t, err.Error())
