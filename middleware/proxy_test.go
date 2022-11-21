@@ -384,10 +384,9 @@ func TestProxyError(t *testing.T) {
 	e := echo.New()
 	e.Use(Proxy(rb))
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
 
 	// Remote unreachable
-	rec = httptest.NewRecorder()
+	rec := httptest.NewRecorder()
 	req.URL.Path = "/api/users"
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "/api/users", req.URL.Path)
