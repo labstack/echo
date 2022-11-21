@@ -116,7 +116,7 @@ type (
 	HandlerFunc func(c Context) error
 
 	// HTTPErrorHandler is a centralized HTTP error handler.
-	HTTPErrorHandler func(error, Context)
+	HTTPErrorHandler func(err error, c Context)
 
 	// Validator is the interface that wraps the Validate function.
 	Validator interface {
