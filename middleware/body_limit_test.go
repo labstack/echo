@@ -70,6 +70,7 @@ func TestBodyLimitReader(t *testing.T) {
 		reader:          io.NopCloser(bytes.NewReader(hw)),
 		context:         e.NewContext(req, rec),
 	}
+	defer reader.Close()
 
 	// read all should return ErrStatusRequestEntityTooLarge
 	_, err := io.ReadAll(reader)
