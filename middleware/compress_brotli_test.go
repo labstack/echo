@@ -2,26 +2,25 @@ package middleware
 
 import (
 	"bytes"
-	"compress/gzip"
+	"github.com/andybalholm/brotli"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"sync"
 	"testing"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGzip(t *testing.T) {
+func TestBrotli(t *testing.T) {
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
 	// Skip if no Accept-Encoding header
-	h := Gzip()(func(c echo.Context) error {
+	h := Brotli()(func(c echo.Context) error {
 		c.Response().Write([]byte("test")) // For Content-Type sniffing
 		return nil
 	})
@@ -29,31 +28,28 @@ func TestGzip(t *testing.T) {
 
 	assert.Equal(t, "test", rec.Body.String())
 
-	// Gzip
+	// Brotli
 	req = httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
+	req.Header.Set(echo.HeaderAcceptEncoding, brotliScheme)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	h(c)
-	assert.Equal(t, gzipScheme, rec.Header().Get(echo.HeaderContentEncoding))
+	assert.Equal(t, brotliScheme, rec.Header().Get(echo.HeaderContentEncoding))
 	assert.Contains(t, rec.Header().Get(echo.HeaderContentType), echo.MIMETextPlain)
-	r, err := gzip.NewReader(rec.Body)
-	if assert.NoError(t, err) {
-		buf := new(bytes.Buffer)
-		defer r.Close()
-		buf.ReadFrom(r)
-		assert.Equal(t, "test", buf.String())
-	}
+	r := brotli.NewReader(rec.Body)
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(r)
+	assert.Equal(t, "test", buf.String())
 
 	chunkBuf := make([]byte, 5)
 
-	// Gzip chunked
+	// Brotli chunked
 	req = httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
+	req.Header.Set(echo.HeaderAcceptEncoding, brotliScheme)
 	rec = httptest.NewRecorder()
 
 	c = e.NewContext(req, rec)
-	Gzip()(func(c echo.Context) error {
+	Brotli()(func(c echo.Context) error {
 		c.Response().Header().Set("Content-Type", "text/event-stream")
 		c.Response().Header().Set("Transfer-Encoding", "chunked")
 
@@ -63,10 +59,10 @@ func TestGzip(t *testing.T) {
 
 		// Read the first part of the data
 		assert.True(t, rec.Flushed)
-		assert.Equal(t, gzipScheme, rec.Header().Get(echo.HeaderContentEncoding))
+		assert.Equal(t, brotliScheme, rec.Header().Get(echo.HeaderContentEncoding))
 		r.Reset(rec.Body)
 
-		_, err = io.ReadFull(r, chunkBuf)
+		_, err := io.ReadFull(r, chunkBuf)
 		assert.NoError(t, err)
 		assert.Equal(t, "test\n", string(chunkBuf))
 
@@ -83,19 +79,18 @@ func TestGzip(t *testing.T) {
 		return nil
 	})(c)
 
-	buf := new(bytes.Buffer)
-	defer r.Close()
+	buf = new(bytes.Buffer)
 	buf.ReadFrom(r)
 	assert.Equal(t, "test", buf.String())
 }
 
-func TestGzipNoContent(t *testing.T) {
+func TestBrotliNoContent(t *testing.T) {
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
+	req.Header.Set(echo.HeaderAcceptEncoding, brotliScheme)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	h := Gzip()(func(c echo.Context) error {
+	h := Brotli()(func(c echo.Context) error {
 		return c.NoContent(http.StatusNoContent)
 	})
 	if assert.NoError(t, h(c)) {
@@ -105,65 +100,46 @@ func TestGzipNoContent(t *testing.T) {
 	}
 }
 
-func TestGzipEmpty(t *testing.T) {
+func TestBrotliEmpty(t *testing.T) {
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
+	req.Header.Set(echo.HeaderAcceptEncoding, brotliScheme)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	h := Gzip()(func(c echo.Context) error {
+	h := Brotli()(func(c echo.Context) error {
 		return c.String(http.StatusOK, "")
 	})
 	if assert.NoError(t, h(c)) {
-		assert.Equal(t, gzipScheme, rec.Header().Get(echo.HeaderContentEncoding))
+		assert.Equal(t, brotliScheme, rec.Header().Get(echo.HeaderContentEncoding))
 		assert.Equal(t, "text/plain; charset=UTF-8", rec.Header().Get(echo.HeaderContentType))
-		r, err := gzip.NewReader(rec.Body)
-		if assert.NoError(t, err) {
-			var buf bytes.Buffer
-			buf.ReadFrom(r)
-			assert.Equal(t, "", buf.String())
-		}
+		r := brotli.NewReader(rec.Body)
+		var buf bytes.Buffer
+		buf.ReadFrom(r)
+		assert.Equal(t, "", buf.String())
 	}
 }
 
-func TestGzipErrorReturned(t *testing.T) {
+func TestBrotliErrorReturned(t *testing.T) {
 	e := echo.New()
-	e.Use(Gzip())
+	e.Use(Brotli())
 	e.GET("/", func(c echo.Context) error {
 		return echo.ErrNotFound
 	})
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
+	req.Header.Set(echo.HeaderAcceptEncoding, brotliScheme)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 	assert.Empty(t, rec.Header().Get(echo.HeaderContentEncoding))
 }
 
-func TestGzipErrorReturnedInvalidConfig(t *testing.T) {
-	gzipWriterPool = sync.Pool{}
-	e := echo.New()
-	// Invalid level
-	e.Use(GzipWithConfig(GzipConfig{Level: 12}))
-	e.GET("/", func(c echo.Context) error {
-		c.Response().Write([]byte("test"))
-		return nil
-	})
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
-	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, http.StatusInternalServerError, rec.Code)
-	assert.Contains(t, rec.Body.String(), "gzip")
-}
-
 // Issue #806
-func TestGzipWithStatic(t *testing.T) {
+func TestBrotliWithStatic(t *testing.T) {
 	e := echo.New()
-	e.Use(Gzip())
+	e.Use(Brotli())
 	e.Static("/test", "../_fixture/images")
 	req := httptest.NewRequest(http.MethodGet, "/test/walle.png", nil)
-	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
+	req.Header.Set(echo.HeaderAcceptEncoding, brotliScheme)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -172,25 +148,22 @@ func TestGzipWithStatic(t *testing.T) {
 	if cl := rec.Header().Get("Content-Length"); cl != "" {
 		assert.Equal(t, cl, rec.Body.Len())
 	}
-	r, err := gzip.NewReader(rec.Body)
+	r := brotli.NewReader(rec.Body)
+	want, err := ioutil.ReadFile("../_fixture/images/walle.png")
 	if assert.NoError(t, err) {
-		defer r.Close()
-		want, err := ioutil.ReadFile("../_fixture/images/walle.png")
-		if assert.NoError(t, err) {
-			buf := new(bytes.Buffer)
-			buf.ReadFrom(r)
-			assert.Equal(t, want, buf.Bytes())
-		}
+		buf := new(bytes.Buffer)
+		buf.ReadFrom(r)
+		assert.Equal(t, want, buf.Bytes())
 	}
 }
 
-func BenchmarkGzip(b *testing.B) {
+func BenchmarkBrotli(b *testing.B) {
 	e := echo.New()
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
+	req.Header.Set(echo.HeaderAcceptEncoding, brotliScheme)
 
-	h := Gzip()(func(c echo.Context) error {
+	h := Brotli()(func(c echo.Context) error {
 		c.Response().Write([]byte("test")) // For Content-Type sniffing
 		return nil
 	})
@@ -199,7 +172,7 @@ func BenchmarkGzip(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		// Gzip
+		// Brotli
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 		h(c)

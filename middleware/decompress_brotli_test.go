@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"bytes"
-	"compress/gzip"
+	"github.com/andybalholm/brotli"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestDecompress(t *testing.T) {
+func TestDecompressBrotli(t *testing.T) {
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("test"))
 	rec := httptest.NewRecorder()
@@ -30,19 +30,19 @@ func TestDecompress(t *testing.T) {
 
 	// Decompress
 	body := `{"name": "echo"}`
-	gz, _ := gzipString(body)
+	gz, _ := brotliString(body)
 	req = httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(gz)))
-	req.Header.Set(echo.HeaderContentEncoding, GZIPEncoding)
+	req.Header.Set(echo.HeaderContentEncoding, BrotliEncoding)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	h(c)
-	assert.Equal(t, GZIPEncoding, req.Header.Get(echo.HeaderContentEncoding))
+	assert.Equal(t, BrotliEncoding, req.Header.Get(echo.HeaderContentEncoding))
 	b, err := ioutil.ReadAll(req.Body)
 	assert.NoError(t, err)
 	assert.Equal(t, body, string(b))
 }
 
-func TestDecompressDefaultConfig(t *testing.T) {
+func TestDecompressBrotliDefaultConfig(t *testing.T) {
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("test"))
 	rec := httptest.NewRecorder()
@@ -58,65 +58,65 @@ func TestDecompressDefaultConfig(t *testing.T) {
 
 	// Decompress
 	body := `{"name": "echo"}`
-	gz, _ := gzipString(body)
+	gz, _ := brotliString(body)
 	req = httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(gz)))
-	req.Header.Set(echo.HeaderContentEncoding, GZIPEncoding)
+	req.Header.Set(echo.HeaderContentEncoding, BrotliEncoding)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	h(c)
-	assert.Equal(t, GZIPEncoding, req.Header.Get(echo.HeaderContentEncoding))
+	assert.Equal(t, BrotliEncoding, req.Header.Get(echo.HeaderContentEncoding))
 	b, err := ioutil.ReadAll(req.Body)
 	assert.NoError(t, err)
 	assert.Equal(t, body, string(b))
 }
 
-func TestCompressRequestWithoutDecompressMiddleware(t *testing.T) {
+func TestCompressBrotliRequestWithoutDecompressMiddleware(t *testing.T) {
 	e := echo.New()
 	body := `{"name":"echo"}`
-	gz, _ := gzipString(body)
+	gz, _ := brotliString(body)
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(gz)))
-	req.Header.Set(echo.HeaderContentEncoding, GZIPEncoding)
+	req.Header.Set(echo.HeaderContentEncoding, BrotliEncoding)
 	rec := httptest.NewRecorder()
 	e.NewContext(req, rec)
 	e.ServeHTTP(rec, req)
-	assert.Equal(t, GZIPEncoding, req.Header.Get(echo.HeaderContentEncoding))
+	assert.Equal(t, BrotliEncoding, req.Header.Get(echo.HeaderContentEncoding))
 	b, err := ioutil.ReadAll(req.Body)
 	assert.NoError(t, err)
 	assert.NotEqual(t, b, body)
 	assert.Equal(t, b, gz)
 }
 
-func TestDecompressNoContent(t *testing.T) {
+func TestDecompressBrotliNoContent(t *testing.T) {
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set(echo.HeaderContentEncoding, GZIPEncoding)
+	req.Header.Set(echo.HeaderContentEncoding, BrotliEncoding)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	h := Decompress()(func(c echo.Context) error {
 		return c.NoContent(http.StatusNoContent)
 	})
 	if assert.NoError(t, h(c)) {
-		assert.Equal(t, GZIPEncoding, req.Header.Get(echo.HeaderContentEncoding))
+		assert.Equal(t, BrotliEncoding, req.Header.Get(echo.HeaderContentEncoding))
 		assert.Empty(t, rec.Header().Get(echo.HeaderContentType))
 		assert.Equal(t, 0, len(rec.Body.Bytes()))
 	}
 }
 
-func TestDecompressErrorReturned(t *testing.T) {
+func TestDecompressBrotliErrorReturned(t *testing.T) {
 	e := echo.New()
 	e.Use(Decompress())
 	e.GET("/", func(c echo.Context) error {
 		return echo.ErrNotFound
 	})
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set(echo.HeaderContentEncoding, GZIPEncoding)
+	req.Header.Set(echo.HeaderContentEncoding, BrotliEncoding)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 	assert.Empty(t, rec.Header().Get(echo.HeaderContentEncoding))
 }
 
-func TestDecompressSkipper(t *testing.T) {
+func TestDecompressBrotliSkipper(t *testing.T) {
 	e := echo.New()
 	e.Use(DecompressWithConfig(DecompressConfig{
 		Skipper: func(c echo.Context) bool {
@@ -125,7 +125,7 @@ func TestDecompressSkipper(t *testing.T) {
 	}))
 	body := `{"name": "echo"}`
 	req := httptest.NewRequest(http.MethodPost, "/skip", strings.NewReader(body))
-	req.Header.Set(echo.HeaderContentEncoding, GZIPEncoding)
+	req.Header.Set(echo.HeaderContentEncoding, BrotliEncoding)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	e.ServeHTTP(rec, req)
@@ -135,12 +135,12 @@ func TestDecompressSkipper(t *testing.T) {
 	assert.Equal(t, body, string(reqBody))
 }
 
-func BenchmarkDecompress(b *testing.B) {
+func BenchmarkDecompressBrotli(b *testing.B) {
 	e := echo.New()
 	body := `{"name": "echo"}`
-	gz, _ := gzipString(body)
-	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(gz)))
-	req.Header.Set(echo.HeaderContentEncoding, GZIPEncoding)
+	bz, _ := brotliString(body)
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(bz)))
+	req.Header.Set(echo.HeaderContentEncoding, BrotliEncoding)
 
 	h := Decompress()(func(c echo.Context) error {
 		c.Response().Write([]byte(body)) // For Content-Type sniffing
@@ -158,16 +158,16 @@ func BenchmarkDecompress(b *testing.B) {
 	}
 }
 
-func gzipString(body string) ([]byte, error) {
+func brotliString(body string) ([]byte, error) {
 	var buf bytes.Buffer
-	gz := gzip.NewWriter(&buf)
+	bz := brotli.NewWriter(&buf)
 
-	_, err := gz.Write([]byte(body))
+	_, err := bz.Write([]byte(body))
 	if err != nil {
 		return nil, err
 	}
 
-	if err := gz.Close(); err != nil {
+	if err := bz.Close(); err != nil {
 		return nil, err
 	}
 
