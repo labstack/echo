@@ -6,7 +6,6 @@ import (
 	"errors"
 	"github.com/andybalholm/brotli"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"strings"

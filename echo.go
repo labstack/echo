@@ -43,10 +43,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	stdLog "log"
 	"net"
 	"net/http"
+	"os"
 	"reflect"
 	"runtime"
 	"sync"
@@ -700,7 +700,7 @@ func (e *Echo) StartTLS(address string, certFile, keyFile interface{}) (err erro
 func filepathOrContent(fileOrContent interface{}) (content []byte, err error) {
 	switch v := fileOrContent.(type) {
 	case string:
-		return ioutil.ReadFile(v)
+		return os.ReadFile(v)
 	case []byte:
 		return v, nil
 	default:

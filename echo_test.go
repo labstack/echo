@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -244,7 +243,7 @@ func TestEchoStaticRedirectIndex(t *testing.T) {
 		}(resp.Body)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-		if body, err := ioutil.ReadAll(resp.Body); err == nil {
+		if body, err := io.ReadAll(resp.Body); err == nil {
 			assert.Equal(t, true, strings.HasPrefix(string(body), "<!doctype html>"))
 		} else {
 			assert.Fail(t, err.Error())
@@ -1032,9 +1031,9 @@ func TestEchoStartTLSAndStart(t *testing.T) {
 }
 
 func TestEchoStartTLSByteString(t *testing.T) {
-	cert, err := ioutil.ReadFile("_fixture/certs/cert.pem")
+	cert, err := os.ReadFile("_fixture/certs/cert.pem")
 	require.NoError(t, err)
-	key, err := ioutil.ReadFile("_fixture/certs/key.pem")
+	key, err := os.ReadFile("_fixture/certs/key.pem")
 	require.NoError(t, err)
 
 	testCases := []struct {
@@ -1413,7 +1412,7 @@ func TestEchoListenerNetwork(t *testing.T) {
 				}(resp.Body)
 				assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-				if body, err := ioutil.ReadAll(resp.Body); err == nil {
+				if body, err := io.ReadAll(resp.Body); err == nil {
 					assert.Equal(t, "OK", string(body))
 				} else {
 					assert.Fail(t, err.Error())
@@ -1495,9 +1494,9 @@ func TestEcho_ListenerAddr(t *testing.T) {
 }
 
 func TestEcho_TLSListenerAddr(t *testing.T) {
-	cert, err := ioutil.ReadFile("_fixture/certs/cert.pem")
+	cert, err := os.ReadFile("_fixture/certs/cert.pem")
 	require.NoError(t, err)
-	key, err := ioutil.ReadFile("_fixture/certs/key.pem")
+	key, err := os.ReadFile("_fixture/certs/key.pem")
 	require.NoError(t, err)
 
 	e := New()
@@ -1515,9 +1514,9 @@ func TestEcho_TLSListenerAddr(t *testing.T) {
 }
 
 func TestEcho_StartServer(t *testing.T) {
-	cert, err := ioutil.ReadFile("_fixture/certs/cert.pem")
+	cert, err := os.ReadFile("_fixture/certs/cert.pem")
 	require.NoError(t, err)
-	key, err := ioutil.ReadFile("_fixture/certs/key.pem")
+	key, err := os.ReadFile("_fixture/certs/key.pem")
 	require.NoError(t, err)
 	certs, err := tls.X509KeyPair(cert, key)
 	require.NoError(t, err)
