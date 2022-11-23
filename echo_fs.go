@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 )
 
@@ -125,7 +124,7 @@ func subFS(currentFs fs.FS, root string) (fs.FS, error) {
 		// we need to make exception for `defaultFS` instances as it interprets root prefix differently from fs.FS.
 		// fs.Fs.Open does not like relative paths ("./", "../") and absolute paths at all but prior echo.Filesystem we
 		// were able to use paths like `./myfile.log`, `/etc/hosts` and these would work fine with `os.Open` but not with fs.Fs
-		if isRelativePath(root) {
+		if !filepath.IsAbs(root) {
 			root = filepath.Join(dFS.prefix, root)
 		}
 		return &defaultFS{
@@ -134,21 +133,6 @@ func subFS(currentFs fs.FS, root string) (fs.FS, error) {
 		}, nil
 	}
 	return fs.Sub(currentFs, root)
-}
-
-func isRelativePath(path string) bool {
-	if path == "" {
-		return true
-	}
-	if path[0] == '/' {
-		return false
-	}
-	if runtime.GOOS == "windows" && strings.IndexByte(path, ':') != -1 {
-		// https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file?redirectedfrom=MSDN#file_and_directory_names
-		// https://docs.microsoft.com/en-us/dotnet/standard/io/file-path-formats
-		return false
-	}
-	return true
 }
 
 // MustSubFS creates sub FS from current filesystem or panic on failure.
