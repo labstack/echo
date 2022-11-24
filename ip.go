@@ -227,6 +227,8 @@ func ExtractIPFromRealIPHeader(options ...TrustOption) IPExtractor {
 	return func(req *http.Request) string {
 		realIP := req.Header.Get(HeaderXRealIP)
 		if realIP != "" {
+			realIP = strings.TrimPrefix(realIP, "[")
+			realIP = strings.TrimSuffix(realIP, "]")
 			if ip := net.ParseIP(realIP); ip != nil && checker.trust(ip) {
 				return realIP
 			}
@@ -248,7 +250,10 @@ func ExtractIPFromXFFHeader(options ...TrustOption) IPExtractor {
 		}
 		ips := append(strings.Split(strings.Join(xffs, ","), ","), directIP)
 		for i := len(ips) - 1; i >= 0; i-- {
-			ip := net.ParseIP(strings.TrimSpace(ips[i]))
+			ips[i] = strings.TrimSpace(ips[i])
+			ips[i] = strings.TrimPrefix(ips[i], "[")
+			ips[i] = strings.TrimSuffix(ips[i], "]")
+			ip := net.ParseIP(ips[i])
 			if ip == nil {
 				// Unable to parse IP; cannot trust entire records
 				return directIP
