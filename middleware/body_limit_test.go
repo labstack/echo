@@ -83,3 +83,92 @@ func TestBodyLimitReader(t *testing.T) {
 	assert.Equal(t, 2, n)
 	assert.Equal(t, nil, err)
 }
+
+func TestBodyLimitWithConfig_Skipper(t *testing.T) {
+	e := echo.New()
+	h := func(c echo.Context) error {
+		body, err := io.ReadAll(c.Request().Body)
+		if err != nil {
+			return err
+		}
+		return c.String(http.StatusOK, string(body))
+	}
+	mw := BodyLimitWithConfig(BodyLimitConfig{
+		Skipper: func(c echo.Context) bool {
+			return true
+		},
+		Limit: "2B", // if not skipped this limit would make request to fail limit check
+	})
+
+	hw := []byte("Hello, World!")
+	req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(hw))
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	err := mw(h)(c)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, hw, rec.Body.Bytes())
+}
+
+func TestBodyLimitWithConfig(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		givenLimit  string
+		whenBody    []byte
+		expectBody  []byte
+		expectError string
+	}{
+		{
+			name:        "ok, body is less than limit",
+			givenLimit:  "10B",
+			whenBody:    []byte("123456789"),
+			expectBody:  []byte("123456789"),
+			expectError: "",
+		},
+		{
+			name:        "nok, body is more than limit",
+			givenLimit:  "9B",
+			whenBody:    []byte("1234567890"),
+			expectBody:  []byte(nil),
+			expectError: "code=413, message=Request Entity Too Large",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+			h := func(c echo.Context) error {
+				body, err := io.ReadAll(c.Request().Body)
+				if err != nil {
+					return err
+				}
+				return c.String(http.StatusOK, string(body))
+			}
+			mw := BodyLimitWithConfig(BodyLimitConfig{
+				Limit: tc.givenLimit,
+			})
+
+			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(tc.whenBody))
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			err := mw(h)(c)
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+			// not testing status as middlewares return error instead of committing it and OK cases are anyway 200
+			assert.Equal(t, tc.expectBody, rec.Body.Bytes())
+		})
+	}
+}
+
+func TestBodyLimit_panicOnInvalidLimit(t *testing.T) {
+	assert.PanicsWithError(
+		t,
+		"echo: invalid body-limit=",
+		func() { BodyLimit("") },
+	)
+}
