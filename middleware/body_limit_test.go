@@ -113,12 +113,11 @@ func TestBodyLimit_skipper(t *testing.T) {
 
 func TestBodyLimitWithConfig(t *testing.T) {
 	var testCases = []struct {
-		name         string
-		givenLimit   string
-		whenBody     []byte
-		expectBody   []byte
-		expectStatus int
-		expectError  string
+		name        string
+		givenLimit  string
+		whenBody    []byte
+		expectBody  []byte
+		expectError string
 	}{
 		{
 			name:        "ok, body is less than limit",
