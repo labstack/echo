@@ -84,7 +84,7 @@ func TestBodyLimitReader(t *testing.T) {
 	assert.Equal(t, nil, err)
 }
 
-func TestBodyLimit_skipper(t *testing.T) {
+func TestBodyLimitWithConfig_Skipper(t *testing.T) {
 	e := echo.New()
 	h := func(c echo.Context) error {
 		body, err := io.ReadAll(c.Request().Body)
