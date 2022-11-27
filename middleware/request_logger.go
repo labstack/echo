@@ -15,7 +15,7 @@ import (
 //		LogError:    true,
 //		HandleError: true, // forwards error to the global error handler, so it can decide appropriate status code
 //		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
-//			if v.Error != nil {
+//			if v.Error == nil {
 //				fmt.Printf("REQUEST: uri: %v, status: %v\n", v.URI, v.Status)
 //			} else {
 //				fmt.Printf("REQUEST_ERROR: uri: %v, status: %v, err: %v\n", v.URI, v.Status, v.Error)
@@ -32,7 +32,7 @@ import (
 //		LogError:    true,
 //		HandleError: true, // forwards error to the global error handler, so it can decide appropriate status code
 //		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
-//			if v.Error != nil {
+//			if v.Error == nil {
 //				logger.Info().
 //					Str("URI", v.URI).
 //					Int("status", v.Status).
