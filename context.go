@@ -169,7 +169,11 @@ type (
 		// Redirect redirects the request to a provided URL with status code.
 		Redirect(code int, url string) error
 
-		// Error invokes the registered HTTP error handler. Generally used by middleware.
+		// Error invokes the registered global HTTP error handler. Generally used by middleware.
+		// A side-effect of calling global error handler is that now Response has been committed (sent to the client) and
+		// middlewares up in chain can not change Response status code or Response body anymore.
+		//
+		// Avoid using this method in handlers as no middleware will be able to effectively handle errors after that.
 		Error(err error)
 
 		// Handler returns the matched handler by router.

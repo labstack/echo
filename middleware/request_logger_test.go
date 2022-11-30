@@ -103,12 +103,12 @@ func TestRequestLogger_beforeNextFunc(t *testing.T) {
 func TestRequestLogger_logError(t *testing.T) {
 	e := echo.New()
 
-	var expect RequestLoggerValues
+	var actual RequestLoggerValues
 	e.Use(RequestLoggerWithConfig(RequestLoggerConfig{
 		LogError:  true,
 		LogStatus: true,
 		LogValuesFunc: func(c echo.Context, values RequestLoggerValues) error {
-			expect = values
+			actual = values
 			return nil
 		},
 	}))
@@ -123,8 +123,52 @@ func TestRequestLogger_logError(t *testing.T) {
 	e.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusNotAcceptable, rec.Code)
-	assert.Equal(t, http.StatusNotAcceptable, expect.Status)
-	assert.EqualError(t, expect.Error, "code=406, message=nope")
+	assert.Equal(t, http.StatusNotAcceptable, actual.Status)
+	assert.EqualError(t, actual.Error, "code=406, message=nope")
+}
+
+func TestRequestLogger_HandleError(t *testing.T) {
+	e := echo.New()
+
+	var actual RequestLoggerValues
+	e.Use(RequestLoggerWithConfig(RequestLoggerConfig{
+		timeNow: func() time.Time {
+			return time.Unix(1631045377, 0).UTC()
+		},
+		HandleError: true,
+		LogError:    true,
+		LogStatus:   true,
+		LogValuesFunc: func(c echo.Context, values RequestLoggerValues) error {
+			actual = values
+			return nil
+		},
+	}))
+
+	// to see if "HandleError" works we create custom error handler that uses its own status codes
+	e.HTTPErrorHandler = func(err error, c echo.Context) {
+		if c.Response().Committed {
+			return
+		}
+		c.JSON(http.StatusTeapot, "custom error handler")
+	}
+
+	e.GET("/test", func(c echo.Context) error {
+		return echo.NewHTTPError(http.StatusForbidden, "nope")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	rec := httptest.NewRecorder()
+
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusTeapot, rec.Code)
+
+	expect := RequestLoggerValues{
+		StartTime: time.Unix(1631045377, 0).UTC(),
+		Status:    http.StatusTeapot,
+		Error:     echo.NewHTTPError(http.StatusForbidden, "nope"),
+	}
+	assert.Equal(t, expect, actual)
 }
 
 func TestRequestLogger_LogValuesFuncError(t *testing.T) {
