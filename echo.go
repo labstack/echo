@@ -64,7 +64,7 @@ type (
 	//
 	// Goroutine safety: Do not mutate Echo instance fields after server has started. Accessing these
 	// fields from handlers/middlewares and changing field values at the same time leads to data-races.
-	// Same rule applies to adding new routes after server has been started - Adding a route is not Goroutine safe action.
+	// Adding new routes after the server has been started is also not safe!
 	Echo struct {
 		filesystem
 		common
@@ -73,8 +73,8 @@ type (
 		startupMutex sync.RWMutex
 		colorer      *color.Color
 
-		// premiddleware are middlewares that are run before routing is done. In case pre-middleware returns an error router
-		// will not be called at all and execution ends up in global error handler.
+		// premiddleware are middlewares that are run before routing is done. In case a pre-middleware returns
+		// an error the router is not executed and the request will end up in the global error handler.
 		premiddleware []MiddlewareFunc
 		middleware    []MiddlewareFunc
 		maxParam      *int
