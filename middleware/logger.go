@@ -35,6 +35,7 @@ type (
 		// - host
 		// - method
 		// - path
+		// - route
 		// - protocol
 		// - referer
 		// - user_agent
@@ -173,6 +174,8 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 						p = "/"
 					}
 					return buf.WriteString(p)
+				case "route":
+					return buf.WriteString(c.Path())
 				case "protocol":
 					return buf.WriteString(req.Proto)
 				case "referer":
