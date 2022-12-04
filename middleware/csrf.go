@@ -63,6 +63,9 @@ type CSRFConfig struct {
 	// Indicates SameSite mode of the CSRF cookie.
 	// Optional. Default value SameSiteDefaultMode.
 	CookieSameSite http.SameSite
+
+	// ErrorHandler defines a function which is executed for returning custom errors.
+	ErrorHandler func(c echo.Context, err error) error
 }
 
 // ErrCSRFInvalid is returned when CSRF check fails
@@ -159,10 +162,17 @@ func (config CSRFConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 						lastTokenErr = ErrCSRFInvalid
 					}
 				}
+				var finalErr error
 				if lastTokenErr != nil {
-					return lastTokenErr
+					finalErr = lastTokenErr
 				} else if lastExtractorErr != nil {
-					return echo.ErrBadRequest.WithInternal(lastExtractorErr)
+					finalErr = echo.ErrBadRequest.WithInternal(lastExtractorErr)
+				}
+				if finalErr != nil {
+					if config.ErrorHandler != nil {
+						return config.ErrorHandler(c, finalErr)
+					}
+					return finalErr
 				}
 			}
 

@@ -10,13 +10,13 @@ import (
 // Router is interface for routing request contexts to registered routes.
 //
 // Contract between Echo/Context instance and the router:
-// * all routes must be added through methods on echo.Echo instance.
-//   Reason: Echo instance uses RouteInfo.Params() length to allocate slice for paths parameters (see `Echo.contextPathParamAllocSize`).
-// * Router must populate Context during Router.Route call with:
-//   * RoutableContext.SetPath
-//   * RoutableContext.SetRawPathParams (IMPORTANT! with same slice pointer that c.RawPathParams() returns)
-//   * RoutableContext.SetRouteInfo
-//   And optionally can set additional information to Context with RoutableContext.Set
+//   - all routes must be added through methods on echo.Echo instance.
+//     Reason: Echo instance uses RouteInfo.Params() length to allocate slice for paths parameters (see `Echo.contextPathParamAllocSize`).
+//   - Router must populate Context during Router.Route call with:
+//   - RoutableContext.SetPath
+//   - RoutableContext.SetRawPathParams (IMPORTANT! with same slice pointer that c.RawPathParams() returns)
+//   - RoutableContext.SetRouteInfo
+//     And optionally can set additional information to Context with RoutableContext.Set
 type Router interface {
 	// Add registers Routable with the Router and returns registered RouteInfo
 	Add(routable Routable) (RouteInfo, error)
@@ -344,7 +344,7 @@ func (m *routeMethods) updateAllowHeader() {
 	if m.report != nil {
 		buf.WriteString(", REPORT")
 	}
-	for method := range m.anyOther {
+	for method := range m.anyOther { // for simplicity, we use map and therefore order is not deterministic here
 		buf.WriteString(", ")
 		buf.WriteString(method)
 	}

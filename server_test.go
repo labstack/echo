@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/http2"
 	"io"
-	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -67,7 +66,7 @@ func doGet(url string) (int, string, error) {
 	}
 
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return resp.StatusCode, "", err
 	}
@@ -427,9 +426,9 @@ func TestStartConfig_StartTLSAndStart(t *testing.T) {
 }
 
 func TestFilepathOrContent(t *testing.T) {
-	cert, err := ioutil.ReadFile("_fixture/certs/cert.pem")
+	cert, err := os.ReadFile("_fixture/certs/cert.pem")
 	require.NoError(t, err)
-	key, err := ioutil.ReadFile("_fixture/certs/key.pem")
+	key, err := os.ReadFile("_fixture/certs/key.pem")
 	require.NoError(t, err)
 
 	testCases := []struct {
@@ -796,7 +795,7 @@ func TestWithDisableHTTP2(t *testing.T) {
 
 			assert.Equal(t, http.StatusOK, resp.StatusCode)
 			defer resp.Body.Close()
-			body, err := ioutil.ReadAll(resp.Body)
+			body, err := io.ReadAll(resp.Body)
 			if err != nil {
 				log.Fatalf("Failed reading response body: %s", err)
 			}

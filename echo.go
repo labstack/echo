@@ -3,36 +3,36 @@ Package echo implements high performance, minimalist Go web framework.
 
 Example:
 
-  package main
+	  package main
 
-	import (
-		"github.com/labstack/echo/v5"
-		"github.com/labstack/echo/v5/middleware"
-		"log"
-		"net/http"
-	)
+		import (
+			"github.com/labstack/echo/v5"
+			"github.com/labstack/echo/v5/middleware"
+			"log"
+			"net/http"
+		)
 
-  // Handler
-  func hello(c echo.Context) error {
-    return c.String(http.StatusOK, "Hello, World!")
-  }
-
-  func main() {
-    // Echo instance
-    e := echo.New()
-
-    // Middleware
-    e.Use(middleware.Logger())
-    e.Use(middleware.Recover())
-
-    // Routes
-    e.GET("/", hello)
-
-    // Start server
-    if err := e.Start(":8080"); err != http.ErrServerClosed {
-		  log.Fatal(err)
+	  // Handler
+	  func hello(c echo.Context) error {
+	    return c.String(http.StatusOK, "Hello, World!")
 	  }
-  }
+
+	  func main() {
+	    // Echo instance
+	    e := echo.New()
+
+	    // Middleware
+	    e.Use(middleware.Logger())
+	    e.Use(middleware.Recover())
+
+	    // Routes
+	    e.GET("/", hello)
+
+	    // Start server
+	    if err := e.Start(":8080"); err != http.ErrServerClosed {
+			  log.Fatal(err)
+		  }
+	  }
 
 Learn more at https://echo.labstack.com
 */
@@ -49,7 +49,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 )
@@ -420,8 +419,11 @@ func (e *Echo) RouteNotFound(path string, h HandlerFunc, m ...MiddlewareFunc) Ro
 	return e.Add(RouteNotFound, path, h, m...)
 }
 
-// Any registers a new route for all supported HTTP methods and path with matching handler
-// in the router with optional route-level middleware. Panics on error.
+// Any registers a new route for all HTTP methods (supported by Echo) and path with matching handler
+// in the router with optional route-level middleware.
+//
+// Note: this method only adds specific set of supported HTTP methods as handler and is not true
+// "catch-any-arbitrary-method" way of matching requests.
 func (e *Echo) Any(path string, handler HandlerFunc, middleware ...MiddlewareFunc) Routes {
 	errs := make([]error, 0)
 	ris := make(Routes, 0)
@@ -515,7 +517,7 @@ func StaticDirectoryHandler(fileSystem fs.FS, disablePathUnescaping bool) Handle
 		p = c.Request().URL.Path // path must not be empty.
 		if fi.IsDir() && len(p) > 0 && p[len(p)-1] != '/' {
 			// Redirect to ends with "/"
-			return c.Redirect(http.StatusMovedPermanently, p+"/")
+			return c.Redirect(http.StatusMovedPermanently, sanitizeURI(p+"/"))
 		}
 		return fsFile(c, name, fileSystem)
 	}
@@ -625,7 +627,7 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		c = e.contextPool.Get().(*DefaultContext)
 	}
 	c.Reset(r, w)
-	var h func(Context) error
+	var h HandlerFunc
 
 	if e.premiddleware == nil {
 		h = applyMiddleware(e.findRouter(r.Host).Route(c), e.middleware...)
@@ -654,12 +656,15 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // options.
 //
 // In need of customization use:
-// 	sc := echo.StartConfig{Address: ":8080"}
+//
+//	sc := echo.StartConfig{Address: ":8080"}
 //	if err := sc.Start(e); err != http.ErrServerClosed {
 //		log.Fatal(err)
 //	}
+//
 // // or standard library `http.Server`
-// 	s := http.Server{Addr: ":8080", Handler: e}
+//
+//	s := http.Server{Addr: ":8080", Handler: e}
 //	if err := s.ListenAndServe(); err != http.ErrServerClosed {
 //		log.Fatal(err)
 //	}
@@ -741,7 +746,7 @@ func subFS(currentFs fs.FS, root string) (fs.FS, error) {
 		// we need to make exception for `defaultFS` instances as it interprets root prefix differently from fs.FS.
 		// fs.Fs.Open does not like relative paths ("./", "../") and absolute paths at all but prior echo.Filesystem we
 		// were able to use paths like `./myfile.log`, `/etc/hosts` and these would work fine with `os.Open` but not with fs.Fs
-		if isRelativePath(root) {
+		if !filepath.IsAbs(root) {
 			root = filepath.Join(dFS.prefix, root)
 		}
 		return &defaultFS{
@@ -750,21 +755,6 @@ func subFS(currentFs fs.FS, root string) (fs.FS, error) {
 		}, nil
 	}
 	return fs.Sub(currentFs, root)
-}
-
-func isRelativePath(path string) bool {
-	if path == "" {
-		return true
-	}
-	if path[0] == '/' {
-		return false
-	}
-	if runtime.GOOS == "windows" && strings.IndexByte(path, ':') != -1 {
-		// https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file?redirectedfrom=MSDN#file_and_directory_names
-		// https://docs.microsoft.com/en-us/dotnet/standard/io/file-path-formats
-		return false
-	}
-	return true
 }
 
 // MustSubFS creates sub FS from current filesystem or panic on failure.
@@ -779,4 +769,13 @@ func MustSubFS(currentFs fs.FS, fsRoot string) fs.FS {
 		panic(fmt.Errorf("can not create sub FS, invalid root given, err: %w", err))
 	}
 	return subFs
+}
+
+func sanitizeURI(uri string) string {
+	// double slash `\\`, `//` or even `\/` is absolute uri for browsers and by redirecting request to that uri
+	// we are vulnerable to open redirect attack. so replace all slashes from the beginning with single slash
+	if len(uri) > 1 && (uri[0] == '\\' || uri[0] == '/') && (uri[1] == '\\' || uri[1] == '/') {
+		uri = "/" + strings.TrimLeft(uri, `/\`)
+	}
+	return uri
 }

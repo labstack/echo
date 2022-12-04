@@ -185,6 +185,14 @@ type Context interface {
 	// Redirect redirects the request to a provided URL with status code.
 	Redirect(code int, url string) error
 
+	// Error invokes the registered global HTTP error handler. Generally used by middleware.
+	// A side-effect of calling global error handler is that now Response has been committed (sent to the client) and
+	// middlewares up in chain can not change Response status code or Response body anymore.
+	//
+	// Avoid using this method in handlers as no middleware will be able to effectively handle errors after that.
+	// Instead of calling this method in handler return your error and let it be handled by middlewares or global error handler.
+	Error(err error)
+
 	// Echo returns the `Echo` instance.
 	//
 	// WARNING: Remember that Echo public fields and methods are coroutine safe ONLY when you are NOT mutating them
@@ -337,11 +345,16 @@ func (c *DefaultContext) RealIP() string {
 	if ip := c.request.Header.Get(HeaderXForwardedFor); ip != "" {
 		i := strings.IndexAny(ip, ",")
 		if i > 0 {
-			return strings.TrimSpace(ip[:i])
+			xffip := strings.TrimSpace(ip[:i])
+			xffip = strings.TrimPrefix(xffip, "[")
+			xffip = strings.TrimSuffix(xffip, "]")
+			return xffip
 		}
 		return ip
 	}
 	if ip := c.request.Header.Get(HeaderXRealIP); ip != "" {
+		ip = strings.TrimPrefix(ip, "[")
+		ip = strings.TrimSuffix(ip, "]")
 		return ip
 	}
 	ra, _, _ := net.SplitHostPort(c.request.RemoteAddr)
@@ -755,6 +768,16 @@ func (c *DefaultContext) Redirect(code int, url string) error {
 	c.response.Header().Set(HeaderLocation, url)
 	c.response.WriteHeader(code)
 	return nil
+}
+
+// Error invokes the registered global HTTP error handler. Generally used by middleware.
+// A side-effect of calling global error handler is that now Response has been committed (sent to the client) and
+// middlewares up in chain can not change Response status code or Response body anymore.
+//
+// Avoid using this method in handlers as no middleware will be able to effectively handle errors after that.
+// Instead of calling this method in handler return your error and let it be handled by middlewares or global error handler.
+func (c *DefaultContext) Error(err error) {
+	c.echo.HTTPErrorHandler(c, err)
 }
 
 // Echo returns the `Echo` instance.

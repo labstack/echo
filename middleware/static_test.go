@@ -258,6 +258,15 @@ func TestStatic_GroupWithStatic(t *testing.T) {
 			expectBodyStartsWith: "",
 		},
 		{
+			name:                 "Directory redirect",
+			givenPrefix:          "/",
+			givenRoot:            "_fixture",
+			whenURL:              "/group/folder%2f..",
+			expectStatus:         http.StatusMovedPermanently,
+			expectHeaderLocation: "/group/folder/../",
+			expectBodyStartsWith: "",
+		},
+		{
 			name:                 "Prefixed directory 404 (request URL without slash)",
 			givenGroup:           "_fixture",
 			givenPrefix:          "/folder/", // trailing slash will intentionally not match "/folder"

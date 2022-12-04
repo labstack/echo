@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -18,7 +18,7 @@ func TestBodyLimitConfig_ToMiddleware(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	h := func(c echo.Context) error {
-		body, err := ioutil.ReadAll(c.Request().Body)
+		body, err := io.ReadAll(c.Request().Body)
 		if err != nil {
 			return err
 		}
@@ -77,18 +77,18 @@ func TestBodyLimitReader(t *testing.T) {
 	}
 	reader := &limitedReader{
 		BodyLimitConfig: config,
-		reader:          ioutil.NopCloser(bytes.NewReader(hw)),
+		reader:          io.NopCloser(bytes.NewReader(hw)),
 		context:         e.NewContext(req, rec),
 	}
 
 	// read all should return ErrStatusRequestEntityTooLarge
-	_, err := ioutil.ReadAll(reader)
+	_, err := io.ReadAll(reader)
 	he := err.(*echo.HTTPError)
 	assert.Equal(t, http.StatusRequestEntityTooLarge, he.Code)
 
 	// reset reader and read two bytes must succeed
 	bt := make([]byte, 2)
-	reader.Reset(e.NewContext(req, rec), ioutil.NopCloser(bytes.NewReader(hw)))
+	reader.Reset(e.NewContext(req, rec), io.NopCloser(bytes.NewReader(hw)))
 	n, err := reader.Read(bt)
 	assert.Equal(t, 2, n)
 	assert.Equal(t, nil, err)
@@ -97,7 +97,7 @@ func TestBodyLimitReader(t *testing.T) {
 func TestBodyLimit_skipper(t *testing.T) {
 	e := echo.New()
 	h := func(c echo.Context) error {
-		body, err := ioutil.ReadAll(c.Request().Body)
+		body, err := io.ReadAll(c.Request().Body)
 		if err != nil {
 			return err
 		}
@@ -129,7 +129,7 @@ func TestBodyLimitWithConfig(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	h := func(c echo.Context) error {
-		body, err := ioutil.ReadAll(c.Request().Body)
+		body, err := io.ReadAll(c.Request().Body)
 		if err != nil {
 			return err
 		}
@@ -151,7 +151,7 @@ func TestBodyLimit(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	h := func(c echo.Context) error {
-		body, err := ioutil.ReadAll(c.Request().Body)
+		body, err := io.ReadAll(c.Request().Body)
 		if err != nil {
 			return err
 		}

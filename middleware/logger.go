@@ -3,6 +3,7 @@ package middleware
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -34,6 +35,7 @@ type LoggerConfig struct {
 	// - host
 	// - method
 	// - path
+	// - route
 	// - protocol
 	// - referer
 	// - user_agent
@@ -46,6 +48,7 @@ type LoggerConfig struct {
 	// - header:<NAME>
 	// - query:<NAME>
 	// - form:<NAME>
+	// - custom (see CustomTagFunc field)
 	//
 	// Example "${remote_ip} ${status}"
 	//
@@ -54,6 +57,11 @@ type LoggerConfig struct {
 
 	// Optional. Default value DefaultLoggerConfig.CustomTimeFormat.
 	CustomTimeFormat string
+
+	// CustomTagFunc is function called for `${custom}` tag to output user implemented text by writing it to buf.
+	// Make sure that outputted text creates valid JSON string with other logged tags.
+	// Optional.
+	CustomTagFunc func(c echo.Context, buf *bytes.Buffer) (int, error)
 
 	// Output is a writer where logs in JSON format are written.
 	// Optional. Default destination `echo.Logger.Infof()`
@@ -111,6 +119,11 @@ func (config LoggerConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 
 			start := time.Now()
 			err := next(c)
+			if err = next(c); err != nil {
+				// When global error handler writes the error to the client the Response gets "committed". This state can be
+				// checked with `c.Response().Committed` field.
+				c.Error(err)
+			}
 			stop := time.Now()
 
 			buf := config.pool.Get().(*bytes.Buffer)
@@ -119,20 +132,25 @@ func (config LoggerConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 
 			_, tmplErr := config.template.ExecuteFunc(buf, func(w io.Writer, tag string) (int, error) {
 				switch tag {
+				case "custom":
+					if config.CustomTagFunc == nil {
+						return 0, nil
+					}
+					return config.CustomTagFunc(c, buf)
 				case "time_unix":
-					return buf.WriteString(strconv.FormatInt(time.Now().Unix(), 10))
+					return buf.WriteString(strconv.FormatInt(stop.Unix(), 10))
 				case "time_unix_milli":
-					return buf.WriteString(strconv.FormatInt(time.Now().UnixMilli(), 10))
+					return buf.WriteString(strconv.FormatInt(stop.UnixMilli(), 10))
 				case "time_unix_micro":
-					return buf.WriteString(strconv.FormatInt(time.Now().UnixMicro(), 10))
+					return buf.WriteString(strconv.FormatInt(stop.UnixMicro(), 10))
 				case "time_unix_nano":
-					return buf.WriteString(strconv.FormatInt(time.Now().UnixNano(), 10))
+					return buf.WriteString(strconv.FormatInt(stop.UnixNano(), 10))
 				case "time_rfc3339":
-					return buf.WriteString(time.Now().Format(time.RFC3339))
+					return buf.WriteString(stop.Format(time.RFC3339))
 				case "time_rfc3339_nano":
-					return buf.WriteString(time.Now().Format(time.RFC3339Nano))
+					return buf.WriteString(stop.Format(time.RFC3339Nano))
 				case "time_custom":
-					return buf.WriteString(time.Now().Format(config.CustomTimeFormat))
+					return buf.WriteString(stop.Format(config.CustomTimeFormat))
 				case "id":
 					id := req.Header.Get(echo.HeaderXRequestID)
 					if id == "" {
@@ -153,6 +171,8 @@ func (config LoggerConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 						p = "/"
 					}
 					return buf.WriteString(p)
+				case "route":
+					return buf.WriteString(c.Path())
 				case "protocol":
 					return buf.WriteString(req.Proto)
 				case "referer":
@@ -162,7 +182,8 @@ func (config LoggerConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				case "status":
 					status := res.Status
 					if err != nil {
-						if httpErr, ok := err.(*echo.HTTPError); ok {
+						var httpErr *echo.HTTPError
+						if errors.As(err, &httpErr) {
 							status = httpErr.Code
 						}
 					}

@@ -27,7 +27,7 @@ func AddTrailingSlash() echo.MiddlewareFunc {
 	return AddTrailingSlashWithConfig(AddTrailingSlashConfig{})
 }
 
-// AddTrailingSlashWithConfig returns a AddTrailingSlash middleware with config or panics on invalid configuration.
+// AddTrailingSlashWithConfig returns an AddTrailingSlash middleware with config or panics on invalid configuration.
 func AddTrailingSlashWithConfig(config AddTrailingSlashConfig) echo.MiddlewareFunc {
 	return toMiddlewareOrPanic(config)
 }

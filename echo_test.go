@@ -187,6 +187,15 @@ func TestEcho_StaticFS(t *testing.T) {
 			expectStatus:         http.StatusNotFound,
 			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
 		},
+		{
+			name:                 "open redirect vulnerability",
+			givenPrefix:          "/",
+			givenFs:              os.DirFS("_fixture/"),
+			whenURL:              "/open.redirect.hackercom%2f..",
+			expectStatus:         http.StatusMovedPermanently,
+			expectHeaderLocation: "/open.redirect.hackercom/../", // location starting with `//open` would be very bad
+			expectBodyStartsWith: "",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -1163,7 +1172,7 @@ func TestEcho_customContext(t *testing.T) {
 
 func benchmarkEchoRoutes(b *testing.B, routes []testRoute) {
 	e := New()
-	req := httptest.NewRequest("GET", "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	u := req.URL
 	w := httptest.NewRecorder()
 

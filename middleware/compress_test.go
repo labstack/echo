@@ -3,7 +3,6 @@ package middleware
 import (
 	"bytes"
 	"compress/gzip"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -203,7 +202,7 @@ func TestGzipWithStatic(t *testing.T) {
 	r, err := gzip.NewReader(rec.Body)
 	if assert.NoError(t, err) {
 		defer r.Close()
-		want, err := ioutil.ReadFile("../_fixture/images/walle.png")
+		want, err := os.ReadFile("../_fixture/images/walle.png")
 		if assert.NoError(t, err) {
 			buf := new(bytes.Buffer)
 			buf.ReadFrom(r)

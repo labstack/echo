@@ -69,7 +69,7 @@ type ProxyTarget struct {
 type ProxyBalancer interface {
 	AddTarget(*ProxyTarget) bool
 	RemoveTarget(string) bool
-	Next(echo.Context) *ProxyTarget
+	Next(echo.Context) (*ProxyTarget, error)
 }
 
 type commonBalancer struct {
@@ -174,21 +174,21 @@ func (b *commonBalancer) RemoveTarget(name string) bool {
 }
 
 // Next randomly returns an upstream target.
-func (b *randomBalancer) Next(c echo.Context) *ProxyTarget {
+func (b *randomBalancer) Next(c echo.Context) (*ProxyTarget, error) {
 	if b.random == nil {
 		b.random = rand.New(rand.NewSource(int64(time.Now().Nanosecond())))
 	}
 	b.mutex.RLock()
 	defer b.mutex.RUnlock()
-	return b.targets[b.random.Intn(len(b.targets))]
+	return b.targets[b.random.Intn(len(b.targets))], nil
 }
 
 // Next returns an upstream target using round-robin technique.
-func (b *roundRobinBalancer) Next(c echo.Context) *ProxyTarget {
+func (b *roundRobinBalancer) Next(c echo.Context) (*ProxyTarget, error) {
 	b.i = b.i % uint32(len(b.targets))
 	t := b.targets[b.i]
 	atomic.AddUint32(&b.i, 1)
-	return t
+	return t, nil
 }
 
 // Proxy returns a Proxy middleware.
@@ -236,7 +236,10 @@ func (config ProxyConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 
 			req := c.Request()
 			res := c.Response()
-			tgt := config.Balancer.Next(c)
+			tgt, err := config.Balancer.Next(c)
+			if err != nil {
+				return err
+			}
 			c.Set(config.ContextKey, tgt)
 
 			if err := rewriteURL(config.RegexRewrite, req); err != nil {

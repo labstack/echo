@@ -669,7 +669,7 @@ func checkUnusedParamValues(t *testing.T, c *DefaultContext, expectParam map[str
 
 func TestRouterStatic(t *testing.T) {
 	path := "/folders/a/files/echo.gif"
-	req := httptest.NewRequest("GET", path, nil)
+	req := httptest.NewRequest(http.MethodGet, path, nil)
 	rec := httptest.NewRecorder()
 
 	e := New()
@@ -711,7 +711,7 @@ func TestRouterParam(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			c := e.NewContext(nil, nil).(*DefaultContext)
-			c.SetRequest(httptest.NewRequest("GET", tc.whenURL, nil))
+			c.SetRequest(httptest.NewRequest(http.MethodGet, tc.whenURL, nil))
 			_ = e.router.Route(c)
 
 			assert.Equal(t, tc.expectRoute, c.Path())
@@ -725,8 +725,11 @@ func TestRouterParam(t *testing.T) {
 
 func TestRouter_addAndMatchAllSupportedMethods(t *testing.T) {
 	var testCases = []struct {
-		name       string
-		whenMethod string
+		name            string
+		givenNoAddRoute bool
+		whenMethod      string
+		expectPath      string
+		expectError     string
 	}{
 		{name: "ok, CONNECT", whenMethod: http.MethodConnect},
 		{name: "ok, DELETE", whenMethod: http.MethodDelete},
@@ -740,6 +743,13 @@ func TestRouter_addAndMatchAllSupportedMethods(t *testing.T) {
 		{name: "ok, TRACE", whenMethod: http.MethodTrace},
 		{name: "ok, REPORT", whenMethod: REPORT},
 		{name: "ok, NON_TRADITIONAL_METHOD", whenMethod: "NON_TRADITIONAL_METHOD"},
+		{
+			name:            "ok, NOT_EXISTING_METHOD",
+			whenMethod:      "NOT_EXISTING_METHOD",
+			givenNoAddRoute: true,
+			expectPath:      "/*",
+			expectError:     "code=405, message=Method Not Allowed",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -747,7 +757,9 @@ func TestRouter_addAndMatchAllSupportedMethods(t *testing.T) {
 			e := New()
 
 			e.GET("/*", handlerFunc)
-			e.Add(tc.whenMethod, "/my/*", handlerFunc)
+			if !tc.givenNoAddRoute {
+				e.Add(tc.whenMethod, "/my/*", handlerFunc)
+			}
 
 			req := httptest.NewRequest(tc.whenMethod, "/my/some-url", nil)
 			rec := httptest.NewRecorder()
@@ -756,10 +768,43 @@ func TestRouter_addAndMatchAllSupportedMethods(t *testing.T) {
 			handler := e.router.Route(c)
 			err := handler(c)
 
-			assert.NoError(t, err)
-			assert.Equal(t, "/my/*", c.Path())
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			expectPath := "/my/*"
+			if tc.expectPath != "" {
+				expectPath = tc.expectPath
+			}
+			assert.Equal(t, expectPath, c.Path())
 		})
 	}
+}
+
+func TestRouterAllowHeaderForAnyOtherMethodType(t *testing.T) {
+	e := New()
+	r := e.router
+
+	_, err := r.Add(Route{Method: http.MethodGet, Path: "/users", Handler: handlerFunc})
+	assert.NoError(t, err)
+	_, err = r.Add(Route{Method: "COPY", Path: "/users", Handler: handlerFunc})
+	assert.NoError(t, err)
+	_, err = r.Add(Route{Method: "LOCK", Path: "/users", Handler: handlerFunc})
+	assert.NoError(t, err)
+
+	req := httptest.NewRequest("TEST", "/users", nil)
+	rec := httptest.NewRecorder()
+
+	//r.Find("TEST", "/users", c)
+	c := e.NewContext(req, rec).(*DefaultContext)
+
+	handler := e.router.Route(c)
+	err = handler(c)
+
+	assert.EqualError(t, err, "code=405, message=Method Not Allowed")
+	assert.ElementsMatch(t, []string{"COPY", "GET", "LOCK", "OPTIONS"}, strings.Split(c.Response().Header().Get(HeaderAllow), ", "))
 }
 
 func TestMethodNotAllowedAndNotFound(t *testing.T) {
@@ -970,19 +1015,22 @@ func TestRouterParamWithSlash(t *testing.T) {
 // Searching route for "/a/c/f" should match "/a/*/f"
 // When route `4) /a/*/f` is not added then request for "/a/c/f" should match "/:e/c/f"
 //
-//                             +----------+
-//                       +-----+ "/" root +--------------------+--------------------------+
-//                       |     +----------+                    |                          |
-//                       |                                     |                          |
-//               +-------v-------+                         +---v---------+        +-------v---+
-//               | "a/" (static) +---------------+         | ":" (param) |        | "*" (any) |
-//               +-+----------+--+               |         +-----------+-+        +-----------+
-//                 |          |                  |                     |
+//	              +----------+
+//	        +-----+ "/" root +--------------------+--------------------------+
+//	        |     +----------+                    |                          |
+//	        |                                     |                          |
+//	+-------v-------+                         +---v---------+        +-------v---+
+//	| "a/" (static) +---------------+         | ":" (param) |        | "*" (any) |
+//	+-+----------+--+               |         +-----------+-+        +-----------+
+//	  |          |                  |                     |
+//
 // +---------------v+  +-- ---v------+    +------v----+          +-----v-----------+
 // | "c/d" (static) |  | ":" (param) |    | "*" (any) |          | "/c/f" (static) |
 // +---------+------+  +--------+----+    +----------++          +-----------------+
-//           |                  |                    |
-//           |                  |                    |
+//
+//	|                  |                    |
+//	|                  |                    |
+//
 // +---------v----+      +------v--------+    +------v--------+
 // | "f" (static) |      | "/c" (static) |    | "/f" (static) |
 // +--------------+      +---------------+    +---------------+
@@ -1052,22 +1100,22 @@ func TestRouteMultiLevelBacktracking(t *testing.T) {
 //
 // Request for "/a/c/f" should match "/:e/c/f"
 //
-//                            +-0,7--------+
-//                            | "/" (root) |----------------------------------+
-//                            +------------+                                  |
-//                                 |      |                                   |
-//                                 |      |                                   |
-//             +-1,6-----------+   |      |          +-8-----------+   +------v----+
-//             | "a/" (static) +<--+      +--------->+ ":" (param) |   | "*" (any) |
-//             +---------------+                     +-------------+   +-----------+
-//                |          |                             |
-//     +-2--------v-----+   +v-3,5--------+       +-9------v--------+
-//     | "c/d" (static) |   | ":" (param) |       | "/c/f" (static) |
-//     +----------------+   +-------------+       +-----------------+
-//                           |
-//                      +-4--v----------+
-//                      | "/c" (static) |
-//                      +---------------+
+//	                       +-0,7--------+
+//	                       | "/" (root) |----------------------------------+
+//	                       +------------+                                  |
+//	                            |      |                                   |
+//	                            |      |                                   |
+//	        +-1,6-----------+   |      |          +-8-----------+   +------v----+
+//	        | "a/" (static) +<--+      +--------->+ ":" (param) |   | "*" (any) |
+//	        +---------------+                     +-------------+   +-----------+
+//	           |          |                             |
+//	+-2--------v-----+   +v-3,5--------+       +-9------v--------+
+//	| "c/d" (static) |   | ":" (param) |       | "/c/f" (static) |
+//	+----------------+   +-------------+       +-----------------+
+//	                      |
+//	                 +-4--v----------+
+//	                 | "/c" (static) |
+//	                 +---------------+
 func TestRouteMultiLevelBacktracking2(t *testing.T) {
 	e := New()
 
@@ -2753,7 +2801,7 @@ func TestRouter_Routes(t *testing.T) {
 func benchmarkRouterRoutes(b *testing.B, routes []testRoute, routesToFind []testRoute) {
 	e := New()
 	r := e.router
-	req := httptest.NewRequest("GET", "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	b.ReportAllocs()
 
 	// Add routes

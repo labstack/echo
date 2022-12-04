@@ -3,7 +3,6 @@ package echo
 import (
 	"github.com/stretchr/testify/assert"
 	"io/fs"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -71,7 +70,7 @@ func TestGroupFile(t *testing.T) {
 	e := New()
 	g := e.Group("/group")
 	g.File("/walle", "_fixture/images/walle.png")
-	expectedData, err := ioutil.ReadFile("_fixture/images/walle.png")
+	expectedData, err := os.ReadFile("_fixture/images/walle.png")
 	assert.Nil(t, err)
 	req := httptest.NewRequest(http.MethodGet, "/group/walle", nil)
 	rec := httptest.NewRecorder()

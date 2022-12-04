@@ -377,6 +377,19 @@ func TestContext(t *testing.T) {
 	assert.Equal(t, 0, len(c.QueryParams()))
 }
 
+func TestContext_Error(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	c.Error(errors.New("error"))
+
+	assert.True(t, c.Response().Committed)
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Equal(t, `{"message":"Internal Server Error"}`+"\n", rec.Body.String())
+}
+
 func TestContext_JSON_CommitsCustomResponseCode(t *testing.T) {
 	e := New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -1064,6 +1077,30 @@ func TestContext_RealIP(t *testing.T) {
 		{
 			&DefaultContext{
 				request: &http.Request{
+					Header: http.Header{HeaderXForwardedFor: []string{"[2001:db8:85a3:8d3:1319:8a2e:370:7348], 2001:db8::1, "}},
+				},
+			},
+			"2001:db8:85a3:8d3:1319:8a2e:370:7348",
+		},
+		{
+			&DefaultContext{
+				request: &http.Request{
+					Header: http.Header{HeaderXForwardedFor: []string{"[2001:db8:85a3:8d3:1319:8a2e:370:7348],[2001:db8::1]"}},
+				},
+			},
+			"2001:db8:85a3:8d3:1319:8a2e:370:7348",
+		},
+		{
+			&DefaultContext{
+				request: &http.Request{
+					Header: http.Header{HeaderXForwardedFor: []string{"2001:db8:85a3:8d3:1319:8a2e:370:7348"}},
+				},
+			},
+			"2001:db8:85a3:8d3:1319:8a2e:370:7348",
+		},
+		{
+			&DefaultContext{
+				request: &http.Request{
 					Header: http.Header{
 						"X-Real-Ip": []string{"192.168.0.1"},
 					},
@@ -1071,6 +1108,17 @@ func TestContext_RealIP(t *testing.T) {
 			},
 			"192.168.0.1",
 		},
+		{
+			&DefaultContext{
+				request: &http.Request{
+					Header: http.Header{
+						"X-Real-Ip": []string{"[2001:db8::1]"},
+					},
+				},
+			},
+			"2001:db8::1",
+		},
+
 		{
 			&DefaultContext{
 				request: &http.Request{

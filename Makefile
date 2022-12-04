@@ -13,6 +13,7 @@ init:
 	@go install honnef.co/go/tools/cmd/staticcheck@latest
 
 lint: ## Lint the files
+	@staticcheck ${PKG_LIST}
 	@golint -set_exit_status ${PKG_LIST}
 
 vet: ## Vet the files

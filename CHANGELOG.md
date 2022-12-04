@@ -1,5 +1,74 @@
 # Changelog
 
+
+## v4.10.0 - 2022-xx-xx
+
+**Security**
+
+This minor version bumps minimum Go version to 1.17 (from 1.16) due `golang.org/x/` packages we depend on. There are
+several vulnerabilities fixed in these libraries.
+
+Echo still tries to support last 4 Go versions but there are occasions we can not guarantee this promise.
+
+
+## v4.9.1 - 2022-10-12
+
+**Fixes**
+
+* Fix logger panicing (when template is set to empty) by bumping dependency version [#2295](https://github.com/labstack/echo/issues/2295)
+
+**Enhancements**
+
+* Improve CORS documentation [#2272](https://github.com/labstack/echo/pull/2272)
+* Update readme about supported Go versions [#2291](https://github.com/labstack/echo/pull/2291)
+* Tests: improve error handling on closing body [#2254](https://github.com/labstack/echo/pull/2254)
+* Tests: refactor some of the assertions in tests [#2275](https://github.com/labstack/echo/pull/2275)
+* Tests: refactor assertions [#2301](https://github.com/labstack/echo/pull/2301)
+
+## v4.9.0 - 2022-09-04
+
+**Security**
+
+* Fix open redirect vulnerability in handlers serving static directories (e.Static, e.StaticFs, echo.StaticDirectoryHandler) [#2260](https://github.com/labstack/echo/pull/2260)
+
+**Enhancements**
+
+* Allow configuring ErrorHandler in CSRF middleware [#2257](https://github.com/labstack/echo/pull/2257)
+* Replace HTTP method constants in tests with stdlib constants [#2247](https://github.com/labstack/echo/pull/2247)
+
+
+## v4.8.0 - 2022-08-10
+
+**Most notable things**
+
+You can now add any arbitrary HTTP method type as a route [#2237](https://github.com/labstack/echo/pull/2237)
+```go
+e.Add("COPY", "/*", func(c echo.Context) error 
+  return c.String(http.StatusOK, "OK COPY")
+})
+```
+
+You can add custom 404 handler for specific paths [#2217](https://github.com/labstack/echo/pull/2217)
+```go
+e.RouteNotFound("/*", func(c echo.Context) error { return c.NoContent(http.StatusNotFound) })
+
+g := e.Group("/images")
+g.RouteNotFound("/*", func(c echo.Context) error { return c.NoContent(http.StatusNotFound) })
+```
+
+**Enhancements**
+
+* Add new value binding methods (UnixTimeMilli,TextUnmarshaler,JSONUnmarshaler) to Valuebinder [#2127](https://github.com/labstack/echo/pull/2127)
+* Refactor: body_limit middleware unit test [#2145](https://github.com/labstack/echo/pull/2145)
+* Refactor: Timeout mw: rework how test waits for timeout. [#2187](https://github.com/labstack/echo/pull/2187)
+* BasicAuth middleware returns 500 InternalServerError on invalid base64 strings but should return 400 [#2191](https://github.com/labstack/echo/pull/2191)
+* Refactor: duplicated findStaticChild process at findChildWithLabel [#2176](https://github.com/labstack/echo/pull/2176)
+* Allow different param names in different methods with same path scheme [#2209](https://github.com/labstack/echo/pull/2209)
+* Add support for registering handlers for different 404 routes [#2217](https://github.com/labstack/echo/pull/2217)
+* Middlewares should use errors.As() instead of type assertion on HTTPError [#2227](https://github.com/labstack/echo/pull/2227)
+* Allow arbitrary HTTP method types to be added as routes [#2237](https://github.com/labstack/echo/pull/2237)
+
+
 ## v4.7.2 - 2022-03-16
 
 **Fixes**
