@@ -80,7 +80,7 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 				w.Reset(rw)
 				grw := &gzipResponseWriter{Writer: w, ResponseWriter: rw}
 				defer func() {
-					if !grw.wroteBody {
+					if !grw.wroteBody || res.Size == 0 {
 						if res.Header().Get(echo.HeaderContentEncoding) == gzipScheme {
 							res.Header().Del(echo.HeaderContentEncoding)
 						}

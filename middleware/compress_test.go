@@ -114,7 +114,7 @@ func TestGzipEmpty(t *testing.T) {
 		return c.String(http.StatusOK, "")
 	})
 	if assert.NoError(t, h(c)) {
-		assert.Equal(t, gzipScheme, rec.Header().Get(echo.HeaderContentEncoding))
+		assert.Empty(t, rec.Header().Get(echo.HeaderContentEncoding))
 		assert.Equal(t, "text/plain; charset=UTF-8", rec.Header().Get(echo.HeaderContentType))
 		r, err := gzip.NewReader(rec.Body)
 		if assert.NoError(t, err) {
