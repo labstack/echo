@@ -452,7 +452,7 @@ func (c *context) Render(code int, name string, data interface{}) (err error) {
 	}
 	buf := new(bytes.Buffer)
 	if err = c.echo.Renderer.Render(buf, name, data, c); err != nil {
-		return
+		return err
 	}
 	return c.HTMLBlob(code, buf.Bytes())
 }
