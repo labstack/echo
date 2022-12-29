@@ -412,6 +412,8 @@ func (c *context) Cookie(name string) (*http.Cookie, error) {
 }
 
 func (c *context) SetCookie(cookie *http.Cookie) {
+	cookie.HttpOnly = true
+	cookie.Secure = true
 	http.SetCookie(c.Response(), cookie)
 }
 
