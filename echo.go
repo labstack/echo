@@ -379,6 +379,9 @@ func (e *Echo) Routers() map[string]*Router {
 func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 
 	if c.Response().Committed {
+		if e.Debug {
+			e.Logger.Debug("Response is already committed, returning immediately")
+		}
 		return
 	}
 
