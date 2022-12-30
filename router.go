@@ -2,6 +2,7 @@ package echo
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 )
 
@@ -139,6 +140,51 @@ func NewRouter(e *Echo) *Router {
 		routes: map[string]*Route{},
 		echo:   e,
 	}
+}
+
+// Routes returns the registered routes.
+func (r *Router) Routes() []*Route {
+	routes := make([]*Route, 0, len(r.routes))
+	for _, v := range r.routes {
+		routes = append(routes, v)
+	}
+	return routes
+}
+
+// Reverse generates an URL from route name and provided parameters.
+func (r *Router) Reverse(name string, params ...interface{}) string {
+	uri := new(bytes.Buffer)
+	ln := len(params)
+	n := 0
+	for _, route := range r.routes {
+		if route.Name == name {
+			for i, l := 0, len(route.Path); i < l; i++ {
+				if (route.Path[i] == ':' || route.Path[i] == '*') && n < ln {
+					for ; i < l && route.Path[i] != '/'; i++ {
+					}
+					uri.WriteString(fmt.Sprintf("%v", params[n]))
+					n++
+				}
+				if i < l {
+					uri.WriteByte(route.Path[i])
+				}
+			}
+			break
+		}
+	}
+	return uri.String()
+}
+
+func (r *Router) add(method, path, name string, h HandlerFunc) *Route {
+	r.Add(method, path, h)
+
+	route := &Route{
+		Method: method,
+		Path:   path,
+		Name:   name,
+	}
+	r.routes[method+path] = route
+	return route
 }
 
 // Add registers a new route for method and path with matching handler.

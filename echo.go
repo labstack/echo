@@ -37,7 +37,6 @@ Learn more at https://echo.labstack.com
 package echo
 
 import (
-	"bytes"
 	stdContext "context"
 	"crypto/tls"
 	"errors"
@@ -62,20 +61,28 @@ import (
 
 type (
 	// Echo is the top-level framework instance.
+	//
+	// Goroutine safety: Do not mutate Echo instance fields after server has started. Accessing these
+	// fields from handlers/middlewares and changing field values at the same time leads to data-races.
+	// Adding new routes after the server has been started is also not safe!
 	Echo struct {
 		filesystem
 		common
 		// startupMutex is mutex to lock Echo instance access during server configuration and startup. Useful for to get
 		// listener address info (on which interface/port was listener binded) without having data races.
-		startupMutex     sync.RWMutex
+		startupMutex sync.RWMutex
+		colorer      *color.Color
+
+		// premiddleware are middlewares that are run before routing is done. In case a pre-middleware returns
+		// an error the router is not executed and the request will end up in the global error handler.
+		premiddleware []MiddlewareFunc
+		middleware    []MiddlewareFunc
+		maxParam      *int
+		router        *Router
+		routers       map[string]*Router
+		pool          sync.Pool
+
 		StdLogger        *stdLog.Logger
-		colorer          *color.Color
-		premiddleware    []MiddlewareFunc
-		middleware       []MiddlewareFunc
-		maxParam         *int
-		router           *Router
-		routers          map[string]*Router
-		pool             sync.Pool
 		Server           *http.Server
 		TLSServer        *http.Server
 		Listener         net.Listener
@@ -93,6 +100,9 @@ type (
 		Logger           Logger
 		IPExtractor      IPExtractor
 		ListenerNetwork  string
+
+		// OnAddRouteHandler is called when Echo adds new route to specific host router.
+		OnAddRouteHandler func(host string, route Route, handler HandlerFunc, middleware []MiddlewareFunc)
 	}
 
 	// Route contains a handler and information for matching against requests.
@@ -248,7 +258,7 @@ const (
 
 const (
 	// Version of Echo
-	Version = "4.9.0"
+	Version = "4.10.0"
 	website = "https://echo.labstack.com"
 	// http://patorjk.com/software/taag/#p=display&f=Small%20Slant&t=Echo
 	banner = `
@@ -530,21 +540,20 @@ func (e *Echo) File(path, file string, m ...MiddlewareFunc) *Route {
 	return e.file(path, file, e.GET, m...)
 }
 
-func (e *Echo) add(host, method, path string, handler HandlerFunc, middleware ...MiddlewareFunc) *Route {
-	name := handlerName(handler)
+func (e *Echo) add(host, method, path string, handler HandlerFunc, middlewares ...MiddlewareFunc) *Route {
 	router := e.findRouter(host)
-	// FIXME: when handler+middleware are both nil ... make it behave like handler removal
-	router.Add(method, path, func(c Context) error {
-		h := applyMiddleware(handler, middleware...)
+	//FIXME: when handler+middleware are both nil ... make it behave like handler removal
+	name := handlerName(handler)
+	route := router.add(method, path, name, func(c Context) error {
+		h := applyMiddleware(handler, middlewares...)
 		return h(c)
 	})
-	r := &Route{
-		Method: method,
-		Path:   path,
-		Name:   name,
+
+	if e.OnAddRouteHandler != nil {
+		e.OnAddRouteHandler(host, *route, handler, middlewares)
 	}
-	e.router.routes[method+path] = r
-	return r
+
+	return route
 }
 
 // Add registers a new route for an HTTP method and path with matching handler
@@ -581,35 +590,13 @@ func (e *Echo) URL(h HandlerFunc, params ...interface{}) string {
 
 // Reverse generates an URL from route name and provided parameters.
 func (e *Echo) Reverse(name string, params ...interface{}) string {
-	uri := new(bytes.Buffer)
-	ln := len(params)
-	n := 0
-	for _, r := range e.router.routes {
-		if r.Name == name {
-			for i, l := 0, len(r.Path); i < l; i++ {
-				if (r.Path[i] == ':' || r.Path[i] == '*') && n < ln {
-					for ; i < l && r.Path[i] != '/'; i++ {
-					}
-					uri.WriteString(fmt.Sprintf("%v", params[n]))
-					n++
-				}
-				if i < l {
-					uri.WriteByte(r.Path[i])
-				}
-			}
-			break
-		}
-	}
-	return uri.String()
+	return e.router.Reverse(name, params...)
 }
 
-// Routes returns the registered routes.
+// Routes returns the registered routes for default router.
+// In case when Echo serves multiple hosts/domains use `e.Routers()["domain2.site"].Routes()` to get specific host routes.
 func (e *Echo) Routes() []*Route {
-	routes := make([]*Route, 0, len(e.router.routes))
-	for _, v := range e.router.routes {
-		routes = append(routes, v)
-	}
-	return routes
+	return e.router.Routes()
 }
 
 // AcquireContext returns an empty `Context` instance from the pool.
