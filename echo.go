@@ -55,8 +55,9 @@ import (
 
 // Echo is the top-level framework instance.
 //
-// Note: replacing/nilling public fields is not coroutine/thread-safe and can cause data-races/panics. This is very likely
-// to happen when you access Echo instances through Context.Echo() method.
+// Goroutine safety: Do not mutate Echo instance fields after server has started. Accessing these
+// fields from handlers/middlewares and changing field values at the same time leads to data-races.
+// Same rule applies to adding new routes after server has been started - Adding a route is not Goroutine safe action.
 type Echo struct {
 	// premiddleware are middlewares that are run for every request before routing is done
 	premiddleware []MiddlewareFunc
@@ -90,6 +91,10 @@ type Echo struct {
 	// prefix for directory path. This is necessary as `//go:embed assets/images` embeds files with paths
 	// including `assets/images` as their prefix.
 	Filesystem fs.FS
+
+	// OnAddRoute is called when Echo adds new route to specific host router. Handler is called for every router
+	// and before route is added to the host router.
+	OnAddRoute func(host string, route Routable) error
 }
 
 // JSONSerializer is the interface that encodes and decodes JSON to and from interfaces.
@@ -278,14 +283,22 @@ func (e *Echo) Router() Router {
 	return e.router
 }
 
-// Routers returns the map of host => router.
+// Routers returns the new map of host => router.
 func (e *Echo) Routers() map[string]Router {
-	return e.routers
+	result := make(map[string]Router)
+	for host, r := range e.routers {
+		result[host] = r
+	}
+	return result
 }
 
-// RouterFor returns Router for given host.
-func (e *Echo) RouterFor(host string) Router {
-	return e.routers[host]
+// RouterFor returns Router for given host. When host is left empty the default router is returned.
+func (e *Echo) RouterFor(host string) (Router, bool) {
+	if host == "" {
+		return e.router, true
+	}
+	router, ok := e.routers[host]
+	return router, ok
 }
 
 // ResetRouterCreator resets callback for creating new router instances.
@@ -549,6 +562,12 @@ func (e *Echo) AddRoute(route Routable) (RouteInfo, error) {
 }
 
 func (e *Echo) add(host string, route Routable) (RouteInfo, error) {
+	if e.OnAddRoute != nil {
+		if err := e.OnAddRoute(host, route); err != nil {
+			return nil, err
+		}
+	}
+
 	router := e.findRouter(host)
 	ri, err := router.Add(route)
 	if err != nil {

@@ -64,11 +64,13 @@ type Routable interface {
 	// This method is meant to be used by Router after it parses url for path parameters, to store information about
 	// route just added.
 	ToRouteInfo(params []string) RouteInfo
+
 	// ToRoute converts Routable to Route which Router uses to register the method handler for path.
 	//
 	// This method is meant to be used by Router to get fields (including handler and middleware functions) needed to
 	// add Route to Router.
 	ToRoute() Route
+
 	// ForGroup recreates routable with added group prefix and group middlewares it is grouped to.
 	//
 	// Is necessary for Echo.Group to be able to add/register Routable with Router and having group prefix and group

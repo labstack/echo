@@ -1013,6 +1013,150 @@ func TestEchoMethodNotAllowed(t *testing.T) {
 	assert.Equal(t, "OPTIONS, GET", rec.Header().Get(HeaderAllow))
 }
 
+func TestEcho_OnAddRoute(t *testing.T) {
+	type rr struct {
+		host string
+		path string
+	}
+	exampleRoute := Route{
+		Method:      http.MethodGet,
+		Path:        "/api/files/:id",
+		Handler:     notFoundHandler,
+		Middlewares: nil,
+		Name:        "x",
+	}
+
+	var testCases = []struct {
+		name        string
+		whenHost    string
+		whenRoute   Routable
+		whenError   error
+		expectLen   int
+		expectAdded []rr
+		expectError string
+	}{
+		{
+			name:      "ok, for default host",
+			whenHost:  "",
+			whenRoute: exampleRoute,
+			whenError: nil,
+			expectAdded: []rr{
+				{host: "", path: "/static"},
+				{host: "", path: "/api/files/:id"},
+			},
+			expectError: "",
+			expectLen:   2,
+		},
+		{
+			name:      "ok, for specific host",
+			whenHost:  "test.com",
+			whenRoute: exampleRoute,
+			whenError: nil,
+			expectAdded: []rr{
+				{host: "", path: "/static"},
+				{host: "test.com", path: "/api/files/:id"},
+			},
+			expectError: "",
+			expectLen:   1,
+		},
+		{
+			name:      "nok, error is returned",
+			whenHost:  "test.com",
+			whenRoute: exampleRoute,
+			whenError: errors.New("nope"),
+			expectAdded: []rr{
+				{host: "", path: "/static"},
+			},
+			expectError: "nope",
+			expectLen:   0,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+
+			e := New()
+
+			added := make([]rr, 0)
+			cnt := 0
+			e.OnAddRoute = func(host string, route Routable) error {
+				if cnt > 0 && tc.whenError != nil { // we want to GET /static to succeed for nok tests
+					return tc.whenError
+				}
+				cnt++
+				added = append(added, rr{
+					host: host,
+					path: route.ToRoute().Path,
+				})
+				return nil
+			}
+
+			e.GET("/static", notFoundHandler)
+
+			var err error
+			if tc.whenHost != "" {
+				_, err = e.Host(tc.whenHost).AddRoute(tc.whenRoute)
+			} else {
+				_, err = e.AddRoute(tc.whenRoute)
+			}
+
+			if tc.expectError != "" {
+				assert.EqualError(t, err, tc.expectError)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			r, _ := e.RouterFor(tc.whenHost)
+			assert.Len(t, r.Routes(), tc.expectLen)
+			assert.Equal(t, tc.expectAdded, added)
+		})
+	}
+}
+
+func TestEcho_RouterFor(t *testing.T) {
+	var testCases = []struct {
+		name      string
+		whenHost  string
+		expectLen int
+		expectOk  bool
+	}{
+		{
+			name:      "ok, default host",
+			whenHost:  "",
+			expectLen: 2,
+			expectOk:  true,
+		},
+		{
+			name:      "ok, specific host with routes",
+			whenHost:  "test.com",
+			expectLen: 1,
+			expectOk:  true,
+		},
+		{
+			name:      "ok, non-existent host",
+			whenHost:  "oups.com",
+			expectLen: 0,
+			expectOk:  false,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+
+			e.GET("/1", notFoundHandler)
+			e.GET("/2", notFoundHandler)
+			e.Host("test.com").GET("/3", notFoundHandler)
+
+			r, ok := e.RouterFor(tc.whenHost)
+			assert.Equal(t, tc.expectOk, ok)
+			if tc.expectLen > 0 {
+				assert.Len(t, r.Routes(), tc.expectLen)
+			} else {
+				assert.Nil(t, r)
+			}
+		})
+	}
+}
+
 func TestEchoContext(t *testing.T) {
 	e := New()
 	c := e.AcquireContext()

@@ -4,22 +4,17 @@ on:
   push:
     branches:
       - master
-    paths:
-      - '**.go'
-      - 'go.*'
-      - '_fixture/**'
-      - '.github/**'
-      - 'codecov.yml'
   pull_request:
     branches:
       - master
-    paths:
-      - '**.go'
-      - 'go.*'
-      - '_fixture/**'
-      - '.github/**'
-      - 'codecov.yml'
   workflow_dispatch:
+
+permissions:
+  contents: read #  to fetch code (actions/checkout)
+
+env:
+  # run coverage and benchmarks only with the latest Go version
+  LATEST_GO_VERSION: 1.19
 
 jobs:
   test:
@@ -30,14 +25,12 @@ jobs:
         # Echo tests with last four major releases (unless there are pressing vulnerabilities)
         # As we depend on `golang.org/x/` libraries which only support last 2 Go releases we could have situations when
         # we derive from last four major releases promise.
-        go: [1.17, 1.18, 1.19]
+        go: [1.18, 1.19]
     name: ${{ matrix.os }} @ Go ${{ matrix.go }}
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
-        with:
-          ref: ${{ github.ref }}
 
       - name: Set up Go ${{ matrix.go }}
         uses: actions/setup-go@v3
@@ -47,31 +40,17 @@ jobs:
       - name: Run Tests
         run: go test -race --coverprofile=coverage.coverprofile --covermode=atomic ./...
 
-      - name: Install dependencies for checks
-        run: |
-          go install golang.org/x/lint/golint@latest
-          go install honnef.co/go/tools/cmd/staticcheck@latest
-
-      - name: Run golint
-        run: golint -set_exit_status ./...
-
-      - name: Run staticcheck
-        run: staticcheck ./...
-
       - name: Upload coverage to Codecov
-        if: success() && matrix.go == 1.19 && matrix.os == 'ubuntu-latest'
+        if: success() && matrix.go == env.LATEST_GO_VERSION && matrix.os == 'ubuntu-latest'
         uses: codecov/codecov-action@v3
         with:
           token:
           fail_ci_if_error: false
+
   benchmark:
     needs: test
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        go: [1.19]
-    name: Benchmark comparison ${{ matrix.os }} @ Go ${{ matrix.go }}
-    runs-on: ${{ matrix.os }}
+    name: Benchmark comparison
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Code (Previous)
         uses: actions/checkout@v3
@@ -87,7 +66,7 @@ jobs:
       - name: Set up Go ${{ matrix.go }}
         uses: actions/setup-go@v3
         with:
-          go-version: ${{ matrix.go }}
+          go-version: ${{ env.LATEST_GO_VERSION }}
 
       - name: Install Dependencies
         run: go install golang.org/x/perf/cmd/benchstat@latest
