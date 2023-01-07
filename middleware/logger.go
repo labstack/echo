@@ -119,7 +119,7 @@ func (config LoggerConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 
 			start := time.Now()
 			err := next(c)
-			if err = next(c); err != nil {
+			if err != nil {
 				// When global error handler writes the error to the client the Response gets "committed". This state can be
 				// checked with `c.Response().Committed` field.
 				c.Error(err)
