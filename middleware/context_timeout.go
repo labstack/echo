@@ -3,7 +3,6 @@ package middleware
 import (
 	"context"
 	"errors"
-	"net/http"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -28,20 +27,30 @@ type ContextTimeoutConfig struct {
 	// Skipper defines a function to skip middleware.
 	Skipper Skipper
 
-	// ErrorMessage is written to response on timeout in addition to http.StatusServiceUnavailable (503) status code
-	// It can be used to define a custom timeout error message
-	ErrorMessage string
+	// ErrorHandler is a function when error aries in middeware execution.
+	ErrorHandler func(err error, c echo.Context) error
 
 	// Timeout configures a timeout for the middleware, defaults to 0 for no timeout
 	Timeout time.Duration
 }
 
 var (
+	// DefaultContextTimeoutErrorHandler is default error handler of ContextTimeout middleware.
+	DefaultContextTimeoutErrorHandler = func(err error, c echo.Context) error {
+		if err != nil {
+			if errors.Is(err, context.DeadlineExceeded) {
+				return echo.ErrServiceUnavailable
+			}
+			return err
+		}
+		return nil
+	}
+
 	// DefaultContextTimeoutConfig is the default ContextTimeoutConfig middleware config.
 	DefaultContextTimeoutConfig = ContextTimeoutConfig{
 		Skipper:      DefaultSkipper,
 		Timeout:      0,
-		ErrorMessage: "",
+		ErrorHandler: DefaultContextTimeoutErrorHandler,
 	}
 )
 
@@ -58,45 +67,26 @@ func ContextTimeoutWithConfig(config ContextTimeoutConfig) echo.MiddlewareFunc {
 
 // ToMiddleware converts Config to middleware.
 func (config ContextTimeoutConfig) ToMiddleware() echo.MiddlewareFunc {
-	if config.Skipper == nil {
-		config.Skipper = DefaultTimeoutConfig.Skipper
-	}
-
-	suResponse := echo.Map{"message": http.StatusText(http.StatusServiceUnavailable)}
-
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			if config.Skipper(c) || config.Timeout == 0 {
+			if (config.Skipper != nil && config.Skipper(c)) || config.Timeout == 0 {
 				return next(c)
 			}
 
 			timeoutContext, cancel := context.WithTimeout(c.Request().Context(), config.Timeout)
 			defer cancel()
 
-			timeoutRequest := c.Request().WithContext(timeoutContext)
-
-			c.SetRequest(timeoutRequest)
+			c.SetRequest(c.Request().WithContext(timeoutContext))
 
 			err := next(c)
-
-			if err == nil {
-				err = c.Request().Context().Err()
-			}
-
-			if err != nil && !c.Response().Committed {
-				if errors.Is(err, context.DeadlineExceeded) {
-					c.Logger().Error("http: Handler timeout")
-					if config.ErrorMessage == "" {
-						return c.JSON(http.StatusServiceUnavailable, suResponse)
-					} else {
-						return c.String(http.StatusServiceUnavailable, config.ErrorMessage)
-					}
+			if err != nil {
+				if config.ErrorHandler != nil {
+					return config.ErrorHandler(err, c)
+				} else {
+					return DefaultContextTimeoutErrorHandler(err, c)
 				}
-
-				return err
 			}
 			return nil
-
 		}
 	}
 }

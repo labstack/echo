@@ -142,7 +142,6 @@ func TestContextTimeoutTestRequestClone(t *testing.T) {
 	})(c)
 
 	assert.NoError(t, err)
-
 }
 
 func TestContextTimeoutRecoversPanic(t *testing.T) {
@@ -170,8 +169,8 @@ func TestContextTimeoutDataRace(t *testing.T) {
 
 	timeout := 1 * time.Millisecond
 	m := ContextTimeoutWithConfig(ContextTimeoutConfig{
-		Timeout:      timeout,
-		ErrorMessage: "Timeout! change me",
+		Timeout: timeout,
+		//ErrorMessage: "Timeout! change me",
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -200,10 +199,23 @@ func TestContextTimeoutDataRace(t *testing.T) {
 func TestContextTimeoutWithErrorMessage(t *testing.T) {
 	t.Parallel()
 
+	timeoutErrorHandler := func(err error, c echo.Context) error {
+		if err != nil {
+			if errors.Is(err, context.DeadlineExceeded) {
+				return &echo.HTTPError{
+					Code:    http.StatusServiceUnavailable,
+					Message: "Timeout! change me",
+				}
+			}
+			return err
+		}
+		return nil
+	}
+
 	timeout := 1 * time.Millisecond
 	m := ContextTimeoutWithConfig(ContextTimeoutConfig{
 		Timeout:      timeout,
-		ErrorMessage: "Timeout! change me",
+		ErrorHandler: timeoutErrorHandler,
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -222,9 +234,10 @@ func TestContextTimeoutWithErrorMessage(t *testing.T) {
 		return c.String(http.StatusOK, "Hello, World!")
 	})(c)
 
-	assert.NoError(t, err)
-	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
-	assert.Equal(t, "Timeout! change me", rec.Body.String())
+	assert.IsType(t, &echo.HTTPError{}, err)
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusServiceUnavailable, err.(*echo.HTTPError).Code)
+	assert.Equal(t, "Timeout! change me", err.(*echo.HTTPError).Message)
 }
 
 func TestContextTimeoutWithDefaultErrorMessage(t *testing.T) {
@@ -232,8 +245,7 @@ func TestContextTimeoutWithDefaultErrorMessage(t *testing.T) {
 
 	timeout := 1 * time.Millisecond
 	m := ContextTimeoutWithConfig(ContextTimeoutConfig{
-		Timeout:      timeout,
-		ErrorMessage: "",
+		Timeout: timeout,
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -249,18 +261,32 @@ func TestContextTimeoutWithDefaultErrorMessage(t *testing.T) {
 		return c.String(http.StatusOK, "Hello, World!")
 	})(c)
 
-	assert.NoError(t, err)
-	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
-	assert.Equal(t, "{\"message\":\"Service Unavailable\"}\n", rec.Body.String())
+	assert.IsType(t, &echo.HTTPError{}, err)
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusServiceUnavailable, err.(*echo.HTTPError).Code)
+	assert.Equal(t, "Service Unavailable", err.(*echo.HTTPError).Message)
 }
 
 func TestContextTimeoutCanHandleContextDeadlineOnNextHandler(t *testing.T) {
 	t.Parallel()
 
+	timeoutErrorHandler := func(err error, c echo.Context) error {
+		if err != nil {
+			if errors.Is(err, context.DeadlineExceeded) {
+				return &echo.HTTPError{
+					Code:    http.StatusServiceUnavailable,
+					Message: "Timeout! change me",
+				}
+			}
+			return err
+		}
+		return nil
+	}
+
 	timeout := 1 * time.Millisecond
 	m := ContextTimeoutWithConfig(ContextTimeoutConfig{
 		Timeout:      timeout,
-		ErrorMessage: "Timeout! change me",
+		ErrorHandler: timeoutErrorHandler,
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -284,9 +310,10 @@ func TestContextTimeoutCanHandleContextDeadlineOnNextHandler(t *testing.T) {
 		return c.String(http.StatusOK, "Hello, World!")
 	})(c)
 
-	assert.NoError(t, err)
-	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
-	assert.Equal(t, "Timeout! change me", rec.Body.String())
+	assert.IsType(t, &echo.HTTPError{}, err)
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusServiceUnavailable, err.(*echo.HTTPError).Code)
+	assert.Equal(t, "Timeout! change me", err.(*echo.HTTPError).Message)
 }
 
 func TestContextTimeoutWithFullEchoStack(t *testing.T) {
@@ -325,7 +352,7 @@ func TestContextTimeoutWithFullEchoStack(t *testing.T) {
 			expectLogNotContains: []string{
 				"echo:http: superfluous response.WriteHeader call from",
 			},
-			expectLogContains: []string{"http: Handler timeout"},
+			expectLogContains: []string{"Service Unavailable"},
 		},
 	}
 
