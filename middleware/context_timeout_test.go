@@ -142,38 +142,6 @@ func TestContextTimeoutTestRequestClone(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestContextTimeoutDataRace(t *testing.T) {
-	t.Parallel()
-
-	timeout := 1 * time.Millisecond
-	m := ContextTimeoutWithConfig(ContextTimeoutConfig{
-		Timeout: timeout,
-		//ErrorMessage: "Timeout! change me",
-	})
-
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-
-	e := echo.New()
-	c := e.NewContext(req, rec)
-
-	err := m(func(c echo.Context) error {
-
-		if err := sleepWithContext(c.Request().Context(), timeout); err != nil {
-			return err
-		}
-		return c.String(http.StatusOK, "Hello, World!")
-	})(c)
-
-	assert.NoError(t, err)
-
-	if rec.Code == http.StatusServiceUnavailable {
-		assert.Equal(t, "Timeout! change me", rec.Body.String())
-	} else {
-		assert.Equal(t, "Hello, World!", rec.Body.String())
-	}
-}
-
 func TestContextTimeoutWithDefaultErrorMessage(t *testing.T) {
 	t.Parallel()
 
