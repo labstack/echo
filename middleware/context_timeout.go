@@ -20,26 +20,11 @@ type ContextTimeoutConfig struct {
 	Timeout time.Duration
 }
 
-var (
-	// DefaultContextTimeoutErrorHandler is default error handler of ContextTimeout middleware.
-	DefaultContextTimeoutErrorHandler = func(err error, c echo.Context) error {
-		if err != nil {
-			if errors.Is(err, context.DeadlineExceeded) {
-				return echo.ErrServiceUnavailable
-			}
-			return err
-		}
-		return nil
-	}
-)
-
 // ContextTimeout returns a middleware which returns error (503 Service Unavailable error) to client
 // when underlying method returns context.DeadlineExceeded error.
 func ContextTimeout(timeout time.Duration) echo.MiddlewareFunc {
 	config := ContextTimeoutConfig{
-		Skipper:      DefaultSkipper,
-		ErrorHandler: DefaultContextTimeoutErrorHandler,
-		Timeout:      timeout,
+		Timeout: timeout,
 	}
 	return ContextTimeoutWithConfig(config)
 }
