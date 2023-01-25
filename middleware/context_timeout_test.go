@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -41,20 +40,9 @@ func TestContextTimeoutSkipper(t *testing.T) {
 
 func TestContextTimeoutWithTimeout0(t *testing.T) {
 	t.Parallel()
-	m := ContextTimeout(time.Duration(0))
-
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-
-	e := echo.New()
-	c := e.NewContext(req, rec)
-
-	err := m(func(c echo.Context) error {
-		assert.NotEqual(t, "*context.timerCtx", reflect.TypeOf(c.Request().Context()).String())
-		return nil
-	})(c)
-
-	assert.NoError(t, err)
+	assert.Panics(t, func() {
+		ContextTimeout(time.Duration(0))
+	})
 }
 
 func TestContextTimeoutErrorOutInHandler(t *testing.T) {
