@@ -23,10 +23,7 @@ type ContextTimeoutConfig struct {
 // ContextTimeout returns a middleware which returns error (503 Service Unavailable error) to client
 // when underlying method returns context.DeadlineExceeded error.
 func ContextTimeout(timeout time.Duration) echo.MiddlewareFunc {
-	config := ContextTimeoutConfig{
-		Timeout: timeout,
-	}
-	return ContextTimeoutWithConfig(config)
+	return ContextTimeoutWithConfig(ContextTimeoutConfig{Timeout: timeout})
 }
 
 // ContextTimeoutWithConfig returns a Timeout middleware with config.
@@ -40,6 +37,9 @@ func ContextTimeoutWithConfig(config ContextTimeoutConfig) echo.MiddlewareFunc {
 
 // ToMiddleware converts Config to middleware.
 func (config ContextTimeoutConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
+	if config.Timeout == 0 {
+		return nil, errors.New("timeout must be set")
+	}
 	if config.Skipper == nil {
 		config.Skipper = DefaultSkipper
 	}
@@ -54,7 +54,7 @@ func (config ContextTimeoutConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			if (config.Skipper(c)) || config.Timeout == 0 {
+			if config.Skipper(c) {
 				return next(c)
 			}
 
