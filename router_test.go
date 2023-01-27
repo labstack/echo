@@ -674,6 +674,18 @@ func TestRouterStatic(t *testing.T) {
 	assert.Equal(t, path, c.Get("path"))
 }
 
+func TestRouterNoRoutablePath(t *testing.T) {
+	e := New()
+	r := e.router
+	c := e.NewContext(nil, nil).(*context)
+
+	r.Find(http.MethodGet, "/notfound", c)
+	c.handler(c)
+
+	// No routable path, don't set Path.
+	assert.Equal(t, "", c.Path())
+}
+
 func TestRouterParam(t *testing.T) {
 	e := New()
 	r := e.router
