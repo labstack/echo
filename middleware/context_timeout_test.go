@@ -208,20 +208,16 @@ func TestContextTimeoutCanHandleContextDeadlineOnNextHandler(t *testing.T) {
 }
 
 func sleepWithContext(ctx context.Context, d time.Duration) error {
-	ch := make(chan string)
-	go func() {
-		time.Sleep(d)
-		select {
-		case ch <- "abc":
-		default:
-			return
-		}
+	timer := time.NewTimer(d)
+
+	defer func() {
+		_ = timer.Stop()
 	}()
 
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
-	case <-ch:
+		return context.DeadlineExceeded
+	case <-timer.C:
 		return nil
 	}
 }
