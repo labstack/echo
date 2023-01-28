@@ -64,9 +64,7 @@ func (config ContextTimeoutConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			c.SetRequest(c.Request().WithContext(timeoutContext))
 
 			if err := next(c); err != nil {
-				if config.ErrorHandler != nil {
-					return config.ErrorHandler(err, c)
-				}
+				return config.ErrorHandler(err, c)
 			}
 			return nil
 		}

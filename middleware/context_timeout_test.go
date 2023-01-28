@@ -20,7 +20,7 @@ func TestContextTimeoutSkipper(t *testing.T) {
 		Skipper: func(context echo.Context) bool {
 			return true
 		},
-		Timeout: 1 * time.Nanosecond,
+		Timeout: 10 * time.Millisecond,
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -30,7 +30,10 @@ func TestContextTimeoutSkipper(t *testing.T) {
 	c := e.NewContext(req, rec)
 
 	err := m(func(c echo.Context) error {
-		time.Sleep(25 * time.Microsecond)
+		if err := sleepWithContext(c.Request().Context(), time.Duration(20*time.Millisecond)); err != nil {
+			return err
+		}
+
 		return errors.New("response from handler")
 	})(c)
 
@@ -49,7 +52,7 @@ func TestContextTimeoutErrorOutInHandler(t *testing.T) {
 	t.Parallel()
 	m := ContextTimeoutWithConfig(ContextTimeoutConfig{
 		// Timeout has to be defined or the whole flow for timeout middleware will be skipped
-		Timeout: 50 * time.Millisecond,
+		Timeout: 10 * time.Millisecond,
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -76,7 +79,7 @@ func TestContextTimeoutSuccessfulRequest(t *testing.T) {
 	t.Parallel()
 	m := ContextTimeoutWithConfig(ContextTimeoutConfig{
 		// Timeout has to be defined or the whole flow for timeout middleware will be skipped
-		Timeout: 50 * time.Millisecond,
+		Timeout: 10 * time.Millisecond,
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -133,7 +136,7 @@ func TestContextTimeoutTestRequestClone(t *testing.T) {
 func TestContextTimeoutWithDefaultErrorMessage(t *testing.T) {
 	t.Parallel()
 
-	timeout := 1 * time.Millisecond
+	timeout := 10 * time.Millisecond
 	m := ContextTimeoutWithConfig(ContextTimeoutConfig{
 		Timeout: timeout,
 	})
@@ -145,7 +148,7 @@ func TestContextTimeoutWithDefaultErrorMessage(t *testing.T) {
 	c := e.NewContext(req, rec)
 
 	err := m(func(c echo.Context) error {
-		if err := sleepWithContext(c.Request().Context(), time.Duration(2*time.Millisecond)); err != nil {
+		if err := sleepWithContext(c.Request().Context(), time.Duration(20*time.Millisecond)); err != nil {
 			return err
 		}
 		return c.String(http.StatusOK, "Hello, World!")
@@ -173,7 +176,7 @@ func TestContextTimeoutCanHandleContextDeadlineOnNextHandler(t *testing.T) {
 		return nil
 	}
 
-	timeout := 100 * time.Millisecond
+	timeout := 10 * time.Millisecond
 	m := ContextTimeoutWithConfig(ContextTimeoutConfig{
 		Timeout:      timeout,
 		ErrorHandler: timeoutErrorHandler,
@@ -189,7 +192,8 @@ func TestContextTimeoutCanHandleContextDeadlineOnNextHandler(t *testing.T) {
 		// NOTE: when difference between timeout duration and handler execution time is almost the same (in range of 100microseconds)
 		// the result of timeout does not seem to be reliable - could respond timeout, could respond handler output
 		// difference over 500microseconds (0.5millisecond) response seems to be reliable
-		if err := sleepWithContext(c.Request().Context(), time.Duration(500*time.Millisecond)); err != nil {
+
+		if err := sleepWithContext(c.Request().Context(), time.Duration(20*time.Millisecond)); err != nil {
 			return err
 		}
 
@@ -209,13 +213,14 @@ func TestContextTimeoutCanHandleContextDeadlineOnNextHandler(t *testing.T) {
 func sleepWithContext(ctx context.Context, d time.Duration) error {
 	timer := time.NewTimer(d)
 
+	defer func() {
+		_ = timer.Stop()
+	}()
+
 	select {
 	case <-ctx.Done():
-		if !timer.Stop() {
-			<-timer.C
-		}
 		return context.DeadlineExceeded
 	case <-timer.C:
+		return nil
 	}
-	return nil
 }
