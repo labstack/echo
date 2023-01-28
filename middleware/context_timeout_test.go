@@ -30,7 +30,10 @@ func TestContextTimeoutSkipper(t *testing.T) {
 	c := e.NewContext(req, rec)
 
 	err := m(func(c echo.Context) error {
-		time.Sleep(25 * time.Millisecond)
+		if err := sleepWithContext(c.Request().Context(), time.Duration(20*time.Millisecond)); err != nil {
+			return err
+		}
+
 		return errors.New("response from handler")
 	})(c)
 
