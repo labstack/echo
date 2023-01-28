@@ -189,6 +189,7 @@ func TestContextTimeoutCanHandleContextDeadlineOnNextHandler(t *testing.T) {
 		// NOTE: when difference between timeout duration and handler execution time is almost the same (in range of 100microseconds)
 		// the result of timeout does not seem to be reliable - could respond timeout, could respond handler output
 		// difference over 500microseconds (0.5millisecond) response seems to be reliable
+
 		if err := sleepWithContext(c.Request().Context(), time.Duration(3*time.Second)); err != nil {
 			return err
 		}
@@ -207,15 +208,20 @@ func TestContextTimeoutCanHandleContextDeadlineOnNextHandler(t *testing.T) {
 }
 
 func sleepWithContext(ctx context.Context, d time.Duration) error {
-	timer := time.NewTimer(d)
+	ch := make(chan string)
+	go func() {
+		time.Sleep(d)
+		select {
+		case ch <- "abc":
+		default:
+			return
+		}
+	}()
 
 	select {
 	case <-ctx.Done():
-		if !timer.Stop() {
-			<-timer.C
-		}
-		return context.DeadlineExceeded
-	case <-timer.C:
+		return ctx.Err()
+	case <-ch:
+		return nil
 	}
-	return nil
 }
