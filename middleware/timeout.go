@@ -2,10 +2,11 @@ package middleware
 
 import (
 	"context"
-	"github.com/labstack/echo/v4"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/labstack/echo/v4"
 )
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -197,8 +198,8 @@ type ignorableWriter struct {
 
 func (w *ignorableWriter) Ignore(ignore bool) {
 	w.lock.Lock()
+	defer w.lock.Unlock()
 	w.ignoreWrites = ignore
-	w.lock.Unlock()
 }
 
 func (w *ignorableWriter) WriteHeader(code int) {

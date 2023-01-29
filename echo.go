@@ -641,12 +641,12 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // Start starts an HTTP server.
 func (e *Echo) Start(address string) error {
 	e.startupMutex.Lock()
+	defer e.startupMutex.Unlock()
+
 	e.Server.Addr = address
 	if err := e.configureServer(e.Server); err != nil {
-		e.startupMutex.Unlock()
 		return err
 	}
-	e.startupMutex.Unlock()
 	return e.Server.Serve(e.Listener)
 }
 
@@ -655,15 +655,16 @@ func (e *Echo) Start(address string) error {
 // If `certFile` or `keyFile` is `[]byte` the values are treated as the certificate or key as-is.
 func (e *Echo) StartTLS(address string, certFile, keyFile interface{}) (err error) {
 	e.startupMutex.Lock()
+	defer e.startupMutex.Unlock()
+
 	var cert []byte
 	if cert, err = filepathOrContent(certFile); err != nil {
-		e.startupMutex.Unlock()
 		return
 	}
 
 	var key []byte
 	if key, err = filepathOrContent(keyFile); err != nil {
-		e.startupMutex.Unlock()
+
 		return
 	}
 
@@ -671,16 +672,16 @@ func (e *Echo) StartTLS(address string, certFile, keyFile interface{}) (err erro
 	s.TLSConfig = new(tls.Config)
 	s.TLSConfig.Certificates = make([]tls.Certificate, 1)
 	if s.TLSConfig.Certificates[0], err = tls.X509KeyPair(cert, key); err != nil {
-		e.startupMutex.Unlock()
+
 		return
 	}
 
 	e.configureTLS(address)
 	if err := e.configureServer(s); err != nil {
-		e.startupMutex.Unlock()
+
 		return err
 	}
-	e.startupMutex.Unlock()
+
 	return s.Serve(e.TLSListener)
 }
 
@@ -698,6 +699,8 @@ func filepathOrContent(fileOrContent interface{}) (content []byte, err error) {
 // StartAutoTLS starts an HTTPS server using certificates automatically installed from https://letsencrypt.org.
 func (e *Echo) StartAutoTLS(address string) error {
 	e.startupMutex.Lock()
+	defer e.startupMutex.Unlock()
+
 	s := e.TLSServer
 	s.TLSConfig = new(tls.Config)
 	s.TLSConfig.GetCertificate = e.AutoTLSManager.GetCertificate
@@ -705,10 +708,8 @@ func (e *Echo) StartAutoTLS(address string) error {
 
 	e.configureTLS(address)
 	if err := e.configureServer(s); err != nil {
-		e.startupMutex.Unlock()
 		return err
 	}
-	e.startupMutex.Unlock()
 	return s.Serve(e.TLSListener)
 }
 
@@ -723,15 +724,13 @@ func (e *Echo) configureTLS(address string) {
 // StartServer starts a custom http server.
 func (e *Echo) StartServer(s *http.Server) (err error) {
 	e.startupMutex.Lock()
+	defer e.startupMutex.Unlock()
 	if err := e.configureServer(s); err != nil {
-		e.startupMutex.Unlock()
 		return err
 	}
 	if s.TLSConfig != nil {
-		e.startupMutex.Unlock()
 		return s.Serve(e.TLSListener)
 	}
-	e.startupMutex.Unlock()
 	return s.Serve(e.Listener)
 }
 
@@ -797,6 +796,7 @@ func (e *Echo) TLSListenerAddr() net.Addr {
 // StartH2CServer starts a custom http/2 server with h2c (HTTP/2 Cleartext).
 func (e *Echo) StartH2CServer(address string, h2s *http2.Server) error {
 	e.startupMutex.Lock()
+	defer e.startupMutex.Unlock()
 	// Setup
 	s := e.Server
 	s.Addr = address
@@ -814,7 +814,6 @@ func (e *Echo) StartH2CServer(address string, h2s *http2.Server) error {
 	if e.Listener == nil {
 		l, err := newListener(s.Addr, e.ListenerNetwork)
 		if err != nil {
-			e.startupMutex.Unlock()
 			return err
 		}
 		e.Listener = l
@@ -822,7 +821,6 @@ func (e *Echo) StartH2CServer(address string, h2s *http2.Server) error {
 	if !e.HidePort {
 		e.colorer.Printf("⇨ http server started on %s\n", e.colorer.Green(e.Listener.Addr()))
 	}
-	e.startupMutex.Unlock()
 	return s.Serve(e.Listener)
 }
 

@@ -238,6 +238,7 @@ var DefaultRateLimiterMemoryStoreConfig = RateLimiterMemoryStoreConfig{
 // Allow implements RateLimiterStore.Allow
 func (store *RateLimiterMemoryStore) Allow(identifier string) (bool, error) {
 	store.mutex.Lock()
+	defer store.mutex.Unlock()
 	limiter, exists := store.visitors[identifier]
 	if !exists {
 		limiter = new(Visitor)
@@ -248,7 +249,6 @@ func (store *RateLimiterMemoryStore) Allow(identifier string) (bool, error) {
 	if now().Sub(store.lastCleanup) > store.expiresIn {
 		store.cleanupStaleVisitors()
 	}
-	store.mutex.Unlock()
 	return limiter.AllowN(now(), 1), nil
 }
 
