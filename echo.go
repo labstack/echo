@@ -201,6 +201,7 @@ const (
 const (
 	HeaderAccept         = "Accept"
 	HeaderAcceptEncoding = "Accept-Encoding"
+	HeaderAcceptLanguage = "Accept-Language"
 	// HeaderAllow is the name of the "Allow" header field used to list the set of methods
 	// advertised as supported by the target resource. Returning an Allow header is mandatory
 	// for status 405 (method not found) and useful for the OPTIONS method in responses.
@@ -234,6 +235,7 @@ const (
 	HeaderOrigin              = "Origin"
 	HeaderCacheControl        = "Cache-Control"
 	HeaderConnection          = "Connection"
+	HeaderDate                = "Date"
 
 	// Access control
 	HeaderAccessControlRequestMethod    = "Access-Control-Request-Method"
@@ -254,6 +256,11 @@ const (
 	HeaderContentSecurityPolicyReportOnly = "Content-Security-Policy-Report-Only"
 	HeaderXCSRFToken                      = "X-CSRF-Token"
 	HeaderReferrerPolicy                  = "Referrer-Policy"
+
+	// Platform
+	HeaderUserAgent              = "User-Agent"
+	HeaderSecChUaPlatform        = "Sec-CH-UA-Platform"
+	HeaderSecChUaPlatformVersion = "Sec-CH-UA-Platform-Version"
 )
 
 const (
