@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -244,7 +243,7 @@ func TestEchoStaticRedirectIndex(t *testing.T) {
 		}(resp.Body)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-		if body, err := ioutil.ReadAll(resp.Body); err == nil {
+		if body, err := io.ReadAll(resp.Body); err == nil {
 			assert.Equal(t, true, strings.HasPrefix(string(body), "<!doctype html>"))
 		} else {
 			assert.Fail(t, err.Error())
@@ -531,9 +530,9 @@ func TestEchoRoutes(t *testing.T) {
 	}
 }
 
-func TestEchoRoutesHandleHostsProperly(t *testing.T) {
+func TestEchoRoutesHandleAdditionalHosts(t *testing.T) {
 	e := New()
-	h := e.Host("route.com")
+	domain2Router := e.Host("domain2.router.com")
 	routes := []*Route{
 		{http.MethodGet, "/users/:user/events", ""},
 		{http.MethodGet, "/users/:user/events/public", ""},
@@ -541,23 +540,60 @@ func TestEchoRoutesHandleHostsProperly(t *testing.T) {
 		{http.MethodPost, "/repos/:owner/:repo/git/tags", ""},
 	}
 	for _, r := range routes {
-		h.Add(r.Method, r.Path, func(c Context) error {
+		domain2Router.Add(r.Method, r.Path, func(c Context) error {
 			return c.String(http.StatusOK, "OK")
 		})
 	}
+	e.Add(http.MethodGet, "/api", func(c Context) error {
+		return c.String(http.StatusOK, "OK")
+	})
 
-	if assert.Equal(t, len(routes), len(e.Routes())) {
-		for _, r := range e.Routes() {
-			found := false
-			for _, rr := range routes {
-				if r.Method == rr.Method && r.Path == rr.Path {
-					found = true
-					break
-				}
+	domain2Routes := e.Routers()["domain2.router.com"].Routes()
+
+	assert.Len(t, domain2Routes, len(routes))
+	for _, r := range domain2Routes {
+		found := false
+		for _, rr := range routes {
+			if r.Method == rr.Method && r.Path == rr.Path {
+				found = true
+				break
 			}
-			if !found {
-				t.Errorf("Route %s %s not found", r.Method, r.Path)
+		}
+		if !found {
+			t.Errorf("Route %s %s not found", r.Method, r.Path)
+		}
+	}
+}
+
+func TestEchoRoutesHandleDefaultHost(t *testing.T) {
+	e := New()
+	routes := []*Route{
+		{http.MethodGet, "/users/:user/events", ""},
+		{http.MethodGet, "/users/:user/events/public", ""},
+		{http.MethodPost, "/repos/:owner/:repo/git/refs", ""},
+		{http.MethodPost, "/repos/:owner/:repo/git/tags", ""},
+	}
+	for _, r := range routes {
+		e.Add(r.Method, r.Path, func(c Context) error {
+			return c.String(http.StatusOK, "OK")
+		})
+	}
+	e.Host("subdomain.mysite.site").Add(http.MethodGet, "/api", func(c Context) error {
+		return c.String(http.StatusOK, "OK")
+	})
+
+	defaultRouterRoutes := e.Routes()
+	assert.Len(t, defaultRouterRoutes, len(routes))
+	for _, r := range defaultRouterRoutes {
+		found := false
+		for _, rr := range routes {
+			if r.Method == rr.Method && r.Path == rr.Path {
+				found = true
+				break
 			}
+		}
+		if !found {
+			t.Errorf("Route %s %s not found", r.Method, r.Path)
 		}
 	}
 }
@@ -1032,9 +1068,9 @@ func TestEchoStartTLSAndStart(t *testing.T) {
 }
 
 func TestEchoStartTLSByteString(t *testing.T) {
-	cert, err := ioutil.ReadFile("_fixture/certs/cert.pem")
+	cert, err := os.ReadFile("_fixture/certs/cert.pem")
 	require.NoError(t, err)
-	key, err := ioutil.ReadFile("_fixture/certs/key.pem")
+	key, err := os.ReadFile("_fixture/certs/key.pem")
 	require.NoError(t, err)
 
 	testCases := []struct {
@@ -1206,11 +1242,20 @@ func TestHTTPError(t *testing.T) {
 
 		assert.Equal(t, "code=400, message=map[code:12]", err.Error())
 	})
-	t.Run("internal", func(t *testing.T) {
+
+	t.Run("internal and SetInternal", func(t *testing.T) {
 		err := NewHTTPError(http.StatusBadRequest, map[string]interface{}{
 			"code": 12,
 		})
 		err.SetInternal(errors.New("internal error"))
+		assert.Equal(t, "code=400, message=map[code:12], internal=internal error", err.Error())
+	})
+
+	t.Run("internal and WithInternal", func(t *testing.T) {
+		err := NewHTTPError(http.StatusBadRequest, map[string]interface{}{
+			"code": 12,
+		})
+		err = err.WithInternal(errors.New("internal error"))
 		assert.Equal(t, "code=400, message=map[code:12], internal=internal error", err.Error())
 	})
 }
@@ -1223,11 +1268,20 @@ func TestHTTPError_Unwrap(t *testing.T) {
 
 		assert.Nil(t, errors.Unwrap(err))
 	})
-	t.Run("internal", func(t *testing.T) {
+
+	t.Run("unwrap internal and SetInternal", func(t *testing.T) {
 		err := NewHTTPError(http.StatusBadRequest, map[string]interface{}{
 			"code": 12,
 		})
 		err.SetInternal(errors.New("internal error"))
+		assert.Equal(t, "internal error", errors.Unwrap(err).Error())
+	})
+
+	t.Run("unwrap internal and WithInternal", func(t *testing.T) {
+		err := NewHTTPError(http.StatusBadRequest, map[string]interface{}{
+			"code": 12,
+		})
+		err = err.WithInternal(errors.New("internal error"))
 		assert.Equal(t, "internal error", errors.Unwrap(err).Error())
 	})
 }
@@ -1395,7 +1449,7 @@ func TestEchoListenerNetwork(t *testing.T) {
 				}(resp.Body)
 				assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-				if body, err := ioutil.ReadAll(resp.Body); err == nil {
+				if body, err := io.ReadAll(resp.Body); err == nil {
 					assert.Equal(t, "OK", string(body))
 				} else {
 					assert.Fail(t, err.Error())
@@ -1422,6 +1476,44 @@ func TestEchoListenerNetworkInvalid(t *testing.T) {
 	})
 
 	assert.Equal(t, ErrInvalidListenerNetwork, e.Start(":1323"))
+}
+
+func TestEcho_OnAddRouteHandler(t *testing.T) {
+	type rr struct {
+		host       string
+		route      Route
+		handler    HandlerFunc
+		middleware []MiddlewareFunc
+	}
+	dummyHandler := func(Context) error { return nil }
+	e := New()
+
+	added := make([]rr, 0)
+	e.OnAddRouteHandler = func(host string, route Route, handler HandlerFunc, middleware []MiddlewareFunc) {
+		added = append(added, rr{
+			host:       host,
+			route:      route,
+			handler:    handler,
+			middleware: middleware,
+		})
+	}
+
+	e.GET("/static", NotFoundHandler)
+	e.Host("domain.site").GET("/static/*", dummyHandler, func(next HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			return next(c)
+		}
+	})
+
+	assert.Len(t, added, 2)
+
+	assert.Equal(t, "", added[0].host)
+	assert.Equal(t, Route{Method: http.MethodGet, Path: "/static", Name: "github.com/labstack/echo/v4.glob..func1"}, added[0].route)
+	assert.Len(t, added[0].middleware, 0)
+
+	assert.Equal(t, "domain.site", added[1].host)
+	assert.Equal(t, Route{Method: http.MethodGet, Path: "/static/*", Name: "github.com/labstack/echo/v4.TestEcho_OnAddRouteHandler.func1"}, added[1].route)
+	assert.Len(t, added[1].middleware, 1)
 }
 
 func TestEchoReverse(t *testing.T) {
@@ -1451,14 +1543,27 @@ func TestEchoReverseHandleHostProperly(t *testing.T) {
 	dummyHandler := func(Context) error { return nil }
 
 	e := New()
-	h := e.Host("the_host")
-	h.GET("/static", dummyHandler).Name = "/static"
-	h.GET("/static/*", dummyHandler).Name = "/static/*"
 
-	assert.Equal(t, "/static", e.Reverse("/static"))
-	assert.Equal(t, "/static", e.Reverse("/static", "missing param"))
-	assert.Equal(t, "/static/*", e.Reverse("/static/*"))
-	assert.Equal(t, "/static/foo.txt", e.Reverse("/static/*", "foo.txt"))
+	// routes added to the default router are different form different hosts
+	e.GET("/static", dummyHandler).Name = "default-host /static"
+	e.GET("/static/*", dummyHandler).Name = "xxx"
+
+	// different host
+	h := e.Host("the_host")
+	h.GET("/static", dummyHandler).Name = "host2 /static"
+	h.GET("/static/v2/*", dummyHandler).Name = "xxx"
+
+	assert.Equal(t, "/static", e.Reverse("default-host /static"))
+	// when actual route does not have params and we provide some to Reverse we should get that route url back
+	assert.Equal(t, "/static", e.Reverse("default-host /static", "missing param"))
+
+	host2Router := e.Routers()["the_host"]
+	assert.Equal(t, "/static", host2Router.Reverse("host2 /static"))
+	assert.Equal(t, "/static", host2Router.Reverse("host2 /static", "missing param"))
+
+	assert.Equal(t, "/static/v2/*", host2Router.Reverse("xxx"))
+	assert.Equal(t, "/static/v2/foo.txt", host2Router.Reverse("xxx", "foo.txt"))
+
 }
 
 func TestEcho_ListenerAddr(t *testing.T) {
@@ -1477,9 +1582,9 @@ func TestEcho_ListenerAddr(t *testing.T) {
 }
 
 func TestEcho_TLSListenerAddr(t *testing.T) {
-	cert, err := ioutil.ReadFile("_fixture/certs/cert.pem")
+	cert, err := os.ReadFile("_fixture/certs/cert.pem")
 	require.NoError(t, err)
-	key, err := ioutil.ReadFile("_fixture/certs/key.pem")
+	key, err := os.ReadFile("_fixture/certs/key.pem")
 	require.NoError(t, err)
 
 	e := New()
@@ -1497,9 +1602,9 @@ func TestEcho_TLSListenerAddr(t *testing.T) {
 }
 
 func TestEcho_StartServer(t *testing.T) {
-	cert, err := ioutil.ReadFile("_fixture/certs/cert.pem")
+	cert, err := os.ReadFile("_fixture/certs/cert.pem")
 	require.NoError(t, err)
-	key, err := ioutil.ReadFile("_fixture/certs/key.pem")
+	key, err := os.ReadFile("_fixture/certs/key.pem")
 	require.NoError(t, err)
 	certs, err := tls.X509KeyPair(cert, key)
 	require.NoError(t, err)

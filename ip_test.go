@@ -459,6 +459,7 @@ func TestExtractIPDirect(t *testing.T) {
 
 func TestExtractIPFromRealIPHeader(t *testing.T) {
 	_, ipForRemoteAddrExternalRange, _ := net.ParseCIDR("203.0.113.199/24")
+	_, ipv6ForRemoteAddrExternalRange, _ := net.ParseCIDR("2001:db8::/64")
 
 	var testCases = []struct {
 		name              string
@@ -494,6 +495,16 @@ func TestExtractIPFromRealIPHeader(t *testing.T) {
 			expectIP: "203.0.113.1",
 		},
 		{
+			name: "request is from external IP has valid + UNTRUSTED external X-Real-Ip header, extract IP from remote addr",
+			whenRequest: http.Request{
+				Header: http.Header{
+					HeaderXRealIP: []string{"[2001:db8::113:199]"}, // <-- this is untrusted
+				},
+				RemoteAddr: "[2001:db8::113:1]:8080",
+			},
+			expectIP: "2001:db8::113:1",
+		},
+		{
 			name: "request is from external IP has valid + TRUSTED X-Real-Ip header, extract IP from X-Real-Ip header",
 			givenTrustOptions: []TrustOption{ // case for "trust direct-facing proxy"
 				TrustIPRange(ipForRemoteAddrExternalRange), // we trust external IP range "203.0.113.199/24"
@@ -505,6 +516,19 @@ func TestExtractIPFromRealIPHeader(t *testing.T) {
 				RemoteAddr: "203.0.113.1:8080",
 			},
 			expectIP: "203.0.113.199",
+		},
+		{
+			name: "request is from external IP has valid + TRUSTED X-Real-Ip header, extract IP from X-Real-Ip header",
+			givenTrustOptions: []TrustOption{ // case for "trust direct-facing proxy"
+				TrustIPRange(ipv6ForRemoteAddrExternalRange), // we trust external IP range "2001:db8::/64"
+			},
+			whenRequest: http.Request{
+				Header: http.Header{
+					HeaderXRealIP: []string{"[2001:db8::113:199]"},
+				},
+				RemoteAddr: "[2001:db8::113:1]:8080",
+			},
+			expectIP: "2001:db8::113:199",
 		},
 		{
 			name: "request is from external IP has XFF and valid + TRUSTED X-Real-Ip header, extract IP from X-Real-Ip header",
@@ -520,6 +544,20 @@ func TestExtractIPFromRealIPHeader(t *testing.T) {
 			},
 			expectIP: "203.0.113.199",
 		},
+		{
+			name: "request is from external IP has XFF and valid + TRUSTED X-Real-Ip header, extract IP from X-Real-Ip header",
+			givenTrustOptions: []TrustOption{ // case for "trust direct-facing proxy"
+				TrustIPRange(ipv6ForRemoteAddrExternalRange), // we trust external IP range "2001:db8::/64"
+			},
+			whenRequest: http.Request{
+				Header: http.Header{
+					HeaderXRealIP:       []string{"[2001:db8::113:199]"},
+					HeaderXForwardedFor: []string{"[2001:db8::113:198], [2001:db8::113:197]"}, // <-- should not affect anything
+				},
+				RemoteAddr: "[2001:db8::113:1]:8080",
+			},
+			expectIP: "2001:db8::113:199",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -532,6 +570,7 @@ func TestExtractIPFromRealIPHeader(t *testing.T) {
 
 func TestExtractIPFromXFFHeader(t *testing.T) {
 	_, ipForRemoteAddrExternalRange, _ := net.ParseCIDR("203.0.113.199/24")
+	_, ipv6ForRemoteAddrExternalRange, _ := net.ParseCIDR("2001:db8::/64")
 
 	var testCases = []struct {
 		name              string
@@ -567,6 +606,16 @@ func TestExtractIPFromXFFHeader(t *testing.T) {
 			expectIP: "127.0.0.3",
 		},
 		{
+			name: "request trusts all IPs in XFF header, extract IP from furthest in XFF chain",
+			whenRequest: http.Request{
+				Header: http.Header{
+					HeaderXForwardedFor: []string{"[fe80::3], [fe80::2], [fe80::1]"},
+				},
+				RemoteAddr: "[fe80::1]:8080",
+			},
+			expectIP: "fe80::3",
+		},
+		{
 			name: "request is from external IP has valid + UNTRUSTED external XFF header, extract IP from remote addr",
 			whenRequest: http.Request{
 				Header: http.Header{
@@ -575,6 +624,16 @@ func TestExtractIPFromXFFHeader(t *testing.T) {
 				RemoteAddr: "203.0.113.1:8080",
 			},
 			expectIP: "203.0.113.1",
+		},
+		{
+			name: "request is from external IP has valid + UNTRUSTED external XFF header, extract IP from remote addr",
+			whenRequest: http.Request{
+				Header: http.Header{
+					HeaderXForwardedFor: []string{"[2001:db8::1]"}, // <-- this is untrusted
+				},
+				RemoteAddr: "[2001:db8::2]:8080",
+			},
+			expectIP: "2001:db8::2",
 		},
 		{
 			name: "request is from external IP is valid and has some IPs TRUSTED XFF header, extract IP from XFF header",
@@ -594,6 +653,25 @@ func TestExtractIPFromXFFHeader(t *testing.T) {
 				RemoteAddr: "127.0.0.1:8080", // IP of proxy upstream of our APP
 			},
 			expectIP: "203.0.100.100", // this is first trusted IP in XFF chain
+		},
+		{
+			name: "request is from external IP is valid and has some IPs TRUSTED XFF header, extract IP from XFF header",
+			givenTrustOptions: []TrustOption{
+				TrustIPRange(ipv6ForRemoteAddrExternalRange), // we trust external IP range "2001:db8::/64"
+			},
+			// from request its seems that request has been proxied through 6 servers.
+			// 1) 2001:db8:1::1:100 (this is external IP set by 2001:db8:2::100:100 which we do not trust - could be spoofed)
+			// 2) 2001:db8:2::100:100  (this is outside of our network but set by 2001:db8::113:199 which we trust to set correct IPs)
+			// 3) 2001:db8::113:199 (we trust, for example maybe our proxy from some other office)
+			// 4) fd12:3456:789a:1::1 (internal IP, some internal upstream loadbalancer ala SSL offloading with F5 products)
+			// 5) fe80::1 (is proxy on localhost. maybe we have Nginx in front of our Echo instance doing some routing)
+			whenRequest: http.Request{
+				Header: http.Header{
+					HeaderXForwardedFor: []string{"[2001:db8:1::1:100], [2001:db8:2::100:100], [2001:db8::113:199], [fd12:3456:789a:1::1]"},
+				},
+				RemoteAddr: "[fe80::1]:8080", // IP of proxy upstream of our APP
+			},
+			expectIP: "2001:db8:2::100:100", // this is first trusted IP in XFF chain
 		},
 	}
 

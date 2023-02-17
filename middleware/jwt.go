@@ -154,6 +154,8 @@ var (
 //
 // See: https://jwt.io/introduction
 // See `JWTConfig.TokenLookup`
+//
+// Deprecated: Please use https://github.com/labstack/echo-jwt instead
 func JWT(key interface{}) echo.MiddlewareFunc {
 	c := DefaultJWTConfig
 	c.SigningKey = key
@@ -162,6 +164,8 @@ func JWT(key interface{}) echo.MiddlewareFunc {
 
 // JWTWithConfig returns a JWT auth middleware with config.
 // See: `JWT()`.
+//
+// Deprecated: Please use https://github.com/labstack/echo-jwt instead
 func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	// Defaults
 	if config.Skipper == nil {
@@ -262,7 +266,7 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 }
 
 func (config *JWTConfig) defaultParseToken(auth string, c echo.Context) (interface{}, error) {
-	token := new(jwt.Token)
+	var token *jwt.Token
 	var err error
 	// Issue #647, #656
 	if _, ok := config.Claims.(jwt.MapClaims); ok {

@@ -5,7 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -129,7 +129,7 @@ func TestTimeoutOnTimeoutRouteErrorHandler(t *testing.T) {
 	e := echo.New()
 	c := e.NewContext(req, rec)
 
-	stopChan := make(chan struct{}, 0)
+	stopChan := make(chan struct{})
 	err := m(func(c echo.Context) error {
 		<-stopChan
 		return errors.New("error in route after timeout")
@@ -245,7 +245,7 @@ func TestTimeoutWithErrorMessage(t *testing.T) {
 	e := echo.New()
 	c := e.NewContext(req, rec)
 
-	stopChan := make(chan struct{}, 0)
+	stopChan := make(chan struct{})
 	err := m(func(c echo.Context) error {
 		// NOTE: when difference between timeout duration and handler execution time is almost the same (in range of 100microseconds)
 		// the result of timeout does not seem to be reliable - could respond timeout, could respond handler output
@@ -275,7 +275,7 @@ func TestTimeoutWithDefaultErrorMessage(t *testing.T) {
 	e := echo.New()
 	c := e.NewContext(req, rec)
 
-	stopChan := make(chan struct{}, 0)
+	stopChan := make(chan struct{})
 	err := m(func(c echo.Context) error {
 		<-stopChan
 		return c.String(http.StatusOK, "Hello, World!")
@@ -410,7 +410,7 @@ func TestTimeoutWithFullEchoStack(t *testing.T) {
 			}
 
 			assert.Equal(t, tc.expectStatusCode, res.StatusCode)
-			if body, err := ioutil.ReadAll(res.Body); err == nil {
+			if body, err := io.ReadAll(res.Body); err == nil {
 				assert.Equal(t, tc.expectResponse, string(body))
 			} else {
 				assert.Fail(t, err.Error())
