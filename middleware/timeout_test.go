@@ -375,7 +375,7 @@ func TestTimeoutWithFullEchoStack(t *testing.T) {
 
 			// NOTE: timeout middleware is first as it changes Response.Writer and causes data race for logger middleware if it is not first
 			e.Use(TimeoutWithConfig(TimeoutConfig{
-				Timeout: 15 * time.Millisecond,
+				Timeout: 100 * time.Millisecond,
 			}))
 			e.Use(Logger())
 			e.Use(Recover())
@@ -403,8 +403,13 @@ func TestTimeoutWithFullEchoStack(t *testing.T) {
 			}
 			if tc.whenForceHandlerTimeout {
 				wg.Done()
+				// extremely short periods are not reliable for tests when it comes to goroutines. We can not guarantee in which
+				// order scheduler decides do execute: 1) request goroutine, 2) timeout timer goroutine.
+				// most of the time we get result we expect but Mac OS seems to be quite flaky
+				time.Sleep(50 * time.Millisecond)
+
 				// shutdown waits for server to shutdown. this way we wait logger mw to be executed
-				ctx, cancel := context.WithTimeout(context.Background(), 150*time.Millisecond)
+				ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 				defer cancel()
 				server.Shutdown(ctx)
 			}
