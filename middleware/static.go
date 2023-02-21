@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 
 	"github.com/labstack/echo/v4"
@@ -157,9 +156,9 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 	}
 
 	// Index template
-	t, err := template.New("index").Parse(html)
-	if err != nil {
-		panic(fmt.Sprintf("echo: %v", err))
+	t, tErr := template.New("index").Parse(html)
+	if tErr != nil {
+		panic(fmt.Errorf("echo: %w", tErr))
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -176,7 +175,7 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 			if err != nil {
 				return
 			}
-			name := filepath.Join(config.Root, filepath.Clean("/"+p)) // "/"+ for security
+			name := path.Join(config.Root, path.Clean("/"+p)) // "/"+ for security
 
 			if config.IgnoreBase {
 				routePath := path.Base(strings.TrimRight(c.Path(), "/*"))
@@ -187,12 +186,14 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 				}
 			}
 
-			file, err := openFile(config.Filesystem, name)
+			file, err := config.Filesystem.Open(name)
 			if err != nil {
-				if !os.IsNotExist(err) {
+				if !isIgnorableOpenFileError(err) {
 					return err
 				}
 
+				// file with that path did not exist, so we continue down in middleware/handler chain, hoping that we end up in
+				// handler that is meant to handle this request
 				if err = next(c); err == nil {
 					return err
 				}
@@ -202,7 +203,7 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 					return err
 				}
 
-				file, err = openFile(config.Filesystem, filepath.Join(config.Root, config.Index))
+				file, err = config.Filesystem.Open(path.Join(config.Root, config.Index))
 				if err != nil {
 					return err
 				}
@@ -216,15 +217,13 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 			}
 
 			if info.IsDir() {
-				index, err := openFile(config.Filesystem, filepath.Join(name, config.Index))
+				index, err := config.Filesystem.Open(path.Join(name, config.Index))
 				if err != nil {
 					if config.Browse {
 						return listDir(t, name, file, c.Response())
 					}
 
-					if os.IsNotExist(err) {
-						return next(c)
-					}
+					return next(c)
 				}
 
 				defer index.Close()
@@ -240,11 +239,6 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 			return serveFile(c, file, info)
 		}
 	}
-}
-
-func openFile(fs http.FileSystem, name string) (http.File, error) {
-	pathWithSlashes := filepath.ToSlash(name)
-	return fs.Open(pathWithSlashes)
 }
 
 func serveFile(c echo.Context, file http.File, info os.FileInfo) error {
