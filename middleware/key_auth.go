@@ -108,9 +108,9 @@ func KeyAuthWithConfig(config KeyAuthConfig) echo.MiddlewareFunc {
 		panic("echo: key-auth middleware requires a validator function")
 	}
 
-	extractors, err := createExtractors(config.KeyLookup, config.AuthScheme)
-	if err != nil {
-		panic(err)
+	extractors, cErr := createExtractors(config.KeyLookup, config.AuthScheme)
+	if cErr != nil {
+		panic(cErr)
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {

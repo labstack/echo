@@ -196,9 +196,9 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 		config.ParseTokenFunc = config.defaultParseToken
 	}
 
-	extractors, err := createExtractors(config.TokenLookup, config.AuthScheme)
-	if err != nil {
-		panic(err)
+	extractors, cErr := createExtractors(config.TokenLookup, config.AuthScheme)
+	if cErr != nil {
+		panic(cErr)
 	}
 	if len(config.TokenLookupFuncs) > 0 {
 		extractors = append(config.TokenLookupFuncs, extractors...)
