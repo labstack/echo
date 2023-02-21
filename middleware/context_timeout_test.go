@@ -148,7 +148,7 @@ func TestContextTimeoutWithDefaultErrorMessage(t *testing.T) {
 	c := e.NewContext(req, rec)
 
 	err := m(func(c echo.Context) error {
-		if err := sleepWithContext(c.Request().Context(), time.Duration(20*time.Millisecond)); err != nil {
+		if err := sleepWithContext(c.Request().Context(), time.Duration(80*time.Millisecond)); err != nil {
 			return err
 		}
 		return c.String(http.StatusOK, "Hello, World!")
@@ -176,7 +176,7 @@ func TestContextTimeoutCanHandleContextDeadlineOnNextHandler(t *testing.T) {
 		return nil
 	}
 
-	timeout := 10 * time.Millisecond
+	timeout := 50 * time.Millisecond
 	m := ContextTimeoutWithConfig(ContextTimeoutConfig{
 		Timeout:      timeout,
 		ErrorHandler: timeoutErrorHandler,
@@ -189,11 +189,11 @@ func TestContextTimeoutCanHandleContextDeadlineOnNextHandler(t *testing.T) {
 	c := e.NewContext(req, rec)
 
 	err := m(func(c echo.Context) error {
-		// NOTE: when difference between timeout duration and handler execution time is almost the same (in range of 100microseconds)
-		// the result of timeout does not seem to be reliable - could respond timeout, could respond handler output
-		// difference over 500microseconds (0.5millisecond) response seems to be reliable
+		// extremely short periods are not reliable for tests when it comes to goroutines. We can not guarantee in which
+		// order scheduler decides do execute: 1) request goroutine, 2) timeout timer goroutine.
+		// most of the time we get result we expect but Mac OS seems to be quite flaky
 
-		if err := sleepWithContext(c.Request().Context(), time.Duration(20*time.Millisecond)); err != nil {
+		if err := sleepWithContext(c.Request().Context(), 100*time.Millisecond); err != nil {
 			return err
 		}
 
