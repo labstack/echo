@@ -189,9 +189,8 @@ func TestContextTimeoutCanHandleContextDeadlineOnNextHandler(t *testing.T) {
 	c := e.NewContext(req, rec)
 
 	err := m(func(c echo.Context) error {
-		// extremely short periods are not reliable for tests when it comes to goroutines. We can not guarantee in which
-		// order scheduler decides do execute: 1) request goroutine, 2) timeout timer goroutine.
-		// most of the time we get result we expect but Mac OS seems to be quite flaky
+		// NOTE: Very short periods are not reliable for tests due to Go routine scheduling and the unpredictable order
+		// for 1) request and 2) time goroutine. For most OS this works as expected, but MacOS seems most flaky.
 
 		if err := sleepWithContext(c.Request().Context(), 100*time.Millisecond); err != nil {
 			return err
