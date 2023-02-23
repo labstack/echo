@@ -12,7 +12,6 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -91,7 +90,8 @@ type (
 	// RoundRobinBalancer implements a round-robin load balancing technique.
 	roundRobinBalancer struct {
 		*commonBalancer
-		i uint32
+		// tracking the index on `targets` slice for the next `*ProxyTarget` to be used
+		i int
 	}
 )
 
@@ -193,9 +193,14 @@ func (b *randomBalancer) Next(c echo.Context) *ProxyTarget {
 
 // Next returns an upstream target using round-robin technique.
 func (b *roundRobinBalancer) Next(c echo.Context) *ProxyTarget {
-	b.i = b.i % uint32(len(b.targets))
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	// reset the index if out of bounds
+	if b.i >= len(b.targets) {
+		b.i = 0
+	}
 	t := b.targets[b.i]
-	atomic.AddUint32(&b.i, 1)
+	b.i += 1
 	return t
 }
 
