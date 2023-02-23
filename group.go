@@ -23,10 +23,12 @@ func (g *Group) Use(middleware ...MiddlewareFunc) {
 	if len(g.middleware) == 0 {
 		return
 	}
-	// Allow all requests to reach the group as they might get dropped if router
-	// doesn't find a match, making none of the group middleware process.
-	g.Any("", NotFoundHandler)
-	g.Any("/*", NotFoundHandler)
+	// group level middlewares are different from Echo `Pre` and `Use` middlewares (those are global). Group level middlewares
+	// are only executed if they are added to the Router with route.
+	// So we register catch all route (404 is a safe way to emulate route match) for this group and now during routing the
+	// Router would find route to match our request path and therefore guarantee the middleware(s) will get executed.
+	g.RouteNotFound("", NotFoundHandler)
+	g.RouteNotFound("/*", NotFoundHandler)
 }
 
 // CONNECT implements `Echo#CONNECT()` for sub-routes within the Group.
