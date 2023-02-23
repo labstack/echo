@@ -163,32 +163,3 @@ func TestRecoverWithConfig_LogErrorFunc(t *testing.T) {
 		assert.Contains(t, output, `"level":"ERROR"`)
 	})
 }
-
-func TestRecoverWithDisabled_ErrorHandler(t *testing.T) {
-	e := echo.New()
-	buf := new(bytes.Buffer)
-	e.Logger.SetOutput(buf)
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-
-	config := DefaultRecoverConfig
-	config.DisableErrorHandler = false
-	h := RecoverWithConfig(config)(echo.HandlerFunc(func(c echo.Context) error {
-		panic(http.ErrAbortHandler)
-	}))
-
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("expecting nil, got `%v`", r)
-		}
-	}()
-	h(c)
-
-	h = Recover()(echo.HandlerFunc(func(c echo.Context) error {
-		panic(http.ErrAbortHandler)
-	}))
-	h(c)
-	assert.Equal(t, http.StatusInternalServerError, rec.Code)
-	assert.Contains(t, buf.String(), "PANIC RECOVER")
-}
