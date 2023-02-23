@@ -39,7 +39,7 @@ type (
 		// If it's set you don't need to provide LogLevel for config.
 		LogErrorFunc LogErrorFunc
 
-		// DisableErrorHandler disables the centralized HTTPErrorHandler.
+		// DisableErrorHandler disables the call to centralized HTTPErrorHandler.
 		// Optional. Default value false.
 		DisableErrorHandler bool `yaml:"disable_error_handler"`
 	}
