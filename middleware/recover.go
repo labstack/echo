@@ -76,7 +76,7 @@ func RecoverWithConfig(config RecoverConfig) echo.MiddlewareFunc {
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
+		return func(c echo.Context) (returnErr error) {
 			if config.Skipper(c) {
 				return next(c)
 			}
@@ -122,6 +122,7 @@ func RecoverWithConfig(config RecoverConfig) echo.MiddlewareFunc {
 					if(!config.DisableErrorHandler) {
 						c.Error(err)
 					}
+					returnErr = err
 				}
 			}()
 			return next(c)
