@@ -200,7 +200,7 @@ func (b *roundRobinBalancer) Next(c echo.Context) *ProxyTarget {
 		b.i = 0
 	}
 	t := b.targets[b.i]
-	b.i += 1
+	b.i++
 	return t
 }
 
