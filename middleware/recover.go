@@ -40,6 +40,7 @@ type (
 		LogErrorFunc LogErrorFunc
 
 		// DisableErrorHandler disables the call to centralized HTTPErrorHandler.
+		// The recovered error is then passed back to upstream middleware, instead of swallowing the error.
 		// Optional. Default value false.
 		DisableErrorHandler bool `yaml:"disable_error_handler"`
 	}
@@ -121,8 +122,9 @@ func RecoverWithConfig(config RecoverConfig) echo.MiddlewareFunc {
 
 					if(!config.DisableErrorHandler) {
 						c.Error(err)
+					} else {
+						returnErr = err
 					}
-					returnErr = err
 				}
 			}()
 			return next(c)
