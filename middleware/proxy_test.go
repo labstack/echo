@@ -122,7 +122,7 @@ func TestProxy(t *testing.T) {
 }
 
 type testProvider struct {
-	*commonBalancer
+	commonBalancer
 	target *ProxyTarget
 	err    error
 }
@@ -143,7 +143,7 @@ func TestTargetProvider(t *testing.T) {
 	url1, _ := url.Parse(t1.URL)
 
 	e := echo.New()
-	tp := &testProvider{commonBalancer: new(commonBalancer)}
+	tp := &testProvider{}
 	tp.target = &ProxyTarget{Name: "target 1", URL: url1}
 	e.Use(Proxy(tp))
 	rec := httptest.NewRecorder()
@@ -158,7 +158,7 @@ func TestFailNextTarget(t *testing.T) {
 	assert.Nil(t, err)
 
 	e := echo.New()
-	tp := &testProvider{commonBalancer: new(commonBalancer)}
+	tp := &testProvider{}
 	tp.target = &ProxyTarget{Name: "target 1", URL: url1}
 	tp.err = echo.NewHTTPError(http.StatusInternalServerError, "method could not select target")
 
@@ -421,4 +421,13 @@ func TestClientCancelConnectionResultsHTTPCode499(t *testing.T) {
 	e.ServeHTTP(rec, req)
 	timeoutStop.Done()
 	assert.Equal(t, 499, rec.Code)
+}
+
+// Assert balancer with empty targets does return `nil` on `Next()`
+func TestProxyBalancerWithNoTargets(t *testing.T) {
+	rb := NewRandomBalancer(nil)
+	assert.Nil(t, rb.Next(nil))
+
+	rrb := NewRoundRobinBalancer([]*ProxyTarget{})
+	assert.Nil(t, rrb.Next(nil))
 }
