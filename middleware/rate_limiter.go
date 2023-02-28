@@ -24,13 +24,13 @@ type RateLimiterConfig struct {
 	// Store defines a store for the rate limiter
 	Store RateLimiterStore
 	// ErrorHandler provides a handler to be called when IdentifierExtractor returns an error
-	ErrorHandler func(context echo.Context, err error) error
+	ErrorHandler func(c echo.Context, err error) error
 	// DenyHandler provides a handler to be called when RateLimiter denies access
-	DenyHandler func(context echo.Context, identifier string, err error) error
+	DenyHandler func(c echo.Context, identifier string, err error) error
 }
 
 // Extractor is used to extract data from echo.Context
-type Extractor func(context echo.Context) (string, error)
+type Extractor func(c echo.Context) (string, error)
 
 // ErrRateLimitExceeded denotes an error raised when rate limit is exceeded
 var ErrRateLimitExceeded = echo.NewHTTPError(http.StatusTooManyRequests, "rate limit exceeded")
@@ -45,14 +45,14 @@ var DefaultRateLimiterConfig = RateLimiterConfig{
 		id := ctx.RealIP()
 		return id, nil
 	},
-	ErrorHandler: func(context echo.Context, err error) error {
+	ErrorHandler: func(c echo.Context, err error) error {
 		return &echo.HTTPError{
 			Code:     ErrExtractorError.Code,
 			Message:  ErrExtractorError.Message,
 			Internal: err,
 		}
 	},
-	DenyHandler: func(context echo.Context, identifier string, err error) error {
+	DenyHandler: func(c echo.Context, identifier string, err error) error {
 		return &echo.HTTPError{
 			Code:     ErrRateLimitExceeded.Code,
 			Message:  ErrRateLimitExceeded.Message,
@@ -152,7 +152,7 @@ func (config RateLimiterConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 type RateLimiterMemoryStore struct {
 	visitors    map[string]*Visitor
 	mutex       sync.Mutex
-	rate        rate.Limit // for more info check out Limiter docs - https://pkg.go.dev/golang.org/x/time/rate#Limit
+	rate        float64 // for more info check out Limiter docs - https://pkg.go.dev/golang.org/x/time/rate#Limit
 	burst       int
 	expiresIn   time.Duration
 	lastCleanup time.Time
@@ -177,9 +177,9 @@ Example (with 20 requests/sec):
 
 	limiterStore := middleware.NewRateLimiterMemoryStore(20)
 */
-func NewRateLimiterMemoryStore(rate rate.Limit) (store *RateLimiterMemoryStore) {
+func NewRateLimiterMemoryStore(rateLimit float64) (store *RateLimiterMemoryStore) {
 	return NewRateLimiterMemoryStoreWithConfig(RateLimiterMemoryStoreConfig{
-		Rate: rate,
+		Rate: rateLimit,
 	})
 }
 
@@ -221,7 +221,7 @@ func NewRateLimiterMemoryStoreWithConfig(config RateLimiterMemoryStoreConfig) (s
 
 // RateLimiterMemoryStoreConfig represents configuration for RateLimiterMemoryStore
 type RateLimiterMemoryStoreConfig struct {
-	Rate      rate.Limit    // Rate of requests allowed to pass as req/s. For more info check out Limiter docs - https://pkg.go.dev/golang.org/x/time/rate#Limit.
+	Rate      float64       // Rate of requests allowed to pass as req/s. For more info check out Limiter docs - https://pkg.go.dev/golang.org/x/time/rate#Limit.
 	Burst     int           // Burst is maximum number of requests to pass at the same moment. It additionally allows a number of requests to pass when rate limit is reached.
 	ExpiresIn time.Duration // ExpiresIn is the duration after that a rate limiter is cleaned up
 }
@@ -237,7 +237,7 @@ func (store *RateLimiterMemoryStore) Allow(identifier string) (bool, error) {
 	limiter, exists := store.visitors[identifier]
 	if !exists {
 		limiter = new(Visitor)
-		limiter.Limiter = rate.NewLimiter(store.rate, store.burst)
+		limiter.Limiter = rate.NewLimiter(rate.Limit(store.rate), store.burst)
 		store.visitors[identifier] = limiter
 	}
 	limiter.lastSeen = now()
