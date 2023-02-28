@@ -121,9 +121,9 @@ func (config CSRFConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 		config.CookieSecure = true
 	}
 
-	extractors, err := createExtractors(config.TokenLookup)
-	if err != nil {
-		return nil, err
+	extractors, cErr := createExtractors(config.TokenLookup)
+	if cErr != nil {
+		return nil, cErr
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {

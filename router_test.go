@@ -2798,6 +2798,19 @@ func TestRouter_Routes(t *testing.T) {
 	}
 }
 
+func TestRouterNoRoutablePath(t *testing.T) {
+	e := New()
+
+	e.router.Add(Route{Path: "/static", Name: "/static", Method: http.MethodGet, Handler: func(Context) error { return nil }})
+
+	req := httptest.NewRequest(http.MethodGet, "/notFound", nil)
+	c := e.NewContext(req, nil)
+
+	e.router.Route(c.(RoutableContext))
+	// No routable path, don't set Path.
+	assert.Equal(t, "", c.Path())
+}
+
 func benchmarkRouterRoutes(b *testing.B, routes []testRoute, routesToFind []testRoute) {
 	e := New()
 	r := e.router

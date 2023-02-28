@@ -27,8 +27,6 @@ const (
 	ExtractorSourceCookie ExtractorSource = "cookie"
 	// ExtractorSourceForm means value was extracted from request form values
 	ExtractorSourceForm ExtractorSource = "form"
-	// ExtractorSourceCustom means value was extracted by custom extractor
-	ExtractorSourceCustom ExtractorSource = "custom"
 )
 
 // ValueExtractorError is error type when middleware extractor is unable to extract value from lookups

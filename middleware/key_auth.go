@@ -99,9 +99,9 @@ func (config KeyAuthConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 		return nil, errors.New("echo key-auth middleware requires a validator function")
 	}
 
-	extractors, err := createExtractors(config.KeyLookup)
-	if err != nil {
-		return nil, fmt.Errorf("echo key-auth middleware could not create key extractor: %w", err)
+	extractors, cErr := createExtractors(config.KeyLookup)
+	if cErr != nil {
+		return nil, fmt.Errorf("echo key-auth middleware could not create key extractor: %w", cErr)
 	}
 	if len(extractors) == 0 {
 		return nil, errors.New("echo key-auth middleware could not create extractors from KeyLookup string")

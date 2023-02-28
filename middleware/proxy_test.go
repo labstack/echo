@@ -381,7 +381,7 @@ func TestClientCancelConnectionResultsHTTPCode499(t *testing.T) {
 }
 
 type testProvider struct {
-	*commonBalancer
+	commonBalancer
 	target *ProxyTarget
 	err    error
 }
@@ -398,7 +398,7 @@ func TestTargetProvider(t *testing.T) {
 	url1, _ := url.Parse(t1.URL)
 
 	e := echo.New()
-	tp := &testProvider{commonBalancer: new(commonBalancer)}
+	tp := &testProvider{}
 	tp.target = &ProxyTarget{Name: "target 1", URL: url1}
 	e.Use(Proxy(tp))
 	rec := httptest.NewRecorder()
@@ -413,7 +413,7 @@ func TestFailNextTarget(t *testing.T) {
 	assert.Nil(t, err)
 
 	e := echo.New()
-	tp := &testProvider{commonBalancer: new(commonBalancer)}
+	tp := &testProvider{}
 	tp.target = &ProxyTarget{Name: "target 1", URL: url1}
 	tp.err = echo.NewHTTPError(http.StatusInternalServerError, "method could not select target")
 
@@ -423,4 +423,20 @@ func TestFailNextTarget(t *testing.T) {
 	e.ServeHTTP(rec, req)
 	body := rec.Body.String()
 	assert.Equal(t, "{\"message\":\"method could not select target\"}\n", body)
+}
+
+func TestRandomBalancerWithNoTargets(t *testing.T) {
+	// Assert balancer with empty targets does return `nil` on `Next()`
+	rb := NewRandomBalancer(nil)
+	target, err := rb.Next(nil)
+	assert.Nil(t, target)
+	assert.NoError(t, err)
+}
+
+func TestRoundRobinBalancerWithNoTargets(t *testing.T) {
+	// Assert balancer with empty targets does return `nil` on `Next()`
+	rrb := NewRoundRobinBalancer([]*ProxyTarget{})
+	target, err := rrb.Next(nil)
+	assert.Nil(t, target)
+	assert.NoError(t, err)
 }

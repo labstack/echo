@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -165,13 +164,13 @@ func (config StaticConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 		config.DirectoryListTemplate = directoryListHTMLTemplate
 	}
 
-	dirListTemplate, err := template.New("index").Parse(config.DirectoryListTemplate)
-	if err != nil {
-		return nil, fmt.Errorf("echo static middleware directory list template parsing error: %w", err)
+	dirListTemplate, tErr := template.New("index").Parse(config.DirectoryListTemplate)
+	if tErr != nil {
+		return nil, fmt.Errorf("echo static middleware directory list template parsing error: %w", tErr)
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
+		return func(c echo.Context) (err error) {
 			if config.Skipper(c) {
 				return next(c)
 			}
@@ -188,7 +187,7 @@ func (config StaticConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 					return err
 				}
 			}
-			name := filepath.Join(config.Root, filepath.Clean("/"+p)) // "/"+ for security
+			name := path.Join(config.Root, path.Clean("/"+p)) // "/"+ for security
 
 			if config.IgnoreBase {
 				routePath := path.Base(strings.TrimRight(c.Path(), "/*"))
@@ -204,13 +203,13 @@ func (config StaticConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				currentFS = c.Echo().Filesystem
 			}
 
-			file, err := openFile(currentFS, name)
+			file, err := currentFS.Open(name)
 			if err != nil {
-				if !os.IsNotExist(err) {
+				if !isIgnorableOpenFileError(err) {
 					return err
 				}
-
-				// when file does not exist let handler to handle that request. if it succeeds then we are done
+				// file with that path did not exist, so we continue down in middleware/handler chain, hoping that we end up in
+				// handler that is meant to handle this request
 				err = next(c)
 				if err == nil {
 					return nil
@@ -221,7 +220,7 @@ func (config StaticConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 					return err
 				}
 				// is case HTML5 mode is enabled + echo 404 we serve index to the client
-				file, err = openFile(currentFS, filepath.Join(config.Root, config.Index))
+				file, err = currentFS.Open(path.Join(config.Root, config.Index))
 				if err != nil {
 					return err
 				}
@@ -235,15 +234,13 @@ func (config StaticConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			}
 
 			if info.IsDir() {
-				index, err := openFile(currentFS, filepath.Join(name, config.Index))
+				index, err := currentFS.Open(path.Join(name, config.Index))
 				if err != nil {
 					if config.Browse {
 						return listDir(dirListTemplate, name, currentFS, file, c.Response())
 					}
 
-					if os.IsNotExist(err) {
-						return next(c)
-					}
+					return next(c)
 				}
 
 				defer index.Close()
@@ -259,11 +256,6 @@ func (config StaticConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			return serveFile(c, file, info)
 		}
 	}, nil
-}
-
-func openFile(fs fs.FS, name string) (fs.File, error) {
-	pathWithSlashes := filepath.ToSlash(name)
-	return fs.Open(pathWithSlashes)
 }
 
 func serveFile(c echo.Context, file fs.File, info os.FileInfo) error {

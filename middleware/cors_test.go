@@ -11,106 +11,190 @@ import (
 )
 
 func TestCORS(t *testing.T) {
-	e := echo.New()
+	var testCases = []struct {
+		name             string
+		givenMW          echo.MiddlewareFunc
+		whenMethod       string
+		whenHeaders      map[string]string
+		expectHeaders    map[string]string
+		notExpectHeaders map[string]string
+	}{
+		{
+			name:          "ok, wildcard origin",
+			whenHeaders:   map[string]string{echo.HeaderOrigin: "localhost"},
+			expectHeaders: map[string]string{echo.HeaderAccessControlAllowOrigin: "*"},
+		},
+		{
+			name:             "ok, wildcard AllowedOrigin with no Origin header in request",
+			notExpectHeaders: map[string]string{echo.HeaderAccessControlAllowOrigin: ""},
+		},
+		{
+			name: "ok, specific AllowOrigins and AllowCredentials",
+			givenMW: CORSWithConfig(CORSConfig{
+				AllowOrigins:     []string{"localhost"},
+				AllowCredentials: true,
+				MaxAge:           3600,
+			}),
+			whenHeaders: map[string]string{echo.HeaderOrigin: "localhost"},
+			expectHeaders: map[string]string{
+				echo.HeaderAccessControlAllowOrigin:      "localhost",
+				echo.HeaderAccessControlAllowCredentials: "true",
+			},
+		},
+		{
+			name: "ok, preflight request with matching origin for `AllowOrigins`",
+			givenMW: CORSWithConfig(CORSConfig{
+				AllowOrigins:     []string{"localhost"},
+				AllowCredentials: true,
+				MaxAge:           3600,
+			}),
+			whenMethod: http.MethodOptions,
+			whenHeaders: map[string]string{
+				echo.HeaderOrigin:      "localhost",
+				echo.HeaderContentType: echo.MIMEApplicationJSON,
+			},
+			expectHeaders: map[string]string{
+				echo.HeaderAccessControlAllowOrigin:      "localhost",
+				echo.HeaderAccessControlAllowMethods:     "GET,HEAD,PUT,PATCH,POST,DELETE",
+				echo.HeaderAccessControlAllowCredentials: "true",
+				echo.HeaderAccessControlMaxAge:           "3600",
+			},
+		},
+		{
+			name: "ok, preflight request with wildcard `AllowOrigins` and `AllowCredentials` true",
+			givenMW: CORSWithConfig(CORSConfig{
+				AllowOrigins:     []string{"*"},
+				AllowCredentials: true,
+				MaxAge:           3600,
+			}),
+			whenMethod: http.MethodOptions,
+			whenHeaders: map[string]string{
+				echo.HeaderOrigin:      "localhost",
+				echo.HeaderContentType: echo.MIMEApplicationJSON,
+			},
+			expectHeaders: map[string]string{
+				echo.HeaderAccessControlAllowOrigin:      "*", // Note: browsers will ignore and complain about responses having `*`
+				echo.HeaderAccessControlAllowMethods:     "GET,HEAD,PUT,PATCH,POST,DELETE",
+				echo.HeaderAccessControlAllowCredentials: "true",
+				echo.HeaderAccessControlMaxAge:           "3600",
+			},
+		},
+		{
+			name: "ok, preflight request with wildcard `AllowOrigins` and `AllowCredentials` false",
+			givenMW: CORSWithConfig(CORSConfig{
+				AllowOrigins:     []string{"*"},
+				AllowCredentials: false, // important for this testcase
+				MaxAge:           3600,
+			}),
+			whenMethod: http.MethodOptions,
+			whenHeaders: map[string]string{
+				echo.HeaderOrigin:      "localhost",
+				echo.HeaderContentType: echo.MIMEApplicationJSON,
+			},
+			expectHeaders: map[string]string{
+				echo.HeaderAccessControlAllowOrigin:  "*",
+				echo.HeaderAccessControlAllowMethods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+				echo.HeaderAccessControlMaxAge:       "3600",
+			},
+			notExpectHeaders: map[string]string{
+				echo.HeaderAccessControlAllowCredentials: "",
+			},
+		},
+		{
+			name: "ok, INSECURE preflight request with wildcard `AllowOrigins` and `AllowCredentials` true",
+			givenMW: CORSWithConfig(CORSConfig{
+				AllowOrigins:                             []string{"*"},
+				AllowCredentials:                         true,
+				UnsafeWildcardOriginWithAllowCredentials: true, // important for this testcase
+				MaxAge:                                   3600,
+			}),
+			whenMethod: http.MethodOptions,
+			whenHeaders: map[string]string{
+				echo.HeaderOrigin:      "localhost",
+				echo.HeaderContentType: echo.MIMEApplicationJSON,
+			},
+			expectHeaders: map[string]string{
+				echo.HeaderAccessControlAllowOrigin:      "localhost", // This could end up as cross-origin attack
+				echo.HeaderAccessControlAllowMethods:     "GET,HEAD,PUT,PATCH,POST,DELETE",
+				echo.HeaderAccessControlAllowCredentials: "true",
+				echo.HeaderAccessControlMaxAge:           "3600",
+			},
+		},
+		{
+			name: "ok, preflight request with Access-Control-Request-Headers",
+			givenMW: CORSWithConfig(CORSConfig{
+				AllowOrigins: []string{"*"},
+			}),
+			whenMethod: http.MethodOptions,
+			whenHeaders: map[string]string{
+				echo.HeaderOrigin:                      "localhost",
+				echo.HeaderContentType:                 echo.MIMEApplicationJSON,
+				echo.HeaderAccessControlRequestHeaders: "Special-Request-Header",
+			},
+			expectHeaders: map[string]string{
+				echo.HeaderAccessControlAllowOrigin:  "*",
+				echo.HeaderAccessControlAllowHeaders: "Special-Request-Header",
+				echo.HeaderAccessControlAllowMethods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+			},
+		},
+		{
+			name: "ok, preflight request with `AllowOrigins` which allow all subdomains aaa with *",
+			givenMW: CORSWithConfig(CORSConfig{
+				AllowOrigins: []string{"http://*.example.com"},
+			}),
+			whenMethod:    http.MethodOptions,
+			whenHeaders:   map[string]string{echo.HeaderOrigin: "http://aaa.example.com"},
+			expectHeaders: map[string]string{echo.HeaderAccessControlAllowOrigin: "http://aaa.example.com"},
+		},
+		{
+			name: "ok, preflight request with `AllowOrigins` which allow all subdomains bbb with *",
+			givenMW: CORSWithConfig(CORSConfig{
+				AllowOrigins: []string{"http://*.example.com"},
+			}),
+			whenMethod:    http.MethodOptions,
+			whenHeaders:   map[string]string{echo.HeaderOrigin: "http://bbb.example.com"},
+			expectHeaders: map[string]string{echo.HeaderAccessControlAllowOrigin: "http://bbb.example.com"},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
 
-	// Wildcard origin
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	h := CORS()(func(c echo.Context) error { return echo.ErrNotFound })
-	req.Header.Set(echo.HeaderOrigin, "localhost")
-	h(c)
-	assert.Equal(t, "*", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
+			mw := CORS()
+			if tc.givenMW != nil {
+				mw = tc.givenMW
+			}
+			h := mw(func(c echo.Context) error {
+				return nil
+			})
 
-	// Wildcard AllowedOrigin with no Origin header in request
-	req = httptest.NewRequest(http.MethodGet, "/", nil)
-	rec = httptest.NewRecorder()
-	c = e.NewContext(req, rec)
-	h = CORS()(func(c echo.Context) error { return echo.ErrNotFound })
-	h(c)
-	assert.NotContains(t, rec.Header(), echo.HeaderAccessControlAllowOrigin)
+			method := http.MethodGet
+			if tc.whenMethod != "" {
+				method = tc.whenMethod
+			}
+			req := httptest.NewRequest(method, "/", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			for k, v := range tc.whenHeaders {
+				req.Header.Set(k, v)
+			}
 
-	// Allow origins
-	req = httptest.NewRequest(http.MethodGet, "/", nil)
-	rec = httptest.NewRecorder()
-	c = e.NewContext(req, rec)
-	h = CORSWithConfig(CORSConfig{
-		AllowOrigins:     []string{"localhost"},
-		AllowCredentials: true,
-		MaxAge:           3600,
-	})(func(c echo.Context) error { return echo.ErrNotFound })
-	req.Header.Set(echo.HeaderOrigin, "localhost")
-	h(c)
-	assert.Equal(t, "localhost", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
-	assert.Equal(t, "true", rec.Header().Get(echo.HeaderAccessControlAllowCredentials))
+			err := h(c)
 
-	// Preflight request
-	req = httptest.NewRequest(http.MethodOptions, "/", nil)
-	rec = httptest.NewRecorder()
-	c = e.NewContext(req, rec)
-	req.Header.Set(echo.HeaderOrigin, "localhost")
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	cors := CORSWithConfig(CORSConfig{
-		AllowOrigins:     []string{"localhost"},
-		AllowCredentials: true,
-		MaxAge:           3600,
-	})
-	h = cors(func(c echo.Context) error { return echo.ErrNotFound })
-	h(c)
-	assert.Equal(t, "localhost", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
-	assert.NotEmpty(t, rec.Header().Get(echo.HeaderAccessControlAllowMethods))
-	assert.Equal(t, "true", rec.Header().Get(echo.HeaderAccessControlAllowCredentials))
-	assert.Equal(t, "3600", rec.Header().Get(echo.HeaderAccessControlMaxAge))
-
-	// Preflight request with `AllowOrigins` *
-	req = httptest.NewRequest(http.MethodOptions, "/", nil)
-	rec = httptest.NewRecorder()
-	c = e.NewContext(req, rec)
-	req.Header.Set(echo.HeaderOrigin, "localhost")
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	cors = CORSWithConfig(CORSConfig{
-		AllowOrigins:     []string{"*"},
-		AllowCredentials: true,
-		MaxAge:           3600,
-	})
-	h = cors(func(c echo.Context) error { return echo.ErrNotFound })
-	h(c)
-	assert.Equal(t, "localhost", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
-	assert.NotEmpty(t, rec.Header().Get(echo.HeaderAccessControlAllowMethods))
-	assert.Equal(t, "true", rec.Header().Get(echo.HeaderAccessControlAllowCredentials))
-	assert.Equal(t, "3600", rec.Header().Get(echo.HeaderAccessControlMaxAge))
-
-	// Preflight request with Access-Control-Request-Headers
-	req = httptest.NewRequest(http.MethodOptions, "/", nil)
-	rec = httptest.NewRecorder()
-	c = e.NewContext(req, rec)
-	req.Header.Set(echo.HeaderOrigin, "localhost")
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	req.Header.Set(echo.HeaderAccessControlRequestHeaders, "Special-Request-Header")
-	cors = CORSWithConfig(CORSConfig{
-		AllowOrigins: []string{"*"},
-	})
-	h = cors(func(c echo.Context) error { return echo.ErrNotFound })
-	h(c)
-	assert.Equal(t, "*", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
-	assert.Equal(t, "Special-Request-Header", rec.Header().Get(echo.HeaderAccessControlAllowHeaders))
-	assert.NotEmpty(t, rec.Header().Get(echo.HeaderAccessControlAllowMethods))
-
-	// Preflight request with `AllowOrigins` which allow all subdomains with *
-	req = httptest.NewRequest(http.MethodOptions, "/", nil)
-	rec = httptest.NewRecorder()
-	c = e.NewContext(req, rec)
-	req.Header.Set(echo.HeaderOrigin, "http://aaa.example.com")
-	cors = CORSWithConfig(CORSConfig{
-		AllowOrigins: []string{"http://*.example.com"},
-	})
-	h = cors(func(c echo.Context) error { return echo.ErrNotFound })
-	h(c)
-	assert.Equal(t, "http://aaa.example.com", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
-
-	req.Header.Set(echo.HeaderOrigin, "http://bbb.example.com")
-	h(c)
-	assert.Equal(t, "http://bbb.example.com", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
+			assert.NoError(t, err)
+			header := rec.Header()
+			for k, v := range tc.expectHeaders {
+				assert.Equal(t, v, header.Get(k), "header: `%v` should be `%v`", k, v)
+			}
+			for k, v := range tc.notExpectHeaders {
+				if v == "" {
+					assert.Len(t, header.Values(k), 0, "header: `%v` should not be set", k)
+				} else {
+					assert.NotEqual(t, v, header.Get(k), "header: `%v` should not be `%v`", k, v)
+				}
+			}
+		})
+	}
 }
 
 func Test_allowOriginScheme(t *testing.T) {
