@@ -59,7 +59,7 @@ type StartConfig struct {
 	BeforeServeFunc func(s *http.Server) error
 }
 
-// Start starts a HTTP server.
+// Start starts a HTTP(s) server.
 func (sc StartConfig) Start(e *Echo) error {
 	logger := e.Logger
 	server := http.Server{
