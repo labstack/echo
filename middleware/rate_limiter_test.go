@@ -412,7 +412,7 @@ func TestRateLimiterMemoryStore_cleanupStaleVisitors(t *testing.T) {
 
 func TestNewRateLimiterMemoryStore(t *testing.T) {
 	testCases := []struct {
-		rate              rate.Limit
+		rate              float64
 		burst             int
 		expiresIn         time.Duration
 		expectedExpiresIn time.Duration
