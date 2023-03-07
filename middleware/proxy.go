@@ -29,6 +29,17 @@ type (
 		// Required.
 		Balancer ProxyBalancer
 
+		// RetryProvider defines a provider for handling proxy requests that fail due to a ProxyTarget
+		// being unavailable. The default value is DefaultProxyRetryProvider, which will never retry
+		// failed requests.
+		//
+		// The Proxy middleware will use the configured provider to get a ProxyRetryHandler for
+		// each request. When a request to a target backend fails due to the backend being unavailable,
+		// the middleware will retry the request using the next available ProxyTarget if the provided
+		// ProxyRetryHandler returns true. If the handler returns false, the error will be returned to
+		// the client.
+		RetryProvider ProxyRetryProvider
+
 		// Rewrite defines URL path rewrite rules. The values captured in asterisk can be
 		// retrieved by index e.g. $1, $2 and so on.
 		// Examples:
@@ -76,6 +87,25 @@ type (
 		NextTarget(echo.Context) (*ProxyTarget, error)
 	}
 
+	// ProxyRetryProvider defines an interface that provides a ProxyRetryHandler.
+	ProxyRetryProvider interface {
+		RetryHandler() ProxyRetryHandler
+	}
+
+	// ProxyRetryHandler defines a function that determines if a failed request to an unavailable ProxyTarget should
+	// be retried using the next available ProxyTarget. When the function returns true, the request will be retried.
+	ProxyRetryHandler func(c echo.Context, e error) bool
+
+	// noneProxyRetryProvider implements a ProxyRetryProvider that never retries requests
+	noneProxyRetryProvider struct {
+	}
+
+	// reattemptProxyRetryProvider implements a ProxyRetryProvider that reattempts requests to unavailable
+	// backends a fixed number of times
+	reattemptProxyRetryProvider struct {
+		retries int
+	}
+
 	commonBalancer struct {
 		targets []*ProxyTarget
 		mutex   sync.Mutex
@@ -96,10 +126,14 @@ type (
 )
 
 var (
+	// DefaultProxyRetryProvider is the default ProxyRetryProvider
+	DefaultProxyRetryProvider = &noneProxyRetryProvider{}
+
 	// DefaultProxyConfig is the default Proxy middleware config.
 	DefaultProxyConfig = ProxyConfig{
-		Skipper:    DefaultSkipper,
-		ContextKey: "target",
+		Skipper:       DefaultSkipper,
+		RetryProvider: DefaultProxyRetryProvider,
+		ContextKey:    "target",
 	}
 )
 
@@ -139,6 +173,26 @@ func proxyRaw(t *ProxyTarget, c echo.Context) http.Handler {
 			c.Set("_error", fmt.Errorf("proxy raw, copy body error=%v, url=%s", t.URL, err))
 		}
 	})
+}
+
+func (r *noneProxyRetryProvider) RetryHandler() ProxyRetryHandler {
+	return func(c echo.Context, e error) bool {
+		return false
+	}
+}
+
+func (r *reattemptProxyRetryProvider) RetryHandler() ProxyRetryHandler {
+	attempts := r.retries
+	return func(c echo.Context, e error) bool {
+		attempts--
+		return attempts > 0
+	}
+}
+
+func NewReattepmtProxyRetryProvider(retries int) ProxyRetryProvider {
+	r := reattemptProxyRetryProvider{}
+	r.retries = retries
+	return &r
 }
 
 // NewRandomBalancer returns a random proxy balancer.
@@ -236,6 +290,9 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 	if config.Skipper == nil {
 		config.Skipper = DefaultProxyConfig.Skipper
 	}
+	if config.RetryProvider == nil {
+		config.RetryProvider = DefaultProxyConfig.RetryProvider
+	}
 	if config.Balancer == nil {
 		panic("echo: proxy middleware requires balancer")
 	}
@@ -251,25 +308,13 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 
 	provider, isTargetProvider := config.Balancer.(TargetProvider)
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) (err error) {
+		return func(c echo.Context) error {
 			if config.Skipper(c) {
 				return next(c)
 			}
 
 			req := c.Request()
 			res := c.Response()
-
-			var tgt *ProxyTarget
-			if isTargetProvider {
-				tgt, err = provider.NextTarget(c)
-				if err != nil {
-					return err
-				}
-			} else {
-				tgt = config.Balancer.Next(c)
-			}
-			c.Set(config.ContextKey, tgt)
-
 			if err := rewriteURL(config.RegexRewrite, req); err != nil {
 				return err
 			}
@@ -287,19 +332,55 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 				req.Header.Set(echo.HeaderXForwardedFor, c.RealIP())
 			}
 
-			// Proxy
-			switch {
-			case c.IsWebSocket():
-				proxyRaw(tgt, c).ServeHTTP(res, req)
-			case req.Header.Get(echo.HeaderAccept) == "text/event-stream":
-			default:
-				proxyHTTP(tgt, c, config).ServeHTTP(res, req)
-			}
-			if e, ok := c.Get("_error").(error); ok {
-				err = e
-			}
+			retryHandler := config.RetryProvider.RetryHandler()
+			for {
+				var tgt *ProxyTarget
+				var err error
+				if isTargetProvider {
+					tgt, err = provider.NextTarget(c)
+					if err != nil {
+						return err
+					}
+				} else {
+					tgt = config.Balancer.Next(c)
+				}
+				c.Set(config.ContextKey, tgt)
 
-			return
+				// Proxy
+				switch {
+				case c.IsWebSocket():
+					proxyRaw(tgt, c).ServeHTTP(res, req)
+				case req.Header.Get(echo.HeaderAccept) == "text/event-stream":
+				default:
+					proxyHTTP(tgt, c, config).ServeHTTP(res, req)
+				}
+
+				//If there was no error, return
+				e, hasError := c.Get("_error").(error)
+				if !hasError {
+					return nil
+				}
+
+				retry := false
+				if httpErr, ok := e.(*echo.HTTPError); ok {
+					//If the error was http.StatusBadGateway, check the retry handler to
+					//determine if this request should be retried with the next available
+					//ProxyTarget
+					if httpErr.Code == http.StatusBadGateway {
+						retry = retryHandler(c, e)
+					}
+				}
+
+				//If we are not retrying this request, return the error
+				if !retry {
+					return e
+				}
+
+				//Otherwise, try again. Clear the previous error and target
+				//server from context.
+				c.Set("_error", nil)
+				c.Set(config.ContextKey, nil)
+			}
 		}
 	}
 }
