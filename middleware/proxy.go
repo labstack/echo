@@ -29,15 +29,16 @@ type (
 		// Required.
 		Balancer ProxyBalancer
 
-		// RetryCount defines the number of times a proxied request to an unavailable ProxyTarget
-		// should be retried using the next available ProxyTarget. Defaults to 0, meaning requests
-		// are never retried.
+		// RetryCount defines the number of times a proxied request to an unavailable
+		// ProxyTarget should be retried using the next available ProxyTarget. Defaults
+		// to 0, meaning requests are never retried.
 		RetryCount int
 
-		// RetryHandler defines a function used to determine if a failed request to an unavailable ProxyTarget
-		// should be retried. The RetryHandler will only be called when the number of previous retries is less
-		// than RetryCount. If the function returns true, the request will be retried. When not specified,
-		// DefaultProxyRetryHandler will be used, which will always retry requests. A user defined ProxyRetryHandler
+		// RetryHandler defines a function used to determine if a failed request to an
+		// unavailable ProxyTarget should be retried. The RetryHandler will only be called
+		// when the number of previous retries is less than RetryCount. If the function returns
+		// true, the request will be retried. When not specified, DefaultProxyRetryHandler
+		// will be used, which will always retry requests. A user defined ProxyRetryHandler
 		// can be provided to only retry specific requests, for example only retry GET requests.
 		RetryHandler ProxyRetryHandler
 
@@ -83,13 +84,15 @@ type (
 		Next(echo.Context) *ProxyTarget
 	}
 
-	// TargetProvider defines an interface that gives the opportunity for balancer to return custom errors when selecting target.
+	// TargetProvider defines an interface that gives the opportunity for balancer
+	// to return custom errors when selecting target.
 	TargetProvider interface {
 		NextTarget(echo.Context) (*ProxyTarget, error)
 	}
 
-	// ProxyRetryHandler defines a function that determines if a failed request to an unavailable ProxyTarget should
-	// be retried using the next available ProxyTarget. When the function returns true, the request will be retried.
+	// ProxyRetryHandler defines a function that determines if a failed request to
+	// an unavailable ProxyTarget should be retried using the next available ProxyTarget.
+	// When the function returns true, the request will be retried.
 	ProxyRetryHandler func(c echo.Context) bool
 
 	commonBalancer struct {
@@ -159,7 +162,7 @@ func proxyRaw(t *ProxyTarget, c echo.Context) http.Handler {
 }
 
 // DefaultProxyRetryHandler is a ProxyRetryHandler that always retries requests
-func DefaultProxyRetryHandler(_ echo.Context) bool {
+func DefaultProxyRetryHandler(c echo.Context) bool {
 	return true
 }
 
@@ -322,7 +325,6 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 					proxyHTTP(tgt, c, config).ServeHTTP(res, req)
 				}
 
-				//If there was no error, return
 				e, hasError := c.Get("_error").(error)
 				if !hasError {
 					return nil
@@ -335,14 +337,13 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 					}
 				}
 
-				//If we are not retrying this request, return the error
 				if !retry {
 					return e
 				}
 
 				retries--
 
-				//Otherwise, try again. Clear the previous error and target
+				//Try request again. Clear the previous error and target
 				//server from context.
 				c.Set("_error", nil)
 				c.Set(config.ContextKey, nil)

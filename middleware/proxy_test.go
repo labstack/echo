@@ -494,7 +494,7 @@ func TestProxyRetries(t *testing.T) {
 			http.StatusBadGateway,
 		},
 		{
-			"retry count 2 returns error when retries left by handler returns false",
+			"retry count 2 returns error when retries left but handler returns false",
 			3,
 			[]ProxyRetryHandler{
 				doRetryHandler,
