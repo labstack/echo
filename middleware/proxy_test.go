@@ -393,6 +393,189 @@ func TestProxyError(t *testing.T) {
 	assert.Equal(t, http.StatusBadGateway, rec.Code)
 }
 
+func TestProxyRetries(t *testing.T) {
+
+	newServer := func(res int) (*url.URL, *httptest.Server) {
+		server := httptest.NewServer(
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(res)
+			}),
+		)
+		targetUrl, _ := url.Parse(server.URL)
+		return targetUrl, server
+	}
+
+	targetUrl, server := newServer(http.StatusOK)
+	defer server.Close()
+	goodTarget := &ProxyTarget{
+		Name: "Good",
+		URL:  targetUrl,
+	}
+
+	targetUrl, server = newServer(http.StatusBadRequest)
+	defer server.Close()
+	goodTargetWith40X := &ProxyTarget{
+		Name: "Good with 40X",
+		URL:  targetUrl,
+	}
+
+	targetUrl, _ = url.Parse("http://127.0.0.1:27121")
+	badTarget := &ProxyTarget{
+		Name: "Bad",
+		URL:  targetUrl,
+	}
+
+	var doRetryHandler ProxyRetryHandler = func(c echo.Context) bool { return true }
+	var dontRetryHandler ProxyRetryHandler = func(c echo.Context) bool { return false }
+
+	testCases := []struct {
+		name             string
+		retryCount       int
+		retryHandlers    []ProxyRetryHandler
+		targets          []*ProxyTarget
+		expectedResponse int
+	}{
+		{
+			"retry count 0 does not attempt retry on fail",
+			0,
+			nil,
+			[]*ProxyTarget{
+				badTarget,
+				goodTarget,
+			},
+			http.StatusBadGateway,
+		},
+		{
+			"retry count 1 does not attempt retry on success",
+			1,
+			nil,
+			[]*ProxyTarget{
+				goodTarget,
+			},
+			http.StatusOK,
+		},
+		{
+			"retry count 1 does retry on handler return true",
+			1,
+			[]ProxyRetryHandler{
+				doRetryHandler,
+			},
+			[]*ProxyTarget{
+				badTarget,
+				goodTarget,
+			},
+			http.StatusOK,
+		},
+		{
+			"retry count 1 does not retry on handler return false",
+			1,
+			[]ProxyRetryHandler{
+				dontRetryHandler,
+			},
+			[]*ProxyTarget{
+				badTarget,
+				goodTarget,
+			},
+			http.StatusBadGateway,
+		},
+		{
+			"retry count 2 returns error when no more retries left",
+			2,
+			[]ProxyRetryHandler{
+				doRetryHandler,
+				doRetryHandler,
+			},
+			[]*ProxyTarget{
+				badTarget,
+				badTarget,
+				badTarget,
+				goodTarget, //Should never be reached as only 2 retries
+			},
+			http.StatusBadGateway,
+		},
+		{
+			"retry count 2 returns error when retries left by handler returns false",
+			3,
+			[]ProxyRetryHandler{
+				doRetryHandler,
+				doRetryHandler,
+				dontRetryHandler,
+			},
+			[]*ProxyTarget{
+				badTarget,
+				badTarget,
+				badTarget,
+				goodTarget, //Should never be reached as retry handler returns false on 2nd check
+			},
+			http.StatusBadGateway,
+		},
+		{
+			"retry count 3 succeeds",
+			3,
+			[]ProxyRetryHandler{
+				doRetryHandler,
+				doRetryHandler,
+				doRetryHandler,
+			},
+			[]*ProxyTarget{
+				badTarget,
+				badTarget,
+				badTarget,
+				goodTarget,
+			},
+			http.StatusOK,
+		},
+		{
+			"40x responses are not retried",
+			1,
+			nil,
+			[]*ProxyTarget{
+				goodTargetWith40X,
+				goodTarget,
+			},
+			http.StatusBadRequest,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+
+			retryHandlerCall := 0
+			retryHandler := func(c echo.Context) bool {
+				if len(tc.retryHandlers) == 0 {
+					assert.FailNow(t, fmt.Sprintf("unexpected calls, %d, to retry handler", retryHandlerCall))
+				}
+
+				retryHandlerCall++
+
+				nextRetryHandler := tc.retryHandlers[0]
+				tc.retryHandlers = tc.retryHandlers[1:]
+
+				return nextRetryHandler(c)
+			}
+
+			e := echo.New()
+			e.Use(ProxyWithConfig(
+				ProxyConfig{
+					Balancer:     NewRoundRobinBalancer(tc.targets),
+					RetryCount:   tc.retryCount,
+					RetryHandler: retryHandler,
+				},
+			))
+
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, tc.expectedResponse, rec.Code)
+			if len(tc.retryHandlers) > 0 {
+				assert.FailNow(t, fmt.Sprintf("expected %d more retry handler calls", len(tc.retryHandlers)))
+			}
+		})
+	}
+}
+
 func TestClientCancelConnectionResultsHTTPCode499(t *testing.T) {
 	var timeoutStop sync.WaitGroup
 	timeoutStop.Add(1)
