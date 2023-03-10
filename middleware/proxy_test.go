@@ -425,13 +425,13 @@ func TestProxyRetries(t *testing.T) {
 		URL:  targetUrl,
 	}
 
-	var doRetryHandler ProxyRetryHandler = func(c echo.Context) bool { return true }
-	var dontRetryHandler ProxyRetryHandler = func(c echo.Context) bool { return false }
+	var alwaysRetryFilter ProxyRetryFilter = func(c echo.Context) bool { return true }
+	var neverRetryFilter ProxyRetryFilter = func(c echo.Context) bool { return false }
 
 	testCases := []struct {
 		name             string
 		retryCount       int
-		retryHandlers    []ProxyRetryHandler
+		retryFilters     []ProxyRetryFilter
 		targets          []*ProxyTarget
 		expectedResponse int
 	}{
@@ -457,8 +457,8 @@ func TestProxyRetries(t *testing.T) {
 		{
 			"retry count 1 does retry on handler return true",
 			1,
-			[]ProxyRetryHandler{
-				doRetryHandler,
+			[]ProxyRetryFilter{
+				alwaysRetryFilter,
 			},
 			[]*ProxyTarget{
 				badTarget,
@@ -469,8 +469,8 @@ func TestProxyRetries(t *testing.T) {
 		{
 			"retry count 1 does not retry on handler return false",
 			1,
-			[]ProxyRetryHandler{
-				dontRetryHandler,
+			[]ProxyRetryFilter{
+				neverRetryFilter,
 			},
 			[]*ProxyTarget{
 				badTarget,
@@ -481,9 +481,9 @@ func TestProxyRetries(t *testing.T) {
 		{
 			"retry count 2 returns error when no more retries left",
 			2,
-			[]ProxyRetryHandler{
-				doRetryHandler,
-				doRetryHandler,
+			[]ProxyRetryFilter{
+				alwaysRetryFilter,
+				alwaysRetryFilter,
 			},
 			[]*ProxyTarget{
 				badTarget,
@@ -496,10 +496,10 @@ func TestProxyRetries(t *testing.T) {
 		{
 			"retry count 2 returns error when retries left but handler returns false",
 			3,
-			[]ProxyRetryHandler{
-				doRetryHandler,
-				doRetryHandler,
-				dontRetryHandler,
+			[]ProxyRetryFilter{
+				alwaysRetryFilter,
+				alwaysRetryFilter,
+				neverRetryFilter,
 			},
 			[]*ProxyTarget{
 				badTarget,
@@ -512,10 +512,10 @@ func TestProxyRetries(t *testing.T) {
 		{
 			"retry count 3 succeeds",
 			3,
-			[]ProxyRetryHandler{
-				doRetryHandler,
-				doRetryHandler,
-				doRetryHandler,
+			[]ProxyRetryFilter{
+				alwaysRetryFilter,
+				alwaysRetryFilter,
+				alwaysRetryFilter,
 			},
 			[]*ProxyTarget{
 				badTarget,
@@ -540,26 +540,26 @@ func TestProxyRetries(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
-			retryHandlerCall := 0
-			retryHandler := func(c echo.Context) bool {
-				if len(tc.retryHandlers) == 0 {
-					assert.FailNow(t, fmt.Sprintf("unexpected calls, %d, to retry handler", retryHandlerCall))
+			retryFilterCall := 0
+			retryFilter := func(c echo.Context) bool {
+				if len(tc.retryFilters) == 0 {
+					assert.FailNow(t, fmt.Sprintf("unexpected calls, %d, to retry handler", retryFilterCall))
 				}
 
-				retryHandlerCall++
+				retryFilterCall++
 
-				nextRetryHandler := tc.retryHandlers[0]
-				tc.retryHandlers = tc.retryHandlers[1:]
+				nextRetryFilter := tc.retryFilters[0]
+				tc.retryFilters = tc.retryFilters[1:]
 
-				return nextRetryHandler(c)
+				return nextRetryFilter(c)
 			}
 
 			e := echo.New()
 			e.Use(ProxyWithConfig(
 				ProxyConfig{
-					Balancer:     NewRoundRobinBalancer(tc.targets),
-					RetryCount:   tc.retryCount,
-					RetryHandler: retryHandler,
+					Balancer:    NewRoundRobinBalancer(tc.targets),
+					RetryCount:  tc.retryCount,
+					RetryFilter: retryFilter,
 				},
 			))
 
@@ -569,8 +569,8 @@ func TestProxyRetries(t *testing.T) {
 			e.ServeHTTP(rec, req)
 
 			assert.Equal(t, tc.expectedResponse, rec.Code)
-			if len(tc.retryHandlers) > 0 {
-				assert.FailNow(t, fmt.Sprintf("expected %d more retry handler calls", len(tc.retryHandlers)))
+			if len(tc.retryFilters) > 0 {
+				assert.FailNow(t, fmt.Sprintf("expected %d more retry handler calls", len(tc.retryFilters)))
 			}
 		})
 	}

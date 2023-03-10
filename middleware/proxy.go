@@ -34,13 +34,13 @@ type (
 		// to 0, meaning requests are never retried.
 		RetryCount int
 
-		// RetryHandler defines a function used to determine if a failed request to an
-		// unavailable ProxyTarget should be retried. The RetryHandler will only be called
+		// RetryFilter defines a function used to determine if a failed request to an
+		// unavailable ProxyTarget should be retried. The RetryFilter will only be called
 		// when the number of previous retries is less than RetryCount. If the function returns
-		// true, the request will be retried. When not specified, DefaultProxyRetryHandler
-		// will be used, which will always retry requests. A user defined ProxyRetryHandler
+		// true, the request will be retried. When not specified, DefaultProxyRetryFilter
+		// will be used, which will always retry requests. A user defined ProxyRetryFilter
 		// can be provided to only retry specific requests, for example only retry GET requests.
-		RetryHandler ProxyRetryHandler
+		RetryFilter ProxyRetryFilter
 
 		// Rewrite defines URL path rewrite rules. The values captured in asterisk can be
 		// retrieved by index e.g. $1, $2 and so on.
@@ -90,10 +90,10 @@ type (
 		NextTarget(echo.Context) (*ProxyTarget, error)
 	}
 
-	// ProxyRetryHandler defines a function that determines if a failed request to
+	// ProxyRetryFilter defines a function that determines if a failed request to
 	// an unavailable ProxyTarget should be retried using the next available ProxyTarget.
 	// When the function returns true, the request will be retried.
-	ProxyRetryHandler func(c echo.Context) bool
+	ProxyRetryFilter func(c echo.Context) bool
 
 	commonBalancer struct {
 		targets []*ProxyTarget
@@ -117,9 +117,9 @@ type (
 var (
 	// DefaultProxyConfig is the default Proxy middleware config.
 	DefaultProxyConfig = ProxyConfig{
-		Skipper:      DefaultSkipper,
-		ContextKey:   "target",
-		RetryHandler: DefaultProxyRetryHandler,
+		Skipper:     DefaultSkipper,
+		ContextKey:  "target",
+		RetryFilter: DefaultProxyRetryFilter,
 	}
 )
 
@@ -161,8 +161,8 @@ func proxyRaw(t *ProxyTarget, c echo.Context) http.Handler {
 	})
 }
 
-// DefaultProxyRetryHandler is a ProxyRetryHandler that always retries requests
-func DefaultProxyRetryHandler(c echo.Context) bool {
+// DefaultProxyRetryFilter is a ProxyRetryFilter that always retries requests
+func DefaultProxyRetryFilter(c echo.Context) bool {
 	return true
 }
 
@@ -264,8 +264,8 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 	if config.Skipper == nil {
 		config.Skipper = DefaultProxyConfig.Skipper
 	}
-	if config.RetryHandler == nil {
-		config.RetryHandler = DefaultProxyConfig.RetryHandler
+	if config.RetryFilter == nil {
+		config.RetryFilter = DefaultProxyConfig.RetryFilter
 	}
 	if config.Rewrite != nil {
 		if config.RegexRewrite == nil {
@@ -333,7 +333,7 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 				retry := false
 				if httpErr, ok := e.(*echo.HTTPError); ok {
 					if httpErr.Code == http.StatusBadGateway {
-						retry = retries > 0 && config.RetryHandler(c)
+						retry = retries > 0 && config.RetryFilter(c)
 					}
 				}
 
