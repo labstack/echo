@@ -436,104 +436,100 @@ func TestProxyRetries(t *testing.T) {
 		expectedResponse int
 	}{
 		{
-			"retry count 0 does not attempt retry on fail",
-			0,
-			nil,
-			[]*ProxyTarget{
+			name: "retry count 0 does not attempt retry on fail",
+			targets: []*ProxyTarget{
 				badTarget,
 				goodTarget,
 			},
-			http.StatusBadGateway,
+			expectedResponse: http.StatusBadGateway,
 		},
 		{
-			"retry count 1 does not attempt retry on success",
-			1,
-			nil,
-			[]*ProxyTarget{
+			name:       "retry count 1 does not attempt retry on success",
+			retryCount: 1,
+			targets: []*ProxyTarget{
 				goodTarget,
 			},
-			http.StatusOK,
+			expectedResponse: http.StatusOK,
 		},
 		{
-			"retry count 1 does retry on handler return true",
-			1,
-			[]ProxyRetryFilter{
+			name:       "retry count 1 does retry on handler return true",
+			retryCount: 1,
+			retryFilters: []ProxyRetryFilter{
 				alwaysRetryFilter,
 			},
-			[]*ProxyTarget{
+			targets: []*ProxyTarget{
 				badTarget,
 				goodTarget,
 			},
-			http.StatusOK,
+			expectedResponse: http.StatusOK,
 		},
 		{
-			"retry count 1 does not retry on handler return false",
-			1,
-			[]ProxyRetryFilter{
+			name:       "retry count 1 does not retry on handler return false",
+			retryCount: 1,
+			retryFilters: []ProxyRetryFilter{
 				neverRetryFilter,
 			},
-			[]*ProxyTarget{
+			targets: []*ProxyTarget{
 				badTarget,
 				goodTarget,
 			},
-			http.StatusBadGateway,
+			expectedResponse: http.StatusBadGateway,
 		},
 		{
-			"retry count 2 returns error when no more retries left",
-			2,
-			[]ProxyRetryFilter{
+			name:       "retry count 2 returns error when no more retries left",
+			retryCount: 2,
+			retryFilters: []ProxyRetryFilter{
 				alwaysRetryFilter,
 				alwaysRetryFilter,
 			},
-			[]*ProxyTarget{
+			targets: []*ProxyTarget{
 				badTarget,
 				badTarget,
 				badTarget,
 				goodTarget, //Should never be reached as only 2 retries
 			},
-			http.StatusBadGateway,
+			expectedResponse: http.StatusBadGateway,
 		},
 		{
-			"retry count 2 returns error when retries left but handler returns false",
-			3,
-			[]ProxyRetryFilter{
+			name:       "retry count 2 returns error when retries left but handler returns false",
+			retryCount: 3,
+			retryFilters: []ProxyRetryFilter{
 				alwaysRetryFilter,
 				alwaysRetryFilter,
 				neverRetryFilter,
 			},
-			[]*ProxyTarget{
+			targets: []*ProxyTarget{
 				badTarget,
 				badTarget,
 				badTarget,
 				goodTarget, //Should never be reached as retry handler returns false on 2nd check
 			},
-			http.StatusBadGateway,
+			expectedResponse: http.StatusBadGateway,
 		},
 		{
-			"retry count 3 succeeds",
-			3,
-			[]ProxyRetryFilter{
+			name:       "retry count 3 succeeds",
+			retryCount: 3,
+			retryFilters: []ProxyRetryFilter{
 				alwaysRetryFilter,
 				alwaysRetryFilter,
 				alwaysRetryFilter,
 			},
-			[]*ProxyTarget{
+			targets: []*ProxyTarget{
 				badTarget,
 				badTarget,
 				badTarget,
 				goodTarget,
 			},
-			http.StatusOK,
+			expectedResponse: http.StatusOK,
 		},
 		{
-			"40x responses are not retried",
-			1,
-			nil,
-			[]*ProxyTarget{
+			name:       "40x responses are not retried",
+			retryCount: 1,
+			targets: []*ProxyTarget{
 				goodTargetWith40X,
 				goodTarget,
 			},
-			http.StatusBadRequest,
+			expectedResponse: http.StatusBadRequest,
 		},
 	}
 
