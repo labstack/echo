@@ -36,11 +36,11 @@ type (
 
 		// RetryFilter defines a function used to determine if a failed request to an
 		// unavailable ProxyTarget should be retried. The RetryFilter will only be called
-		// when the number of previous retries is less than RetryCount. If the function returns
-		// true, the request will be retried. When not specified, DefaultProxyRetryFilter
-		// will be used, which will always retry requests. A user defined ProxyRetryFilter
-		// can be provided to only retry specific requests, for example only retry GET requests.
-		RetryFilter ProxyRetryFilter
+		// when the number of previous retries is less than RetryCount. If the function
+		// returns true, the request will be retried. When not specified, all fail requests
+		// will be retried. A user custom RetryFilter can be provided to only retry specific
+		// requests, for example only retry GET requests.
+		RetryFilter func(c echo.Context) bool
 
 		// Rewrite defines URL path rewrite rules. The values captured in asterisk can be
 		// retrieved by index e.g. $1, $2 and so on.
@@ -90,11 +90,6 @@ type (
 		NextTarget(echo.Context) (*ProxyTarget, error)
 	}
 
-	// ProxyRetryFilter defines a function that determines if a failed request to
-	// an unavailable ProxyTarget should be retried using the next available ProxyTarget.
-	// When the function returns true, the request will be retried.
-	ProxyRetryFilter func(c echo.Context) bool
-
 	commonBalancer struct {
 		targets []*ProxyTarget
 		mutex   sync.Mutex
@@ -117,9 +112,8 @@ type (
 var (
 	// DefaultProxyConfig is the default Proxy middleware config.
 	DefaultProxyConfig = ProxyConfig{
-		Skipper:     DefaultSkipper,
-		ContextKey:  "target",
-		RetryFilter: DefaultProxyRetryFilter,
+		Skipper:    DefaultSkipper,
+		ContextKey: "target",
 	}
 )
 
@@ -159,11 +153,6 @@ func proxyRaw(t *ProxyTarget, c echo.Context) http.Handler {
 			c.Set("_error", fmt.Errorf("proxy raw, copy body error=%v, url=%s", t.URL, err))
 		}
 	})
-}
-
-// DefaultProxyRetryFilter is a ProxyRetryFilter that always retries requests
-func DefaultProxyRetryFilter(c echo.Context) bool {
-	return true
 }
 
 // NewRandomBalancer returns a random proxy balancer.
@@ -265,7 +254,9 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 		config.Skipper = DefaultProxyConfig.Skipper
 	}
 	if config.RetryFilter == nil {
-		config.RetryFilter = DefaultProxyConfig.RetryFilter
+		config.RetryFilter = func(c echo.Context) bool {
+			return true
+		}
 	}
 	if config.Rewrite != nil {
 		if config.RegexRewrite == nil {

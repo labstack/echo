@@ -425,13 +425,13 @@ func TestProxyRetries(t *testing.T) {
 		URL:  targetUrl,
 	}
 
-	var alwaysRetryFilter ProxyRetryFilter = func(c echo.Context) bool { return true }
-	var neverRetryFilter ProxyRetryFilter = func(c echo.Context) bool { return false }
+	alwaysRetryFilter := func(c echo.Context) bool { return true }
+	neverRetryFilter := func(c echo.Context) bool { return false }
 
 	testCases := []struct {
 		name             string
 		retryCount       int
-		retryFilters     []ProxyRetryFilter
+		retryFilters     []func(c echo.Context) bool
 		targets          []*ProxyTarget
 		expectedResponse int
 	}{
@@ -454,7 +454,7 @@ func TestProxyRetries(t *testing.T) {
 		{
 			name:       "retry count 1 does retry on handler return true",
 			retryCount: 1,
-			retryFilters: []ProxyRetryFilter{
+			retryFilters: []func(c echo.Context) bool{
 				alwaysRetryFilter,
 			},
 			targets: []*ProxyTarget{
@@ -466,7 +466,7 @@ func TestProxyRetries(t *testing.T) {
 		{
 			name:       "retry count 1 does not retry on handler return false",
 			retryCount: 1,
-			retryFilters: []ProxyRetryFilter{
+			retryFilters: []func(c echo.Context) bool{
 				neverRetryFilter,
 			},
 			targets: []*ProxyTarget{
@@ -478,7 +478,7 @@ func TestProxyRetries(t *testing.T) {
 		{
 			name:       "retry count 2 returns error when no more retries left",
 			retryCount: 2,
-			retryFilters: []ProxyRetryFilter{
+			retryFilters: []func(c echo.Context) bool{
 				alwaysRetryFilter,
 				alwaysRetryFilter,
 			},
@@ -493,7 +493,7 @@ func TestProxyRetries(t *testing.T) {
 		{
 			name:       "retry count 2 returns error when retries left but handler returns false",
 			retryCount: 3,
-			retryFilters: []ProxyRetryFilter{
+			retryFilters: []func(c echo.Context) bool{
 				alwaysRetryFilter,
 				alwaysRetryFilter,
 				neverRetryFilter,
@@ -509,7 +509,7 @@ func TestProxyRetries(t *testing.T) {
 		{
 			name:       "retry count 3 succeeds",
 			retryCount: 3,
-			retryFilters: []ProxyRetryFilter{
+			retryFilters: []func(c echo.Context) bool{
 				alwaysRetryFilter,
 				alwaysRetryFilter,
 				alwaysRetryFilter,
