@@ -159,7 +159,10 @@ func (r *Router) Reverse(name string, params ...interface{}) string {
 	for _, route := range r.routes {
 		if route.Name == name {
 			for i, l := 0, len(route.Path); i < l; i++ {
-				if (route.Path[i] == ':' || route.Path[i] == '*') && n < ln {
+				if route.Path[i] == '\\' {
+					continue
+				}
+				if ((route.Path[i] == ':' && route.Path[i-1] != '\\') || route.Path[i] == '*') && n < ln {
 					for ; i < l && route.Path[i] != '/'; i++ {
 					}
 					uri.WriteString(fmt.Sprintf("%v", params[n]))
