@@ -593,9 +593,7 @@ func TestProxyErrorHandler(t *testing.T) {
 	}
 
 	transformedError := errors.New("a new error")
-	//Not called when no error
-	//Called when error and returned error passed to central
-	//
+
 	testCases := []struct {
 		name             string
 		target           *ProxyTarget
