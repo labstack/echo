@@ -45,6 +45,15 @@ type (
 		// cannot be retried.
 		RetryFilter func(c echo.Context, e error) bool
 
+		// ErrorHandler defines a function which can be used to return custom errors from
+		// the Proxy middleware. ErrorHandler is only invoked when there has been
+		// either an internal error in the Proxy middleware or the ProxyTarget is
+		// unavailable. Due to the way requests are proxied, ErrorHandler is not invoked
+		// when a Proxy target returns a non-200 response. In these cases, the response
+		// is already written so errors cannot be modified. ErrorHandler is only
+		// invoked after all retry attempts have been exhausted.
+		ErrorHandler func(c echo.Context, err error) error
+
 		// Rewrite defines URL path rewrite rules. The values captured in asterisk can be
 		// retrieved by index e.g. $1, $2 and so on.
 		// Examples:
@@ -264,6 +273,11 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 			return false
 		}
 	}
+	if config.ErrorHandler == nil {
+		config.ErrorHandler = func(c echo.Context, err error) error {
+			return err
+		}
+	}
 	if config.Rewrite != nil {
 		if config.RegexRewrite == nil {
 			config.RegexRewrite = make(map[*regexp.Regexp]string)
@@ -274,6 +288,7 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 	}
 
 	provider, isTargetProvider := config.Balancer.(TargetProvider)
+
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			if config.Skipper(c) {
@@ -283,7 +298,7 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 			req := c.Request()
 			res := c.Response()
 			if err := rewriteURL(config.RegexRewrite, req); err != nil {
-				return err
+				return config.ErrorHandler(c, err)
 			}
 
 			// Fix header
@@ -306,7 +321,7 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 				if isTargetProvider {
 					tgt, err = provider.NextTarget(c)
 					if err != nil {
-						return err
+						return config.ErrorHandler(c, err)
 					}
 				} else {
 					tgt = config.Balancer.Next(c)
@@ -322,14 +337,14 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 					proxyHTTP(tgt, c, config).ServeHTTP(res, req)
 				}
 
-				e, hasError := c.Get("_error").(error)
+				err, hasError := c.Get("_error").(error)
 				if !hasError {
 					return nil
 				}
 
-				retry := retries > 0 && config.RetryFilter(c, e)
+				retry := retries > 0 && config.RetryFilter(c, err)
 				if !retry {
-					return e
+					return config.ErrorHandler(c, err)
 				}
 
 				retries--

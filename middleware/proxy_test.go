@@ -3,6 +3,7 @@ package middleware
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -568,6 +569,88 @@ func TestProxyRetries(t *testing.T) {
 			if len(tc.retryFilters) > 0 {
 				assert.FailNow(t, fmt.Sprintf("expected %d more retry handler calls", len(tc.retryFilters)))
 			}
+		})
+	}
+}
+
+func TestProxyErrorHandler(t *testing.T) {
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	goodUrl, _ := url.Parse(server.URL)
+	defer server.Close()
+	goodTarget := &ProxyTarget{
+		Name: "Good",
+		URL:  goodUrl,
+	}
+
+	badUrl, _ := url.Parse("http://127.0.0.1:27121")
+	badTarget := &ProxyTarget{
+		Name: "Bad",
+		URL:  badUrl,
+	}
+
+	transformedError := errors.New("a new error")
+	//Not called when no error
+	//Called when error and returned error passed to central
+	//
+	testCases := []struct {
+		name             string
+		target           *ProxyTarget
+		errorHandler     func(c echo.Context, e error) error
+		expectFinalError func(t *testing.T, err error)
+	}{
+		{
+			name:   "Error handler not invoked when request success",
+			target: goodTarget,
+			errorHandler: func(c echo.Context, e error) error {
+				assert.FailNow(t, "error handler should not be invoked")
+				return e
+			},
+		},
+		{
+			name:   "Error handler invoked when request fails",
+			target: badTarget,
+			errorHandler: func(c echo.Context, e error) error {
+				httpErr, ok := e.(*echo.HTTPError)
+				assert.True(t, ok, "expected http error to be passed to handler")
+				assert.Equal(t, http.StatusBadGateway, httpErr.Code, "expected http bad gateway error to be passed to handler")
+				return transformedError
+			},
+			expectFinalError: func(t *testing.T, err error) {
+				assert.Equal(t, transformedError, err, "transformed error not returned from proxy")
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+			e.Use(ProxyWithConfig(
+				ProxyConfig{
+					Balancer:     NewRoundRobinBalancer([]*ProxyTarget{tc.target}),
+					ErrorHandler: tc.errorHandler,
+				},
+			))
+
+			errorHandlerCalled := false
+			e.HTTPErrorHandler = func(err error, c echo.Context) {
+				errorHandlerCalled = true
+				tc.expectFinalError(t, err)
+				e.DefaultHTTPErrorHandler(err, c)
+			}
+
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+
+			e.ServeHTTP(rec, req)
+
+			if !errorHandlerCalled && tc.expectFinalError != nil {
+				t.Fatalf("error handler was not called")
+			}
+
 		})
 	}
 }
