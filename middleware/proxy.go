@@ -29,27 +29,29 @@ type (
 		// Required.
 		Balancer ProxyBalancer
 
-		// RetryCount defines the number of times a proxied request to an unavailable
-		// ProxyTarget should be retried using the next available ProxyTarget. Defaults
-		// to 0, meaning requests are never retried.
+		// RetryCount defines the number of times a failed proxied request should be retried
+		// using the next available ProxyTarget. Defaults to 0, meaning requests are never retried.
 		RetryCount int
 
-		// RetryFilter defines a function used to determine if a failed request to an
-		// unavailable ProxyTarget should be retried. The RetryFilter will only be called
-		// when the number of previous retries is less than RetryCount. If the function
-		// returns true, the request will be retried. When not specified, all requests that
-		// fail with http.StatusBadGateway error will be retried. A custom RetryFilter can
-		// be provided to only retry specific requests. Note that RetryFilter is only
-		// called when the request to the target fails, or an internal error in the Proxy
-		// middleware has occurred. Successful requests that return a non-200 response code
-		// cannot be retried.
+		// RetryFilter defines a function used to determine if a failed request to a
+		// ProxyTarget should be retried. The RetryFilter will only be called when the number
+		// of previous retries is less than RetryCount. If the function returns true, the
+		// request will be retried. The provided error indicates the reason for the request
+		// failure. When the ProxyTarget is unavailable, the error will be an instance of
+		// echo.HTTPError with a Code of http.StatusBadGateway. In all other cases, the error
+		// will indicate an internal error in the Proxy middleware. When a RetryFilter is not
+		// specified, all requests that fail with http.StatusBadGateway will be retried. A custom
+		// RetryFilter can be provided to only retry specific requests. Note that RetryFilter is
+		// only called when the request to the target fails, or an internal error in the Proxy
+		// middleware has occurred. Successful requests that return a non-200 response code cannot
+		// be retried.
 		RetryFilter func(c echo.Context, e error) bool
 
 		// ErrorHandler defines a function which can be used to return custom errors from
 		// the Proxy middleware. ErrorHandler is only invoked when there has been
 		// either an internal error in the Proxy middleware or the ProxyTarget is
 		// unavailable. Due to the way requests are proxied, ErrorHandler is not invoked
-		// when a Proxy target returns a non-200 response. In these cases, the response
+		// when a ProxyTarget returns a non-200 response. In these cases, the response
 		// is already written so errors cannot be modified. ErrorHandler is only
 		// invoked after all retry attempts have been exhausted.
 		ErrorHandler func(c echo.Context, err error) error
