@@ -329,11 +329,14 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 					tgt = config.Balancer.Next(c)
 				}
 
-				//Clear any previous errors from context here so
-				//that balancers have the option to check for errors
-				//using previous target
 				c.Set(config.ContextKey, tgt)
-				c.Set("_error", nil)
+
+				//If retrying a failed request, clear any previous errors from
+				//context here so that balancers have the option to check for
+				//errors that occurred using previous target
+				if retries < config.RetryCount {
+					c.Set("_error", nil)
+				}
 
 				// Proxy
 				switch {
