@@ -326,7 +326,12 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 				} else {
 					tgt = config.Balancer.Next(c)
 				}
+
+				//Clear any previous errors from context here so
+				//that balancers have the option to check for errors
+				//using previous target
 				c.Set(config.ContextKey, tgt)
+				c.Set("_error", nil)
 
 				// Proxy
 				switch {
@@ -348,11 +353,6 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 				}
 
 				retries--
-
-				//Try request again. Clear the previous error and target
-				//server from context.
-				c.Set("_error", nil)
-				c.Set(config.ContextKey, nil)
 			}
 		}
 	}
