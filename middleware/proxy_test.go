@@ -425,13 +425,13 @@ func TestProxyRetries(t *testing.T) {
 		URL:  targetUrl,
 	}
 
-	alwaysRetryFilter := func(c echo.Context) bool { return true }
-	neverRetryFilter := func(c echo.Context) bool { return false }
+	alwaysRetryFilter := func(c echo.Context, e error) bool { return true }
+	neverRetryFilter := func(c echo.Context, e error) bool { return false }
 
 	testCases := []struct {
 		name             string
 		retryCount       int
-		retryFilters     []func(c echo.Context) bool
+		retryFilters     []func(c echo.Context, e error) bool
 		targets          []*ProxyTarget
 		expectedResponse int
 	}{
@@ -454,7 +454,7 @@ func TestProxyRetries(t *testing.T) {
 		{
 			name:       "retry count 1 does retry on handler return true",
 			retryCount: 1,
-			retryFilters: []func(c echo.Context) bool{
+			retryFilters: []func(c echo.Context, e error) bool{
 				alwaysRetryFilter,
 			},
 			targets: []*ProxyTarget{
@@ -466,7 +466,7 @@ func TestProxyRetries(t *testing.T) {
 		{
 			name:       "retry count 1 does not retry on handler return false",
 			retryCount: 1,
-			retryFilters: []func(c echo.Context) bool{
+			retryFilters: []func(c echo.Context, e error) bool{
 				neverRetryFilter,
 			},
 			targets: []*ProxyTarget{
@@ -478,7 +478,7 @@ func TestProxyRetries(t *testing.T) {
 		{
 			name:       "retry count 2 returns error when no more retries left",
 			retryCount: 2,
-			retryFilters: []func(c echo.Context) bool{
+			retryFilters: []func(c echo.Context, e error) bool{
 				alwaysRetryFilter,
 				alwaysRetryFilter,
 			},
@@ -493,7 +493,7 @@ func TestProxyRetries(t *testing.T) {
 		{
 			name:       "retry count 2 returns error when retries left but handler returns false",
 			retryCount: 3,
-			retryFilters: []func(c echo.Context) bool{
+			retryFilters: []func(c echo.Context, e error) bool{
 				alwaysRetryFilter,
 				alwaysRetryFilter,
 				neverRetryFilter,
@@ -509,7 +509,7 @@ func TestProxyRetries(t *testing.T) {
 		{
 			name:       "retry count 3 succeeds",
 			retryCount: 3,
-			retryFilters: []func(c echo.Context) bool{
+			retryFilters: []func(c echo.Context, e error) bool{
 				alwaysRetryFilter,
 				alwaysRetryFilter,
 				alwaysRetryFilter,
@@ -537,7 +537,7 @@ func TestProxyRetries(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 
 			retryFilterCall := 0
-			retryFilter := func(c echo.Context) bool {
+			retryFilter := func(c echo.Context, e error) bool {
 				if len(tc.retryFilters) == 0 {
 					assert.FailNow(t, fmt.Sprintf("unexpected calls, %d, to retry handler", retryFilterCall))
 				}
@@ -547,7 +547,7 @@ func TestProxyRetries(t *testing.T) {
 				nextRetryFilter := tc.retryFilters[0]
 				tc.retryFilters = tc.retryFilters[1:]
 
-				return nextRetryFilter(c)
+				return nextRetryFilter(c, e)
 			}
 
 			e := echo.New()

@@ -37,10 +37,13 @@ type (
 		// RetryFilter defines a function used to determine if a failed request to an
 		// unavailable ProxyTarget should be retried. The RetryFilter will only be called
 		// when the number of previous retries is less than RetryCount. If the function
-		// returns true, the request will be retried. When not specified, all fail requests
-		// will be retried. A user custom RetryFilter can be provided to only retry specific
-		// requests, for example only retry GET requests.
-		RetryFilter func(c echo.Context) bool
+		// returns true, the request will be retried. When not specified, all requests that
+		// fail with http.StatusBadGateway error will be retried. A custom RetryFilter can
+		// be provided to only retry specific requests. Note that RetryFilter is only
+		// called when the request to the target fails, or an internal error in the Proxy
+		// middleware has occurred. Successful requests that return a non-200 response code
+		// cannot be retried.
+		RetryFilter func(c echo.Context, e error) bool
 
 		// Rewrite defines URL path rewrite rules. The values captured in asterisk can be
 		// retrieved by index e.g. $1, $2 and so on.
@@ -254,8 +257,11 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 		config.Skipper = DefaultProxyConfig.Skipper
 	}
 	if config.RetryFilter == nil {
-		config.RetryFilter = func(c echo.Context) bool {
-			return true
+		config.RetryFilter = func(c echo.Context, e error) bool {
+			if httpErr, ok := e.(*echo.HTTPError); ok {
+				return httpErr.Code == http.StatusBadGateway
+			}
+			return false
 		}
 	}
 	if config.Rewrite != nil {
@@ -321,13 +327,7 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 					return nil
 				}
 
-				retry := false
-				if httpErr, ok := e.(*echo.HTTPError); ok {
-					if httpErr.Code == http.StatusBadGateway {
-						retry = retries > 0 && config.RetryFilter(c)
-					}
-				}
-
+				retry := retries > 0 && config.RetryFilter(c, e)
 				if !retry {
 					return e
 				}
