@@ -406,24 +406,24 @@ func TestProxyRetries(t *testing.T) {
 		return targetUrl, server
 	}
 
-	targetUrl, server := newServer(http.StatusOK)
+	targetURL, server := newServer(http.StatusOK)
 	defer server.Close()
 	goodTarget := &ProxyTarget{
 		Name: "Good",
-		URL:  targetUrl,
+		URL:  targetURL,
 	}
 
-	targetUrl, server = newServer(http.StatusBadRequest)
+	targetURL, server = newServer(http.StatusBadRequest)
 	defer server.Close()
 	goodTargetWith40X := &ProxyTarget{
 		Name: "Good with 40X",
-		URL:  targetUrl,
+		URL:  targetURL,
 	}
 
-	targetUrl, _ = url.Parse("http://127.0.0.1:27121")
+	targetURL, _ = url.Parse("http://127.0.0.1:27121")
 	badTarget := &ProxyTarget{
 		Name: "Bad",
-		URL:  targetUrl,
+		URL:  targetURL,
 	}
 
 	alwaysRetryFilter := func(c echo.Context, e error) bool { return true }
