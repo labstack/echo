@@ -79,6 +79,15 @@ type (
 		// See also: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Credentials
 		AllowCredentials bool `yaml:"allow_credentials"`
 
+		// UnsafeWildcardOriginWithAllowCredentials UNSAFE/INSECURE: allows wildcard '*' origin to be used with AllowCredentials
+		// flag. In that case we consider any origin allowed and send it back to the client with `Access-Control-Allow-Origin` header.
+		//
+		// This is INSECURE and potentially leads to [cross-origin](https://portswigger.net/research/exploiting-cors-misconfigurations-for-bitcoins-and-bounties)
+		// attacks. See: https://github.com/labstack/echo/issues/2400 for discussion on the subject.
+		//
+		// Optional. Default value is false.
+		UnsafeWildcardOriginWithAllowCredentials bool `yaml:"unsafe_wildcard_origin_with_allow_credentials"`
+
 		// ExposeHeaders determines the value of Access-Control-Expose-Headers, which
 		// defines a list of headers that clients are allowed to access.
 		//
@@ -203,7 +212,7 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 			} else {
 				// Check allowed origins
 				for _, o := range config.AllowOrigins {
-					if o == "*" && config.AllowCredentials {
+					if o == "*" && config.AllowCredentials && config.UnsafeWildcardOriginWithAllowCredentials {
 						allowOrigin = origin
 						break
 					}

@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -19,7 +19,7 @@ func TestBodyDump(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	h := func(c echo.Context) error {
-		body, err := ioutil.ReadAll(c.Request().Body)
+		body, err := io.ReadAll(c.Request().Body)
 		if err != nil {
 			return err
 		}
@@ -33,13 +33,11 @@ func TestBodyDump(t *testing.T) {
 		responseBody = string(resBody)
 	})
 
-	assert := assert.New(t)
-
-	if assert.NoError(mw(h)(c)) {
-		assert.Equal(requestBody, hw)
-		assert.Equal(responseBody, hw)
-		assert.Equal(http.StatusOK, rec.Code)
-		assert.Equal(hw, rec.Body.String())
+	if assert.NoError(t, mw(h)(c)) {
+		assert.Equal(t, requestBody, hw)
+		assert.Equal(t, responseBody, hw)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, hw, rec.Body.String())
 	}
 
 	// Must set default skipper

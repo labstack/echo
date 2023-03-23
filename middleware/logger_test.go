@@ -92,17 +92,17 @@ func TestLoggerTemplate(t *testing.T) {
 	e.Use(LoggerWithConfig(LoggerConfig{
 		Format: `{"time":"${time_rfc3339_nano}","id":"${id}","remote_ip":"${remote_ip}","host":"${host}","user_agent":"${user_agent}",` +
 			`"method":"${method}","uri":"${uri}","status":${status}, "latency":${latency},` +
-			`"latency_human":"${latency_human}","bytes_in":${bytes_in}, "path":"${path}", "referer":"${referer}",` +
+			`"latency_human":"${latency_human}","bytes_in":${bytes_in}, "path":"${path}", "route":"${route}", "referer":"${referer}",` +
 			`"bytes_out":${bytes_out},"ch":"${header:X-Custom-Header}", "protocol":"${protocol}"` +
 			`"us":"${query:username}", "cf":"${form:username}", "session":"${cookie:session}"}` + "\n",
 		Output: buf,
 	}))
 
-	e.GET("/", func(c echo.Context) error {
+	e.GET("/users/:id", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Header Logged")
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/?username=apagano-param&password=secret", nil)
+	req := httptest.NewRequest(http.MethodGet, "/users/1?username=apagano-param&password=secret", nil)
 	req.RequestURI = "/"
 	req.Header.Add(echo.HeaderXRealIP, "127.0.0.1")
 	req.Header.Add("Referer", "google.com")
@@ -127,7 +127,8 @@ func TestLoggerTemplate(t *testing.T) {
 		"hexvalue":                             false,
 		"GET":                                  true,
 		"127.0.0.1":                            true,
-		"\"path\":\"/\"":                       true,
+		"\"path\":\"/users/1\"":                true,
+		"\"route\":\"/users/:id\"":             true,
 		"\"uri\":\"/\"":                        true,
 		"\"status\":200":                       true,
 		"\"bytes_in\":0":                       true,
@@ -171,6 +172,28 @@ func TestLoggerCustomTimestamp(t *testing.T) {
 	loggedTime := *(*string)(unsafe.Pointer(objs["time"]))
 	_, err := time.Parse(customTimeFormat, loggedTime)
 	assert.Error(t, err)
+}
+
+func TestLoggerCustomTagFunc(t *testing.T) {
+	e := echo.New()
+	buf := new(bytes.Buffer)
+	e.Use(LoggerWithConfig(LoggerConfig{
+		Format: `{"method":"${method}",${custom}}` + "\n",
+		CustomTagFunc: func(c echo.Context, buf *bytes.Buffer) (int, error) {
+			return buf.WriteString(`"tag":"my-value"`)
+		},
+		Output: buf,
+	}))
+
+	e.GET("/", func(c echo.Context) error {
+		return c.String(http.StatusOK, "custom time stamp test")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, `{"method":"GET","tag":"my-value"}`+"\n", buf.String())
 }
 
 func BenchmarkLoggerWithConfig_withoutMapFields(b *testing.B) {

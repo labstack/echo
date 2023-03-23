@@ -1,9 +1,9 @@
 package echo
 
 import (
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -32,7 +32,7 @@ func TestGroupFile(t *testing.T) {
 	e := New()
 	g := e.Group("/group")
 	g.File("/walle", "_fixture/images/walle.png")
-	expectedData, err := ioutil.ReadFile("_fixture/images/walle.png")
+	expectedData, err := os.ReadFile("_fixture/images/walle.png")
 	assert.Nil(t, err)
 	req := httptest.NewRequest(http.MethodGet, "/group/walle", nil)
 	rec := httptest.NewRecorder()
@@ -181,6 +181,76 @@ func TestGroup_RouteNotFound(t *testing.T) {
 
 			assert.Equal(t, tc.expectCode, rec.Code)
 			assert.Equal(t, tc.expectRoute, rec.Body.String())
+		})
+	}
+}
+
+func TestGroup_RouteNotFoundWithMiddleware(t *testing.T) {
+	var testCases = []struct {
+		name           string
+		givenCustom404 bool
+		whenURL        string
+		expectBody     interface{}
+		expectCode     int
+	}{
+		{
+			name:           "ok, custom 404 handler is called with middleware",
+			givenCustom404: true,
+			whenURL:        "/group/test3",
+			expectBody:     "GET /group/*",
+			expectCode:     http.StatusNotFound,
+		},
+		{
+			name:           "ok, default group 404 handler is called with middleware",
+			givenCustom404: false,
+			whenURL:        "/group/test3",
+			expectBody:     "{\"message\":\"Not Found\"}\n",
+			expectCode:     http.StatusNotFound,
+		},
+		{
+			name:           "ok, (no slash) default group 404 handler is called with middleware",
+			givenCustom404: false,
+			whenURL:        "/group",
+			expectBody:     "{\"message\":\"Not Found\"}\n",
+			expectCode:     http.StatusNotFound,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+
+			okHandler := func(c Context) error {
+				return c.String(http.StatusOK, c.Request().Method+" "+c.Path())
+			}
+			notFoundHandler := func(c Context) error {
+				return c.String(http.StatusNotFound, c.Request().Method+" "+c.Path())
+			}
+
+			e := New()
+			e.GET("/test1", okHandler)
+			e.RouteNotFound("/*", notFoundHandler)
+
+			g := e.Group("/group")
+			g.GET("/test1", okHandler)
+
+			middlewareCalled := false
+			g.Use(func(next HandlerFunc) HandlerFunc {
+				return func(c Context) error {
+					middlewareCalled = true
+					return next(c)
+				}
+			})
+			if tc.givenCustom404 {
+				g.RouteNotFound("/*", notFoundHandler)
+			}
+
+			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
+			rec := httptest.NewRecorder()
+
+			e.ServeHTTP(rec, req)
+
+			assert.True(t, middlewareCalled)
+			assert.Equal(t, tc.expectCode, rec.Code)
+			assert.Equal(t, tc.expectBody, rec.Body.String())
 		})
 	}
 }

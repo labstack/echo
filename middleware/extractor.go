@@ -24,6 +24,26 @@ var errFormExtractorValueMissing = errors.New("missing value in the form")
 // ValuesExtractor defines a function for extracting values (keys/tokens) from the given context.
 type ValuesExtractor func(c echo.Context) ([]string, error)
 
+// CreateExtractors creates ValuesExtractors from given lookups.
+// Lookups is a string in the form of "<source>:<name>" or "<source>:<name>,<source>:<name>" that is used
+// to extract key from the request.
+// Possible values:
+//   - "header:<name>" or "header:<name>:<cut-prefix>"
+//     `<cut-prefix>` is argument value to cut/trim prefix of the extracted value. This is useful if header
+//     value has static prefix like `Authorization: <auth-scheme> <authorisation-parameters>` where part that we
+//     want to cut is `<auth-scheme> ` note the space at the end.
+//     In case of basic authentication `Authorization: Basic <credentials>` prefix we want to remove is `Basic `.
+//   - "query:<name>"
+//   - "param:<name>"
+//   - "form:<name>"
+//   - "cookie:<name>"
+//
+// Multiple sources example:
+// - "header:Authorization,header:X-Api-Key"
+func CreateExtractors(lookups string) ([]ValuesExtractor, error) {
+	return createExtractors(lookups, "")
+}
+
 func createExtractors(lookups string, authScheme string) ([]ValuesExtractor, error) {
 	if lookups == "" {
 		return nil, nil

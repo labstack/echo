@@ -119,9 +119,9 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 		config.CookieSecure = true
 	}
 
-	extractors, err := createExtractors(config.TokenLookup, "")
-	if err != nil {
-		panic(err)
+	extractors, cErr := CreateExtractors(config.TokenLookup)
+	if cErr != nil {
+		panic(cErr)
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {

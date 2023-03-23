@@ -5,7 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -129,7 +129,7 @@ func TestTimeoutOnTimeoutRouteErrorHandler(t *testing.T) {
 	e := echo.New()
 	c := e.NewContext(req, rec)
 
-	stopChan := make(chan struct{}, 0)
+	stopChan := make(chan struct{})
 	err := m(func(c echo.Context) error {
 		<-stopChan
 		return errors.New("error in route after timeout")
@@ -245,7 +245,7 @@ func TestTimeoutWithErrorMessage(t *testing.T) {
 	e := echo.New()
 	c := e.NewContext(req, rec)
 
-	stopChan := make(chan struct{}, 0)
+	stopChan := make(chan struct{})
 	err := m(func(c echo.Context) error {
 		// NOTE: when difference between timeout duration and handler execution time is almost the same (in range of 100microseconds)
 		// the result of timeout does not seem to be reliable - could respond timeout, could respond handler output
@@ -275,7 +275,7 @@ func TestTimeoutWithDefaultErrorMessage(t *testing.T) {
 	e := echo.New()
 	c := e.NewContext(req, rec)
 
-	stopChan := make(chan struct{}, 0)
+	stopChan := make(chan struct{})
 	err := m(func(c echo.Context) error {
 		<-stopChan
 		return c.String(http.StatusOK, "Hello, World!")
@@ -375,7 +375,7 @@ func TestTimeoutWithFullEchoStack(t *testing.T) {
 
 			// NOTE: timeout middleware is first as it changes Response.Writer and causes data race for logger middleware if it is not first
 			e.Use(TimeoutWithConfig(TimeoutConfig{
-				Timeout: 15 * time.Millisecond,
+				Timeout: 100 * time.Millisecond,
 			}))
 			e.Use(Logger())
 			e.Use(Recover())
@@ -403,14 +403,19 @@ func TestTimeoutWithFullEchoStack(t *testing.T) {
 			}
 			if tc.whenForceHandlerTimeout {
 				wg.Done()
+				// extremely short periods are not reliable for tests when it comes to goroutines. We can not guarantee in which
+				// order scheduler decides do execute: 1) request goroutine, 2) timeout timer goroutine.
+				// most of the time we get result we expect but Mac OS seems to be quite flaky
+				time.Sleep(50 * time.Millisecond)
+
 				// shutdown waits for server to shutdown. this way we wait logger mw to be executed
-				ctx, cancel := context.WithTimeout(context.Background(), 150*time.Millisecond)
+				ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 				defer cancel()
 				server.Shutdown(ctx)
 			}
 
 			assert.Equal(t, tc.expectStatusCode, res.StatusCode)
-			if body, err := ioutil.ReadAll(res.Body); err == nil {
+			if body, err := io.ReadAll(res.Body); err == nil {
 				assert.Equal(t, tc.expectResponse, string(body))
 			} else {
 				assert.Fail(t, err.Error())

@@ -348,8 +348,6 @@ func TestJWTConfig(t *testing.T) {
 }
 
 func TestJWTwithKID(t *testing.T) {
-	test := assert.New(t)
-
 	e := echo.New()
 	handler := func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
@@ -417,19 +415,19 @@ func TestJWTwithKID(t *testing.T) {
 		if tc.expErrCode != 0 {
 			h := JWTWithConfig(tc.config)(handler)
 			he := h(c).(*echo.HTTPError)
-			test.Equal(tc.expErrCode, he.Code, tc.info)
+			assert.Equal(t, tc.expErrCode, he.Code, tc.info)
 			continue
 		}
 
 		h := JWTWithConfig(tc.config)(handler)
-		if test.NoError(h(c), tc.info) {
+		if assert.NoError(t, h(c), tc.info) {
 			user := c.Get("user").(*jwt.Token)
 			switch claims := user.Claims.(type) {
 			case jwt.MapClaims:
-				test.Equal(claims["name"], "John Doe", tc.info)
+				assert.Equal(t, claims["name"], "John Doe", tc.info)
 			case *jwtCustomClaims:
-				test.Equal(claims.Name, "John Doe", tc.info)
-				test.Equal(claims.Admin, true, tc.info)
+				assert.Equal(t, claims.Name, "John Doe", tc.info)
+				assert.Equal(t, claims.Admin, true, tc.info)
 			default:
 				panic("unexpected type of claims")
 			}

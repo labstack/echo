@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-//Assert expected with url.EscapedPath method to obtain the path.
+// Assert expected with url.EscapedPath method to obtain the path.
 func TestProxy(t *testing.T) {
 	// Setup
 	t1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -31,7 +31,6 @@ func TestProxy(t *testing.T) {
 	}))
 	defer t2.Close()
 	url2, _ := url.Parse(t2.URL)
-
 	targets := []*ProxyTarget{
 		{
 			Name: "target 1",
@@ -94,7 +93,7 @@ func TestProxy(t *testing.T) {
 	e.Use(ProxyWithConfig(ProxyConfig{
 		Balancer: rrb,
 		ModifyResponse: func(res *http.Response) error {
-			res.Body = ioutil.NopCloser(bytes.NewBuffer([]byte("modified")))
+			res.Body = io.NopCloser(bytes.NewBuffer([]byte("modified")))
 			res.Header.Set("X-Modified", "1")
 			return nil
 		},
@@ -120,6 +119,55 @@ func TestProxy(t *testing.T) {
 	e.Use(Proxy(rrb1))
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
+}
+
+type testProvider struct {
+	commonBalancer
+	target *ProxyTarget
+	err    error
+}
+
+func (p *testProvider) Next(c echo.Context) *ProxyTarget {
+	return &ProxyTarget{}
+}
+
+func (p *testProvider) NextTarget(c echo.Context) (*ProxyTarget, error) {
+	return p.target, p.err
+}
+
+func TestTargetProvider(t *testing.T) {
+	t1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "target 1")
+	}))
+	defer t1.Close()
+	url1, _ := url.Parse(t1.URL)
+
+	e := echo.New()
+	tp := &testProvider{}
+	tp.target = &ProxyTarget{Name: "target 1", URL: url1}
+	e.Use(Proxy(tp))
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	e.ServeHTTP(rec, req)
+	body := rec.Body.String()
+	assert.Equal(t, "target 1", body)
+}
+
+func TestFailNextTarget(t *testing.T) {
+	url1, err := url.Parse("http://dummy:8080")
+	assert.Nil(t, err)
+
+	e := echo.New()
+	tp := &testProvider{}
+	tp.target = &ProxyTarget{Name: "target 1", URL: url1}
+	tp.err = echo.NewHTTPError(http.StatusInternalServerError, "method could not select target")
+
+	e.Use(Proxy(tp))
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	e.ServeHTTP(rec, req)
+	body := rec.Body.String()
+	assert.Equal(t, "{\"message\":\"method could not select target\"}\n", body)
 }
 
 func TestProxyRealIPHeader(t *testing.T) {
@@ -336,10 +384,9 @@ func TestProxyError(t *testing.T) {
 	e := echo.New()
 	e.Use(Proxy(rb))
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
 
 	// Remote unreachable
-	rec = httptest.NewRecorder()
+	rec := httptest.NewRecorder()
 	req.URL.Path = "/api/users"
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "/api/users", req.URL.Path)
@@ -374,4 +421,13 @@ func TestClientCancelConnectionResultsHTTPCode499(t *testing.T) {
 	e.ServeHTTP(rec, req)
 	timeoutStop.Done()
 	assert.Equal(t, 499, rec.Code)
+}
+
+// Assert balancer with empty targets does return `nil` on `Next()`
+func TestProxyBalancerWithNoTargets(t *testing.T) {
+	rb := NewRandomBalancer(nil)
+	assert.Nil(t, rb.Next(nil))
+
+	rrb := NewRoundRobinBalancer([]*ProxyTarget{})
+	assert.Nil(t, rrb.Next(nil))
 }

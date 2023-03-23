@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -142,7 +142,7 @@ func TestRewriteWithConfigPreMiddleware_Issue1143(t *testing.T) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 
 		defer rec.Result().Body.Close()
-		bodyBytes, _ := ioutil.ReadAll(rec.Result().Body)
+		bodyBytes, _ := io.ReadAll(rec.Result().Body)
 		assert.Equal(t, "hosts", string(bodyBytes))
 	}
 }

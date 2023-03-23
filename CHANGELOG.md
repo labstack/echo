@@ -1,5 +1,83 @@
 # Changelog
 
+## v4.10.2 - 2023-02-22
+
+**Security**
+
+* `filepath.Clean` behaviour has changed in Go 1.20 - adapt to it [#2406](https://github.com/labstack/echo/pull/2406)
+* Add `middleware.CORSConfig.UnsafeWildcardOriginWithAllowCredentials` to make UNSAFE usages of wildcard origin + allow cretentials less likely [#2405](https://github.com/labstack/echo/pull/2405)
+
+**Enhancements**
+
+* Add more HTTP error values [#2277](https://github.com/labstack/echo/pull/2277)
+
+
+## v4.10.1 - 2023-02-19
+
+**Security**
+
+* Upgrade deps due to the latest golang.org/x/net vulnerability [#2402](https://github.com/labstack/echo/pull/2402)
+
+
+**Enhancements**
+
+* Add new JWT repository to the README [#2377](https://github.com/labstack/echo/pull/2377)
+* Return an empty string for ctx.path if there is no registered path [#2385](https://github.com/labstack/echo/pull/2385)
+* Add context timeout middleware [#2380](https://github.com/labstack/echo/pull/2380)
+* Update link to jaegertracing [#2394](https://github.com/labstack/echo/pull/2394)
+
+
+## v4.10.0 - 2022-12-27
+
+**Security**
+
+* We are deprecating JWT middleware in this repository. Please use https://github.com/labstack/echo-jwt instead. 
+
+  JWT middleware is moved to separate repository to allow us to bump/upgrade version of JWT implementation (`github.com/golang-jwt/jwt`) we are using
+which we can not do in Echo core because this would break backwards compatibility guarantees we try to maintain.
+
+* This minor version bumps minimum Go version to 1.17 (from 1.16) due `golang.org/x/` packages we depend on. There are
+  several vulnerabilities fixed in these libraries.
+
+  Echo still tries to support last 4 Go versions but there are occasions we can not guarantee this promise.
+
+
+**Enhancements**
+
+* Bump x/text to 0.3.8 [#2305](https://github.com/labstack/echo/pull/2305)
+* Bump dependencies and add notes about Go releases we support [#2336](https://github.com/labstack/echo/pull/2336)
+* Add helper interface for ProxyBalancer interface [#2316](https://github.com/labstack/echo/pull/2316)
+* Expose `middleware.CreateExtractors` function so we can use it from echo-contrib repository [#2338](https://github.com/labstack/echo/pull/2338)
+* Refactor func(Context) error to HandlerFunc [#2315](https://github.com/labstack/echo/pull/2315)
+* Improve function comments [#2329](https://github.com/labstack/echo/pull/2329)
+* Add new method HTTPError.WithInternal [#2340](https://github.com/labstack/echo/pull/2340)
+* Replace io/ioutil package usages [#2342](https://github.com/labstack/echo/pull/2342)
+* Add staticcheck to CI flow [#2343](https://github.com/labstack/echo/pull/2343)
+* Replace relative path determination from proprietary to std [#2345](https://github.com/labstack/echo/pull/2345)
+* Remove square brackets from ipv6 addresses in XFF (X-Forwarded-For header) [#2182](https://github.com/labstack/echo/pull/2182)
+* Add testcases for some BodyLimit middleware configuration options [#2350](https://github.com/labstack/echo/pull/2350)
+* Additional configuration options for RequestLogger and Logger middleware [#2341](https://github.com/labstack/echo/pull/2341)
+* Add route to request log [#2162](https://github.com/labstack/echo/pull/2162)
+* GitHub Workflows security hardening [#2358](https://github.com/labstack/echo/pull/2358)
+* Add govulncheck to CI and bump dependencies [#2362](https://github.com/labstack/echo/pull/2362)
+* Fix rate limiter docs [#2366](https://github.com/labstack/echo/pull/2366)
+* Refactor how `e.Routes()` work and introduce `e.OnAddRouteHandler` callback [#2337](https://github.com/labstack/echo/pull/2337)
+
+
+## v4.9.1 - 2022-10-12
+
+**Fixes**
+
+* Fix logger panicing (when template is set to empty) by bumping dependency version [#2295](https://github.com/labstack/echo/issues/2295)
+
+**Enhancements**
+
+* Improve CORS documentation [#2272](https://github.com/labstack/echo/pull/2272)
+* Update readme about supported Go versions [#2291](https://github.com/labstack/echo/pull/2291)
+* Tests: improve error handling on closing body [#2254](https://github.com/labstack/echo/pull/2254)
+* Tests: refactor some of the assertions in tests [#2275](https://github.com/labstack/echo/pull/2275)
+* Tests: refactor assertions [#2301](https://github.com/labstack/echo/pull/2301)
+
 ## v4.9.0 - 2022-09-04
 
 **Security**

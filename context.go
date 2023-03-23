@@ -100,8 +100,8 @@ type (
 		// Set saves data in the context.
 		Set(key string, val interface{})
 
-		// Bind binds the request body into provided type `i`. The default binder
-		// does it based on Content-Type header.
+		// Bind binds path params, query params and the request body into provided type `i`. The default binder
+		// binds body based on Content-Type header.
 		Bind(i interface{}) error
 
 		// Validate validates provided `i`. It is usually called after `Context#Bind()`.
@@ -169,7 +169,11 @@ type (
 		// Redirect redirects the request to a provided URL with status code.
 		Redirect(code int, url string) error
 
-		// Error invokes the registered HTTP error handler. Generally used by middleware.
+		// Error invokes the registered global HTTP error handler. Generally used by middleware.
+		// A side-effect of calling global error handler is that now Response has been committed (sent to the client) and
+		// middlewares up in chain can not change Response status code or Response body anymore.
+		//
+		// Avoid using this method in handlers as no middleware will be able to effectively handle errors after that.
 		Error(err error)
 
 		// Handler returns the matched handler by router.
@@ -181,7 +185,7 @@ type (
 		// Logger returns the `Logger` instance.
 		Logger() Logger
 
-		// Set the logger
+		// SetLogger Set the logger
 		SetLogger(l Logger)
 
 		// Echo returns the `Echo` instance.
@@ -282,11 +286,16 @@ func (c *context) RealIP() string {
 	if ip := c.request.Header.Get(HeaderXForwardedFor); ip != "" {
 		i := strings.IndexAny(ip, ",")
 		if i > 0 {
-			return strings.TrimSpace(ip[:i])
+			xffip := strings.TrimSpace(ip[:i])
+			xffip = strings.TrimPrefix(xffip, "[")
+			xffip = strings.TrimSuffix(xffip, "]")
+			return xffip
 		}
 		return ip
 	}
 	if ip := c.request.Header.Get(HeaderXRealIP); ip != "" {
+		ip = strings.TrimPrefix(ip, "[")
+		ip = strings.TrimSuffix(ip, "]")
 		return ip
 	}
 	ra, _, _ := net.SplitHostPort(c.request.RemoteAddr)

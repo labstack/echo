@@ -12,7 +12,6 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -72,21 +71,27 @@ type (
 		Next(echo.Context) *ProxyTarget
 	}
 
+	// TargetProvider defines an interface that gives the opportunity for balancer to return custom errors when selecting target.
+	TargetProvider interface {
+		NextTarget(echo.Context) (*ProxyTarget, error)
+	}
+
 	commonBalancer struct {
 		targets []*ProxyTarget
-		mutex   sync.RWMutex
+		mutex   sync.Mutex
 	}
 
 	// RandomBalancer implements a random load balancing technique.
 	randomBalancer struct {
-		*commonBalancer
+		commonBalancer
 		random *rand.Rand
 	}
 
 	// RoundRobinBalancer implements a round-robin load balancing technique.
 	roundRobinBalancer struct {
-		*commonBalancer
-		i uint32
+		commonBalancer
+		// tracking the index on `targets` slice for the next `*ProxyTarget` to be used
+		i int
 	}
 )
 
@@ -138,32 +143,37 @@ func proxyRaw(t *ProxyTarget, c echo.Context) http.Handler {
 
 // NewRandomBalancer returns a random proxy balancer.
 func NewRandomBalancer(targets []*ProxyTarget) ProxyBalancer {
-	b := &randomBalancer{commonBalancer: new(commonBalancer)}
+	b := randomBalancer{}
 	b.targets = targets
-	return b
+	b.random = rand.New(rand.NewSource(int64(time.Now().Nanosecond())))
+	return &b
 }
 
 // NewRoundRobinBalancer returns a round-robin proxy balancer.
 func NewRoundRobinBalancer(targets []*ProxyTarget) ProxyBalancer {
-	b := &roundRobinBalancer{commonBalancer: new(commonBalancer)}
+	b := roundRobinBalancer{}
 	b.targets = targets
-	return b
+	return &b
 }
 
-// AddTarget adds an upstream target to the list.
+// AddTarget adds an upstream target to the list and returns `true`.
+//
+// However, if a target with the same name already exists then the operation is aborted returning `false`.
 func (b *commonBalancer) AddTarget(target *ProxyTarget) bool {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
 	for _, t := range b.targets {
 		if t.Name == target.Name {
 			return false
 		}
 	}
-	b.mutex.Lock()
-	defer b.mutex.Unlock()
 	b.targets = append(b.targets, target)
 	return true
 }
 
-// RemoveTarget removes an upstream target from the list.
+// RemoveTarget removes an upstream target from the list by name.
+//
+// Returns `true` on success, `false` if no target with the name is found.
 func (b *commonBalancer) RemoveTarget(name string) bool {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
@@ -177,20 +187,36 @@ func (b *commonBalancer) RemoveTarget(name string) bool {
 }
 
 // Next randomly returns an upstream target.
+//
+// Note: `nil` is returned in case upstream target list is empty.
 func (b *randomBalancer) Next(c echo.Context) *ProxyTarget {
-	if b.random == nil {
-		b.random = rand.New(rand.NewSource(int64(time.Now().Nanosecond())))
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	if len(b.targets) == 0 {
+		return nil
+	} else if len(b.targets) == 1 {
+		return b.targets[0]
 	}
-	b.mutex.RLock()
-	defer b.mutex.RUnlock()
 	return b.targets[b.random.Intn(len(b.targets))]
 }
 
 // Next returns an upstream target using round-robin technique.
+//
+// Note: `nil` is returned in case upstream target list is empty.
 func (b *roundRobinBalancer) Next(c echo.Context) *ProxyTarget {
-	b.i = b.i % uint32(len(b.targets))
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	if len(b.targets) == 0 {
+		return nil
+	} else if len(b.targets) == 1 {
+		return b.targets[0]
+	}
+	// reset the index if out of bounds
+	if b.i >= len(b.targets) {
+		b.i = 0
+	}
 	t := b.targets[b.i]
-	atomic.AddUint32(&b.i, 1)
+	b.i++
 	return t
 }
 
@@ -223,6 +249,7 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 		}
 	}
 
+	provider, isTargetProvider := config.Balancer.(TargetProvider)
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) (err error) {
 			if config.Skipper(c) {
@@ -231,7 +258,16 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 
 			req := c.Request()
 			res := c.Response()
-			tgt := config.Balancer.Next(c)
+
+			var tgt *ProxyTarget
+			if isTargetProvider {
+				tgt, err = provider.NextTarget(c)
+				if err != nil {
+					return err
+				}
+			} else {
+				tgt = config.Balancer.Next(c)
+			}
 			c.Set(config.ContextKey, tgt)
 
 			if err := rewriteURL(config.RegexRewrite, req); err != nil {

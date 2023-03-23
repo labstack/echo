@@ -26,9 +26,7 @@ func TestGzip(t *testing.T) {
 	})
 	h(c)
 
-	assert := assert.New(t)
-
-	assert.Equal("test", rec.Body.String())
+	assert.Equal(t, "test", rec.Body.String())
 
 	// Gzip
 	req = httptest.NewRequest(http.MethodGet, "/", nil)
@@ -36,14 +34,14 @@ func TestGzip(t *testing.T) {
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	h(c)
-	assert.Equal(gzipScheme, rec.Header().Get(echo.HeaderContentEncoding))
-	assert.Contains(rec.Header().Get(echo.HeaderContentType), echo.MIMETextPlain)
+	assert.Equal(t, gzipScheme, rec.Header().Get(echo.HeaderContentEncoding))
+	assert.Contains(t, rec.Header().Get(echo.HeaderContentType), echo.MIMETextPlain)
 	r, err := gzip.NewReader(rec.Body)
-	if assert.NoError(err) {
+	if assert.NoError(t, err) {
 		buf := new(bytes.Buffer)
 		defer r.Close()
 		buf.ReadFrom(r)
-		assert.Equal("test", buf.String())
+		assert.Equal(t, "test", buf.String())
 	}
 
 	chunkBuf := make([]byte, 5)
@@ -63,21 +61,21 @@ func TestGzip(t *testing.T) {
 		c.Response().Flush()
 
 		// Read the first part of the data
-		assert.True(rec.Flushed)
-		assert.Equal(gzipScheme, rec.Header().Get(echo.HeaderContentEncoding))
+		assert.True(t, rec.Flushed)
+		assert.Equal(t, gzipScheme, rec.Header().Get(echo.HeaderContentEncoding))
 		r.Reset(rec.Body)
 
 		_, err = io.ReadFull(r, chunkBuf)
-		assert.NoError(err)
-		assert.Equal("test\n", string(chunkBuf))
+		assert.NoError(t, err)
+		assert.Equal(t, "test\n", string(chunkBuf))
 
 		// Write and flush the second part of the data
 		c.Response().Write([]byte("test\n"))
 		c.Response().Flush()
 
 		_, err = io.ReadFull(r, chunkBuf)
-		assert.NoError(err)
-		assert.Equal("test\n", string(chunkBuf))
+		assert.NoError(t, err)
+		assert.Equal(t, "test\n", string(chunkBuf))
 
 		// Write the final part of the data and return
 		c.Response().Write([]byte("test"))
@@ -87,7 +85,7 @@ func TestGzip(t *testing.T) {
 	buf := new(bytes.Buffer)
 	defer r.Close()
 	buf.ReadFrom(r)
-	assert.Equal("test", buf.String())
+	assert.Equal(t, "test", buf.String())
 }
 
 func TestGzipWithMinLength(t *testing.T) {
