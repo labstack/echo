@@ -402,8 +402,8 @@ func TestProxyRetries(t *testing.T) {
 				w.WriteHeader(res)
 			}),
 		)
-		targetUrl, _ := url.Parse(server.URL)
-		return targetUrl, server
+		targetURL, _ := url.Parse(server.URL)
+		return targetURL, server
 	}
 
 	targetURL, server := newServer(http.StatusOK)
@@ -579,17 +579,17 @@ func TestProxyErrorHandler(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	goodUrl, _ := url.Parse(server.URL)
+	goodURL, _ := url.Parse(server.URL)
 	defer server.Close()
 	goodTarget := &ProxyTarget{
 		Name: "Good",
-		URL:  goodUrl,
+		URL:  goodURL,
 	}
 
-	badUrl, _ := url.Parse("http://127.0.0.1:27121")
+	badURL, _ := url.Parse("http://127.0.0.1:27121")
 	badTarget := &ProxyTarget{
 		Name: "Bad",
-		URL:  badUrl,
+		URL:  badURL,
 	}
 
 	transformedError := errors.New("a new error")
