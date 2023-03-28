@@ -573,6 +573,62 @@ func TestProxyRetries(t *testing.T) {
 	}
 }
 
+func TestProxyRetryWithBackendTimeout(t *testing.T) {
+
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.ResponseHeaderTimeout = time.Millisecond * 500
+
+	timeoutBackend := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			time.Sleep(1 * time.Second)
+			w.WriteHeader(404)
+		}),
+	)
+	defer timeoutBackend.Close()
+
+	timeoutTargetURL, _ := url.Parse(timeoutBackend.URL)
+	goodBackend := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(200)
+		}),
+	)
+	defer goodBackend.Close()
+
+	goodTargetURL, _ := url.Parse(goodBackend.URL)
+	e := echo.New()
+	e.Use(ProxyWithConfig(
+		ProxyConfig{
+			Transport: transport,
+			Balancer: NewRoundRobinBalancer([]*ProxyTarget{
+				{
+					Name: "Timeout",
+					URL:  timeoutTargetURL,
+				},
+				{
+					Name: "Good",
+					URL:  goodTargetURL,
+				},
+			}),
+			RetryCount: 1,
+		},
+	))
+
+	var wg sync.WaitGroup
+	for i := 0; i < 20; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+			assert.Contains(t, []int{200, 502}, rec.Code)
+		}()
+	}
+
+	wg.Wait()
+
+}
+
 func TestProxyErrorHandler(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

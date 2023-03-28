@@ -239,6 +239,7 @@ func (b *roundRobinBalancer) Next(c echo.Context) *ProxyTarget {
 	} else if len(b.targets) == 1 {
 		return b.targets[0]
 	}
+
 	// reset the index if out of bounds
 	if b.i >= len(b.targets) {
 		b.i = 0
