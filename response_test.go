@@ -72,3 +72,11 @@ func TestResponse_ChangeStatusCodeBeforeWrite(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
+
+func TestResponse_Unwrap(t *testing.T) {
+	e := New()
+	rec := httptest.NewRecorder()
+	res := &Response{echo: e, Writer: rec}
+
+	assert.Equal(t, rec, res.Unwrap())
+}
