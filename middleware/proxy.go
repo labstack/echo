@@ -240,13 +240,28 @@ func (b *roundRobinBalancer) Next(c echo.Context) *ProxyTarget {
 		return b.targets[0]
 	}
 
-	// reset the index if out of bounds
-	if b.i >= len(b.targets) {
-		b.i = 0
+	var i int
+	const lastIdxKey = "_round_robin_last_index"
+	// This request is a retry, start from the index of the previous
+	// target to ensure we don't attempt to retry the request with
+	// the same failed target
+	if c.Get(lastIdxKey) != nil {
+		i = c.Get(lastIdxKey).(int)
+		i++
+		if i >= len(b.targets) {
+			i = 0
+		}
+		// This is a first time request, use the global index
+	} else {
+		i = b.i
+		b.i++
+		if b.i >= len(b.targets) {
+			b.i = 0
+		}
 	}
-	t := b.targets[b.i]
-	b.i++
-	return t
+
+	c.Set(lastIdxKey, i)
+	return b.targets[i]
 }
 
 // Proxy returns a Proxy middleware.

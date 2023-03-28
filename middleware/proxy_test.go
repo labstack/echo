@@ -621,7 +621,7 @@ func TestProxyRetryWithBackendTimeout(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			rec := httptest.NewRecorder()
 			e.ServeHTTP(rec, req)
-			assert.Contains(t, []int{200, 502}, rec.Code)
+			assert.Equal(t, 200, rec.Code)
 		}()
 	}
 
