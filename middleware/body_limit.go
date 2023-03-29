@@ -75,7 +75,7 @@ func BodyLimitWithConfig(config BodyLimitConfig) echo.MiddlewareFunc {
 
 			// Based on content length
 			if req.ContentLength > config.limit {
-				return echo.ErrStatusRequestEntityTooLarge
+				return echo.ErrRequestEntityTooLarge
 			}
 
 			// Based on content read
@@ -93,7 +93,7 @@ func (r *limitedReader) Read(b []byte) (n int, err error) {
 	n, err = r.reader.Read(b)
 	r.read += int64(n)
 	if r.read > r.limit {
-		return n, echo.ErrStatusRequestEntityTooLarge
+		return n, echo.ErrRequestEntityTooLarge
 	}
 	return
 }

@@ -71,7 +71,7 @@ func TestBodyLimitReader(t *testing.T) {
 		context:         e.NewContext(req, rec),
 	}
 
-	// read all should return ErrStatusRequestEntityTooLarge
+	// read all should return ErrRequestEntityTooLarge
 	_, err := io.ReadAll(reader)
 	he := err.(*echo.HTTPError)
 	assert.Equal(t, http.StatusRequestEntityTooLarge, he.Code)
