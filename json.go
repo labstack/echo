@@ -19,6 +19,16 @@ func (d DefaultJSONSerializer) Serialize(c Context, i interface{}, indent string
 	return enc.Encode(i)
 }
 
+//Alt non-escaping serializer
+func (d DefaultJSONSerializer) NonEscapeSerialize(c Context, i interface{}, indent string) error {
+	enc := json.NewEncoder(c.Response())
+	enc.SetEscapeHTML(false)
+	if indent != "" {
+		enc.SetIndent("", indent)
+	}
+	return enc.Encode(i)
+}
+
 // Deserialize reads a JSON from a request body and converts it into an interface.
 func (d DefaultJSONSerializer) Deserialize(c Context, i interface{}) error {
 	err := json.NewDecoder(c.Request().Body).Decode(i)

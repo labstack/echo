@@ -127,6 +127,9 @@ type (
 		// JSONPretty sends a pretty-print JSON with status code.
 		JSONPretty(code int, i interface{}, indent string) error
 
+		//JSON, but don't encode html chars
+		JSONNonEncodePretty(code int, i interface{}, indent string) error
+
 		// JSONBlob sends a JSON blob response with status code.
 		JSONBlob(code int, b []byte) error
 
@@ -494,6 +497,12 @@ func (c *context) json(code int, i interface{}, indent string) error {
 	return c.echo.JSONSerializer.Serialize(c, i, indent)
 }
 
+func (c *context) jsonaltencode(code int, i interface{}, indent string) error {
+	c.writeContentType(MIMEApplicationJSONCharsetUTF8)
+	c.response.Status = code
+	return c.echo.JSONSerializer.NonEscapeSerialize(c, i, indent)
+}
+
 func (c *context) JSON(code int, i interface{}) (err error) {
 	indent := ""
 	if _, pretty := c.QueryParams()["pretty"]; c.echo.Debug || pretty {
@@ -504,6 +513,10 @@ func (c *context) JSON(code int, i interface{}) (err error) {
 
 func (c *context) JSONPretty(code int, i interface{}, indent string) (err error) {
 	return c.json(code, i, indent)
+}
+
+func (c *context) JSONNonEncodePretty(code int, i interface{}, indent string) (err error) {
+	return c.jsonaltencode(code, i, indent)
 }
 
 func (c *context) JSONBlob(code int, b []byte) (err error) {

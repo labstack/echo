@@ -136,6 +136,7 @@ type (
 	// JSONSerializer is the interface that encodes and decodes JSON to and from interfaces.
 	JSONSerializer interface {
 		Serialize(c Context, i interface{}, indent string) error
+		NonEscapeSerialize(c Context, i interface{}, indent string) error
 		Deserialize(c Context, i interface{}) error
 	}
 
