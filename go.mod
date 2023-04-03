@@ -1,4 +1,4 @@
-module github.com/tAndrewBewseyTNA/echo/v4
+module github.com/AndrewBewseyTNA/echo/v4
 
 go 1.17
 
