@@ -251,13 +251,13 @@ func (b *roundRobinBalancer) Next(c echo.Context) *ProxyTarget {
 		if i >= len(b.targets) {
 			i = 0
 		}
-		// This is a first time request, use the global index
 	} else {
-		i = b.i
-		b.i++
+		// This is a first time request, use the global index
 		if b.i >= len(b.targets) {
 			b.i = 0
 		}
+		i = b.i
+		b.i++
 	}
 
 	c.Set(lastIdxKey, i)
