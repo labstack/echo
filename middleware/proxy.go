@@ -228,7 +228,12 @@ func (b *randomBalancer) Next(c echo.Context) *ProxyTarget {
 	return b.targets[b.random.Intn(len(b.targets))]
 }
 
-// Next returns an upstream target using round-robin technique.
+// Next returns an upstream target using round-robin technique. In the case
+// where a previously failed request is being retried, the round-robin
+// balancer will attempt to use the next target relative to the original
+// request. If the list of targets held by the balancer is modified while a
+// failed request is being retried, it is possible that the balancer will
+// return the original failed target.
 //
 // Note: `nil` is returned in case upstream target list is empty.
 func (b *roundRobinBalancer) Next(c echo.Context) *ProxyTarget {
