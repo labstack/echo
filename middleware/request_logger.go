@@ -257,7 +257,7 @@ func (config RequestLoggerConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				config.BeforeNextFunc(c)
 			}
 			err := next(c)
-			if config.HandleError {
+			if err != nil && config.HandleError {
 				c.Error(err)
 			}
 
