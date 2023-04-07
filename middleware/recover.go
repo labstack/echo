@@ -37,6 +37,7 @@ type (
 
 		// LogErrorFunc defines a function for custom logging in the middleware.
 		// If it's set you don't need to provide LogLevel for config.
+		// If this function returns nil, the centralized HTTPErrorHandler will not be called.
 		LogErrorFunc LogErrorFunc
 
 		// DisableErrorHandler disables the call to centralized HTTPErrorHandler.
@@ -49,12 +50,12 @@ type (
 var (
 	// DefaultRecoverConfig is the default Recover middleware config.
 	DefaultRecoverConfig = RecoverConfig{
-		Skipper:           DefaultSkipper,
-		StackSize:         4 << 10, // 4 KB
-		DisableStackAll:   false,
-		DisablePrintStack: false,
-		LogLevel:          0,
-		LogErrorFunc:      nil,
+		Skipper:             DefaultSkipper,
+		StackSize:           4 << 10, // 4 KB
+		DisableStackAll:     false,
+		DisablePrintStack:   false,
+		LogLevel:            0,
+		LogErrorFunc:        nil,
 		DisableErrorHandler: false,
 	}
 )
@@ -120,7 +121,7 @@ func RecoverWithConfig(config RecoverConfig) echo.MiddlewareFunc {
 						}
 					}
 
-					if(!config.DisableErrorHandler) {
+					if err != nil && !config.DisableErrorHandler {
 						c.Error(err)
 					} else {
 						returnErr = err
