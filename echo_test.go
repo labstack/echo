@@ -1517,29 +1517,97 @@ func TestEcho_OnAddRouteHandler(t *testing.T) {
 }
 
 func TestEchoReverse(t *testing.T) {
-	e := New()
-	dummyHandler := func(Context) error { return nil }
+	var testCases = []struct {
+		name          string
+		whenRouteName string
+		whenParams    []interface{}
+		expect        string
+	}{
+		{
+			name:          "ok,static with no params",
+			whenRouteName: "/static",
+			expect:        "/static",
+		},
+		{
+			name:          "ok,static with non existent param",
+			whenRouteName: "/static",
+			whenParams:    []interface{}{"missing param"},
+			expect:        "/static",
+		},
+		{
+			name:          "ok, wildcard with no params",
+			whenRouteName: "/static/*",
+			expect:        "/static/*",
+		},
+		{
+			name:          "ok, wildcard with params",
+			whenRouteName: "/static/*",
+			whenParams:    []interface{}{"foo.txt"},
+			expect:        "/static/foo.txt",
+		},
+		{
+			name:          "ok, single param without param",
+			whenRouteName: "/params/:foo",
+			expect:        "/params/:foo",
+		},
+		{
+			name:          "ok, single param with param",
+			whenRouteName: "/params/:foo",
+			whenParams:    []interface{}{"one"},
+			expect:        "/params/one",
+		},
+		{
+			name:          "ok, multi param without params",
+			whenRouteName: "/params/:foo/bar/:qux",
+			expect:        "/params/:foo/bar/:qux",
+		},
+		{
+			name:          "ok, multi param with one param",
+			whenRouteName: "/params/:foo/bar/:qux",
+			whenParams:    []interface{}{"one"},
+			expect:        "/params/one/bar/:qux",
+		},
+		{
+			name:          "ok, multi param with all params",
+			whenRouteName: "/params/:foo/bar/:qux",
+			whenParams:    []interface{}{"one", "two"},
+			expect:        "/params/one/bar/two",
+		},
+		{
+			name:          "ok, multi param + wildcard with all params",
+			whenRouteName: "/params/:foo/bar/:qux/*",
+			whenParams:    []interface{}{"one", "two", "three"},
+			expect:        "/params/one/bar/two/three",
+		},
+		{
+			name:          "ok, backslash is not escaped",
+			whenRouteName: "/backslash",
+			whenParams:    []interface{}{"test"},
+			expect:        `/a\b/test`,
+		},
+		{
+			name:          "ok, escaped colon verbs",
+			whenRouteName: "/params:customVerb",
+			whenParams:    []interface{}{"PATCH"},
+			expect:        `/params:PATCH`,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			dummyHandler := func(Context) error { return nil }
 
-	e.GET("/static", dummyHandler).Name = "/static"
-	e.GET("/static/*", dummyHandler).Name = "/static/*"
-	e.GET("/params/:foo", dummyHandler).Name = "/params/:foo"
-	e.GET("/params/:foo/bar/:qux", dummyHandler).Name = "/params/:foo/bar/:qux"
-	e.GET("/params/:foo/bar/:qux/*", dummyHandler).Name = "/params/:foo/bar/:qux/*"
-	e.GET("/params\\::customVerb", dummyHandler).Name = "/params:customVerb"
+			e.GET("/static", dummyHandler).Name = "/static"
+			e.GET("/static/*", dummyHandler).Name = "/static/*"
+			e.GET("/params/:foo", dummyHandler).Name = "/params/:foo"
+			e.GET("/params/:foo/bar/:qux", dummyHandler).Name = "/params/:foo/bar/:qux"
+			e.GET("/params/:foo/bar/:qux/*", dummyHandler).Name = "/params/:foo/bar/:qux/*"
+			e.GET("/a\\b/:x", dummyHandler).Name = "/backslash"
+			e.GET("/params\\::customVerb", dummyHandler).Name = "/params:customVerb"
 
-	assert.Equal(t, "/static", e.Reverse("/static"))
-	assert.Equal(t, "/static", e.Reverse("/static", "missing param"))
-	assert.Equal(t, "/static/*", e.Reverse("/static/*"))
-	assert.Equal(t, "/static/foo.txt", e.Reverse("/static/*", "foo.txt"))
-
-	assert.Equal(t, "/params/:foo", e.Reverse("/params/:foo"))
-	assert.Equal(t, "/params/one", e.Reverse("/params/:foo", "one"))
-	assert.Equal(t, "/params/:foo/bar/:qux", e.Reverse("/params/:foo/bar/:qux"))
-	assert.Equal(t, "/params/one/bar/:qux", e.Reverse("/params/:foo/bar/:qux", "one"))
-	assert.Equal(t, "/params/one/bar/two", e.Reverse("/params/:foo/bar/:qux", "one", "two"))
-	assert.Equal(t, "/params/one/bar/two/three", e.Reverse("/params/:foo/bar/:qux/*", "one", "two", "three"))
-
-	assert.Equal(t, "/params:PATCH", e.Reverse("/params:customVerb", "PATCH"))
+			assert.Equal(t, tc.expect, e.Reverse(tc.whenRouteName, tc.whenParams...))
+		})
+	}
 }
 
 func TestEchoReverseHandleHostProperly(t *testing.T) {
