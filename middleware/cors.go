@@ -150,8 +150,8 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 	allowOriginPatterns := []string{}
 	for _, origin := range config.AllowOrigins {
 		pattern := regexp.QuoteMeta(origin)
-		pattern = strings.Replace(pattern, "\\*", ".*", -1)
-		pattern = strings.Replace(pattern, "\\?", ".", -1)
+		pattern = strings.ReplaceAll(pattern, "\\*", ".*")
+		pattern = strings.ReplaceAll(pattern, "\\?", ".")
 		pattern = "^" + pattern + "$"
 		allowOriginPatterns = append(allowOriginPatterns, pattern)
 	}
