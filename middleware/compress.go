@@ -164,9 +164,9 @@ func (w *gzipResponseWriter) Write(b []byte) (int, error) {
 			}
 
 			return w.Writer.Write(w.buffer.Bytes())
-		} else {
-			return n, err
 		}
+
+		return n, err
 	}
 
 	return w.Writer.Write(b)
