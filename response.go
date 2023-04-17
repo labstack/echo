@@ -94,6 +94,13 @@ func (r *Response) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return r.Writer.(http.Hijacker).Hijack()
 }
 
+// Unwrap returns the original http.ResponseWriter.
+// ResponseController can be used to access the original http.ResponseWriter.
+// See [https://go.dev/blog/go1.20]
+func (r *Response) Unwrap() http.ResponseWriter {
+	return r.Writer
+}
+
 func (r *Response) reset(w http.ResponseWriter) {
 	r.beforeFuncs = nil
 	r.afterFuncs = nil

@@ -159,7 +159,12 @@ func (r *Router) Reverse(name string, params ...interface{}) string {
 	for _, route := range r.routes {
 		if route.Name == name {
 			for i, l := 0, len(route.Path); i < l; i++ {
-				if (route.Path[i] == ':' || route.Path[i] == '*') && n < ln {
+				hasBackslash := route.Path[i] == '\\'
+				if hasBackslash && i+1 < l && route.Path[i+1] == ':' {
+					i++ // backslash before colon escapes that colon. in that case skip backslash
+				}
+				if n < ln && (route.Path[i] == '*' || (!hasBackslash && route.Path[i] == ':')) {
+					// in case of `*` wildcard or `:` (unescaped colon) param we replace everything till next slash or end of path
 					for ; i < l && route.Path[i] != '/'; i++ {
 					}
 					uri.WriteString(fmt.Sprintf("%v", params[n]))

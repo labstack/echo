@@ -38,9 +38,9 @@ func rewriteRulesRegex(rewrite map[string]string) map[*regexp.Regexp]string {
 	rulesRegex := map[*regexp.Regexp]string{}
 	for k, v := range rewrite {
 		k = regexp.QuoteMeta(k)
-		k = strings.Replace(k, `\*`, "(.*?)", -1)
+		k = strings.ReplaceAll(k, `\*`, "(.*?)")
 		if strings.HasPrefix(k, `\^`) {
-			k = strings.Replace(k, `\^`, "^", -1)
+			k = strings.ReplaceAll(k, `\^`, "^")
 		}
 		k = k + "$"
 		rulesRegex[regexp.MustCompile(k)] = v
