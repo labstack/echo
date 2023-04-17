@@ -338,7 +338,7 @@ var (
 	ErrCookieNotFound         = errors.New("cookie not found")
 	ErrInvalidCertOrKeyType   = errors.New("invalid cert or key type, must be string or []byte")
 	ErrInvalidListenerNetwork = errors.New("invalid listener network")
-	ErrEmptyContentType       = errors.New("empty content type")
+	ErrEmptyContentType       = ErrUnsupportedMediaType.WithInternal(errors.New("missing content type header"))
 )
 
 // Error handlers
