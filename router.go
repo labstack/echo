@@ -151,7 +151,7 @@ func (r *Router) Routes() []*Route {
 	return routes
 }
 
-// Reverse generates an URL from route name and provided parameters.
+// Reverse generates a URL from route name and provided parameters.
 func (r *Router) Reverse(name string, params ...interface{}) string {
 	uri := new(bytes.Buffer)
 	ln := len(params)

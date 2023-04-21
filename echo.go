@@ -614,7 +614,7 @@ func (e *Echo) URL(h HandlerFunc, params ...interface{}) string {
 	return e.URI(h, params...)
 }
 
-// Reverse generates an URL from route name and provided parameters.
+// Reverse generates a URL from route name and provided parameters.
 func (e *Echo) Reverse(name string, params ...interface{}) string {
 	return e.router.Reverse(name, params...)
 }
