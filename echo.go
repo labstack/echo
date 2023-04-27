@@ -82,15 +82,18 @@ type (
 		routers       map[string]*Router
 		pool          sync.Pool
 
-		StdLogger        *stdLog.Logger
-		Server           *http.Server
-		TLSServer        *http.Server
-		Listener         net.Listener
-		TLSListener      net.Listener
-		AutoTLSManager   autocert.Manager
-		DisableHTTP2     bool
-		Debug            bool
-		HideBanner       bool
+		StdLogger      *stdLog.Logger
+		Server         *http.Server
+		TLSServer      *http.Server
+		Listener       net.Listener
+		TLSListener    net.Listener
+		AutoTLSManager autocert.Manager
+		DisableHTTP2   bool
+		Debug          bool
+
+		HideBanner   bool
+		customBanner func(e *Echo)
+
 		HidePort         bool
 		HTTPErrorHandler HTTPErrorHandler
 		Binder           Binder
@@ -800,7 +803,30 @@ func (e *Echo) configureServer(s *http.Server) error {
 	if !e.HidePort {
 		e.colorer.Printf("⇨ https server started on %s\n", e.colorer.Green(e.TLSListener.Addr()))
 	}
+
+	if e.customBanner != nil {
+		e.customBanner(e)
+	}
+
 	return nil
+}
+
+// CustomBanner sets a custom banner for the server and disables the default one.
+// The banner is printed to stdout when the server starts.
+// Param `banner` is a function that takes an `*Echo` instance.
+// Example:
+//
+//	e := echo.New()
+//	e.CustomBanner(func(e *echo.Echo) {
+//		colorer.Printf("⇨ http server started on %s\n", e.colorer.Green(e.Listener.Addr()))
+//	})
+func (e *Echo) CustomBanner(banner func(e *Echo)) *Echo {
+	e.HideBanner = true
+	e.HidePort = true
+	e.customBanner = func(e *Echo) {
+		e.colorer.Println("This is a custom banner.\nServer is listening on port 1323")
+	}
+	return e
 }
 
 // ListenerAddr returns net.Addr for Listener
