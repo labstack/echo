@@ -66,6 +66,24 @@ func TestEcho(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 }
 
+func TestEchoCustomBanner(t *testing.T) {
+	e := New()
+	// echo set loggerOutput to a buffer and then print the buffer
+	buf := new(bytes.Buffer)
+	e.Logger.SetOutput(buf)
+
+	e.CustomBanner(func(e *Echo) {
+		e.colorer.Println("This is a custom banner.\nServer is listening on port 1323")
+	})
+
+	go func() {
+		e.Logger.Fatal(e.Start(":0"))
+	}()
+	time.Sleep(2 * time.Second)
+	e.Close()
+	fmt.Println(buf.String())
+}
+
 func TestEchoStatic(t *testing.T) {
 	var testCases = []struct {
 		name                 string
