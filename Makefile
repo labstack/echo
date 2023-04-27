@@ -22,6 +22,9 @@ vet: ## Vet the files
 test: ## Run tests
 	@go test -short ${PKG_LIST}
 
+test-verbose:
+	@go test -v ${PKG_LIST}
+
 race: ## Run tests with data race detector
 	@go test -race ${PKG_LIST}
 
