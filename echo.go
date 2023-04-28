@@ -780,6 +780,10 @@ func (e *Echo) configureServer(s *http.Server) error {
 		e.colorer.Printf(banner, e.colorer.Red("v"+Version), e.colorer.Blue(website))
 	}
 
+	if e.customBanner != nil {
+		e.customBanner(e)
+	}
+
 	if s.TLSConfig == nil {
 		if e.Listener == nil {
 			l, err := newListener(s.Addr, e.ListenerNetwork)
@@ -804,10 +808,6 @@ func (e *Echo) configureServer(s *http.Server) error {
 		e.colorer.Printf("⇨ https server started on %s\n", e.colorer.Green(e.TLSListener.Addr()))
 	}
 
-	if e.customBanner != nil {
-		e.customBanner(e)
-	}
-
 	return nil
 }
 
@@ -816,16 +816,16 @@ func (e *Echo) configureServer(s *http.Server) error {
 // Param `banner` is a function that takes an `*Echo` instance.
 // Example:
 //
-//	e := echo.New()
-//	e.CustomBanner(func(e *echo.Echo) {
-//		colorer.Printf("⇨ http server started on %s\n", e.colorer.Green(e.Listener.Addr()))
-//	})
+//		e := echo.New()
+//		e.CustomBanner(func(e *echo.Echo) {
+//	   // colorer here is an instance of `github.com/labstack/gommon/color
+//	   // you can use it to colorize your banner or use any other method.`
+//		colorer.Printf("⇨ http server started on %s\n", colorer.Green(e.Listener.Addr()))
+//		})
 func (e *Echo) CustomBanner(banner func(e *Echo)) *Echo {
 	e.HideBanner = true
 	e.HidePort = true
-	e.customBanner = func(e *Echo) {
-		e.colorer.Println("This is a custom banner.\nServer is listening on port 1323")
-	}
+	e.customBanner = banner
 	return e
 }
 
