@@ -1032,3 +1032,31 @@ func TestDefaultBinder_BindBody(t *testing.T) {
 		})
 	}
 }
+
+func TestBindQueryParamsWithDefaultValue(t *testing.T) {
+	type person struct {
+		Name string `query:"name" default:"bob"`
+		Age  int    `query:"age" default:"18"`
+	}
+
+	e := New()
+	req := httptest.NewRequest(http.MethodGet, "/?name=foo&age=1", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	p := new(person)
+	err := c.Bind(p)
+	if assert.NoError(t, err) {
+		assert.Equal(t, "foo", p.Name)
+		assert.Equal(t, 1, p.Age)
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/", nil)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec)
+	p = new(person)
+	err = c.Bind(p)
+	if assert.NoError(t, err) {
+		assert.Equal(t, "bob", p.Name)
+		assert.Equal(t, 18, p.Age)
+	}
+}

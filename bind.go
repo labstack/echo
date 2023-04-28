@@ -114,7 +114,7 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 	// Only bind query parameters for GET/DELETE/HEAD to avoid unexpected behavior with destination struct binding from body.
 	// For example a request URL `&id=1&lang=en` with body `{"id":100,"lang":"de"}` would lead to precedence issues.
 	// The HTTP method check restores pre-v4.1.11 behavior to avoid these problems (see issue #1670)
-  method := c.Request().Method
+	method := c.Request().Method
 	if method == http.MethodGet || method == http.MethodDelete || method == http.MethodHead {
 		if err = b.BindQueryParams(c, i); err != nil {
 			return err
@@ -125,11 +125,29 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 
 // bindData will bind data ONLY fields in destination struct that have EXPLICIT tag
 func (b *DefaultBinder) bindData(destination interface{}, data map[string][]string, tag string) error {
-	if destination == nil || len(data) == 0 {
+	if destination == nil {
 		return nil
 	}
 	typ := reflect.TypeOf(destination).Elem()
 	val := reflect.ValueOf(destination).Elem()
+
+	if len(data) == 0 {
+		if typ.Kind() == reflect.Struct {
+			for i := 0; i < val.NumField(); i++ {
+				structField := val.Type().Field(i)
+				tag := structField.Tag
+				if tag == "" {
+					continue
+				}
+				defaultValueStr := tag.Get("default")
+				if defaultValueStr == "" {
+					continue
+				}
+				setWithProperType(val.Field(i).Kind(), defaultValueStr, val.Field(i))
+			}
+		}
+		return nil
+	}
 
 	// Map
 	if typ.Kind() == reflect.Map {
