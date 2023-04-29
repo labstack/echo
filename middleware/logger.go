@@ -3,6 +3,7 @@ package middleware
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"strconv"
 	"strings"
@@ -41,6 +42,7 @@ type (
 		// - user_agent
 		// - status
 		// - error
+		// - error_stacktrace (err passed through Sprintf's '%+v')
 		// - latency (In nanoseconds)
 		// - latency_human (Human readable)
 		// - bytes_in (Bytes received)
@@ -198,8 +200,12 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 					if err != nil {
 						// Error may contain invalid JSON e.g. `"`
 						b, _ := json.Marshal(err.Error())
-						b = b[1 : len(b)-1]
-						return buf.Write(b)
+						return buf.Write(b[1 : len(b)-1])
+					}
+				case "error_stacktrace":
+					if err != nil {
+						b, _ := json.Marshal(fmt.Sprintf("%+v", err))
+						return buf.Write(b[1 : len(b)-1])
 					}
 				case "latency":
 					l := stop.Sub(start)
