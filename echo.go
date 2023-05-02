@@ -454,6 +454,22 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 	}
 	if err != nil {
 		e.Logger.Error(err)
+
+		if e.Debug {
+			message = Map{"message": http.StatusText(http.StatusInternalServerError), "error": err.Error()}
+		} else {
+			message = Map{"message": http.StatusText(http.StatusInternalServerError)}
+		}
+
+		if c.Request().Method == http.MethodHead {
+			err = c.NoContent(http.StatusInternalServerError)
+		} else {
+			err = c.JSON(http.StatusInternalServerError, message)
+		}
+		if err != nil {
+			e.Logger.Error("Sending internal  message failed as well:", err)
+			// TODO maybe cancel whole connection here?
+		}
 	}
 }
 
