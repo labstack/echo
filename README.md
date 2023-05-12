@@ -11,14 +11,16 @@
 
 ## Supported Go versions
 
-Latest version of Echo supports last four Go major [releases](https://go.dev/doc/devel/release) and might work with
-older versions.
+Latest version of Echo supports last four Go major
+[releases](https://go.dev/doc/devel/release) and might work with older versions.
 
-As of version 4.0.0, Echo is available as a [Go module](https://github.com/golang/go/wiki/Modules).
-Therefore a Go version capable of understanding /vN suffixed imports is required:
+As of version 4.0.0, Echo is available as a
+[Go module](https://github.com/golang/go/wiki/Modules). Therefore a Go version
+capable of understanding /vN suffixed imports is required:
 
-Any of these versions will allow you to import Echo as `github.com/labstack/echo/v4` which is the recommended
-way of using Echo going forward.
+Any of these versions will allow you to import Echo as
+`github.com/labstack/echo/v4` which is the recommended way of using Echo going
+forward.
 
 For older versions, please use the latest v3 tag.
 
@@ -40,9 +42,8 @@ For older versions, please use the latest v3 tag.
 
 ## Benchmarks
 
-Date: 2020/11/11<br>
-Source: https://github.com/vishr/web-framework-benchmark<br>
-Lower is better!
+Date: 2020/11/11<br> Source:
+https://github.com/vishr/web-framework-benchmark<br> Lower is better!
 
 <img src="https://i.imgur.com/qwPNQbl.png">
 <img src="https://i.imgur.com/s8yKQjx.png">
@@ -94,26 +95,27 @@ func hello(c echo.Context) error {
 
 Following list of middleware is maintained by Echo team.
 
-| Repository                                                                   | Description                                                                                                                                                                                                                                                                                                                   |
-|------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [github.com/labstack/echo-jwt](https://github.com/labstack/echo-jwt)         | [JWT](https://github.com/golang-jwt/jwt) middleware                                                                                                                                                                                                                                                                           | 
-| [github.com/labstack/echo-contrib](https://github.com/labstack/echo-contrib) | [casbin](https://github.com/casbin/casbin), [gorilla/sessions](https://github.com/gorilla/sessions), [jaegertracing](https://github.com/uber/jaeger-client-go), [prometheus](https://github.com/prometheus/client_golang/), [pprof](https://pkg.go.dev/net/http/pprof), [zipkin](https://github.com/openzipkin/zipkin-go) middlewares | 
+| Repository                                                                   | Description                                                                                                                                                                                                                                                                                                                           |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [github.com/labstack/echo-jwt](https://github.com/labstack/echo-jwt)         | [JWT](https://github.com/golang-jwt/jwt) middleware                                                                                                                                                                                                                                                                                   |
+| [github.com/labstack/echo-contrib](https://github.com/labstack/echo-contrib) | [casbin](https://github.com/casbin/casbin), [gorilla/sessions](https://github.com/gorilla/sessions), [jaegertracing](https://github.com/uber/jaeger-client-go), [prometheus](https://github.com/prometheus/client_golang/), [pprof](https://pkg.go.dev/net/http/pprof), [zipkin](https://github.com/openzipkin/zipkin-go) middlewares |
 
 # Third-party middleware repositories
 
-Be careful when adding 3rd party middleware. Echo teams does not have time or manpower to guarantee safety and quality
-of middlewares in this list.
+Be careful when adding 3rd party middleware. Echo teams does not have time or
+manpower to guarantee safety and quality of middlewares in this list.
 
 | Repository                                                                                           | Description                                                                                                                                                                                              |
-|------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [deepmap/oapi-codegen](https://github.com/deepmap/oapi-codegen)                                      | Automatically generate RESTful API documentation with [OpenAPI](https://swagger.io/specification/) Client and Server Code Generator                                                                      |
 | [github.com/swaggo/echo-swagger](https://github.com/swaggo/echo-swagger)                             | Automatically generate RESTful API documentation with [Swagger](https://swagger.io/) 2.0.                                                                                                                |
 | [github.com/ziflex/lecho](https://github.com/ziflex/lecho)                                           | [Zerolog](https://github.com/rs/zerolog) logging library wrapper for Echo logger interface.                                                                                                              |
 | [github.com/brpaz/echozap](https://github.com/brpaz/echozap)                                         | Uber´s [Zap](https://github.com/uber-go/zap) logging library wrapper for Echo logger interface.                                                                                                          |
-| [github.com/samber/slog-echo](https://github.com/samber/slog-echo)                                         | Go [slog](https://pkg.go.dev/golang.org/x/exp/slog) logging library wrapper for Echo logger interface.                                                                                                          |
+| [github.com/samber/slog-echo](https://github.com/samber/slog-echo)                                   | Go [slog](https://pkg.go.dev/golang.org/x/exp/slog) logging library wrapper for Echo logger interface.                                                                                                   |
 | [github.com/darkweak/souin/plugins/echo](https://github.com/darkweak/souin/tree/master/plugins/echo) | HTTP cache system based on [Souin](https://github.com/darkweak/souin) to automatically get your endpoints cached. It supports some distributed and non-distributed storage systems depending your needs. |
 | [github.com/mikestefanello/pagoda](https://github.com/mikestefanello/pagoda)                         | Rapid, easy full-stack web development starter kit built with Echo.                                                                                                                                      |
 | [github.com/go-woo/protoc-gen-echo](https://github.com/go-woo/protoc-gen-echo)                       | ProtoBuf generate Echo server side code                                                                                                                                                                  |
+| [github.com/fourcels/rest](https://github.com/fourcels/rest)                                         | RESTful Web Services with [openapi3](https://swagger.io/specification/)                                                                                                                                  |
 
 Please send a PR to add your own library here.
 
