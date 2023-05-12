@@ -20,7 +20,7 @@ type (
 	}
 )
 
-//GZIPEncoding content-encoding header if set to "gzip", decompress body contents.
+// GZIPEncoding content-encoding header if set to "gzip", decompress body contents.
 const GZIPEncoding string = "gzip"
 
 // Decompressor is used to get the sync.Pool used by the middleware to get Gzip readers
@@ -44,12 +44,12 @@ func (d *DefaultGzipDecompressPool) gzipDecompressPool() sync.Pool {
 	return sync.Pool{New: func() interface{} { return new(gzip.Reader) }}
 }
 
-//Decompress decompresses request body based if content encoding type is set to "gzip" with default config
+// Decompress decompresses request body based if content encoding type is set to "gzip" with default config
 func Decompress() echo.MiddlewareFunc {
 	return DecompressWithConfig(DefaultDecompressConfig)
 }
 
-//DecompressWithConfig decompresses request body based if content encoding type is set to "gzip" with config
+// DecompressWithConfig decompresses request body based if content encoding type is set to "gzip" with config
 func DecompressWithConfig(config DecompressConfig) echo.MiddlewareFunc {
 	// Defaults
 	if config.Skipper == nil {
