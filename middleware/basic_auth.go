@@ -2,9 +2,9 @@ package middleware
 
 import (
 	"encoding/base64"
+	"net/http"
 	"strconv"
 	"strings"
-	"net/http"
 
 	"github.com/labstack/echo/v4"
 )
