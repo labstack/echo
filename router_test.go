@@ -2993,6 +2993,15 @@ func TestDefaultRouter_UnescapePathParamValues(t *testing.T) {
 			},
 		},
 		{
+			name:                         "ok, ending with static node, unescape = true",
+			givenUnescapePathParamValues: true,
+			whenURL:                      "/fourth/%20%2Fwith%20space/static",
+			expectPath:                   "/fourth/:id/static",
+			expectPathParams: PathParams{
+				{Name: "id", Value: " /with space"},
+			},
+		},
+		{
 			name:                         "ok, unescape = false",
 			givenUnescapePathParamValues: false,
 			whenURL:                      "/first/value%20with%20space",
@@ -3018,6 +3027,8 @@ func TestDefaultRouter_UnescapePathParamValues(t *testing.T) {
 			_, err = router.Add(Route{Method: http.MethodGet, Path: "/second/:id/:fileName", Handler: handlerFunc})
 			assert.NoError(t, err)
 			_, err = router.Add(Route{Method: http.MethodGet, Path: "/third/*", Handler: handlerFunc})
+			assert.NoError(t, err)
+			_, err = router.Add(Route{Method: http.MethodGet, Path: "/fourth/:id/static", Handler: handlerFunc})
 			assert.NoError(t, err)
 
 			target, _ := url.Parse(tc.whenURL)

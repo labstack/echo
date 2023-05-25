@@ -1064,7 +1064,7 @@ func (r *DefaultRouter) Route(c RoutableContext) HandlerFunc {
 		}
 	}
 
-	if r.unescapePathParamValues && currentNode.kind != staticKind {
+	if r.unescapePathParamValues {
 		// See issue #1531, #1258 - there are cases when path parameter need to be unescaped
 		for i, p := range *pathParams {
 			tmpVal, err := url.PathUnescape(p.Value)
