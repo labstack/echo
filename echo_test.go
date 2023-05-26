@@ -1313,6 +1313,9 @@ func TestDefaultHTTPErrorHandler(t *testing.T) {
 		err := errors.New("internal error message body")
 		return NewHTTPError(http.StatusBadRequest).SetInternal(err)
 	})
+	e.GET("/error-in-httperror", func(c Context) error {
+		return NewHTTPError(http.StatusBadRequest, errors.New("error in httperror"))
+	})
 
 	// With Debug=true plain response contains error message
 	c, b := request(http.MethodGet, "/plain", e)
@@ -1347,6 +1350,11 @@ func TestDefaultHTTPErrorHandler(t *testing.T) {
 	c, b = request(http.MethodGet, "/servererror", e)
 	assert.Equal(t, http.StatusInternalServerError, c)
 	assert.Equal(t, "{\"code\":33,\"error\":\"stackinfo\",\"message\":\"Something bad happened\"}\n", b)
+
+	// when returning HTTPError with error, the error message is returned
+	c, b = request(http.MethodGet, "/error-in-httperror", e)
+	assert.Equal(t, http.StatusBadRequest, c)
+	assert.Equal(t, "{\"message\":\"error in httperror\"}\n", b)
 }
 
 func TestEchoClose(t *testing.T) {

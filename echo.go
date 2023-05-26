@@ -438,12 +438,16 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 	// Issue #1426
 	code := he.Code
 	message := he.Message
-	if m, ok := he.Message.(string); ok {
+
+	switch m := he.Message.(type) {
+	case string:
 		if e.Debug {
 			message = Map{"message": m, "error": err.Error()}
 		} else {
 			message = Map{"message": m}
 		}
+	case error:
+		message = Map{"message": m.Error()}
 	}
 
 	// Send response
