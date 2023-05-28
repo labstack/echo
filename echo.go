@@ -39,6 +39,7 @@ package echo
 import (
 	stdContext "context"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -446,6 +447,9 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 		} else {
 			message = Map{"message": m}
 		}
+	case json.Marshaler:
+		// do nothing - this type knows how to format itself to JSON
+		break
 	case error:
 		message = Map{"message": m.Error()}
 	}
