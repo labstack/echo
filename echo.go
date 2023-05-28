@@ -449,7 +449,6 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 		}
 	case json.Marshaler:
 		// do nothing - this type knows how to format itself to JSON
-		break
 	case error:
 		message = Map{"message": m.Error()}
 	}
