@@ -39,6 +39,7 @@ package echo
 import (
 	stdContext "context"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -438,12 +439,18 @@ func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 	// Issue #1426
 	code := he.Code
 	message := he.Message
-	if m, ok := he.Message.(string); ok {
+
+	switch m := he.Message.(type) {
+	case string:
 		if e.Debug {
 			message = Map{"message": m, "error": err.Error()}
 		} else {
 			message = Map{"message": m}
 		}
+	case json.Marshaler:
+		// do nothing - this type knows how to format itself to JSON
+	case error:
+		message = Map{"message": m.Error()}
 	}
 
 	// Send response
