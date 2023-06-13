@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"bytes"
 	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
@@ -25,6 +26,17 @@ func TestBasicAuth(t *testing.T) {
 	h := BasicAuth(f)(func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	})
+	s := func(c echo.Context) bool {
+		auth := c.Request().Header.Get(echo.HeaderAuthorization)
+		if strings.HasPrefix(auth, basic) {
+			decoded, err := base64.StdEncoding.DecodeString(auth[len(basic)+1:])
+			if err != nil {
+				return false
+			}
+			return bytes.Equal(decoded, []byte("joe:skip"))
+		}
+		return false
+	}
 
 	// Valid credentials
 	auth := basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:secret"))
@@ -32,12 +44,17 @@ func TestBasicAuth(t *testing.T) {
 	assert.NoError(t, h(c))
 
 	h = BasicAuthWithConfig(BasicAuthConfig{
-		Skipper:   nil,
+		Skipper:   s,
 		Validator: f,
 		Realm:     "someRealm",
 	})(func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	})
+
+	// Skipped Request
+	auth = basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:skip"))
+	req.Header.Set(echo.HeaderAuthorization, auth)
+	assert.NoError(t, h(c))
 
 	// Valid credentials
 	auth = basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:secret"))

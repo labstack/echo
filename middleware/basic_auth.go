@@ -25,6 +25,8 @@ type (
 	}
 
 	// BasicAuthValidator defines a function to validate BasicAuth credentials.
+	// The function should return a boolean indicating whether the credentials are valid,
+	// and an error if any error occurs during the validation process.
 	BasicAuthValidator func(string, string, echo.Context) (bool, error)
 )
 
