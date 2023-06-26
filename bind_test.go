@@ -535,13 +535,13 @@ func TestBindMultipartFormWithMapDestination(t *testing.T) {
 	{
 		assertMsg := "map with non-string value"
 		data := map[string]int{}
-		err := BindHeaders(c, &data)
+		err := c.Bind(&data)
 		assert.Error(t, err, assertMsg)
 	}
 	{
 		assertMsg := "map with string value"
 		data := map[string]string{}
-		err := BindHeaders(c, &data)
+		err := c.Bind(&data)
 		assert.NoError(t, err, assertMsg)
 		assert.Equal(t, "single_val1", data["single"], assertMsg)
 		assert.Equal(t, "multiple_val1", data["multiple"], assertMsg)
@@ -549,7 +549,7 @@ func TestBindMultipartFormWithMapDestination(t *testing.T) {
 	{
 		assertMsg := "map with slice value"
 		data := map[string][]string{}
-		err := BindHeaders(c, &data)
+		err := c.Bind(&data)
 		assert.NoError(t, err, assertMsg)
 		assert.Equal(t, []string{"single_val1"}, data["single"], assertMsg)
 		assert.Equal(t, []string{"multiple_val1", "multiple_val2"}, data["multiple"], assertMsg)
@@ -557,7 +557,7 @@ func TestBindMultipartFormWithMapDestination(t *testing.T) {
 	{
 		assertMsg := "map with interface{} value"
 		data := map[string]interface{}{}
-		err := BindHeaders(c, &data)
+		err := c.Bind(&data)
 		assert.NoError(t, err)
 		assert.Equal(t, "single_val1", data["single"], assertMsg)
 		assert.Equal(t, []string{"multiple_val1", "multiple_val2"}, data["multiple"], assertMsg)
