@@ -300,6 +300,25 @@ func TestBindHeaderParamBadType(t *testing.T) {
 	}
 }
 
+func TestBindHeaderWithMapDestination(t *testing.T) {
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Add("Single", "val1")
+	req.Header.Add("Multiple", "val1")
+	req.Header.Add("Multiple", "val2")
+	e := New()
+	c := e.NewContext(req, rec)
+
+	data := map[string]interface{}{}
+	err := BindHeaders(c, &data)
+
+	assert.NoError(t, err)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(data))
+	assert.Equal(t, "val1", data["Single"])
+	assert.Equal(t, []string{"val1", "val2"}, data["Multiple"])
+}
+
 func TestBind_CombineQueryWithHeaderParam(t *testing.T) {
 	e := New()
 	req := httptest.NewRequest(http.MethodGet, "/products/999?length=50&page=10&language=et", nil)
@@ -477,6 +496,29 @@ func TestBindMultipartForm(t *testing.T) {
 	testBindOkay(assert, bytes.NewReader(body), dummyQuery, mw.FormDataContentType())
 }
 
+func TestBindMultipartFormWithMapDestination(t *testing.T) {
+	body := new(bytes.Buffer)
+	mw := multipart.NewWriter(body)
+	mw.WriteField("single", "val1")
+	mw.WriteField("multiple", "val1")
+	mw.WriteField("multiple", "val2")
+	mw.Close()
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/", body)
+	req.Header.Set(HeaderContentType, mw.FormDataContentType())
+	e := New()
+	c := e.NewContext(req, rec)
+
+	data := map[string]interface{}{}
+	err := c.Bind(&data)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(data))
+	assert.Equal(t, "val1", data["single"])
+	assert.Equal(t, []string{"val1", "val2"}, data["multiple"])
+}
+
 func TestBindUnsupportedMediaType(t *testing.T) {
 	assert := assert.New(t)
 	testBindError(assert, strings.NewReader(invalidContent), MIMEApplicationJSON, &json.SyntaxError{})
@@ -503,22 +545,6 @@ func TestBindbindData(t *testing.T) {
 	a.Equal(float64(0), ts.F64)
 	a.Equal("", ts.S)
 	a.Equal("", ts.cantSet)
-}
-
-func TestBind_bindDataWithMap(t *testing.T) {
-	a := assert.New(t)
-
-	data := map[string]interface{}{}
-
-	values := url.Values{
-		"single":   []string{"val1"},
-		"multiple": []string{"val1", "val2"},
-	}
-
-	err := bindData(&data, values, "form")
-	a.NoError(err)
-	a.Equal(data["single"], "val1")
-	a.Equal(data["multiple"], []string{"val1", "val2"})
 }
 
 func TestBindParam(t *testing.T) {
