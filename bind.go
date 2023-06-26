@@ -128,14 +128,39 @@ func bindData(destination interface{}, data map[string][]string, tag string) err
 	val := reflect.ValueOf(destination).Elem()
 
 	// Map
+	//
+	// If the destination map value type is string, only the first data[k][0] is bound.
+	// If the destination map value type is []string, all data[k] values are bound.
+	// If the destination map value type is interface{} and len(data[k]) == 1, only the first data[k][0] is bound.
+	// If the destination map value type is interface{} and len(data[k]) > 1, all data[k] values are bound.
+	//
+	// If data[k] is empty, then the key will be deleted from the destination map.
 	if typ.Kind() == reflect.Map {
+		destValKind := typ.Elem().Kind()
+
 		for k, v := range data {
-			if len(v) == 1 {
-				val.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v[0]))
-			} else {
-				val.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v))
+			var rv reflect.Value
+
+			switch destValKind {
+			case reflect.Slice:
+				rv = reflect.ValueOf(v)
+			case reflect.Interface:
+				if len(v) == 1 {
+					rv = reflect.ValueOf(v[0])
+				} else {
+					rv = reflect.ValueOf(v)
+				}
+			case reflect.String:
+				if len(v) > 0 {
+					rv = reflect.ValueOf(v[0])
+				}
+			default:
+				return errors.New("map value type must be string, []string or interface{}")
 			}
+
+			val.SetMapIndex(reflect.ValueOf(k), rv)
 		}
+
 		return nil
 	}
 

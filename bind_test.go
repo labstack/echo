@@ -303,19 +303,42 @@ func TestBindHeaderParamBadType(t *testing.T) {
 func TestBindHeaderWithMapDestination(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Add("Single", "val1")
-	req.Header.Add("Multiple", "val1")
-	req.Header.Add("Multiple", "val2")
+	req.Header.Add("Single", "single_val1")
+	req.Header.Add("Multiple", "multiple_val1")
+	req.Header.Add("Multiple", "multiple_val2")
 	e := New()
 	c := e.NewContext(req, rec)
 
-	data := map[string]interface{}{}
-	err := BindHeaders(c, &data)
-
-	assert.NoError(t, err)
-	assert.Equal(t, 2, len(data))
-	assert.Equal(t, "val1", data["Single"])
-	assert.Equal(t, []string{"val1", "val2"}, data["Multiple"])
+	{
+		assertMsg := "map with non-string value"
+		data := map[string]int{}
+		err := BindHeaders(c, &data)
+		assert.Error(t, err, assertMsg)
+	}
+	{
+		assertMsg := "map with string value"
+		data := map[string]string{}
+		err := BindHeaders(c, &data)
+		assert.NoError(t, err, assertMsg)
+		assert.Equal(t, "single_val1", data["Single"], assertMsg)
+		assert.Equal(t, "multiple_val1", data["Multiple"], assertMsg)
+	}
+	{
+		assertMsg := "map with slice value"
+		data := map[string][]string{}
+		err := BindHeaders(c, &data)
+		assert.NoError(t, err, assertMsg)
+		assert.Equal(t, []string{"single_val1"}, data["Single"], assertMsg)
+		assert.Equal(t, []string{"multiple_val1", "multiple_val2"}, data["Multiple"], assertMsg)
+	}
+	{
+		assertMsg := "map with interface{} value"
+		data := map[string]interface{}{}
+		err := BindHeaders(c, &data)
+		assert.NoError(t, err)
+		assert.Equal(t, "single_val1", data["Single"], assertMsg)
+		assert.Equal(t, []string{"multiple_val1", "multiple_val2"}, data["Multiple"], assertMsg)
+	}
 }
 
 func TestBind_CombineQueryWithHeaderParam(t *testing.T) {
@@ -498,9 +521,9 @@ func TestBindMultipartForm(t *testing.T) {
 func TestBindMultipartFormWithMapDestination(t *testing.T) {
 	body := new(bytes.Buffer)
 	mw := multipart.NewWriter(body)
-	mw.WriteField("single", "val1")
-	mw.WriteField("multiple", "val1")
-	mw.WriteField("multiple", "val2")
+	mw.WriteField("single", "single_val1")
+	mw.WriteField("multiple", "multiple_val1")
+	mw.WriteField("multiple", "multiple_val2")
 	mw.Close()
 
 	rec := httptest.NewRecorder()
@@ -509,13 +532,36 @@ func TestBindMultipartFormWithMapDestination(t *testing.T) {
 	e := New()
 	c := e.NewContext(req, rec)
 
-	data := map[string]interface{}{}
-	err := c.Bind(&data)
-
-	assert.NoError(t, err)
-	assert.Equal(t, 2, len(data))
-	assert.Equal(t, "val1", data["single"])
-	assert.Equal(t, []string{"val1", "val2"}, data["multiple"])
+	{
+		assertMsg := "map with non-string value"
+		data := map[string]int{}
+		err := BindHeaders(c, &data)
+		assert.Error(t, err, assertMsg)
+	}
+	{
+		assertMsg := "map with string value"
+		data := map[string]string{}
+		err := BindHeaders(c, &data)
+		assert.NoError(t, err, assertMsg)
+		assert.Equal(t, "single_val1", data["single"], assertMsg)
+		assert.Equal(t, "multiple_val1", data["multiple"], assertMsg)
+	}
+	{
+		assertMsg := "map with slice value"
+		data := map[string][]string{}
+		err := BindHeaders(c, &data)
+		assert.NoError(t, err, assertMsg)
+		assert.Equal(t, []string{"single_val1"}, data["single"], assertMsg)
+		assert.Equal(t, []string{"multiple_val1", "multiple_val2"}, data["multiple"], assertMsg)
+	}
+	{
+		assertMsg := "map with interface{} value"
+		data := map[string]interface{}{}
+		err := BindHeaders(c, &data)
+		assert.NoError(t, err)
+		assert.Equal(t, "single_val1", data["single"], assertMsg)
+		assert.Equal(t, []string{"multiple_val1", "multiple_val2"}, data["multiple"], assertMsg)
+	}
 }
 
 func TestBindUnsupportedMediaType(t *testing.T) {
