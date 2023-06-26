@@ -313,7 +313,6 @@ func TestBindHeaderWithMapDestination(t *testing.T) {
 	err := BindHeaders(c, &data)
 
 	assert.NoError(t, err)
-	assert.NoError(t, err)
 	assert.Equal(t, 2, len(data))
 	assert.Equal(t, "val1", data["Single"])
 	assert.Equal(t, []string{"val1", "val2"}, data["Multiple"])
