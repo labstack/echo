@@ -505,6 +505,22 @@ func TestBindbindData(t *testing.T) {
 	a.Equal("", ts.cantSet)
 }
 
+func TestBind_bindDataWithMap(t *testing.T) {
+	a := assert.New(t)
+
+	data := map[string]interface{}{}
+
+	values := url.Values{
+		"single":   []string{"val1"},
+		"multiple": []string{"val1", "val2"},
+	}
+
+	err := bindData(&data, values, "form")
+	a.NoError(err)
+	a.Equal(data["single"], "val1")
+	a.Equal(data["multiple"], []string{"val1", "val2"})
+}
+
 func TestBindParam(t *testing.T) {
 	e := New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)

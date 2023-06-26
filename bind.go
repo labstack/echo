@@ -130,7 +130,11 @@ func bindData(destination interface{}, data map[string][]string, tag string) err
 	// Map
 	if typ.Kind() == reflect.Map {
 		for k, v := range data {
-			val.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v[0]))
+			if len(v) == 1 {
+				val.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v[0]))
+			} else {
+				val.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v))
+			}
 		}
 		return nil
 	}
