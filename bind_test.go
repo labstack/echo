@@ -239,6 +239,19 @@ func TestBindQueryParams(t *testing.T) {
 	}
 }
 
+func TestBindQueryParamsHttpNobody(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(http.MethodGet, "/?id=1&name=Jon+Snow", http.NoBody)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	u := new(user)
+	err := c.Bind(u)
+	if assert.NoError(t, err) {
+		assert.Equal(t, 1, u.ID)
+		assert.Equal(t, "Jon Snow", u.Name)
+	}
+}
+
 func TestBindQueryParamsCaseInsensitive(t *testing.T) {
 	e := New()
 	req := httptest.NewRequest(http.MethodGet, "/?ID=1&NAME=Jon+Snow", nil)
