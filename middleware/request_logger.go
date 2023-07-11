@@ -225,7 +225,7 @@ func (config RequestLoggerConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 	if config.Skipper == nil {
 		config.Skipper = DefaultSkipper
 	}
-	now = time.Now
+	now := time.Now
 	if config.timeNow != nil {
 		now = config.timeNow
 	}

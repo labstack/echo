@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"errors"
-	"fmt"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -340,7 +339,7 @@ func TestRateLimiterMemoryStore_Allow(t *testing.T) {
 
 	for i, tc := range testCases {
 		t.Logf("Running testcase #%d => %v", i, time.Duration(i)*220*time.Millisecond)
-		now = func() time.Time {
+		inMemoryStore.timeNow = func() time.Time {
 			return time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC).Add(time.Duration(i) * 220 * time.Millisecond)
 		}
 		allowed, _ := inMemoryStore.Allow(tc.id)
@@ -350,24 +349,22 @@ func TestRateLimiterMemoryStore_Allow(t *testing.T) {
 
 func TestRateLimiterMemoryStore_cleanupStaleVisitors(t *testing.T) {
 	var inMemoryStore = NewRateLimiterMemoryStoreWithConfig(RateLimiterMemoryStoreConfig{Rate: 1, Burst: 3})
-	now = time.Now
-	fmt.Println(now())
 	inMemoryStore.visitors = map[string]*Visitor{
 		"A": {
 			Limiter:  rate.NewLimiter(1, 3),
-			lastSeen: now(),
+			lastSeen: time.Now(),
 		},
 		"B": {
 			Limiter:  rate.NewLimiter(1, 3),
-			lastSeen: now().Add(-1 * time.Minute),
+			lastSeen: time.Now().Add(-1 * time.Minute),
 		},
 		"C": {
 			Limiter:  rate.NewLimiter(1, 3),
-			lastSeen: now().Add(-5 * time.Minute),
+			lastSeen: time.Now().Add(-5 * time.Minute),
 		},
 		"D": {
 			Limiter:  rate.NewLimiter(1, 3),
-			lastSeen: now().Add(-10 * time.Minute),
+			lastSeen: time.Now().Add(-10 * time.Minute),
 		},
 	}
 
