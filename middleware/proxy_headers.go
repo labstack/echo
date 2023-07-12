@@ -17,7 +17,11 @@ var (
 func ProxyHeaders() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			if fwd := c.RealIP(); fwd != "" {
+			if fwd := c.Request().Header.Get(echo.HeaderForwarded); fwd != "" {
+				if match := ipRegex.FindStringSubmatch(fwd); len(match) > 1 {
+					c.Request().RemoteAddr = strings.Trim(match[1], `"`)
+				}
+			} else if fwd := c.RealIP(); fwd != "" {
 				c.Request().RemoteAddr = fwd
 			}
 
