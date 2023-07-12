@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
@@ -10,6 +11,7 @@ import (
 
 var (
 	protoRegex = regexp.MustCompile(`(?i)(?:proto=)(https|http)`)
+	ipRegex    = regexp.MustCompile("(?i)(?:for=)([^(;|,| )]+)")
 )
 
 func ProxyHeaders() echo.MiddlewareFunc {
@@ -19,7 +21,7 @@ func ProxyHeaders() echo.MiddlewareFunc {
 				c.Request().RemoteAddr = fwd
 			}
 
-			if scheme := getScheme(c); scheme != "" {
+			if scheme := getScheme(c.Request()); scheme != "" {
 				c.Request().URL.Scheme = scheme
 			}
 
@@ -36,12 +38,14 @@ func ProxyHeaders() echo.MiddlewareFunc {
 	}
 }
 
-func getScheme(c echo.Context) string {
+func getScheme(r *http.Request) string {
 	var scheme string
 
-	if proto := c.Request().Header.Get(echo.HeaderXForwardedProto); proto != "" {
+	if proto := r.Header.Get(echo.HeaderXForwardedProto); proto != "" {
 		scheme = strings.ToLower(proto)
-	} else if proto = c.Request().Header.Get(echo.HeaderForwarded); proto != "" {
+	} else if proto := r.Header.Get(echo.HeaderXForwardedProtocol); proto != "" {
+		scheme = strings.ToLower(proto)
+	} else if proto = r.Header.Get(echo.HeaderForwarded); proto != "" {
 		if match := protoRegex.FindStringSubmatch(proto); len(match) > 1 {
 			scheme = strings.ToLower(match[1])
 		}
