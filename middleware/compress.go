@@ -107,9 +107,15 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 
 				grw := &gzipResponseWriter{Writer: w, ResponseWriter: rw, minLength: config.MinLength, buffer: buf}
 				defer func() {
+					// There are different reasons for cases when we have not yet written response to the client and now need to do so.
+					// a) handler response had only response code and no response body (ala 404 or redirects etc). Response code need to be written now.
+					// b) body is shorter than our minimum length threshold and being buffered currently and needs to be written
 					if !grw.wroteBody {
 						if res.Header().Get(echo.HeaderContentEncoding) == gzipScheme {
 							res.Header().Del(echo.HeaderContentEncoding)
+						}
+						if grw.wroteHeader {
+							rw.WriteHeader(grw.code)
 						}
 						// We have to reset response to it's pristine state when
 						// nothing is written to body or error is returned.
