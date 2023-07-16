@@ -1,5 +1,12 @@
 # Changelog
 
+## v4.11.1 - 2023-07-16
+
+**Fixes**
+
+* Fix `Gzip` middleware not sending response code for no content responses (404, 301/302 redirects etc) [#2481](https://github.com/labstack/echo/pull/2481)
+
+
 ## v4.11.0 - 2023-07-14
 
 
