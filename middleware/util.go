@@ -57,6 +57,7 @@ func matchSubdomain(domain, pattern string) bool {
 	return false
 }
 
+// https://tip.golang.org/doc/go1.19#:~:text=Read%20no%20longer%20buffers%20random%20data%20obtained%20from%20the%20operating%20system%20between%20calls
 var randomReaderPool = sync.Pool{New: func() any {
 	return bufio.NewReader(rand.Reader)
 }}
