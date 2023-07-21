@@ -77,8 +77,7 @@ func randomString(length uint8) string {
 				// Skip this number to avoid modulo bias.
 				continue
 			}
-			c := randomStringCharset[rb%randomStringCharsetLen]
-			b[i] = c
+			b[i] = randomStringCharset[rb%randomStringCharsetLen]
 			i++
 			if i == length {
 				return string(b)
