@@ -1,9 +1,11 @@
 package middleware
 
 import (
+	"bufio"
 	"crypto/rand"
 	"io"
 	"strings"
+	"sync"
 )
 
 func matchScheme(domain, pattern string) bool {
@@ -55,17 +57,24 @@ func matchSubdomain(domain, pattern string) bool {
 	return false
 }
 
+var randomReaderPool = sync.Pool{New: func() any {
+	return bufio.NewReader(rand.Reader)
+}}
+
 const randomStringCharset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 const randomStringCharsetLen = 52 // len(randomStringCharset)
 const randomStringMaxByte = 255 - (256 % randomStringCharsetLen)
 
 func randomString(length uint8) string {
+	reader := randomReaderPool.Get().(*bufio.Reader)
+	defer randomReaderPool.Put(reader)
+
 	b := make([]byte, length)
 	r := make([]byte, length+(length/4)) // perf: avoid read from rand.Reader many times
 	var i uint8 = 0
 
 	for {
-		n, err := io.ReadFull(rand.Reader, r)
+		n, err := io.ReadFull(reader, r)
 		if err != nil {
 			panic("unexpected error happened when reading from bufio.NewReader(crypto/rand.Reader)")
 		}
