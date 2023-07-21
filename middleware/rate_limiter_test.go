@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/gommon/random"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/time/rate"
 )
@@ -410,7 +409,7 @@ func TestNewRateLimiterMemoryStore(t *testing.T) {
 func generateAddressList(count int) []string {
 	addrs := make([]string, count)
 	for i := 0; i < count; i++ {
-		addrs[i] = random.String(15)
+		addrs[i] = randomString(15)
 	}
 	return addrs
 }
