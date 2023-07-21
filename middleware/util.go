@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"crypto/rand"
-	"fmt"
+	"io"
 	"strings"
 )
 
@@ -55,17 +55,34 @@ func matchSubdomain(domain, pattern string) bool {
 	return false
 }
 
-func randomString(length uint8) string {
-	charset := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+const randomStringCharset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+const randomStringCharsetLen = 52 // len(randomStringCharset)
+const randomStringMaxByte = 255 - (256 % randomStringCharsetLen)
 
-	bytes := make([]byte, length)
-	_, err := rand.Read(bytes)
-	if err != nil {
-		// we are out of random. let the request fail
-		panic(fmt.Errorf("echo randomString failed to read random bytes: %w", err))
+func randomString(length uint8) string {
+	b := make([]byte, length)
+	r := make([]byte, length+(length/3))
+	var i uint8 = 0
+
+	for {
+		n, err := io.ReadFull(rand.Reader, r)
+		if err != nil {
+			panic("unexpected error happened when reading from bufio.NewReader(crypto/rand.Reader)")
+		}
+		if n != len(r) {
+			panic("partial reads occurred when reading from bufio.NewReader(crypto/rand.Reader)")
+		}
+		for _, rb := range r {
+			if rb > randomStringMaxByte {
+				// Skip this number to avoid modulo bias.
+				continue
+			}
+			c := randomStringCharset[rb%randomStringCharsetLen]
+			b[i] = c
+			i++
+			if i == length {
+				return string(b)
+			}
+		}
 	}
-	for i, b := range bytes {
-		bytes[i] = charset[b%byte(len(charset))]
-	}
-	return string(bytes)
 }
