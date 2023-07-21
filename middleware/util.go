@@ -61,7 +61,7 @@ const randomStringMaxByte = 255 - (256 % randomStringCharsetLen)
 
 func randomString(length uint8) string {
 	b := make([]byte, length)
-	r := make([]byte, length+(length/3))
+	r := make([]byte, length+(length/4)) // perf: avoid read from rand.Reader many times
 	var i uint8 = 0
 
 	for {
@@ -74,7 +74,7 @@ func randomString(length uint8) string {
 		}
 		for _, rb := range r {
 			if rb > randomStringMaxByte {
-				// Skip this number to avoid modulo bias.
+				// Skip this number to avoid bias.
 				continue
 			}
 			b[i] = randomStringCharset[rb%randomStringCharsetLen]
