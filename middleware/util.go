@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"crypto/rand"
+	"fmt"
 	"strings"
 )
 
@@ -51,4 +53,19 @@ func matchSubdomain(domain, pattern string) bool {
 		}
 	}
 	return false
+}
+
+func randomString(length uint8) string {
+	charset := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+
+	bytes := make([]byte, length)
+	_, err := rand.Read(bytes)
+	if err != nil {
+		// we are out of random. let the request fail
+		panic(fmt.Errorf("echo randomString failed to read random bytes: %w", err))
+	}
+	for i, b := range bytes {
+		bytes[i] = charset[b%byte(len(charset))]
+	}
+	return string(bytes)
 }
