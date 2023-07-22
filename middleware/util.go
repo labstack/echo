@@ -1,9 +1,11 @@
 package middleware
 
 import (
+	"bufio"
 	"crypto/rand"
-	"fmt"
+	"io"
 	"strings"
+	"sync"
 )
 
 const (
@@ -77,17 +79,38 @@ func createRandomStringGenerator(length uint8) func() string {
 	}
 }
 
-func randomString(length uint8) string {
-	charset := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+// https://tip.golang.org/doc/go1.19#:~:text=Read%20no%20longer%20buffers%20random%20data%20obtained%20from%20the%20operating%20system%20between%20calls
+var randomReaderPool = sync.Pool{New: func() interface{} {
+	return bufio.NewReader(rand.Reader)
+}}
 
-	bytes := make([]byte, length)
-	_, err := rand.Read(bytes)
-	if err != nil {
-		// we are out of random. let the request fail
-		panic(fmt.Errorf("echo randomString failed to read random bytes: %w", err))
+const randomStringCharset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+const randomStringCharsetLen = 52 // len(randomStringCharset)
+const randomStringMaxByte = 255 - (256 % randomStringCharsetLen)
+
+func randomString(length uint8) string {
+	reader := randomReaderPool.Get().(*bufio.Reader)
+	defer randomReaderPool.Put(reader)
+
+	b := make([]byte, length)
+	r := make([]byte, length+(length/4)) // perf: avoid read from rand.Reader many times
+	var i uint8 = 0
+
+	for {
+		_, err := io.ReadFull(reader, r)
+		if err != nil {
+			panic("unexpected error happened when reading from bufio.NewReader(crypto/rand.Reader)")
+		}
+		for _, rb := range r {
+			if rb > randomStringMaxByte {
+				// Skip this number to avoid bias.
+				continue
+			}
+			b[i] = randomStringCharset[rb%randomStringCharsetLen]
+			i++
+			if i == length {
+				return string(b)
+			}
+		}
 	}
-	for i, b := range bytes {
-		bytes[i] = charset[b%byte(len(charset))]
-	}
-	return string(bytes)
 }

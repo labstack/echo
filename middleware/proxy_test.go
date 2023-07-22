@@ -3,6 +3,7 @@ package middleware
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -426,9 +427,14 @@ func TestFailNextTarget(t *testing.T) {
 }
 
 func TestRandomBalancerWithNoTargets(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/?id=1&name=Jon+Snow", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
 	// Assert balancer with empty targets does return `nil` on `Next()`
 	rb := NewRandomBalancer(nil)
-	target, err := rb.Next(nil)
+	target, err := rb.Next(c)
 	assert.Nil(t, target)
 	assert.NoError(t, err)
 }
@@ -436,7 +442,327 @@ func TestRandomBalancerWithNoTargets(t *testing.T) {
 func TestRoundRobinBalancerWithNoTargets(t *testing.T) {
 	// Assert balancer with empty targets does return `nil` on `Next()`
 	rrb := NewRoundRobinBalancer([]*ProxyTarget{})
-	target, err := rrb.Next(nil)
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/?id=1&name=Jon+Snow", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	target, err := rrb.Next(c)
 	assert.Nil(t, target)
 	assert.NoError(t, err)
+}
+
+func TestProxyRetries(t *testing.T) {
+	newServer := func(res int) (*url.URL, *httptest.Server) {
+		server := httptest.NewServer(
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(res)
+			}),
+		)
+		targetURL, _ := url.Parse(server.URL)
+		return targetURL, server
+	}
+
+	targetURL, server := newServer(http.StatusOK)
+	defer server.Close()
+	goodTarget := &ProxyTarget{
+		Name: "Good",
+		URL:  targetURL,
+	}
+
+	targetURL, server = newServer(http.StatusBadRequest)
+	defer server.Close()
+	goodTargetWith40X := &ProxyTarget{
+		Name: "Good with 40X",
+		URL:  targetURL,
+	}
+
+	targetURL, _ = url.Parse("http://127.0.0.1:27121")
+	badTarget := &ProxyTarget{
+		Name: "Bad",
+		URL:  targetURL,
+	}
+
+	alwaysRetryFilter := func(c echo.Context, e error) bool { return true }
+	neverRetryFilter := func(c echo.Context, e error) bool { return false }
+
+	testCases := []struct {
+		name             string
+		retryCount       int
+		retryFilters     []func(c echo.Context, e error) bool
+		targets          []*ProxyTarget
+		expectedResponse int
+	}{
+		{
+			name: "retry count 0 does not attempt retry on fail",
+			targets: []*ProxyTarget{
+				badTarget,
+				goodTarget,
+			},
+			expectedResponse: http.StatusBadGateway,
+		},
+		{
+			name:       "retry count 1 does not attempt retry on success",
+			retryCount: 1,
+			targets: []*ProxyTarget{
+				goodTarget,
+			},
+			expectedResponse: http.StatusOK,
+		},
+		{
+			name:       "retry count 1 does retry on handler return true",
+			retryCount: 1,
+			retryFilters: []func(c echo.Context, e error) bool{
+				alwaysRetryFilter,
+			},
+			targets: []*ProxyTarget{
+				badTarget,
+				goodTarget,
+			},
+			expectedResponse: http.StatusOK,
+		},
+		{
+			name:       "retry count 1 does not retry on handler return false",
+			retryCount: 1,
+			retryFilters: []func(c echo.Context, e error) bool{
+				neverRetryFilter,
+			},
+			targets: []*ProxyTarget{
+				badTarget,
+				goodTarget,
+			},
+			expectedResponse: http.StatusBadGateway,
+		},
+		{
+			name:       "retry count 2 returns error when no more retries left",
+			retryCount: 2,
+			retryFilters: []func(c echo.Context, e error) bool{
+				alwaysRetryFilter,
+				alwaysRetryFilter,
+			},
+			targets: []*ProxyTarget{
+				badTarget,
+				badTarget,
+				badTarget,
+				goodTarget, //Should never be reached as only 2 retries
+			},
+			expectedResponse: http.StatusBadGateway,
+		},
+		{
+			name:       "retry count 2 returns error when retries left but handler returns false",
+			retryCount: 3,
+			retryFilters: []func(c echo.Context, e error) bool{
+				alwaysRetryFilter,
+				alwaysRetryFilter,
+				neverRetryFilter,
+			},
+			targets: []*ProxyTarget{
+				badTarget,
+				badTarget,
+				badTarget,
+				goodTarget, //Should never be reached as retry handler returns false on 2nd check
+			},
+			expectedResponse: http.StatusBadGateway,
+		},
+		{
+			name:       "retry count 3 succeeds",
+			retryCount: 3,
+			retryFilters: []func(c echo.Context, e error) bool{
+				alwaysRetryFilter,
+				alwaysRetryFilter,
+				alwaysRetryFilter,
+			},
+			targets: []*ProxyTarget{
+				badTarget,
+				badTarget,
+				badTarget,
+				goodTarget,
+			},
+			expectedResponse: http.StatusOK,
+		},
+		{
+			name:       "40x responses are not retried",
+			retryCount: 1,
+			targets: []*ProxyTarget{
+				goodTargetWith40X,
+				goodTarget,
+			},
+			expectedResponse: http.StatusBadRequest,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+
+			retryFilterCall := 0
+			retryFilter := func(c echo.Context, e error) bool {
+				if len(tc.retryFilters) == 0 {
+					assert.FailNow(t, fmt.Sprintf("unexpected calls, %d, to retry handler", retryFilterCall))
+				}
+
+				retryFilterCall++
+
+				nextRetryFilter := tc.retryFilters[0]
+				tc.retryFilters = tc.retryFilters[1:]
+
+				return nextRetryFilter(c, e)
+			}
+
+			e := echo.New()
+			e.Use(ProxyWithConfig(
+				ProxyConfig{
+					Balancer:    NewRoundRobinBalancer(tc.targets),
+					RetryCount:  tc.retryCount,
+					RetryFilter: retryFilter,
+				},
+			))
+
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, tc.expectedResponse, rec.Code)
+			if len(tc.retryFilters) > 0 {
+				assert.FailNow(t, fmt.Sprintf("expected %d more retry handler calls", len(tc.retryFilters)))
+			}
+		})
+	}
+}
+
+func TestProxyRetryWithBackendTimeout(t *testing.T) {
+
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.ResponseHeaderTimeout = time.Millisecond * 500
+
+	timeoutBackend := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			time.Sleep(1 * time.Second)
+			w.WriteHeader(404)
+		}),
+	)
+	defer timeoutBackend.Close()
+
+	timeoutTargetURL, _ := url.Parse(timeoutBackend.URL)
+	goodBackend := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(200)
+		}),
+	)
+	defer goodBackend.Close()
+
+	goodTargetURL, _ := url.Parse(goodBackend.URL)
+	e := echo.New()
+	e.Use(ProxyWithConfig(
+		ProxyConfig{
+			Transport: transport,
+			Balancer: NewRoundRobinBalancer([]*ProxyTarget{
+				{
+					Name: "Timeout",
+					URL:  timeoutTargetURL,
+				},
+				{
+					Name: "Good",
+					URL:  goodTargetURL,
+				},
+			}),
+			RetryCount: 1,
+		},
+	))
+
+	var wg sync.WaitGroup
+	for i := 0; i < 20; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+			assert.Equal(t, 200, rec.Code)
+		}()
+	}
+
+	wg.Wait()
+
+}
+
+func TestProxyErrorHandler(t *testing.T) {
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	goodURL, _ := url.Parse(server.URL)
+	defer server.Close()
+	goodTarget := &ProxyTarget{
+		Name: "Good",
+		URL:  goodURL,
+	}
+
+	badURL, _ := url.Parse("http://127.0.0.1:27121")
+	badTarget := &ProxyTarget{
+		Name: "Bad",
+		URL:  badURL,
+	}
+
+	transformedError := errors.New("a new error")
+
+	testCases := []struct {
+		name             string
+		target           *ProxyTarget
+		errorHandler     func(c echo.Context, e error) error
+		expectFinalError func(t *testing.T, err error)
+	}{
+		{
+			name:   "Error handler not invoked when request success",
+			target: goodTarget,
+			errorHandler: func(c echo.Context, e error) error {
+				assert.FailNow(t, "error handler should not be invoked")
+				return e
+			},
+		},
+		{
+			name:   "Error handler invoked when request fails",
+			target: badTarget,
+			errorHandler: func(c echo.Context, e error) error {
+				httpErr, ok := e.(*echo.HTTPError)
+				assert.True(t, ok, "expected http error to be passed to handler")
+				assert.Equal(t, http.StatusBadGateway, httpErr.Code, "expected http bad gateway error to be passed to handler")
+				return transformedError
+			},
+			expectFinalError: func(t *testing.T, err error) {
+				assert.Equal(t, transformedError, err, "transformed error not returned from proxy")
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+			e.Use(ProxyWithConfig(
+				ProxyConfig{
+					Balancer:     NewRoundRobinBalancer([]*ProxyTarget{tc.target}),
+					ErrorHandler: tc.errorHandler,
+				},
+			))
+
+			errorHandlerCalled := false
+			dheh := echo.DefaultHTTPErrorHandler(false)
+			e.HTTPErrorHandler = func(c echo.Context, err error) {
+				errorHandlerCalled = true
+				tc.expectFinalError(t, err)
+				dheh(c, err)
+			}
+
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+
+			e.ServeHTTP(rec, req)
+
+			if !errorHandlerCalled && tc.expectFinalError != nil {
+				t.Fatalf("error handler was not called")
+			}
+
+		})
+	}
 }

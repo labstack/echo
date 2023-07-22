@@ -421,3 +421,101 @@ func TestRoutes_FilterByName(t *testing.T) {
 		})
 	}
 }
+
+func TestRouteInfo_Reverse(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		givenParams []string
+		givenPath   string
+		whenParams  []interface{}
+		expect      string
+	}{
+		{
+			name:      "ok,static with no params",
+			givenPath: "/static",
+			expect:    "/static",
+		},
+		{
+			name:        "ok,static with non existent param",
+			givenParams: []string{"missing param"},
+			givenPath:   "/static",
+			whenParams:  []interface{}{"missing param"},
+			expect:      "/static",
+		},
+		{
+			name:      "ok, wildcard with no params",
+			givenPath: "/static/*",
+			expect:    "/static/*",
+		},
+		{
+			name:        "ok, wildcard with params",
+			givenParams: []string{"foo.txt"},
+			givenPath:   "/static/*",
+			whenParams:  []interface{}{"foo.txt"},
+			expect:      "/static/foo.txt",
+		},
+		{
+			name:      "ok, single param without param",
+			givenPath: "/params/:foo",
+			expect:    "/params/:foo",
+		},
+		{
+			name:        "ok, single param with param",
+			givenParams: []string{"one"},
+			givenPath:   "/params/:foo",
+			whenParams:  []interface{}{"one"},
+			expect:      "/params/one",
+		},
+		{
+			name:      "ok, multi param without params",
+			givenPath: "/params/:foo/bar/:qux",
+			expect:    "/params/:foo/bar/:qux",
+		},
+		{
+			name:        "ok, multi param with one param",
+			givenParams: []string{"one"},
+			givenPath:   "/params/:foo/bar/:qux",
+			whenParams:  []interface{}{"one"},
+			expect:      "/params/one/bar/:qux",
+		},
+		{
+			name:        "ok, multi param with all params",
+			givenParams: []string{"one", "two"},
+			givenPath:   "/params/:foo/bar/:qux",
+			whenParams:  []interface{}{"one", "two"},
+			expect:      "/params/one/bar/two",
+		},
+		{
+			name:        "ok, multi param + wildcard with all params",
+			givenParams: []string{"one", "two", "three"},
+			givenPath:   "/params/:foo/bar/:qux/*",
+			whenParams:  []interface{}{"one", "two", "three"},
+			expect:      "/params/one/bar/two/three",
+		},
+		{
+			name:        "ok, backslash is not escaped",
+			givenParams: []string{"test"},
+			givenPath:   "/a\\b/:x",
+			whenParams:  []interface{}{"test"},
+			expect:      `/a\b/test`,
+		},
+		{
+			name:        "ok, escaped colon verbs",
+			givenParams: []string{"PATCH"},
+			givenPath:   "/params\\::customVerb",
+			whenParams:  []interface{}{"PATCH"},
+			expect:      `/params:PATCH`,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := routeInfo{
+				path:   tc.givenPath,
+				params: tc.givenParams,
+				name:   tc.expect,
+			}
+
+			assert.Equal(t, tc.expect, r.Reverse(tc.whenParams...))
+		})
+	}
+}

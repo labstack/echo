@@ -81,7 +81,12 @@ func (r routeInfo) Reverse(params ...interface{}) string {
 	ln := len(params)
 	n := 0
 	for i, l := 0, len(r.path); i < l; i++ {
-		if (r.path[i] == paramLabel || r.path[i] == anyLabel) && n < ln {
+		hasBackslash := r.path[i] == '\\'
+		if hasBackslash && i+1 < l && r.path[i+1] == ':' {
+			i++ // backslash before colon escapes that colon. in that case skip backslash
+		}
+		if n < ln && (r.path[i] == anyLabel || (!hasBackslash && r.path[i] == paramLabel)) {
+			// in case of `*` wildcard or `:` (unescaped colon) param we replace everything till next slash or end of path
 			for ; i < l && r.path[i] != '/'; i++ {
 			}
 			uri.WriteString(fmt.Sprintf("%v", params[n]))

@@ -113,8 +113,8 @@ type Context interface {
 	// Set saves data in the context.
 	Set(key string, val interface{})
 
-	// Bind binds the request body into provided type `i`. The default binder
-	// does it based on Content-Type header.
+	// Bind binds path params, query params and the request body into provided type `i`. The default binder
+	// binds body based on Content-Type header.
 	Bind(i interface{}) error
 
 	// Validate validates provided `i`. It is usually called after `Context#Bind()`.
@@ -536,8 +536,8 @@ func (c *DefaultContext) Set(key string, val interface{}) {
 	c.store[key] = val
 }
 
-// Bind binds the request body into provided type `i`. The default binder
-// does it based on Content-Type header.
+// Bind binds path params, query params and the request body into provided type `i`. The default binder
+// binds body based on Content-Type header.
 func (c *DefaultContext) Bind(i interface{}) error {
 	return c.echo.Binder.Bind(c, i)
 }

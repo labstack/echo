@@ -96,6 +96,7 @@ type RouteInfo interface {
 	Name() string
 
 	Params() []string
+	// Reverse reverses route to URL string by replacing path parameters with given params values.
 	Reverse(params ...interface{}) string
 
 	// NOTE: handler and middlewares are not exposed because handler could be already wrapping middlewares and therefore
@@ -1066,7 +1067,7 @@ func (r *DefaultRouter) Route(c RoutableContext) HandlerFunc {
 		}
 	}
 
-	if r.unescapePathParamValues && currentNode.kind != staticKind {
+	if r.unescapePathParamValues {
 		// See issue #1531, #1258 - there are cases when path parameter need to be unescaped
 		for i, p := range *pathParams {
 			tmpVal, err := url.PathUnescape(p.Value)

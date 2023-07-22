@@ -29,6 +29,33 @@ type ProxyConfig struct {
 	// Required.
 	Balancer ProxyBalancer
 
+	// RetryCount defines the number of times a failed proxied request should be retried
+	// using the next available ProxyTarget. Defaults to 0, meaning requests are never retried.
+	RetryCount int
+
+	// RetryFilter defines a function used to determine if a failed request to a
+	// ProxyTarget should be retried. The RetryFilter will only be called when the number
+	// of previous retries is less than RetryCount. If the function returns true, the
+	// request will be retried. The provided error indicates the reason for the request
+	// failure. When the ProxyTarget is unavailable, the error will be an instance of
+	// echo.HTTPError with a Code of http.StatusBadGateway. In all other cases, the error
+	// will indicate an internal error in the Proxy middleware. When a RetryFilter is not
+	// specified, all requests that fail with http.StatusBadGateway will be retried. A custom
+	// RetryFilter can be provided to only retry specific requests. Note that RetryFilter is
+	// only called when the request to the target fails, or an internal error in the Proxy
+	// middleware has occurred. Successful requests that return a non-200 response code cannot
+	// be retried.
+	RetryFilter func(c echo.Context, e error) bool
+
+	// ErrorHandler defines a function which can be used to return custom errors from
+	// the Proxy middleware. ErrorHandler is only invoked when there has been
+	// either an internal error in the Proxy middleware or the ProxyTarget is
+	// unavailable. Due to the way requests are proxied, ErrorHandler is not invoked
+	// when a ProxyTarget returns a non-200 response. In these cases, the response
+	// is already written so errors cannot be modified. ErrorHandler is only
+	// invoked after all retry attempts have been exhausted.
+	ErrorHandler func(c echo.Context, err error) error
+
 	// Rewrite defines URL path rewrite rules. The values captured in asterisk can be
 	// retrieved by index e.g. $1, $2 and so on.
 	// Examples:
@@ -99,14 +126,14 @@ func proxyRaw(c echo.Context, t *ProxyTarget) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		in, _, err := c.Response().Hijack()
 		if err != nil {
-			c.Set("_error", fmt.Sprintf("proxy raw, hijack error=%v, url=%s", t.URL, err))
+			c.Set("_error", fmt.Errorf("proxy raw, hijack error=%w, url=%s", err, t.URL))
 			return
 		}
 		defer in.Close()
 
 		out, err := net.Dial("tcp", t.URL.Host)
 		if err != nil {
-			c.Set("_error", echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("proxy raw, dial error=%v, url=%s", t.URL, err)))
+			c.Set("_error", echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("proxy raw, dial error=%v, url=%s", err, t.URL)))
 			return
 		}
 		defer out.Close()
@@ -114,7 +141,7 @@ func proxyRaw(c echo.Context, t *ProxyTarget) http.Handler {
 		// Write header
 		err = r.Write(out)
 		if err != nil {
-			c.Set("_error", echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("proxy raw, request header copy error=%v, url=%s", t.URL, err)))
+			c.Set("_error", echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("proxy raw, request header copy error=%v, url=%s", err, t.URL)))
 			return
 		}
 
@@ -128,7 +155,7 @@ func proxyRaw(c echo.Context, t *ProxyTarget) http.Handler {
 		go cp(in, out)
 		err = <-errCh
 		if err != nil && err != io.EOF {
-			c.Set("_error", fmt.Errorf("proxy raw, copy body error=%v, url=%s", t.URL, err))
+			c.Set("_error", fmt.Errorf("proxy raw, copy body error=%w, url=%s", err, t.URL))
 		}
 	})
 }
@@ -192,7 +219,12 @@ func (b *randomBalancer) Next(c echo.Context) (*ProxyTarget, error) {
 	return b.targets[b.random.Intn(len(b.targets))], nil
 }
 
-// Next returns an upstream target using round-robin technique.
+// Next returns an upstream target using round-robin technique. In the case
+// where a previously failed request is being retried, the round-robin
+// balancer will attempt to use the next target relative to the original
+// request. If the list of targets held by the balancer is modified while a
+// failed request is being retried, it is possible that the balancer will
+// return the original failed target.
 //
 // Note: `nil` is returned in case upstream target list is empty.
 func (b *roundRobinBalancer) Next(c echo.Context) (*ProxyTarget, error) {
@@ -203,13 +235,28 @@ func (b *roundRobinBalancer) Next(c echo.Context) (*ProxyTarget, error) {
 	} else if len(b.targets) == 1 {
 		return b.targets[0], nil
 	}
-	// reset the index if out of bounds
-	if b.i >= len(b.targets) {
-		b.i = 0
+
+	var i int
+	const lastIdxKey = "_round_robin_last_index"
+	// This request is a retry, start from the index of the previous
+	// target to ensure we don't attempt to retry the request with
+	// the same failed target
+	if c.Get(lastIdxKey) != nil {
+		i = c.Get(lastIdxKey).(int)
+		i++
+		if i >= len(b.targets) {
+			i = 0
+		}
+	} else {
+		// This is a first time request, use the global index
+		if b.i >= len(b.targets) {
+			b.i = 0
+		}
+		i = b.i
+		b.i++
 	}
-	t := b.targets[b.i]
-	b.i++
-	return t, nil
+	c.Set(lastIdxKey, i)
+	return b.targets[i], nil
 }
 
 // Proxy returns a Proxy middleware.
@@ -239,6 +286,19 @@ func (config ProxyConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 	if config.Balancer == nil {
 		return nil, errors.New("echo proxy middleware requires balancer")
 	}
+	if config.RetryFilter == nil {
+		config.RetryFilter = func(c echo.Context, e error) bool {
+			if httpErr, ok := e.(*echo.HTTPError); ok {
+				return httpErr.Code == http.StatusBadGateway
+			}
+			return false
+		}
+	}
+	if config.ErrorHandler == nil {
+		config.ErrorHandler = func(c echo.Context, err error) error {
+			return err
+		}
+	}
 
 	if config.Rewrite != nil {
 		if config.RegexRewrite == nil {
@@ -257,14 +317,8 @@ func (config ProxyConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 
 			req := c.Request()
 			res := c.Response()
-			tgt, err := config.Balancer.Next(c)
-			if err != nil {
-				return err
-			}
-			c.Set(config.ContextKey, tgt)
-
 			if err := rewriteURL(config.RegexRewrite, req); err != nil {
-				return err
+				return config.ErrorHandler(c, err)
 			}
 
 			// Fix header
@@ -280,19 +334,43 @@ func (config ProxyConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				req.Header.Set(echo.HeaderXForwardedFor, c.RealIP())
 			}
 
-			// Proxy
-			switch {
-			case c.IsWebSocket():
-				proxyRaw(c, tgt).ServeHTTP(res, req)
-			case req.Header.Get(echo.HeaderAccept) == "text/event-stream":
-			default:
-				proxyHTTP(c, tgt, config).ServeHTTP(res, req)
-			}
-			if e, ok := c.Get("_error").(error); ok {
-				err = e
-			}
+			retries := config.RetryCount
+			for {
+				tgt, err := config.Balancer.Next(c)
+				if err != nil {
+					return config.ErrorHandler(c, err)
+				}
 
-			return
+				c.Set(config.ContextKey, tgt)
+
+				//If retrying a failed request, clear any previous errors from
+				//context here so that balancers have the option to check for
+				//errors that occurred using previous target
+				if retries < config.RetryCount {
+					c.Set("_error", nil)
+				}
+
+				// Proxy
+				switch {
+				case c.IsWebSocket():
+					proxyRaw(c, tgt).ServeHTTP(res, req)
+				case req.Header.Get(echo.HeaderAccept) == "text/event-stream":
+				default:
+					proxyHTTP(c, tgt, config).ServeHTTP(res, req)
+				}
+
+				err, hasError := c.Get("_error").(error)
+				if !hasError {
+					return nil
+				}
+
+				retry := retries > 0 && config.RetryFilter(c, err)
+				if !retry {
+					return config.ErrorHandler(c, err)
+				}
+
+				retries--
+			}
 		}
 	}, nil
 }

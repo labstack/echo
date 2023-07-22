@@ -1198,6 +1198,18 @@ func request(method, path string, e *Echo) (int, string) {
 	return rec.Code, rec.Body.String()
 }
 
+type customError struct {
+	s string
+}
+
+func (ce *customError) MarshalJSON() ([]byte, error) {
+	return []byte(fmt.Sprintf(`{"x":"%v"}`, ce.s)), nil
+}
+
+func (ce *customError) Error() string {
+	return ce.s
+}
+
 func TestDefaultHTTPErrorHandler(t *testing.T) {
 	var testCases = []struct {
 		name             string
@@ -1262,6 +1274,19 @@ func TestDefaultHTTPErrorHandler(t *testing.T) {
 			whenError:        fmt.Errorf("my errors wraps: %w", errors.New("internal_error")),
 			expectStatus:     http.StatusInternalServerError,
 			expectBody:       ``,
+		},
+		{
+			name:         "ok, custom error implement MarshalJSON",
+			whenMethod:   http.MethodGet,
+			whenError:    NewHTTPError(http.StatusBadRequest, &customError{s: "custom error msg"}),
+			expectStatus: http.StatusBadRequest,
+			expectBody:   "{\"x\":\"custom error msg\"}\n",
+		},
+		{
+			name:         "with Debug=false when httpError contains an error",
+			whenError:    NewHTTPError(http.StatusBadRequest, errors.New("error in httperror")),
+			expectStatus: http.StatusBadRequest,
+			expectBody:   "{\"message\":\"error in httperror\"}\n",
 		},
 	}
 

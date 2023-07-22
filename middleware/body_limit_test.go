@@ -67,9 +67,6 @@ func TestBodyLimitConfig_ToMiddleware(t *testing.T) {
 
 func TestBodyLimitReader(t *testing.T) {
 	hw := []byte("Hello, World!")
-	e := echo.New()
-	req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(hw))
-	rec := httptest.NewRecorder()
 
 	config := BodyLimitConfig{
 		Skipper:    DefaultSkipper,
@@ -78,7 +75,6 @@ func TestBodyLimitReader(t *testing.T) {
 	reader := &limitedReader{
 		BodyLimitConfig: config,
 		reader:          io.NopCloser(bytes.NewReader(hw)),
-		context:         e.NewContext(req, rec),
 	}
 
 	// read all should return ErrStatusRequestEntityTooLarge
@@ -88,7 +84,7 @@ func TestBodyLimitReader(t *testing.T) {
 
 	// reset reader and read two bytes must succeed
 	bt := make([]byte, 2)
-	reader.Reset(e.NewContext(req, rec), io.NopCloser(bytes.NewReader(hw)))
+	reader.Reset(io.NopCloser(bytes.NewReader(hw)))
 	n, err := reader.Read(bt)
 	assert.Equal(t, 2, n)
 	assert.Equal(t, nil, err)
