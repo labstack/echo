@@ -77,8 +77,8 @@ func randomString(length uint8) string {
 	// security note:
 	// we can't just simply do b[i]=randomStringCharset[rb%len(randomStringCharset)],
 	// len(len(randomStringCharset)) is 52, and rb is [0, 255], 256 = 52 * 4 + 48.
-	// make possibility of each character not equal.
-	// so we will have to skip bytes when rb > randomStringMaxByte
+	// make the first 48 characters more possibly to be generated then others.
+	// So we have to skip bytes when rb > randomStringMaxByte
 
 	for {
 		_, err := io.ReadFull(reader, r)
