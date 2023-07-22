@@ -58,7 +58,7 @@ func matchSubdomain(domain, pattern string) bool {
 }
 
 // https://tip.golang.org/doc/go1.19#:~:text=Read%20no%20longer%20buffers%20random%20data%20obtained%20from%20the%20operating%20system%20between%20calls
-var randomReaderPool = sync.Pool{New: func() any {
+var randomReaderPool = sync.Pool{New: func() interface{} {
 	return bufio.NewReader(rand.Reader)
 }}
 
@@ -75,12 +75,9 @@ func randomString(length uint8) string {
 	var i uint8 = 0
 
 	for {
-		n, err := io.ReadFull(reader, r)
+		_, err := io.ReadFull(reader, r)
 		if err != nil {
 			panic("unexpected error happened when reading from bufio.NewReader(crypto/rand.Reader)")
-		}
-		if n != len(r) {
-			panic("partial reads occurred when reading from bufio.NewReader(crypto/rand.Reader)")
 		}
 		for _, rb := range r {
 			if rb > randomStringMaxByte {
