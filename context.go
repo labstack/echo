@@ -641,6 +641,9 @@ func (c *context) Reset(r *http.Request, w http.ResponseWriter) {
 	c.pnames = nil
 	c.logger = nil
 	// NOTE: Don't reset because it has to have length c.echo.maxParam at all times
+	if len(c.pvalues) == 0 {
+		return
+	}
 	for i := 0; i < *c.echo.maxParam; i++ {
 		c.pvalues[i] = ""
 	}
