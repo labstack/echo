@@ -575,7 +575,9 @@ func (e *Echo) File(path, file string, m ...MiddlewareFunc) *Route {
 
 func (e *Echo) add(host, method, path string, handler HandlerFunc, middlewares ...MiddlewareFunc) *Route {
 	router := e.findRouter(host)
-	//FIXME: when handler+middleware are both nil ... make it behave like handler removal
+	if !e.hasValidHandlerAndMiddleware(handler, middlewares...) {
+		return nil
+	}
 	name := handlerName(handler)
 	route := router.add(method, path, name, func(c Context) error {
 		h := applyMiddleware(handler, middlewares...)
@@ -970,6 +972,18 @@ func handlerName(h HandlerFunc) string {
 		return runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name()
 	}
 	return t.String()
+}
+
+func (e *Echo) hasValidHandlerAndMiddleware(handler HandlerFunc, middlewares ...MiddlewareFunc) bool {
+	if handler == nil {
+		for _, middleware := range middlewares {
+			if middleware != nil {
+				return true
+			}
+		}
+		return false
+	}
+	return true
 }
 
 // // PathUnescape is wraps `url.PathUnescape`
