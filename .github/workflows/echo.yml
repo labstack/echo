@@ -14,7 +14,7 @@ permissions:
 
 env:
   # run coverage and benchmarks only with the latest Go version
-  LATEST_GO_VERSION: "1.20"
+  LATEST_GO_VERSION: "1.21"
 
 jobs:
   test:
@@ -25,7 +25,7 @@ jobs:
         # Echo tests with last four major releases (unless there are pressing vulnerabilities)
         # As we depend on `golang.org/x/` libraries which only support last 2 Go releases we could have situations when
         # we derive from last four major releases promise.
-        go: ["1.18", "1.19", "1.20"]
+        go: ["1.18", "1.19", "1.20", "1.21"]
     name: ${{ matrix.os }} @ Go ${{ matrix.go }}
     runs-on: ${{ matrix.os }}
     steps:
@@ -33,7 +33,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set up Go ${{ matrix.go }}
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: ${{ matrix.go }}
 
@@ -64,7 +64,7 @@ jobs:
           path: new
 
       - name: Set up Go ${{ matrix.go }}
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: ${{ env.LATEST_GO_VERSION }}
 
