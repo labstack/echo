@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"io/fs"
 	"mime/multipart"
 	"net"
 	"net/http"
@@ -156,6 +157,9 @@ type (
 		// File sends a response with the content of the file.
 		File(file string) error
 
+		// FileFS serves file from given file system.
+		FileFS(file string, filesystem fs.FS) error
+		
 		// Attachment sends a response as attachment, prompting client to save the
 		// file.
 		Attachment(file string, name string) error
