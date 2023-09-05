@@ -100,6 +100,9 @@ type (
 		// Set saves data in the context.
 		Set(key string, val interface{})
 
+		// Remove remove data in the context.
+		Remove(key string)
+
 		// Bind binds path params, query params and the request body into provided type `i`. The default binder
 		// binds body based on Content-Type header.
 		Bind(i interface{}) error
@@ -433,6 +436,16 @@ func (c *context) Set(key string, val interface{}) {
 		c.store = make(Map)
 	}
 	c.store[key] = val
+}
+
+func (c *context) Remove(key string) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	if c.store == nil {
+		return
+	}
+	delete(c.store,key)
 }
 
 func (c *context) Bind(i interface{}) error {
