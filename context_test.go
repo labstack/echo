@@ -653,6 +653,8 @@ func TestContextStore(t *testing.T) {
 	var c Context = new(context)
 	c.Set("name", "Jon Snow")
 	testify.Equal(t, "Jon Snow", c.Get("name"))
+	c.Remove("name")
+	testify.Equal(t,nil,c.Get("name"))
 }
 
 func BenchmarkContext_Store(b *testing.B) {
