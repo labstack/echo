@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"crypto/rand"
 	"io"
+	src "math/rand"
 	"strings"
 	"sync"
 )
@@ -66,7 +67,7 @@ const randomStringCharset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxy
 const randomStringCharsetLen = 52 // len(randomStringCharset)
 const randomStringMaxByte = 255 - (256 % randomStringCharsetLen)
 
-func randomString(length uint8) string {
+func randomStringOld(length uint8) string {
 	reader := randomReaderPool.Get().(*bufio.Reader)
 	defer randomReaderPool.Put(reader)
 
@@ -97,4 +98,29 @@ func randomString(length uint8) string {
 			}
 		}
 	}
+}
+
+const (
+	letterIdxBits = 6                    // 6 bits to represent a letter index
+	letterIdxMask = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
+	letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
+)
+
+func randomString(n uint8) string {
+	sb := strings.Builder{}
+	sb.Grow(int(n))
+	// A src.Int63() generates 63 random bits, enough for randomStringMaxByte characters!
+	for i, cache, remain := int8(n)-1, src.Int63(), letterIdxMax; i >= 0; {
+		if remain == 0 {
+			cache, remain = src.Int63(), letterIdxMax
+		}
+		if idx := int(cache & letterIdxMask); idx < len(randomStringCharset) {
+			sb.WriteByte(randomStringCharset[idx])
+			i--
+		}
+		cache >>= letterIdxBits
+		remain--
+	}
+
+	return sb.String()
 }
