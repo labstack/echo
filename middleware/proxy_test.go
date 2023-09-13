@@ -188,7 +188,7 @@ func TestProxyRealIPHeader(t *testing.T) {
 	tests := []*struct {
 		hasRealIPheader bool
 		hasIPExtractor  bool
-		extectedXRealIP string
+		expectedXRealIP string
 	}{
 		{false, false, remoteAddrIP},
 		{false, true, extractedRealIP},
@@ -210,7 +210,7 @@ func TestProxyRealIPHeader(t *testing.T) {
 			e.IPExtractor = nil
 		}
 		e.ServeHTTP(rec, req)
-		assert.Equal(t, tt.extectedXRealIP, req.Header.Get(echo.HeaderXRealIP), "hasRealIPheader: %t / hasIPExtractor: %t", tt.hasRealIPheader, tt.hasIPExtractor)
+		assert.Equal(t, tt.expectedXRealIP, req.Header.Get(echo.HeaderXRealIP), "hasRealIPheader: %t / hasIPExtractor: %t", tt.hasRealIPheader, tt.hasIPExtractor)
 	}
 }
 
