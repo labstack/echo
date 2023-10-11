@@ -1,5 +1,21 @@
 # Changelog
 
+## v4.11.2 - 2023-10-11
+
+**Security**
+
+* Bump golang.org/x/net to prevent CVE-2023-39325 / CVE-2023-44487 HTTP/2 Rapid Reset Attack [#2527](https://github.com/labstack/echo/pull/2527)
+* fix(sec): randomString bias introduced by #2490 [#2492](https://github.com/labstack/echo/pull/2492)
+* CSRF/RequestID mw: switch math/random usage to crypto/random [#2490](https://github.com/labstack/echo/pull/2490)
+
+**Enhancements**
+
+* Delete unused context in body_limit.go [#2483](https://github.com/labstack/echo/pull/2483)
+* Use Go 1.21 in CI [#2505](https://github.com/labstack/echo/pull/2505)
+* Fix some typos [#2511](https://github.com/labstack/echo/pull/2511)
+* Allow CORS middleware to send Access-Control-Max-Age: 0 [#2518](https://github.com/labstack/echo/pull/2518)
+* Bump dependancies [#2522](https://github.com/labstack/echo/pull/2522)
+
 ## v4.11.1 - 2023-07-16
 
 **Fixes**
