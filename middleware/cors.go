@@ -39,7 +39,7 @@ type (
 		// See https://blog.portswigger.net/2016/10/exploiting-cors-misconfigurations-for.html
 		//
 		// Optional.
-		AllowOriginFunc func(origin string) (bool, error) `yaml:"allow_origin_func"`
+		AllowOriginFunc func(origin string) (bool, error) `yaml:"-"`
 
 		// AllowMethods determines the value of the Access-Control-Allow-Methods
 		// response header.  This header specified the list of methods allowed when
