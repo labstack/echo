@@ -359,6 +359,10 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 					c.Set("_error", nil)
 				}
 
+				// This is needed for ProxyConfig.ModifyResponse and/or ProxyConfig.Transport to be able to process the Request
+				// that Balancer may have replaced with c.SetRequest.
+				req = c.Request()
+
 				// Proxy
 				switch {
 				case c.IsWebSocket():

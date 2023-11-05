@@ -747,3 +747,63 @@ func TestProxyBalancerWithNoTargets(t *testing.T) {
 	rrb := NewRoundRobinBalancer([]*ProxyTarget{})
 	assert.Nil(t, rrb.Next(nil))
 }
+
+type testContextKey string
+
+type customBalancer struct {
+	target *ProxyTarget
+}
+
+func (b *customBalancer) AddTarget(target *ProxyTarget) bool {
+	return false
+}
+
+func (b *customBalancer) RemoveTarget(name string) bool {
+	return false
+}
+
+func (b *customBalancer) Next(c echo.Context) *ProxyTarget {
+	ctx := context.WithValue(c.Request().Context(), testContextKey("FROM_BALANCER"), "CUSTOM_BALANCER")
+	c.SetRequest(c.Request().WithContext(ctx))
+	return b.target
+}
+
+func TestModifyResponseUseContext(t *testing.T) {
+	server := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+		}),
+	)
+	defer server.Close()
+
+	targetURL, _ := url.Parse(server.URL)
+	e := echo.New()
+	e.Use(ProxyWithConfig(
+		ProxyConfig{
+			Balancer: &customBalancer{
+				target: &ProxyTarget{
+					Name: "tst",
+					URL:  targetURL,
+				},
+			},
+			RetryCount: 1,
+			ModifyResponse: func(res *http.Response) error {
+				val := res.Request.Context().Value(testContextKey("FROM_BALANCER"))
+				if valStr, ok := val.(string); ok {
+					res.Header.Set("FROM_BALANCER", valStr)
+				}
+				return nil
+			},
+		},
+	))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "OK", rec.Body.String())
+	assert.Equal(t, "CUSTOM_BALANCER", rec.Header().Get("FROM_BALANCER"))
+}
