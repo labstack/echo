@@ -414,30 +414,72 @@ func TestContextStream(t *testing.T) {
 }
 
 func TestContextAttachment(t *testing.T) {
-	e := New()
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/?pretty", nil)
-	c := e.NewContext(req, rec).(*context)
+	var testCases = []struct {
+		name         string
+		whenName     string
+		expectHeader string
+	}{
+		{
+			name:         "ok",
+			whenName:     "walle.png",
+			expectHeader: `attachment; filename="walle.png"`,
+		},
+		{
+			name:         "ok, escape quotes in malicious filename",
+			whenName:     `malicious.sh"; \"; dummy=.txt`,
+			expectHeader: `attachment; filename="malicious.sh\"; \\\"; dummy=.txt"`,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			c := e.NewContext(req, rec).(*context)
 
-	err := c.Attachment("_fixture/images/walle.png", "walle.png")
-	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, "attachment; filename=\"walle.png\"", rec.Header().Get(HeaderContentDisposition))
-		assert.Equal(t, 219885, rec.Body.Len())
+			err := c.Attachment("_fixture/images/walle.png", tc.whenName)
+			if assert.NoError(t, err) {
+				assert.Equal(t, tc.expectHeader, rec.Header().Get(HeaderContentDisposition))
+
+				assert.Equal(t, http.StatusOK, rec.Code)
+				assert.Equal(t, 219885, rec.Body.Len())
+			}
+		})
 	}
 }
 
 func TestContextInline(t *testing.T) {
-	e := New()
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/?pretty", nil)
-	c := e.NewContext(req, rec).(*context)
+	var testCases = []struct {
+		name         string
+		whenName     string
+		expectHeader string
+	}{
+		{
+			name:         "ok",
+			whenName:     "walle.png",
+			expectHeader: `inline; filename="walle.png"`,
+		},
+		{
+			name:         "ok, escape quotes in malicious filename",
+			whenName:     `malicious.sh"; \"; dummy=.txt`,
+			expectHeader: `inline; filename="malicious.sh\"; \\\"; dummy=.txt"`,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			c := e.NewContext(req, rec).(*context)
 
-	err := c.Inline("_fixture/images/walle.png", "walle.png")
-	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, "inline; filename=\"walle.png\"", rec.Header().Get(HeaderContentDisposition))
-		assert.Equal(t, 219885, rec.Body.Len())
+			err := c.Inline("_fixture/images/walle.png", tc.whenName)
+			if assert.NoError(t, err) {
+				assert.Equal(t, tc.expectHeader, rec.Header().Get(HeaderContentDisposition))
+
+				assert.Equal(t, http.StatusOK, rec.Code)
+				assert.Equal(t, 219885, rec.Body.Len())
+			}
+		})
 	}
 }
 
