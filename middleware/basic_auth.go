@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"bytes"
 	"encoding/base64"
 	"net/http"
 	"strconv"
@@ -15,7 +16,8 @@ type (
 		// Skipper defines a function to skip middleware.
 		Skipper Skipper
 
-		// Validator is a function to validate BasicAuth credentials.
+		// Validator is a function to validate BasicAuthWithConfig credentials. Note: if request contains multiple basic
+		// auth headers this function would be called once for each header until first valid result is returned
 		// Required.
 		Validator BasicAuthValidator
 
@@ -71,30 +73,36 @@ func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 				return next(c)
 			}
 
-			auth := c.Request().Header.Get(echo.HeaderAuthorization)
+			var lastError error
 			l := len(basic)
+			for i, auth := range c.Request().Header[echo.HeaderAuthorization] {
+				if !(len(auth) > l+1 && strings.EqualFold(auth[:l], basic)) {
+					continue
+				}
 
-			if len(auth) > l+1 && strings.EqualFold(auth[:l], basic) {
 				// Invalid base64 shouldn't be treated as error
 				// instead should be treated as invalid client input
-				b, err := base64.StdEncoding.DecodeString(auth[l+1:])
-				if err != nil {
-					return echo.NewHTTPError(http.StatusBadRequest).SetInternal(err)
+				b, errDecode := base64.StdEncoding.DecodeString(auth[l+1:])
+				if errDecode != nil {
+					lastError = echo.NewHTTPError(http.StatusBadRequest).WithInternal(errDecode)
+					continue
 				}
-
-				cred := string(b)
-				for i := 0; i < len(cred); i++ {
-					if cred[i] == ':' {
-						// Verify credentials
-						valid, err := config.Validator(cred[:i], cred[i+1:], c)
-						if err != nil {
-							return err
-						} else if valid {
-							return next(c)
-						}
-						break
+				idx := bytes.IndexByte(b, ':')
+				if idx >= 0 {
+					valid, errValidate := config.Validator(string(b[:idx]), string(b[idx+1:]), c)
+					if errValidate != nil {
+						lastError = errValidate
+					} else if valid {
+						return next(c)
 					}
 				}
+				if i >= headerCountLimit { // guard against attacker maliciously sending huge amount of invalid headers
+					break
+				}
+			}
+
+			if lastError != nil {
+				return lastError
 			}
 
 			realm := defaultRealm
