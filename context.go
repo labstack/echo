@@ -195,6 +195,8 @@ type (
 		// with `Echo#AcquireContext()` and `Echo#ReleaseContext()`.
 		// See `Echo#ServeHTTP()`
 		Reset(r *http.Request, w http.ResponseWriter)
+
+		Config
 	}
 
 	context struct {
@@ -646,4 +648,12 @@ func (c *context) Reset(r *http.Request, w http.ResponseWriter) {
 	for i := 0; i < *c.echo.maxParam; i++ {
 		c.pvalues[i] = ""
 	}
+}
+
+func (c *context) GetEnv(key string) string {
+	return c.echo.GetEnv(key)
+}
+
+func (c *context) GetEnvOrDefault(key, val string) string {
+	return c.echo.GetEnvOrDefault(key, val)
 }

@@ -104,6 +104,8 @@ type (
 
 		// OnAddRouteHandler is called when Echo adds new route to specific host router.
 		OnAddRouteHandler func(host string, route Route, handler HandlerFunc, middleware []MiddlewareFunc)
+
+		Config
 	}
 
 	// Route contains a handler and information for matching against requests.
@@ -384,6 +386,7 @@ func New() (e *Echo) {
 	}
 	e.router = NewRouter(e)
 	e.routers = map[string]*Router{}
+	e.Config = DefaultConfigProvider(e.Logger)
 	return
 }
 
