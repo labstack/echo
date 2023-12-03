@@ -131,10 +131,26 @@ func (b *DefaultBinder) bindData(destination interface{}, data map[string][]stri
 	typ := reflect.TypeOf(destination).Elem()
 	val := reflect.ValueOf(destination).Elem()
 
-	// Map
-	if typ.Kind() == reflect.Map {
+	// Support binding to limited Map destinations:
+	// - map[string][]string,
+	// - map[string]string <-- (binds first value from data slice)
+	// - map[string]interface{}
+	// You are better off binding to struct but there are user who want this map feature. Source of data for these cases are:
+	// params,query,header,form as these sources produce string values, most of the time slice of strings, actually.
+	if typ.Kind() == reflect.Map && typ.Key().Kind() == reflect.String {
+		k := typ.Elem().Kind()
+		isElemInterface := k == reflect.Interface
+		isElemString := k == reflect.String
+		isElemSliceOfStrings := k == reflect.Slice && typ.Elem().Elem().Kind() == reflect.String
+		if !(isElemSliceOfStrings || isElemString || isElemInterface) {
+			return nil
+		}
 		for k, v := range data {
-			val.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v[0]))
+			if isElemString {
+				val.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v[0]))
+			} else {
+				val.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v))
+			}
 		}
 		return nil
 	}

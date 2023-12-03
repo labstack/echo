@@ -429,6 +429,62 @@ func TestBindUnsupportedMediaType(t *testing.T) {
 	testBindError(t, strings.NewReader(invalidContent), MIMEApplicationJSON, &json.SyntaxError{})
 }
 
+func TestDefaultBinder_bindDataToMap(t *testing.T) {
+	exampleData := map[string][]string{
+		"multiple": {"1", "2"},
+		"single":   {"3"},
+	}
+
+	t.Run("ok, bind to map[string]string", func(t *testing.T) {
+		dest := map[string]string{}
+		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param"))
+		assert.Equal(t,
+			map[string]string{
+				"multiple": "1",
+				"single":   "3",
+			},
+			dest,
+		)
+	})
+
+	t.Run("ok, bind to map[string][]string", func(t *testing.T) {
+		dest := map[string][]string{}
+		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param"))
+		assert.Equal(t,
+			map[string][]string{
+				"multiple": {"1", "2"},
+				"single":   {"3"},
+			},
+			dest,
+		)
+	})
+
+	t.Run("ok, bind to map[string]interface", func(t *testing.T) {
+		dest := map[string]interface{}{}
+		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param"))
+		assert.Equal(t,
+			map[string]interface{}{
+				"multiple": []string{"1", "2"},
+				"single":   []string{"3"},
+			},
+			dest,
+		)
+	})
+
+	t.Run("ok, bind to map[string]int skips", func(t *testing.T) {
+		dest := map[string]int{}
+		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param"))
+		assert.Equal(t, map[string]int{}, dest)
+	})
+
+	t.Run("ok, bind to map[string][]int skips", func(t *testing.T) {
+		dest := map[string][]int{}
+		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param"))
+		assert.Equal(t, map[string][]int{}, dest)
+	})
+
+}
+
 func TestBindbindData(t *testing.T) {
 	ts := new(bindTestStruct)
 	b := new(DefaultBinder)
