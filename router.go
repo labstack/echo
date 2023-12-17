@@ -165,7 +165,7 @@ func (r *Router) Reverse(name string, params ...interface{}) string {
 				}
 				if n < ln && (route.Path[i] == '*' || (!hasBackslash && route.Path[i] == ':')) {
 					// in case of `*` wildcard or `:` (unescaped colon) param we replace everything till next slash or end of path
-					for ; i < l && route.Path[i] != '/'; i++ {
+					for ; i < l && route.Path[i] != '/' && route.Path[i] != '-'; i++ {
 					}
 					uri.WriteString(fmt.Sprintf("%v", params[n]))
 					n++
@@ -220,7 +220,7 @@ func (r *Router) Add(method, path string, h HandlerFunc) {
 			j := i + 1
 
 			r.insert(method, path[:i], staticKind, routeMethod{})
-			for ; i < lcpIndex && path[i] != '/'; i++ {
+			for ; i < lcpIndex && (path[i] != '/' && path[i] != '-'); i++ {
 			}
 
 			pnames = append(pnames, path[j:i])
@@ -660,7 +660,7 @@ func (r *Router) Find(method, path string, c Context) {
 				// act similarly to any node - consider all remaining search as match
 				i = l
 			} else {
-				for ; i < l && search[i] != '/'; i++ {
+				for ; i < l && search[i] != '/' && search[i] != '-'; i++ {
 				}
 			}
 

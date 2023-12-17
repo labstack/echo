@@ -728,6 +728,42 @@ func TestRouterParam(t *testing.T) {
 	}
 }
 
+func TestRouterRangeParam(t *testing.T) {
+	e := New()
+	r := e.router
+
+	r.Add(http.MethodGet, "/flights/:from-:to", handlerFunc)
+
+	var testCases = []struct {
+		name        string
+		whenURL     string
+		expectRoute interface{}
+		expectParam map[string]string
+	}{
+		{
+			name:        "route /flights/LAX-DEN to /flights/:from-:to",
+			whenURL:     "/flights/LAX-DEN",
+			expectRoute: "/flights/:from-:to",
+			expectParam: map[string]string{"from": "LAX", "to": "DEN"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+
+			c := e.NewContext(nil, nil).(*context)
+			r.Find(http.MethodGet, tc.whenURL, c)
+
+			c.handler(c)
+			assert.Equal(t, tc.expectRoute, c.Get("path"))
+			for param, expectedValue := range tc.expectParam {
+				assert.Equal(t, expectedValue, c.Param(param))
+			}
+			checkUnusedParamValues(t, c, tc.expectParam)
+		})
+	}
+}
+
 func TestRouter_addAndMatchAllSupportedMethods(t *testing.T) {
 	var testCases = []struct {
 		name            string
