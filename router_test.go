@@ -732,7 +732,8 @@ func TestRouterRangeParam(t *testing.T) {
 	e := New()
 	r := e.router
 
-	r.Add(http.MethodGet, "/flights/:from-:to", handlerFunc)
+	r.Add(http.MethodGet, "/flights/{from}.{to}", handlerFunc)
+	r.Add(http.MethodGet, "/flights/{from}-{to}", handlerFunc)
 
 	var testCases = []struct {
 		name        string
@@ -741,9 +742,15 @@ func TestRouterRangeParam(t *testing.T) {
 		expectParam map[string]string
 	}{
 		{
-			name:        "route /flights/LAX-DEN to /flights/:from-:to",
+			name:        "route /flights/LAX.DEN to /flights/{from}.{to}",
+			whenURL:     "/flights/LAX.DEN",
+			expectRoute: "/flights/{from}.{to}",
+			expectParam: map[string]string{"from": "LAX", "to": "DEN"},
+		},
+		{
+			name:        "route /flights/LAX-DEN to /flights/{from}-{to}",
 			whenURL:     "/flights/LAX-DEN",
-			expectRoute: "/flights/:from-:to",
+			expectRoute: "/flights/{from}-{to}",
 			expectParam: map[string]string{"from": "LAX", "to": "DEN"},
 		},
 	}

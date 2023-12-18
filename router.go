@@ -210,7 +210,11 @@ func (r *Router) Add(method, path string, h HandlerFunc) {
 	}
 
 	for i, lcpIndex := 0, len(path); i < lcpIndex; i++ {
-		if path[i] == ':' {
+		if path[i] == ':' || path[i] == '{' {
+			bracketsOpen := false
+			if path[i] == '{' {
+				bracketsOpen = true
+			}
 			if i > 0 && path[i-1] == '\\' {
 				path = path[:i-1] + path[i:]
 				i--
@@ -220,11 +224,15 @@ func (r *Router) Add(method, path string, h HandlerFunc) {
 			j := i + 1
 
 			r.insert(method, path[:i], staticKind, routeMethod{})
-			for ; i < lcpIndex && (path[i] != '/' && path[i] != '-'); i++ {
+			for ; i < lcpIndex && (path[i] != '/' && !(path[j-1] == '{' && path[i] == '}')); i++ {
 			}
 
 			pnames = append(pnames, path[j:i])
-			path = path[:j] + path[i:]
+			if bracketsOpen {
+				path = path[:j-1] + ":" + path[i+1:]
+			} else {
+				path = path[:j] + path[i:]
+			}
 			i, lcpIndex = j, len(path)
 
 			if i == lcpIndex {
@@ -660,7 +668,7 @@ func (r *Router) Find(method, path string, c Context) {
 				// act similarly to any node - consider all remaining search as match
 				i = l
 			} else {
-				for ; i < l && search[i] != '/' && search[i] != '-'; i++ {
+				for ; i < l && search[i] != '/' && !(search[i] == '-' || search[i] == '.'); i++ {
 				}
 			}
 
@@ -714,7 +722,6 @@ func (r *Router) Find(method, path string, c Context) {
 	if currentNode == nil && previousBestMatchNode == nil {
 		return // nothing matched at all
 	}
-
 	// matchedHandler could be method+path handler that we matched or notFoundHandler from node with matching path
 	// user provided not found (404) handler has priority over generic method not found (405) handler or global 404 handler
 	var rPath string
