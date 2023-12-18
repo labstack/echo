@@ -668,8 +668,14 @@ func (r *Router) Find(method, path string, c Context) {
 				// act similarly to any node - consider all remaining search as match
 				i = l
 			} else {
-				for ; i < l && search[i] != '/' && !(search[i] == '-' || search[i] == '.'); i++ {
+				for ; i < l && search[i] != '/'; i++ {
+					for _, static := range currentNode.staticChildren {
+						if search[i] == static.label {
+							goto Done
+						}
+					}
 				}
+			Done:
 			}
 
 			paramValues[paramIndex] = search[:i]
