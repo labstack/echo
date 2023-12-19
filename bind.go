@@ -90,6 +90,8 @@ func (b *DefaultBinder) BindBody(c Context, i interface{}) (err error) {
 		if err = b.bindData(i, params, "form"); err != nil {
 			return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
 		}
+	case ctype == "":
+		return ErrEmptyContentType
 	default:
 		return ErrUnsupportedMediaType
 	}

@@ -429,6 +429,10 @@ func TestBindUnsupportedMediaType(t *testing.T) {
 	testBindError(t, strings.NewReader(invalidContent), MIMEApplicationJSON, &json.SyntaxError{})
 }
 
+func TestBindErrEmptyContentType(t *testing.T) {
+	testBindError(t, strings.NewReader(invalidContent), "", errors.New("missing content type header"))
+}
+
 func TestBindbindData(t *testing.T) {
 	ts := new(bindTestStruct)
 	b := new(DefaultBinder)
@@ -672,6 +676,11 @@ func testBindError(t *testing.T, r io.Reader, ctype string, expectedInternal err
 		strings.HasPrefix(ctype, MIMEApplicationForm), strings.HasPrefix(ctype, MIMEMultipartForm):
 		if assert.IsType(t, new(HTTPError), err) {
 			assert.Equal(t, http.StatusBadRequest, err.(*HTTPError).Code)
+			assert.IsType(t, expectedInternal, err.(*HTTPError).Internal)
+		}
+	case ctype == "": // no content type
+		if assert.IsType(t, new(HTTPError), err) {
+			assert.Equal(t, ErrEmptyContentType, err)
 			assert.IsType(t, expectedInternal, err.(*HTTPError).Internal)
 		}
 	default:
