@@ -169,7 +169,12 @@ const (
 
 // MIME types
 const (
-	MIMEApplicationJSON                  = "application/json"
+	// MIMEApplicationJSON JavaScript Object Notation (JSON) https://www.rfc-editor.org/rfc/rfc8259
+	MIMEApplicationJSON = "application/json"
+	// Deprecated: Please use MIMEApplicationJSON instead. JSON should be encoded using UTF-8 by default.
+	// No "charset" parameter is defined for this registration.
+	// Adding one really has no effect on compliant recipients.
+	// See RFC 8259, section 8.1. https://datatracker.ietf.org/doc/html/rfc8259#section-8.1
 	MIMEApplicationJSONCharsetUTF8       = MIMEApplicationJSON + "; " + charsetUTF8
 	MIMEApplicationJavaScript            = "application/javascript"
 	MIMEApplicationJavaScriptCharsetUTF8 = MIMEApplicationJavaScript + "; " + charsetUTF8
