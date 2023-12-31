@@ -192,8 +192,10 @@ func TestToMultipleFields(t *testing.T) {
 func TestBindJSON(t *testing.T) {
 	testBindOkay(t, strings.NewReader(userJSON), nil, MIMEApplicationJSON)
 	testBindOkay(t, strings.NewReader(userJSON), dummyQuery, MIMEApplicationJSON)
+	testBindOkay(t, strings.NewReader(userJSON), dummyQuery, contentTypeJSONVariant)
 	testBindArrayOkay(t, strings.NewReader(usersJSON), nil, MIMEApplicationJSON)
 	testBindArrayOkay(t, strings.NewReader(usersJSON), dummyQuery, MIMEApplicationJSON)
+	testBindArrayOkay(t, strings.NewReader(usersJSON), dummyQuery, contentTypeJSONVariant)
 	testBindError(t, strings.NewReader(invalidContent), MIMEApplicationJSON, &json.SyntaxError{})
 	testBindError(t, strings.NewReader(userJSONInvalidType), MIMEApplicationJSON, &json.UnmarshalTypeError{})
 }

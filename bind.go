@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"mime"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -51,6 +52,14 @@ func (b *DefaultBinder) BindQueryParams(c Context, i interface{}) error {
 	return nil
 }
 
+func contentTypeIsJSON(mediaType string) bool {
+	parsed, _, err := mime.ParseMediaType(mediaType)
+	if err != nil {
+		return false
+	}
+	return parsed == "application/json" || strings.HasSuffix(parsed, "+json")
+}
+
 // BindBody binds request body contents to bindable object
 // NB: then binding forms take note that this implementation uses standard library form parsing
 // which parses form data from BOTH URL and BODY if content type is not MIMEMultipartForm
@@ -64,7 +73,7 @@ func (b *DefaultBinder) BindBody(c Context, i interface{}) (err error) {
 
 	ctype := req.Header.Get(HeaderContentType)
 	switch {
-	case strings.HasPrefix(ctype, MIMEApplicationJSON):
+	case contentTypeIsJSON(ctype):
 		if err = c.Echo().JSONSerializer.Deserialize(c, i); err != nil {
 			switch err.(type) {
 			case *HTTPError:
