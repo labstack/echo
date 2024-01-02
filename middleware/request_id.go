@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/gommon/random"
 )
 
 type (
@@ -12,7 +11,7 @@ type (
 		Skipper Skipper
 
 		// Generator defines a function to generate an ID.
-		// Optional. Default value random.String(32).
+		// Optional. Defaults to generator for random string of length 32.
 		Generator func() string
 
 		// RequestIDHandler defines a function which is executed for a request id.
@@ -73,5 +72,5 @@ func RequestIDWithConfig(config RequestIDConfig) echo.MiddlewareFunc {
 }
 
 func generator() string {
-	return random.String(32)
+	return randomString(32)
 }

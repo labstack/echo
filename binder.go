@@ -1323,7 +1323,7 @@ func (b *ValueBinder) unixTime(sourceParam string, dest *time.Time, valueMustExi
 	case time.Second:
 		*dest = time.Unix(n, 0)
 	case time.Millisecond:
-		*dest = time.Unix(n/1e3, (n%1e3)*1e6) // TODO: time.UnixMilli(n) exists since Go1.17 switch to that when min version allows
+		*dest = time.UnixMilli(n)
 	case time.Nanosecond:
 		*dest = time.Unix(0, n)
 	}

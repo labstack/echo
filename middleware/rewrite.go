@@ -27,7 +27,7 @@ type (
 		// Example:
 		// "^/old/[0.9]+/":     "/new",
 		// "^/api/.+?/(.*)":     "/v2/$1",
-		RegexRules map[*regexp.Regexp]string `yaml:"regex_rules"`
+		RegexRules map[*regexp.Regexp]string `yaml:"-"`
 	}
 )
 

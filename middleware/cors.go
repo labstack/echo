@@ -39,7 +39,7 @@ type (
 		// See https://blog.portswigger.net/2016/10/exploiting-cors-misconfigurations-for.html
 		//
 		// Optional.
-		AllowOriginFunc func(origin string) (bool, error) `yaml:"allow_origin_func"`
+		AllowOriginFunc func(origin string) (bool, error) `yaml:"-"`
 
 		// AllowMethods determines the value of the Access-Control-Allow-Methods
 		// response header.  This header specified the list of methods allowed when
@@ -99,8 +99,9 @@ type (
 		// MaxAge determines the value of the Access-Control-Max-Age response header.
 		// This header indicates how long (in seconds) the results of a preflight
 		// request can be cached.
+		// The header is set only if MaxAge != 0, negative value sends "0" which instructs browsers not to cache that response.
 		//
-		// Optional. Default value 0.  The header is set only if MaxAge > 0.
+		// Optional. Default value 0 - meaning header is not sent.
 		//
 		// See also: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Max-Age
 		MaxAge int `yaml:"max_age"`
@@ -159,7 +160,11 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 	allowMethods := strings.Join(config.AllowMethods, ",")
 	allowHeaders := strings.Join(config.AllowHeaders, ",")
 	exposeHeaders := strings.Join(config.ExposeHeaders, ",")
-	maxAge := strconv.Itoa(config.MaxAge)
+
+	maxAge := "0"
+	if config.MaxAge > 0 {
+		maxAge = strconv.Itoa(config.MaxAge)
+	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -282,7 +287,7 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 					res.Header().Set(echo.HeaderAccessControlAllowHeaders, h)
 				}
 			}
-			if config.MaxAge > 0 {
+			if config.MaxAge != 0 {
 				res.Header().Set(echo.HeaderAccessControlMaxAge, maxAge)
 			}
 			return c.NoContent(http.StatusNoContent)

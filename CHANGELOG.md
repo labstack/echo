@@ -1,5 +1,79 @@
 # Changelog
 
+## v4.11.4 - 2023-12-20
+
+**Security**
+
+* Upgrade golang.org/x/crypto to v0.17.0 to fix vulnerability [issue](https://pkg.go.dev/vuln/GO-2023-2402) [#2562](https://github.com/labstack/echo/pull/2562)
+
+**Enhancements**
+
+* Update deps and mark Go version to 1.18 as this is what golang.org/x/* use [#2563](https://github.com/labstack/echo/pull/2563)
+* Request logger: add example for Slog https://pkg.go.dev/log/slog [#2543](https://github.com/labstack/echo/pull/2543)
+
+
+## v4.11.3 - 2023-11-07
+
+**Security**
+
+* 'c.Attachment' and 'c.Inline' should escape filename in 'Content-Disposition' header to avoid 'Reflect File Download' vulnerability. [#2541](https://github.com/labstack/echo/pull/2541)
+
+**Enhancements**
+
+* Tests: refactor context tests to be separate functions [#2540](https://github.com/labstack/echo/pull/2540)
+* Proxy middleware: reuse echo request context [#2537](https://github.com/labstack/echo/pull/2537)
+* Mark unmarshallable yaml struct tags as ignored [#2536](https://github.com/labstack/echo/pull/2536)
+
+
+## v4.11.2 - 2023-10-11
+
+**Security**
+
+* Bump golang.org/x/net to prevent CVE-2023-39325 / CVE-2023-44487 HTTP/2 Rapid Reset Attack [#2527](https://github.com/labstack/echo/pull/2527)
+* fix(sec): randomString bias introduced by #2490 [#2492](https://github.com/labstack/echo/pull/2492)
+* CSRF/RequestID mw: switch math/random usage to crypto/random [#2490](https://github.com/labstack/echo/pull/2490)
+
+**Enhancements**
+
+* Delete unused context in body_limit.go [#2483](https://github.com/labstack/echo/pull/2483)
+* Use Go 1.21 in CI [#2505](https://github.com/labstack/echo/pull/2505)
+* Fix some typos [#2511](https://github.com/labstack/echo/pull/2511)
+* Allow CORS middleware to send Access-Control-Max-Age: 0 [#2518](https://github.com/labstack/echo/pull/2518)
+* Bump dependancies [#2522](https://github.com/labstack/echo/pull/2522)
+
+## v4.11.1 - 2023-07-16
+
+**Fixes**
+
+* Fix `Gzip` middleware not sending response code for no content responses (404, 301/302 redirects etc) [#2481](https://github.com/labstack/echo/pull/2481)
+
+
+## v4.11.0 - 2023-07-14
+
+
+**Fixes**
+
+* Fixes the proxy middleware concurrency issue of calling the Next() proxy target on Round Robin Balancer [#2409](https://github.com/labstack/echo/pull/2409)
+* Fix `group.RouteNotFound` not working when group has attached middlewares [#2411](https://github.com/labstack/echo/pull/2411)
+* Fix global error handler return error message when message is an error [#2456](https://github.com/labstack/echo/pull/2456)
+* Do not use global timeNow variables [#2477](https://github.com/labstack/echo/pull/2477)
+
+
+**Enhancements**
+
+* Added a optional config variable to disable centralized error handler in recovery middleware [#2410](https://github.com/labstack/echo/pull/2410)
+* refactor: use `strings.ReplaceAll` directly [#2424](https://github.com/labstack/echo/pull/2424)
+* Add support for Go1.20 `http.rwUnwrapper` to Response struct [#2425](https://github.com/labstack/echo/pull/2425)
+* Check whether is nil before invoking centralized error handling [#2429](https://github.com/labstack/echo/pull/2429)
+* Proper colon support in `echo.Reverse` method [#2416](https://github.com/labstack/echo/pull/2416)
+* Fix misuses of a vs an in documentation comments [#2436](https://github.com/labstack/echo/pull/2436)
+* Add link to slog.Handler library for Echo logging into README.md [#2444](https://github.com/labstack/echo/pull/2444)
+* In proxy middleware Support retries of failed proxy requests [#2414](https://github.com/labstack/echo/pull/2414)
+* gofmt fixes to comments [#2452](https://github.com/labstack/echo/pull/2452)
+* gzip response only if it exceeds a minimal length [#2267](https://github.com/labstack/echo/pull/2267)
+* Upgrade packages [#2475](https://github.com/labstack/echo/pull/2475)
+
+
 ## v4.10.2 - 2023-02-22
 
 **Security**

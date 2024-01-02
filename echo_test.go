@@ -1286,67 +1286,141 @@ func TestHTTPError_Unwrap(t *testing.T) {
 	})
 }
 
+type customError struct {
+	s string
+}
+
+func (ce *customError) MarshalJSON() ([]byte, error) {
+	return []byte(fmt.Sprintf(`{"x":"%v"}`, ce.s)), nil
+}
+
+func (ce *customError) Error() string {
+	return ce.s
+}
+
 func TestDefaultHTTPErrorHandler(t *testing.T) {
-	e := New()
-	e.Debug = true
-	e.Any("/plain", func(c Context) error {
-		return errors.New("an error occurred")
-	})
-	e.Any("/badrequest", func(c Context) error {
-		return NewHTTPError(http.StatusBadRequest, "Invalid request")
-	})
-	e.Any("/servererror", func(c Context) error {
-		return NewHTTPError(http.StatusInternalServerError, map[string]interface{}{
-			"code":    33,
-			"message": "Something bad happened",
-			"error":   "stackinfo",
+	var testCases = []struct {
+		name       string
+		givenDebug bool
+		whenPath   string
+		expectCode int
+		expectBody string
+	}{
+		{
+			name:       "with Debug=true plain response contains error message",
+			givenDebug: true,
+			whenPath:   "/plain",
+			expectCode: http.StatusInternalServerError,
+			expectBody: "{\n  \"error\": \"an error occurred\",\n  \"message\": \"Internal Server Error\"\n}\n",
+		},
+		{
+			name:       "with Debug=true special handling for HTTPError",
+			givenDebug: true,
+			whenPath:   "/badrequest",
+			expectCode: http.StatusBadRequest,
+			expectBody: "{\n  \"error\": \"code=400, message=Invalid request\",\n  \"message\": \"Invalid request\"\n}\n",
+		},
+		{
+			name:       "with Debug=true complex errors are serialized to pretty JSON",
+			givenDebug: true,
+			whenPath:   "/servererror",
+			expectCode: http.StatusInternalServerError,
+			expectBody: "{\n  \"code\": 33,\n  \"error\": \"stackinfo\",\n  \"message\": \"Something bad happened\"\n}\n",
+		},
+		{
+			name:       "with Debug=true if the body is already set HTTPErrorHandler should not add anything to response body",
+			givenDebug: true,
+			whenPath:   "/early-return",
+			expectCode: http.StatusOK,
+			expectBody: "OK",
+		},
+		{
+			name:       "with Debug=true internal error should be reflected in the message",
+			givenDebug: true,
+			whenPath:   "/internal-error",
+			expectCode: http.StatusBadRequest,
+			expectBody: "{\n  \"error\": \"code=400, message=Bad Request, internal=internal error message body\",\n  \"message\": \"Bad Request\"\n}\n",
+		},
+		{
+			name:       "with Debug=false the error response is shortened",
+			whenPath:   "/plain",
+			expectCode: http.StatusInternalServerError,
+			expectBody: "{\"message\":\"Internal Server Error\"}\n",
+		},
+		{
+			name:       "with Debug=false the error response is shortened",
+			whenPath:   "/badrequest",
+			expectCode: http.StatusBadRequest,
+			expectBody: "{\"message\":\"Invalid request\"}\n",
+		},
+		{
+			name:       "with Debug=false No difference for error response with non plain string errors",
+			whenPath:   "/servererror",
+			expectCode: http.StatusInternalServerError,
+			expectBody: "{\"code\":33,\"error\":\"stackinfo\",\"message\":\"Something bad happened\"}\n",
+		},
+		{
+			name:       "with Debug=false when httpError contains an error",
+			whenPath:   "/error-in-httperror",
+			expectCode: http.StatusBadRequest,
+			expectBody: "{\"message\":\"error in httperror\"}\n",
+		},
+		{
+			name:       "with Debug=false when httpError contains an error",
+			whenPath:   "/customerror-in-httperror",
+			expectCode: http.StatusBadRequest,
+			expectBody: "{\"x\":\"custom error msg\"}\n",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			e.Debug = tc.givenDebug // With Debug=true plain response contains error message
+
+			e.Any("/plain", func(c Context) error {
+				return errors.New("an error occurred")
+			})
+
+			e.Any("/badrequest", func(c Context) error { // and special handling for HTTPError
+				return NewHTTPError(http.StatusBadRequest, "Invalid request")
+			})
+
+			e.Any("/servererror", func(c Context) error { // complex errors are serialized to pretty JSON
+				return NewHTTPError(http.StatusInternalServerError, map[string]interface{}{
+					"code":    33,
+					"message": "Something bad happened",
+					"error":   "stackinfo",
+				})
+			})
+
+			// if the body is already set HTTPErrorHandler should not add anything to response body
+			e.Any("/early-return", func(c Context) error {
+				err := c.String(http.StatusOK, "OK")
+				if err != nil {
+					assert.Fail(t, err.Error())
+				}
+				return errors.New("ERROR")
+			})
+
+			// internal error should be reflected in the message
+			e.GET("/internal-error", func(c Context) error {
+				err := errors.New("internal error message body")
+				return NewHTTPError(http.StatusBadRequest).SetInternal(err)
+			})
+
+			e.GET("/error-in-httperror", func(c Context) error {
+				return NewHTTPError(http.StatusBadRequest, errors.New("error in httperror"))
+			})
+
+			e.GET("/customerror-in-httperror", func(c Context) error {
+				return NewHTTPError(http.StatusBadRequest, &customError{s: "custom error msg"})
+			})
+
+			c, b := request(http.MethodGet, tc.whenPath, e)
+			assert.Equal(t, tc.expectCode, c)
+			assert.Equal(t, tc.expectBody, b)
 		})
-	})
-	e.Any("/early-return", func(c Context) error {
-		err := c.String(http.StatusOK, "OK")
-		if err != nil {
-			assert.Fail(t, err.Error())
-		}
-		return errors.New("ERROR")
-	})
-	e.GET("/internal-error", func(c Context) error {
-		err := errors.New("internal error message body")
-		return NewHTTPError(http.StatusBadRequest).SetInternal(err)
-	})
-
-	// With Debug=true plain response contains error message
-	c, b := request(http.MethodGet, "/plain", e)
-	assert.Equal(t, http.StatusInternalServerError, c)
-	assert.Equal(t, "{\n  \"error\": \"an error occurred\",\n  \"message\": \"Internal Server Error\"\n}\n", b)
-	// and special handling for HTTPError
-	c, b = request(http.MethodGet, "/badrequest", e)
-	assert.Equal(t, http.StatusBadRequest, c)
-	assert.Equal(t, "{\n  \"error\": \"code=400, message=Invalid request\",\n  \"message\": \"Invalid request\"\n}\n", b)
-	// complex errors are serialized to pretty JSON
-	c, b = request(http.MethodGet, "/servererror", e)
-	assert.Equal(t, http.StatusInternalServerError, c)
-	assert.Equal(t, "{\n  \"code\": 33,\n  \"error\": \"stackinfo\",\n  \"message\": \"Something bad happened\"\n}\n", b)
-	// if the body is already set HTTPErrorHandler should not add anything to response body
-	c, b = request(http.MethodGet, "/early-return", e)
-	assert.Equal(t, http.StatusOK, c)
-	assert.Equal(t, "OK", b)
-	// internal error should be reflected in the message
-	c, b = request(http.MethodGet, "/internal-error", e)
-	assert.Equal(t, http.StatusBadRequest, c)
-	assert.Equal(t, "{\n  \"error\": \"code=400, message=Bad Request, internal=internal error message body\",\n  \"message\": \"Bad Request\"\n}\n", b)
-
-	e.Debug = false
-	// With Debug=false the error response is shortened
-	c, b = request(http.MethodGet, "/plain", e)
-	assert.Equal(t, http.StatusInternalServerError, c)
-	assert.Equal(t, "{\"message\":\"Internal Server Error\"}\n", b)
-	c, b = request(http.MethodGet, "/badrequest", e)
-	assert.Equal(t, http.StatusBadRequest, c)
-	assert.Equal(t, "{\"message\":\"Invalid request\"}\n", b)
-	// No difference for error response with non plain string errors
-	c, b = request(http.MethodGet, "/servererror", e)
-	assert.Equal(t, http.StatusInternalServerError, c)
-	assert.Equal(t, "{\"code\":33,\"error\":\"stackinfo\",\"message\":\"Something bad happened\"}\n", b)
+	}
 }
 
 func TestEchoClose(t *testing.T) {
