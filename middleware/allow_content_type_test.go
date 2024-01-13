@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"bytes"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -11,9 +12,8 @@ import (
 
 func TestAllowContentType(t *testing.T) {
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", bytes.NewReader([]byte("Hello World!")))
 	res := httptest.NewRecorder()
-	c := e.NewContext(req, res)
 
 	h := AllowContentType("application/json", "text/plain")(func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
@@ -21,9 +21,12 @@ func TestAllowContentType(t *testing.T) {
 
 	// Test valid content type
 	req.Header.Add("Content-Type", "application/json")
+
+	c := e.NewContext(req, res)
 	assert.NoError(t, h(c))
 
 	// Test invalid content type
-	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Content-Type", "text/html")
+	c = e.NewContext(req, res)
 	assert.NoError(t, h(c))
 }
