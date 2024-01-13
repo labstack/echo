@@ -29,4 +29,8 @@ func TestAllowContentType(t *testing.T) {
 	req.Header.Add("Content-Type", "text/html")
 	c = e.NewContext(req, res)
 	assert.NoError(t, h(c))
+
+	// Test Accept header
+	accept := c.Response().Header().Get("Accept")
+	assert.Equal(t, "application/json, text/plain", accept)
 }

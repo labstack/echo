@@ -7,6 +7,21 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+// generateAcceptHeaderString takes in a list of allowed content types and generates
+// a string that can be used in the Accept part of an HTTP header
+func generateAcceptHeaderString(allowedContentTypes map[string]struct{}) string {
+	acceptString := ""
+	i := 0
+	for mimeType := range allowedContentTypes {
+		acceptString += mimeType
+		if i != len(allowedContentTypes)-1 {
+			acceptString += ", "
+		}
+		i += 1
+	}
+	return acceptString
+}
+
 // AllowContentType returns an AllowContentType middleware
 //
 // It requries at least one content type to be passed in as an argument
@@ -21,6 +36,9 @@ func AllowContentType(contentTypes ...string) echo.MiddlewareFunc {
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			// Add allowed types to Accept header to tell client what data types are allowed
+			c.Response().Header().Add("Accept", generateAcceptHeaderString(allowedContentTypes))
+
 			if c.Request().ContentLength == 0 {
 				// skip check for empty content body
 				return next(c)
