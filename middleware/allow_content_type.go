@@ -7,6 +7,9 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+// AllowContentType returns an AllowContentType middleware
+//
+// It requries at least one content type to be passed in as an argument
 func AllowContentType(contentTypes ...string) echo.MiddlewareFunc {
 	if len(contentTypes) == 0 {
 		panic("echo: allow-content middleware requires at least one content type")
