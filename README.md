@@ -38,6 +38,18 @@ For older versions, please use the latest v3 tag.
 - Automatic TLS via Let’s Encrypt
 - HTTP/2 support
 
+## Sponsors
+
+<div>
+  <a href="https://encore.dev" style="display: inline-flex; align-items: center; gap: 10px">
+    <img src="https://user-images.githubusercontent.com/78424526/214602214-52e0483a-b5fc-4d4c-b03e-0b7b23e012df.svg" height="28px" alt="encore icon"></img>
+  <b>Encore – the platform for building Go-based cloud backends</b>
+    </a>
+</div>
+<br/>
+
+Click [here](https://github.com/sponsors/labstack) for more information on sponsorship.
+
 ## Benchmarks
 
 Date: 2020/11/11<br>
