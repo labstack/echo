@@ -9,20 +9,18 @@
 [![Twitter](https://img.shields.io/badge/twitter-@labstack-55acee.svg?style=flat-square)](https://twitter.com/labstack)
 [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/labstack/echo/master/LICENSE)
 
-## Supported Go versions
+## Echo
 
-Latest version of Echo supports last four Go major [releases](https://go.dev/doc/devel/release) and might work with
-older versions.
+High performance, extensible, minimalist Go web framework.
 
-As of version 4.0.0, Echo is available as a [Go module](https://github.com/golang/go/wiki/Modules).
-Therefore a Go version capable of understanding /vN suffixed imports is required:
+* [Official website](https://echo.labstack.com)
+* [Quick start](https://echo.labstack.com/docs/quick-start)
+* [Middlewares](https://echo.labstack.com/docs/category/middleware)
 
-Any of these versions will allow you to import Echo as `github.com/labstack/echo/v4` which is the recommended
-way of using Echo going forward.
+Help and questions: [Github Discussions](https://github.com/labstack/echo/discussions)
 
-For older versions, please use the latest v3 tag.
 
-## Feature Overview
+### Feature Overview
 
 - Optimized HTTP router which smartly prioritize routes
 - Build robust and scalable RESTful APIs
@@ -69,6 +67,7 @@ The benchmarks above were run on an Intel(R) Core(TM) i7-6820HQ CPU @ 2.70GHz
 // go get github.com/labstack/echo/{version}
 go get github.com/labstack/echo/v4
 ```
+Latest version of Echo supports last four Go major [releases](https://go.dev/doc/devel/release) and might work with older versions.
 
 ### Example
 
@@ -128,10 +127,6 @@ of middlewares in this list.
 | [github.com/go-woo/protoc-gen-echo](https://github.com/go-woo/protoc-gen-echo)                       | ProtoBuf generate Echo server side code                                                                                                                                                                  |
 
 Please send a PR to add your own library here.
-
-## Help
-
-- [Forum](https://github.com/labstack/echo/discussions)
 
 ## Contribute
 
