@@ -30,7 +30,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Go ${{ matrix.go }}
         uses: actions/setup-go@v4
@@ -53,13 +53,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code (Previous)
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.base_ref }}
           path: previous
 
       - name: Checkout Code (New)
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: new
 
