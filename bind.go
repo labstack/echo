@@ -145,6 +145,9 @@ func (b *DefaultBinder) bindData(destination interface{}, data map[string][]stri
 		if !(isElemSliceOfStrings || isElemString || isElemInterface) {
 			return nil
 		}
+		if val.IsNil() {
+			val.Set(reflect.MakeMap(typ))
+		}
 		for k, v := range data {
 			if isElemString {
 				val.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v[0]))
