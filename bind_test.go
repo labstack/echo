@@ -447,8 +447,32 @@ func TestDefaultBinder_bindDataToMap(t *testing.T) {
 		)
 	})
 
+	t.Run("ok, bind to map[string]string with nil map", func(t *testing.T) {
+		var dest map[string]string
+		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param"))
+		assert.Equal(t,
+			map[string]string{
+				"multiple": "1",
+				"single":   "3",
+			},
+			dest,
+		)
+	})
+
 	t.Run("ok, bind to map[string][]string", func(t *testing.T) {
 		dest := map[string][]string{}
+		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param"))
+		assert.Equal(t,
+			map[string][]string{
+				"multiple": {"1", "2"},
+				"single":   {"3"},
+			},
+			dest,
+		)
+	})
+
+	t.Run("ok, bind to map[string][]string with nil map", func(t *testing.T) {
+		var dest map[string][]string
 		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param"))
 		assert.Equal(t,
 			map[string][]string{
@@ -471,10 +495,28 @@ func TestDefaultBinder_bindDataToMap(t *testing.T) {
 		)
 	})
 
+	t.Run("ok, bind to map[string]interface with nil map", func(t *testing.T) {
+		var dest map[string]interface{}
+		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param"))
+		assert.Equal(t,
+			map[string]interface{}{
+				"multiple": []string{"1", "2"},
+				"single":   []string{"3"},
+			},
+			dest,
+		)
+	})
+
 	t.Run("ok, bind to map[string]int skips", func(t *testing.T) {
 		dest := map[string]int{}
 		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param"))
 		assert.Equal(t, map[string]int{}, dest)
+	})
+
+	t.Run("ok, bind to map[string]int skips with nil map", func(t *testing.T) {
+		var dest map[string]int
+		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param"))
+		assert.Equal(t, map[string]int(nil), dest)
 	})
 
 	t.Run("ok, bind to map[string][]int skips", func(t *testing.T) {
@@ -483,6 +525,11 @@ func TestDefaultBinder_bindDataToMap(t *testing.T) {
 		assert.Equal(t, map[string][]int{}, dest)
 	})
 
+	t.Run("ok, bind to map[string][]int skips with nil map", func(t *testing.T) {
+		var dest map[string][]int
+		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param"))
+		assert.Equal(t, map[string][]int(nil), dest)
+	})
 }
 
 func TestBindbindData(t *testing.T) {
