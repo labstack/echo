@@ -154,7 +154,7 @@ func TestContextJSON(t *testing.T) {
 	err := c.JSON(http.StatusOK, user{1, "Jon Snow"})
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, MIMEApplicationJSON, rec.Header().Get(HeaderContentType))
 		assert.Equal(t, userJSON+"\n", rec.Body.String())
 	}
 }
@@ -178,7 +178,7 @@ func TestContextJSONPrettyURL(t *testing.T) {
 	err := c.JSON(http.StatusOK, user{1, "Jon Snow"})
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, MIMEApplicationJSON, rec.Header().Get(HeaderContentType))
 		assert.Equal(t, userJSONPretty+"\n", rec.Body.String())
 	}
 }
@@ -192,7 +192,7 @@ func TestContextJSONPretty(t *testing.T) {
 	err := c.JSONPretty(http.StatusOK, user{1, "Jon Snow"}, "  ")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, MIMEApplicationJSON, rec.Header().Get(HeaderContentType))
 		assert.Equal(t, userJSONPretty+"\n", rec.Body.String())
 	}
 }
@@ -213,7 +213,7 @@ func TestContextJSONWithEmptyIntent(t *testing.T) {
 	err := c.json(http.StatusOK, user{1, "Jon Snow"}, emptyIndent)
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, MIMEApplicationJSON, rec.Header().Get(HeaderContentType))
 		assert.Equal(t, buf.String(), rec.Body.String())
 	}
 }
@@ -244,7 +244,7 @@ func TestContextJSONBlob(t *testing.T) {
 	err = c.JSONBlob(http.StatusOK, data)
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, MIMEApplicationJSON, rec.Header().Get(HeaderContentType))
 		assert.Equal(t, userJSON, rec.Body.String())
 	}
 }
@@ -533,7 +533,7 @@ func TestContext_JSON_CommitsCustomResponseCode(t *testing.T) {
 
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusCreated, rec.Code)
-		assert.Equal(t, MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, MIMEApplicationJSON, rec.Header().Get(HeaderContentType))
 		assert.Equal(t, userJSON+"\n", rec.Body.String())
 	}
 }

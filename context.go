@@ -489,7 +489,7 @@ func (c *context) jsonPBlob(code int, callback string, i interface{}) (err error
 }
 
 func (c *context) json(code int, i interface{}, indent string) error {
-	c.writeContentType(MIMEApplicationJSONCharsetUTF8)
+	c.writeContentType(MIMEApplicationJSON)
 	c.response.Status = code
 	return c.echo.JSONSerializer.Serialize(c, i, indent)
 }
@@ -507,7 +507,7 @@ func (c *context) JSONPretty(code int, i interface{}, indent string) (err error)
 }
 
 func (c *context) JSONBlob(code int, b []byte) (err error) {
-	return c.Blob(code, MIMEApplicationJSONCharsetUTF8, b)
+	return c.Blob(code, MIMEApplicationJSON, b)
 }
 
 func (c *context) JSONP(code int, callback string, i interface{}) (err error) {
