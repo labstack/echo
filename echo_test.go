@@ -1572,7 +1572,7 @@ func TestEcho_OnAddRouteHandler(t *testing.T) {
 		})
 	}
 
-	e.GET("/static", NotFoundHandler)
+	e.GET("/static", dummyHandler)
 	e.Host("domain.site").GET("/static/*", dummyHandler, func(next HandlerFunc) HandlerFunc {
 		return func(c Context) error {
 			return next(c)
@@ -1582,7 +1582,7 @@ func TestEcho_OnAddRouteHandler(t *testing.T) {
 	assert.Len(t, added, 2)
 
 	assert.Equal(t, "", added[0].host)
-	assert.Equal(t, Route{Method: http.MethodGet, Path: "/static", Name: "github.com/labstack/echo/v4.glob..func1"}, added[0].route)
+	assert.Equal(t, Route{Method: http.MethodGet, Path: "/static", Name: "github.com/labstack/echo/v4.TestEcho_OnAddRouteHandler.func1"}, added[0].route)
 	assert.Len(t, added[0].middleware, 0)
 
 	assert.Equal(t, "domain.site", added[1].host)
