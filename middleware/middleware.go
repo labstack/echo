@@ -9,6 +9,12 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+const (
+	// headerCountLimit is arbitrary number to limit number of headers processed. this limits possible resource exhaustion
+	// attack vector
+	headerCountLimit = 20
+)
+
 type (
 	// Skipper defines a function to skip middleware. Returning true skips processing
 	// the middleware.
