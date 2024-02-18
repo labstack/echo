@@ -32,7 +32,6 @@ func TestBasicAuth(t *testing.T) {
 	assert.NoError(t, h(c))
 
 	h = BasicAuthWithConfig(BasicAuthConfig{
-		Skipper:   nil,
 		Validator: f,
 		Realm:     "someRealm",
 	})(func(c echo.Context) error {
@@ -72,4 +71,20 @@ func TestBasicAuth(t *testing.T) {
 	req.Header.Set(echo.HeaderAuthorization, auth)
 	he = h(c).(*echo.HTTPError)
 	assert.Equal(t, http.StatusUnauthorized, he.Code)
+
+	h = BasicAuthWithConfig(BasicAuthConfig{
+		Validator: f,
+		Realm:     "someRealm",
+		Skipper: func(c echo.Context) bool {
+			return true
+		},
+	})(func(c echo.Context) error {
+		return c.String(http.StatusOK, "test")
+	})
+
+	// Skipped Request
+	auth = basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:skip"))
+	req.Header.Set(echo.HeaderAuthorization, auth)
+	assert.NoError(t, h(c))
+
 }
