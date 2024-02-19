@@ -57,6 +57,31 @@ func TestResponse_Flush(t *testing.T) {
 	assert.True(t, rec.Flushed)
 }
 
+type testResponseWriter struct {
+}
+
+func (w *testResponseWriter) WriteHeader(statusCode int) {
+}
+
+func (w *testResponseWriter) Write([]byte) (int, error) {
+	return 0, nil
+}
+
+func (w *testResponseWriter) Header() http.Header {
+	return nil
+}
+
+func TestResponse_FlushPanics(t *testing.T) {
+	e := New()
+	rw := new(testResponseWriter)
+	res := &Response{echo: e, Writer: rw}
+
+	// we test that we behave as before unwrapping flushers - flushing writer that does not support it causes panic
+	assert.PanicsWithError(t, "response writer flushing is not supported", func() {
+		res.Flush()
+	})
+}
+
 func TestResponse_ChangeStatusCodeBeforeWrite(t *testing.T) {
 	e := New()
 	rec := httptest.NewRecorder()
