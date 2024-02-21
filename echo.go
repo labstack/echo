@@ -70,7 +70,7 @@ type (
 		filesystem
 		common
 		// startupMutex is mutex to lock Echo instance access during server configuration and startup. Useful for to get
-		// listener address info (on which interface/port was listener binded) without having data races.
+		// listener address info (on which interface/port was listener bound) without having data races.
 		startupMutex sync.RWMutex
 		colorer      *color.Color
 
@@ -419,7 +419,7 @@ func (e *Echo) Routers() map[string]*Router {
 //
 // NOTE: In case errors happens in middleware call-chain that is returning from handler (which did not return an error).
 // When handler has already sent response (ala c.JSON()) and there is error in middleware that is returning from
-// handler. Then the error that global error handler received will be ignored because we have already "commited" the
+// handler. Then the error that global error handler received will be ignored because we have already "committed" the
 // response and status code header has been sent to the client.
 func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 
