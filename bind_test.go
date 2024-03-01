@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"errors"
+	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -97,6 +98,7 @@ type (
 	Timestamp   time.Time
 	TA          []Timestamp
 	StringArray []string
+	IntArray    []int
 	Struct      struct {
 		Foo string
 	}
@@ -104,6 +106,29 @@ type (
 		Baz int `json:"baz" query:"baz"`
 	}
 )
+
+// UnmarshalParam converts value to *Int64Slice.  This allows the API to accept
+// a comma-separated list of integers as a query parameter.
+func (i *IntArray) UnmarshalParam(value string) error {
+	if value == "" {
+		*i = IntArray([]int{})
+		return nil
+	}
+	var values = strings.Split(value, ",")
+	var numbers = make([]int, 0, len(values))
+
+	for _, v := range values {
+		n, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			return fmt.Errorf("'%s' is not an integer", v)
+		}
+
+		numbers = append(numbers, int(n))
+	}
+
+	*i = IntArray(numbers)
+	return nil
+}
 
 func (t *Timestamp) UnmarshalParam(src string) error {
 	ts, err := time.Parse(time.RFC3339, src)
@@ -298,13 +323,14 @@ func TestBindHeaderParamBadType(t *testing.T) {
 
 func TestBindUnmarshalParam(t *testing.T) {
 	e := New()
-	req := httptest.NewRequest(http.MethodGet, "/?ts=2016-12-06T19:09:05Z&sa=one,two,three&ta=2016-12-06T19:09:05Z&ta=2016-12-06T19:09:05Z&ST=baz", nil)
+	req := httptest.NewRequest(http.MethodGet, "/?ts=2016-12-06T19:09:05Z&ia=1,2,3&sa=one,two,three&ta=2016-12-06T19:09:05Z&ta=2016-12-06T19:09:05Z&ST=baz", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	result := struct {
 		T         Timestamp   `query:"ts"`
 		TA        []Timestamp `query:"ta"`
 		SA        StringArray `query:"sa"`
+		IA        IntArray    `query:"ia"`
 		ST        Struct
 		StWithTag struct {
 			Foo string `query:"st"`
@@ -317,6 +343,7 @@ func TestBindUnmarshalParam(t *testing.T) {
 		//		assert.Equal( Timestamp(reflect.TypeOf(&Timestamp{}), time.Date(2016, 12, 6, 19, 9, 5, 0, time.UTC)), result.T)
 		assert.Equal(t, ts, result.T)
 		assert.Equal(t, StringArray([]string{"one", "two", "three"}), result.SA)
+		assert.Equal(t, IntArray([]int{1, 2, 3}), result.IA)
 		assert.Equal(t, []Timestamp{ts, ts}, result.TA)
 		assert.Equal(t, Struct{""}, result.ST)       // child struct does not have a field with matching tag
 		assert.Equal(t, "baz", result.StWithTag.Foo) // child struct has field with matching tag
