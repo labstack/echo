@@ -167,6 +167,7 @@ func (b *DefaultBinder) bindData(destination interface{}, data map[string][]stri
 		return errors.New("binding element must be a struct")
 	}
 
+LOOP:
 	for i := 0; i < typ.NumField(); i++ {
 		typeField := typ.Field(i)
 		structField := val.Field(i)
@@ -217,11 +218,18 @@ func (b *DefaultBinder) bindData(destination interface{}, data map[string][]stri
 		}
 
 		// Call this first, in case we're dealing with an alias to an array type
-		if ok, err := unmarshalField(typeField.Type.Kind(), inputValue[0], structField); ok {
-			if err != nil {
-				return err
+		for _, val := range inputValue {
+			if ok, err := unmarshalField(typeField.Type.Kind(), val, structField); ok {
+				if err != nil {
+					return err
+				}
+
+				// If we have one entry then we continue to the next field as to not
+				// overwrite the value.
+				if len(inputValue) == 1 {
+					continue LOOP
+				}
 			}
-			continue
 		}
 
 		numElems := len(inputValue)
