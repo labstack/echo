@@ -350,6 +350,18 @@ func TestBindUnmarshalParam(t *testing.T) {
 	}
 }
 
+func TestBindUnmarshalParamInvalidInt(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(http.MethodGet, "/?ia=1,two,3", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	result := struct {
+		IA IntArray `query:"ia"`
+	}{}
+	err := c.Bind(&result)
+	assert.Error(t, err)
+}
+
 func TestBindUnmarshalText(t *testing.T) {
 	e := New()
 	req := httptest.NewRequest(http.MethodGet, "/?ts=2016-12-06T19:09:05Z&sa=one,two,three&ta=2016-12-06T19:09:05Z&ta=2016-12-06T19:09:05Z&ST=baz", nil)
