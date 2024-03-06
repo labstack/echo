@@ -191,7 +191,7 @@ func (w *gzipResponseWriter) Flush() {
 	}
 
 	w.Writer.(*gzip.Writer).Flush()
-	http.NewResponseController(w.ResponseWriter).Flush()
+	_ = responseControllerFlush(w.ResponseWriter)
 }
 
 func (w *gzipResponseWriter) Unwrap() http.ResponseWriter {
@@ -199,7 +199,7 @@ func (w *gzipResponseWriter) Unwrap() http.ResponseWriter {
 }
 
 func (w *gzipResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	return http.NewResponseController(w.ResponseWriter).Hijack()
+	return responseControllerHijack(w.ResponseWriter)
 }
 
 func (w *gzipResponseWriter) Push(target string, opts *http.PushOptions) error {

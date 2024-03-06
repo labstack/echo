@@ -99,14 +99,14 @@ func (w *bodyDumpResponseWriter) Write(b []byte) (int, error) {
 }
 
 func (w *bodyDumpResponseWriter) Flush() {
-	err := http.NewResponseController(w.ResponseWriter).Flush()
+	err := responseControllerFlush(w.ResponseWriter)
 	if err != nil && errors.Is(err, http.ErrNotSupported) {
 		panic(errors.New("response writer flushing is not supported"))
 	}
 }
 
 func (w *bodyDumpResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	return http.NewResponseController(w.ResponseWriter).Hijack()
+	return responseControllerHijack(w.ResponseWriter)
 }
 
 func (w *bodyDumpResponseWriter) Unwrap() http.ResponseWriter {
