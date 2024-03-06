@@ -64,7 +64,7 @@ XFF:  "x"                   "x, a"                  "x, a, b"
 ```
 
 In this case, use **first _untrustable_ IP reading from right**. Never use first one reading from left, as it is
-configurable by client. Here "trustable" means "you are sure the IP address belongs to your infrastructre".
+configurable by client. Here "trustable" means "you are sure the IP address belongs to your infrastructure".
 In above example, if `b` and `c` are trustable, the IP address of the client is `a` for both cases, never be `x`.
 
 In Echo, use `ExtractIPFromXFFHeader(...TrustOption)`.

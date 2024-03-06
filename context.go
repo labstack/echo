@@ -335,7 +335,7 @@ func (c *context) SetParamNames(names ...string) {
 
 	if len(c.pvalues) < l {
 		// Keeping the old pvalues just for backward compatibility, but it sounds that doesn't make sense to keep them,
-		// probably those values will be overriden in a Context#SetParamValues
+		// probably those values will be overridden in a Context#SetParamValues
 		newPvalues := make([]string, l)
 		copy(newPvalues, c.pvalues)
 		c.pvalues = newPvalues
