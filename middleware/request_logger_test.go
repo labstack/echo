@@ -194,7 +194,7 @@ func TestRequestLogger_LogValuesFuncError(t *testing.T) {
 	e.ServeHTTP(rec, req)
 
 	// NOTE: when global error handler received error returned from middleware the status has already
-	// been written to the client and response has been "commited" therefore global error handler does not do anything
+	// been written to the client and response has been "committed" therefore global error handler does not do anything
 	// and error that bubbled up in middleware chain will not be reflected in response code.
 	assert.Equal(t, http.StatusTeapot, rec.Code)
 	assert.Equal(t, http.StatusTeapot, expect.Status)
