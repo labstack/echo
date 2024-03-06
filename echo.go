@@ -70,7 +70,7 @@ type (
 		filesystem
 		common
 		// startupMutex is mutex to lock Echo instance access during server configuration and startup. Useful for to get
-		// listener address info (on which interface/port was listener binded) without having data races.
+		// listener address info (on which interface/port was listener bound) without having data races.
 		startupMutex sync.RWMutex
 		colorer      *color.Color
 
