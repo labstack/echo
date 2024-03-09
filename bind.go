@@ -14,23 +14,21 @@ import (
 	"strings"
 )
 
-type (
-	// Binder is the interface that wraps the Bind method.
-	Binder interface {
-		Bind(i interface{}, c Context) error
-	}
+// Binder is the interface that wraps the Bind method.
+type Binder interface {
+	Bind(i interface{}, c Context) error
+}
 
-	// DefaultBinder is the default implementation of the Binder interface.
-	DefaultBinder struct{}
+// DefaultBinder is the default implementation of the Binder interface.
+type DefaultBinder struct{}
 
-	// BindUnmarshaler is the interface used to wrap the UnmarshalParam method.
-	// Types that don't implement this, but do implement encoding.TextUnmarshaler
-	// will use that interface instead.
-	BindUnmarshaler interface {
-		// UnmarshalParam decodes and assigns a value from an form or query param.
-		UnmarshalParam(param string) error
-	}
-)
+// BindUnmarshaler is the interface used to wrap the UnmarshalParam method.
+// Types that don't implement this, but do implement encoding.TextUnmarshaler
+// will use that interface instead.
+type BindUnmarshaler interface {
+	// UnmarshalParam decodes and assigns a value from an form or query param.
+	UnmarshalParam(param string) error
+}
 
 // BindPathParams binds path params to bindable object
 func (b *DefaultBinder) BindPathParams(c Context, i interface{}) error {

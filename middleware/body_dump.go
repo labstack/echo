@@ -14,32 +14,28 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type (
-	// BodyDumpConfig defines the config for BodyDump middleware.
-	BodyDumpConfig struct {
-		// Skipper defines a function to skip middleware.
-		Skipper Skipper
+// BodyDumpConfig defines the config for BodyDump middleware.
+type BodyDumpConfig struct {
+	// Skipper defines a function to skip middleware.
+	Skipper Skipper
 
-		// Handler receives request and response payload.
-		// Required.
-		Handler BodyDumpHandler
-	}
+	// Handler receives request and response payload.
+	// Required.
+	Handler BodyDumpHandler
+}
 
-	// BodyDumpHandler receives the request and response payload.
-	BodyDumpHandler func(echo.Context, []byte, []byte)
+// BodyDumpHandler receives the request and response payload.
+type BodyDumpHandler func(echo.Context, []byte, []byte)
 
-	bodyDumpResponseWriter struct {
-		io.Writer
-		http.ResponseWriter
-	}
-)
+type bodyDumpResponseWriter struct {
+	io.Writer
+	http.ResponseWriter
+}
 
-var (
-	// DefaultBodyDumpConfig is the default BodyDump middleware config.
-	DefaultBodyDumpConfig = BodyDumpConfig{
-		Skipper: DefaultSkipper,
-	}
-)
+// DefaultBodyDumpConfig is the default BodyDump middleware config.
+var DefaultBodyDumpConfig = BodyDumpConfig{
+	Skipper: DefaultSkipper,
+}
 
 // BodyDump returns a BodyDump middleware.
 //

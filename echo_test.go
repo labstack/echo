@@ -25,12 +25,10 @@ import (
 	"golang.org/x/net/http2"
 )
 
-type (
-	user struct {
-		ID   int    `json:"id" xml:"id" form:"id" query:"id" param:"id" header:"id"`
-		Name string `json:"name" xml:"name" form:"name" query:"name" param:"name" header:"name"`
-	}
-)
+type user struct {
+	ID   int    `json:"id" xml:"id" form:"id" query:"id" param:"id" header:"id"`
+	Name string `json:"name" xml:"name" form:"name" query:"name" param:"name" header:"name"`
+}
 
 const (
 	userJSON                    = `{"id":1,"name":"Jon Snow"}`

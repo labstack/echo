@@ -25,11 +25,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type (
-	Template struct {
-		templates *template.Template
-	}
-)
+type Template struct {
+	templates *template.Template
+}
 
 var testUser = user{1, "Jon Snow"}
 

@@ -9,56 +9,58 @@ import (
 	"net/http"
 )
 
-type (
-	// Router is the registry of all registered routes for an `Echo` instance for
-	// request matching and URL path parameter parsing.
-	Router struct {
-		tree   *node
-		routes map[string]*Route
-		echo   *Echo
-	}
-	node struct {
-		kind           kind
-		label          byte
-		prefix         string
-		parent         *node
-		staticChildren children
-		originalPath   string
-		methods        *routeMethods
-		paramChild     *node
-		anyChild       *node
-		paramsCount    int
-		// isLeaf indicates that node does not have child routes
-		isLeaf bool
-		// isHandler indicates that node has at least one handler registered to it
-		isHandler bool
+// Router is the registry of all registered routes for an `Echo` instance for
+// request matching and URL path parameter parsing.
+type Router struct {
+	tree   *node
+	routes map[string]*Route
+	echo   *Echo
+}
 
-		// notFoundHandler is handler registered with RouteNotFound method and is executed for 404 cases
-		notFoundHandler *routeMethod
-	}
-	kind        uint8
-	children    []*node
-	routeMethod struct {
-		ppath   string
-		pnames  []string
-		handler HandlerFunc
-	}
-	routeMethods struct {
-		connect     *routeMethod
-		delete      *routeMethod
-		get         *routeMethod
-		head        *routeMethod
-		options     *routeMethod
-		patch       *routeMethod
-		post        *routeMethod
-		propfind    *routeMethod
-		put         *routeMethod
-		trace       *routeMethod
-		report      *routeMethod
-		anyOther    map[string]*routeMethod
-		allowHeader string
-	}
-)
+type node struct {
+	kind           kind
+	label          byte
+	prefix         string
+	parent         *node
+	staticChildren children
+	originalPath   string
+	methods        *routeMethods
+	paramChild     *node
+	anyChild       *node
+	paramsCount    int
+	// isLeaf indicates that node does not have child routes
+	isLeaf bool
+	// isHandler indicates that node has at least one handler registered to it
+	isHandler bool
+
+	// notFoundHandler is handler registered with RouteNotFound method and is executed for 404 cases
+	notFoundHandler *routeMethod
+}
+
+type kind uint8
+type children []*node
+
+type routeMethod struct {
+	ppath   string
+	pnames  []string
+	handler HandlerFunc
+}
+
+type routeMethods struct {
+	connect     *routeMethod
+	delete      *routeMethod
+	get         *routeMethod
+	head        *routeMethod
+	options     *routeMethod
+	patch       *routeMethod
+	post        *routeMethod
+	propfind    *routeMethod
+	put         *routeMethod
+	trace       *routeMethod
+	report      *routeMethod
+	anyOther    map[string]*routeMethod
+	allowHeader string
+}
 
 const (
 	staticKind kind = iota
