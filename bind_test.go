@@ -22,91 +22,91 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type (
-	bindTestStruct struct {
-		I           int
-		PtrI        *int
-		I8          int8
-		PtrI8       *int8
-		I16         int16
-		PtrI16      *int16
-		I32         int32
-		PtrI32      *int32
-		I64         int64
-		PtrI64      *int64
-		UI          uint
-		PtrUI       *uint
-		UI8         uint8
-		PtrUI8      *uint8
-		UI16        uint16
-		PtrUI16     *uint16
-		UI32        uint32
-		PtrUI32     *uint32
-		UI64        uint64
-		PtrUI64     *uint64
-		B           bool
-		PtrB        *bool
-		F32         float32
-		PtrF32      *float32
-		F64         float64
-		PtrF64      *float64
-		S           string
-		PtrS        *string
-		cantSet     string
-		DoesntExist string
-		GoT         time.Time
-		GoTptr      *time.Time
-		T           Timestamp
-		Tptr        *Timestamp
-		SA          StringArray
-	}
-	bindTestStructWithTags struct {
-		I           int      `json:"I" form:"I"`
-		PtrI        *int     `json:"PtrI" form:"PtrI"`
-		I8          int8     `json:"I8" form:"I8"`
-		PtrI8       *int8    `json:"PtrI8" form:"PtrI8"`
-		I16         int16    `json:"I16" form:"I16"`
-		PtrI16      *int16   `json:"PtrI16" form:"PtrI16"`
-		I32         int32    `json:"I32" form:"I32"`
-		PtrI32      *int32   `json:"PtrI32" form:"PtrI32"`
-		I64         int64    `json:"I64" form:"I64"`
-		PtrI64      *int64   `json:"PtrI64" form:"PtrI64"`
-		UI          uint     `json:"UI" form:"UI"`
-		PtrUI       *uint    `json:"PtrUI" form:"PtrUI"`
-		UI8         uint8    `json:"UI8" form:"UI8"`
-		PtrUI8      *uint8   `json:"PtrUI8" form:"PtrUI8"`
-		UI16        uint16   `json:"UI16" form:"UI16"`
-		PtrUI16     *uint16  `json:"PtrUI16" form:"PtrUI16"`
-		UI32        uint32   `json:"UI32" form:"UI32"`
-		PtrUI32     *uint32  `json:"PtrUI32" form:"PtrUI32"`
-		UI64        uint64   `json:"UI64" form:"UI64"`
-		PtrUI64     *uint64  `json:"PtrUI64" form:"PtrUI64"`
-		B           bool     `json:"B" form:"B"`
-		PtrB        *bool    `json:"PtrB" form:"PtrB"`
-		F32         float32  `json:"F32" form:"F32"`
-		PtrF32      *float32 `json:"PtrF32" form:"PtrF32"`
-		F64         float64  `json:"F64" form:"F64"`
-		PtrF64      *float64 `json:"PtrF64" form:"PtrF64"`
-		S           string   `json:"S" form:"S"`
-		PtrS        *string  `json:"PtrS" form:"PtrS"`
-		cantSet     string
-		DoesntExist string      `json:"DoesntExist" form:"DoesntExist"`
-		GoT         time.Time   `json:"GoT" form:"GoT"`
-		GoTptr      *time.Time  `json:"GoTptr" form:"GoTptr"`
-		T           Timestamp   `json:"T" form:"T"`
-		Tptr        *Timestamp  `json:"Tptr" form:"Tptr"`
-		SA          StringArray `json:"SA" form:"SA"`
-	}
-	Timestamp   time.Time
-	TA          []Timestamp
-	StringArray []string
-	Struct      struct {
-		Foo string
-	}
-	Bar struct {
-		Baz int `json:"baz" query:"baz"`
-	}
-)
+type bindTestStruct struct {
+	I           int
+	PtrI        *int
+	I8          int8
+	PtrI8       *int8
+	I16         int16
+	PtrI16      *int16
+	I32         int32
+	PtrI32      *int32
+	I64         int64
+	PtrI64      *int64
+	UI          uint
+	PtrUI       *uint
+	UI8         uint8
+	PtrUI8      *uint8
+	UI16        uint16
+	PtrUI16     *uint16
+	UI32        uint32
+	PtrUI32     *uint32
+	UI64        uint64
+	PtrUI64     *uint64
+	B           bool
+	PtrB        *bool
+	F32         float32
+	PtrF32      *float32
+	F64         float64
+	PtrF64      *float64
+	S           string
+	PtrS        *string
+	cantSet     string
+	DoesntExist string
+	GoT         time.Time
+	GoTptr      *time.Time
+	T           Timestamp
+	Tptr        *Timestamp
+	SA          StringArray
+}
+
+type bindTestStructWithTags struct {
+	I           int      `json:"I" form:"I"`
+	PtrI        *int     `json:"PtrI" form:"PtrI"`
+	I8          int8     `json:"I8" form:"I8"`
+	PtrI8       *int8    `json:"PtrI8" form:"PtrI8"`
+	I16         int16    `json:"I16" form:"I16"`
+	PtrI16      *int16   `json:"PtrI16" form:"PtrI16"`
+	I32         int32    `json:"I32" form:"I32"`
+	PtrI32      *int32   `json:"PtrI32" form:"PtrI32"`
+	I64         int64    `json:"I64" form:"I64"`
+	PtrI64      *int64   `json:"PtrI64" form:"PtrI64"`
+	UI          uint     `json:"UI" form:"UI"`
+	PtrUI       *uint    `json:"PtrUI" form:"PtrUI"`
+	UI8         uint8    `json:"UI8" form:"UI8"`
+	PtrUI8      *uint8   `json:"PtrUI8" form:"PtrUI8"`
+	UI16        uint16   `json:"UI16" form:"UI16"`
+	PtrUI16     *uint16  `json:"PtrUI16" form:"PtrUI16"`
+	UI32        uint32   `json:"UI32" form:"UI32"`
+	PtrUI32     *uint32  `json:"PtrUI32" form:"PtrUI32"`
+	UI64        uint64   `json:"UI64" form:"UI64"`
+	PtrUI64     *uint64  `json:"PtrUI64" form:"PtrUI64"`
+	B           bool     `json:"B" form:"B"`
+	PtrB        *bool    `json:"PtrB" form:"PtrB"`
+	F32         float32  `json:"F32" form:"F32"`
+	PtrF32      *float32 `json:"PtrF32" form:"PtrF32"`
+	F64         float64  `json:"F64" form:"F64"`
+	PtrF64      *float64 `json:"PtrF64" form:"PtrF64"`
+	S           string   `json:"S" form:"S"`
+	PtrS        *string  `json:"PtrS" form:"PtrS"`
+	cantSet     string
+	DoesntExist string      `json:"DoesntExist" form:"DoesntExist"`
+	GoT         time.Time   `json:"GoT" form:"GoT"`
+	GoTptr      *time.Time  `json:"GoTptr" form:"GoTptr"`
+	T           Timestamp   `json:"T" form:"T"`
+	Tptr        *Timestamp  `json:"Tptr" form:"Tptr"`
+	SA          StringArray `json:"SA" form:"SA"`
+}
+
+type Timestamp time.Time
+type TA []Timestamp
+type StringArray []string
+type Struct struct {
+	Foo string
+}
+type Bar struct {
+	Baz int `json:"baz" query:"baz"`
+}
 
 func (t *Timestamp) UnmarshalParam(src string) error {
 	ts, err := time.Parse(time.RFC3339, src)

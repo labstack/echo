@@ -7,18 +7,16 @@ import (
 	"net/http"
 )
 
-type (
-	// Group is a set of sub-routes for a specified route. It can be used for inner
-	// routes that share a common middleware or functionality that should be separate
-	// from the parent echo instance while still inheriting from it.
-	Group struct {
-		common
-		host       string
-		prefix     string
-		middleware []MiddlewareFunc
-		echo       *Echo
-	}
-)
+// Group is a set of sub-routes for a specified route. It can be used for inner
+// routes that share a common middleware or functionality that should be separate
+// from the parent echo instance while still inheriting from it.
+type Group struct {
+	common
+	host       string
+	prefix     string
+	middleware []MiddlewareFunc
+	echo       *Echo
+}
 
 // Use implements `Echo#Use()` for sub-routes within the Group.
 func (g *Group) Use(middleware ...MiddlewareFunc) {

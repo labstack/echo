@@ -80,14 +80,12 @@ type TimeoutConfig struct {
 	Timeout time.Duration
 }
 
-var (
-	// DefaultTimeoutConfig is the default Timeout middleware config.
-	DefaultTimeoutConfig = TimeoutConfig{
-		Skipper:      DefaultSkipper,
-		Timeout:      0,
-		ErrorMessage: "",
-	}
-)
+// DefaultTimeoutConfig is the default Timeout middleware config.
+var DefaultTimeoutConfig = TimeoutConfig{
+	Skipper:      DefaultSkipper,
+	Timeout:      0,
+	ErrorMessage: "",
+}
 
 // Timeout returns a middleware which returns error (503 Service Unavailable error) to client immediately when handler
 // call runs for longer than its time limit. NB: timeout does not stop handler execution.
