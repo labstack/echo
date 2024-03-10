@@ -228,15 +228,21 @@ func extractIP(req *http.Request) string {
 func ExtractIPFromRealIPHeader(options ...TrustOption) IPExtractor {
 	checker := newIPChecker(options)
 	return func(req *http.Request) string {
+		directIP := extractIP(req)
 		realIP := req.Header.Get(HeaderXRealIP)
-		if realIP != "" {
+		if realIP == "" {
+			return directIP
+		}
+
+		if checker.trust(net.ParseIP(directIP)) {
 			realIP = strings.TrimPrefix(realIP, "[")
 			realIP = strings.TrimSuffix(realIP, "]")
-			if ip := net.ParseIP(realIP); ip != nil && checker.trust(ip) {
+			if rIP := net.ParseIP(realIP); rIP != nil {
 				return realIP
 			}
 		}
-		return extractIP(req)
+
+		return directIP
 	}
 }
 
