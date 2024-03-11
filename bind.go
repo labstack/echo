@@ -30,6 +30,13 @@ type BindUnmarshaler interface {
 	UnmarshalParam(param string) error
 }
 
+// bindMultipleUnmarshaler is used by binder to unmarshal multiple values from request at once to
+// type implementing this interface. For example request could have multiple query fields `?a=1&a=2&b=test` in that case
+// for `a` following slice `["1", "2"] will be passed to unmarshaller.
+type bindMultipleUnmarshaler interface {
+	UnmarshalParams(params []string) error
+}
+
 // BindPathParams binds path params to bindable object
 func (b *DefaultBinder) BindPathParams(c Context, i interface{}) error {
 	names := c.ParamNames()
@@ -217,8 +224,15 @@ func (b *DefaultBinder) bindData(destination interface{}, data map[string][]stri
 			continue
 		}
 
+		if ok, err := unmarshalInputsToField(typeField.Type.Kind(), inputValue, structField); ok {
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
 		// Call this first, in case we're dealing with an alias to an array type
-		if ok, err := unmarshalField(typeField.Type.Kind(), inputValue[0], structField); ok {
+		if ok, err := unmarshalInputToField(typeField.Type.Kind(), inputValue[0], structField); ok {
 			if err != nil {
 				return err
 			}
@@ -245,7 +259,7 @@ func (b *DefaultBinder) bindData(destination interface{}, data map[string][]stri
 
 func setWithProperType(valueKind reflect.Kind, val string, structField reflect.Value) error {
 	// But also call it here, in case we're dealing with an array of BindUnmarshalers
-	if ok, err := unmarshalField(valueKind, val, structField); ok {
+	if ok, err := unmarshalInputToField(valueKind, val, structField); ok {
 		return err
 	}
 
@@ -286,33 +300,39 @@ func setWithProperType(valueKind reflect.Kind, val string, structField reflect.V
 	return nil
 }
 
-func unmarshalField(valueKind reflect.Kind, val string, field reflect.Value) (bool, error) {
-	switch valueKind {
-	case reflect.Ptr:
-		return unmarshalFieldPtr(val, field)
-	default:
-		return unmarshalFieldNonPtr(val, field)
+func unmarshalInputsToField(valueKind reflect.Kind, values []string, field reflect.Value) (bool, error) {
+	if valueKind == reflect.Ptr {
+		if field.IsNil() {
+			field.Set(reflect.New(field.Type().Elem()))
+		}
+		field = field.Elem()
 	}
+
+	fieldIValue := field.Addr().Interface()
+	unmarshaler, ok := fieldIValue.(bindMultipleUnmarshaler)
+	if !ok {
+		return false, nil
+	}
+	return true, unmarshaler.UnmarshalParams(values)
 }
 
-func unmarshalFieldNonPtr(value string, field reflect.Value) (bool, error) {
-	fieldIValue := field.Addr().Interface()
-	if unmarshaler, ok := fieldIValue.(BindUnmarshaler); ok {
-		return true, unmarshaler.UnmarshalParam(value)
+func unmarshalInputToField(valueKind reflect.Kind, val string, field reflect.Value) (bool, error) {
+	if valueKind == reflect.Ptr {
+		if field.IsNil() {
+			field.Set(reflect.New(field.Type().Elem()))
+		}
+		field = field.Elem()
 	}
-	if unmarshaler, ok := fieldIValue.(encoding.TextUnmarshaler); ok {
-		return true, unmarshaler.UnmarshalText([]byte(value))
+
+	fieldIValue := field.Addr().Interface()
+	switch unmarshaler := fieldIValue.(type) {
+	case BindUnmarshaler:
+		return true, unmarshaler.UnmarshalParam(val)
+	case encoding.TextUnmarshaler:
+		return true, unmarshaler.UnmarshalText([]byte(val))
 	}
 
 	return false, nil
-}
-
-func unmarshalFieldPtr(value string, field reflect.Value) (bool, error) {
-	if field.IsNil() {
-		// Initialize the pointer to a nil value
-		field.Set(reflect.New(field.Type().Elem()))
-	}
-	return unmarshalFieldNonPtr(value, field.Elem())
 }
 
 func setIntField(value string, bitSize int, field reflect.Value) error {
