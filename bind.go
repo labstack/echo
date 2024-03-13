@@ -188,14 +188,14 @@ func (b *DefaultBinder) bindData(destination interface{}, data map[string][]stri
 		}
 		structFieldKind := structField.Kind()
 		inputFieldName := typeField.Tag.Get(tag)
-		if typeField.Anonymous && structField.Kind() == reflect.Struct && inputFieldName != "" {
+		if typeField.Anonymous && structFieldKind == reflect.Struct && inputFieldName != "" {
 			// if anonymous struct with query/param/form tags, report an error
 			return errors.New("query/param/form tags are not allowed with anonymous struct field")
 		}
 
 		if inputFieldName == "" {
 			// If tag is nil, we inspect if the field is a not BindUnmarshaler struct and try to bind data into it (might contains fields with tags).
-			// structs that implement BindUnmarshaler are binded only when they have explicit tag
+			// structs that implement BindUnmarshaler are bound only when they have explicit tag
 			if _, ok := structField.Addr().Interface().(BindUnmarshaler); !ok && structFieldKind == reflect.Struct {
 				if err := b.bindData(structField.Addr().Interface(), data, tag); err != nil {
 					return err
@@ -224,6 +224,10 @@ func (b *DefaultBinder) bindData(destination interface{}, data map[string][]stri
 			continue
 		}
 
+		// NOTE: algorithm here is not particularly sophisticated. It probably does not work with absurd types like `**[]*int`
+		// but it is smart enough to handle niche cases like `*int`,`*[]string`,`[]*int` .
+
+		// try unmarshalling first, in case we're dealing with an alias to an array type
 		if ok, err := unmarshalInputsToField(typeField.Type.Kind(), inputValue, structField); ok {
 			if err != nil {
 				return err
@@ -231,7 +235,6 @@ func (b *DefaultBinder) bindData(destination interface{}, data map[string][]stri
 			continue
 		}
 
-		// Call this first, in case we're dealing with an alias to an array type
 		if ok, err := unmarshalInputToField(typeField.Type.Kind(), inputValue[0], structField); ok {
 			if err != nil {
 				return err
@@ -239,19 +242,28 @@ func (b *DefaultBinder) bindData(destination interface{}, data map[string][]stri
 			continue
 		}
 
-		numElems := len(inputValue)
-		if structFieldKind == reflect.Slice && numElems > 0 {
+		// we could be dealing with pointer to slice `*[]string` so dereference it. There are wierd OpenAPI generators
+		// that could create struct fields like that.
+		if structFieldKind == reflect.Pointer {
+			structFieldKind = structField.Elem().Kind()
+			structField = structField.Elem()
+		}
+
+		if structFieldKind == reflect.Slice {
 			sliceOf := structField.Type().Elem().Kind()
+			numElems := len(inputValue)
 			slice := reflect.MakeSlice(structField.Type(), numElems, numElems)
 			for j := 0; j < numElems; j++ {
 				if err := setWithProperType(sliceOf, inputValue[j], slice.Index(j)); err != nil {
 					return err
 				}
 			}
-			val.Field(i).Set(slice)
-		} else if err := setWithProperType(typeField.Type.Kind(), inputValue[0], structField); err != nil {
-			return err
+			structField.Set(slice)
+			continue
+		}
 
+		if err := setWithProperType(structFieldKind, inputValue[0], structField); err != nil {
+			return err
 		}
 	}
 	return nil

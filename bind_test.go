@@ -168,6 +168,11 @@ var values = map[string][]string{
 	"ST":      {"bar"},
 }
 
+// ptr return pointer to value. This is useful as `v := []*int8{&int8(1)}` will not compile
+func ptr[T any](value T) *T {
+	return &value
+}
+
 func TestToMultipleFields(t *testing.T) {
 	e := New()
 	req := httptest.NewRequest(http.MethodGet, "/?id=1&ID=2", nil)
@@ -747,7 +752,7 @@ func testBindError(t *testing.T, r io.Reader, ctype string, expectedInternal err
 }
 
 func TestDefaultBinder_BindToStructFromMixedSources(t *testing.T) {
-	// tests to check binding behaviour when multiple sources path params, query params and request body are in use
+	// tests to check binding behaviour when multiple sources (path params, query params and request body) are in use
 	// binding is done in steps and one source could overwrite previous source binded data
 	// these tests are to document this behaviour and detect further possible regressions when bind implementation is changed
 
@@ -917,7 +922,7 @@ func TestDefaultBinder_BindToStructFromMixedSources(t *testing.T) {
 }
 
 func TestDefaultBinder_BindBody(t *testing.T) {
-	// tests to check binding behaviour when multiple sources path params, query params and request body are in use
+	// tests to check binding behaviour when multiple sources (path params, query params and request body) are in use
 	// generally when binding from request body - URL and path params are ignored - unless form is being binded.
 	// these tests are to document this behaviour and detect further possible regressions when bind implementation is changed
 
@@ -1097,6 +1102,14 @@ func TestDefaultBinder_BindBody(t *testing.T) {
 	}
 }
 
+func testBindURL(queryString string, target any) error {
+	e := New()
+	req := httptest.NewRequest(http.MethodGet, queryString, nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	return c.Bind(target)
+}
+
 type unixTimestamp struct {
 	Time time.Time
 }
@@ -1136,27 +1149,19 @@ func TestBindUnmarshalParamExtras(t *testing.T) {
 	// NOTE: BindUnmarshaler chooses first input value to be bound.
 
 	t.Run("nok, unmarshalling fails", func(t *testing.T) {
-		e := New()
-		req := httptest.NewRequest(http.MethodGet, "/?t=xxxx", nil)
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
 		result := struct {
 			V unixTimestamp `query:"t"`
 		}{}
-		err := c.Bind(&result)
+		err := testBindURL("/?t=xxxx", &result)
 
 		assert.EqualError(t, err, "code=400, message='xxxx' is not an integer, internal='xxxx' is not an integer")
 	})
 
 	t.Run("ok, target is struct", func(t *testing.T) {
-		e := New()
-		req := httptest.NewRequest(http.MethodGet, "/?t=1710095540&t=1710095541", nil)
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
 		result := struct {
 			V unixTimestamp `query:"t"`
 		}{}
-		err := c.Bind(&result)
+		err := testBindURL("/?t=1710095540&t=1710095541", &result)
 
 		assert.NoError(t, err)
 		expect := unixTimestamp{
@@ -1166,42 +1171,30 @@ func TestBindUnmarshalParamExtras(t *testing.T) {
 	})
 
 	t.Run("ok, target is an alias to slice and is nil, append only values from first", func(t *testing.T) {
-		e := New()
-		req := httptest.NewRequest(http.MethodGet, "/?a=1,2,3&a=4,5,6", nil)
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
 		result := struct {
 			V IntArrayA `query:"a"`
 		}{}
-		err := c.Bind(&result)
+		err := testBindURL("/?a=1,2,3&a=4,5,6", &result)
 
 		assert.NoError(t, err)
 		assert.Equal(t, IntArrayA([]int{1, 2, 3}), result.V)
 	})
 
 	t.Run("ok, target is an alias to slice and is nil, single input", func(t *testing.T) {
-		e := New()
-		req := httptest.NewRequest(http.MethodGet, "/?a=1,2", nil)
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
 		result := struct {
 			V IntArrayA `query:"a"`
 		}{}
-		err := c.Bind(&result)
+		err := testBindURL("/?a=1,2", &result)
 
 		assert.NoError(t, err)
 		assert.Equal(t, IntArrayA([]int{1, 2}), result.V)
 	})
 
 	t.Run("ok, target is pointer an alias to slice and is nil", func(t *testing.T) {
-		e := New()
-		req := httptest.NewRequest(http.MethodGet, "/?a=1&a=4,5,6", nil)
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
 		result := struct {
 			V *IntArrayA `query:"a"`
 		}{}
-		err := c.Bind(&result)
+		err := testBindURL("/?a=1&a=4,5,6", &result)
 
 		assert.NoError(t, err)
 		var expected = IntArrayA([]int{1})
@@ -1209,16 +1202,12 @@ func TestBindUnmarshalParamExtras(t *testing.T) {
 	})
 
 	t.Run("ok, target is pointer an alias to slice and is NOT nil", func(t *testing.T) {
-		e := New()
-		req := httptest.NewRequest(http.MethodGet, "/?a=1&a=4,5,6", nil)
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
 		result := struct {
 			V *IntArrayA `query:"a"`
 		}{}
 		result.V = new(IntArrayA) // NOT nil
 
-		err := c.Bind(&result)
+		err := testBindURL("/?a=1&a=4,5,6", &result)
 
 		assert.NoError(t, err)
 		var expected = IntArrayA([]int{1})
@@ -1265,27 +1254,19 @@ func TestBindUnmarshalParams(t *testing.T) {
 	// this test documents how bind handles `bindMultipleUnmarshaler` interface:
 
 	t.Run("nok, unmarshalling fails", func(t *testing.T) {
-		e := New()
-		req := httptest.NewRequest(http.MethodGet, "/?t=xxxx", nil)
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
 		result := struct {
 			V unixTimestampLast `query:"t"`
 		}{}
-		err := c.Bind(&result)
+		err := testBindURL("/?t=xxxx", &result)
 
 		assert.EqualError(t, err, "code=400, message='xxxx' is not an integer, internal='xxxx' is not an integer")
 	})
 
 	t.Run("ok, target is struct", func(t *testing.T) {
-		e := New()
-		req := httptest.NewRequest(http.MethodGet, "/?t=1710095540&t=1710095541", nil)
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
 		result := struct {
 			V unixTimestampLast `query:"t"`
 		}{}
-		err := c.Bind(&result)
+		err := testBindURL("/?t=1710095540&t=1710095541", &result)
 
 		assert.NoError(t, err)
 		expect := unixTimestampLast{
@@ -1295,42 +1276,30 @@ func TestBindUnmarshalParams(t *testing.T) {
 	})
 
 	t.Run("ok, target is an alias to slice and is nil, append multiple inputs", func(t *testing.T) {
-		e := New()
-		req := httptest.NewRequest(http.MethodGet, "/?a=1,2,3&a=4,5,6", nil)
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
 		result := struct {
 			V IntArrayB `query:"a"`
 		}{}
-		err := c.Bind(&result)
+		err := testBindURL("/?a=1,2,3&a=4,5,6", &result)
 
 		assert.NoError(t, err)
 		assert.Equal(t, IntArrayB([]int{1, 2, 3, 4, 5, 6}), result.V)
 	})
 
 	t.Run("ok, target is an alias to slice and is nil, single input", func(t *testing.T) {
-		e := New()
-		req := httptest.NewRequest(http.MethodGet, "/?a=1,2", nil)
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
 		result := struct {
 			V IntArrayB `query:"a"`
 		}{}
-		err := c.Bind(&result)
+		err := testBindURL("/?a=1,2", &result)
 
 		assert.NoError(t, err)
 		assert.Equal(t, IntArrayB([]int{1, 2}), result.V)
 	})
 
 	t.Run("ok, target is pointer an alias to slice and is nil", func(t *testing.T) {
-		e := New()
-		req := httptest.NewRequest(http.MethodGet, "/?a=1&a=4,5,6", nil)
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
 		result := struct {
 			V *IntArrayB `query:"a"`
 		}{}
-		err := c.Bind(&result)
+		err := testBindURL("/?a=1&a=4,5,6", &result)
 
 		assert.NoError(t, err)
 		var expected = IntArrayB([]int{1, 4, 5, 6})
@@ -1338,19 +1307,116 @@ func TestBindUnmarshalParams(t *testing.T) {
 	})
 
 	t.Run("ok, target is pointer an alias to slice and is NOT nil", func(t *testing.T) {
-		e := New()
-		req := httptest.NewRequest(http.MethodGet, "/?a=1&a=4,5,6", nil)
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
 		result := struct {
 			V *IntArrayB `query:"a"`
 		}{}
 		result.V = new(IntArrayB) // NOT nil
 
-		err := c.Bind(&result)
-
+		err := testBindURL("/?a=1&a=4,5,6", &result)
 		assert.NoError(t, err)
 		var expected = IntArrayB([]int{1, 4, 5, 6})
 		assert.Equal(t, &expected, result.V)
+	})
+}
+
+func TestBindInt8(t *testing.T) {
+	t.Run("nok, binding fails", func(t *testing.T) {
+		type target struct {
+			V int8 `query:"v"`
+		}
+		p := target{}
+		err := testBindURL("/?v=x&v=2", &p)
+		assert.EqualError(t, err, "code=400, message=strconv.ParseInt: parsing \"x\": invalid syntax, internal=strconv.ParseInt: parsing \"x\": invalid syntax")
+	})
+
+	t.Run("nok, int8 embedded in struct", func(t *testing.T) {
+		type target struct {
+			int8 `query:"v"` // embedded field is `Anonymous`. We can only set public fields
+		}
+		p := target{}
+		err := testBindURL("/?v=1&v=2", &p)
+		assert.NoError(t, err)
+		assert.Equal(t, target{0}, p)
+	})
+
+	t.Run("nok, pointer to int8 embedded in struct", func(t *testing.T) {
+		type target struct {
+			*int8 `query:"v"` // embedded field is `Anonymous`. We can only set public fields
+		}
+		p := target{}
+		err := testBindURL("/?v=1&v=2", &p)
+		assert.NoError(t, err)
+
+		assert.Equal(t, target{int8: nil}, p)
+	})
+
+	t.Run("ok, bind int8 as struct field", func(t *testing.T) {
+		type target struct {
+			V int8 `query:"v"`
+		}
+		p := target{V: 127}
+		err := testBindURL("/?v=1&v=2", &p)
+		assert.NoError(t, err)
+		assert.Equal(t, target{V: 1}, p)
+	})
+
+	t.Run("ok, bind pointer to int8 as struct field, value is nil", func(t *testing.T) {
+		type target struct {
+			V *int8 `query:"v"`
+		}
+		p := target{}
+		err := testBindURL("/?v=1&v=2", &p)
+		assert.NoError(t, err)
+		assert.Equal(t, target{V: ptr(int8(1))}, p)
+	})
+
+	t.Run("ok, bind pointer to int8 as struct field, value is set", func(t *testing.T) {
+		type target struct {
+			V *int8 `query:"v"`
+		}
+		p := target{V: ptr(int8(127))}
+		err := testBindURL("/?v=1&v=2", &p)
+		assert.NoError(t, err)
+		assert.Equal(t, target{V: ptr(int8(1))}, p)
+	})
+
+	t.Run("ok, bind int8 slice as struct field, value is nil", func(t *testing.T) {
+		type target struct {
+			V []int8 `query:"v"`
+		}
+		p := target{}
+		err := testBindURL("/?v=1&v=2", &p)
+		assert.NoError(t, err)
+		assert.Equal(t, target{V: []int8{1, 2}}, p)
+	})
+
+	t.Run("ok, bind slice of int8 as struct field, value is set", func(t *testing.T) {
+		type target struct {
+			V []int8 `query:"v"`
+		}
+		p := target{V: []int8{111}}
+		err := testBindURL("/?v=1&v=2", &p)
+		assert.NoError(t, err)
+		assert.Equal(t, target{V: []int8{1, 2}}, p)
+	})
+
+	t.Run("ok, bind slice of pointer to int8 as struct field, value is set", func(t *testing.T) {
+		type target struct {
+			V []*int8 `query:"v"`
+		}
+		p := target{V: []*int8{ptr(int8(127))}}
+		err := testBindURL("/?v=1&v=2", &p)
+		assert.NoError(t, err)
+		assert.Equal(t, target{V: []*int8{ptr(int8(1)), ptr(int8(2))}}, p)
+	})
+
+	t.Run("ok, bind pointer to slice of int8 as struct field, value is set", func(t *testing.T) {
+		type target struct {
+			V *[]int8 `query:"v"`
+		}
+		p := target{V: &[]int8{111}}
+		err := testBindURL("/?v=1&v=2", &p)
+		assert.NoError(t, err)
+		assert.Equal(t, target{V: &[]int8{1, 2}}, p)
 	})
 }
