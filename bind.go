@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"reflect"
 	"strconv"
 	"strings"
@@ -43,7 +44,12 @@ func (b *DefaultBinder) BindPathParams(c Context, i interface{}) error {
 	values := c.ParamValues()
 	params := map[string][]string{}
 	for i, name := range names {
-		params[name] = []string{values[i]}
+		escaped, err := url.QueryUnescape(values[i])
+		if err != nil {
+			return err
+		}
+
+		params[name] = []string{escaped}
 	}
 	if err := b.bindData(i, params, "param"); err != nil {
 		return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
