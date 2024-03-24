@@ -185,8 +185,18 @@ func (r *Router) Reverse(name string, params ...interface{}) string {
 	return uri.String()
 }
 
+func normalizePathSlash(path string) string {
+	if path == "" {
+		path = "/"
+	} else if path[0] != '/' {
+		path = "/" + path
+	}
+	return path
+}
+
 func (r *Router) add(method, path, name string, h HandlerFunc) *Route {
-	r.Add(method, path, h)
+	path = normalizePathSlash(path)
+	r.insert(method, path, h)
 
 	route := &Route{
 		Method: method,
@@ -199,13 +209,11 @@ func (r *Router) add(method, path, name string, h HandlerFunc) *Route {
 
 // Add registers a new route for method and path with matching handler.
 func (r *Router) Add(method, path string, h HandlerFunc) {
-	// Validate path
-	if path == "" {
-		path = "/"
-	}
-	if path[0] != '/' {
-		path = "/" + path
-	}
+	r.insert(method, normalizePathSlash(path), h)
+}
+
+func (r *Router) insert(method, path string, h HandlerFunc) {
+	path = normalizePathSlash(path)
 	pnames := []string{} // Param names
 	ppath := path        // Pristine path
 
@@ -224,7 +232,7 @@ func (r *Router) Add(method, path string, h HandlerFunc) {
 			}
 			j := i + 1
 
-			r.insert(method, path[:i], staticKind, routeMethod{})
+			r.insertNode(method, path[:i], staticKind, routeMethod{})
 			for ; i < lcpIndex && path[i] != '/'; i++ {
 			}
 
@@ -234,21 +242,21 @@ func (r *Router) Add(method, path string, h HandlerFunc) {
 
 			if i == lcpIndex {
 				// path node is last fragment of route path. ie. `/users/:id`
-				r.insert(method, path[:i], paramKind, routeMethod{ppath, pnames, h})
+				r.insertNode(method, path[:i], paramKind, routeMethod{ppath, pnames, h})
 			} else {
-				r.insert(method, path[:i], paramKind, routeMethod{})
+				r.insertNode(method, path[:i], paramKind, routeMethod{})
 			}
 		} else if path[i] == '*' {
-			r.insert(method, path[:i], staticKind, routeMethod{})
+			r.insertNode(method, path[:i], staticKind, routeMethod{})
 			pnames = append(pnames, "*")
-			r.insert(method, path[:i+1], anyKind, routeMethod{ppath, pnames, h})
+			r.insertNode(method, path[:i+1], anyKind, routeMethod{ppath, pnames, h})
 		}
 	}
 
-	r.insert(method, path, staticKind, routeMethod{ppath, pnames, h})
+	r.insertNode(method, path, staticKind, routeMethod{ppath, pnames, h})
 }
 
-func (r *Router) insert(method, path string, t kind, rm routeMethod) {
+func (r *Router) insertNode(method, path string, t kind, rm routeMethod) {
 	// Adjust max param
 	paramLen := len(rm.pnames)
 	if *r.echo.maxParam < paramLen {
