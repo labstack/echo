@@ -1599,6 +1599,11 @@ func TestEchoReverse(t *testing.T) {
 		expect        string
 	}{
 		{
+			name:          "ok, not existing path returns empty url",
+			whenRouteName: "not-existing",
+			expect:        "",
+		},
+		{
 			name:          "ok,static with no params",
 			whenRouteName: "/static",
 			expect:        "/static",

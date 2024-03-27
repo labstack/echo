@@ -2770,6 +2770,22 @@ func TestRouter_Routes(t *testing.T) {
 	}
 }
 
+func TestRouter_addEmptyPathToSlashReverse(t *testing.T) {
+	e := New()
+	r := e.router
+	r.add(http.MethodGet, "", "empty", handlerFunc) // emtpy path is normalized to `/`
+
+	assert.Equal(t, "/", r.Reverse("empty"))
+}
+
+func TestRouter_ReverseNotFound(t *testing.T) {
+	e := New()
+	r := e.router
+	r.add(http.MethodGet, "", "empty", handlerFunc)
+
+	assert.Equal(t, "", r.Reverse("not-existing"))
+}
+
 func TestRouter_Reverse(t *testing.T) {
 	e := New()
 	r := e.router
