@@ -60,7 +60,7 @@ func RequestIDWithConfig(config RequestIDConfig) echo.MiddlewareFunc {
 			if rid == "" {
 				rid = config.Generator()
 			}
-			res.Header().Set(config.TargetHeader, rid)
+			res.Header().Set(echo.HeaderXRequestID, rid)
 			if config.RequestIDHandler != nil {
 				config.RequestIDHandler(c, rid)
 			}
