@@ -308,7 +308,12 @@ func TestRateLimiterWithConfig_beforeFunc(t *testing.T) {
 }
 
 func TestRateLimiterMemoryStore_Allow(t *testing.T) {
-	var inMemoryStore = NewRateLimiterMemoryStoreWithConfig(RateLimiterMemoryStoreConfig{Rate: 1, Burst: 3, ExpiresIn: 2 * time.Second})
+	var (
+		inMemoryStore = NewRateLimiterMemoryStoreWithConfig(RateLimiterMemoryStoreConfig{Rate: 1, Burst: 3, ExpiresIn: 2 * time.Second})
+		now           = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+	)
+	inMemoryStore.lastCleanup = now
+
 	testCases := []struct {
 		id      string
 		allowed bool
@@ -342,7 +347,33 @@ func TestRateLimiterMemoryStore_Allow(t *testing.T) {
 	for i, tc := range testCases {
 		t.Logf("Running testcase #%d => %v", i, time.Duration(i)*220*time.Millisecond)
 		inMemoryStore.timeNow = func() time.Time {
-			return time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC).Add(time.Duration(i) * 220 * time.Millisecond)
+			return now.Add(time.Duration(i) * 220 * time.Millisecond)
+		}
+		allowed, _ := inMemoryStore.Allow(tc.id)
+		assert.Equal(t, tc.allowed, allowed)
+	}
+}
+
+func TestRateLimiterMemoryStore_Allow_ExpiresIn(t *testing.T) {
+	var (
+		inMemoryStore = NewRateLimiterMemoryStoreWithConfig(RateLimiterMemoryStoreConfig{Rate: 1, Burst: 1, ExpiresIn: 220 * time.Millisecond})
+		now           = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+	)
+	inMemoryStore.lastCleanup = now
+
+	testCases := []struct {
+		id      string
+		allowed bool
+	}{
+		{"127.0.0.1", true}, // 0 ms
+		{"127.0.0.1", true}, // 221 ms, interval exceeds expiresIn
+		{"127.0.0.1", true}, // 442 ms, interval exceeds expiresIn
+	}
+
+	for i, tc := range testCases {
+		t.Logf("Running testcase #%d => %v", i, time.Duration(i)*220*time.Millisecond)
+		inMemoryStore.timeNow = func() time.Time {
+			return now.Add(time.Duration(i) * 221 * time.Millisecond)
 		}
 		allowed, _ := inMemoryStore.Allow(tc.id)
 		assert.Equal(t, tc.allowed, allowed)
