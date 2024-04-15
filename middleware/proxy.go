@@ -366,8 +366,7 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 				switch {
 				case c.IsWebSocket():
 					proxyRaw(tgt, c).ServeHTTP(res, req)
-				case req.Header.Get(echo.HeaderAccept) == "text/event-stream":
-				default:
+				default: // even SSE requests
 					proxyHTTP(tgt, c, config).ServeHTTP(res, req)
 				}
 
