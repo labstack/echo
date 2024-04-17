@@ -215,6 +215,11 @@ func (b *DefaultBinder) bindData(destination interface{}, data map[string][]stri
 			inputFieldName = typeField.Name
 		}
 
+		// skipped by struct tag
+		if inputFieldName[0] == '-' {
+			continue
+		}
+
 		inputValue, exists := data[inputFieldName]
 		if !exists {
 			// Go json.Unmarshal supports case insensitive binding.  However the

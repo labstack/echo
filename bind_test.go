@@ -1462,3 +1462,26 @@ func TestBindWithFallback(t *testing.T) {
 		assert.Equal(t, &fptr, ts.PtrF64)
 	})
 }
+
+func TestBindWithSkip(t *testing.T) {
+	t.Run("skip with dash", func(t *testing.T) {
+		var ts = struct {
+			Value   string `form:"val"`
+			Comment string `form:"-"`
+		}{}
+
+		b := &DefaultBinder{}
+		err := b.bindData(&ts, map[string][]string{
+			"key":     {"name"},
+			"val":     {"echo"},
+			"-":       {"dash"},
+			"comment": {"none"},
+		}, "form")
+
+		assert.NoError(t, err)
+		assert.Equal(t, "echo", ts.Value)
+		assert.NotEqual(t, "dash", ts.Comment)
+		assert.NotEqual(t, "none", ts.Comment)
+		assert.Equal(t, "", ts.Comment)
+	})
+}
