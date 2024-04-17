@@ -20,7 +20,7 @@ type Binder interface {
 }
 
 // DefaultBinder is the default implementation of the Binder interface.
-type DefaultBinder struct{}
+type DefaultBinder struct{ fallback bool }
 
 // BindUnmarshaler is the interface used to wrap the UnmarshalParam method.
 // Types that don't implement this, but do implement encoding.TextUnmarshaler
@@ -35,6 +35,13 @@ type BindUnmarshaler interface {
 // for `a` following slice `["1", "2"] will be passed to unmarshaller.
 type bindMultipleUnmarshaler interface {
 	UnmarshalParams(params []string) error
+}
+
+// BinderWithFallback gives a binder with fallback set.
+// When fallback is set, in case struct tag is not available,
+// it will bind value using the actual field name.
+func BinderWithFallback() *DefaultBinder {
+	return &DefaultBinder{fallback: true}
 }
 
 // BindPathParams binds path params to bindable object
@@ -201,8 +208,11 @@ func (b *DefaultBinder) bindData(destination interface{}, data map[string][]stri
 					return err
 				}
 			}
-			// does not have explicit tag and is not an ordinary struct - so move to next field
-			continue
+			// does not have explicit tag and fallback is not set - so move to next field
+			if !b.fallback {
+				continue
+			}
+			inputFieldName = typeField.Name
 		}
 
 		inputValue, exists := data[inputFieldName]

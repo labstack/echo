@@ -1420,3 +1420,45 @@ func TestBindInt8(t *testing.T) {
 		assert.Equal(t, target{V: &[]int8{1, 2}}, p)
 	})
 }
+
+func TestBindWithFallback(t *testing.T) {
+	b := BinderWithFallback()
+
+	t.Run("field name in same case", func(t *testing.T) {
+		expect := "string"
+		ts := new(bindTestStruct)
+
+		err := b.bindData(ts, map[string][]string{"S": {expect}}, "form")
+		assert.NoError(t, err)
+		assert.Equal(t, expect, ts.S)
+	})
+
+	t.Run("field name in lower case", func(t *testing.T) {
+		expect := "string"
+		ts := new(bindTestStruct)
+
+		err := b.bindData(ts, map[string][]string{"s": {expect}}, "form")
+		assert.NoError(t, err)
+		assert.Equal(t, expect, ts.S)
+	})
+
+	t.Run("mixed cases", func(t *testing.T) {
+		ts := new(bindTestStruct)
+
+		err := b.bindData(ts, map[string][]string{
+			"s":       {"ts.S=string"},
+			"cantSet": {"can set"},
+			"I":       {"1"},
+			"i64":     {"1000"},
+			"pTRf64":  {"1337.9"},
+		}, "form")
+
+		assert.NoError(t, err)
+		assert.Equal(t, "ts.S=string", ts.S)
+		assert.NotEqual(t, "can set", ts.cantSet)
+		assert.Equal(t, 1, ts.I)
+		assert.Equal(t, int64(1000), ts.I64)
+		fptr := 1337.9
+		assert.Equal(t, &fptr, ts.PtrF64)
+	})
+}
