@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"math/big"
 	"net/http"
@@ -16,6 +15,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func createTestContext(URL string, body io.Reader, pathParams map[string]string) Context {
@@ -271,7 +272,7 @@ func TestValueBinder_CustomFunc(t *testing.T) {
 		givenFuncErrors   []error
 		whenURL           string
 		expectParamValues []string
-		expectValue       interface{}
+		expectValue       any
 		expectErrors      []string
 	}{
 		{
@@ -346,7 +347,7 @@ func TestValueBinder_MustCustomFunc(t *testing.T) {
 		givenFuncErrors   []error
 		whenURL           string
 		expectParamValues []string
-		expectValue       interface{}
+		expectValue       any
 		expectErrors      []string
 	}{
 		{
@@ -2376,7 +2377,7 @@ func TestValueBinder_BindWithDelimiter_types(t *testing.T) {
 	var testCases = []struct {
 		name    string
 		whenURL string
-		expect  interface{}
+		expect  any
 	}{
 		{
 			name:   "ok, strings",

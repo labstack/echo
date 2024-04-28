@@ -9,10 +9,11 @@ package middleware
 import (
 	"errors"
 	"fmt"
-	"github.com/golang-jwt/jwt"
-	"github.com/labstack/echo/v4"
 	"net/http"
 	"reflect"
+
+	"github.com/golang-jwt/jwt"
+	"github.com/labstack/echo/v4"
 )
 
 // JWTConfig defines the config for JWT middleware.
@@ -45,13 +46,13 @@ type JWTConfig struct {
 	// This is one of the three options to provide a token validation key.
 	// The order of precedence is a user-defined KeyFunc, SigningKeys and SigningKey.
 	// Required if neither user-defined KeyFunc nor SigningKeys is provided.
-	SigningKey interface{}
+	SigningKey any
 
 	// Map of signing keys to validate token with kid field usage.
 	// This is one of the three options to provide a token validation key.
 	// The order of precedence is a user-defined KeyFunc, SigningKeys and SigningKey.
 	// Required if neither user-defined KeyFunc nor SigningKey is provided.
-	SigningKeys map[string]interface{}
+	SigningKeys map[string]any
 
 	// Signing method used to check the token's signing algorithm.
 	// Optional. Default value HS256.
@@ -110,7 +111,7 @@ type JWTConfig struct {
 	// ParseTokenFunc defines a user-defined function that parses token from given auth. Returns an error when token
 	// parsing fails or parsed token is invalid.
 	// Defaults to implementation using `github.com/golang-jwt/jwt` as JWT implementation library
-	ParseTokenFunc func(auth string, c echo.Context) (interface{}, error)
+	ParseTokenFunc func(auth string, c echo.Context) (any, error)
 }
 
 // JWTSuccessHandler defines a function which is executed for a valid token.
@@ -155,7 +156,7 @@ var DefaultJWTConfig = JWTConfig{
 // See `JWTConfig.TokenLookup`
 //
 // Deprecated: Please use https://github.com/labstack/echo-jwt instead
-func JWT(key interface{}) echo.MiddlewareFunc {
+func JWT(key any) echo.MiddlewareFunc {
 	c := DefaultJWTConfig
 	c.SigningKey = key
 	return JWTWithConfig(c)
@@ -264,7 +265,7 @@ func JWTWithConfig(config JWTConfig) echo.MiddlewareFunc {
 	}
 }
 
-func (config *JWTConfig) defaultParseToken(auth string, c echo.Context) (interface{}, error) {
+func (config *JWTConfig) defaultParseToken(auth string, c echo.Context) (any, error) {
 	var token *jwt.Token
 	var err error
 	// Issue #647, #656
@@ -285,7 +286,7 @@ func (config *JWTConfig) defaultParseToken(auth string, c echo.Context) (interfa
 }
 
 // defaultKeyFunc returns a signing key of the given token.
-func (config *JWTConfig) defaultKeyFunc(t *jwt.Token) (interface{}, error) {
+func (config *JWTConfig) defaultKeyFunc(t *jwt.Token) (any, error) {
 	// Check the signing method
 	if t.Method.Alg() != config.SigningMethod {
 		return nil, fmt.Errorf("unexpected jwt signing method=%v", t.Header["alg"])

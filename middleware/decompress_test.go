@@ -145,7 +145,7 @@ type TestDecompressPoolWithError struct {
 
 func (d *TestDecompressPoolWithError) gzipDecompressPool() sync.Pool {
 	return sync.Pool{
-		New: func() interface{} {
+		New: func() any {
 			return errors.New("pool error")
 		},
 	}

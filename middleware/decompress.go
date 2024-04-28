@@ -40,7 +40,7 @@ type DefaultGzipDecompressPool struct {
 }
 
 func (d *DefaultGzipDecompressPool) gzipDecompressPool() sync.Pool {
-	return sync.Pool{New: func() interface{} { return new(gzip.Reader) }}
+	return sync.Pool{New: func() any { return new(gzip.Reader) }}
 }
 
 // Decompress decompresses request body based if content encoding type is set to "gzip" with default config
