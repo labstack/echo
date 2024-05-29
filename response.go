@@ -14,10 +14,10 @@ import (
 // by an HTTP handler to construct an HTTP response.
 // See: https://golang.org/pkg/net/http/#ResponseWriter
 type Response struct {
+	Writer      http.ResponseWriter
 	echo        *Echo
 	beforeFuncs []func()
 	afterFuncs  []func()
-	Writer      http.ResponseWriter
 	Status      int
 	Size        int64
 	Committed   bool

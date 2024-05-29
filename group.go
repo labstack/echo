@@ -14,8 +14,8 @@ type Group struct {
 	common
 	host       string
 	prefix     string
-	middleware []MiddlewareFunc
 	echo       *Echo
+	middleware []MiddlewareFunc
 }
 
 // Use implements `Echo#Use()` for sub-routes within the Group.

@@ -102,8 +102,8 @@ func StaticFileHandler(file string, filesystem fs.FS) HandlerFunc {
 // traverse up from current executable run path.
 // NB: private because you really should use fs.FS implementation instances
 type defaultFS struct {
-	prefix string
 	fs     fs.FS
+	prefix string
 }
 
 func newDefaultFS() *defaultFS {
