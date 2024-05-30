@@ -200,23 +200,21 @@ type Context interface {
 }
 
 type context struct {
+	logger   Logger
 	request  *http.Request
 	response *Response
 	query    url.Values
 	echo     *Echo
-	logger   Logger
 
 	store Map
 	lock  sync.RWMutex
 
 	// following fields are set by Router
+	handler HandlerFunc
 
 	// path is route path that Router matched. It is empty string where there is no route match.
 	// Route registered with RouteNotFound is considered as a match and path therefore is not empty.
 	path string
-
-	// pnames length is tied to param count for the matched route
-	pnames []string
 
 	// Usually echo.Echo is sizing pvalues but there could be user created middlewares that decide to
 	// overwrite parameter by calling SetParamNames + SetParamValues.
@@ -224,7 +222,9 @@ type context struct {
 	//
 	// It is important that pvalues size is always equal or bigger to pnames length.
 	pvalues []string
-	handler HandlerFunc
+
+	// pnames length is tied to param count for the matched route
+	pnames []string
 }
 
 const (

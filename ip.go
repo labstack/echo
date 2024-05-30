@@ -134,10 +134,10 @@ Private IPv6 address ranges:
 */
 
 type ipChecker struct {
+	trustExtraRanges []*net.IPNet
 	trustLoopback    bool
 	trustLinkLocal   bool
 	trustPrivateNet  bool
-	trustExtraRanges []*net.IPNet
 }
 
 // TrustOption is config for which IP address to trust

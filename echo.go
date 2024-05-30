@@ -91,10 +91,6 @@ type Echo struct {
 	Listener         net.Listener
 	TLSListener      net.Listener
 	AutoTLSManager   autocert.Manager
-	DisableHTTP2     bool
-	Debug            bool
-	HideBanner       bool
-	HidePort         bool
 	HTTPErrorHandler HTTPErrorHandler
 	Binder           Binder
 	JSONSerializer   JSONSerializer
@@ -106,6 +102,10 @@ type Echo struct {
 
 	// OnAddRouteHandler is called when Echo adds new route to specific host router.
 	OnAddRouteHandler func(host string, route Route, handler HandlerFunc, middleware []MiddlewareFunc)
+	DisableHTTP2      bool
+	Debug             bool
+	HideBanner        bool
+	HidePort          bool
 }
 
 // Route contains a handler and information for matching against requests.
@@ -117,9 +117,9 @@ type Route struct {
 
 // HTTPError represents an error that occurred while handling a request.
 type HTTPError struct {
-	Code     int         `json:"-"`
-	Message  interface{} `json:"message"`
 	Internal error       `json:"-"` // Stores the error returned by an external dependency
+	Message  interface{} `json:"message"`
+	Code     int         `json:"-"`
 }
 
 // MiddlewareFunc defines a function to process middleware.

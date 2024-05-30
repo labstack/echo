@@ -18,32 +18,31 @@ type Router struct {
 }
 
 type node struct {
-	kind           kind
-	label          byte
-	prefix         string
-	parent         *node
-	staticChildren children
-	originalPath   string
-	methods        *routeMethods
-	paramChild     *node
-	anyChild       *node
-	paramsCount    int
+	methods    *routeMethods
+	parent     *node
+	paramChild *node
+	anyChild   *node
+	// notFoundHandler is handler registered with RouteNotFound method and is executed for 404 cases
+	notFoundHandler *routeMethod
+	prefix          string
+	originalPath    string
+	staticChildren  children
+	paramsCount     int
+	label           byte
+	kind            kind
 	// isLeaf indicates that node does not have child routes
 	isLeaf bool
 	// isHandler indicates that node has at least one handler registered to it
 	isHandler bool
-
-	// notFoundHandler is handler registered with RouteNotFound method and is executed for 404 cases
-	notFoundHandler *routeMethod
 }
 
 type kind uint8
 type children []*node
 
 type routeMethod struct {
+	handler HandlerFunc
 	ppath   string
 	pnames  []string
-	handler HandlerFunc
 }
 
 type routeMethods struct {
@@ -242,18 +241,18 @@ func (r *Router) insert(method, path string, h HandlerFunc) {
 
 			if i == lcpIndex {
 				// path node is last fragment of route path. ie. `/users/:id`
-				r.insertNode(method, path[:i], paramKind, routeMethod{ppath, pnames, h})
+				r.insertNode(method, path[:i], paramKind, routeMethod{ppath: ppath, pnames: pnames, handler: h})
 			} else {
 				r.insertNode(method, path[:i], paramKind, routeMethod{})
 			}
 		} else if path[i] == '*' {
 			r.insertNode(method, path[:i], staticKind, routeMethod{})
 			pnames = append(pnames, "*")
-			r.insertNode(method, path[:i+1], anyKind, routeMethod{ppath, pnames, h})
+			r.insertNode(method, path[:i+1], anyKind, routeMethod{ppath: ppath, pnames: pnames, handler: h})
 		}
 	}
 
-	r.insertNode(method, path, staticKind, routeMethod{ppath, pnames, h})
+	r.insertNode(method, path, staticKind, routeMethod{ppath: ppath, pnames: pnames, handler: h})
 }
 
 func (r *Router) insertNode(method, path string, t kind, rm routeMethod) {
