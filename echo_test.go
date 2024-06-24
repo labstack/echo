@@ -812,7 +812,7 @@ func TestEcho_RouteNotFound(t *testing.T) {
 	var testCases = []struct {
 		name        string
 		whenURL     string
-		expectRoute interface{}
+		expectRoute any
 		expectCode  int
 	}{
 		{
@@ -1075,8 +1075,8 @@ func TestEchoStartTLSByteString(t *testing.T) {
 	require.NoError(t, err)
 
 	testCases := []struct {
-		cert        interface{}
-		key         interface{}
+		cert        any
+		key         any
 		expectedErr error
 		name        string
 	}{
@@ -1222,7 +1222,7 @@ func testMethod(t *testing.T, method, path string, e *Echo) {
 	h := reflect.ValueOf(func(c Context) error {
 		return c.String(http.StatusOK, method)
 	})
-	i := interface{}(e)
+	i := any(e)
 	reflect.ValueOf(i).MethodByName(method).Call([]reflect.Value{p, h})
 	_, body := request(method, path, e)
 	assert.Equal(t, method, body)
@@ -1237,7 +1237,7 @@ func request(method, path string, e *Echo) (int, string) {
 
 func TestHTTPError(t *testing.T) {
 	t.Run("non-internal", func(t *testing.T) {
-		err := NewHTTPError(http.StatusBadRequest, map[string]interface{}{
+		err := NewHTTPError(http.StatusBadRequest, map[string]any{
 			"code": 12,
 		})
 
@@ -1245,7 +1245,7 @@ func TestHTTPError(t *testing.T) {
 	})
 
 	t.Run("internal and SetInternal", func(t *testing.T) {
-		err := NewHTTPError(http.StatusBadRequest, map[string]interface{}{
+		err := NewHTTPError(http.StatusBadRequest, map[string]any{
 			"code": 12,
 		})
 		err.SetInternal(errors.New("internal error"))
@@ -1253,7 +1253,7 @@ func TestHTTPError(t *testing.T) {
 	})
 
 	t.Run("internal and WithInternal", func(t *testing.T) {
-		err := NewHTTPError(http.StatusBadRequest, map[string]interface{}{
+		err := NewHTTPError(http.StatusBadRequest, map[string]any{
 			"code": 12,
 		})
 		err = err.WithInternal(errors.New("internal error"))
@@ -1263,7 +1263,7 @@ func TestHTTPError(t *testing.T) {
 
 func TestHTTPError_Unwrap(t *testing.T) {
 	t.Run("non-internal", func(t *testing.T) {
-		err := NewHTTPError(http.StatusBadRequest, map[string]interface{}{
+		err := NewHTTPError(http.StatusBadRequest, map[string]any{
 			"code": 12,
 		})
 
@@ -1271,7 +1271,7 @@ func TestHTTPError_Unwrap(t *testing.T) {
 	})
 
 	t.Run("unwrap internal and SetInternal", func(t *testing.T) {
-		err := NewHTTPError(http.StatusBadRequest, map[string]interface{}{
+		err := NewHTTPError(http.StatusBadRequest, map[string]any{
 			"code": 12,
 		})
 		err.SetInternal(errors.New("internal error"))
@@ -1279,7 +1279,7 @@ func TestHTTPError_Unwrap(t *testing.T) {
 	})
 
 	t.Run("unwrap internal and WithInternal", func(t *testing.T) {
-		err := NewHTTPError(http.StatusBadRequest, map[string]interface{}{
+		err := NewHTTPError(http.StatusBadRequest, map[string]any{
 			"code": 12,
 		})
 		err = err.WithInternal(errors.New("internal error"))
@@ -1387,7 +1387,7 @@ func TestDefaultHTTPErrorHandler(t *testing.T) {
 			})
 
 			e.Any("/servererror", func(c Context) error { // complex errors are serialized to pretty JSON
-				return NewHTTPError(http.StatusInternalServerError, map[string]interface{}{
+				return NewHTTPError(http.StatusInternalServerError, map[string]any{
 					"code":    33,
 					"message": "Something bad happened",
 					"error":   "stackinfo",
@@ -1595,7 +1595,7 @@ func TestEchoReverse(t *testing.T) {
 	var testCases = []struct {
 		name          string
 		whenRouteName string
-		whenParams    []interface{}
+		whenParams    []any
 		expect        string
 	}{
 		{
@@ -1611,7 +1611,7 @@ func TestEchoReverse(t *testing.T) {
 		{
 			name:          "ok,static with non existent param",
 			whenRouteName: "/static",
-			whenParams:    []interface{}{"missing param"},
+			whenParams:    []any{"missing param"},
 			expect:        "/static",
 		},
 		{
@@ -1622,7 +1622,7 @@ func TestEchoReverse(t *testing.T) {
 		{
 			name:          "ok, wildcard with params",
 			whenRouteName: "/static/*",
-			whenParams:    []interface{}{"foo.txt"},
+			whenParams:    []any{"foo.txt"},
 			expect:        "/static/foo.txt",
 		},
 		{
@@ -1633,7 +1633,7 @@ func TestEchoReverse(t *testing.T) {
 		{
 			name:          "ok, single param with param",
 			whenRouteName: "/params/:foo",
-			whenParams:    []interface{}{"one"},
+			whenParams:    []any{"one"},
 			expect:        "/params/one",
 		},
 		{
@@ -1644,31 +1644,31 @@ func TestEchoReverse(t *testing.T) {
 		{
 			name:          "ok, multi param with one param",
 			whenRouteName: "/params/:foo/bar/:qux",
-			whenParams:    []interface{}{"one"},
+			whenParams:    []any{"one"},
 			expect:        "/params/one/bar/:qux",
 		},
 		{
 			name:          "ok, multi param with all params",
 			whenRouteName: "/params/:foo/bar/:qux",
-			whenParams:    []interface{}{"one", "two"},
+			whenParams:    []any{"one", "two"},
 			expect:        "/params/one/bar/two",
 		},
 		{
 			name:          "ok, multi param + wildcard with all params",
 			whenRouteName: "/params/:foo/bar/:qux/*",
-			whenParams:    []interface{}{"one", "two", "three"},
+			whenParams:    []any{"one", "two", "three"},
 			expect:        "/params/one/bar/two/three",
 		},
 		{
 			name:          "ok, backslash is not escaped",
 			whenRouteName: "/backslash",
-			whenParams:    []interface{}{"test"},
+			whenParams:    []any{"test"},
 			expect:        `/a\b/test`,
 		},
 		{
 			name:          "ok, escaped colon verbs",
 			whenRouteName: "/params:customVerb",
-			whenParams:    []interface{}{"PATCH"},
+			whenParams:    []any{"PATCH"},
 			expect:        `/params:PATCH`,
 		},
 	}

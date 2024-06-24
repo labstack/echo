@@ -255,7 +255,7 @@ func listDir(t *template.Template, name string, dir http.File, res *echo.Respons
 	res.Header().Set(echo.HeaderContentType, echo.MIMETextHTMLCharsetUTF8)
 	data := struct {
 		Name  string
-		Files []interface{}
+		Files []any
 	}{
 		Name: name,
 	}

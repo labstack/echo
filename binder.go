@@ -75,7 +75,7 @@ type BindingError struct {
 }
 
 // NewBindingError creates new instance of binding error
-func NewBindingError(sourceParam string, values []string, message interface{}, internalError error) error {
+func NewBindingError(sourceParam string, values []string, message any, internalError error) error {
 	return &BindingError{
 		Field:  sourceParam,
 		Values: values,
@@ -99,7 +99,7 @@ type ValueBinder struct {
 	// ValuesFunc is used to get all values for parameter from request. i.e. `/api/search?ids=1&ids=2`
 	ValuesFunc func(sourceParam string) []string
 	// ErrorFunc is used to create errors. Allows you to use your own error type, that for example marshals to your specific json response
-	ErrorFunc func(sourceParam string, values []string, message interface{}, internalError error) error
+	ErrorFunc func(sourceParam string, values []string, message any, internalError error) error
 	errors    []error
 	// failFast is flag for binding methods to return without attempting to bind when previous binding already failed
 	failFast bool
@@ -402,17 +402,17 @@ func (b *ValueBinder) MustTextUnmarshaler(sourceParam string, dest encoding.Text
 
 // BindWithDelimiter binds parameter to destination by suitable conversion function.
 // Delimiter is used before conversion to split parameter value to separate values
-func (b *ValueBinder) BindWithDelimiter(sourceParam string, dest interface{}, delimiter string) *ValueBinder {
+func (b *ValueBinder) BindWithDelimiter(sourceParam string, dest any, delimiter string) *ValueBinder {
 	return b.bindWithDelimiter(sourceParam, dest, delimiter, false)
 }
 
 // MustBindWithDelimiter requires parameter value to exist to bind destination by suitable conversion function.
 // Delimiter is used before conversion to split parameter value to separate values
-func (b *ValueBinder) MustBindWithDelimiter(sourceParam string, dest interface{}, delimiter string) *ValueBinder {
+func (b *ValueBinder) MustBindWithDelimiter(sourceParam string, dest any, delimiter string) *ValueBinder {
 	return b.bindWithDelimiter(sourceParam, dest, delimiter, true)
 }
 
-func (b *ValueBinder) bindWithDelimiter(sourceParam string, dest interface{}, delimiter string, valueMustExist bool) *ValueBinder {
+func (b *ValueBinder) bindWithDelimiter(sourceParam string, dest any, delimiter string, valueMustExist bool) *ValueBinder {
 	if b.failFast && b.errors != nil {
 		return b
 	}
@@ -500,7 +500,7 @@ func (b *ValueBinder) MustInt(sourceParam string, dest *int) *ValueBinder {
 	return b.intValue(sourceParam, dest, 0, true)
 }
 
-func (b *ValueBinder) intValue(sourceParam string, dest interface{}, bitSize int, valueMustExist bool) *ValueBinder {
+func (b *ValueBinder) intValue(sourceParam string, dest any, bitSize int, valueMustExist bool) *ValueBinder {
 	if b.failFast && b.errors != nil {
 		return b
 	}
@@ -516,7 +516,7 @@ func (b *ValueBinder) intValue(sourceParam string, dest interface{}, bitSize int
 	return b.int(sourceParam, value, dest, bitSize)
 }
 
-func (b *ValueBinder) int(sourceParam string, value string, dest interface{}, bitSize int) *ValueBinder {
+func (b *ValueBinder) int(sourceParam string, value string, dest any, bitSize int) *ValueBinder {
 	n, err := strconv.ParseInt(value, 10, bitSize)
 	if err != nil {
 		if bitSize == 0 {
@@ -542,7 +542,7 @@ func (b *ValueBinder) int(sourceParam string, value string, dest interface{}, bi
 	return b
 }
 
-func (b *ValueBinder) intsValue(sourceParam string, dest interface{}, valueMustExist bool) *ValueBinder {
+func (b *ValueBinder) intsValue(sourceParam string, dest any, valueMustExist bool) *ValueBinder {
 	if b.failFast && b.errors != nil {
 		return b
 	}
@@ -557,7 +557,7 @@ func (b *ValueBinder) intsValue(sourceParam string, dest interface{}, valueMustE
 	return b.ints(sourceParam, values, dest)
 }
 
-func (b *ValueBinder) ints(sourceParam string, values []string, dest interface{}) *ValueBinder {
+func (b *ValueBinder) ints(sourceParam string, values []string, dest any) *ValueBinder {
 	switch d := dest.(type) {
 	case *[]int64:
 		tmp := make([]int64, len(values))
@@ -728,7 +728,7 @@ func (b *ValueBinder) MustUint(sourceParam string, dest *uint) *ValueBinder {
 	return b.uintValue(sourceParam, dest, 0, true)
 }
 
-func (b *ValueBinder) uintValue(sourceParam string, dest interface{}, bitSize int, valueMustExist bool) *ValueBinder {
+func (b *ValueBinder) uintValue(sourceParam string, dest any, bitSize int, valueMustExist bool) *ValueBinder {
 	if b.failFast && b.errors != nil {
 		return b
 	}
@@ -744,7 +744,7 @@ func (b *ValueBinder) uintValue(sourceParam string, dest interface{}, bitSize in
 	return b.uint(sourceParam, value, dest, bitSize)
 }
 
-func (b *ValueBinder) uint(sourceParam string, value string, dest interface{}, bitSize int) *ValueBinder {
+func (b *ValueBinder) uint(sourceParam string, value string, dest any, bitSize int) *ValueBinder {
 	n, err := strconv.ParseUint(value, 10, bitSize)
 	if err != nil {
 		if bitSize == 0 {
@@ -770,7 +770,7 @@ func (b *ValueBinder) uint(sourceParam string, value string, dest interface{}, b
 	return b
 }
 
-func (b *ValueBinder) uintsValue(sourceParam string, dest interface{}, valueMustExist bool) *ValueBinder {
+func (b *ValueBinder) uintsValue(sourceParam string, dest any, valueMustExist bool) *ValueBinder {
 	if b.failFast && b.errors != nil {
 		return b
 	}
@@ -785,7 +785,7 @@ func (b *ValueBinder) uintsValue(sourceParam string, dest interface{}, valueMust
 	return b.uints(sourceParam, values, dest)
 }
 
-func (b *ValueBinder) uints(sourceParam string, values []string, dest interface{}) *ValueBinder {
+func (b *ValueBinder) uints(sourceParam string, values []string, dest any) *ValueBinder {
 	switch d := dest.(type) {
 	case *[]uint64:
 		tmp := make([]uint64, len(values))
@@ -991,7 +991,7 @@ func (b *ValueBinder) MustFloat32(sourceParam string, dest *float32) *ValueBinde
 	return b.floatValue(sourceParam, dest, 32, true)
 }
 
-func (b *ValueBinder) floatValue(sourceParam string, dest interface{}, bitSize int, valueMustExist bool) *ValueBinder {
+func (b *ValueBinder) floatValue(sourceParam string, dest any, bitSize int, valueMustExist bool) *ValueBinder {
 	if b.failFast && b.errors != nil {
 		return b
 	}
@@ -1007,7 +1007,7 @@ func (b *ValueBinder) floatValue(sourceParam string, dest interface{}, bitSize i
 	return b.float(sourceParam, value, dest, bitSize)
 }
 
-func (b *ValueBinder) float(sourceParam string, value string, dest interface{}, bitSize int) *ValueBinder {
+func (b *ValueBinder) float(sourceParam string, value string, dest any, bitSize int) *ValueBinder {
 	n, err := strconv.ParseFloat(value, bitSize)
 	if err != nil {
 		b.setError(b.ErrorFunc(sourceParam, []string{value}, fmt.Sprintf("failed to bind field value to float%v", bitSize), err))
@@ -1023,7 +1023,7 @@ func (b *ValueBinder) float(sourceParam string, value string, dest interface{}, 
 	return b
 }
 
-func (b *ValueBinder) floatsValue(sourceParam string, dest interface{}, valueMustExist bool) *ValueBinder {
+func (b *ValueBinder) floatsValue(sourceParam string, dest any, valueMustExist bool) *ValueBinder {
 	if b.failFast && b.errors != nil {
 		return b
 	}
@@ -1038,7 +1038,7 @@ func (b *ValueBinder) floatsValue(sourceParam string, dest interface{}, valueMus
 	return b.floats(sourceParam, values, dest)
 }
 
-func (b *ValueBinder) floats(sourceParam string, values []string, dest interface{}) *ValueBinder {
+func (b *ValueBinder) floats(sourceParam string, values []string, dest any) *ValueBinder {
 	switch d := dest.(type) {
 	case *[]float64:
 		tmp := make([]float64, len(values))

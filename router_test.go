@@ -698,7 +698,7 @@ func TestRouterParam(t *testing.T) {
 	var testCases = []struct {
 		name        string
 		whenURL     string
-		expectRoute interface{}
+		expectRoute any
 		expectParam map[string]string
 	}{
 		{
@@ -804,7 +804,7 @@ func TestMethodNotAllowedAndNotFound(t *testing.T) {
 		name              string
 		whenMethod        string
 		whenURL           string
-		expectRoute       interface{}
+		expectRoute       any
 		expectParam       map[string]string
 		expectError       error
 		expectAllowHeader string
@@ -864,7 +864,7 @@ func TestMethodNotAllowedAndNotFound(t *testing.T) {
 func TestRouterOptionsMethodHandler(t *testing.T) {
 	e := New()
 
-	var keyInContext interface{}
+	var keyInContext any
 	e.Use(func(next HandlerFunc) HandlerFunc {
 		return func(c Context) error {
 			err := next(c)
@@ -952,7 +952,7 @@ func TestRouteMultiLevelBacktracking(t *testing.T) {
 	var testCases = []struct {
 		name        string
 		whenURL     string
-		expectRoute interface{}
+		expectRoute any
 		expectParam map[string]string
 	}{
 		{
@@ -1184,7 +1184,7 @@ func TestNotFoundRouteAnyKind(t *testing.T) {
 	var testCases = []struct {
 		name        string
 		whenURL     string
-		expectRoute interface{}
+		expectRoute any
 		expectID    int
 		expectParam map[string]string
 	}{
@@ -1251,7 +1251,7 @@ func TestNotFoundRouteParamKind(t *testing.T) {
 	var testCases = []struct {
 		name        string
 		whenURL     string
-		expectRoute interface{}
+		expectRoute any
 		expectID    int
 		expectParam map[string]string
 	}{
@@ -1319,7 +1319,7 @@ func TestNotFoundRouteStaticKind(t *testing.T) {
 	var testCases = []struct {
 		name        string
 		whenURL     string
-		expectRoute interface{}
+		expectRoute any
 		expectID    int
 		expectParam map[string]string
 	}{
@@ -1418,7 +1418,7 @@ func TestRouterParamStaticConflict(t *testing.T) {
 
 	var testCases = []struct {
 		whenURL     string
-		expectRoute interface{}
+		expectRoute any
 		expectParam map[string]string
 	}{
 		{
@@ -1461,7 +1461,7 @@ func TestRouterParam_escapeColon(t *testing.T) {
 
 	var testCases = []struct {
 		whenURL     string
-		expectRoute interface{}
+		expectRoute any
 		expectParam map[string]string
 		expectError string
 	}{
@@ -1524,7 +1524,7 @@ func TestRouterMatchAny(t *testing.T) {
 
 	var testCases = []struct {
 		whenURL     string
-		expectRoute interface{}
+		expectRoute any
 		expectParam map[string]string
 	}{
 		{
@@ -1605,7 +1605,7 @@ func TestRouterMatchAnyPrefixIssue(t *testing.T) {
 
 	var testCases = []struct {
 		whenURL     string
-		expectRoute interface{}
+		expectRoute any
 		expectParam map[string]string
 	}{
 		{
@@ -1667,7 +1667,7 @@ func TestRouterMatchAnySlash(t *testing.T) {
 
 	var testCases = []struct {
 		whenURL     string
-		expectRoute interface{}
+		expectRoute any
 		expectParam map[string]string
 		expectError error
 	}{
@@ -1752,7 +1752,7 @@ func TestRouterMatchAnyMultiLevel(t *testing.T) {
 
 	var testCases = []struct {
 		whenURL     string
-		expectRoute interface{}
+		expectRoute any
 		expectParam map[string]string
 		expectError error
 	}{
@@ -1825,7 +1825,7 @@ func TestRouterMatchAnyMultiLevelWithPost(t *testing.T) {
 	var testCases = []struct {
 		whenMethod  string
 		whenURL     string
-		expectRoute interface{}
+		expectRoute any
 		expectParam map[string]string
 		expectError error
 	}{
@@ -1918,7 +1918,7 @@ func TestRouterMultiRoute(t *testing.T) {
 	var testCases = []struct {
 		whenMethod  string
 		whenURL     string
-		expectRoute interface{}
+		expectRoute any
 		expectParam map[string]string
 		expectError error
 	}{
@@ -1982,7 +1982,7 @@ func TestRouterPriority(t *testing.T) {
 	var testCases = []struct {
 		whenMethod  string
 		whenURL     string
-		expectRoute interface{}
+		expectRoute any
 		expectParam map[string]string
 		expectError error
 	}{
@@ -2101,7 +2101,7 @@ func TestRouterPriorityNotFound(t *testing.T) {
 	var testCases = []struct {
 		whenMethod  string
 		whenURL     string
-		expectRoute interface{}
+		expectRoute any
 		expectParam map[string]string
 		expectError error
 	}{
@@ -2156,7 +2156,7 @@ func TestRouterParamNames(t *testing.T) {
 	var testCases = []struct {
 		whenMethod  string
 		whenURL     string
-		expectRoute interface{}
+		expectRoute any
 		expectParam map[string]string
 		expectError error
 	}{
@@ -2218,7 +2218,7 @@ func TestRouterStaticDynamicConflict(t *testing.T) {
 	var testCases = []struct {
 		whenMethod  string
 		whenURL     string
-		expectRoute interface{}
+		expectRoute any
 		expectParam map[string]string
 		expectError error
 	}{
@@ -2295,7 +2295,7 @@ func TestRouterParamBacktraceNotFound(t *testing.T) {
 		name        string
 		whenMethod  string
 		whenURL     string
-		expectRoute interface{}
+		expectRoute any
 		expectParam map[string]string
 		expectError error
 	}{
@@ -2449,7 +2449,7 @@ func TestRouterParam1466(t *testing.T) {
 
 	var testCases = []struct {
 		whenURL     string
-		expectRoute interface{}
+		expectRoute any
 		expectParam map[string]string
 	}{
 		{
@@ -2573,7 +2573,7 @@ func TestRouterPanicWhenParamNoRootOnlyChildsFailsFind(t *testing.T) {
 
 	var testCases = []struct {
 		whenURL      string
-		expectRoute  interface{}
+		expectRoute  any
 		expectParam  map[string]string
 		expectStatus int
 	}{
