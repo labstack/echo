@@ -351,7 +351,7 @@ var NotFoundHandler = func(c Context) error {
 	return ErrNotFound
 }
 
-// MethodNotAllowedHandler is the handler thar router uses in case there was no matching route found but there was
+// MethodNotAllowedHandler is the handler that router uses in case there was no matching route found but there was
 // another matching routes for that requested URL. Returns an error that results HTTP 405 Method Not Allowed status code.
 var MethodNotAllowedHandler = func(c Context) error {
 	// See RFC 7231 section 7.4.1: An origin server MUST generate an Allow field in a 405 (Method Not Allowed)
