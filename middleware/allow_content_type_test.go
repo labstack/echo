@@ -22,6 +22,7 @@ func TestAllowContentType(t *testing.T) {
 	req.Header.Add("Content-Type", "application/json")
 	c := e.NewContext(req, res)
 	assert.NoError(t, h(c))
+	assert.Equal(t, "application/json", res.Header().Get("Accept"))
 
 	// Test invalid content type
 	req.Header.Set("Content-Type", "text/plain")
