@@ -13,7 +13,6 @@ func TestAllowContentType(t *testing.T) {
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	res := httptest.NewRecorder()
-	c := e.NewContext(req, res)
 
 	h := AllowContentType("application/json")(func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
@@ -21,9 +20,12 @@ func TestAllowContentType(t *testing.T) {
 
 	// Test valid content type
 	req.Header.Add("Content-Type", "application/json")
+	c := e.NewContext(req, res)
 	assert.NoError(t, h(c))
 
 	// Test invalid content type
-	req.Header.Add("Content-Type", "text/plain")
-	assert.NoError(t, h(c))
+	req.Header.Set("Content-Type", "text/plain")
+	c = e.NewContext(req, res)
+	he := h(c).(*echo.HTTPError)
+	assert.Equal(t, http.StatusUnsupportedMediaType, he.Code)
 }
