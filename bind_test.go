@@ -498,7 +498,7 @@ func TestDefaultBinder_bindDataToMap(t *testing.T) {
 		assert.Equal(t,
 			map[string]interface{}{
 				"multiple": []string{"1", "2"},
-				"single":   []string{"3"},
+				"single":   "3",
 			},
 			dest,
 		)
@@ -510,7 +510,7 @@ func TestDefaultBinder_bindDataToMap(t *testing.T) {
 		assert.Equal(t,
 			map[string]interface{}{
 				"multiple": []string{"1", "2"},
-				"single":   []string{"3"},
+				"single":   "3",
 			},
 			dest,
 		)
