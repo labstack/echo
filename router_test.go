@@ -1579,13 +1579,19 @@ func TestRouterAnyMatchesLastAddedAnyRoute(t *testing.T) {
 	assert.Equal(t, "/users/*/action*", c.Get("path"))
 	assert.Equal(t, "xxx/action/sea", c.Param("*"))
 
-	// if we add another route then it is the last added and so it is matched
 	r.Add(http.MethodGet, "/users/*/action/search", handlerHelper("case", 3))
 
+	// should not match incomplete route with wildcard but match previous one
 	r.Find(http.MethodGet, "/users/xxx/action/sea", c)
 	c.handler(c)
-	assert.Equal(t, "/users/*/action/search", c.Get("path"))
+	assert.Equal(t, "/users/*/action*", c.Get("path"))
 	assert.Equal(t, "xxx/action/sea", c.Param("*"))
+
+	// should match route with wildcard and static suffix
+	r.Find(http.MethodGet, "/users/xxx/action/search", c)
+	c.handler(c)
+	assert.Equal(t, "/users/*/action/search", c.Get("path"))
+	assert.Equal(t, "xxx/action/search", c.Param("*"))
 }
 
 // Issue #1739
