@@ -699,10 +699,10 @@ func (r *Router) Find(method, path string, c Context) {
 				for ; i < l && search[i] != '/'; i++ {
 				}
 				search = search[i:]
-				searchIndex = searchIndex + len(search)
 				previousBestMatchNode = currentNode
 				if len(search) != 0 {
 					if child := currentNode.findStaticChild(search[0]); child != nil {
+						searchIndex = searchIndex + len(child.prefix)
 						currentNode = child
 						continue
 					}
