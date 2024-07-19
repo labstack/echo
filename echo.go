@@ -136,6 +136,11 @@ type Validator interface {
 	Validate(i interface{}) error
 }
 
+// ServeHTTPContextInterceptor is the interface that wraps the InterceptContext function
+type ServeHTTPContextInterceptor interface {
+	InterceptContext(Context, func(Context))
+}
+
 // JSONSerializer is the interface that encodes and decodes JSON to and from interfaces.
 type JSONSerializer interface {
 	Serialize(c Context, i interface{}, indent string) error
@@ -670,9 +675,18 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h = applyMiddleware(h, e.premiddleware...)
 	}
 
-	// Execute chain
-	if err := h(c); err != nil {
-		e.HTTPErrorHandler(err, c)
+	if interceptor, ok := w.(ServeHTTPContextInterceptor); ok {
+		interceptor.InterceptContext(c, func(c Context) {
+			// Execute chain
+			if err := h(c); err != nil {
+				e.HTTPErrorHandler(err, c)
+			}
+		})
+	} else {
+		// Execute chain
+		if err := h(c); err != nil {
+			e.HTTPErrorHandler(err, c)
+		}
 	}
 
 	// Release context
