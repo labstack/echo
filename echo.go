@@ -136,6 +136,11 @@ type Validator interface {
 	Validate(i interface{}) error
 }
 
+// ServeHTTPContextInterceptor is the interface that wraps the InterceptContext function
+type ServeHTTPContextInterceptor interface {
+	InterceptContext(Context, func(Context))
+}
+
 // JSONSerializer is the interface that encodes and decodes JSON to and from interfaces.
 type JSONSerializer interface {
 	Serialize(c Context, i interface{}, indent string) error
@@ -670,49 +675,18 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h = applyMiddleware(h, e.premiddleware...)
 	}
 
-	// Execute chain
-	if err := h(c); err != nil {
-		e.HTTPErrorHandler(err, c)
-	}
-
-	// Release context
-	e.pool.Put(c)
-}
-
-// ServeHTTPWithIntercept implements `http.Handler` interface, which serves HTTP requests.
-func (e *Echo) ServeHTTPWithIntercept(w http.ResponseWriter, r *http.Request, intercept func(c Context, handle func(c Context))) {
-	// Acquire context
-	c := e.pool.Get().(*context)
-	c.Reset(r, w)
-
-	var h HandlerFunc
-
-	if e.premiddleware == nil {
-		e.findRouter(r.Host).Find(r.Method, GetPath(r), c)
-		h = c.Handler()
-		h = applyMiddleware(h, e.middleware...)
-	} else {
-		h = func(c Context) error {
-			e.findRouter(r.Host).Find(r.Method, GetPath(r), c)
-			h := c.Handler()
-			h = applyMiddleware(h, e.middleware...)
-			return h(c)
-		}
-		h = applyMiddleware(h, e.premiddleware...)
-	}
-
-	if intercept == nil {
-		// Execute chain
-		if err := h(c); err != nil {
-			e.HTTPErrorHandler(err, c)
-		}
-	} else {
-		intercept(c, func(c Context) {
+	if interceptor, ok := w.(ServeHTTPContextInterceptor); ok {
+		interceptor.InterceptContext(c, func(c Context) {
 			// Execute chain
 			if err := h(c); err != nil {
 				e.HTTPErrorHandler(err, c)
 			}
 		})
+	} else {
+		// Execute chain
+		if err := h(c); err != nil {
+			e.HTTPErrorHandler(err, c)
+		}
 	}
 
 	// Release context
