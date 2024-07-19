@@ -1843,7 +1843,7 @@ func TestEcho_ServeHTTPContextInterceptor(t *testing.T) {
 
 type serveHTTPContextInterceptorRW struct {
 	header     http.Header
-	buffer     *bytes.Buffer
+	buffer     bytes.Buffer
 	statusCode int
 	intercept  func(ctx Context, handle func(ctx Context))
 }
@@ -1856,9 +1856,6 @@ func (rw *serveHTTPContextInterceptorRW) Header() http.Header {
 }
 
 func (rw *serveHTTPContextInterceptorRW) Write(data []byte) (int, error) {
-	if rw.buffer == nil {
-		rw.buffer = &bytes.Buffer{}
-	}
 	return rw.buffer.Write(data)
 }
 
