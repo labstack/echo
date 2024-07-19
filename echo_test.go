@@ -1815,6 +1815,61 @@ func TestEcho_StartServer(t *testing.T) {
 	}
 }
 
+func TestEcho_ServeHTTPContextInterceptor(t *testing.T) {
+
+	type context struct {
+		Context
+		MyData string
+	}
+
+	e := New()
+	e.GET("/foo", func(c Context) error {
+		if ctx, ok := c.(*context); ok {
+			return c.String(http.StatusOK, ctx.MyData)
+		}
+		return c.NoContent(http.StatusBadRequest)
+	})
+
+	req, _ := http.NewRequest(http.MethodGet, "/foo", nil)
+	rw := &serveHTTPContextInterceptorRW{}
+	rw.intercept = func(ctx Context, handle func(ctx Context)) {
+		handle(&context{ctx, "bar"})
+	}
+	e.ServeHTTP(rw, req)
+
+	assert.Equal(t, http.StatusOK, rw.statusCode)
+	assert.Equal(t, "bar", rw.buffer.String())
+}
+
+type serveHTTPContextInterceptorRW struct {
+	header     http.Header
+	buffer     *bytes.Buffer
+	statusCode int
+	intercept  func(ctx Context, handle func(ctx Context))
+}
+
+func (rw *serveHTTPContextInterceptorRW) Header() http.Header {
+	if rw.header == nil {
+		rw.header = make(http.Header)
+	}
+	return rw.header
+}
+
+func (rw *serveHTTPContextInterceptorRW) Write(data []byte) (int, error) {
+	if rw.buffer == nil {
+		rw.buffer = &bytes.Buffer{}
+	}
+	return rw.buffer.Write(data)
+}
+
+func (rw *serveHTTPContextInterceptorRW) WriteHeader(statusCode int) {
+	rw.statusCode = statusCode
+}
+
+func (rw *serveHTTPContextInterceptorRW) InterceptContext(ctx Context, handle func(ctx Context)) {
+	rw.intercept(ctx, handle)
+}
+
 func benchmarkEchoRoutes(b *testing.B, routes []*Route) {
 	e := New()
 	req := httptest.NewRequest("GET", "/", nil)
