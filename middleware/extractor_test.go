@@ -6,7 +6,7 @@ package middleware
 import (
 	"bytes"
 	"fmt"
-	"github.com/Zambiorix/echo/v4"
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"mime/multipart"
 	"net/http"

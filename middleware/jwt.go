@@ -9,8 +9,8 @@ package middleware
 import (
 	"errors"
 	"fmt"
-	"github.com/Zambiorix/echo/v4"
 	"github.com/golang-jwt/jwt"
+	"github.com/labstack/echo/v4"
 	"net/http"
 	"reflect"
 )

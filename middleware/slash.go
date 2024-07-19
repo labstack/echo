@@ -6,7 +6,7 @@ package middleware
 import (
 	"strings"
 
-	"github.com/Zambiorix/echo/v4"
+	"github.com/labstack/echo/v4"
 )
 
 // TrailingSlashConfig defines the config for TrailingSlash middleware.

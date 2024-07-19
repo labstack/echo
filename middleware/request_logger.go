@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Zambiorix/echo/v4"
+	"github.com/labstack/echo/v4"
 )
 
 // Example for `slog` https://pkg.go.dev/log/slog

@@ -17,7 +17,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Zambiorix/echo/v4"
+	"github.com/labstack/echo/v4"
 )
 
 // TODO: Handle TLS proxy

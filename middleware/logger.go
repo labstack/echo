@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Zambiorix/echo/v4"
+	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/color"
 	"github.com/valyala/fasttemplate"
 )

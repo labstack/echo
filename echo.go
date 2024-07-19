@@ -11,8 +11,8 @@ Example:
 	import (
 	  "net/http"
 
-	  "github.com/Zambiorix/echo/v4"
-	  "github.com/Zambiorix/echo/v4/middleware"
+	  "github.com/labstack/echo/v4"
+	  "github.com/labstack/echo/v4/middleware"
 	)
 
 	// Handler

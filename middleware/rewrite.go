@@ -6,7 +6,7 @@ package middleware
 import (
 	"regexp"
 
-	"github.com/Zambiorix/echo/v4"
+	"github.com/labstack/echo/v4"
 )
 
 // RewriteConfig defines the config for Rewrite middleware.

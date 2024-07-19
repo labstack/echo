@@ -5,7 +5,7 @@ package middleware
 
 import (
 	"context"
-	"github.com/Zambiorix/echo/v4"
+	"github.com/labstack/echo/v4"
 	"net/http"
 	"sync"
 	"time"

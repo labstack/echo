@@ -6,7 +6,7 @@ package middleware
 import (
 	"fmt"
 
-	"github.com/Zambiorix/echo/v4"
+	"github.com/labstack/echo/v4"
 )
 
 // SecureConfig defines the config for Secure middleware.

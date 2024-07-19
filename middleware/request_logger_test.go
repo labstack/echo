@@ -4,7 +4,7 @@
 package middleware
 
 import (
-	"github.com/Zambiorix/echo/v4"
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
