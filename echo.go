@@ -679,6 +679,46 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	e.pool.Put(c)
 }
 
+// ServeHTTPWithIntercept implements `http.Handler` interface, which serves HTTP requests.
+func (e *Echo) ServeHTTPWithIntercept(w http.ResponseWriter, r *http.Request, intercept func(c Context, handle func(c Context))) {
+	// Acquire context
+	c := e.pool.Get().(*context)
+	c.Reset(r, w)
+
+	var h HandlerFunc
+
+	if e.premiddleware == nil {
+		e.findRouter(r.Host).Find(r.Method, GetPath(r), c)
+		h = c.Handler()
+		h = applyMiddleware(h, e.middleware...)
+	} else {
+		h = func(c Context) error {
+			e.findRouter(r.Host).Find(r.Method, GetPath(r), c)
+			h := c.Handler()
+			h = applyMiddleware(h, e.middleware...)
+			return h(c)
+		}
+		h = applyMiddleware(h, e.premiddleware...)
+	}
+
+	if intercept == nil {
+		// Execute chain
+		if err := h(c); err != nil {
+			e.HTTPErrorHandler(err, c)
+		}
+	} else {
+		intercept(c, func(c Context) {
+			// Execute chain
+			if err := h(c); err != nil {
+				e.HTTPErrorHandler(err, c)
+			}
+		})
+	}
+
+	// Release context
+	e.pool.Put(c)
+}
+
 // Start starts an HTTP server.
 func (e *Echo) Start(address string) error {
 	e.startupMutex.Lock()
