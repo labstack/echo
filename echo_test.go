@@ -1583,11 +1583,11 @@ func TestEcho_OnAddRouteHandler(t *testing.T) {
 	assert.Len(t, added, 2)
 
 	assert.Equal(t, "", added[0].host)
-	assert.Equal(t, Route{Method: http.MethodGet, Path: "/static", Name: "github.com/labstack/echo/v4.TestEcho_OnAddRouteHandler.func1"}, added[0].route)
+	assert.Equal(t, Route{Method: http.MethodGet, Path: "/static", Name: "github.com/Zambiorix/echo/v4.TestEcho_OnAddRouteHandler.func1"}, added[0].route)
 	assert.Len(t, added[0].middleware, 0)
 
 	assert.Equal(t, "domain.site", added[1].host)
-	assert.Equal(t, Route{Method: http.MethodGet, Path: "/static/*", Name: "github.com/labstack/echo/v4.TestEcho_OnAddRouteHandler.func1"}, added[1].route)
+	assert.Equal(t, Route{Method: http.MethodGet, Path: "/static/*", Name: "github.com/Zambiorix/echo/v4.TestEcho_OnAddRouteHandler.func1"}, added[1].route)
 	assert.Len(t, added[1].middleware, 1)
 }
 

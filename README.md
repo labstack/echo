@@ -1,7 +1,7 @@
 <a href="https://echo.labstack.com"><img height="80" src="https://cdn.labstack.com/images/echo-logo.svg"></a>
 
 [![Sourcegraph](https://sourcegraph.com/github.com/labstack/echo/-/badge.svg?style=flat-square)](https://sourcegraph.com/github.com/labstack/echo?badge)
-[![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://pkg.go.dev/github.com/labstack/echo/v4)
+[![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://pkg.go.dev/github.com/Zambiorix/echo/v4)
 [![Go Report Card](https://goreportcard.com/badge/github.com/labstack/echo?style=flat-square)](https://goreportcard.com/report/github.com/labstack/echo)
 [![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/labstack/echo/echo.yml?style=flat-square)](https://github.com/labstack/echo/actions)
 [![Codecov](https://img.shields.io/codecov/c/github/labstack/echo.svg?style=flat-square)](https://codecov.io/gh/labstack/echo)
@@ -65,7 +65,7 @@ The benchmarks above were run on an Intel(R) Core(TM) i7-6820HQ CPU @ 2.70GHz
 
 ```sh
 // go get github.com/labstack/echo/{version}
-go get github.com/labstack/echo/v4
+go get github.com/Zambiorix/echo/v4
 ```
 Latest version of Echo supports last four Go major [releases](https://go.dev/doc/devel/release) and might work with older versions.
 
@@ -75,8 +75,8 @@ Latest version of Echo supports last four Go major [releases](https://go.dev/doc
 package main
 
 import (
-  "github.com/labstack/echo/v4"
-  "github.com/labstack/echo/v4/middleware"
+  "github.com/Zambiorix/echo/v4"
+  "github.com/Zambiorix/echo/v4/middleware"
   "net/http"
 )
 

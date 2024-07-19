@@ -11,7 +11,7 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/labstack/echo/v4"
+	"github.com/Zambiorix/echo/v4"
 )
 
 // BodyDumpConfig defines the config for BodyDump middleware.

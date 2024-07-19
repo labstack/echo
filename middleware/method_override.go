@@ -6,7 +6,7 @@ package middleware
 import (
 	"net/http"
 
-	"github.com/labstack/echo/v4"
+	"github.com/Zambiorix/echo/v4"
 )
 
 // MethodOverrideConfig defines the config for MethodOverride middleware.

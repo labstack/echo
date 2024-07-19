@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/labstack/echo/v4"
+	"github.com/Zambiorix/echo/v4"
 )
 
 // Skipper defines a function to skip middleware. Returning true skips processing

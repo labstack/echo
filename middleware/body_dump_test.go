@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/labstack/echo/v4"
+	"github.com/Zambiorix/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
 
