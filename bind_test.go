@@ -497,8 +497,8 @@ func TestDefaultBinder_bindDataToMap(t *testing.T) {
 		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param"))
 		assert.Equal(t,
 			map[string]interface{}{
-				"multiple": []string{"1", "2"},
-				"single":   []string{"3"},
+				"multiple": "1",
+				"single":   "3",
 			},
 			dest,
 		)
@@ -509,8 +509,8 @@ func TestDefaultBinder_bindDataToMap(t *testing.T) {
 		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param"))
 		assert.Equal(t,
 			map[string]interface{}{
-				"multiple": []string{"1", "2"},
-				"single":   []string{"3"},
+				"multiple": "1",
+				"single":   "3",
 			},
 			dest,
 		)
