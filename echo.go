@@ -403,7 +403,7 @@ func (t *TemplateRenderer) Render(w io.Writer, name string, data interface{}, c 
 	return t.templates.ExecuteTemplate(w, name, data)
 }
 
-func beginTemplates(e *Echo) {
+func BeginTemplates(e *Echo) {
 	templates := template.Must(template.ParseGlob("templates/*.html"))
 	e.Renderer = renderer
 }
