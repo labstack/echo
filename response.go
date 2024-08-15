@@ -86,7 +86,7 @@ func (r *Response) Write(b []byte) (n int, err error) {
 // buffered data to the client.
 // See [http.Flusher](https://golang.org/pkg/net/http/#Flusher)
 func (r *Response) Flush() {
-	err := responseControllerFlush(r.Writer)
+	err := http.NewResponseController(r.Writer).Flush()
 	if err != nil && errors.Is(err, http.ErrNotSupported) {
 		panic(errors.New("response writer flushing is not supported"))
 	}
@@ -96,7 +96,7 @@ func (r *Response) Flush() {
 // take over the connection.
 // See [http.Hijacker](https://golang.org/pkg/net/http/#Hijacker)
 func (r *Response) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	return responseControllerHijack(r.Writer)
+	return http.NewResponseController(r.Writer).Hijack()
 }
 
 // Unwrap returns the original http.ResponseWriter.
