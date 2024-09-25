@@ -25,6 +25,13 @@ import (
   err := echo.QueryParamsBinder(c).Int64("length", &length).BindError()
   ```
 
+	Binders can be chained together with `UseBefore` method. Where left side binder values have priority over right side binder.
+
+  Example:
+  ```go
+  b := PathParamsBinder(c).UseBefore(QueryParamsBinder(c))
+  ```
+
 	For every supported type there are following methods:
 		* <Type>("param", &destination) - if parameter value exists then binds it to given destination of that type i.e Int64(...).
 		* Must<Type>("param", &destination) - parameter value is required to exist, binds it to given destination of that type i.e MustInt64(...).
@@ -169,6 +176,28 @@ func FormFieldBinder(c Context) *ValueBinder {
 	}
 
 	return vb
+}
+
+// UseBefore creates new binder that binds left side binder first and if this does not result value the right side
+// binder is used (receiver binder has priority over argument binder).
+func (b *ValueBinder) UseBefore(after *ValueBinder) *ValueBinder {
+	oldValueFunc := b.ValueFunc
+	b.ValueFunc = func(sourceParam string) string {
+		if v := oldValueFunc(sourceParam); v != "" {
+			return v
+		}
+		return after.ValueFunc(sourceParam)
+	}
+
+	oldValuesFunc := b.ValuesFunc
+	b.ValuesFunc = func(sourceParam string) []string {
+		if v := oldValuesFunc(sourceParam); v != nil {
+			return v
+		}
+		return after.ValuesFunc(sourceParam)
+	}
+
+	return b
 }
 
 // FailFast set internal flag to indicate if binding methods will return early (without binding) when previous bind failed
