@@ -142,18 +142,18 @@ func KeyAuthWithConfig(config KeyAuthConfig) echo.MiddlewareFunc {
 			// we are here only when we did not successfully extract and validate any of keys
 			err := lastValidatorErr
 			if err == nil { // prioritize validator errors over extracting errors
-				// ugly part to preserve backwards compatible errors. someone could rely on them
-				if lastExtractorErr == errQueryExtractorValueMissing {
+				switch {
+				case errors.Is(err, errQueryExtractorValueMissing):
 					err = errors.New("missing key in the query string")
-				} else if lastExtractorErr == errCookieExtractorValueMissing {
+				case errors.Is(err, errCookieExtractorValueMissing):
 					err = errors.New("missing key in cookies")
-				} else if lastExtractorErr == errFormExtractorValueMissing {
+				case errors.Is(err, errFormExtractorValueMissing):
 					err = errors.New("missing key in the form")
-				} else if lastExtractorErr == errHeaderExtractorValueMissing {
+				case errors.Is(err, errHeaderExtractorValueMissing):
 					err = errors.New("missing key in request header")
-				} else if lastExtractorErr == errHeaderExtractorValueInvalid {
+				case errors.Is(err, errHeaderExtractorValueInvalid):
 					err = errors.New("invalid key in the request header")
-				} else {
+				default:
 					err = lastExtractorErr
 				}
 				err = &ErrKeyAuthMissing{Err: err}

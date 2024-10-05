@@ -757,7 +757,7 @@ func TestJWTConfig_ContinueOnIgnoredError(t *testing.T) {
 				ContinueOnIgnoredError: tc.whenContinueOnIgnoredError,
 				SigningKey:             []byte("secret"),
 				ErrorHandlerWithContext: func(err error, c echo.Context) error {
-					if err == ErrJWTMissing {
+					if errors.Is(err, ErrJWTMissing) {
 						c.Set("test", "public-token")
 						return nil
 					}

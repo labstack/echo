@@ -478,7 +478,7 @@ func startServer(e *echo.Echo) (*http.Server, string, error) {
 
 	errCh := make(chan error)
 	go func() {
-		if err := s.Serve(l); err != http.ErrServerClosed {
+		if err := s.Serve(l); !errors.Is(err, http.ErrServerClosed) {
 			errCh <- err
 		}
 	}()

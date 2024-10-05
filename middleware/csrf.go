@@ -5,6 +5,7 @@ package middleware
 
 import (
 	"crypto/subtle"
+	"errors"
 	"net/http"
 	"time"
 
@@ -163,16 +164,17 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 				if lastTokenErr != nil {
 					finalErr = lastTokenErr
 				} else if lastExtractorErr != nil {
-					// ugly part to preserve backwards compatible errors. someone could rely on them
-					if lastExtractorErr == errQueryExtractorValueMissing {
+					switch {
+					case errors.Is(lastExtractorErr, errQueryExtractorValueMissing):
 						lastExtractorErr = echo.NewHTTPError(http.StatusBadRequest, "missing csrf token in the query string")
-					} else if lastExtractorErr == errFormExtractorValueMissing {
+					case errors.Is(lastExtractorErr, errFormExtractorValueMissing):
 						lastExtractorErr = echo.NewHTTPError(http.StatusBadRequest, "missing csrf token in the form parameter")
-					} else if lastExtractorErr == errHeaderExtractorValueMissing {
+					case errors.Is(lastExtractorErr, errHeaderExtractorValueMissing):
 						lastExtractorErr = echo.NewHTTPError(http.StatusBadRequest, "missing csrf token in request header")
-					} else {
+					default:
 						lastExtractorErr = echo.NewHTTPError(http.StatusBadRequest, lastExtractorErr.Error())
 					}
+
 					finalErr = lastExtractorErr
 				}
 
