@@ -1102,6 +1102,103 @@ func TestDefaultBinder_BindBody(t *testing.T) {
 	}
 }
 
+type testFile struct {
+	Fieldname string
+	Filename  string
+	Content   []byte
+}
+
+// createRequestMultipartFiles creates a multipart HTTP request with multiple files.
+func createRequestMultipartFiles(t *testing.T, files ...testFile) *http.Request {
+	var body bytes.Buffer
+	mw := multipart.NewWriter(&body)
+
+	for _, file := range files {
+		fw, err := mw.CreateFormFile(file.Fieldname, file.Filename)
+		assert.NoError(t, err)
+
+		n, err := fw.Write(file.Content)
+		assert.NoError(t, err)
+		assert.Equal(t, len(file.Content), n)
+	}
+
+	err := mw.Close()
+	assert.NoError(t, err)
+
+	req, err := http.NewRequest(http.MethodPost, "/", &body)
+	assert.NoError(t, err)
+
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+
+	return req
+}
+
+func assertMultipartFileHeader(t *testing.T, fh *multipart.FileHeader, file testFile) {
+	assert.Equal(t, file.Filename, fh.Filename)
+	assert.Equal(t, int64(len(file.Content)), fh.Size)
+	fl, err := fh.Open()
+	assert.NoError(t, err)
+	body, err := io.ReadAll(fl)
+	assert.NoError(t, err)
+	assert.Equal(t, string(file.Content), string(body))
+	err = fl.Close()
+	assert.NoError(t, err)
+}
+
+func TestFormMultipartBindTwoFiles(t *testing.T) {
+	var args struct {
+		Files []*multipart.FileHeader `form:"files"`
+	}
+
+	files := []testFile{
+		{
+			Fieldname: "files",
+			Filename:  "file1.txt",
+			Content:   []byte("This is the content of file 1."),
+		},
+		{
+			Fieldname: "files",
+			Filename:  "file2.txt",
+			Content:   []byte("This is the content of file 2."),
+		},
+	}
+
+	e := New()
+	req := createRequestMultipartFiles(t, files...)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	err := c.Bind(&args)
+	assert.NoError(t, err)
+
+	assert.Len(t, args.Files, len(files))
+	for idx, file := range files {
+		assertMultipartFileHeader(t, args.Files[idx], file)
+	}
+}
+
+func TestFormMultipartBindOneFile(t *testing.T) {
+	var args struct {
+		File *multipart.FileHeader `form:"file"`
+	}
+
+	file := testFile{
+		Fieldname: "file",
+		Filename:  "file1.txt",
+		Content:   []byte("This is the content of file 1."),
+	}
+
+	e := New()
+	req := createRequestMultipartFiles(t, file)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	err := c.Bind(&args)
+	assert.NoError(t, err)
+
+	assertMultipartFileHeader(t, args.File, file)
+}
+
 func testBindURL(queryString string, target any) error {
 	e := New()
 	req := httptest.NewRequest(http.MethodGet, queryString, nil)

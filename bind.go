@@ -8,6 +8,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"mime/multipart"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -90,12 +91,20 @@ func (b *DefaultBinder) BindBody(c Context, i interface{}) (err error) {
 			}
 			return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
 		}
-	case strings.HasPrefix(ctype, MIMEApplicationForm), strings.HasPrefix(ctype, MIMEMultipartForm):
+	case strings.HasPrefix(ctype, MIMEApplicationForm):
 		params, err := c.FormParams()
 		if err != nil {
 			return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
 		}
 		if err = b.bindData(i, params, "form"); err != nil {
+			return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
+		}
+	case strings.HasPrefix(ctype, MIMEMultipartForm):
+		params, err := c.MultipartForm()
+		if err != nil {
+			return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
+		}
+		if err = b.bindData(i, params.Value, "form", params.File); err != nil {
 			return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
 		}
 	default:
@@ -132,8 +141,8 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 }
 
 // bindData will bind data ONLY fields in destination struct that have EXPLICIT tag
-func (b *DefaultBinder) bindData(destination interface{}, data map[string][]string, tag string) error {
-	if destination == nil || len(data) == 0 {
+func (b *DefaultBinder) bindData(destination interface{}, data map[string][]string, tag string, files ...map[string][]*multipart.FileHeader) error {
+	if destination == nil || (len(data) == 0 && len(files) == 0) {
 		return nil
 	}
 	typ := reflect.TypeOf(destination).Elem()
@@ -207,6 +216,37 @@ func (b *DefaultBinder) bindData(destination interface{}, data map[string][]stri
 			}
 			// does not have explicit tag and is not an ordinary struct - so move to next field
 			continue
+		}
+
+		// Handle multiple file uploads ([]*multipart.FileHeader, *multipart.FileHeader, []multipart.FileHeader)
+		if len(files) > 0 {
+			for _, fileMap := range files {
+				fileHeaders, exists := fileMap[inputFieldName]
+				if exists {
+					if structField.Type() == reflect.TypeOf([]*multipart.FileHeader(nil)) {
+						structField.Set(reflect.ValueOf(fileHeaders))
+						continue
+					} else if structField.Type() == reflect.TypeOf([]multipart.FileHeader(nil)) {
+						var headers []multipart.FileHeader
+						for _, fileHeader := range fileHeaders {
+							headers = append(headers, *fileHeader)
+						}
+						structField.Set(reflect.ValueOf(headers))
+						continue
+					} else if structField.Type() == reflect.TypeOf(&multipart.FileHeader{}) {
+
+						if len(fileHeaders) > 0 {
+							structField.Set(reflect.ValueOf(fileHeaders[0]))
+						}
+						continue
+					} else if structField.Type() == reflect.TypeOf(multipart.FileHeader{}) {
+						if len(fileHeaders) > 0 {
+							structField.Set(reflect.ValueOf(*fileHeaders[0]))
+						}
+						continue
+					}
+				}
+			}
 		}
 
 		inputValue, exists := data[inputFieldName]
