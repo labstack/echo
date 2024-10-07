@@ -5,6 +5,7 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -405,7 +406,7 @@ func proxyHTTP(tgt *ProxyTarget, c echo.Context, config ProxyConfig) http.Handle
 		// The Go standard library (at of late 2020) wraps the exported, standard
 		// context.Canceled error with unexported garbage value requiring a substring check, see
 		// https://github.com/golang/go/blob/6965b01ea248cabb70c3749fd218b36089a21efb/src/net/net.go#L416-L430
-		if err == context.Canceled || strings.Contains(err.Error(), "operation was canceled") {
+		if errors.Is(err, context.Canceled) || strings.Contains(err.Error(), "operation was canceled") {
 			httpError := echo.NewHTTPError(StatusCodeContextCanceled, fmt.Sprintf("client closed connection: %v", err))
 			httpError.Internal = err
 			c.Set("_error", httpError)

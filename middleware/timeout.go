@@ -5,6 +5,7 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"sync"
@@ -163,7 +164,7 @@ func (t echoHandlerFuncWrapper) ServeHTTP(rw http.ResponseWriter, r *http.Reques
 	}()
 
 	err := t.handler(t.ctx)
-	if ctxErr := r.Context().Err(); ctxErr == context.DeadlineExceeded {
+	if ctxErr := r.Context().Err(); errors.Is(ctxErr, context.DeadlineExceeded) {
 		if err != nil && t.errHandler != nil {
 			t.errHandler(err, t.ctx)
 		}

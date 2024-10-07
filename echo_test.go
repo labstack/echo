@@ -915,7 +915,7 @@ func waitForServerStart(e *Echo, errChan <-chan error, isTLS bool) error {
 				return nil // was started
 			}
 		case err := <-errChan:
-			if err == http.ErrServerClosed {
+			if errors.Is(err, http.ErrServerClosed) {
 				return nil
 			}
 			return err
