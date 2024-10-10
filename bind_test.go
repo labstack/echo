@@ -1177,6 +1177,46 @@ func TestFormMultipartBindTwoFiles(t *testing.T) {
 	}
 }
 
+func TestFormMultipartBindMultipleKeys(t *testing.T) {
+	var args struct {
+		Files []multipart.FileHeader `form:"files"`
+		File  multipart.FileHeader   `form:"file"`
+	}
+
+	files := []testFile{
+		{
+			Fieldname: "files",
+			Filename:  "file1.txt",
+			Content:   []byte("This is the content of file 1."),
+		},
+		{
+			Fieldname: "files",
+			Filename:  "file2.txt",
+			Content:   []byte("This is the content of file 2."),
+		},
+	}
+	file := testFile{
+		Fieldname: "file",
+		Filename:  "file3.txt",
+		Content:   []byte("This is the content of file 3."),
+	}
+
+	e := New()
+	req := createRequestMultipartFiles(t, append(files, file)...)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	err := c.Bind(&args)
+	assert.NoError(t, err)
+
+	assert.Len(t, args.Files, len(files))
+	for idx, file := range files {
+		argsFile := args.Files[idx]
+		assertMultipartFileHeader(t, &argsFile, file)
+	}
+	assertMultipartFileHeader(t, &args.File, file)
+}
+
 func TestFormMultipartBindOneFile(t *testing.T) {
 	var args struct {
 		File *multipart.FileHeader `form:"file"`
