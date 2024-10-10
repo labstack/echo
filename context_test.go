@@ -774,6 +774,11 @@ func TestContextMultipartForm(t *testing.T) {
 	buf := new(bytes.Buffer)
 	mw := multipart.NewWriter(buf)
 	mw.WriteField("name", "Jon Snow")
+	fileContent := "This is a test file"
+	w, err := mw.CreateFormFile("file", "test.txt")
+	if assert.NoError(t, err) {
+		w.Write([]byte(fileContent))
+	}
 	mw.Close()
 	req := httptest.NewRequest(http.MethodPost, "/", buf)
 	req.Header.Set(HeaderContentType, mw.FormDataContentType())
@@ -782,6 +787,13 @@ func TestContextMultipartForm(t *testing.T) {
 	f, err := c.MultipartForm()
 	if assert.NoError(t, err) {
 		assert.NotNil(t, f)
+
+		files := f.File["file"]
+		if assert.Len(t, files, 1) {
+			file := files[0]
+			assert.Equal(t, "test.txt", file.Filename)
+			assert.Equal(t, int64(len(fileContent)), file.Size)
+		}
 	}
 }
 
