@@ -219,30 +219,26 @@ func (b *DefaultBinder) bindData(destination interface{}, data map[string][]stri
 		}
 
 		// Handle multiple file uploads ([]*multipart.FileHeader, *multipart.FileHeader, []multipart.FileHeader)
-		if len(files) > 0 {
+		if len(files) > 0 && isMultipartFile(structField.Type()) {
 			for _, fileMap := range files {
 				fileHeaders, exists := fileMap[inputFieldName]
-				if exists {
-					if structField.Type() == reflect.TypeOf([]*multipart.FileHeader(nil)) {
+				if exists && len(fileHeaders) > 0 {
+					switch structField.Type() {
+					case reflect.TypeOf([]*multipart.FileHeader(nil)):
 						structField.Set(reflect.ValueOf(fileHeaders))
 						continue
-					} else if structField.Type() == reflect.TypeOf([]multipart.FileHeader(nil)) {
-						var headers []multipart.FileHeader
-						for _, fileHeader := range fileHeaders {
-							headers = append(headers, *fileHeader)
+					case reflect.TypeOf([]multipart.FileHeader(nil)):
+						headers := make([]multipart.FileHeader, len(fileHeaders))
+						for i, fileHeader := range fileHeaders {
+							headers[i] = *fileHeader
 						}
 						structField.Set(reflect.ValueOf(headers))
 						continue
-					} else if structField.Type() == reflect.TypeOf(&multipart.FileHeader{}) {
-
-						if len(fileHeaders) > 0 {
-							structField.Set(reflect.ValueOf(fileHeaders[0]))
-						}
+					case reflect.TypeOf(&multipart.FileHeader{}):
+						structField.Set(reflect.ValueOf(fileHeaders[0]))
 						continue
-					} else if structField.Type() == reflect.TypeOf(multipart.FileHeader{}) {
-						if len(fileHeaders) > 0 {
-							structField.Set(reflect.ValueOf(*fileHeaders[0]))
-						}
+					case reflect.TypeOf(multipart.FileHeader{}):
+						structField.Set(reflect.ValueOf(*fileHeaders[0]))
 						continue
 					}
 				}
@@ -433,4 +429,11 @@ func setFloatField(value string, bitSize int, field reflect.Value) error {
 		field.SetFloat(floatVal)
 	}
 	return err
+}
+
+func isMultipartFile(field reflect.Type) bool {
+	return reflect.TypeOf(&multipart.FileHeader{}) == field ||
+		reflect.TypeOf(multipart.FileHeader{}) == field ||
+		reflect.TypeOf([]*multipart.FileHeader(nil)) == field ||
+		reflect.TypeOf([]multipart.FileHeader(nil)) == field
 }
