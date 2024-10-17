@@ -25,7 +25,6 @@ func TestBasicAuth(t *testing.T) {
 		return false, nil
 	}
 
-	// Define the test cases
 	tests := []struct {
 		name           string
 		authHeader     string
@@ -36,23 +35,20 @@ func TestBasicAuth(t *testing.T) {
 		expectedErrMsg string
 	}{
 		{
-			name:          "Valid credentials",
-			authHeader:    basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:secret")),
-			expectedCode:  http.StatusOK,
-			skipperResult: false,
+			name:         "Valid credentials",
+			authHeader:   basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:secret")),
+			expectedCode: http.StatusOK,
 		},
 		{
-			name:          "Case-insensitive header scheme",
-			authHeader:    strings.ToUpper(basic) + " " + base64.StdEncoding.EncodeToString([]byte("joe:secret")),
-			expectedCode:  http.StatusOK,
-			skipperResult: false,
+			name:         "Case-insensitive header scheme",
+			authHeader:   strings.ToUpper(basic) + " " + base64.StdEncoding.EncodeToString([]byte("joe:secret")),
+			expectedCode: http.StatusOK,
 		},
 		{
 			name:           "Invalid credentials",
 			authHeader:     basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:invalid-password")),
 			expectedCode:   http.StatusUnauthorized,
 			expectedAuth:   basic + ` realm="someRealm"`,
-			skipperResult:  false,
 			expectedErr:    true,
 			expectedErrMsg: "Unauthorized",
 		},
@@ -60,14 +56,12 @@ func TestBasicAuth(t *testing.T) {
 			name:           "Invalid base64 string",
 			authHeader:     basic + " invalidString",
 			expectedCode:   http.StatusBadRequest,
-			skipperResult:  false,
 			expectedErr:    true,
 			expectedErrMsg: "Bad Request",
 		},
 		{
 			name:           "Missing Authorization header",
 			expectedCode:   http.StatusUnauthorized,
-			skipperResult:  false,
 			expectedErr:    true,
 			expectedErrMsg: "Unauthorized",
 		},
@@ -75,7 +69,6 @@ func TestBasicAuth(t *testing.T) {
 			name:           "Invalid Authorization header",
 			authHeader:     base64.StdEncoding.EncodeToString([]byte("invalid")),
 			expectedCode:   http.StatusUnauthorized,
-			skipperResult:  false,
 			expectedErr:    true,
 			expectedErrMsg: "Unauthorized",
 		},
