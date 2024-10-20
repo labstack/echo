@@ -45,7 +45,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	stdLog "log"
 	"net"
 	"net/http"
@@ -140,11 +139,6 @@ type Validator interface {
 type JSONSerializer interface {
 	Serialize(c Context, i interface{}, indent string) error
 	Deserialize(c Context, i interface{}) error
-}
-
-// Renderer is the interface that wraps the Render function.
-type Renderer interface {
-	Render(io.Writer, string, interface{}, Context) error
 }
 
 // Map defines a generic map of type `map[string]interface{}`.
