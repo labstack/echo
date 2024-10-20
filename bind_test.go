@@ -446,7 +446,7 @@ func TestDefaultBinder_bindDataToMap(t *testing.T) {
 
 	t.Run("ok, bind to map[string]string", func(t *testing.T) {
 		dest := map[string]string{}
-		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param"))
+		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param", nil))
 		assert.Equal(t,
 			map[string]string{
 				"multiple": "1",
@@ -458,7 +458,7 @@ func TestDefaultBinder_bindDataToMap(t *testing.T) {
 
 	t.Run("ok, bind to map[string]string with nil map", func(t *testing.T) {
 		var dest map[string]string
-		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param"))
+		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param", nil))
 		assert.Equal(t,
 			map[string]string{
 				"multiple": "1",
@@ -470,7 +470,7 @@ func TestDefaultBinder_bindDataToMap(t *testing.T) {
 
 	t.Run("ok, bind to map[string][]string", func(t *testing.T) {
 		dest := map[string][]string{}
-		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param"))
+		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param", nil))
 		assert.Equal(t,
 			map[string][]string{
 				"multiple": {"1", "2"},
@@ -482,7 +482,7 @@ func TestDefaultBinder_bindDataToMap(t *testing.T) {
 
 	t.Run("ok, bind to map[string][]string with nil map", func(t *testing.T) {
 		var dest map[string][]string
-		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param"))
+		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param", nil))
 		assert.Equal(t,
 			map[string][]string{
 				"multiple": {"1", "2"},
@@ -494,7 +494,7 @@ func TestDefaultBinder_bindDataToMap(t *testing.T) {
 
 	t.Run("ok, bind to map[string]interface", func(t *testing.T) {
 		dest := map[string]interface{}{}
-		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param"))
+		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param", nil))
 		assert.Equal(t,
 			map[string]interface{}{
 				"multiple": "1",
@@ -506,7 +506,7 @@ func TestDefaultBinder_bindDataToMap(t *testing.T) {
 
 	t.Run("ok, bind to map[string]interface with nil map", func(t *testing.T) {
 		var dest map[string]interface{}
-		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param"))
+		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param", nil))
 		assert.Equal(t,
 			map[string]interface{}{
 				"multiple": "1",
@@ -518,25 +518,25 @@ func TestDefaultBinder_bindDataToMap(t *testing.T) {
 
 	t.Run("ok, bind to map[string]int skips", func(t *testing.T) {
 		dest := map[string]int{}
-		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param"))
+		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param", nil))
 		assert.Equal(t, map[string]int{}, dest)
 	})
 
 	t.Run("ok, bind to map[string]int skips with nil map", func(t *testing.T) {
 		var dest map[string]int
-		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param"))
+		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param", nil))
 		assert.Equal(t, map[string]int(nil), dest)
 	})
 
 	t.Run("ok, bind to map[string][]int skips", func(t *testing.T) {
 		dest := map[string][]int{}
-		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param"))
+		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param", nil))
 		assert.Equal(t, map[string][]int{}, dest)
 	})
 
 	t.Run("ok, bind to map[string][]int skips with nil map", func(t *testing.T) {
 		var dest map[string][]int
-		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param"))
+		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param", nil))
 		assert.Equal(t, map[string][]int(nil), dest)
 	})
 }
@@ -544,7 +544,7 @@ func TestDefaultBinder_bindDataToMap(t *testing.T) {
 func TestBindbindData(t *testing.T) {
 	ts := new(bindTestStruct)
 	b := new(DefaultBinder)
-	err := b.bindData(ts, values, "form")
+	err := b.bindData(ts, values, "form", nil)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 0, ts.I)
@@ -666,7 +666,7 @@ func BenchmarkBindbindDataWithTags(b *testing.B) {
 	var err error
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		err = binder.bindData(ts, values, "form")
+		err = binder.bindData(ts, values, "form", nil)
 	}
 	assert.NoError(b, err)
 	assertBindTestStruct(b, (*bindTestStruct)(ts))
@@ -1102,143 +1102,6 @@ func TestDefaultBinder_BindBody(t *testing.T) {
 	}
 }
 
-type testFile struct {
-	Fieldname string
-	Filename  string
-	Content   []byte
-}
-
-// createRequestMultipartFiles creates a multipart HTTP request with multiple files.
-func createRequestMultipartFiles(t *testing.T, files ...testFile) *http.Request {
-	var body bytes.Buffer
-	mw := multipart.NewWriter(&body)
-
-	for _, file := range files {
-		fw, err := mw.CreateFormFile(file.Fieldname, file.Filename)
-		assert.NoError(t, err)
-
-		n, err := fw.Write(file.Content)
-		assert.NoError(t, err)
-		assert.Equal(t, len(file.Content), n)
-	}
-
-	err := mw.Close()
-	assert.NoError(t, err)
-
-	req, err := http.NewRequest(http.MethodPost, "/", &body)
-	assert.NoError(t, err)
-
-	req.Header.Set("Content-Type", mw.FormDataContentType())
-
-	return req
-}
-
-func assertMultipartFileHeader(t *testing.T, fh *multipart.FileHeader, file testFile) {
-	assert.Equal(t, file.Filename, fh.Filename)
-	assert.Equal(t, int64(len(file.Content)), fh.Size)
-	fl, err := fh.Open()
-	assert.NoError(t, err)
-	body, err := io.ReadAll(fl)
-	assert.NoError(t, err)
-	assert.Equal(t, string(file.Content), string(body))
-	err = fl.Close()
-	assert.NoError(t, err)
-}
-
-func TestFormMultipartBindTwoFiles(t *testing.T) {
-	var args struct {
-		Files []*multipart.FileHeader `form:"files"`
-	}
-
-	files := []testFile{
-		{
-			Fieldname: "files",
-			Filename:  "file1.txt",
-			Content:   []byte("This is the content of file 1."),
-		},
-		{
-			Fieldname: "files",
-			Filename:  "file2.txt",
-			Content:   []byte("This is the content of file 2."),
-		},
-	}
-
-	e := New()
-	req := createRequestMultipartFiles(t, files...)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-
-	err := c.Bind(&args)
-	assert.NoError(t, err)
-
-	assert.Len(t, args.Files, len(files))
-	for idx, file := range files {
-		assertMultipartFileHeader(t, args.Files[idx], file)
-	}
-}
-
-func TestFormMultipartBindMultipleKeys(t *testing.T) {
-	var args struct {
-		Files []multipart.FileHeader `form:"files"`
-		File  multipart.FileHeader   `form:"file"`
-	}
-
-	files := []testFile{
-		{
-			Fieldname: "files",
-			Filename:  "file1.txt",
-			Content:   []byte("This is the content of file 1."),
-		},
-		{
-			Fieldname: "files",
-			Filename:  "file2.txt",
-			Content:   []byte("This is the content of file 2."),
-		},
-	}
-	file := testFile{
-		Fieldname: "file",
-		Filename:  "file3.txt",
-		Content:   []byte("This is the content of file 3."),
-	}
-
-	e := New()
-	req := createRequestMultipartFiles(t, append(files, file)...)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-
-	err := c.Bind(&args)
-	assert.NoError(t, err)
-
-	assert.Len(t, args.Files, len(files))
-	for idx, file := range files {
-		argsFile := args.Files[idx]
-		assertMultipartFileHeader(t, &argsFile, file)
-	}
-	assertMultipartFileHeader(t, &args.File, file)
-}
-
-func TestFormMultipartBindOneFile(t *testing.T) {
-	var args struct {
-		File *multipart.FileHeader `form:"file"`
-	}
-
-	file := testFile{
-		Fieldname: "file",
-		Filename:  "file1.txt",
-		Content:   []byte("This is the content of file 1."),
-	}
-
-	e := New()
-	req := createRequestMultipartFiles(t, file)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-
-	err := c.Bind(&args)
-	assert.NoError(t, err)
-
-	assertMultipartFileHeader(t, args.File, file)
-}
-
 func testBindURL(queryString string, target any) error {
 	e := New()
 	req := httptest.NewRequest(http.MethodGet, queryString, nil)
@@ -1556,4 +1419,120 @@ func TestBindInt8(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, target{V: &[]int8{1, 2}}, p)
 	})
+}
+
+func TestBindMultipartFormFiles(t *testing.T) {
+	file1 := createTestFormFile("file", "file1.txt")
+	file11 := createTestFormFile("file", "file11.txt")
+	file2 := createTestFormFile("file2", "file2.txt")
+	filesA := createTestFormFile("files", "filesA.txt")
+	filesB := createTestFormFile("files", "filesB.txt")
+
+	t.Run("nok, can not bind to multipart file struct", func(t *testing.T) {
+		var target struct {
+			File multipart.FileHeader `form:"file"`
+		}
+		err := bindMultipartFiles(t, &target, file1, file2) // file2 should be ignored
+
+		assert.EqualError(t, err, "code=400, message=binding to multipart.FileHeader struct is not supported, use pointer to struct, internal=binding to multipart.FileHeader struct is not supported, use pointer to struct")
+	})
+
+	t.Run("ok, bind single multipart file to pointer to multipart file", func(t *testing.T) {
+		var target struct {
+			File *multipart.FileHeader `form:"file"`
+		}
+		err := bindMultipartFiles(t, &target, file1, file2) // file2 should be ignored
+
+		assert.NoError(t, err)
+		assertMultipartFileHeader(t, target.File, file1)
+	})
+
+	t.Run("ok, bind multiple multipart files to pointer to multipart file", func(t *testing.T) {
+		var target struct {
+			File *multipart.FileHeader `form:"file"`
+		}
+		err := bindMultipartFiles(t, &target, file1, file11)
+
+		assert.NoError(t, err)
+		assertMultipartFileHeader(t, target.File, file1) // should choose first one
+	})
+
+	t.Run("ok, bind multiple multipart files to slice of multipart file", func(t *testing.T) {
+		var target struct {
+			Files []multipart.FileHeader `form:"files"`
+		}
+		err := bindMultipartFiles(t, &target, filesA, filesB, file1)
+
+		assert.NoError(t, err)
+
+		assert.Len(t, target.Files, 2)
+		assertMultipartFileHeader(t, &target.Files[0], filesA)
+		assertMultipartFileHeader(t, &target.Files[1], filesB)
+	})
+
+	t.Run("ok, bind multiple multipart files to slice of pointer to multipart file", func(t *testing.T) {
+		var target struct {
+			Files []*multipart.FileHeader `form:"files"`
+		}
+		err := bindMultipartFiles(t, &target, filesA, filesB, file1)
+
+		assert.NoError(t, err)
+
+		assert.Len(t, target.Files, 2)
+		assertMultipartFileHeader(t, target.Files[0], filesA)
+		assertMultipartFileHeader(t, target.Files[1], filesB)
+	})
+}
+
+type testFormFile struct {
+	Fieldname string
+	Filename  string
+	Content   []byte
+}
+
+func createTestFormFile(formFieldName string, filename string) testFormFile {
+	return testFormFile{
+		Fieldname: formFieldName,
+		Filename:  filename,
+		Content:   []byte(strings.Repeat(filename, 10)),
+	}
+}
+
+func bindMultipartFiles(t *testing.T, target any, files ...testFormFile) error {
+	var body bytes.Buffer
+	mw := multipart.NewWriter(&body)
+
+	for _, file := range files {
+		fw, err := mw.CreateFormFile(file.Fieldname, file.Filename)
+		assert.NoError(t, err)
+
+		n, err := fw.Write(file.Content)
+		assert.NoError(t, err)
+		assert.Equal(t, len(file.Content), n)
+	}
+
+	err := mw.Close()
+	assert.NoError(t, err)
+
+	req, err := http.NewRequest(http.MethodPost, "/", &body)
+	assert.NoError(t, err)
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+
+	rec := httptest.NewRecorder()
+
+	e := New()
+	c := e.NewContext(req, rec)
+	return c.Bind(target)
+}
+
+func assertMultipartFileHeader(t *testing.T, fh *multipart.FileHeader, file testFormFile) {
+	assert.Equal(t, file.Filename, fh.Filename)
+	assert.Equal(t, int64(len(file.Content)), fh.Size)
+	fl, err := fh.Open()
+	assert.NoError(t, err)
+	body, err := io.ReadAll(fl)
+	assert.NoError(t, err)
+	assert.Equal(t, string(file.Content), string(body))
+	err = fl.Close()
+	assert.NoError(t, err)
 }
