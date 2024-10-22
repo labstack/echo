@@ -594,6 +594,9 @@ func TestContextCookie(t *testing.T) {
 	assert.Contains(t, rec.Header().Get(HeaderSetCookie), "labstack.com")
 	assert.Contains(t, rec.Header().Get(HeaderSetCookie), "Secure")
 	assert.Contains(t, rec.Header().Get(HeaderSetCookie), "HttpOnly")
+
+	_, reqCookieErr := req.Cookie("SSID")
+	assert.NoError(t, reqCookieErr)
 }
 
 func TestContextPath(t *testing.T) {

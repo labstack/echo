@@ -424,6 +424,7 @@ func (c *context) Cookie(name string) (*http.Cookie, error) {
 
 func (c *context) SetCookie(cookie *http.Cookie) {
 	http.SetCookie(c.Response(), cookie)
+	c.Request().AddCookie(cookie)
 }
 
 func (c *context) Cookies() []*http.Cookie {
