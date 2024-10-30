@@ -4,7 +4,9 @@
 package middleware
 
 import (
+	"bytes"
 	"encoding/base64"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -52,18 +54,26 @@ func BasicAuth(fn BasicAuthValidator) echo.MiddlewareFunc {
 	return BasicAuthWithConfig(c)
 }
 
-// BasicAuthWithConfig returns an BasicAuth middleware with config.
-// See `BasicAuth()`.
+// BasicAuthWithConfig returns an BasicAuthWithConfig middleware with config.
 func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
-	// Defaults
+	mw, err := config.ToMiddleware()
+	if err != nil {
+		panic(err)
+	}
+	return mw
+}
+
+// ToMiddleware converts BasicAuthConfig to middleware or returns an error for invalid configuration
+func (config BasicAuthConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 	if config.Validator == nil {
-		panic("echo: basic-auth middleware requires a validator function")
+		return nil, errors.New("echo basic-auth middleware requires a validator function")
 	}
 	if config.Skipper == nil {
-		config.Skipper = DefaultBasicAuthConfig.Skipper
+		config.Skipper = DefaultSkipper
 	}
-	if config.Realm == "" {
-		config.Realm = defaultRealm
+	realm := defaultRealm
+	if config.Realm != "" && config.Realm != realm {
+		realm = strconv.Quote(config.Realm)
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -72,40 +82,42 @@ func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 				return next(c)
 			}
 
-			auth := c.Request().Header.Get(echo.HeaderAuthorization)
+			var lastError error
 			l := len(basic)
-
-			if len(auth) > l+1 && strings.EqualFold(auth[:l], basic) {
-				// Invalid base64 shouldn't be treated as error
-				// instead should be treated as invalid client input
-				b, err := base64.StdEncoding.DecodeString(auth[l+1:])
-				if err != nil {
-					return echo.NewHTTPError(http.StatusBadRequest).SetInternal(err)
+			// multiple auth headers is something that can happen in environments like
+			// corporate test environments that are secured application proxy servers where
+			// front facing proxy is configured to require own basic auth value and your application
+			// also requires basic auth headers from clients.
+			for _, auth := range c.Request().Header[echo.HeaderAuthorization] {
+				if !(len(auth) > l+1 && strings.EqualFold(auth[:l], basic)) {
+					continue
 				}
 
-				cred := string(b)
-				for i := 0; i < len(cred); i++ {
-					if cred[i] == ':' {
-						// Verify credentials
-						valid, err := config.Validator(cred[:i], cred[i+1:], c)
-						if err != nil {
-							return err
-						} else if valid {
-							return next(c)
-						}
-						break
+				// Invalid base64 shouldn't be treated as error
+				// instead should be treated as invalid client input
+				b, errDecode := base64.StdEncoding.DecodeString(auth[l+1:])
+				if errDecode != nil {
+					lastError = echo.NewHTTPError(http.StatusBadRequest).WithInternal(errDecode)
+					continue
+				}
+				idx := bytes.IndexByte(b, ':')
+				if idx >= 0 {
+					valid, errValidate := config.Validator(string(b[:idx]), string(b[idx+1:]), c)
+					if errValidate != nil {
+						lastError = errValidate
+					} else if valid {
+						return next(c)
 					}
 				}
 			}
 
-			realm := defaultRealm
-			if config.Realm != defaultRealm {
-				realm = strconv.Quote(config.Realm)
+			if lastError != nil {
+				return lastError
 			}
 
 			// Need to return `401` for browsers to pop-up login box.
 			c.Response().Header().Set(echo.HeaderWWWAuthenticate, basic+" realm="+realm)
 			return echo.ErrUnauthorized
 		}
-	}
+	}, nil
 }
