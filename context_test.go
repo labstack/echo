@@ -82,7 +82,7 @@ func BenchmarkRealIPForHeaderXForwardFor(b *testing.B) {
 	}
 }
 
-func (t *Template) Render(w io.Writer, name string, data interface{}, c Context) error {
+func (t *Template) Render(w io.Writer, name string, data any, c Context) error {
 	return t.templates.ExecuteTemplate(w, name, data)
 }
 
@@ -867,7 +867,7 @@ func TestContext_Path(t *testing.T) {
 
 type validator struct{}
 
-func (*validator) Validate(i interface{}) error {
+func (*validator) Validate(i any) error {
 	return nil
 }
 

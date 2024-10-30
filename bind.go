@@ -17,7 +17,7 @@ import (
 
 // Binder is the interface that wraps the Bind method.
 type Binder interface {
-	Bind(i interface{}, c Context) error
+	Bind(i any, c Context) error
 }
 
 // DefaultBinder is the default implementation of the Binder interface.
@@ -39,7 +39,7 @@ type bindMultipleUnmarshaler interface {
 }
 
 // BindPathParams binds path params to bindable object
-func (b *DefaultBinder) BindPathParams(c Context, i interface{}) error {
+func (b *DefaultBinder) BindPathParams(c Context, i any) error {
 	names := c.ParamNames()
 	values := c.ParamValues()
 	params := map[string][]string{}
@@ -53,7 +53,7 @@ func (b *DefaultBinder) BindPathParams(c Context, i interface{}) error {
 }
 
 // BindQueryParams binds query params to bindable object
-func (b *DefaultBinder) BindQueryParams(c Context, i interface{}) error {
+func (b *DefaultBinder) BindQueryParams(c Context, i any) error {
 	if err := b.bindData(i, c.QueryParams(), "query", nil); err != nil {
 		return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
 	}
@@ -65,7 +65,7 @@ func (b *DefaultBinder) BindQueryParams(c Context, i interface{}) error {
 // which parses form data from BOTH URL and BODY if content type is not MIMEMultipartForm
 // See non-MIMEMultipartForm: https://golang.org/pkg/net/http/#Request.ParseForm
 // See MIMEMultipartForm: https://golang.org/pkg/net/http/#Request.ParseMultipartForm
-func (b *DefaultBinder) BindBody(c Context, i interface{}) (err error) {
+func (b *DefaultBinder) BindBody(c Context, i any) (err error) {
 	req := c.Request()
 	if req.ContentLength == 0 {
 		return
@@ -117,7 +117,7 @@ func (b *DefaultBinder) BindBody(c Context, i interface{}) (err error) {
 }
 
 // BindHeaders binds HTTP headers to a bindable object
-func (b *DefaultBinder) BindHeaders(c Context, i interface{}) error {
+func (b *DefaultBinder) BindHeaders(c Context, i any) error {
 	if err := b.bindData(i, c.Request().Header, "header", nil); err != nil {
 		return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
 	}
@@ -127,7 +127,7 @@ func (b *DefaultBinder) BindHeaders(c Context, i interface{}) error {
 // Bind implements the `Binder#Bind` function.
 // Binding is done in following order: 1) path params; 2) query params; 3) request body. Each step COULD override previous
 // step binded values. For single source binding use their own methods BindBody, BindQueryParams, BindPathParams.
-func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
+func (b *DefaultBinder) Bind(i any, c Context) (err error) {
 	if err := b.BindPathParams(c, i); err != nil {
 		return err
 	}
@@ -144,7 +144,7 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 }
 
 // bindData will bind data ONLY fields in destination struct that have EXPLICIT tag
-func (b *DefaultBinder) bindData(destination interface{}, data map[string][]string, tag string, dataFiles map[string][]*multipart.FileHeader) error {
+func (b *DefaultBinder) bindData(destination any, data map[string][]string, tag string, dataFiles map[string][]*multipart.FileHeader) error {
 	if destination == nil || (len(data) == 0 && len(dataFiles) == 0) {
 		return nil
 	}
@@ -155,7 +155,7 @@ func (b *DefaultBinder) bindData(destination interface{}, data map[string][]stri
 	// Support binding to limited Map destinations:
 	// - map[string][]string,
 	// - map[string]string <-- (binds first value from data slice)
-	// - map[string]interface{}
+	// - map[string]any
 	// You are better off binding to struct but there are user who want this map feature. Source of data for these cases are:
 	// params,query,header,form as these sources produce string values, most of the time slice of strings, actually.
 	if typ.Kind() == reflect.Map && typ.Key().Kind() == reflect.String {
@@ -174,7 +174,7 @@ func (b *DefaultBinder) bindData(destination interface{}, data map[string][]stri
 				val.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v[0]))
 			} else if isElemInterface {
 				// To maintain backward compatibility, we always bind to the first string value
-				// and not the slice of strings when dealing with map[string]interface{}{}
+				// and not the slice of strings when dealing with map[string]any{}
 				val.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v[0]))
 			} else {
 				val.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v))

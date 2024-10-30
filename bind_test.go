@@ -493,10 +493,10 @@ func TestDefaultBinder_bindDataToMap(t *testing.T) {
 	})
 
 	t.Run("ok, bind to map[string]interface", func(t *testing.T) {
-		dest := map[string]interface{}{}
+		dest := map[string]any{}
 		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param", nil))
 		assert.Equal(t,
-			map[string]interface{}{
+			map[string]any{
 				"multiple": "1",
 				"single":   "3",
 			},
@@ -505,10 +505,10 @@ func TestDefaultBinder_bindDataToMap(t *testing.T) {
 	})
 
 	t.Run("ok, bind to map[string]interface with nil map", func(t *testing.T) {
-		var dest map[string]interface{}
+		var dest map[string]any
 		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param", nil))
 		assert.Equal(t,
-			map[string]interface{}{
+			map[string]any{
 				"multiple": "1",
 				"single":   "3",
 			},
@@ -767,9 +767,9 @@ func TestDefaultBinder_BindToStructFromMixedSources(t *testing.T) {
 		givenURL         string
 		givenContent     io.Reader
 		givenMethod      string
-		whenBindTarget   interface{}
+		whenBindTarget   any
 		whenNoPathParams bool
-		expect           interface{}
+		expect           any
 		expectError      string
 	}{
 		{
@@ -902,7 +902,7 @@ func TestDefaultBinder_BindToStructFromMixedSources(t *testing.T) {
 				c.SetParamValues("node_from_path")
 			}
 
-			var bindTarget interface{}
+			var bindTarget any
 			if tc.whenBindTarget != nil {
 				bindTarget = tc.whenBindTarget
 			} else {
@@ -941,8 +941,8 @@ func TestDefaultBinder_BindBody(t *testing.T) {
 		givenMethod      string
 		givenContentType string
 		whenNoPathParams bool
-		whenBindTarget   interface{}
-		expect           interface{}
+		whenBindTarget   any
+		expect           any
 		expectError      string
 	}{
 		{
@@ -1083,7 +1083,7 @@ func TestDefaultBinder_BindBody(t *testing.T) {
 				c.SetParamValues("real_node")
 			}
 
-			var bindTarget interface{}
+			var bindTarget any
 			if tc.whenBindTarget != nil {
 				bindTarget = tc.whenBindTarget
 			} else {

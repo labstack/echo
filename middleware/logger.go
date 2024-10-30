@@ -108,7 +108,7 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 	config.colorer = color.New()
 	config.colorer.SetOutput(config.Output)
 	config.pool = &sync.Pool{
-		New: func() interface{} {
+		New: func() any {
 			return bytes.NewBuffer(make([]byte, 256))
 		},
 	}
