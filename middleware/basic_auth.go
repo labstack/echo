@@ -23,6 +23,12 @@ type BasicAuthConfig struct {
 	// Required.
 	Validator BasicAuthValidator
 
+	// HeaderValidationLimit limits the amount of authorization headers will be validated
+	// for valid credentials. Set this value to be higher from in an environment where multiple
+	// basic auth headers could be received.
+	// Default value 1.
+	HeaderValidationLimit int
+
 	// Realm is a string to define realm attribute of BasicAuth.
 	// Default value "Restricted".
 	Realm string
@@ -31,7 +37,7 @@ type BasicAuthConfig struct {
 // BasicAuthValidator defines a function to validate BasicAuth credentials.
 // The function should return a boolean indicating whether the credentials are valid,
 // and an error if any error occurs during the validation process.
-type BasicAuthValidator func(string, string, echo.Context) (bool, error)
+type BasicAuthValidator func(user string, password string, c echo.Context) (bool, error)
 
 const (
 	basic        = "basic"
@@ -40,8 +46,9 @@ const (
 
 // DefaultBasicAuthConfig is the default BasicAuth middleware config.
 var DefaultBasicAuthConfig = BasicAuthConfig{
-	Skipper: DefaultSkipper,
-	Realm:   defaultRealm,
+	Skipper:               DefaultSkipper,
+	Realm:                 defaultRealm,
+	HeaderValidationLimit: 1,
 }
 
 // BasicAuth returns an BasicAuth middleware.
@@ -75,6 +82,10 @@ func (config BasicAuthConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 	if config.Realm != "" && config.Realm != realm {
 		realm = strconv.Quote(config.Realm)
 	}
+	maxValidationAttemptCount := 1
+	if config.HeaderValidationLimit > 1 {
+		maxValidationAttemptCount = config.HeaderValidationLimit
+	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -84,13 +95,16 @@ func (config BasicAuthConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 
 			var lastError error
 			l := len(basic)
+			errCount := 0
 			// multiple auth headers is something that can happen in environments like
-			// corporate test environments that are secured application proxy servers where
-			// front facing proxy is configured to require own basic auth value and your application
-			// also requires basic auth headers from clients.
+			// corporate test environments that are secured by application proxy servers where
+			// front facing proxy is also configured to require own basic auth value and does auth checks.
 			for _, auth := range c.Request().Header[echo.HeaderAuthorization] {
 				if !(len(auth) > l+1 && strings.EqualFold(auth[:l], basic)) {
 					continue
+				}
+				if errCount >= maxValidationAttemptCount {
+					break
 				}
 
 				// Invalid base64 shouldn't be treated as error
@@ -108,6 +122,7 @@ func (config BasicAuthConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 					} else if valid {
 						return next(c)
 					}
+					errCount++
 				}
 			}
 

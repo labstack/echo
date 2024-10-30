@@ -89,10 +89,14 @@ func TestBasicAuthWithConfig(t *testing.T) {
 			expectedErrMsg: "Unauthorized",
 		},
 		{
-			name: "validator errors out",
+			name: "validator errors out at 2 tries",
 			authHeader: []string{
 				basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:invalid-password")),
 				basic + " " + base64.StdEncoding.EncodeToString([]byte("error:secret")),
+			},
+			config: &BasicAuthConfig{
+				HeaderValidationLimit: 2,
+				Validator:             mockValidator,
 			},
 			expectedCode:   http.StatusUnauthorized,
 			expectedAuth:   "",
