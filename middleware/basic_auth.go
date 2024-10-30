@@ -99,6 +99,7 @@ func (config BasicAuthConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			// multiple auth headers is something that can happen in environments like
 			// corporate test environments that are secured by application proxy servers where
 			// front facing proxy is also configured to require own basic auth value and does auth checks.
+			// In that case middleware can receive multiple auth headers.
 			for _, auth := range c.Request().Header[echo.HeaderAuthorization] {
 				if !(len(auth) > l+1 && strings.EqualFold(auth[:l], basic)) {
 					continue
