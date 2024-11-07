@@ -633,8 +633,8 @@ func (e *Echo) Routes() []*Route {
 
 // AcquireContext returns an empty `Context` instance from the pool.
 // You must return the context by calling `ReleaseContext()`.
-func (e *Echo) AcquireContext() Context {
-	return e.pool.Get().(Context)
+func (e *Echo) AcquireContext() *context {
+	return e.pool.Get().(*context)
 }
 
 // ReleaseContext returns the `Context` instance back to the pool.
