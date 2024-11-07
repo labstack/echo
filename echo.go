@@ -646,7 +646,7 @@ func (e *Echo) ReleaseContext(c Context) {
 // ServeHTTP implements `http.Handler` interface, which serves HTTP requests.
 func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Acquire context
-	c := e.AcquireContext()
+	c := e.pool.Get().(*context)
 	c.Reset(r, w)
 	var h HandlerFunc
 
