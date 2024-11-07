@@ -670,7 +670,7 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Release context
-	e.pool.Put(c)
+	e.ReleaseContext(c)
 }
 
 // Start starts an HTTP server.
