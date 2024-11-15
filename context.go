@@ -278,6 +278,9 @@ func (c *context) Scheme() string {
 	if c.IsTLS() {
 		return "https"
 	}
+	if scheme := c.request.Header.Get(HeaderForwarded); scheme != "" {
+		return scheme
+	}
 	if scheme := c.request.Header.Get(HeaderXForwardedProto); scheme != "" {
 		return scheme
 	}
