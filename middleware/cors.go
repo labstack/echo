@@ -147,13 +147,25 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 		config.AllowMethods = DefaultCORSConfig.AllowMethods
 	}
 
-	allowOriginPatterns := []string{}
+	allowOriginPatterns := make([]*regexp.Regexp, 0, len(config.AllowOrigins))
 	for _, origin := range config.AllowOrigins {
+		if origin == "*" {
+			continue // "*" is handled differently and does not need regexp
+		}
 		pattern := regexp.QuoteMeta(origin)
 		pattern = strings.ReplaceAll(pattern, "\\*", ".*")
 		pattern = strings.ReplaceAll(pattern, "\\?", ".")
 		pattern = "^" + pattern + "$"
-		allowOriginPatterns = append(allowOriginPatterns, pattern)
+
+		re, err := regexp.Compile(pattern)
+		if err != nil {
+			// this is to preserve previous behaviour - invalid patterns were just ignored.
+			// If we would turn this to panic, users with invalid patterns
+			// would have applications crashing in production due unrecovered panic.
+			// TODO: this should be turned to error/panic in `v5`
+			continue
+		}
+		allowOriginPatterns = append(allowOriginPatterns, re)
 	}
 
 	allowMethods := strings.Join(config.AllowMethods, ",")
@@ -239,7 +251,7 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 				}
 				if checkPatterns {
 					for _, re := range allowOriginPatterns {
-						if match, _ := regexp.MatchString(re, origin); match {
+						if match := re.MatchString(origin); match {
 							allowOrigin = origin
 							break
 						}
