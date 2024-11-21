@@ -32,6 +32,18 @@ func TestCORS(t *testing.T) {
 			notExpectHeaders: map[string]string{echo.HeaderAccessControlAllowOrigin: ""},
 		},
 		{
+			name: "ok, invalid pattern is ignored",
+			givenMW: CORSWithConfig(CORSConfig{
+				AllowOrigins: []string{
+					"\xff", // Invalid UTF-8 makes regexp.Compile to error
+					"*.example.com",
+				},
+			}),
+			whenMethod:    http.MethodOptions,
+			whenHeaders:   map[string]string{echo.HeaderOrigin: "http://aaa.example.com"},
+			expectHeaders: map[string]string{echo.HeaderAccessControlAllowOrigin: "http://aaa.example.com"},
+		},
+		{
 			name: "ok, specific AllowOrigins and AllowCredentials",
 			givenMW: CORSWithConfig(CORSConfig{
 				AllowOrigins:     []string{"localhost"},
