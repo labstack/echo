@@ -1060,6 +1060,14 @@ func TestDefaultBinder_BindBody(t *testing.T) {
 			expect:           &Node{ID: 0, Node: ""},
 			expectError:      "code=415, message=Unsupported Media Type",
 		},
+		{
+			name:             "ok, JSON POST bind to struct with: path + query + http.NoBody",
+			givenURL:         "/api/real_node/endpoint?node=xxx",
+			givenMethod:      http.MethodPost,
+			givenContentType: MIMEApplicationJSON,
+			givenContent:     http.NoBody,
+			expect:           &Node{ID: 0, Node: ""},
+		},
 	}
 
 	for _, tc := range testCases {
