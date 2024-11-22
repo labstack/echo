@@ -75,6 +75,7 @@ package main
 import (
   "github.com/labstack/echo/v4"
   "github.com/labstack/echo/v4/middleware"
+  "log/slog"
   "net/http"
 )
 
@@ -90,7 +91,9 @@ func main() {
   e.GET("/", hello)
 
   // Start server
-  e.Logger.Fatal(e.Start(":1323"))
+  if err := e.Start(":8080"); err != nil && !errors.Is(err, http.ErrServerClosed) {
+    slog.Error("failed to start server", "error", err)
+  }
 }
 
 // Handler
