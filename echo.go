@@ -116,9 +116,9 @@ type Route struct {
 
 // HTTPError represents an error that occurred while handling a request.
 type HTTPError struct {
-	Internal error       `json:"-"` // Stores the error returned by an external dependency
-	Message  interface{} `json:"message"`
-	Code     int         `json:"-"`
+	Internal error `json:"-"` // Stores the error returned by an external dependency
+	Message  any   `json:"message"`
+	Code     int   `json:"-"`
 }
 
 // MiddlewareFunc defines a function to process middleware.
@@ -132,17 +132,17 @@ type HTTPErrorHandler func(err error, c Context)
 
 // Validator is the interface that wraps the Validate function.
 type Validator interface {
-	Validate(i interface{}) error
+	Validate(i any) error
 }
 
 // JSONSerializer is the interface that encodes and decodes JSON to and from interfaces.
 type JSONSerializer interface {
-	Serialize(c Context, i interface{}, indent string) error
-	Deserialize(c Context, i interface{}) error
+	Serialize(c Context, i any, indent string) error
+	Deserialize(c Context, i any) error
 }
 
-// Map defines a generic map of type `map[string]interface{}`.
-type Map map[string]interface{}
+// Map defines a generic map of type `map[string]any`.
+type Map map[string]any
 
 // Common struct for Echo & Group.
 type common struct{}
@@ -378,7 +378,7 @@ func New() (e *Echo) {
 	e.JSONSerializer = &DefaultJSONSerializer{}
 	e.Logger.SetLevel(log.ERROR)
 	e.StdLogger = stdLog.New(e.Logger.Output(), e.Logger.Prefix()+": ", 0)
-	e.pool.New = func() interface{} {
+	e.pool.New = func() any {
 		return e.NewContext(nil, nil)
 	}
 	e.router = NewRouter(e)
@@ -610,18 +610,18 @@ func (e *Echo) Group(prefix string, m ...MiddlewareFunc) (g *Group) {
 }
 
 // URI generates an URI from handler.
-func (e *Echo) URI(handler HandlerFunc, params ...interface{}) string {
+func (e *Echo) URI(handler HandlerFunc, params ...any) string {
 	name := handlerName(handler)
 	return e.Reverse(name, params...)
 }
 
 // URL is an alias for `URI` function.
-func (e *Echo) URL(h HandlerFunc, params ...interface{}) string {
+func (e *Echo) URL(h HandlerFunc, params ...any) string {
 	return e.URI(h, params...)
 }
 
 // Reverse generates a URL from route name and provided parameters.
-func (e *Echo) Reverse(name string, params ...interface{}) string {
+func (e *Echo) Reverse(name string, params ...any) string {
 	return e.router.Reverse(name, params...)
 }
 
@@ -688,7 +688,7 @@ func (e *Echo) Start(address string) error {
 // StartTLS starts an HTTPS server.
 // If `certFile` or `keyFile` is `string` the values are treated as file paths.
 // If `certFile` or `keyFile` is `[]byte` the values are treated as the certificate or key as-is.
-func (e *Echo) StartTLS(address string, certFile, keyFile interface{}) (err error) {
+func (e *Echo) StartTLS(address string, certFile, keyFile any) (err error) {
 	e.startupMutex.Lock()
 	var cert []byte
 	if cert, err = filepathOrContent(certFile); err != nil {
@@ -719,7 +719,7 @@ func (e *Echo) StartTLS(address string, certFile, keyFile interface{}) (err erro
 	return s.Serve(e.TLSListener)
 }
 
-func filepathOrContent(fileOrContent interface{}) (content []byte, err error) {
+func filepathOrContent(fileOrContent any) (content []byte, err error) {
 	switch v := fileOrContent.(type) {
 	case string:
 		return os.ReadFile(v)
@@ -884,7 +884,7 @@ func (e *Echo) Shutdown(ctx stdContext.Context) error {
 }
 
 // NewHTTPError creates a new HTTPError instance.
-func NewHTTPError(code int, message ...interface{}) *HTTPError {
+func NewHTTPError(code int, message ...any) *HTTPError {
 	he := &HTTPError{Code: code, Message: http.StatusText(code)}
 	if len(message) > 0 {
 		he.Message = message[0]

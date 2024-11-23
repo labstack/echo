@@ -127,7 +127,7 @@ func TestGroup_RouteNotFound(t *testing.T) {
 	var testCases = []struct {
 		name        string
 		whenURL     string
-		expectRoute interface{}
+		expectRoute any
 		expectCode  int
 	}{
 		{
@@ -193,7 +193,7 @@ func TestGroup_RouteNotFoundWithMiddleware(t *testing.T) {
 		name           string
 		givenCustom404 bool
 		whenURL        string
-		expectBody     interface{}
+		expectBody     any
 		expectCode     int
 	}{
 		{

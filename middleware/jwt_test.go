@@ -259,7 +259,7 @@ func TestJWTConfig(t *testing.T) {
 			name:    "Valid JWT with a valid key using a user-defined KeyFunc",
 			hdrAuth: validAuth,
 			config: JWTConfig{
-				KeyFunc: func(*jwt.Token) (interface{}, error) {
+				KeyFunc: func(*jwt.Token) (any, error) {
 					return validKey, nil
 				},
 			},
@@ -268,7 +268,7 @@ func TestJWTConfig(t *testing.T) {
 			name:    "Valid JWT with an invalid key using a user-defined KeyFunc",
 			hdrAuth: validAuth,
 			config: JWTConfig{
-				KeyFunc: func(*jwt.Token) (interface{}, error) {
+				KeyFunc: func(*jwt.Token) (any, error) {
 					return invalidKey, nil
 				},
 			},
@@ -278,7 +278,7 @@ func TestJWTConfig(t *testing.T) {
 			name:    "Token verification does not pass using a user-defined KeyFunc",
 			hdrAuth: validAuth,
 			config: JWTConfig{
-				KeyFunc: func(*jwt.Token) (interface{}, error) {
+				KeyFunc: func(*jwt.Token) (any, error) {
 					return nil, errors.New("faulty KeyFunc")
 				},
 			},
@@ -359,8 +359,8 @@ func TestJWTwithKID(t *testing.T) {
 	secondToken := "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImtpZCI6InNlY29uZE9uZSJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.sdghDYQ85jdh0hgQ6bKbMguLI_NSPYWjkhVJkee-yZM"
 	wrongToken := "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImtpZCI6InNlY29uZE9uZSJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.RyhLybtVLpoewF6nz9YN79oXo32kAtgUxp8FNwTkb90"
 	staticToken := "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.1_-XFYUPpJfgsaGwYhgZEt7hfySMg-a3GN-nfZmbW7o"
-	validKeys := map[string]interface{}{"firstOne": []byte("first_secret"), "secondOne": []byte("second_secret")}
-	invalidKeys := map[string]interface{}{"thirdOne": []byte("third_secret")}
+	validKeys := map[string]any{"firstOne": []byte("first_secret"), "secondOne": []byte("second_secret")}
+	invalidKeys := map[string]any{"thirdOne": []byte("third_secret")}
 	staticSecret := []byte("static_secret")
 	invalidStaticSecret := []byte("invalid_secret")
 
@@ -569,7 +569,7 @@ func TestJWTConfig_parseTokenErrorHandling(t *testing.T) {
 
 			config := tc.given
 			parseTokenCalled := false
-			config.ParseTokenFunc = func(auth string, c echo.Context) (interface{}, error) {
+			config.ParseTokenFunc = func(auth string, c echo.Context) (any, error) {
 				parseTokenCalled = true
 				return nil, errors.New("parsing failed")
 			}
@@ -599,8 +599,8 @@ func TestJWTConfig_custom_ParseTokenFunc_Keyfunc(t *testing.T) {
 	signingKey := []byte("secret")
 
 	config := JWTConfig{
-		ParseTokenFunc: func(auth string, c echo.Context) (interface{}, error) {
-			keyFunc := func(t *jwt.Token) (interface{}, error) {
+		ParseTokenFunc: func(auth string, c echo.Context) (any, error) {
+			keyFunc := func(t *jwt.Token) (any, error) {
 				if t.Method.Alg() != "HS256" {
 					return nil, fmt.Errorf("unexpected jwt signing method=%v", t.Header["alg"])
 				}
