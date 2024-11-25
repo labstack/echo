@@ -52,7 +52,7 @@ func createExtractors(lookups string, authScheme string) ([]ValuesExtractor, err
 		return nil, nil
 	}
 	sources := strings.Split(lookups, ",")
-	var extractors = make([]ValuesExtractor, 0)
+	var extractors = make([]ValuesExtractor, 0, len(sources))
 	for _, source := range sources {
 		parts := strings.Split(source, ":")
 		if len(parts) < 2 {
@@ -104,7 +104,7 @@ func valuesFromHeader(header string, valuePrefix string) ValuesExtractor {
 			return nil, errHeaderExtractorValueMissing
 		}
 
-		result := make([]string, 0)
+		result := make([]string, 0, len(values))
 		for i, value := range values {
 			if prefixLen == 0 {
 				result = append(result, value)
@@ -147,7 +147,7 @@ func valuesFromQuery(param string) ValuesExtractor {
 // valuesFromParam returns a function that extracts values from the url param string.
 func valuesFromParam(param string) ValuesExtractor {
 	return func(c echo.Context) ([]string, error) {
-		result := make([]string, 0)
+		result := make([]string, 0, len(c.ParamNames()))
 		paramVales := c.ParamValues()
 		for i, p := range c.ParamNames() {
 			if param == p {
@@ -172,7 +172,7 @@ func valuesFromCookie(name string) ValuesExtractor {
 			return nil, errCookieExtractorValueMissing
 		}
 
-		result := make([]string, 0)
+		result := make([]string, 0, len(cookies))
 		for i, cookie := range cookies {
 			if name == cookie.Name {
 				result = append(result, cookie.Value)
