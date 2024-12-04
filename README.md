@@ -63,7 +63,7 @@ The benchmarks above were run on an Intel(R) Core(TM) i7-6820HQ CPU @ 2.70GHz
 
 ```sh
 // go get github.com/labstack/echo/{version}
-go get github.com/labstack/echo/v4
+go install github.com/labstack/echo/v4@latest
 ```
 Latest version of Echo supports last four Go major [releases](https://go.dev/doc/devel/release) and might work with older versions.
 
