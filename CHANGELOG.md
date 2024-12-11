@@ -1,5 +1,13 @@
 # Changelog
 
+## v4.13.1 - 2024-12-11
+
+**Fixes**
+
+* Fix BindBody ignoring `Transfer-Encoding: chunked` requests by @178inaba in https://github.com/labstack/echo/pull/2717
+
+
+
 ## v4.13.0 - 2024-12-04
 
 **BREAKING CHANGE** JWT Middleware Removed from Core use [labstack/echo-jwt](https://github.com/labstack/echo-jwt) instead
