@@ -67,14 +67,7 @@ func (b *DefaultBinder) BindQueryParams(c Context, i interface{}) error {
 // See MIMEMultipartForm: https://golang.org/pkg/net/http/#Request.ParseMultipartForm
 func (b *DefaultBinder) BindBody(c Context, i interface{}) (err error) {
 	req := c.Request()
-	var isChunked bool
-	for _, enc := range req.TransferEncoding {
-		if enc == "chunked" {
-			isChunked = true
-			break
-		}
-	}
-	if req.ContentLength <= 0 && !isChunked {
+	if req.ContentLength == 0 {
 		return
 	}
 
