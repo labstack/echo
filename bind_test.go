@@ -13,6 +13,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"net/http/httputil"
 	"net/url"
 	"reflect"
 	"strconv"
@@ -941,6 +942,7 @@ func TestDefaultBinder_BindBody(t *testing.T) {
 		givenMethod      string
 		givenContentType string
 		whenNoPathParams bool
+		whenChunkedBody  bool
 		whenBindTarget   interface{}
 		expect           interface{}
 		expectError      string
@@ -1061,12 +1063,30 @@ func TestDefaultBinder_BindBody(t *testing.T) {
 			expectError:      "code=415, message=Unsupported Media Type",
 		},
 		{
-			name:             "ok, JSON POST bind to struct with: path + query + http.NoBody",
+			name:             "nok, JSON POST with http.NoBody",
 			givenURL:         "/api/real_node/endpoint?node=xxx",
 			givenMethod:      http.MethodPost,
 			givenContentType: MIMEApplicationJSON,
 			givenContent:     http.NoBody,
 			expect:           &Node{ID: 0, Node: ""},
+			expectError:      "code=400, message=EOF, internal=EOF",
+		},
+		{
+			name:             "ok, JSON POST with empty body",
+			givenURL:         "/api/real_node/endpoint?node=xxx",
+			givenMethod:      http.MethodPost,
+			givenContentType: MIMEApplicationJSON,
+			givenContent:     strings.NewReader(""),
+			expect:           &Node{ID: 0, Node: ""},
+		},
+		{
+			name:             "ok, JSON POST bind to struct with: path + query + chunked body",
+			givenURL:         "/api/real_node/endpoint?node=xxx",
+			givenMethod:      http.MethodPost,
+			givenContentType: MIMEApplicationJSON,
+			givenContent:     httputil.NewChunkedReader(strings.NewReader("18\r\n" + `{"id": 1, "node": "zzz"}` + "\r\n0\r\n")),
+			whenChunkedBody:  true,
+			expect:           &Node{ID: 1, Node: "zzz"},
 		},
 	}
 
@@ -1082,6 +1102,10 @@ func TestDefaultBinder_BindBody(t *testing.T) {
 				req.Header.Set(HeaderContentType, MIMEApplicationForm)
 			case MIMEApplicationJSON:
 				req.Header.Set(HeaderContentType, MIMEApplicationJSON)
+			}
+			if tc.whenChunkedBody {
+				req.ContentLength = -1
+				req.TransferEncoding = append(req.TransferEncoding, "chunked")
 			}
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
