@@ -1,5 +1,12 @@
 # Changelog
 
+## v4.13.2 - 2024-12-12
+
+**Security**
+
+* Update dependencies (dependabot reports [GO-2024-3321](https://pkg.go.dev/vuln/GO-2024-3321)) in https://github.com/labstack/echo/pull/2721
+
+
 ## v4.13.1 - 2024-12-11
 
 **Fixes**
