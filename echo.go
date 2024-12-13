@@ -792,7 +792,7 @@ func (e *Echo) configureServer(s *http.Server) error {
 			e.Listener = l
 		}
 		if !e.HidePort {
-			e.colorer.Printf("⇨ http server started on %s\n", e.colorer.Green(e.Listener.Addr()))
+			e.colorer.Printf("⇨ http server started on http://%s\n", e.colorer.Green(e.Listener.Addr()))
 		}
 		return nil
 	}
@@ -804,7 +804,7 @@ func (e *Echo) configureServer(s *http.Server) error {
 		e.TLSListener = tls.NewListener(l, s.TLSConfig)
 	}
 	if !e.HidePort {
-		e.colorer.Printf("⇨ https server started on %s\n", e.colorer.Green(e.TLSListener.Addr()))
+		e.colorer.Printf("⇨ https server started on https://%s\n", e.colorer.Green(e.TLSListener.Addr()))
 	}
 	return nil
 }
@@ -855,7 +855,7 @@ func (e *Echo) StartH2CServer(address string, h2s *http2.Server) error {
 		e.Listener = l
 	}
 	if !e.HidePort {
-		e.colorer.Printf("⇨ http server started on %s\n", e.colorer.Green(e.Listener.Addr()))
+		e.colorer.Printf("⇨ http server started on http://%s\n", e.colorer.Green(e.Listener.Addr()))
 	}
 	e.startupMutex.Unlock()
 	return s.Serve(e.Listener)
