@@ -1,5 +1,12 @@
 # Changelog
 
+## v4.13.3 - 2024-12-19
+
+**Security**
+
+* Update golang.org/x/net dependency [GO-2024-3333](https://pkg.go.dev/vuln/GO-2024-3333) in https://github.com/labstack/echo/pull/2722
+
+
 ## v4.13.2 - 2024-12-12
 
 **Security**
