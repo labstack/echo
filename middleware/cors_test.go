@@ -525,7 +525,7 @@ func TestCorsHeaders(t *testing.T) {
 			allowedOrigin: "http://example.com",
 			method:        http.MethodGet,
 			expected:      false,
-			expectStatus:  http.StatusOK,
+			expectStatus:  http.StatusUnauthorized,
 		},
 		{
 			name:          "non-preflight request, allow specific origin, matching origin header = CORS logic done",
