@@ -2,7 +2,11 @@ package middleware
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"testing"
+
+	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_getScheme(t *testing.T) {
@@ -73,6 +77,68 @@ func Test_getScheme(t *testing.T) {
 			if got := getScheme(req); got != tt.want {
 				t.Errorf("getScheme() = %v, want %v", got, tt.want)
 			}
+		})
+	}
+}
+
+func TestProxyHeaders(t *testing.T) {
+	tests := []struct {
+		name        string
+		givenMW     echo.MiddlewareFunc
+		whenMethod  string
+		whenHeaders map[string]string
+		expectURL   string
+	}{
+		{
+			name:        "Test X-Forwarded-Proto_HTTPS",
+			whenMethod:  "GET",
+			whenHeaders: map[string]string{echo.HeaderXForwardedProto: "HTTPS"},
+			expectURL:   "https://srv.lan/tst/",
+		},
+		{
+			name:        "Test X-Forwarded-Prefix_TEST",
+			whenMethod:  "GET",
+			whenHeaders: map[string]string{echo.HeaderXForwardedPrefix: "/test/"},
+			expectURL:   "http://srv.lan/test/tst/",
+		},
+		{
+			name:        "Test X-Forwarded-Prefix_TEST2",
+			whenMethod:  "GET",
+			whenHeaders: map[string]string{echo.HeaderXForwardedPrefix: "/test2/"},
+			expectURL:   "http://srv.lan/test2/tst/",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+
+			mw := ProxyHeaders()
+			if tc.givenMW != nil {
+				mw = tc.givenMW
+			}
+
+			e.Use(mw)
+
+			h := mw(func(c echo.Context) error {
+				return nil
+			})
+
+			method := http.MethodGet
+			if tc.whenMethod != "" {
+				method = tc.whenMethod
+			}
+			req := httptest.NewRequest(method, "http://srv.lan/tst/", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			for k, v := range tc.whenHeaders {
+				req.Header.Set(k, v)
+			}
+
+			err := h(c)
+
+			assert.NoError(t, err)
+			url := c.Request().URL.String()
+			assert.Equal(t, tc.expectURL, url, "url: `%v` should be `%v`", tc.expectURL, url)
 		})
 	}
 }
