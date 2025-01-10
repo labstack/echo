@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: © 2015 LabStack LLC and Echo contributors
+
 package middleware
 
 import (
@@ -9,37 +12,35 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type (
-	// BasicAuthConfig defines the config for BasicAuth middleware.
-	BasicAuthConfig struct {
-		// Skipper defines a function to skip middleware.
-		Skipper Skipper
+// BasicAuthConfig defines the config for BasicAuth middleware.
+type BasicAuthConfig struct {
+	// Skipper defines a function to skip middleware.
+	Skipper Skipper
 
-		// Validator is a function to validate BasicAuth credentials.
-		// Required.
-		Validator BasicAuthValidator
+	// Validator is a function to validate BasicAuth credentials.
+	// Required.
+	Validator BasicAuthValidator
 
-		// Realm is a string to define realm attribute of BasicAuth.
-		// Default value "Restricted".
-		Realm string
-	}
+	// Realm is a string to define realm attribute of BasicAuth.
+	// Default value "Restricted".
+	Realm string
+}
 
-	// BasicAuthValidator defines a function to validate BasicAuth credentials.
-	BasicAuthValidator func(string, string, echo.Context) (bool, error)
-)
+// BasicAuthValidator defines a function to validate BasicAuth credentials.
+// The function should return a boolean indicating whether the credentials are valid,
+// and an error if any error occurs during the validation process.
+type BasicAuthValidator func(string, string, echo.Context) (bool, error)
 
 const (
 	basic        = "basic"
 	defaultRealm = "Restricted"
 )
 
-var (
-	// DefaultBasicAuthConfig is the default BasicAuth middleware config.
-	DefaultBasicAuthConfig = BasicAuthConfig{
-		Skipper: DefaultSkipper,
-		Realm:   defaultRealm,
-	}
-)
+// DefaultBasicAuthConfig is the default BasicAuth middleware config.
+var DefaultBasicAuthConfig = BasicAuthConfig{
+	Skipper: DefaultSkipper,
+	Realm:   defaultRealm,
+}
 
 // BasicAuth returns an BasicAuth middleware.
 //

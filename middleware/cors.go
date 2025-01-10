@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: © 2015 LabStack LLC and Echo contributors
+
 package middleware
 
 import (
@@ -9,113 +12,109 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type (
-	// CORSConfig defines the config for CORS middleware.
-	CORSConfig struct {
-		// Skipper defines a function to skip middleware.
-		Skipper Skipper
+// CORSConfig defines the config for CORS middleware.
+type CORSConfig struct {
+	// Skipper defines a function to skip middleware.
+	Skipper Skipper
 
-		// AllowOrigins determines the value of the Access-Control-Allow-Origin
-		// response header.  This header defines a list of origins that may access the
-		// resource.  The wildcard characters '*' and '?' are supported and are
-		// converted to regex fragments '.*' and '.' accordingly.
-		//
-		// Security: use extreme caution when handling the origin, and carefully
-		// validate any logic. Remember that attackers may register hostile domain names.
-		// See https://blog.portswigger.net/2016/10/exploiting-cors-misconfigurations-for.html
-		//
-		// Optional. Default value []string{"*"}.
-		//
-		// See also: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin
-		AllowOrigins []string `yaml:"allow_origins"`
+	// AllowOrigins determines the value of the Access-Control-Allow-Origin
+	// response header.  This header defines a list of origins that may access the
+	// resource.  The wildcard characters '*' and '?' are supported and are
+	// converted to regex fragments '.*' and '.' accordingly.
+	//
+	// Security: use extreme caution when handling the origin, and carefully
+	// validate any logic. Remember that attackers may register hostile domain names.
+	// See https://blog.portswigger.net/2016/10/exploiting-cors-misconfigurations-for.html
+	//
+	// Optional. Default value []string{"*"}.
+	//
+	// See also: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin
+	AllowOrigins []string `yaml:"allow_origins"`
 
-		// AllowOriginFunc is a custom function to validate the origin. It takes the
-		// origin as an argument and returns true if allowed or false otherwise. If
-		// an error is returned, it is returned by the handler. If this option is
-		// set, AllowOrigins is ignored.
-		//
-		// Security: use extreme caution when handling the origin, and carefully
-		// validate any logic. Remember that attackers may register hostile domain names.
-		// See https://blog.portswigger.net/2016/10/exploiting-cors-misconfigurations-for.html
-		//
-		// Optional.
-		AllowOriginFunc func(origin string) (bool, error) `yaml:"-"`
+	// AllowOriginFunc is a custom function to validate the origin. It takes the
+	// origin as an argument and returns true if allowed or false otherwise. If
+	// an error is returned, it is returned by the handler. If this option is
+	// set, AllowOrigins is ignored.
+	//
+	// Security: use extreme caution when handling the origin, and carefully
+	// validate any logic. Remember that attackers may register hostile domain names.
+	// See https://blog.portswigger.net/2016/10/exploiting-cors-misconfigurations-for.html
+	//
+	// Optional.
+	AllowOriginFunc func(origin string) (bool, error) `yaml:"-"`
 
-		// AllowMethods determines the value of the Access-Control-Allow-Methods
-		// response header.  This header specified the list of methods allowed when
-		// accessing the resource.  This is used in response to a preflight request.
-		//
-		// Optional. Default value DefaultCORSConfig.AllowMethods.
-		// If `allowMethods` is left empty, this middleware will fill for preflight
-		// request `Access-Control-Allow-Methods` header value
-		// from `Allow` header that echo.Router set into context.
-		//
-		// See also: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Methods
-		AllowMethods []string `yaml:"allow_methods"`
+	// AllowMethods determines the value of the Access-Control-Allow-Methods
+	// response header.  This header specified the list of methods allowed when
+	// accessing the resource.  This is used in response to a preflight request.
+	//
+	// Optional. Default value DefaultCORSConfig.AllowMethods.
+	// If `allowMethods` is left empty, this middleware will fill for preflight
+	// request `Access-Control-Allow-Methods` header value
+	// from `Allow` header that echo.Router set into context.
+	//
+	// See also: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Methods
+	AllowMethods []string `yaml:"allow_methods"`
 
-		// AllowHeaders determines the value of the Access-Control-Allow-Headers
-		// response header.  This header is used in response to a preflight request to
-		// indicate which HTTP headers can be used when making the actual request.
-		//
-		// Optional. Default value []string{}.
-		//
-		// See also: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Headers
-		AllowHeaders []string `yaml:"allow_headers"`
+	// AllowHeaders determines the value of the Access-Control-Allow-Headers
+	// response header.  This header is used in response to a preflight request to
+	// indicate which HTTP headers can be used when making the actual request.
+	//
+	// Optional. Default value []string{}.
+	//
+	// See also: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Headers
+	AllowHeaders []string `yaml:"allow_headers"`
 
-		// AllowCredentials determines the value of the
-		// Access-Control-Allow-Credentials response header.  This header indicates
-		// whether or not the response to the request can be exposed when the
-		// credentials mode (Request.credentials) is true. When used as part of a
-		// response to a preflight request, this indicates whether or not the actual
-		// request can be made using credentials.  See also
-		// [MDN: Access-Control-Allow-Credentials].
-		//
-		// Optional. Default value false, in which case the header is not set.
-		//
-		// Security: avoid using `AllowCredentials = true` with `AllowOrigins = *`.
-		// See "Exploiting CORS misconfigurations for Bitcoins and bounties",
-		// https://blog.portswigger.net/2016/10/exploiting-cors-misconfigurations-for.html
-		//
-		// See also: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Credentials
-		AllowCredentials bool `yaml:"allow_credentials"`
+	// AllowCredentials determines the value of the
+	// Access-Control-Allow-Credentials response header.  This header indicates
+	// whether or not the response to the request can be exposed when the
+	// credentials mode (Request.credentials) is true. When used as part of a
+	// response to a preflight request, this indicates whether or not the actual
+	// request can be made using credentials.  See also
+	// [MDN: Access-Control-Allow-Credentials].
+	//
+	// Optional. Default value false, in which case the header is not set.
+	//
+	// Security: avoid using `AllowCredentials = true` with `AllowOrigins = *`.
+	// See "Exploiting CORS misconfigurations for Bitcoins and bounties",
+	// https://blog.portswigger.net/2016/10/exploiting-cors-misconfigurations-for.html
+	//
+	// See also: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Credentials
+	AllowCredentials bool `yaml:"allow_credentials"`
 
-		// UnsafeWildcardOriginWithAllowCredentials UNSAFE/INSECURE: allows wildcard '*' origin to be used with AllowCredentials
-		// flag. In that case we consider any origin allowed and send it back to the client with `Access-Control-Allow-Origin` header.
-		//
-		// This is INSECURE and potentially leads to [cross-origin](https://portswigger.net/research/exploiting-cors-misconfigurations-for-bitcoins-and-bounties)
-		// attacks. See: https://github.com/labstack/echo/issues/2400 for discussion on the subject.
-		//
-		// Optional. Default value is false.
-		UnsafeWildcardOriginWithAllowCredentials bool `yaml:"unsafe_wildcard_origin_with_allow_credentials"`
+	// UnsafeWildcardOriginWithAllowCredentials UNSAFE/INSECURE: allows wildcard '*' origin to be used with AllowCredentials
+	// flag. In that case we consider any origin allowed and send it back to the client with `Access-Control-Allow-Origin` header.
+	//
+	// This is INSECURE and potentially leads to [cross-origin](https://portswigger.net/research/exploiting-cors-misconfigurations-for-bitcoins-and-bounties)
+	// attacks. See: https://github.com/labstack/echo/issues/2400 for discussion on the subject.
+	//
+	// Optional. Default value is false.
+	UnsafeWildcardOriginWithAllowCredentials bool `yaml:"unsafe_wildcard_origin_with_allow_credentials"`
 
-		// ExposeHeaders determines the value of Access-Control-Expose-Headers, which
-		// defines a list of headers that clients are allowed to access.
-		//
-		// Optional. Default value []string{}, in which case the header is not set.
-		//
-		// See also: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Expose-Header
-		ExposeHeaders []string `yaml:"expose_headers"`
+	// ExposeHeaders determines the value of Access-Control-Expose-Headers, which
+	// defines a list of headers that clients are allowed to access.
+	//
+	// Optional. Default value []string{}, in which case the header is not set.
+	//
+	// See also: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Expose-Header
+	ExposeHeaders []string `yaml:"expose_headers"`
 
-		// MaxAge determines the value of the Access-Control-Max-Age response header.
-		// This header indicates how long (in seconds) the results of a preflight
-		// request can be cached.
-		// The header is set only if MaxAge != 0, negative value sends "0" which instructs browsers not to cache that response.
-		//
-		// Optional. Default value 0 - meaning header is not sent.
-		//
-		// See also: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Max-Age
-		MaxAge int `yaml:"max_age"`
-	}
-)
+	// MaxAge determines the value of the Access-Control-Max-Age response header.
+	// This header indicates how long (in seconds) the results of a preflight
+	// request can be cached.
+	// The header is set only if MaxAge != 0, negative value sends "0" which instructs browsers not to cache that response.
+	//
+	// Optional. Default value 0 - meaning header is not sent.
+	//
+	// See also: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Max-Age
+	MaxAge int `yaml:"max_age"`
+}
 
-var (
-	// DefaultCORSConfig is the default CORS middleware config.
-	DefaultCORSConfig = CORSConfig{
-		Skipper:      DefaultSkipper,
-		AllowOrigins: []string{"*"},
-		AllowMethods: []string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete},
-	}
-)
+// DefaultCORSConfig is the default CORS middleware config.
+var DefaultCORSConfig = CORSConfig{
+	Skipper:      DefaultSkipper,
+	AllowOrigins: []string{"*"},
+	AllowMethods: []string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete},
+}
 
 // CORS returns a Cross-Origin Resource Sharing (CORS) middleware.
 // See also [MDN: Cross-Origin Resource Sharing (CORS)].
@@ -148,13 +147,25 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 		config.AllowMethods = DefaultCORSConfig.AllowMethods
 	}
 
-	allowOriginPatterns := []string{}
+	allowOriginPatterns := make([]*regexp.Regexp, 0, len(config.AllowOrigins))
 	for _, origin := range config.AllowOrigins {
+		if origin == "*" {
+			continue // "*" is handled differently and does not need regexp
+		}
 		pattern := regexp.QuoteMeta(origin)
 		pattern = strings.ReplaceAll(pattern, "\\*", ".*")
 		pattern = strings.ReplaceAll(pattern, "\\?", ".")
 		pattern = "^" + pattern + "$"
-		allowOriginPatterns = append(allowOriginPatterns, pattern)
+
+		re, err := regexp.Compile(pattern)
+		if err != nil {
+			// this is to preserve previous behaviour - invalid patterns were just ignored.
+			// If we would turn this to panic, users with invalid patterns
+			// would have applications crashing in production due unrecovered panic.
+			// TODO: this should be turned to error/panic in `v5`
+			continue
+		}
+		allowOriginPatterns = append(allowOriginPatterns, re)
 	}
 
 	allowMethods := strings.Join(config.AllowMethods, ",")
@@ -240,7 +251,7 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 				}
 				if checkPatterns {
 					for _, re := range allowOriginPatterns {
-						if match, _ := regexp.MatchString(re, origin); match {
+						if match := re.MatchString(origin); match {
 							allowOrigin = origin
 							break
 						}
@@ -251,7 +262,7 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 			// Origin not allowed
 			if allowOrigin == "" {
 				if !preflight {
-					return next(c)
+					return echo.ErrUnauthorized
 				}
 				return c.NoContent(http.StatusNoContent)
 			}

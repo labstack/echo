@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: © 2015 LabStack LLC and Echo contributors
+
 package middleware
 
 import (
@@ -86,4 +89,54 @@ func TestBodyDumpFails(t *testing.T) {
 			t.FailNow()
 		}
 	})
+}
+
+func TestBodyDumpResponseWriter_CanNotFlush(t *testing.T) {
+	bdrw := bodyDumpResponseWriter{
+		ResponseWriter: new(testResponseWriterNoFlushHijack), // this RW does not support flush
+	}
+
+	assert.PanicsWithError(t, "response writer flushing is not supported", func() {
+		bdrw.Flush()
+	})
+}
+
+func TestBodyDumpResponseWriter_CanFlush(t *testing.T) {
+	trwu := testResponseWriterUnwrapperHijack{testResponseWriterUnwrapper: testResponseWriterUnwrapper{rw: httptest.NewRecorder()}}
+	bdrw := bodyDumpResponseWriter{
+		ResponseWriter: &trwu,
+	}
+
+	bdrw.Flush()
+	assert.Equal(t, 1, trwu.unwrapCalled)
+}
+
+func TestBodyDumpResponseWriter_CanUnwrap(t *testing.T) {
+	trwu := &testResponseWriterUnwrapper{rw: httptest.NewRecorder()}
+	bdrw := bodyDumpResponseWriter{
+		ResponseWriter: trwu,
+	}
+
+	result := bdrw.Unwrap()
+	assert.Equal(t, trwu, result)
+}
+
+func TestBodyDumpResponseWriter_CanHijack(t *testing.T) {
+	trwu := testResponseWriterUnwrapperHijack{testResponseWriterUnwrapper: testResponseWriterUnwrapper{rw: httptest.NewRecorder()}}
+	bdrw := bodyDumpResponseWriter{
+		ResponseWriter: &trwu, // this RW supports hijacking through unwrapping
+	}
+
+	_, _, err := bdrw.Hijack()
+	assert.EqualError(t, err, "can hijack")
+}
+
+func TestBodyDumpResponseWriter_CanNotHijack(t *testing.T) {
+	trwu := testResponseWriterUnwrapper{rw: httptest.NewRecorder()}
+	bdrw := bodyDumpResponseWriter{
+		ResponseWriter: &trwu, // this RW supports hijacking through unwrapping
+	}
+
+	_, _, err := bdrw.Hijack()
+	assert.EqualError(t, err, "feature not supported")
 }

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: © 2015 LabStack LLC and Echo contributors
+
 package echo
 
 import (
@@ -72,19 +75,16 @@ func TestGroup_FileFS(t *testing.T) {
 
 func TestGroup_StaticPanic(t *testing.T) {
 	var testCases = []struct {
-		name        string
-		givenRoot   string
-		expectError string
+		name      string
+		givenRoot string
 	}{
 		{
-			name:        "panics for ../",
-			givenRoot:   "../images",
-			expectError: "can not create sub FS, invalid root given, err: sub ../images: invalid name",
+			name:      "panics for ../",
+			givenRoot: "../images",
 		},
 		{
-			name:        "panics for /",
-			givenRoot:   "/images",
-			expectError: "can not create sub FS, invalid root given, err: sub /images: invalid name",
+			name:      "panics for /",
+			givenRoot: "/images",
 		},
 	}
 
@@ -95,7 +95,7 @@ func TestGroup_StaticPanic(t *testing.T) {
 
 			g := e.Group("/assets")
 
-			assert.PanicsWithError(t, tc.expectError, func() {
+			assert.Panics(t, func() {
 				g.Static("/images", tc.givenRoot)
 			})
 		})

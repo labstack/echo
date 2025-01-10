@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: © 2015 LabStack LLC and Echo contributors
+
 /*
 Package echo implements high performance, minimalist Go web framework.
 
@@ -42,7 +45,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	stdLog "log"
 	"net"
 	"net/http"
@@ -60,97 +62,90 @@ import (
 	"golang.org/x/net/http2/h2c"
 )
 
-type (
-	// Echo is the top-level framework instance.
-	//
-	// Goroutine safety: Do not mutate Echo instance fields after server has started. Accessing these
-	// fields from handlers/middlewares and changing field values at the same time leads to data-races.
-	// Adding new routes after the server has been started is also not safe!
-	Echo struct {
-		filesystem
-		common
-		// startupMutex is mutex to lock Echo instance access during server configuration and startup. Useful for to get
-		// listener address info (on which interface/port was listener binded) without having data races.
-		startupMutex sync.RWMutex
-		colorer      *color.Color
+// Echo is the top-level framework instance.
+//
+// Goroutine safety: Do not mutate Echo instance fields after server has started. Accessing these
+// fields from handlers/middlewares and changing field values at the same time leads to data-races.
+// Adding new routes after the server has been started is also not safe!
+type Echo struct {
+	filesystem
+	common
+	// startupMutex is mutex to lock Echo instance access during server configuration and startup. Useful for to get
+	// listener address info (on which interface/port was listener bound) without having data races.
+	startupMutex sync.RWMutex
+	colorer      *color.Color
 
-		// premiddleware are middlewares that are run before routing is done. In case a pre-middleware returns
-		// an error the router is not executed and the request will end up in the global error handler.
-		premiddleware []MiddlewareFunc
-		middleware    []MiddlewareFunc
-		maxParam      *int
-		router        *Router
-		routers       map[string]*Router
-		pool          sync.Pool
+	// premiddleware are middlewares that are run before routing is done. In case a pre-middleware returns
+	// an error the router is not executed and the request will end up in the global error handler.
+	premiddleware []MiddlewareFunc
+	middleware    []MiddlewareFunc
+	maxParam      *int
+	router        *Router
+	routers       map[string]*Router
+	pool          sync.Pool
 
-		StdLogger        *stdLog.Logger
-		Server           *http.Server
-		TLSServer        *http.Server
-		Listener         net.Listener
-		TLSListener      net.Listener
-		AutoTLSManager   autocert.Manager
-		DisableHTTP2     bool
-		Debug            bool
-		HideBanner       bool
-		HidePort         bool
-		HTTPErrorHandler HTTPErrorHandler
-		Binder           Binder
-		JSONSerializer   JSONSerializer
-		Validator        Validator
-		Renderer         Renderer
-		Logger           Logger
-		IPExtractor      IPExtractor
-		ListenerNetwork  string
+	StdLogger        *stdLog.Logger
+	Server           *http.Server
+	TLSServer        *http.Server
+	Listener         net.Listener
+	TLSListener      net.Listener
+	AutoTLSManager   autocert.Manager
+	HTTPErrorHandler HTTPErrorHandler
+	Binder           Binder
+	JSONSerializer   JSONSerializer
+	Validator        Validator
+	Renderer         Renderer
+	Logger           Logger
+	IPExtractor      IPExtractor
+	ListenerNetwork  string
 
-		// OnAddRouteHandler is called when Echo adds new route to specific host router.
-		OnAddRouteHandler func(host string, route Route, handler HandlerFunc, middleware []MiddlewareFunc)
-	}
+	// OnAddRouteHandler is called when Echo adds new route to specific host router.
+	OnAddRouteHandler func(host string, route Route, handler HandlerFunc, middleware []MiddlewareFunc)
+	DisableHTTP2      bool
+	Debug             bool
+	HideBanner        bool
+	HidePort          bool
+}
 
-	// Route contains a handler and information for matching against requests.
-	Route struct {
-		Method string `json:"method"`
-		Path   string `json:"path"`
-		Name   string `json:"name"`
-	}
+// Route contains a handler and information for matching against requests.
+type Route struct {
+	Method string `json:"method"`
+	Path   string `json:"path"`
+	Name   string `json:"name"`
+}
 
-	// HTTPError represents an error that occurred while handling a request.
-	HTTPError struct {
-		Code     int         `json:"-"`
-		Message  interface{} `json:"message"`
-		Internal error       `json:"-"` // Stores the error returned by an external dependency
-	}
+// HTTPError represents an error that occurred while handling a request.
+type HTTPError struct {
+	Internal error       `json:"-"` // Stores the error returned by an external dependency
+	Message  interface{} `json:"message"`
+	Code     int         `json:"-"`
+}
 
-	// MiddlewareFunc defines a function to process middleware.
-	MiddlewareFunc func(next HandlerFunc) HandlerFunc
+// MiddlewareFunc defines a function to process middleware.
+type MiddlewareFunc func(next HandlerFunc) HandlerFunc
 
-	// HandlerFunc defines a function to serve HTTP requests.
-	HandlerFunc func(c Context) error
+// HandlerFunc defines a function to serve HTTP requests.
+type HandlerFunc func(c Context) error
 
-	// HTTPErrorHandler is a centralized HTTP error handler.
-	HTTPErrorHandler func(err error, c Context)
+// HTTPErrorHandler is a centralized HTTP error handler.
+type HTTPErrorHandler func(err error, c Context)
 
-	// Validator is the interface that wraps the Validate function.
-	Validator interface {
-		Validate(i interface{}) error
-	}
+// Validator is the interface that wraps the Validate function.
+type Validator interface {
+	Validate(i interface{}) error
+}
 
-	// JSONSerializer is the interface that encodes and decodes JSON to and from interfaces.
-	JSONSerializer interface {
-		Serialize(c Context, i interface{}, indent string) error
-		Deserialize(c Context, i interface{}) error
-	}
+// JSONSerializer is the interface that encodes and decodes JSON to and from interfaces.
+type JSONSerializer interface {
+	Serialize(c Context, i interface{}, indent string) error
+	Deserialize(c Context, i interface{}) error
+}
 
-	// Renderer is the interface that wraps the Render function.
-	Renderer interface {
-		Render(io.Writer, string, interface{}, Context) error
-	}
+// Map defines a generic map of type `map[string]interface{}`.
+type Map map[string]interface{}
 
-	// Map defines a generic map of type `map[string]interface{}`.
-	Map map[string]interface{}
-
-	// Common struct for Echo & Group.
-	common struct{}
-)
+// Common struct for Echo & Group.
+type common struct{}
 
 // HTTP methods
 // NOTE: Deprecated, please use the stdlib constants directly instead.
@@ -169,7 +164,12 @@ const (
 
 // MIME types
 const (
-	MIMEApplicationJSON                  = "application/json"
+	// MIMEApplicationJSON JavaScript Object Notation (JSON) https://www.rfc-editor.org/rfc/rfc8259
+	MIMEApplicationJSON = "application/json"
+	// Deprecated: Please use MIMEApplicationJSON instead. JSON should be encoded using UTF-8 by default.
+	// No "charset" parameter is defined for this registration.
+	// Adding one really has no effect on compliant recipients.
+	// See RFC 8259, section 8.1. https://datatracker.ietf.org/doc/html/rfc8259#section-8.1
 	MIMEApplicationJSONCharsetUTF8       = MIMEApplicationJSON + "; " + charsetUTF8
 	MIMEApplicationJavaScript            = "application/javascript"
 	MIMEApplicationJavaScriptCharsetUTF8 = MIMEApplicationJavaScript + "; " + charsetUTF8
@@ -263,7 +263,7 @@ const (
 
 const (
 	// Version of Echo
-	Version = "4.11.4"
+	Version = "4.13.3"
 	website = "https://echo.labstack.com"
 	// http://patorjk.com/software/taag/#p=display&f=Small%20Slant&t=Echo
 	banner = `
@@ -278,21 +278,19 @@ ____________________________________O/_______
 `
 )
 
-var (
-	methods = [...]string{
-		http.MethodConnect,
-		http.MethodDelete,
-		http.MethodGet,
-		http.MethodHead,
-		http.MethodOptions,
-		http.MethodPatch,
-		http.MethodPost,
-		PROPFIND,
-		http.MethodPut,
-		http.MethodTrace,
-		REPORT,
-	}
-)
+var methods = [...]string{
+	http.MethodConnect,
+	http.MethodDelete,
+	http.MethodGet,
+	http.MethodHead,
+	http.MethodOptions,
+	http.MethodPatch,
+	http.MethodPost,
+	PROPFIND,
+	http.MethodPut,
+	http.MethodTrace,
+	REPORT,
+}
 
 // Errors
 var (
@@ -345,22 +343,23 @@ var (
 	ErrInvalidListenerNetwork = errors.New("invalid listener network")
 )
 
-// Error handlers
-var (
-	NotFoundHandler = func(c Context) error {
-		return ErrNotFound
-	}
+// NotFoundHandler is the handler that router uses in case there was no matching route found. Returns an error that results
+// HTTP 404 status code.
+var NotFoundHandler = func(c Context) error {
+	return ErrNotFound
+}
 
-	MethodNotAllowedHandler = func(c Context) error {
-		// See RFC 7231 section 7.4.1: An origin server MUST generate an Allow field in a 405 (Method Not Allowed)
-		// response and MAY do so in any other response. For disabled resources an empty Allow header may be returned
-		routerAllowMethods, ok := c.Get(ContextKeyHeaderAllow).(string)
-		if ok && routerAllowMethods != "" {
-			c.Response().Header().Set(HeaderAllow, routerAllowMethods)
-		}
-		return ErrMethodNotAllowed
+// MethodNotAllowedHandler is the handler thar router uses in case there was no matching route found but there was
+// another matching routes for that requested URL. Returns an error that results HTTP 405 Method Not Allowed status code.
+var MethodNotAllowedHandler = func(c Context) error {
+	// See RFC 7231 section 7.4.1: An origin server MUST generate an Allow field in a 405 (Method Not Allowed)
+	// response and MAY do so in any other response. For disabled resources an empty Allow header may be returned
+	routerAllowMethods, ok := c.Get(ContextKeyHeaderAllow).(string)
+	if ok && routerAllowMethods != "" {
+		c.Response().Header().Set(HeaderAllow, routerAllowMethods)
 	}
-)
+	return ErrMethodNotAllowed
+}
 
 // New creates an instance of Echo.
 func New() (e *Echo) {
@@ -418,7 +417,7 @@ func (e *Echo) Routers() map[string]*Router {
 //
 // NOTE: In case errors happens in middleware call-chain that is returning from handler (which did not return an error).
 // When handler has already sent response (ala c.JSON()) and there is error in middleware that is returning from
-// handler. Then the error that global error handler received will be ignored because we have already "commited" the
+// handler. Then the error that global error handler received will be ignored because we have already "committed" the
 // response and status code header has been sent to the client.
 func (e *Echo) DefaultHTTPErrorHandler(err error, c Context) {
 

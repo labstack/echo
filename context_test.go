@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: © 2015 LabStack LLC and Echo contributors
+
 package echo
 
 import (
@@ -22,11 +25,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type (
-	Template struct {
-		templates *template.Template
-	}
-)
+type Template struct {
+	templates *template.Template
+}
 
 var testUser = user{1, "Jon Snow"}
 
@@ -154,7 +155,7 @@ func TestContextJSON(t *testing.T) {
 	err := c.JSON(http.StatusOK, user{1, "Jon Snow"})
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, MIMEApplicationJSON, rec.Header().Get(HeaderContentType))
 		assert.Equal(t, userJSON+"\n", rec.Body.String())
 	}
 }
@@ -178,7 +179,7 @@ func TestContextJSONPrettyURL(t *testing.T) {
 	err := c.JSON(http.StatusOK, user{1, "Jon Snow"})
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, MIMEApplicationJSON, rec.Header().Get(HeaderContentType))
 		assert.Equal(t, userJSONPretty+"\n", rec.Body.String())
 	}
 }
@@ -192,7 +193,7 @@ func TestContextJSONPretty(t *testing.T) {
 	err := c.JSONPretty(http.StatusOK, user{1, "Jon Snow"}, "  ")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, MIMEApplicationJSON, rec.Header().Get(HeaderContentType))
 		assert.Equal(t, userJSONPretty+"\n", rec.Body.String())
 	}
 }
@@ -213,7 +214,7 @@ func TestContextJSONWithEmptyIntent(t *testing.T) {
 	err := c.json(http.StatusOK, user{1, "Jon Snow"}, emptyIndent)
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, MIMEApplicationJSON, rec.Header().Get(HeaderContentType))
 		assert.Equal(t, buf.String(), rec.Body.String())
 	}
 }
@@ -244,7 +245,7 @@ func TestContextJSONBlob(t *testing.T) {
 	err = c.JSONBlob(http.StatusOK, data)
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, MIMEApplicationJSON, rec.Header().Get(HeaderContentType))
 		assert.Equal(t, userJSON, rec.Body.String())
 	}
 }
@@ -533,7 +534,7 @@ func TestContext_JSON_CommitsCustomResponseCode(t *testing.T) {
 
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusCreated, rec.Code)
-		assert.Equal(t, MIMEApplicationJSONCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, MIMEApplicationJSON, rec.Header().Get(HeaderContentType))
 		assert.Equal(t, userJSON+"\n", rec.Body.String())
 	}
 }
@@ -652,36 +653,50 @@ func TestContextGetAndSetParam(t *testing.T) {
 	})
 }
 
-// Issue #1655
-func TestContextSetParamNamesShouldUpdateEchoMaxParam(t *testing.T) {
+func TestContextSetParamNamesEchoMaxParam(t *testing.T) {
 	e := New()
 	assert.Equal(t, 0, *e.maxParam)
 
 	expectedOneParam := []string{"one"}
 	expectedTwoParams := []string{"one", "two"}
 	expectedThreeParams := []string{"one", "two", ""}
-	expectedABCParams := []string{"A", "B", "C"}
 
-	c := e.NewContext(nil, nil)
-	c.SetParamNames("1", "2")
-	c.SetParamValues(expectedTwoParams...)
-	assert.Equal(t, 2, *e.maxParam)
-	assert.EqualValues(t, expectedTwoParams, c.ParamValues())
+	{
+		c := e.AcquireContext()
+		c.SetParamNames("1", "2")
+		c.SetParamValues(expectedTwoParams...)
+		assert.Equal(t, 0, *e.maxParam) // has not been changed
+		assert.EqualValues(t, expectedTwoParams, c.ParamValues())
+		e.ReleaseContext(c)
+	}
 
-	c.SetParamNames("1")
-	assert.Equal(t, 2, *e.maxParam)
-	// Here for backward compatibility the ParamValues remains as they are
-	assert.EqualValues(t, expectedOneParam, c.ParamValues())
+	{
+		c := e.AcquireContext()
+		c.SetParamNames("1", "2", "3")
+		c.SetParamValues(expectedThreeParams...)
+		assert.Equal(t, 0, *e.maxParam) // has not been changed
+		assert.EqualValues(t, expectedThreeParams, c.ParamValues())
+		e.ReleaseContext(c)
+	}
 
-	c.SetParamNames("1", "2", "3")
-	assert.Equal(t, 3, *e.maxParam)
-	// Here for backward compatibility the ParamValues remains as they are, but the len is extended to e.maxParam
-	assert.EqualValues(t, expectedThreeParams, c.ParamValues())
+	{ // values is always same size as names length
+		c := e.NewContext(nil, nil)
+		c.SetParamValues([]string{"one", "two"}...) // more values than names should be ok
+		c.SetParamNames("1")
+		assert.Equal(t, 0, *e.maxParam) // has not been changed
+		assert.EqualValues(t, expectedOneParam, c.ParamValues())
+	}
 
-	c.SetParamValues("A", "B", "C", "D")
-	assert.Equal(t, 3, *e.maxParam)
-	// Here D shouldn't be returned
-	assert.EqualValues(t, expectedABCParams, c.ParamValues())
+	e.GET("/:id", handlerFunc)
+	assert.Equal(t, 1, *e.maxParam) // has not been changed
+
+	{
+		c := e.NewContext(nil, nil)
+		c.SetParamValues([]string{"one", "two"}...)
+		c.SetParamNames("1")
+		assert.Equal(t, 1, *e.maxParam) // has not been changed
+		assert.EqualValues(t, expectedOneParam, c.ParamValues())
+	}
 }
 
 func TestContextFormValue(t *testing.T) {
@@ -759,6 +774,11 @@ func TestContextMultipartForm(t *testing.T) {
 	buf := new(bytes.Buffer)
 	mw := multipart.NewWriter(buf)
 	mw.WriteField("name", "Jon Snow")
+	fileContent := "This is a test file"
+	w, err := mw.CreateFormFile("file", "test.txt")
+	if assert.NoError(t, err) {
+		w.Write([]byte(fileContent))
+	}
 	mw.Close()
 	req := httptest.NewRequest(http.MethodPost, "/", buf)
 	req.Header.Set(HeaderContentType, mw.FormDataContentType())
@@ -767,6 +787,13 @@ func TestContextMultipartForm(t *testing.T) {
 	f, err := c.MultipartForm()
 	if assert.NoError(t, err) {
 		assert.NotNil(t, f)
+
+		files := f.File["file"]
+		if assert.Len(t, files, 1) {
+			file := files[0]
+			assert.Equal(t, "test.txt", file.Filename)
+			assert.Equal(t, int64(len(fileContent)), file.Size)
+		}
 	}
 }
 

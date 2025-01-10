@@ -1,8 +1,12 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: © 2015 LabStack LLC and Echo contributors
+
 package middleware
 
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -10,32 +14,28 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type (
-	// BodyDumpConfig defines the config for BodyDump middleware.
-	BodyDumpConfig struct {
-		// Skipper defines a function to skip middleware.
-		Skipper Skipper
+// BodyDumpConfig defines the config for BodyDump middleware.
+type BodyDumpConfig struct {
+	// Skipper defines a function to skip middleware.
+	Skipper Skipper
 
-		// Handler receives request and response payload.
-		// Required.
-		Handler BodyDumpHandler
-	}
+	// Handler receives request and response payload.
+	// Required.
+	Handler BodyDumpHandler
+}
 
-	// BodyDumpHandler receives the request and response payload.
-	BodyDumpHandler func(echo.Context, []byte, []byte)
+// BodyDumpHandler receives the request and response payload.
+type BodyDumpHandler func(echo.Context, []byte, []byte)
 
-	bodyDumpResponseWriter struct {
-		io.Writer
-		http.ResponseWriter
-	}
-)
+type bodyDumpResponseWriter struct {
+	io.Writer
+	http.ResponseWriter
+}
 
-var (
-	// DefaultBodyDumpConfig is the default BodyDump middleware config.
-	DefaultBodyDumpConfig = BodyDumpConfig{
-		Skipper: DefaultSkipper,
-	}
-)
+// DefaultBodyDumpConfig is the default BodyDump middleware config.
+var DefaultBodyDumpConfig = BodyDumpConfig{
+	Skipper: DefaultSkipper,
+}
 
 // BodyDump returns a BodyDump middleware.
 //
@@ -98,9 +98,16 @@ func (w *bodyDumpResponseWriter) Write(b []byte) (int, error) {
 }
 
 func (w *bodyDumpResponseWriter) Flush() {
-	w.ResponseWriter.(http.Flusher).Flush()
+	err := http.NewResponseController(w.ResponseWriter).Flush()
+	if err != nil && errors.Is(err, http.ErrNotSupported) {
+		panic(errors.New("response writer flushing is not supported"))
+	}
 }
 
 func (w *bodyDumpResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	return w.ResponseWriter.(http.Hijacker).Hijack()
+	return http.NewResponseController(w.ResponseWriter).Hijack()
+}
+
+func (w *bodyDumpResponseWriter) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
 }

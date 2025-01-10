@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: © 2015 LabStack LLC and Echo contributors
+
 package middleware
 
 import (
@@ -6,28 +9,24 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type (
-	// MethodOverrideConfig defines the config for MethodOverride middleware.
-	MethodOverrideConfig struct {
-		// Skipper defines a function to skip middleware.
-		Skipper Skipper
+// MethodOverrideConfig defines the config for MethodOverride middleware.
+type MethodOverrideConfig struct {
+	// Skipper defines a function to skip middleware.
+	Skipper Skipper
 
-		// Getter is a function that gets overridden method from the request.
-		// Optional. Default values MethodFromHeader(echo.HeaderXHTTPMethodOverride).
-		Getter MethodOverrideGetter
-	}
+	// Getter is a function that gets overridden method from the request.
+	// Optional. Default values MethodFromHeader(echo.HeaderXHTTPMethodOverride).
+	Getter MethodOverrideGetter
+}
 
-	// MethodOverrideGetter is a function that gets overridden method from the request
-	MethodOverrideGetter func(echo.Context) string
-)
+// MethodOverrideGetter is a function that gets overridden method from the request
+type MethodOverrideGetter func(echo.Context) string
 
-var (
-	// DefaultMethodOverrideConfig is the default MethodOverride middleware config.
-	DefaultMethodOverrideConfig = MethodOverrideConfig{
-		Skipper: DefaultSkipper,
-		Getter:  MethodFromHeader(echo.HeaderXHTTPMethodOverride),
-	}
-)
+// DefaultMethodOverrideConfig is the default MethodOverride middleware config.
+var DefaultMethodOverrideConfig = MethodOverrideConfig{
+	Skipper: DefaultSkipper,
+	Getter:  MethodFromHeader(echo.HeaderXHTTPMethodOverride),
+}
 
 // MethodOverride returns a MethodOverride middleware.
 // MethodOverride  middleware checks for the overridden method from the request and

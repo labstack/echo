@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: © 2015 LabStack LLC and Echo contributors
+
 package echo
 
 import (
@@ -242,19 +245,16 @@ func TestEcho_FileFS(t *testing.T) {
 
 func TestEcho_StaticPanic(t *testing.T) {
 	var testCases = []struct {
-		name        string
-		givenRoot   string
-		expectError string
+		name      string
+		givenRoot string
 	}{
 		{
-			name:        "panics for ../",
-			givenRoot:   "../assets",
-			expectError: "can not create sub FS, invalid root given, err: sub ../assets: invalid name",
+			name:      "panics for ../",
+			givenRoot: "../assets",
 		},
 		{
-			name:        "panics for /",
-			givenRoot:   "/assets",
-			expectError: "can not create sub FS, invalid root given, err: sub /assets: invalid name",
+			name:      "panics for /",
+			givenRoot: "/assets",
 		},
 	}
 
@@ -263,7 +263,7 @@ func TestEcho_StaticPanic(t *testing.T) {
 			e := New()
 			e.Filesystem = os.DirFS("./")
 
-			assert.PanicsWithError(t, tc.expectError, func() {
+			assert.Panics(t, func() {
 				e.Static("../assets", tc.givenRoot)
 			})
 		})

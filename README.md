@@ -1,5 +1,3 @@
-<a href="https://echo.labstack.com"><img height="80" src="https://cdn.labstack.com/images/echo-logo.svg"></a>
-
 [![Sourcegraph](https://sourcegraph.com/github.com/labstack/echo/-/badge.svg?style=flat-square)](https://sourcegraph.com/github.com/labstack/echo?badge)
 [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://pkg.go.dev/github.com/labstack/echo/v4)
 [![Go Report Card](https://goreportcard.com/badge/github.com/labstack/echo?style=flat-square)](https://goreportcard.com/report/github.com/labstack/echo)
@@ -9,20 +7,18 @@
 [![Twitter](https://img.shields.io/badge/twitter-@labstack-55acee.svg?style=flat-square)](https://twitter.com/labstack)
 [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/labstack/echo/master/LICENSE)
 
-## Supported Go versions
+## Echo
 
-Latest version of Echo supports last four Go major [releases](https://go.dev/doc/devel/release) and might work with
-older versions.
+High performance, extensible, minimalist Go web framework.
 
-As of version 4.0.0, Echo is available as a [Go module](https://github.com/golang/go/wiki/Modules).
-Therefore a Go version capable of understanding /vN suffixed imports is required:
+* [Official website](https://echo.labstack.com)
+* [Quick start](https://echo.labstack.com/docs/quick-start)
+* [Middlewares](https://echo.labstack.com/docs/category/middleware)
 
-Any of these versions will allow you to import Echo as `github.com/labstack/echo/v4` which is the recommended
-way of using Echo going forward.
+Help and questions: [Github Discussions](https://github.com/labstack/echo/discussions)
 
-For older versions, please use the latest v3 tag.
 
-## Feature Overview
+### Feature Overview
 
 - Optimized HTTP router which smartly prioritize routes
 - Build robust and scalable RESTful APIs
@@ -37,6 +33,18 @@ For older versions, please use the latest v3 tag.
 - Highly customizable
 - Automatic TLS via Let’s Encrypt
 - HTTP/2 support
+
+## Sponsors
+
+<div>
+  <a href="https://encore.dev" style="display: inline-flex; align-items: center; gap: 10px">
+    <img src="https://user-images.githubusercontent.com/78424526/214602214-52e0483a-b5fc-4d4c-b03e-0b7b23e012df.svg" height="28px" alt="encore icon"></img>
+  <b>Encore – the platform for building Go-based cloud backends</b>
+    </a>
+</div>
+<br/>
+
+Click [here](https://github.com/sponsors/labstack) for more information on sponsorship.
 
 ## Benchmarks
 
@@ -57,6 +65,7 @@ The benchmarks above were run on an Intel(R) Core(TM) i7-6820HQ CPU @ 2.70GHz
 // go get github.com/labstack/echo/{version}
 go get github.com/labstack/echo/v4
 ```
+Latest version of Echo supports last four Go major [releases](https://go.dev/doc/devel/release) and might work with older versions.
 
 ### Example
 
@@ -66,6 +75,7 @@ package main
 import (
   "github.com/labstack/echo/v4"
   "github.com/labstack/echo/v4/middleware"
+  "log/slog"
   "net/http"
 )
 
@@ -81,7 +91,9 @@ func main() {
   e.GET("/", hello)
 
   // Start server
-  e.Logger.Fatal(e.Start(":1323"))
+  if err := e.Start(":8080"); err != nil && !errors.Is(err, http.ErrServerClosed) {
+    slog.Error("failed to start server", "error", err)
+  }
 }
 
 // Handler
@@ -116,10 +128,6 @@ of middlewares in this list.
 | [github.com/go-woo/protoc-gen-echo](https://github.com/go-woo/protoc-gen-echo)                       | ProtoBuf generate Echo server side code                                                                                                                                                                  |
 
 Please send a PR to add your own library here.
-
-## Help
-
-- [Forum](https://github.com/labstack/echo/discussions)
 
 ## Contribute
 
