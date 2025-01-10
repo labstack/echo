@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: © 2015 LabStack LLC and Echo contributors
+
 package echo
 
 import (
@@ -22,12 +25,10 @@ import (
 	"golang.org/x/net/http2"
 )
 
-type (
-	user struct {
-		ID   int    `json:"id" xml:"id" form:"id" query:"id" param:"id" header:"id"`
-		Name string `json:"name" xml:"name" form:"name" query:"name" param:"name" header:"name"`
-	}
-)
+type user struct {
+	ID   int    `json:"id" xml:"id" form:"id" query:"id" param:"id" header:"id"`
+	Name string `json:"name" xml:"name" form:"name" query:"name" param:"name" header:"name"`
+}
 
 const (
 	userJSON                    = `{"id":1,"name":"Jon Snow"}`
@@ -1572,7 +1573,7 @@ func TestEcho_OnAddRouteHandler(t *testing.T) {
 		})
 	}
 
-	e.GET("/static", NotFoundHandler)
+	e.GET("/static", dummyHandler)
 	e.Host("domain.site").GET("/static/*", dummyHandler, func(next HandlerFunc) HandlerFunc {
 		return func(c Context) error {
 			return next(c)
@@ -1582,7 +1583,7 @@ func TestEcho_OnAddRouteHandler(t *testing.T) {
 	assert.Len(t, added, 2)
 
 	assert.Equal(t, "", added[0].host)
-	assert.Equal(t, Route{Method: http.MethodGet, Path: "/static", Name: "github.com/labstack/echo/v4.glob..func1"}, added[0].route)
+	assert.Equal(t, Route{Method: http.MethodGet, Path: "/static", Name: "github.com/labstack/echo/v4.TestEcho_OnAddRouteHandler.func1"}, added[0].route)
 	assert.Len(t, added[0].middleware, 0)
 
 	assert.Equal(t, "domain.site", added[1].host)
@@ -1597,6 +1598,11 @@ func TestEchoReverse(t *testing.T) {
 		whenParams    []interface{}
 		expect        string
 	}{
+		{
+			name:          "ok, not existing path returns empty url",
+			whenRouteName: "not-existing",
+			expect:        "",
+		},
 		{
 			name:          "ok,static with no params",
 			whenRouteName: "/static",

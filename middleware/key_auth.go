@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: © 2015 LabStack LLC and Echo contributors
+
 package middleware
 
 import (
@@ -6,67 +9,63 @@ import (
 	"net/http"
 )
 
-type (
-	// KeyAuthConfig defines the config for KeyAuth middleware.
-	KeyAuthConfig struct {
-		// Skipper defines a function to skip middleware.
-		Skipper Skipper
+// KeyAuthConfig defines the config for KeyAuth middleware.
+type KeyAuthConfig struct {
+	// Skipper defines a function to skip middleware.
+	Skipper Skipper
 
-		// KeyLookup is a string in the form of "<source>:<name>" or "<source>:<name>,<source>:<name>" that is used
-		// to extract key from the request.
-		// Optional. Default value "header:Authorization".
-		// Possible values:
-		// - "header:<name>" or "header:<name>:<cut-prefix>"
-		// 			`<cut-prefix>` is argument value to cut/trim prefix of the extracted value. This is useful if header
-		//			value has static prefix like `Authorization: <auth-scheme> <authorisation-parameters>` where part that we
-		//			want to cut is `<auth-scheme> ` note the space at the end.
-		//			In case of basic authentication `Authorization: Basic <credentials>` prefix we want to remove is `Basic `.
-		// - "query:<name>"
-		// - "form:<name>"
-		// - "cookie:<name>"
-		// Multiple sources example:
-		// - "header:Authorization,header:X-Api-Key"
-		KeyLookup string
+	// KeyLookup is a string in the form of "<source>:<name>" or "<source>:<name>,<source>:<name>" that is used
+	// to extract key from the request.
+	// Optional. Default value "header:Authorization".
+	// Possible values:
+	// - "header:<name>" or "header:<name>:<cut-prefix>"
+	// 			`<cut-prefix>` is argument value to cut/trim prefix of the extracted value. This is useful if header
+	//			value has static prefix like `Authorization: <auth-scheme> <authorisation-parameters>` where part that we
+	//			want to cut is `<auth-scheme> ` note the space at the end.
+	//			In case of basic authentication `Authorization: Basic <credentials>` prefix we want to remove is `Basic `.
+	// - "query:<name>"
+	// - "form:<name>"
+	// - "cookie:<name>"
+	// Multiple sources example:
+	// - "header:Authorization,header:X-Api-Key"
+	KeyLookup string
 
-		// AuthScheme to be used in the Authorization header.
-		// Optional. Default value "Bearer".
-		AuthScheme string
+	// AuthScheme to be used in the Authorization header.
+	// Optional. Default value "Bearer".
+	AuthScheme string
 
-		// Validator is a function to validate key.
-		// Required.
-		Validator KeyAuthValidator
+	// Validator is a function to validate key.
+	// Required.
+	Validator KeyAuthValidator
 
-		// ErrorHandler defines a function which is executed for an invalid key.
-		// It may be used to define a custom error.
-		ErrorHandler KeyAuthErrorHandler
+	// ErrorHandler defines a function which is executed for an invalid key.
+	// It may be used to define a custom error.
+	ErrorHandler KeyAuthErrorHandler
 
-		// ContinueOnIgnoredError allows the next middleware/handler to be called when ErrorHandler decides to
-		// ignore the error (by returning `nil`).
-		// This is useful when parts of your site/api allow public access and some authorized routes provide extra functionality.
-		// In that case you can use ErrorHandler to set a default public key auth value in the request context
-		// and continue. Some logic down the remaining execution chain needs to check that (public) key auth value then.
-		ContinueOnIgnoredError bool
-	}
+	// ContinueOnIgnoredError allows the next middleware/handler to be called when ErrorHandler decides to
+	// ignore the error (by returning `nil`).
+	// This is useful when parts of your site/api allow public access and some authorized routes provide extra functionality.
+	// In that case you can use ErrorHandler to set a default public key auth value in the request context
+	// and continue. Some logic down the remaining execution chain needs to check that (public) key auth value then.
+	ContinueOnIgnoredError bool
+}
 
-	// KeyAuthValidator defines a function to validate KeyAuth credentials.
-	KeyAuthValidator func(auth string, c echo.Context) (bool, error)
+// KeyAuthValidator defines a function to validate KeyAuth credentials.
+type KeyAuthValidator func(auth string, c echo.Context) (bool, error)
 
-	// KeyAuthErrorHandler defines a function which is executed for an invalid key.
-	KeyAuthErrorHandler func(err error, c echo.Context) error
-)
-
-var (
-	// DefaultKeyAuthConfig is the default KeyAuth middleware config.
-	DefaultKeyAuthConfig = KeyAuthConfig{
-		Skipper:    DefaultSkipper,
-		KeyLookup:  "header:" + echo.HeaderAuthorization,
-		AuthScheme: "Bearer",
-	}
-)
+// KeyAuthErrorHandler defines a function which is executed for an invalid key.
+type KeyAuthErrorHandler func(err error, c echo.Context) error
 
 // ErrKeyAuthMissing is error type when KeyAuth middleware is unable to extract value from lookups
 type ErrKeyAuthMissing struct {
 	Err error
+}
+
+// DefaultKeyAuthConfig is the default KeyAuth middleware config.
+var DefaultKeyAuthConfig = KeyAuthConfig{
+	Skipper:    DefaultSkipper,
+	KeyLookup:  "header:" + echo.HeaderAuthorization,
+	AuthScheme: "Bearer",
 }
 
 // Error returns errors text

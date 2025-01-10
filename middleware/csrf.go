@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: © 2015 LabStack LLC and Echo contributors
+
 package middleware
 
 import (
@@ -8,82 +11,78 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type (
-	// CSRFConfig defines the config for CSRF middleware.
-	CSRFConfig struct {
-		// Skipper defines a function to skip middleware.
-		Skipper Skipper
+// CSRFConfig defines the config for CSRF middleware.
+type CSRFConfig struct {
+	// Skipper defines a function to skip middleware.
+	Skipper Skipper
 
-		// TokenLength is the length of the generated token.
-		TokenLength uint8 `yaml:"token_length"`
-		// Optional. Default value 32.
+	// TokenLength is the length of the generated token.
+	TokenLength uint8 `yaml:"token_length"`
+	// Optional. Default value 32.
 
-		// TokenLookup is a string in the form of "<source>:<name>" or "<source>:<name>,<source>:<name>" that is used
-		// to extract token from the request.
-		// Optional. Default value "header:X-CSRF-Token".
-		// Possible values:
-		// - "header:<name>" or "header:<name>:<cut-prefix>"
-		// - "query:<name>"
-		// - "form:<name>"
-		// Multiple sources example:
-		// - "header:X-CSRF-Token,query:csrf"
-		TokenLookup string `yaml:"token_lookup"`
+	// TokenLookup is a string in the form of "<source>:<name>" or "<source>:<name>,<source>:<name>" that is used
+	// to extract token from the request.
+	// Optional. Default value "header:X-CSRF-Token".
+	// Possible values:
+	// - "header:<name>" or "header:<name>:<cut-prefix>"
+	// - "query:<name>"
+	// - "form:<name>"
+	// Multiple sources example:
+	// - "header:X-CSRF-Token,query:csrf"
+	TokenLookup string `yaml:"token_lookup"`
 
-		// Context key to store generated CSRF token into context.
-		// Optional. Default value "csrf".
-		ContextKey string `yaml:"context_key"`
+	// Context key to store generated CSRF token into context.
+	// Optional. Default value "csrf".
+	ContextKey string `yaml:"context_key"`
 
-		// Name of the CSRF cookie. This cookie will store CSRF token.
-		// Optional. Default value "csrf".
-		CookieName string `yaml:"cookie_name"`
+	// Name of the CSRF cookie. This cookie will store CSRF token.
+	// Optional. Default value "csrf".
+	CookieName string `yaml:"cookie_name"`
 
-		// Domain of the CSRF cookie.
-		// Optional. Default value none.
-		CookieDomain string `yaml:"cookie_domain"`
+	// Domain of the CSRF cookie.
+	// Optional. Default value none.
+	CookieDomain string `yaml:"cookie_domain"`
 
-		// Path of the CSRF cookie.
-		// Optional. Default value none.
-		CookiePath string `yaml:"cookie_path"`
+	// Path of the CSRF cookie.
+	// Optional. Default value none.
+	CookiePath string `yaml:"cookie_path"`
 
-		// Max age (in seconds) of the CSRF cookie.
-		// Optional. Default value 86400 (24hr).
-		CookieMaxAge int `yaml:"cookie_max_age"`
+	// Max age (in seconds) of the CSRF cookie.
+	// Optional. Default value 86400 (24hr).
+	CookieMaxAge int `yaml:"cookie_max_age"`
 
-		// Indicates if CSRF cookie is secure.
-		// Optional. Default value false.
-		CookieSecure bool `yaml:"cookie_secure"`
+	// Indicates if CSRF cookie is secure.
+	// Optional. Default value false.
+	CookieSecure bool `yaml:"cookie_secure"`
 
-		// Indicates if CSRF cookie is HTTP only.
-		// Optional. Default value false.
-		CookieHTTPOnly bool `yaml:"cookie_http_only"`
+	// Indicates if CSRF cookie is HTTP only.
+	// Optional. Default value false.
+	CookieHTTPOnly bool `yaml:"cookie_http_only"`
 
-		// Indicates SameSite mode of the CSRF cookie.
-		// Optional. Default value SameSiteDefaultMode.
-		CookieSameSite http.SameSite `yaml:"cookie_same_site"`
+	// Indicates SameSite mode of the CSRF cookie.
+	// Optional. Default value SameSiteDefaultMode.
+	CookieSameSite http.SameSite `yaml:"cookie_same_site"`
 
-		// ErrorHandler defines a function which is executed for returning custom errors.
-		ErrorHandler CSRFErrorHandler
-	}
+	// ErrorHandler defines a function which is executed for returning custom errors.
+	ErrorHandler CSRFErrorHandler
+}
 
-	// CSRFErrorHandler is a function which is executed for creating custom errors.
-	CSRFErrorHandler func(err error, c echo.Context) error
-)
+// CSRFErrorHandler is a function which is executed for creating custom errors.
+type CSRFErrorHandler func(err error, c echo.Context) error
 
 // ErrCSRFInvalid is returned when CSRF check fails
 var ErrCSRFInvalid = echo.NewHTTPError(http.StatusForbidden, "invalid csrf token")
 
-var (
-	// DefaultCSRFConfig is the default CSRF middleware config.
-	DefaultCSRFConfig = CSRFConfig{
-		Skipper:        DefaultSkipper,
-		TokenLength:    32,
-		TokenLookup:    "header:" + echo.HeaderXCSRFToken,
-		ContextKey:     "csrf",
-		CookieName:     "_csrf",
-		CookieMaxAge:   86400,
-		CookieSameSite: http.SameSiteDefaultMode,
-	}
-)
+// DefaultCSRFConfig is the default CSRF middleware config.
+var DefaultCSRFConfig = CSRFConfig{
+	Skipper:        DefaultSkipper,
+	TokenLength:    32,
+	TokenLookup:    "header:" + echo.HeaderXCSRFToken,
+	ContextKey:     "csrf",
+	CookieName:     "_csrf",
+	CookieMaxAge:   86400,
+	CookieSameSite: http.SameSiteDefaultMode,
+}
 
 // CSRF returns a Cross-Site Request Forgery (CSRF) middleware.
 // See: https://en.wikipedia.org/wiki/Cross-site_request_forgery

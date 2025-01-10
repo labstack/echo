@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: © 2015 LabStack LLC and Echo contributors
+
 package middleware
 
 import (
@@ -27,6 +30,18 @@ func TestCORS(t *testing.T) {
 		{
 			name:             "ok, wildcard AllowedOrigin with no Origin header in request",
 			notExpectHeaders: map[string]string{echo.HeaderAccessControlAllowOrigin: ""},
+		},
+		{
+			name: "ok, invalid pattern is ignored",
+			givenMW: CORSWithConfig(CORSConfig{
+				AllowOrigins: []string{
+					"\xff", // Invalid UTF-8 makes regexp.Compile to error
+					"*.example.com",
+				},
+			}),
+			whenMethod:    http.MethodOptions,
+			whenHeaders:   map[string]string{echo.HeaderOrigin: "http://aaa.example.com"},
+			expectHeaders: map[string]string{echo.HeaderAccessControlAllowOrigin: "http://aaa.example.com"},
 		},
 		{
 			name: "ok, specific AllowOrigins and AllowCredentials",
@@ -510,7 +525,7 @@ func TestCorsHeaders(t *testing.T) {
 			allowedOrigin: "http://example.com",
 			method:        http.MethodGet,
 			expected:      false,
-			expectStatus:  http.StatusOK,
+			expectStatus:  http.StatusUnauthorized,
 		},
 		{
 			name:          "non-preflight request, allow specific origin, matching origin header = CORS logic done",

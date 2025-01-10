@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: © 2015 LabStack LLC and Echo contributors
+
 package middleware
 
 import (
@@ -19,117 +22,113 @@ import (
 
 // TODO: Handle TLS proxy
 
-type (
-	// ProxyConfig defines the config for Proxy middleware.
-	ProxyConfig struct {
-		// Skipper defines a function to skip middleware.
-		Skipper Skipper
+// ProxyConfig defines the config for Proxy middleware.
+type ProxyConfig struct {
+	// Skipper defines a function to skip middleware.
+	Skipper Skipper
 
-		// Balancer defines a load balancing technique.
-		// Required.
-		Balancer ProxyBalancer
+	// Balancer defines a load balancing technique.
+	// Required.
+	Balancer ProxyBalancer
 
-		// RetryCount defines the number of times a failed proxied request should be retried
-		// using the next available ProxyTarget. Defaults to 0, meaning requests are never retried.
-		RetryCount int
+	// RetryCount defines the number of times a failed proxied request should be retried
+	// using the next available ProxyTarget. Defaults to 0, meaning requests are never retried.
+	RetryCount int
 
-		// RetryFilter defines a function used to determine if a failed request to a
-		// ProxyTarget should be retried. The RetryFilter will only be called when the number
-		// of previous retries is less than RetryCount. If the function returns true, the
-		// request will be retried. The provided error indicates the reason for the request
-		// failure. When the ProxyTarget is unavailable, the error will be an instance of
-		// echo.HTTPError with a Code of http.StatusBadGateway. In all other cases, the error
-		// will indicate an internal error in the Proxy middleware. When a RetryFilter is not
-		// specified, all requests that fail with http.StatusBadGateway will be retried. A custom
-		// RetryFilter can be provided to only retry specific requests. Note that RetryFilter is
-		// only called when the request to the target fails, or an internal error in the Proxy
-		// middleware has occurred. Successful requests that return a non-200 response code cannot
-		// be retried.
-		RetryFilter func(c echo.Context, e error) bool
+	// RetryFilter defines a function used to determine if a failed request to a
+	// ProxyTarget should be retried. The RetryFilter will only be called when the number
+	// of previous retries is less than RetryCount. If the function returns true, the
+	// request will be retried. The provided error indicates the reason for the request
+	// failure. When the ProxyTarget is unavailable, the error will be an instance of
+	// echo.HTTPError with a Code of http.StatusBadGateway. In all other cases, the error
+	// will indicate an internal error in the Proxy middleware. When a RetryFilter is not
+	// specified, all requests that fail with http.StatusBadGateway will be retried. A custom
+	// RetryFilter can be provided to only retry specific requests. Note that RetryFilter is
+	// only called when the request to the target fails, or an internal error in the Proxy
+	// middleware has occurred. Successful requests that return a non-200 response code cannot
+	// be retried.
+	RetryFilter func(c echo.Context, e error) bool
 
-		// ErrorHandler defines a function which can be used to return custom errors from
-		// the Proxy middleware. ErrorHandler is only invoked when there has been
-		// either an internal error in the Proxy middleware or the ProxyTarget is
-		// unavailable. Due to the way requests are proxied, ErrorHandler is not invoked
-		// when a ProxyTarget returns a non-200 response. In these cases, the response
-		// is already written so errors cannot be modified. ErrorHandler is only
-		// invoked after all retry attempts have been exhausted.
-		ErrorHandler func(c echo.Context, err error) error
+	// ErrorHandler defines a function which can be used to return custom errors from
+	// the Proxy middleware. ErrorHandler is only invoked when there has been
+	// either an internal error in the Proxy middleware or the ProxyTarget is
+	// unavailable. Due to the way requests are proxied, ErrorHandler is not invoked
+	// when a ProxyTarget returns a non-200 response. In these cases, the response
+	// is already written so errors cannot be modified. ErrorHandler is only
+	// invoked after all retry attempts have been exhausted.
+	ErrorHandler func(c echo.Context, err error) error
 
-		// Rewrite defines URL path rewrite rules. The values captured in asterisk can be
-		// retrieved by index e.g. $1, $2 and so on.
-		// Examples:
-		// "/old":              "/new",
-		// "/api/*":            "/$1",
-		// "/js/*":             "/public/javascripts/$1",
-		// "/users/*/orders/*": "/user/$1/order/$2",
-		Rewrite map[string]string
+	// Rewrite defines URL path rewrite rules. The values captured in asterisk can be
+	// retrieved by index e.g. $1, $2 and so on.
+	// Examples:
+	// "/old":              "/new",
+	// "/api/*":            "/$1",
+	// "/js/*":             "/public/javascripts/$1",
+	// "/users/*/orders/*": "/user/$1/order/$2",
+	Rewrite map[string]string
 
-		// RegexRewrite defines rewrite rules using regexp.Rexexp with captures
-		// Every capture group in the values can be retrieved by index e.g. $1, $2 and so on.
-		// Example:
-		// "^/old/[0.9]+/":     "/new",
-		// "^/api/.+?/(.*)":    "/v2/$1",
-		RegexRewrite map[*regexp.Regexp]string
+	// RegexRewrite defines rewrite rules using regexp.Rexexp with captures
+	// Every capture group in the values can be retrieved by index e.g. $1, $2 and so on.
+	// Example:
+	// "^/old/[0.9]+/":     "/new",
+	// "^/api/.+?/(.*)":    "/v2/$1",
+	RegexRewrite map[*regexp.Regexp]string
 
-		// Context key to store selected ProxyTarget into context.
-		// Optional. Default value "target".
-		ContextKey string
+	// Context key to store selected ProxyTarget into context.
+	// Optional. Default value "target".
+	ContextKey string
 
-		// To customize the transport to remote.
-		// Examples: If custom TLS certificates are required.
-		Transport http.RoundTripper
+	// To customize the transport to remote.
+	// Examples: If custom TLS certificates are required.
+	Transport http.RoundTripper
 
-		// ModifyResponse defines function to modify response from ProxyTarget.
-		ModifyResponse func(*http.Response) error
-	}
+	// ModifyResponse defines function to modify response from ProxyTarget.
+	ModifyResponse func(*http.Response) error
+}
 
-	// ProxyTarget defines the upstream target.
-	ProxyTarget struct {
-		Name string
-		URL  *url.URL
-		Meta echo.Map
-	}
+// ProxyTarget defines the upstream target.
+type ProxyTarget struct {
+	Name string
+	URL  *url.URL
+	Meta echo.Map
+}
 
-	// ProxyBalancer defines an interface to implement a load balancing technique.
-	ProxyBalancer interface {
-		AddTarget(*ProxyTarget) bool
-		RemoveTarget(string) bool
-		Next(echo.Context) *ProxyTarget
-	}
+// ProxyBalancer defines an interface to implement a load balancing technique.
+type ProxyBalancer interface {
+	AddTarget(*ProxyTarget) bool
+	RemoveTarget(string) bool
+	Next(echo.Context) *ProxyTarget
+}
 
-	// TargetProvider defines an interface that gives the opportunity for balancer
-	// to return custom errors when selecting target.
-	TargetProvider interface {
-		NextTarget(echo.Context) (*ProxyTarget, error)
-	}
+// TargetProvider defines an interface that gives the opportunity for balancer
+// to return custom errors when selecting target.
+type TargetProvider interface {
+	NextTarget(echo.Context) (*ProxyTarget, error)
+}
 
-	commonBalancer struct {
-		targets []*ProxyTarget
-		mutex   sync.Mutex
-	}
+type commonBalancer struct {
+	targets []*ProxyTarget
+	mutex   sync.Mutex
+}
 
-	// RandomBalancer implements a random load balancing technique.
-	randomBalancer struct {
-		commonBalancer
-		random *rand.Rand
-	}
+// RandomBalancer implements a random load balancing technique.
+type randomBalancer struct {
+	commonBalancer
+	random *rand.Rand
+}
 
-	// RoundRobinBalancer implements a round-robin load balancing technique.
-	roundRobinBalancer struct {
-		commonBalancer
-		// tracking the index on `targets` slice for the next `*ProxyTarget` to be used
-		i int
-	}
-)
+// RoundRobinBalancer implements a round-robin load balancing technique.
+type roundRobinBalancer struct {
+	commonBalancer
+	// tracking the index on `targets` slice for the next `*ProxyTarget` to be used
+	i int
+}
 
-var (
-	// DefaultProxyConfig is the default Proxy middleware config.
-	DefaultProxyConfig = ProxyConfig{
-		Skipper:    DefaultSkipper,
-		ContextKey: "target",
-	}
-)
+// DefaultProxyConfig is the default Proxy middleware config.
+var DefaultProxyConfig = ProxyConfig{
+	Skipper:    DefaultSkipper,
+	ContextKey: "target",
+}
 
 func proxyRaw(t *ProxyTarget, c echo.Context) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -367,8 +366,7 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 				switch {
 				case c.IsWebSocket():
 					proxyRaw(tgt, c).ServeHTTP(res, req)
-				case req.Header.Get(echo.HeaderAccept) == "text/event-stream":
-				default:
+				default: // even SSE requests
 					proxyHTTP(tgt, c, config).ServeHTTP(res, req)
 				}
 

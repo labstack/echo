@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: © 2015 LabStack LLC and Echo contributors
+
 package middleware
 
 import (
@@ -14,40 +17,38 @@ import (
 	"github.com/labstack/gommon/bytes"
 )
 
-type (
-	// StaticConfig defines the config for Static middleware.
-	StaticConfig struct {
-		// Skipper defines a function to skip middleware.
-		Skipper Skipper
+// StaticConfig defines the config for Static middleware.
+type StaticConfig struct {
+	// Skipper defines a function to skip middleware.
+	Skipper Skipper
 
-		// Root directory from where the static content is served.
-		// Required.
-		Root string `yaml:"root"`
+	// Root directory from where the static content is served.
+	// Required.
+	Root string `yaml:"root"`
 
-		// Index file for serving a directory.
-		// Optional. Default value "index.html".
-		Index string `yaml:"index"`
+	// Index file for serving a directory.
+	// Optional. Default value "index.html".
+	Index string `yaml:"index"`
 
-		// Enable HTML5 mode by forwarding all not-found requests to root so that
-		// SPA (single-page application) can handle the routing.
-		// Optional. Default value false.
-		HTML5 bool `yaml:"html5"`
+	// Enable HTML5 mode by forwarding all not-found requests to root so that
+	// SPA (single-page application) can handle the routing.
+	// Optional. Default value false.
+	HTML5 bool `yaml:"html5"`
 
-		// Enable directory browsing.
-		// Optional. Default value false.
-		Browse bool `yaml:"browse"`
+	// Enable directory browsing.
+	// Optional. Default value false.
+	Browse bool `yaml:"browse"`
 
-		// Enable ignoring of the base of the URL path.
-		// Example: when assigning a static middleware to a non root path group,
-		// the filesystem path is not doubled
-		// Optional. Default value false.
-		IgnoreBase bool `yaml:"ignoreBase"`
+	// Enable ignoring of the base of the URL path.
+	// Example: when assigning a static middleware to a non root path group,
+	// the filesystem path is not doubled
+	// Optional. Default value false.
+	IgnoreBase bool `yaml:"ignoreBase"`
 
-		// Filesystem provides access to the static content.
-		// Optional. Defaults to http.Dir(config.Root)
-		Filesystem http.FileSystem `yaml:"-"`
-	}
-)
+	// Filesystem provides access to the static content.
+	// Optional. Defaults to http.Dir(config.Root)
+	Filesystem http.FileSystem `yaml:"-"`
+}
 
 const html = `
 <!DOCTYPE html>
@@ -121,13 +122,11 @@ const html = `
 </html>
 `
 
-var (
-	// DefaultStaticConfig is the default Static middleware config.
-	DefaultStaticConfig = StaticConfig{
-		Skipper: DefaultSkipper,
-		Index:   "index.html",
-	}
-)
+// DefaultStaticConfig is the default Static middleware config.
+var DefaultStaticConfig = StaticConfig{
+	Skipper: DefaultSkipper,
+	Index:   "index.html",
+}
 
 // Static returns a Static middleware to serves static content from the provided
 // root directory.

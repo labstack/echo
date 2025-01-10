@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: © 2015 LabStack LLC and Echo contributors
+
 package middleware
 
 import (
@@ -309,6 +312,36 @@ func TestGzipWithStatic(t *testing.T) {
 			assert.Equal(t, want, buf.Bytes())
 		}
 	}
+}
+
+func TestGzipResponseWriter_CanUnwrap(t *testing.T) {
+	trwu := &testResponseWriterUnwrapper{rw: httptest.NewRecorder()}
+	bdrw := gzipResponseWriter{
+		ResponseWriter: trwu,
+	}
+
+	result := bdrw.Unwrap()
+	assert.Equal(t, trwu, result)
+}
+
+func TestGzipResponseWriter_CanHijack(t *testing.T) {
+	trwu := testResponseWriterUnwrapperHijack{testResponseWriterUnwrapper: testResponseWriterUnwrapper{rw: httptest.NewRecorder()}}
+	bdrw := gzipResponseWriter{
+		ResponseWriter: &trwu, // this RW supports hijacking through unwrapping
+	}
+
+	_, _, err := bdrw.Hijack()
+	assert.EqualError(t, err, "can hijack")
+}
+
+func TestGzipResponseWriter_CanNotHijack(t *testing.T) {
+	trwu := testResponseWriterUnwrapper{rw: httptest.NewRecorder()}
+	bdrw := gzipResponseWriter{
+		ResponseWriter: &trwu, // this RW supports hijacking through unwrapping
+	}
+
+	_, _, err := bdrw.Hijack()
+	assert.EqualError(t, err, "feature not supported")
 }
 
 func BenchmarkGzip(b *testing.B) {

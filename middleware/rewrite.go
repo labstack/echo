@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: © 2015 LabStack LLC and Echo contributors
+
 package middleware
 
 import (
@@ -6,37 +9,33 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type (
-	// RewriteConfig defines the config for Rewrite middleware.
-	RewriteConfig struct {
-		// Skipper defines a function to skip middleware.
-		Skipper Skipper
+// RewriteConfig defines the config for Rewrite middleware.
+type RewriteConfig struct {
+	// Skipper defines a function to skip middleware.
+	Skipper Skipper
 
-		// Rules defines the URL path rewrite rules. The values captured in asterisk can be
-		// retrieved by index e.g. $1, $2 and so on.
-		// Example:
-		// "/old":              "/new",
-		// "/api/*":            "/$1",
-		// "/js/*":             "/public/javascripts/$1",
-		// "/users/*/orders/*": "/user/$1/order/$2",
-		// Required.
-		Rules map[string]string `yaml:"rules"`
+	// Rules defines the URL path rewrite rules. The values captured in asterisk can be
+	// retrieved by index e.g. $1, $2 and so on.
+	// Example:
+	// "/old":              "/new",
+	// "/api/*":            "/$1",
+	// "/js/*":             "/public/javascripts/$1",
+	// "/users/*/orders/*": "/user/$1/order/$2",
+	// Required.
+	Rules map[string]string `yaml:"rules"`
 
-		// RegexRules defines the URL path rewrite rules using regexp.Rexexp with captures
-		// Every capture group in the values can be retrieved by index e.g. $1, $2 and so on.
-		// Example:
-		// "^/old/[0.9]+/":     "/new",
-		// "^/api/.+?/(.*)":     "/v2/$1",
-		RegexRules map[*regexp.Regexp]string `yaml:"-"`
-	}
-)
+	// RegexRules defines the URL path rewrite rules using regexp.Rexexp with captures
+	// Every capture group in the values can be retrieved by index e.g. $1, $2 and so on.
+	// Example:
+	// "^/old/[0.9]+/":     "/new",
+	// "^/api/.+?/(.*)":     "/v2/$1",
+	RegexRules map[*regexp.Regexp]string `yaml:"-"`
+}
 
-var (
-	// DefaultRewriteConfig is the default Rewrite middleware config.
-	DefaultRewriteConfig = RewriteConfig{
-		Skipper: DefaultSkipper,
-	}
-)
+// DefaultRewriteConfig is the default Rewrite middleware config.
+var DefaultRewriteConfig = RewriteConfig{
+	Skipper: DefaultSkipper,
+}
 
 // Rewrite returns a Rewrite middleware.
 //

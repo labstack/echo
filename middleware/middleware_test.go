@@ -1,7 +1,13 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: © 2015 LabStack LLC and Echo contributors
+
 package middleware
 
 import (
+	"bufio"
+	"errors"
 	"github.com/stretchr/testify/assert"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -89,4 +95,47 @@ func TestRewriteURL(t *testing.T) {
 			assert.Equal(t, tc.expectQuery, req.URL.RawQuery)
 		})
 	}
+}
+
+type testResponseWriterNoFlushHijack struct {
+}
+
+func (w *testResponseWriterNoFlushHijack) WriteHeader(statusCode int) {
+}
+
+func (w *testResponseWriterNoFlushHijack) Write([]byte) (int, error) {
+	return 0, nil
+}
+
+func (w *testResponseWriterNoFlushHijack) Header() http.Header {
+	return nil
+}
+
+type testResponseWriterUnwrapper struct {
+	unwrapCalled int
+	rw           http.ResponseWriter
+}
+
+func (w *testResponseWriterUnwrapper) WriteHeader(statusCode int) {
+}
+
+func (w *testResponseWriterUnwrapper) Write([]byte) (int, error) {
+	return 0, nil
+}
+
+func (w *testResponseWriterUnwrapper) Header() http.Header {
+	return nil
+}
+
+func (w *testResponseWriterUnwrapper) Unwrap() http.ResponseWriter {
+	w.unwrapCalled++
+	return w.rw
+}
+
+type testResponseWriterUnwrapperHijack struct {
+	testResponseWriterUnwrapper
+}
+
+func (w *testResponseWriterUnwrapperHijack) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	return nil, nil, errors.New("can hijack")
 }

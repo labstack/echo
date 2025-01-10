@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: © 2015 LabStack LLC and Echo contributors
+
 package middleware
 
 import (
@@ -9,16 +12,14 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type (
-	// DecompressConfig defines the config for Decompress middleware.
-	DecompressConfig struct {
-		// Skipper defines a function to skip middleware.
-		Skipper Skipper
+// DecompressConfig defines the config for Decompress middleware.
+type DecompressConfig struct {
+	// Skipper defines a function to skip middleware.
+	Skipper Skipper
 
-		// GzipDecompressPool defines an interface to provide the sync.Pool used to create/store Gzip readers
-		GzipDecompressPool Decompressor
-	}
-)
+	// GzipDecompressPool defines an interface to provide the sync.Pool used to create/store Gzip readers
+	GzipDecompressPool Decompressor
+}
 
 // GZIPEncoding content-encoding header if set to "gzip", decompress body contents.
 const GZIPEncoding string = "gzip"
@@ -28,13 +29,11 @@ type Decompressor interface {
 	gzipDecompressPool() sync.Pool
 }
 
-var (
-	//DefaultDecompressConfig defines the config for decompress middleware
-	DefaultDecompressConfig = DecompressConfig{
-		Skipper:            DefaultSkipper,
-		GzipDecompressPool: &DefaultGzipDecompressPool{},
-	}
-)
+// DefaultDecompressConfig defines the config for decompress middleware
+var DefaultDecompressConfig = DecompressConfig{
+	Skipper:            DefaultSkipper,
+	GzipDecompressPool: &DefaultGzipDecompressPool{},
+}
 
 // DefaultGzipDecompressPool is the default implementation of Decompressor interface
 type DefaultGzipDecompressPool struct {

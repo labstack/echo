@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: © 2015 LabStack LLC and Echo contributors
+
 package middleware
 
 import (
@@ -6,24 +9,20 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type (
-	// TrailingSlashConfig defines the config for TrailingSlash middleware.
-	TrailingSlashConfig struct {
-		// Skipper defines a function to skip middleware.
-		Skipper Skipper
+// TrailingSlashConfig defines the config for TrailingSlash middleware.
+type TrailingSlashConfig struct {
+	// Skipper defines a function to skip middleware.
+	Skipper Skipper
 
-		// Status code to be used when redirecting the request.
-		// Optional, but when provided the request is redirected using this code.
-		RedirectCode int `yaml:"redirect_code"`
-	}
-)
+	// Status code to be used when redirecting the request.
+	// Optional, but when provided the request is redirected using this code.
+	RedirectCode int `yaml:"redirect_code"`
+}
 
-var (
-	// DefaultTrailingSlashConfig is the default TrailingSlash middleware config.
-	DefaultTrailingSlashConfig = TrailingSlashConfig{
-		Skipper: DefaultSkipper,
-	}
-)
+// DefaultTrailingSlashConfig is the default TrailingSlash middleware config.
+var DefaultTrailingSlashConfig = TrailingSlashConfig{
+	Skipper: DefaultSkipper,
+}
 
 // AddTrailingSlash returns a root level (before router) middleware which adds a
 // trailing slash to the request `URL#Path`.

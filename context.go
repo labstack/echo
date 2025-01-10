@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: © 2015 LabStack LLC and Echo contributors
+
 package echo
 
 import (
@@ -13,204 +16,216 @@ import (
 	"sync"
 )
 
-type (
-	// Context represents the context of the current HTTP request. It holds request and
-	// response objects, path, path parameters, data and registered handler.
-	Context interface {
-		// Request returns `*http.Request`.
-		Request() *http.Request
+// Context represents the context of the current HTTP request. It holds request and
+// response objects, path, path parameters, data and registered handler.
+type Context interface {
+	// Request returns `*http.Request`.
+	Request() *http.Request
 
-		// SetRequest sets `*http.Request`.
-		SetRequest(r *http.Request)
+	// SetRequest sets `*http.Request`.
+	SetRequest(r *http.Request)
 
-		// SetResponse sets `*Response`.
-		SetResponse(r *Response)
+	// SetResponse sets `*Response`.
+	SetResponse(r *Response)
 
-		// Response returns `*Response`.
-		Response() *Response
+	// Response returns `*Response`.
+	Response() *Response
 
-		// IsTLS returns true if HTTP connection is TLS otherwise false.
-		IsTLS() bool
+	// IsTLS returns true if HTTP connection is TLS otherwise false.
+	IsTLS() bool
 
-		// IsWebSocket returns true if HTTP connection is WebSocket otherwise false.
-		IsWebSocket() bool
+	// IsWebSocket returns true if HTTP connection is WebSocket otherwise false.
+	IsWebSocket() bool
 
-		// Scheme returns the HTTP protocol scheme, `http` or `https`.
-		Scheme() string
+	// Scheme returns the HTTP protocol scheme, `http` or `https`.
+	Scheme() string
 
-		// RealIP returns the client's network address based on `X-Forwarded-For`
-		// or `X-Real-IP` request header.
-		// The behavior can be configured using `Echo#IPExtractor`.
-		RealIP() string
+	// RealIP returns the client's network address based on `X-Forwarded-For`
+	// or `X-Real-IP` request header.
+	// The behavior can be configured using `Echo#IPExtractor`.
+	RealIP() string
 
-		// Path returns the registered path for the handler.
-		Path() string
+	// Path returns the registered path for the handler.
+	Path() string
 
-		// SetPath sets the registered path for the handler.
-		SetPath(p string)
+	// SetPath sets the registered path for the handler.
+	SetPath(p string)
 
-		// Param returns path parameter by name.
-		Param(name string) string
+	// Param returns path parameter by name.
+	Param(name string) string
 
-		// ParamNames returns path parameter names.
-		ParamNames() []string
+	// ParamNames returns path parameter names.
+	ParamNames() []string
 
-		// SetParamNames sets path parameter names.
-		SetParamNames(names ...string)
+	// SetParamNames sets path parameter names.
+	SetParamNames(names ...string)
 
-		// ParamValues returns path parameter values.
-		ParamValues() []string
+	// ParamValues returns path parameter values.
+	ParamValues() []string
 
-		// SetParamValues sets path parameter values.
-		SetParamValues(values ...string)
+	// SetParamValues sets path parameter values.
+	SetParamValues(values ...string)
 
-		// QueryParam returns the query param for the provided name.
-		QueryParam(name string) string
+	// QueryParam returns the query param for the provided name.
+	QueryParam(name string) string
 
-		// QueryParams returns the query parameters as `url.Values`.
-		QueryParams() url.Values
+	// QueryParams returns the query parameters as `url.Values`.
+	QueryParams() url.Values
 
-		// QueryString returns the URL query string.
-		QueryString() string
+	// QueryString returns the URL query string.
+	QueryString() string
 
-		// FormValue returns the form field value for the provided name.
-		FormValue(name string) string
+	// FormValue returns the form field value for the provided name.
+	FormValue(name string) string
 
-		// FormParams returns the form parameters as `url.Values`.
-		FormParams() (url.Values, error)
+	// FormParams returns the form parameters as `url.Values`.
+	FormParams() (url.Values, error)
 
-		// FormFile returns the multipart form file for the provided name.
-		FormFile(name string) (*multipart.FileHeader, error)
+	// FormFile returns the multipart form file for the provided name.
+	FormFile(name string) (*multipart.FileHeader, error)
 
-		// MultipartForm returns the multipart form.
-		MultipartForm() (*multipart.Form, error)
+	// MultipartForm returns the multipart form.
+	MultipartForm() (*multipart.Form, error)
 
-		// Cookie returns the named cookie provided in the request.
-		Cookie(name string) (*http.Cookie, error)
+	// Cookie returns the named cookie provided in the request.
+	Cookie(name string) (*http.Cookie, error)
 
-		// SetCookie adds a `Set-Cookie` header in HTTP response.
-		SetCookie(cookie *http.Cookie)
+	// SetCookie adds a `Set-Cookie` header in HTTP response.
+	SetCookie(cookie *http.Cookie)
 
-		// Cookies returns the HTTP cookies sent with the request.
-		Cookies() []*http.Cookie
+	// Cookies returns the HTTP cookies sent with the request.
+	Cookies() []*http.Cookie
 
-		// Get retrieves data from the context.
-		Get(key string) interface{}
+	// Get retrieves data from the context.
+	Get(key string) interface{}
 
-		// Set saves data in the context.
-		Set(key string, val interface{})
+	// Set saves data in the context.
+	Set(key string, val interface{})
 
-		// Bind binds path params, query params and the request body into provided type `i`. The default binder
-		// binds body based on Content-Type header.
-		Bind(i interface{}) error
+	// Bind binds path params, query params and the request body into provided type `i`. The default binder
+	// binds body based on Content-Type header.
+	Bind(i interface{}) error
 
-		// Validate validates provided `i`. It is usually called after `Context#Bind()`.
-		// Validator must be registered using `Echo#Validator`.
-		Validate(i interface{}) error
+	// Validate validates provided `i`. It is usually called after `Context#Bind()`.
+	// Validator must be registered using `Echo#Validator`.
+	Validate(i interface{}) error
 
-		// Render renders a template with data and sends a text/html response with status
-		// code. Renderer must be registered using `Echo.Renderer`.
-		Render(code int, name string, data interface{}) error
+	// Render renders a template with data and sends a text/html response with status
+	// code. Renderer must be registered using `Echo.Renderer`.
+	Render(code int, name string, data interface{}) error
 
-		// HTML sends an HTTP response with status code.
-		HTML(code int, html string) error
+	// HTML sends an HTTP response with status code.
+	HTML(code int, html string) error
 
-		// HTMLBlob sends an HTTP blob response with status code.
-		HTMLBlob(code int, b []byte) error
+	// HTMLBlob sends an HTTP blob response with status code.
+	HTMLBlob(code int, b []byte) error
 
-		// String sends a string response with status code.
-		String(code int, s string) error
+	// String sends a string response with status code.
+	String(code int, s string) error
 
-		// JSON sends a JSON response with status code.
-		JSON(code int, i interface{}) error
+	// JSON sends a JSON response with status code.
+	JSON(code int, i interface{}) error
 
-		// JSONPretty sends a pretty-print JSON with status code.
-		JSONPretty(code int, i interface{}, indent string) error
+	// JSONPretty sends a pretty-print JSON with status code.
+	JSONPretty(code int, i interface{}, indent string) error
 
-		// JSONBlob sends a JSON blob response with status code.
-		JSONBlob(code int, b []byte) error
+	// JSONBlob sends a JSON blob response with status code.
+	JSONBlob(code int, b []byte) error
 
-		// JSONP sends a JSONP response with status code. It uses `callback` to construct
-		// the JSONP payload.
-		JSONP(code int, callback string, i interface{}) error
+	// JSONP sends a JSONP response with status code. It uses `callback` to construct
+	// the JSONP payload.
+	JSONP(code int, callback string, i interface{}) error
 
-		// JSONPBlob sends a JSONP blob response with status code. It uses `callback`
-		// to construct the JSONP payload.
-		JSONPBlob(code int, callback string, b []byte) error
+	// JSONPBlob sends a JSONP blob response with status code. It uses `callback`
+	// to construct the JSONP payload.
+	JSONPBlob(code int, callback string, b []byte) error
 
-		// XML sends an XML response with status code.
-		XML(code int, i interface{}) error
+	// XML sends an XML response with status code.
+	XML(code int, i interface{}) error
 
-		// XMLPretty sends a pretty-print XML with status code.
-		XMLPretty(code int, i interface{}, indent string) error
+	// XMLPretty sends a pretty-print XML with status code.
+	XMLPretty(code int, i interface{}, indent string) error
 
-		// XMLBlob sends an XML blob response with status code.
-		XMLBlob(code int, b []byte) error
+	// XMLBlob sends an XML blob response with status code.
+	XMLBlob(code int, b []byte) error
 
-		// Blob sends a blob response with status code and content type.
-		Blob(code int, contentType string, b []byte) error
+	// Blob sends a blob response with status code and content type.
+	Blob(code int, contentType string, b []byte) error
 
-		// Stream sends a streaming response with status code and content type.
-		Stream(code int, contentType string, r io.Reader) error
+	// Stream sends a streaming response with status code and content type.
+	Stream(code int, contentType string, r io.Reader) error
 
-		// File sends a response with the content of the file.
-		File(file string) error
+	// File sends a response with the content of the file.
+	File(file string) error
 
-		// Attachment sends a response as attachment, prompting client to save the
-		// file.
-		Attachment(file string, name string) error
+	// Attachment sends a response as attachment, prompting client to save the
+	// file.
+	Attachment(file string, name string) error
 
-		// Inline sends a response as inline, opening the file in the browser.
-		Inline(file string, name string) error
+	// Inline sends a response as inline, opening the file in the browser.
+	Inline(file string, name string) error
 
-		// NoContent sends a response with no body and a status code.
-		NoContent(code int) error
+	// NoContent sends a response with no body and a status code.
+	NoContent(code int) error
 
-		// Redirect redirects the request to a provided URL with status code.
-		Redirect(code int, url string) error
+	// Redirect redirects the request to a provided URL with status code.
+	Redirect(code int, url string) error
 
-		// Error invokes the registered global HTTP error handler. Generally used by middleware.
-		// A side-effect of calling global error handler is that now Response has been committed (sent to the client) and
-		// middlewares up in chain can not change Response status code or Response body anymore.
-		//
-		// Avoid using this method in handlers as no middleware will be able to effectively handle errors after that.
-		Error(err error)
+	// Error invokes the registered global HTTP error handler. Generally used by middleware.
+	// A side-effect of calling global error handler is that now Response has been committed (sent to the client) and
+	// middlewares up in chain can not change Response status code or Response body anymore.
+	//
+	// Avoid using this method in handlers as no middleware will be able to effectively handle errors after that.
+	Error(err error)
 
-		// Handler returns the matched handler by router.
-		Handler() HandlerFunc
+	// Handler returns the matched handler by router.
+	Handler() HandlerFunc
 
-		// SetHandler sets the matched handler by router.
-		SetHandler(h HandlerFunc)
+	// SetHandler sets the matched handler by router.
+	SetHandler(h HandlerFunc)
 
-		// Logger returns the `Logger` instance.
-		Logger() Logger
+	// Logger returns the `Logger` instance.
+	Logger() Logger
 
-		// SetLogger Set the logger
-		SetLogger(l Logger)
+	// SetLogger Set the logger
+	SetLogger(l Logger)
 
-		// Echo returns the `Echo` instance.
-		Echo() *Echo
+	// Echo returns the `Echo` instance.
+	Echo() *Echo
 
-		// Reset resets the context after request completes. It must be called along
-		// with `Echo#AcquireContext()` and `Echo#ReleaseContext()`.
-		// See `Echo#ServeHTTP()`
-		Reset(r *http.Request, w http.ResponseWriter)
-	}
+	// Reset resets the context after request completes. It must be called along
+	// with `Echo#AcquireContext()` and `Echo#ReleaseContext()`.
+	// See `Echo#ServeHTTP()`
+	Reset(r *http.Request, w http.ResponseWriter)
+}
 
-	context struct {
-		request  *http.Request
-		response *Response
-		path     string
-		pnames   []string
-		pvalues  []string
-		query    url.Values
-		handler  HandlerFunc
-		store    Map
-		echo     *Echo
-		logger   Logger
-		lock     sync.RWMutex
-	}
-)
+type context struct {
+	logger   Logger
+	request  *http.Request
+	response *Response
+	query    url.Values
+	echo     *Echo
+
+	store Map
+	lock  sync.RWMutex
+
+	// following fields are set by Router
+	handler HandlerFunc
+
+	// path is route path that Router matched. It is empty string where there is no route match.
+	// Route registered with RouteNotFound is considered as a match and path therefore is not empty.
+	path string
+
+	// Usually echo.Echo is sizing pvalues but there could be user created middlewares that decide to
+	// overwrite parameter by calling SetParamNames + SetParamValues.
+	// When echo.Echo allocated that slice it length/capacity is tied to echo.Echo.maxParam value.
+	//
+	// It is important that pvalues size is always equal or bigger to pnames length.
+	pvalues []string
+
+	// pnames length is tied to param count for the matched route
+	pnames []string
+}
 
 const (
 	// ContextKeyHeaderAllow is set by Router for getting value for `Allow` header in later stages of handler call chain.
@@ -329,13 +344,9 @@ func (c *context) SetParamNames(names ...string) {
 	c.pnames = names
 
 	l := len(names)
-	if *c.echo.maxParam < l {
-		*c.echo.maxParam = l
-	}
-
 	if len(c.pvalues) < l {
 		// Keeping the old pvalues just for backward compatibility, but it sounds that doesn't make sense to keep them,
-		// probably those values will be overriden in a Context#SetParamValues
+		// probably those values will be overridden in a Context#SetParamValues
 		newPvalues := make([]string, l)
 		copy(newPvalues, c.pvalues)
 		c.pvalues = newPvalues
@@ -347,11 +358,11 @@ func (c *context) ParamValues() []string {
 }
 
 func (c *context) SetParamValues(values ...string) {
-	// NOTE: Don't just set c.pvalues = values, because it has to have length c.echo.maxParam at all times
+	// NOTE: Don't just set c.pvalues = values, because it has to have length c.echo.maxParam (or bigger) at all times
 	// It will brake the Router#Find code
 	limit := len(values)
-	if limit > *c.echo.maxParam {
-		limit = *c.echo.maxParam
+	if limit > len(c.pvalues) {
+		c.pvalues = make([]string, limit)
 	}
 	for i := 0; i < limit; i++ {
 		c.pvalues[i] = values[i]
@@ -489,7 +500,7 @@ func (c *context) jsonPBlob(code int, callback string, i interface{}) (err error
 }
 
 func (c *context) json(code int, i interface{}, indent string) error {
-	c.writeContentType(MIMEApplicationJSONCharsetUTF8)
+	c.writeContentType(MIMEApplicationJSON)
 	c.response.Status = code
 	return c.echo.JSONSerializer.Serialize(c, i, indent)
 }
@@ -507,7 +518,7 @@ func (c *context) JSONPretty(code int, i interface{}, indent string) (err error)
 }
 
 func (c *context) JSONBlob(code int, b []byte) (err error) {
-	return c.Blob(code, MIMEApplicationJSONCharsetUTF8, b)
+	return c.Blob(code, MIMEApplicationJSON, b)
 }
 
 func (c *context) JSONP(code int, callback string, i interface{}) (err error) {
@@ -642,8 +653,8 @@ func (c *context) Reset(r *http.Request, w http.ResponseWriter) {
 	c.path = ""
 	c.pnames = nil
 	c.logger = nil
-	// NOTE: Don't reset because it has to have length c.echo.maxParam at all times
-	for i := 0; i < *c.echo.maxParam; i++ {
+	// NOTE: Don't reset because it has to have length c.echo.maxParam (or bigger) at all times
+	for i := 0; i < len(c.pvalues); i++ {
 		c.pvalues[i] = ""
 	}
 }

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: © 2015 LabStack LLC and Echo contributors
+
 package middleware
 
 import (
@@ -9,31 +12,27 @@ import (
 	"github.com/labstack/gommon/bytes"
 )
 
-type (
-	// BodyLimitConfig defines the config for BodyLimit middleware.
-	BodyLimitConfig struct {
-		// Skipper defines a function to skip middleware.
-		Skipper Skipper
+// BodyLimitConfig defines the config for BodyLimit middleware.
+type BodyLimitConfig struct {
+	// Skipper defines a function to skip middleware.
+	Skipper Skipper
 
-		// Maximum allowed size for a request body, it can be specified
-		// as `4x` or `4xB`, where x is one of the multiple from K, M, G, T or P.
-		Limit string `yaml:"limit"`
-		limit int64
-	}
+	// Maximum allowed size for a request body, it can be specified
+	// as `4x` or `4xB`, where x is one of the multiple from K, M, G, T or P.
+	Limit string `yaml:"limit"`
+	limit int64
+}
 
-	limitedReader struct {
-		BodyLimitConfig
-		reader io.ReadCloser
-		read   int64
-	}
-)
+type limitedReader struct {
+	BodyLimitConfig
+	reader io.ReadCloser
+	read   int64
+}
 
-var (
-	// DefaultBodyLimitConfig is the default BodyLimit middleware config.
-	DefaultBodyLimitConfig = BodyLimitConfig{
-		Skipper: DefaultSkipper,
-	}
-)
+// DefaultBodyLimitConfig is the default BodyLimit middleware config.
+var DefaultBodyLimitConfig = BodyLimitConfig{
+	Skipper: DefaultSkipper,
+}
 
 // BodyLimit returns a BodyLimit middleware.
 //
