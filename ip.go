@@ -24,7 +24,7 @@ To retrieve IP address reliably/securely, you must let your application be aware
 In Echo, this can be done by configuring `Echo#IPExtractor` appropriately.
 This guides show you why and how.
 
-> Note: if you dont' set `Echo#IPExtractor` explicitly, Echo fallback to legacy behavior, which is not a good choice.
+> Note: if you don't set `Echo#IPExtractor` explicitly, Echo fallback to legacy behavior, which is not a good choice.
 
 Let's start from two questions to know the right direction:
 

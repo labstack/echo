@@ -191,7 +191,7 @@ NewRateLimiterMemoryStoreWithConfig returns an instance of RateLimiterMemoryStor
 with the provided configuration. Rate must be provided. Burst will be set to the rounded down value of
 the configured rate if not provided or set to 0.
 
-The build-in memory store is usually capable for modest loads. For higher loads other
+The built-in memory store is usually capable for modest loads. For higher loads other
 store implementations should be considered.
 
 Characteristics:
