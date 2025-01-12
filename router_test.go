@@ -2773,7 +2773,7 @@ func TestRouter_Routes(t *testing.T) {
 func TestRouter_addEmptyPathToSlashReverse(t *testing.T) {
 	e := New()
 	r := e.router
-	r.add(http.MethodGet, "", "empty", handlerFunc) // emtpy path is normalized to `/`
+	r.add(http.MethodGet, "", "empty", handlerFunc) // empty path is normalized to `/`
 
 	assert.Equal(t, "/", r.Reverse("empty"))
 }

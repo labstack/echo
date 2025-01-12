@@ -269,7 +269,7 @@ func (b *DefaultBinder) bindData(destination interface{}, data map[string][]stri
 			continue
 		}
 
-		// we could be dealing with pointer to slice `*[]string` so dereference it. There are wierd OpenAPI generators
+		// we could be dealing with pointer to slice `*[]string` so dereference it. There are weird OpenAPI generators
 		// that could create struct fields like that.
 		if structFieldKind == reflect.Pointer {
 			structFieldKind = structField.Elem().Kind()
