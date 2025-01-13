@@ -6,6 +6,7 @@ package middleware
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"html/template"
 	"net/http"
 	"net/url"
@@ -49,6 +50,12 @@ type StaticConfig struct {
 	// Optional. Defaults to http.Dir(config.Root)
 	Filesystem http.FileSystem `yaml:"-"`
 }
+
+// Used for sorting directories in listDir
+type byName []os.FileInfo
+func (s byName) Len() int           { return len(s) }
+func (s byName) Less(i, j int) bool { return s[i].Name() < s[j].Name() }
+func (s byName) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 
 const html = `
 <!DOCTYPE html>
@@ -250,6 +257,9 @@ func listDir(t *template.Template, name string, dir http.File, res *echo.Respons
 	if err != nil {
 		return
 	}
+
+	// Sort directories first
+	sort.Sort(byName(files))
 
 	// Create directory index
 	res.Header().Set(echo.HeaderContentType, echo.MIMETextHTMLCharsetUTF8)
