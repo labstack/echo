@@ -40,6 +40,8 @@ type Context interface {
 	// Scheme returns the HTTP protocol scheme, `http` or `https`.
 	Scheme() string
 
+	SchemeForwarded() *Forwarded
+
 	// RealIP returns the client's network address based on `X-Forwarded-For`
 	// or `X-Real-IP` request header.
 	// The behavior can be configured using `Echo#IPExtractor`.
@@ -234,6 +236,13 @@ const (
 	ContextKeyHeaderAllow = "echo_header_allow"
 )
 
+type Forwarded struct {
+	By    []string
+	For   []string
+	Host  []string
+	Proto []string
+}
+
 const (
 	defaultMemory = 32 << 20 // 32 MB
 	indexPage     = "index.html"
@@ -293,24 +302,85 @@ func (c *context) Scheme() string {
 	return "http"
 }
 
+func (c *context) SchemeForwarded() *Forwarded {
+	// Parse and get "Forwarded" header.
+	// See : https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Forwarded
+	if scheme := c.request.Header.Get(HeaderForwarded); scheme != "" {
+		f, err := c.parseForwarded(scheme)
+		if err != nil {
+			return nil
+		}
+		return &f
+	}
+	return nil
+}
+
+func (c *context) parseForwarded(input string) (Forwarded, error) {
+	forwarded := Forwarded{}
+	entries := strings.Split(input, ",")
+
+	for _, entry := range entries {
+		entry = strings.TrimSpace(entry)
+		pairs := strings.Split(entry, ";")
+
+		for _, pair := range pairs {
+			parts := strings.SplitN(pair, "=", 2)
+			if len(parts) != 2 {
+				return forwarded, fmt.Errorf("invalid pair: %s", pair)
+			}
+
+			key := strings.TrimSpace(parts[0])
+			value, err := url.QueryUnescape(strings.TrimSpace(parts[1]))
+			if err != nil {
+				return forwarded, fmt.Errorf("failed to unescape value: %w", err)
+			}
+			value = strings.Trim(value, "\"[]")
+			switch key {
+			case "by":
+				forwarded.By = append(forwarded.By, value)
+			case "for":
+				forwarded.For = append(forwarded.For, value)
+			case "host":
+				forwarded.Host = append(forwarded.Host, value)
+			case "proto":
+				forwarded.Proto = append(forwarded.Proto, value)
+			default:
+				return forwarded, fmt.Errorf("unknown key: %s", key)
+			}
+		}
+	}
+
+	return forwarded, nil
+}
+
 func (c *context) RealIP() string {
 	if c.echo != nil && c.echo.IPExtractor != nil {
 		return c.echo.IPExtractor(c.request)
+	}
+	// Check if the "Forwarded" header is present in the request.
+	if d := c.request.Header.Get(HeaderForwarded); d != "" {
+		// Parse the "Forwarded" header.
+		scheme, err := c.parseForwarded(d)
+		if err != nil {
+			return "" // Return an empty string if parsing fails.
+		}
+		if len(scheme.For) > 0 {
+			return scheme.For[0] // Return first for item
+		}
+		return ""
 	}
 	// Fall back to legacy behavior
 	if ip := c.request.Header.Get(HeaderXForwardedFor); ip != "" {
 		i := strings.IndexAny(ip, ",")
 		if i > 0 {
 			xffip := strings.TrimSpace(ip[:i])
-			xffip = strings.TrimPrefix(xffip, "[")
-			xffip = strings.TrimSuffix(xffip, "]")
+			xffip = strings.Trim(xffip, "\"[]")
 			return xffip
 		}
 		return ip
 	}
 	if ip := c.request.Header.Get(HeaderXRealIP); ip != "" {
-		ip = strings.TrimPrefix(ip, "[")
-		ip = strings.TrimSuffix(ip, "]")
+		ip = strings.Trim(ip, "\"[]")
 		return ip
 	}
 	ra, _, _ := net.SplitHostPort(c.request.RemoteAddr)
