@@ -236,6 +236,7 @@ const (
 	ContextKeyHeaderAllow = "echo_header_allow"
 )
 
+// Forwarded represents the structured format of the Forwarded HTTP header.
 type Forwarded struct {
 	By    []string
 	For   []string
