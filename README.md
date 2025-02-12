@@ -73,10 +73,12 @@ Latest version of Echo supports last four Go major [releases](https://go.dev/doc
 package main
 
 import (
-  "github.com/labstack/echo/v4"
-  "github.com/labstack/echo/v4/middleware"
+  "errors"
   "log/slog"
   "net/http"
+
+  "github.com/labstack/echo/v4"
+  "github.com/labstack/echo/v4/middleware"
 )
 
 func main() {
