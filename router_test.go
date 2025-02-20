@@ -2854,6 +2854,90 @@ func benchmarkRouterRoutes(b *testing.B, routes []*Route, routesToFind []*Route)
 	}
 }
 
+// Test for the insertNode method in the router.
+// It checks that the insertNode method correctly splits a node when a new route is inserted that shares a common prefix with an existing route.
+func TestInsertNodeSplitting(t *testing.T) {
+
+	// Create a new Echo instance and get its router.
+    e := New()
+
+	// Get the router from the Echo instance.
+    r := e.router
+
+    // Reset maxParam for a clean test.
+    *e.maxParam = 0
+
+    // Define a dummy routeMethod structure.
+    rm1 := routeMethod{
+
+		// Define a dummy handler function.
+        handler: handlerFunc,
+
+		// Define the parameter names for the route.
+        pnames:  []string{},
+
+		// Define the path for the route.
+        ppath:   "/test",
+    }
+
+    // First insertion: "/test"
+    r.insertNode(http.MethodGet, "/test", staticKind, rm1)
+    
+	// Expect that the router's tree now has the prefix "/test"
+    assert.Equal(t, "/test", r.tree.prefix, "Expected root node prefix to be '/test' after first insertion")
+
+    // Prepare a second route that will share a common prefix with "/test" but force a split.
+	// This is done by changing the path to "/te/st" which is the same as "/test" but with a slash in the middle.
+	rm2 := routeMethod{
+		// Define a dummy handler function.	
+		handler: handlerFunc,
+
+		// Define the parameter names for the route.
+        pnames:  []string{}, // still no parameters
+
+		// Define the path for the route.
+        ppath:   "/te/st",
+    }
+
+    // Second insertion: "/te/st"
+    r.insertNode(http.MethodGet, "/te/st", staticKind, rm2)
+
+    // Because "/te/st" and "/test" share the prefix "/te", the root node should be split.
+    // The new root node's prefix should be "/te".
+
+	// We check that the root node's prefix is "/te".
+    assert.Equal(t, "/te", r.tree.prefix, "Expected root node prefix to be '/te' after splitting")
+
+	// We check that the root node has two static children.
+	// This is because the root node is split into two nodes, one for "/te" and one for "/st".
+    assert.Len(t, r.tree.staticChildren, 2, "Expected two static children after node splitting")
+
+    // We check that one child carries the original route and the other the newly inserted route.
+    var foundOriginal, foundNew bool
+
+	// Iterate over the root node's static children.
+    for _, child := range r.tree.staticChildren {
+
+		// We check that one child carries the original route and the other the newly inserted route.
+        if child.originalPath == rm1.ppath {
+
+			// We set the foundOriginal flag to true if we find the original route.
+            foundOriginal = true
+        } else if child.originalPath == rm2.ppath {
+
+			// We set the foundNew flag to true if we find the new route.
+            foundNew = true
+        }
+    }
+
+	// We check that we found the original route.
+    assert.True(t, foundOriginal, "Expected to find the original route '/test' among children")
+
+	// We check that we found the new route.
+    assert.True(t, foundNew, "Expected to find the new route '/te/st' among children")
+}
+
+
 func BenchmarkRouterStaticRoutes(b *testing.B) {
 	benchmarkRouterRoutes(b, staticRoutes, staticRoutes)
 }
