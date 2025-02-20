@@ -451,33 +451,32 @@ func (n *node) findChildWithLabel(l byte) *node {
 }
 
 func (n *node) addMethod(method string, h *routeMethod) {
-	switch method {
-	case http.MethodConnect:
-		n.methods.connect = h
-	case http.MethodDelete:
-		n.methods.delete = h
-	case http.MethodGet:
-		n.methods.get = h
-	case http.MethodHead:
-		n.methods.head = h
-	case http.MethodOptions:
-		n.methods.options = h
-	case http.MethodPatch:
-		n.methods.patch = h
-	case http.MethodPost:
-		n.methods.post = h
-	case PROPFIND:
-		n.methods.propfind = h
-	case http.MethodPut:
-		n.methods.put = h
-	case http.MethodTrace:
-		n.methods.trace = h
-	case REPORT:
-		n.methods.report = h
-	case RouteNotFound:
+	// Map HTTP methods to their corresponding struct fields instead of large switch statement
+	methodMap := map[string]**routeMethod{
+		http.MethodConnect: &n.methods.connect,
+		http.MethodDelete:  &n.methods.delete,
+		http.MethodGet:     &n.methods.get,
+		http.MethodHead:    &n.methods.head,
+		http.MethodOptions: &n.methods.options,
+		http.MethodPatch:   &n.methods.patch,
+		http.MethodPost:    &n.methods.post,
+		PROPFIND:           &n.methods.propfind,
+		http.MethodPut:     &n.methods.put,
+		http.MethodTrace:   &n.methods.trace,
+		REPORT:             &n.methods.report,
+	}
+
+	// Special case for RouteNotFound
+	if method == RouteNotFound {
 		n.notFoundHandler = h
-		return // RouteNotFound/404 is not considered as a handler so no further logic needs to be executed
-	default:
+		return 
+	}
+
+	// Check if method exists in the map
+	if methodPtr, exists := methodMap[method]; exists {
+		*methodPtr = h
+	} else {
+		// Handle custom methods, previously 'default' in the switch statement
 		if n.methods.anyOther == nil {
 			n.methods.anyOther = make(map[string]*routeMethod)
 		}
