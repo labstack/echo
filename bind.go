@@ -213,9 +213,18 @@ func (b *DefaultBinder) bindData(destination interface{}, data map[string][]stri
 		if inputFieldName == "" {
 			// If tag is nil, we inspect if the field is a not BindUnmarshaler struct and try to bind data into it (might contain fields with tags).
 			// structs that implement BindUnmarshaler are bound only when they have explicit tag
-			if _, ok := structField.Addr().Interface().(BindUnmarshaler); !ok && structFieldKind == reflect.Struct {
-				if err := b.bindData(structField.Addr().Interface(), data, tag, dataFiles); err != nil {
-					return err
+			if _, ok := structField.Addr().Interface().(BindUnmarshaler); !ok {
+				if structFieldKind == reflect.Struct {
+					if err := b.bindData(structField.Addr().Interface(), data, tag, dataFiles); err != nil {
+						return err
+					}
+				} else if structFieldKind == reflect.Ptr && structField.Type().Elem().Kind() == reflect.Struct {
+					if structField.IsNil() {
+						structField.Set(reflect.New(structField.Type().Elem()))
+					}
+					if err := b.bindData(structField.Interface(), data, tag, dataFiles); err != nil {
+						return err
+					}
 				}
 			}
 			// does not have explicit tag and is not an ordinary struct - so move to next field

@@ -290,6 +290,23 @@ func TestBindHeaderParam(t *testing.T) {
 	}
 }
 
+func TestBindHeaderWithInnerParam(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Name", "Jon Doe")
+	req.Header.Set("Id", "2")
+	req.Header.Set("Sex", "male")
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	u := new(userWithInner)
+	err := (&DefaultBinder{}).BindHeaders(c, u)
+	if assert.NoError(t, err) {
+		assert.Equal(t, 2, u.ID)
+		assert.Equal(t, "Jon Doe", u.Name)
+		assert.Equal(t, "male", u.Inner.Sex)
+	}
+}
+
 func TestBindHeaderParamBadType(t *testing.T) {
 	e := New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)

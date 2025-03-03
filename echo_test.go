@@ -30,6 +30,16 @@ type user struct {
 	Name string `json:"name" xml:"name" form:"name" query:"name" param:"name" header:"name"`
 }
 
+type userInner struct {
+	Sex string `json:"sex" xml:"sex" form:"sex" query:"sex" param:"sex" header:"Sex"`
+}
+
+type userWithInner struct {
+	ID    int        `json:"id" xml:"id" form:"id" query:"id" param:"id" header:"id"`
+	Name  string     `json:"name" xml:"name" form:"name" query:"name" param:"name" header:"name"`
+	Inner *userInner `json:"inner" xml:"inner" form:"inner" query:"inner" param:"inner"`
+}
+
 const (
 	userJSON                    = `{"id":1,"name":"Jon Snow"}`
 	usersJSON                   = `[{"id":1,"name":"Jon Snow"}]`
