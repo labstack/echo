@@ -235,6 +235,11 @@ const (
 	HeaderOrigin              = "Origin"
 	HeaderCacheControl        = "Cache-Control"
 	HeaderConnection          = "Connection"
+	// HeaderTransferEncoding is a hop-by-hop header, that is applied to a message between two nodes, not to a resource
+	// itself.
+	//
+	// See also: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Transfer-Encoding
+	HeaderTransferEncoding = "Transfer-Encoding"
 
 	// Access control
 	HeaderAccessControlRequestMethod    = "Access-Control-Request-Method"
