@@ -6,6 +6,7 @@ package middleware
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -18,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
@@ -809,4 +811,154 @@ func TestModifyResponseUseContext(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "OK", rec.Body.String())
 	assert.Equal(t, "CUSTOM_BALANCER", rec.Header().Get("FROM_BALANCER"))
+}
+
+func TestProxyWithConfig_WebSocket_TCP(t *testing.T) {
+	e := echo.New()
+
+	// Create a WebSocket test server
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upgrader := websocket.Upgrader{}
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+
+		// Echo message back to the client
+		for {
+			messageType, msg, err := conn.ReadMessage()
+			if err != nil {
+				return
+			}
+			conn.WriteMessage(messageType, msg)
+		}
+	}))
+	defer srv.Close()
+
+	tgtURL, _ := url.Parse(srv.URL)
+	balancer := NewRandomBalancer([]*ProxyTarget{{URL: tgtURL}})
+
+	e.Use(ProxyWithConfig(ProxyConfig{Balancer: balancer}))
+
+	ts := httptest.NewServer(e)
+	defer ts.Close()
+
+	tsURL, _ := url.Parse(ts.URL)
+	tsURL.Scheme = "ws"
+	tsURL.Path = "/"
+
+	// Connect to the proxy WebSocket
+	wsConn, _, err := websocket.DefaultDialer.Dial(tsURL.String(), nil)
+	assert.NoError(t, err)
+	defer wsConn.Close()
+
+	// Send message
+	sendMsg := "Hello, WebSocket!"
+	err = wsConn.WriteMessage(websocket.TextMessage, []byte(sendMsg))
+	assert.NoError(t, err)
+
+	// Read response
+	_, recvMsg, err := wsConn.ReadMessage()
+	assert.NoError(t, err)
+	assert.Equal(t, sendMsg, string(recvMsg))
+}
+
+func TestTLS(t *testing.T) {
+	e := echo.New()
+
+	// Echo にハンドラを設定
+	e.GET("/", func(c echo.Context) error {
+		return c.String(http.StatusOK, "Hello, TLS!")
+	})
+
+	// TLS対応のテストサーバーを作成
+	ts := httptest.NewTLSServer(e)
+	defer ts.Close()
+
+	// クライアントの設定（テスト用に証明書検証を無効化）
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
+
+	// TLS サーバーにリクエストを送信
+	resp, err := client.Get(ts.URL)
+	assert.NoError(t, err)
+	defer resp.Body.Close()
+
+	// レスポンスボディを読み取る
+	body, err := io.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	assert.Equal(t, "Hello, TLS!", string(body))
+}
+
+func TestProxyWithConfig_WebSocket_TLS(t *testing.T) {
+	e := echo.New()
+
+	// TLS WebSocket サーバーを作成
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upgrader := websocket.Upgrader{}
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+
+		// Echo message back to the client
+		for {
+			messageType, msg, err := conn.ReadMessage()
+			if err != nil {
+				return
+			}
+			conn.WriteMessage(messageType, msg)
+		}
+	}))
+	defer srv.Close()
+
+	// ターゲットURLのパース
+	tgtURL, _ := url.Parse(srv.URL)
+	tgtURL.Scheme = "wss" // TLS サーバーなので wss に変更
+
+	// ロードバランサーを作成
+	balancer := NewRandomBalancer([]*ProxyTarget{{URL: tgtURL}})
+
+	// Echo にプロキシミドルウェアを設定
+	defaultTransport, ok := http.DefaultTransport.(*http.Transport)
+	if !ok {
+		t.Fatal("Default transport is not of type *http.Transport")
+	}
+	transport := defaultTransport.Clone()
+	transport.TLSClientConfig = &tls.Config{
+		InsecureSkipVerify: true, // spyder-liveサーバーはドメイン名を持たないため、証明書の検証をスキップする
+	}
+	e.Use(ProxyWithConfig(ProxyConfig{Balancer: balancer, Transport: transport}))
+
+	// テスト用のTLS対応プロキシサーバーを立ち上げ
+	ts := httptest.NewTLSServer(e)
+	defer ts.Close()
+
+	// プロキシサーバーのURLを WebSocket 用に変換
+	tsURL, _ := url.Parse(ts.URL)
+	tsURL.Scheme = "wss"
+	tsURL.Path = "/"
+
+	// WebSocket クライアントを作成
+	dialer := websocket.Dialer{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // 証明書検証をスキップ（テスト用）
+	}
+	wsConn, _, err := dialer.Dial(tsURL.String(), nil)
+	assert.NoError(t, err)
+	defer wsConn.Close()
+
+	// メッセージを送信
+	sendMsg := "Hello, Secure WebSocket!"
+	err = wsConn.WriteMessage(websocket.TextMessage, []byte(sendMsg))
+	assert.NoError(t, err)
+
+	// メッセージを受信
+	_, recvMsg, err := wsConn.ReadMessage()
+	assert.NoError(t, err)
+	assert.Equal(t, sendMsg, string(recvMsg))
 }

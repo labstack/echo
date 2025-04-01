@@ -5,6 +5,7 @@ package middleware
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"math/rand"
@@ -130,7 +131,7 @@ var DefaultProxyConfig = ProxyConfig{
 	ContextKey: "target",
 }
 
-func proxyRaw(t *ProxyTarget, c echo.Context) http.Handler {
+func proxyRaw(t *ProxyTarget, c echo.Context, config ProxyConfig) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		in, _, err := c.Response().Hijack()
 		if err != nil {
@@ -139,12 +140,33 @@ func proxyRaw(t *ProxyTarget, c echo.Context) http.Handler {
 		}
 		defer in.Close()
 
-		out, err := net.Dial("tcp", t.URL.Host)
-		if err != nil {
-			c.Set("_error", echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("proxy raw, dial error=%v, url=%s", err, t.URL)))
-			return
+		var out net.Conn
+		if c.IsTLS() {
+			transport, ok := config.Transport.(*http.Transport)
+			if !ok {
+				c.Set("_error", echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("proxy raw, transport is not set, url=%s", t.URL)))
+				return
+			}
+
+			if transport.TLSClientConfig == nil {
+				c.Set("_error", echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("proxy raw, transport TLSClientConfig is not set, url=%s", t.URL)))
+				return
+			}
+
+			out, err = tls.Dial("tcp", t.URL.Host, transport.TLSClientConfig)
+			if err != nil {
+				c.Set("_error", echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("proxy raw, dial error=%v, url=%s", err, t.URL)))
+				return
+			}
+			defer out.Close()
+		} else {
+			out, err = net.Dial("tcp", t.URL.Host)
+			if err != nil {
+				c.Set("_error", echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("proxy raw, dial error=%v, url=%s", err, t.URL)))
+				return
+			}
+			defer out.Close()
 		}
-		defer out.Close()
 
 		// Write header
 		err = r.Write(out)
@@ -365,7 +387,7 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 				// Proxy
 				switch {
 				case c.IsWebSocket():
-					proxyRaw(tgt, c).ServeHTTP(res, req)
+					proxyRaw(tgt, c, config).ServeHTTP(res, req)
 				default: // even SSE requests
 					proxyHTTP(tgt, c, config).ServeHTTP(res, req)
 				}
