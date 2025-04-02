@@ -6,6 +6,7 @@ package middleware
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -20,6 +21,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/net/websocket"
 )
 
 // Assert expected with url.EscapedPath method to obtain the path.
@@ -809,4 +811,139 @@ func TestModifyResponseUseContext(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "OK", rec.Body.String())
 	assert.Equal(t, "CUSTOM_BALANCER", rec.Header().Get("FROM_BALANCER"))
+}
+
+func TestProxyWithConfigWebSocketTCP(t *testing.T) {
+	/*
+		Arrange
+	*/
+	e := echo.New()
+
+	// Create a WebSocket test server
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		wsHandler := func(conn *websocket.Conn) {
+			defer conn.Close()
+			for {
+				var msg string
+				err := websocket.Message.Receive(conn, &msg)
+				if err != nil {
+					return
+				}
+				// message back to the client
+				websocket.Message.Send(conn, msg)
+			}
+		}
+		websocket.Server{Handler: wsHandler}.ServeHTTP(w, r)
+	}))
+	defer srv.Close()
+
+	tgtURL, _ := url.Parse(srv.URL)
+	balancer := NewRandomBalancer([]*ProxyTarget{{URL: tgtURL}})
+
+	e.Use(ProxyWithConfig(ProxyConfig{Balancer: balancer}))
+
+	ts := httptest.NewServer(e)
+	defer ts.Close()
+
+	tsURL, _ := url.Parse(ts.URL)
+	tsURL.Scheme = "ws"
+	tsURL.Path = "/"
+
+	/*
+		Act
+	*/
+
+	// Connect to the proxy WebSocket
+	wsConn, err := websocket.Dial(tsURL.String(), "", "http://localhost/")
+	assert.NoError(t, err)
+	defer wsConn.Close()
+
+	// Send message
+	sendMsg := "Hello, WebSocket!"
+	err = websocket.Message.Send(wsConn, sendMsg)
+	assert.NoError(t, err)
+
+	/*
+		Assert
+	*/
+	// Read response
+	var recvMsg string
+	err = websocket.Message.Receive(wsConn, &recvMsg)
+	assert.NoError(t, err)
+	assert.Equal(t, sendMsg, recvMsg)
+}
+
+func TestProxyWithConfigWebSocketTLS(t *testing.T) {
+	/*
+		Arrange
+	*/
+	e := echo.New()
+
+	// Create a WebSocket test server
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		wsHandler := func(conn *websocket.Conn) {
+			defer conn.Close()
+			for {
+				var msg string
+				err := websocket.Message.Receive(conn, &msg)
+				if err != nil {
+					return
+				}
+				// message back to the client
+				websocket.Message.Send(conn, msg)
+			}
+		}
+		websocket.Server{Handler: wsHandler}.ServeHTTP(w, r)
+	}))
+	defer srv.Close()
+
+	// create proxy server
+	tgtURL, _ := url.Parse(srv.URL)
+	tgtURL.Scheme = "wss"
+
+	balancer := NewRandomBalancer([]*ProxyTarget{{URL: tgtURL}})
+
+	defaultTransport, ok := http.DefaultTransport.(*http.Transport)
+	if !ok {
+		t.Fatal("Default transport is not of type *http.Transport")
+	}
+	transport := defaultTransport.Clone()
+	transport.TLSClientConfig = &tls.Config{
+		InsecureSkipVerify: true,
+	}
+	e.Use(ProxyWithConfig(ProxyConfig{Balancer: balancer, Transport: transport}))
+
+	// Start test server
+	ts := httptest.NewTLSServer(e)
+	defer ts.Close()
+
+	tsURL, _ := url.Parse(ts.URL)
+	tsURL.Scheme = "wss"
+	tsURL.Path = "/"
+
+	/*
+		Act
+	*/
+	origin, err := url.Parse(ts.URL)
+	assert.NoError(t, err)
+	config := &websocket.Config{
+		Location:  tsURL,
+		Origin:    origin,
+		TlsConfig: &tls.Config{InsecureSkipVerify: true}, // skip verify for testing
+		Version:   websocket.ProtocolVersionHybi13,
+	}
+	wsConn, err := websocket.DialConfig(config)
+	assert.NoError(t, err)
+	defer wsConn.Close()
+
+	// Send message
+	sendMsg := "Hello, TLS WebSocket!"
+	err = websocket.Message.Send(wsConn, sendMsg)
+	assert.NoError(t, err)
+
+	// Read response
+	var recvMsg string
+	err = websocket.Message.Receive(wsConn, &recvMsg)
+	assert.NoError(t, err)
+	assert.Equal(t, sendMsg, recvMsg)
 }
