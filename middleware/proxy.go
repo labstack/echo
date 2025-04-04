@@ -132,6 +132,20 @@ var DefaultProxyConfig = ProxyConfig{
 }
 
 func proxyRaw(t *ProxyTarget, c echo.Context, config ProxyConfig) http.Handler {
+	var dialFunc func(ctx context.Context, network, addr string) (net.Conn, error)
+	if transport, ok := config.Transport.(*http.Transport); ok {
+		if transport.TLSClientConfig != nil {
+			d := tls.Dialer{
+				Config: transport.TLSClientConfig,
+			}
+			dialFunc = d.DialContext
+		}
+	}
+	if dialFunc == nil {
+		var d net.Dialer
+		dialFunc = d.DialContext
+	}
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		in, _, err := c.Response().Hijack()
 		if err != nil {
@@ -139,33 +153,10 @@ func proxyRaw(t *ProxyTarget, c echo.Context, config ProxyConfig) http.Handler {
 			return
 		}
 		defer in.Close()
-
-		var out net.Conn
-		if c.IsTLS() {
-			transport, ok := config.Transport.(*http.Transport)
-			if !ok {
-				c.Set("_error", echo.NewHTTPError(http.StatusBadGateway, "proxy raw, invalid transport type"))
-				return
-			}
-
-			if transport.TLSClientConfig == nil {
-				c.Set("_error", echo.NewHTTPError(http.StatusBadGateway, "proxy raw, TLSClientConfig is not set"))
-				return
-			}
-
-			out, err = tls.Dial("tcp", t.URL.Host, transport.TLSClientConfig)
-			if err != nil {
-				c.Set("_error", echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("proxy raw, dial error=%v, url=%s", err, t.URL)))
-				return
-			}
-			defer out.Close()
-		} else {
-			out, err = net.Dial("tcp", t.URL.Host)
-			if err != nil {
-				c.Set("_error", echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("proxy raw, dial error=%v, url=%s", err, t.URL)))
-				return
-			}
-			defer out.Close()
+		out, err := dialFunc(c.Request().Context(), "tcp", t.URL.Host)
+		if err != nil {
+			c.Set("_error", echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("proxy raw, dial error=%v, url=%s", err, t.URL)))
+			return
 		}
 
 		// Write header
