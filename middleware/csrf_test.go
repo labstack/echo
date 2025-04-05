@@ -382,3 +382,62 @@ func TestCSRFErrorHandling(t *testing.T) {
 	assert.Equal(t, http.StatusTeapot, res.Code)
 	assert.Equal(t, "{\"message\":\"error_handler_executed\"}\n", res.Body.String())
 }
+
+func TestCSRFReuseToken(t *testing.T) {
+	e := echo.New()
+	cookieName := "_csrf"
+	csrf := CSRFWithConfig(CSRFConfig{
+		CookieName: cookieName,
+	})
+	h := csrf(func(c echo.Context) error {
+		return c.String(http.StatusOK, "test")
+	})
+
+	req1 := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec1 := httptest.NewRecorder()
+	h(e.NewContext(req1, rec1))
+	c1 := getCookie(rec1.Result().Cookies(), cookieName)
+
+	var testCases = []struct {
+		name            string
+		reuseToken      bool
+		expectSameToken bool
+	}{
+		{
+			name:            "reuse token",
+			reuseToken:      true,
+			expectSameToken: true,
+		},
+		{
+			name:            "generate new token",
+			reuseToken:      false,
+			expectSameToken: false,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req2 := httptest.NewRequest(http.MethodGet, "/", nil)
+			if tc.reuseToken {
+				req2.Header.Set(echo.HeaderCookie, c1.Name+"="+c1.Value)
+			}
+			rec2 := httptest.NewRecorder()
+			h(e.NewContext(req2, rec2))
+			c2 := getCookie(rec2.Result().Cookies(), cookieName)
+
+			if tc.expectSameToken {
+				assert.Equal(t, c1.Value, c2.Value)
+			} else {
+				assert.NotEqual(t, c1.Value, c2.Value)
+			}
+		})
+	}
+}
+
+func getCookie(cookies []*http.Cookie, name string) *http.Cookie {
+	for _, cookie := range cookies {
+		if cookie.Name == name {
+			return cookie
+		}
+	}
+	return nil
+}
