@@ -692,6 +692,22 @@ func (r *Router) Find(method, path string, c Context) {
 
 			// update indexes/search in case we need to backtrack when no handler match is found
 			paramIndex++
+			if !currentNode.isLeaf {
+				i := 0
+				l := len(search)
+
+				for ; i < l && search[i] != '/'; i++ {
+				}
+				search = search[i:]
+				previousBestMatchNode = currentNode
+				if len(search) != 0 {
+					if child := currentNode.findStaticChild(search[0]); child != nil {
+						searchIndex = searchIndex + len(child.prefix)
+						currentNode = child
+						continue
+					}
+				}
+			}
 			searchIndex += +len(search)
 			search = ""
 
