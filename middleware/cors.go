@@ -107,13 +107,23 @@ type CORSConfig struct {
 	//
 	// See also: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Max-Age
 	MaxAge int `yaml:"max_age"`
+
+	// PreflightStatusCode determines the status code to be returned on a
+	// successful preflight request.
+	//
+	// Optional. Default value is http.StatusNoContent(204)
+	//
+	// See also: https://fetch.spec.whatwg.org/#ref-for-ok-status
+	// See also: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods/OPTIONS#preflighted_requests_in_cors
+	PreflightStatusCode int `yaml:"preflight_status_code"`
 }
 
 // DefaultCORSConfig is the default CORS middleware config.
 var DefaultCORSConfig = CORSConfig{
-	Skipper:      DefaultSkipper,
-	AllowOrigins: []string{"*"},
-	AllowMethods: []string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete},
+	Skipper:             DefaultSkipper,
+	AllowOrigins:        []string{"*"},
+	AllowMethods:        []string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete},
+	PreflightStatusCode: http.StatusNoContent,
 }
 
 // CORS returns a Cross-Origin Resource Sharing (CORS) middleware.
@@ -145,6 +155,10 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 	if len(config.AllowMethods) == 0 {
 		hasCustomAllowMethods = false
 		config.AllowMethods = DefaultCORSConfig.AllowMethods
+	}
+
+	if config.PreflightStatusCode == 0 {
+		config.PreflightStatusCode = DefaultCORSConfig.PreflightStatusCode
 	}
 
 	allowOriginPatterns := make([]*regexp.Regexp, 0, len(config.AllowOrigins))
@@ -214,7 +228,7 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 				if !preflight {
 					return next(c)
 				}
-				return c.NoContent(http.StatusNoContent)
+				return c.NoContent(config.PreflightStatusCode)
 			}
 
 			if config.AllowOriginFunc != nil {
@@ -264,7 +278,7 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 				if !preflight {
 					return echo.ErrUnauthorized
 				}
-				return c.NoContent(http.StatusNoContent)
+				return c.NoContent(config.PreflightStatusCode)
 			}
 
 			res.Header().Set(echo.HeaderAccessControlAllowOrigin, allowOrigin)
@@ -301,7 +315,7 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 			if config.MaxAge != 0 {
 				res.Header().Set(echo.HeaderAccessControlMaxAge, maxAge)
 			}
-			return c.NoContent(http.StatusNoContent)
+			return c.NoContent(config.PreflightStatusCode)
 		}
 	}
 }
