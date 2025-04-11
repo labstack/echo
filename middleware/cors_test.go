@@ -683,3 +683,39 @@ func Test_allowOriginFunc(t *testing.T) {
 		}
 	}
 }
+
+func TestCORSWithConfig_PreflightStatusCode(t *testing.T) {
+	tests := []struct {
+		name               string
+		mw                 echo.MiddlewareFunc
+		expectedStatusCode int
+	}{
+		{
+			name:               "ok, preflight with default config returns http.StatusNoContent (204)",
+			mw:                 CORS(),
+			expectedStatusCode: http.StatusNoContent,
+		},
+		{
+			name: "ok, preflight returning http.StatusOK (200)",
+			mw: CORSWithConfig(CORSConfig{
+				PreflightStatusCode: http.StatusOK,
+			}),
+			expectedStatusCode: http.StatusOK,
+		},
+	}
+	e := echo.New()
+
+	for _, tc := range tests {
+		req := httptest.NewRequest(http.MethodOptions, "/", nil)
+		rec := httptest.NewRecorder()
+
+		c := e.NewContext(req, rec)
+
+		cors := tc.mw(echo.NotFoundHandler)
+		err := cors(c)
+
+		assert.NoError(t, err)
+		assert.Equal(t, rec.Result().StatusCode, tc.expectedStatusCode)
+
+	}
+}
