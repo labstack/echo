@@ -706,16 +706,17 @@ func TestCORSWithConfig_PreflightStatusCode(t *testing.T) {
 	e := echo.New()
 
 	for _, tc := range tests {
-		req := httptest.NewRequest(http.MethodOptions, "/", nil)
-		rec := httptest.NewRecorder()
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodOptions, "/", nil)
+			rec := httptest.NewRecorder()
 
-		c := e.NewContext(req, rec)
+			c := e.NewContext(req, rec)
 
-		cors := tc.mw(echo.NotFoundHandler)
-		err := cors(c)
+			cors := tc.mw(echo.NotFoundHandler)
+			err := cors(c)
 
-		assert.NoError(t, err)
-		assert.Equal(t, rec.Result().StatusCode, tc.expectedStatusCode)
-
+			assert.NoError(t, err)
+			assert.Equal(t, rec.Result().StatusCode, tc.expectedStatusCode)
+		})
 	}
 }
