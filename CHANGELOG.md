@@ -1,5 +1,12 @@
 # Changelog
 
+## v4.13.4 - 2025-05-22
+
+**Security**
+
+* Update dependencies for [GO-2025-3487](https://pkg.go.dev/vuln/GO-2025-3487), [GO-2025-3503](https://pkg.go.dev/vuln/GO-2025-3503) and [GO-2025-3595](https://pkg.go.dev/vuln/GO-2025-3595) in https://github.com/labstack/echo/pull/2780
+
+
 ## v4.13.3 - 2024-12-19
 
 **Security**
