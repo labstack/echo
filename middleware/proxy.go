@@ -430,5 +430,16 @@ func proxyHTTP(tgt *ProxyTarget, c echo.Context, config ProxyConfig) http.Handle
 	}
 	proxy.Transport = config.Transport
 	proxy.ModifyResponse = config.ModifyResponse
+
+	// Handle authorization from target URL
+	if tgt.URL.User != nil {
+		originalDirector := proxy.Director
+		proxy.Director = func(req *http.Request) {
+			originalDirector(req)
+			password, _ := tgt.URL.User.Password()
+			req.SetBasicAuth(tgt.URL.User.Username(), password)
+		}
+	}
+
 	return proxy
 }

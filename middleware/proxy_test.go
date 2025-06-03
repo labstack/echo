@@ -1040,3 +1040,56 @@ func TestProxyWithConfigWebSocketTLS2NonTLS(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, sendMsg, recvMsg)
 }
+
+func TestProxyWithAuthorizationHeader(t *testing.T) {
+	// Scenario:
+	// A proxy target has user:pass in the url.
+	// The proxy should pass the Authorization header to the target.
+
+	var receivedAuthHeader string
+	// Arrange
+	t1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedAuthHeader = r.Header.Get("Authorization")
+		fmt.Fprint(w, "target 1")
+	}))
+	defer t1.Close()
+	url1, _ := url.Parse(t1.URL)
+	url1.User = url.UserPassword("user1", "pass1")
+
+	e := echo.New()
+	tp := &testProvider{}
+	tp.target = &ProxyTarget{Name: "target 1", URL: url1}
+	e.Use(Proxy(tp))
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	e.ServeHTTP(rec, req)
+
+	// Assert
+	assert.Equal(t, "target 1", rec.Body.String())
+	assert.Equal(t, "Basic dXNlcjE6cGFzczE=", receivedAuthHeader)
+
+	// Scenario:
+	// A proxy target does not have user:pass in the url.
+	// The proxy should not pass the Authorization header to the target.
+
+	receivedAuthHeader = ""
+	// Arrange
+	t2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedAuthHeader = r.Header.Get("Authorization")
+		fmt.Fprint(w, "target 2")
+	}))
+	defer t2.Close()
+	url2, _ := url.Parse(t2.URL)
+
+	e = echo.New()
+	tp = &testProvider{}
+	tp.target = &ProxyTarget{Name: "target 2", URL: url2}
+	e.Use(Proxy(tp))
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodGet, "/", nil)
+	e.ServeHTTP(rec, req)
+
+	// Assert
+	assert.Equal(t, "target 2", rec.Body.String())
+	assert.Equal(t, "", receivedAuthHeader)
+}
