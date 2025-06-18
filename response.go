@@ -55,7 +55,9 @@ func (r *Response) After(fn func()) {
 // used to send error codes.
 func (r *Response) WriteHeader(code int) {
 	if r.Committed {
-		r.echo.Logger.Warn("response already committed")
+		if r.echo != nil && r.echo.Logger != nil {
+			r.echo.Logger.Warn("response already committed")
+		}
 		return
 	}
 	r.Status = code
@@ -87,8 +89,15 @@ func (r *Response) Write(b []byte) (n int, err error) {
 // See [http.Flusher](https://golang.org/pkg/net/http/#Flusher)
 func (r *Response) Flush() {
 	err := http.NewResponseController(r.Writer).Flush()
-	if err != nil && errors.Is(err, http.ErrNotSupported) {
-		panic(errors.New("response writer flushing is not supported"))
+	if err != nil {
+		if errors.Is(err, http.ErrNotSupported) {
+			panic(errors.New("response writer flushing is not supported"))
+		}
+		// Log other flush errors if a logger is available and in debug mode,
+		// as http.Flusher interface does not allow returning an error.
+		if r.echo != nil && r.echo.Logger != nil && r.echo.Debug {
+			r.echo.Logger.Errorf("error during response flush: %v", err)
+		}
 	}
 }
 
