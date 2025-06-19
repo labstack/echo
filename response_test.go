@@ -80,7 +80,7 @@ func TestResponse_FlushPanics(t *testing.T) {
 	res := &Response{echo: e, Writer: rw}
 
 	// we test that we behave as before unwrapping flushers - flushing writer that does not support it causes panic
-	assert.PanicsWithError(t, "response writer flushing is not supported", func() {
+	assert.PanicsWithError(t, "echo: response writer *echo.testResponseWriter does not support flushing (http.Flusher interface)", func() {
 		res.Flush()
 	})
 }
