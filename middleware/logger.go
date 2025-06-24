@@ -33,6 +33,7 @@ type LoggerConfig struct {
 	// - time_custom
 	// - id (Request ID)
 	// - remote_ip
+	// - remote_ip_anon (Anonymized remote IP address, e.g. "1.2.3.0")
 	// - uri
 	// - host
 	// - method
@@ -161,6 +162,8 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 					return buf.WriteString(id)
 				case "remote_ip":
 					return buf.WriteString(c.RealIP())
+				case "remote_ip_anon":
+					return buf.WriteString(c.AnonymizedIP())
 				case "host":
 					return buf.WriteString(req.Host)
 				case "uri":

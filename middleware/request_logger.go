@@ -147,6 +147,8 @@ type RequestLoggerConfig struct {
 	LogProtocol bool
 	// LogRemoteIP instructs logger to extract request remote IP. See `echo.Context.RealIP()` for implementation details.
 	LogRemoteIP bool
+	// AnonymizeRemoteIP instructs logger to anonymize remote IP. See `echo.Context.AnonymizedIP()` for implementation details.
+	AnonymizeRemoteIP bool
 	// LogHost instructs logger to extract request host value (i.e. `example.com`)
 	LogHost bool
 	// LogMethod instructs logger to extract request method value (i.e. `GET` etc)
@@ -298,7 +300,11 @@ func (config RequestLoggerConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				v.Protocol = req.Proto
 			}
 			if config.LogRemoteIP {
-				v.RemoteIP = c.RealIP()
+				if config.AnonymizeRemoteIP {
+					v.RemoteIP = c.AnonymizedIP()
+				} else {
+					v.RemoteIP = c.RealIP()
+				}
 			}
 			if config.LogHost {
 				v.Host = req.Host

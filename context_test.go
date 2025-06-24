@@ -1121,3 +1121,92 @@ func TestContext_RealIP(t *testing.T) {
 		assert.Equal(t, tt.s, tt.c.RealIP())
 	}
 }
+
+func TestContext_AnonymizedIP(t *testing.T) {
+	tests := []struct {
+		c Context
+		s string
+	}{
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderXForwardedFor: []string{"127.0.0.1, 127.0.1.1, "}},
+				},
+			},
+			"127.0.0.0",
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderXForwardedFor: []string{"127.0.0.1,127.0.1.1"}},
+				},
+			},
+			"127.0.0.0",
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderXForwardedFor: []string{"127.0.0.1"}},
+				},
+			},
+			"127.0.0.0",
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderXForwardedFor: []string{"[2001:db8:85a3:8d3:1319:8a2e:370:7348], 2001:db8::1, "}},
+				},
+			},
+			"2001:db8:85a3:8d3:1319:8a2e:370:0",
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderXForwardedFor: []string{"[2001:db8:85a3:8d3:1319:8a2e:370:7348],[2001:db8::1]"}},
+				},
+			},
+			"2001:db8:85a3:8d3:1319:8a2e:370:0",
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderXForwardedFor: []string{"2001:db8:85a3:8d3:1319:8a2e:370:7348"}},
+				},
+			},
+			"2001:db8:85a3:8d3:1319:8a2e:370:0",
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{
+						"X-Real-Ip": []string{"192.168.0.1"},
+					},
+				},
+			},
+			"192.168.0.0",
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{
+						"X-Real-Ip": []string{"[2001:db8::1]"},
+					},
+				},
+			},
+			"2001:db8::0",
+		},
+
+		{
+			&context{
+				request: &http.Request{
+					RemoteAddr: "89.89.89.89:1654",
+				},
+			},
+			"89.89.89.0",
+		},
+	}
+
+	for _, tt := range tests {
+		assert.Equal(t, tt.s, tt.c.AnonymizedIP())
+	}
+}
