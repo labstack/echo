@@ -5,6 +5,7 @@ package middleware
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 )
@@ -16,6 +17,9 @@ type SecureConfig struct {
 
 	// XSSProtection provides protection against cross-site scripting attack (XSS)
 	// by setting the `X-XSS-Protection` header.
+	// Note: This header is deprecated in modern browsers. For more information, see
+	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-XSS-Protection
+	// and consider using Content-Security-Policy instead.
 	// Optional. Default value "1; mode=block".
 	XSSProtection string `yaml:"xss_protection"`
 
@@ -118,15 +122,15 @@ func SecureWithConfig(config SecureConfig) echo.MiddlewareFunc {
 			if config.XFrameOptions != "" {
 				res.Header().Set(echo.HeaderXFrameOptions, config.XFrameOptions)
 			}
-			if (c.IsTLS() || (req.Header.Get(echo.HeaderXForwardedProto) == "https")) && config.HSTSMaxAge != 0 {
-				subdomains := ""
+			if (c.IsTLS() || (req.Header.Get(echo.HeaderXForwardedProto) == "https")) && config.HSTSMaxAge > 0 {
+				hsts := []string{fmt.Sprintf("max-age=%d", config.HSTSMaxAge)}
 				if !config.HSTSExcludeSubdomains {
-					subdomains = "; includeSubdomains"
+					hsts = append(hsts, "includeSubdomains")
 				}
 				if config.HSTSPreloadEnabled {
-					subdomains = fmt.Sprintf("%s; preload", subdomains)
+					hsts = append(hsts, "preload")
 				}
-				res.Header().Set(echo.HeaderStrictTransportSecurity, fmt.Sprintf("max-age=%d%s", config.HSTSMaxAge, subdomains))
+				res.Header().Set(echo.HeaderStrictTransportSecurity, strings.Join(hsts, "; "))
 			}
 			if config.ContentSecurityPolicy != "" {
 				if config.CSPReportOnly {
