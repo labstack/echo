@@ -48,6 +48,16 @@ func Test_matchSubdomain(t *testing.T) {
 		expected        bool
 	}{
 		{
+			domain:   "http://example.com",
+			pattern:  "http://example.com",
+			expected: true,
+		},
+		{
+			domain:   "http://example.com",
+			pattern:  "https://example.com",
+			expected: false,
+		},
+		{
 			domain:   "http://aaa.example.com",
 			pattern:  "http://*.example.com",
 			expected: true,
