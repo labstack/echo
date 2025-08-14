@@ -375,6 +375,13 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 				// that Balancer may have replaced with c.SetRequest.
 				req = c.Request()
 
+				// Handle authorization from target URL (for both HTTP and WebSocket)
+				if tgt.URL.User != nil {
+					username := tgt.URL.User.Username()
+					password, _ := tgt.URL.User.Password()
+					req.SetBasicAuth(username, password)
+				}
+
 				// Proxy
 				switch {
 				case c.IsWebSocket():
