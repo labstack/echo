@@ -14,7 +14,7 @@ permissions:
 
 env:
   # run coverage and benchmarks only with the latest Go version
-  LATEST_GO_VERSION: "1.24"
+  LATEST_GO_VERSION: "1.25"
 
 jobs:
   test:
@@ -25,12 +25,12 @@ jobs:
         # Echo tests with last four major releases (unless there are pressing vulnerabilities)
         # As we depend on `golang.org/x/` libraries which only support last 2 Go releases we could have situations when
         # we derive from last four major releases promise.
-        go: ["1.21", "1.22", "1.23", "1.24"]
+        go: ["1.22", "1.23", "1.24", "1.25"]
     name: ${{ matrix.os }} @ Go ${{ matrix.go }}
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Go ${{ matrix.go }}
         uses: actions/setup-go@v5
@@ -42,7 +42,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: success() && matrix.go == env.LATEST_GO_VERSION && matrix.os == 'ubuntu-latest'
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v5
         with:
           token:
           fail_ci_if_error: false
@@ -53,13 +53,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code (Previous)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.base_ref }}
           path: previous
 
       - name: Checkout Code (New)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: new
 
