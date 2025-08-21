@@ -420,11 +420,11 @@ func setFloatField(value string, bitSize int, field reflect.Value) error {
 
 var (
 	// NOT supported by bind as you can NOT check easily empty struct being actual file or not
-	multipartFileHeaderType = reflect.TypeOf(multipart.FileHeader{})
+	multipartFileHeaderType = reflect.TypeFor[multipart.FileHeader]()
 	// supported by bind as you can check by nil value if file existed or not
-	multipartFileHeaderPointerType      = reflect.TypeOf(&multipart.FileHeader{})
-	multipartFileHeaderSliceType        = reflect.TypeOf([]multipart.FileHeader(nil))
-	multipartFileHeaderPointerSliceType = reflect.TypeOf([]*multipart.FileHeader(nil))
+	multipartFileHeaderPointerType      = reflect.TypeFor[*multipart.FileHeader]()
+	multipartFileHeaderSliceType        = reflect.TypeFor[[]multipart.FileHeader]()
+	multipartFileHeaderPointerSliceType = reflect.TypeFor[[]*multipart.FileHeader]()
 )
 
 func isFieldMultipartFile(field reflect.Type) (bool, error) {
