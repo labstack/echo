@@ -5,6 +5,7 @@ package middleware
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -92,11 +93,12 @@ func TestBodyDumpFails(t *testing.T) {
 }
 
 func TestBodyDumpResponseWriter_CanNotFlush(t *testing.T) {
+	rw := new(testResponseWriterNoFlushHijack)
 	bdrw := bodyDumpResponseWriter{
-		ResponseWriter: new(testResponseWriterNoFlushHijack), // this RW does not support flush
+		ResponseWriter: rw, // this RW does not support flush
 	}
 
-	assert.PanicsWithError(t, "response writer flushing is not supported", func() {
+	assert.PanicsWithError(t, fmt.Sprintf("echo: response writer %T does not support flushing (http.Flusher interface)", rw), func() {
 		bdrw.Flush()
 	})
 }
