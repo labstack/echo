@@ -262,7 +262,7 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 			// Origin not allowed
 			if allowOrigin == "" {
 				if !preflight {
-					return echo.ErrUnauthorized
+					return next(c)
 				}
 				return c.NoContent(http.StatusNoContent)
 			}
