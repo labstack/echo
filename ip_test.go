@@ -380,6 +380,34 @@ func TestExtractIPDirect(t *testing.T) {
 			expectIP: "203.0.113.1",
 		},
 		{
+			name: "remote addr is IP without port, extracts IP directly",
+			whenRequest: http.Request{
+				RemoteAddr: "203.0.113.1",
+			},
+			expectIP: "203.0.113.1",
+		},
+		{
+			name: "remote addr is IPv6 without port, extracts IP directly",
+			whenRequest: http.Request{
+				RemoteAddr: "2001:db8::1",
+			},
+			expectIP: "2001:db8::1",
+		},
+		{
+			name: "remote addr is IPv6 with port",
+			whenRequest: http.Request{
+				RemoteAddr: "[2001:db8::1]:8080",
+			},
+			expectIP: "2001:db8::1",
+		},
+		{
+			name: "remote addr is invalid, returns empty string",
+			whenRequest: http.Request{
+				RemoteAddr: "invalid-ip-format",
+			},
+			expectIP: "",
+		},
+		{
 			name: "request is from external IP has X-Real-Ip header, extractor still extracts IP from request remote addr",
 			whenRequest: http.Request{
 				Header: http.Header{
