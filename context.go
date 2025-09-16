@@ -364,7 +364,7 @@ func (c *context) SetParamValues(values ...string) {
 	if limit > len(c.pvalues) {
 		c.pvalues = make([]string, limit)
 	}
-	for i := 0; i < limit; i++ {
+	for i := range limit {
 		c.pvalues[i] = values[i]
 	}
 }
