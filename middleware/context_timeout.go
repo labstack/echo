@@ -16,7 +16,7 @@ type ContextTimeoutConfig struct {
 	// Skipper defines a function to skip middleware.
 	Skipper Skipper
 
-	// ErrorHandler is a function when error aries in middleware execution.
+	// ErrorHandler is a function when error arises in middleware execution.
 	ErrorHandler func(err error, c echo.Context) error
 
 	// Timeout configures a timeout for the middleware, defaults to 0 for no timeout
