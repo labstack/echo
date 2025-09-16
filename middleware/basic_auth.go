@@ -66,6 +66,9 @@ func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 		config.Realm = defaultRealm
 	}
 
+	// Pre-compute the quoted realm for WWW-Authenticate header (RFC 7617)
+	quotedRealm := strconv.Quote(config.Realm)
+
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			if config.Skipper(c) {
@@ -98,7 +101,7 @@ func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 
 			// Need to return `401` for browsers to pop-up login box.
 			// Realm is case-insensitive, so we can use "basic" directly. See RFC 7617.
-			c.Response().Header().Set(echo.HeaderWWWAuthenticate, basic+" realm="+strconv.Quote(config.Realm))
+			c.Response().Header().Set(echo.HeaderWWWAuthenticate, basic+" realm="+quotedRealm)
 			return echo.ErrUnauthorized
 		}
 	}
