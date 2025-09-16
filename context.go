@@ -359,7 +359,7 @@ func (c *context) ParamValues() []string {
 
 func (c *context) SetParamValues(values ...string) {
 	// NOTE: Don't just set c.pvalues = values, because it has to have length c.echo.maxParam (or bigger) at all times
-	// It will brake the Router#Find code
+	// It will break the Router#Find code
 	limit := len(values)
 	if limit > len(c.pvalues) {
 		c.pvalues = make([]string, limit)
