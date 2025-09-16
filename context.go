@@ -97,22 +97,22 @@ type Context interface {
 	Cookies() []*http.Cookie
 
 	// Get retrieves data from the context.
-	Get(key string) interface{}
+	Get(key string) any
 
 	// Set saves data in the context.
-	Set(key string, val interface{})
+	Set(key string, val any)
 
 	// Bind binds path params, query params and the request body into provided type `i`. The default binder
 	// binds body based on Content-Type header.
-	Bind(i interface{}) error
+	Bind(i any) error
 
 	// Validate validates provided `i`. It is usually called after `Context#Bind()`.
 	// Validator must be registered using `Echo#Validator`.
-	Validate(i interface{}) error
+	Validate(i any) error
 
 	// Render renders a template with data and sends a text/html response with status
 	// code. Renderer must be registered using `Echo.Renderer`.
-	Render(code int, name string, data interface{}) error
+	Render(code int, name string, data any) error
 
 	// HTML sends an HTTP response with status code.
 	HTML(code int, html string) error
@@ -124,27 +124,27 @@ type Context interface {
 	String(code int, s string) error
 
 	// JSON sends a JSON response with status code.
-	JSON(code int, i interface{}) error
+	JSON(code int, i any) error
 
 	// JSONPretty sends a pretty-print JSON with status code.
-	JSONPretty(code int, i interface{}, indent string) error
+	JSONPretty(code int, i any, indent string) error
 
 	// JSONBlob sends a JSON blob response with status code.
 	JSONBlob(code int, b []byte) error
 
 	// JSONP sends a JSONP response with status code. It uses `callback` to construct
 	// the JSONP payload.
-	JSONP(code int, callback string, i interface{}) error
+	JSONP(code int, callback string, i any) error
 
 	// JSONPBlob sends a JSONP blob response with status code. It uses `callback`
 	// to construct the JSONP payload.
 	JSONPBlob(code int, callback string, b []byte) error
 
 	// XML sends an XML response with status code.
-	XML(code int, i interface{}) error
+	XML(code int, i any) error
 
 	// XMLPretty sends a pretty-print XML with status code.
-	XMLPretty(code int, i interface{}, indent string) error
+	XMLPretty(code int, i any, indent string) error
 
 	// XMLBlob sends an XML blob response with status code.
 	XMLBlob(code int, b []byte) error
@@ -430,13 +430,13 @@ func (c *context) Cookies() []*http.Cookie {
 	return c.request.Cookies()
 }
 
-func (c *context) Get(key string) interface{} {
+func (c *context) Get(key string) any {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return c.store[key]
 }
 
-func (c *context) Set(key string, val interface{}) {
+func (c *context) Set(key string, val any) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -446,18 +446,18 @@ func (c *context) Set(key string, val interface{}) {
 	c.store[key] = val
 }
 
-func (c *context) Bind(i interface{}) error {
+func (c *context) Bind(i any) error {
 	return c.echo.Binder.Bind(i, c)
 }
 
-func (c *context) Validate(i interface{}) error {
+func (c *context) Validate(i any) error {
 	if c.echo.Validator == nil {
 		return ErrValidatorNotRegistered
 	}
 	return c.echo.Validator.Validate(i)
 }
 
-func (c *context) Render(code int, name string, data interface{}) (err error) {
+func (c *context) Render(code int, name string, data any) (err error) {
 	if c.echo.Renderer == nil {
 		return ErrRendererNotRegistered
 	}
@@ -480,7 +480,7 @@ func (c *context) String(code int, s string) (err error) {
 	return c.Blob(code, MIMETextPlainCharsetUTF8, []byte(s))
 }
 
-func (c *context) jsonPBlob(code int, callback string, i interface{}) (err error) {
+func (c *context) jsonPBlob(code int, callback string, i any) (err error) {
 	indent := ""
 	if _, pretty := c.QueryParams()["pretty"]; c.echo.Debug || pretty {
 		indent = defaultIndent
@@ -499,13 +499,13 @@ func (c *context) jsonPBlob(code int, callback string, i interface{}) (err error
 	return
 }
 
-func (c *context) json(code int, i interface{}, indent string) error {
+func (c *context) json(code int, i any, indent string) error {
 	c.writeContentType(MIMEApplicationJSON)
 	c.response.Status = code
 	return c.echo.JSONSerializer.Serialize(c, i, indent)
 }
 
-func (c *context) JSON(code int, i interface{}) (err error) {
+func (c *context) JSON(code int, i any) (err error) {
 	indent := ""
 	if _, pretty := c.QueryParams()["pretty"]; c.echo.Debug || pretty {
 		indent = defaultIndent
@@ -513,7 +513,7 @@ func (c *context) JSON(code int, i interface{}) (err error) {
 	return c.json(code, i, indent)
 }
 
-func (c *context) JSONPretty(code int, i interface{}, indent string) (err error) {
+func (c *context) JSONPretty(code int, i any, indent string) (err error) {
 	return c.json(code, i, indent)
 }
 
@@ -521,7 +521,7 @@ func (c *context) JSONBlob(code int, b []byte) (err error) {
 	return c.Blob(code, MIMEApplicationJSON, b)
 }
 
-func (c *context) JSONP(code int, callback string, i interface{}) (err error) {
+func (c *context) JSONP(code int, callback string, i any) (err error) {
 	return c.jsonPBlob(code, callback, i)
 }
 
@@ -538,7 +538,7 @@ func (c *context) JSONPBlob(code int, callback string, b []byte) (err error) {
 	return
 }
 
-func (c *context) xml(code int, i interface{}, indent string) (err error) {
+func (c *context) xml(code int, i any, indent string) (err error) {
 	c.writeContentType(MIMEApplicationXMLCharsetUTF8)
 	c.response.WriteHeader(code)
 	enc := xml.NewEncoder(c.response)
@@ -551,7 +551,7 @@ func (c *context) xml(code int, i interface{}, indent string) (err error) {
 	return enc.Encode(i)
 }
 
-func (c *context) XML(code int, i interface{}) (err error) {
+func (c *context) XML(code int, i any) (err error) {
 	indent := ""
 	if _, pretty := c.QueryParams()["pretty"]; c.echo.Debug || pretty {
 		indent = defaultIndent
@@ -559,7 +559,7 @@ func (c *context) XML(code int, i interface{}) (err error) {
 	return c.xml(code, i, indent)
 }
 
-func (c *context) XMLPretty(code int, i interface{}, indent string) (err error) {
+func (c *context) XMLPretty(code int, i any, indent string) (err error) {
 	return c.xml(code, i, indent)
 }
 
