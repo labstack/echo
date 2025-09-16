@@ -117,3 +117,64 @@ func TestBasicAuth(t *testing.T) {
 		})
 	}
 }
+
+func TestBasicAuthRealm(t *testing.T) {
+	e := echo.New()
+	mockValidator := func(u, p string, c echo.Context) (bool, error) {
+		return false, nil // Always fail to trigger WWW-Authenticate header
+	}
+
+	tests := []struct {
+		name         string
+		realm        string
+		expectedAuth string
+	}{
+		{
+			name:         "Default realm",
+			realm:        "Restricted",
+			expectedAuth: `basic realm="Restricted"`,
+		},
+		{
+			name:         "Custom realm",
+			realm:        "My API",
+			expectedAuth: `basic realm="My API"`,
+		},
+		{
+			name:         "Realm with special characters",
+			realm:        `Realm with "quotes" and \backslashes`,
+			expectedAuth: `basic realm="Realm with \"quotes\" and \\backslashes"`,
+		},
+		{
+			name:         "Empty realm (falls back to default)",
+			realm:        "",
+			expectedAuth: `basic realm="Restricted"`,
+		},
+		{
+			name:         "Realm with unicode",
+			realm:        "测试领域",
+			expectedAuth: `basic realm="测试领域"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			res := httptest.NewRecorder()
+			c := e.NewContext(req, res)
+
+			h := BasicAuthWithConfig(BasicAuthConfig{
+				Validator: mockValidator,
+				Realm:     tt.realm,
+			})(func(c echo.Context) error {
+				return c.String(http.StatusOK, "test")
+			})
+
+			err := h(c)
+
+			var he *echo.HTTPError
+			errors.As(err, &he)
+			assert.Equal(t, http.StatusUnauthorized, he.Code)
+			assert.Equal(t, tt.expectedAuth, res.Header().Get(echo.HeaderWWWAuthenticate))
+		})
+	}
+}
