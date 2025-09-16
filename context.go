@@ -102,8 +102,11 @@ type Context interface {
 	// Set saves data in the context.
 	Set(key string, val interface{})
 
-	// Bind binds path params, query params and the request body into provided type `i`. The default binder
-	// binds body based on Content-Type header.
+	// Bind binds data from multiple sources to the provided type `i` in this order:
+	// 1) path parameters, 2) query parameters (for GET/DELETE/HEAD only), 3) request body.
+	// Each step can override values from the previous step. For single source binding use
+	// BindPathParams, BindQueryParams, BindHeaders, or BindBody directly.
+	// The default binder handles body based on Content-Type header.
 	Bind(i interface{}) error
 
 	// Validate validates provided `i`. It is usually called after `Context#Bind()`.
