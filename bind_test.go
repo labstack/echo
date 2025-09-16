@@ -1083,6 +1083,14 @@ func TestDefaultBinder_BindBody(t *testing.T) {
 			expect:           &Node{ID: 0, Node: ""},
 		},
 		{
+			name:             "ok, POST with empty body and ContentLength -1 (Issue #2813)",
+			givenURL:         "/api/real_node/endpoint?node=xxx",
+			givenMethod:      http.MethodPost,
+			givenContent:     strings.NewReader(""),
+			whenChunkedBody:  true, // This sets ContentLength to -1
+			expect:           &Node{ID: 0, Node: ""},
+		},
+		{
 			name:             "ok, JSON POST bind to struct with: path + query + chunked body",
 			givenURL:         "/api/real_node/endpoint?node=xxx",
 			givenMethod:      http.MethodPost,

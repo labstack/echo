@@ -8,6 +8,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"reflect"
@@ -69,6 +70,22 @@ func (b *DefaultBinder) BindBody(c Context, i interface{}) (err error) {
 	req := c.Request()
 	if req.ContentLength == 0 {
 		return
+	}
+
+	// For unknown ContentLength (-1), check if body is actually empty
+	if req.ContentLength == -1 {
+		// Peek at the first byte to see if there's any content
+		var buf [1]byte
+		n, readErr := req.Body.Read(buf[:])
+		if readErr != nil && readErr != io.EOF {
+			return NewHTTPError(http.StatusBadRequest, readErr.Error()).SetInternal(readErr)
+		}
+		if n == 0 {
+			// Body is empty, return without error
+			return
+		}
+		// There's content, put the byte back by creating a new reader
+		req.Body = io.NopCloser(io.MultiReader(strings.NewReader(string(buf[:n])), req.Body))
 	}
 
 	// mediatype is found like `mime.ParseMediaType()` does it
