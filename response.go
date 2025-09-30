@@ -6,6 +6,7 @@ package echo
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 )
@@ -88,7 +89,7 @@ func (r *Response) Write(b []byte) (n int, err error) {
 func (r *Response) Flush() {
 	err := http.NewResponseController(r.Writer).Flush()
 	if err != nil && errors.Is(err, http.ErrNotSupported) {
-		panic(errors.New("response writer flushing is not supported"))
+		panic(fmt.Errorf("echo: response writer %T does not support flushing (http.Flusher interface)", r.Writer))
 	}
 }
 

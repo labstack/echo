@@ -219,8 +219,14 @@ func ExtractIPDirect() IPExtractor {
 }
 
 func extractIP(req *http.Request) string {
-	ra, _, _ := net.SplitHostPort(req.RemoteAddr)
-	return ra
+	host, _, err := net.SplitHostPort(req.RemoteAddr)
+	if err != nil {
+		if net.ParseIP(req.RemoteAddr) != nil {
+			return req.RemoteAddr
+		}
+		return ""
+	}
+	return host
 }
 
 // ExtractIPFromRealIPHeader extracts IP address using x-real-ip header.

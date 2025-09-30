@@ -18,56 +18,181 @@ import (
 )
 
 // LoggerConfig defines the config for Logger middleware.
+//
+// # Configuration Examples
+//
+// ## Basic Usage with Default Settings
+//
+//	e.Use(middleware.Logger())
+//
+// This uses the default JSON format that logs all common request/response details.
+//
+// ## Custom Simple Format
+//
+//	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
+//		Format: "${time_rfc3339_nano} ${status} ${method} ${uri} ${latency_human}\n",
+//	}))
+//
+// ## JSON Format with Custom Fields
+//
+//	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
+//		Format: `{"timestamp":"${time_rfc3339_nano}","level":"info","remote_ip":"${remote_ip}",` +
+//			`"method":"${method}","uri":"${uri}","status":${status},"latency":"${latency_human}",` +
+//			`"user_agent":"${user_agent}","error":"${error}"}` + "\n",
+//	}))
+//
+// ## Custom Time Format
+//
+//	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
+//		Format: "${time_custom} ${method} ${uri} ${status}\n",
+//		CustomTimeFormat: "2006-01-02 15:04:05",
+//	}))
+//
+// ## Logging Headers and Parameters
+//
+//	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
+//		Format: `{"time":"${time_rfc3339_nano}","method":"${method}","uri":"${uri}",` +
+//			`"status":${status},"auth":"${header:Authorization}","user":"${query:user}",` +
+//			`"form_data":"${form:action}","session":"${cookie:session_id}"}` + "\n",
+//	}))
+//
+// ## Custom Output (File Logging)
+//
+//	file, err := os.OpenFile("app.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	defer file.Close()
+//
+//	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
+//		Output: file,
+//	}))
+//
+// ## Custom Tag Function
+//
+//	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
+//		Format: `{"time":"${time_rfc3339_nano}","user_id":"${custom}","method":"${method}"}` + "\n",
+//		CustomTagFunc: func(c echo.Context, buf *bytes.Buffer) (int, error) {
+//			userID := getUserIDFromContext(c) // Your custom logic
+//			return buf.WriteString(strconv.Itoa(userID))
+//		},
+//	}))
+//
+// ## Conditional Logging (Skip Certain Requests)
+//
+//	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
+//		Skipper: func(c echo.Context) bool {
+//			// Skip logging for health check endpoints
+//			return c.Request().URL.Path == "/health" || c.Request().URL.Path == "/metrics"
+//		},
+//	}))
+//
+// ## Integration with External Logging Service
+//
+//	logBuffer := &SyncBuffer{} // Thread-safe buffer for external service
+//
+//	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
+//		Format: `{"timestamp":"${time_rfc3339_nano}","service":"my-api","level":"info",` +
+//			`"method":"${method}","uri":"${uri}","status":${status},"latency_ms":${latency},` +
+//			`"remote_ip":"${remote_ip}","user_agent":"${user_agent}","error":"${error}"}` + "\n",
+//		Output: logBuffer,
+//	}))
+//
+// # Available Tags
+//
+// ## Time Tags
+//   - time_unix: Unix timestamp (seconds)
+//   - time_unix_milli: Unix timestamp (milliseconds)
+//   - time_unix_micro: Unix timestamp (microseconds)
+//   - time_unix_nano: Unix timestamp (nanoseconds)
+//   - time_rfc3339: RFC3339 format (2006-01-02T15:04:05Z07:00)
+//   - time_rfc3339_nano: RFC3339 with nanoseconds
+//   - time_custom: Uses CustomTimeFormat field
+//
+// ## Request Information
+//   - id: Request ID from X-Request-ID header
+//   - remote_ip: Client IP address (respects proxy headers)
+//   - remote_ip_anon: Client IP address anonymized (respects proxy headers, drops last octet)
+//   - uri: Full request URI with query parameters
+//   - host: Host header value
+//   - method: HTTP method (GET, POST, etc.)
+//   - path: URL path without query parameters
+//   - route: Echo route pattern (e.g., /users/:id)
+//   - protocol: HTTP protocol version
+//   - referer: Referer header value
+//   - user_agent: User-Agent header value
+//
+// ## Response Information
+//   - status: HTTP status code
+//   - error: Error message if request failed
+//   - latency: Request processing time in nanoseconds
+//   - latency_human: Human-readable processing time
+//   - bytes_in: Request body size in bytes
+//   - bytes_out: Response body size in bytes
+//
+// ## Dynamic Tags
+//   - header:<NAME>: Value of specific header (e.g., header:Authorization)
+//   - query:<NAME>: Value of specific query parameter (e.g., query:user_id)
+//   - form:<NAME>: Value of specific form field (e.g., form:username)
+//   - cookie:<NAME>: Value of specific cookie (e.g., cookie:session_id)
+//   - custom: Output from CustomTagFunc
+//
+// # Troubleshooting
+//
+// ## Common Issues
+//
+// 1. **Missing logs**: Check if Skipper function is filtering out requests
+// 2. **Invalid JSON**: Ensure CustomTagFunc outputs valid JSON content
+// 3. **Performance issues**: Consider using a buffered writer for high-traffic applications
+// 4. **File permission errors**: Ensure write permissions when logging to files
+//
+// ## Performance Tips
+//
+// - Use time_unix formats for better performance than time_rfc3339
+// - Minimize the number of dynamic tags (header:, query:, form:, cookie:)
+// - Use Skipper to exclude high-frequency, low-value requests (health checks, etc.)
+// - Consider async logging for very high-traffic applications
 type LoggerConfig struct {
 	// Skipper defines a function to skip middleware.
+	// Use this to exclude certain requests from logging (e.g., health checks).
+	//
+	// Example:
+	//	Skipper: func(c echo.Context) bool {
+	//		return c.Request().URL.Path == "/health"
+	//	},
 	Skipper Skipper
 
-	// Tags to construct the logger format.
+	// Format defines the logging format using template tags.
+	// Tags are enclosed in ${} and replaced with actual values.
+	// See the detailed tag documentation above for all available options.
 	//
-	// - time_unix
-	// - time_unix_milli
-	// - time_unix_micro
-	// - time_unix_nano
-	// - time_rfc3339
-	// - time_rfc3339_nano
-	// - time_custom
-	// - id (Request ID)
-	// - remote_ip
-	// - remote_ip_anon (Anonymized remote IP address, e.g. "1.2.3.0")
-	// - uri
-	// - host
-	// - method
-	// - path
-	// - route
-	// - protocol
-	// - referer
-	// - user_agent
-	// - status
-	// - error
-	// - latency (In nanoseconds)
-	// - latency_human (Human readable)
-	// - bytes_in (Bytes received)
-	// - bytes_out (Bytes sent)
-	// - header:<NAME>
-	// - query:<NAME>
-	// - form:<NAME>
-	// - custom (see CustomTagFunc field)
-	//
-	// Example "${remote_ip} ${status}"
-	//
-	// Optional. Default value DefaultLoggerConfig.Format.
+	// Default: JSON format with common fields
+	// Example: "${time_rfc3339_nano} ${status} ${method} ${uri} ${latency_human}\n"
 	Format string `yaml:"format"`
 
-	// Optional. Default value DefaultLoggerConfig.CustomTimeFormat.
+	// CustomTimeFormat specifies the time format used by ${time_custom} tag.
+	// Uses Go's reference time: Mon Jan 2 15:04:05 MST 2006
+	//
+	// Default: "2006-01-02 15:04:05.00000"
+	// Example: "2006-01-02 15:04:05" or "15:04:05.000"
 	CustomTimeFormat string `yaml:"custom_time_format"`
 
-	// CustomTagFunc is function called for `${custom}` tag to output user implemented text by writing it to buf.
-	// Make sure that outputted text creates valid JSON string with other logged tags.
-	// Optional.
+	// CustomTagFunc is called when ${custom} tag is encountered.
+	// Use this to add application-specific information to logs.
+	// The function should write valid content for your log format.
+	//
+	// Example:
+	//	CustomTagFunc: func(c echo.Context, buf *bytes.Buffer) (int, error) {
+	//		userID := getUserFromContext(c)
+	//		return buf.WriteString(`"user_id":"` + userID + `"`)
+	//	},
 	CustomTagFunc func(c echo.Context, buf *bytes.Buffer) (int, error)
 
-	// Output is a writer where logs in JSON format are written.
-	// Optional. Default value os.Stdout.
+	// Output specifies where logs are written.
+	// Can be any io.Writer: files, buffers, network connections, etc.
+	//
+	// Default: os.Stdout
+	// Example: Custom file, syslog, or external logging service
 	Output io.Writer
 
 	template *fasttemplate.Template
@@ -86,13 +211,55 @@ var DefaultLoggerConfig = LoggerConfig{
 	colorer:          color.New(),
 }
 
-// Logger returns a middleware that logs HTTP requests.
+// Logger returns a middleware that logs HTTP requests using the default configuration.
+//
+// The default format logs requests as JSON with the following fields:
+//   - time: RFC3339 nano timestamp
+//   - id: Request ID from X-Request-ID header
+//   - remote_ip: Client IP address
+//   - host: Host header
+//   - method: HTTP method
+//   - uri: Request URI
+//   - user_agent: User-Agent header
+//   - status: HTTP status code
+//   - error: Error message (if any)
+//   - latency: Processing time in nanoseconds
+//   - latency_human: Human-readable processing time
+//   - bytes_in: Request body size
+//   - bytes_out: Response body size
+//
+// Example output:
+//
+//	{"time":"2023-01-15T10:30:45.123456789Z","id":"","remote_ip":"127.0.0.1",
+//	"host":"localhost:8080","method":"GET","uri":"/users/123","user_agent":"curl/7.81.0",
+//	"status":200,"error":"","latency":1234567,"latency_human":"1.234567ms",
+//	"bytes_in":0,"bytes_out":42}
+//
+// For custom configurations, use LoggerWithConfig instead.
 func Logger() echo.MiddlewareFunc {
 	return LoggerWithConfig(DefaultLoggerConfig)
 }
 
-// LoggerWithConfig returns a Logger middleware with config.
-// See: `Logger()`.
+// LoggerWithConfig returns a Logger middleware with custom configuration.
+//
+// This function allows you to customize all aspects of request logging including:
+//   - Log format and fields
+//   - Output destination
+//   - Time formatting
+//   - Custom tags and logic
+//   - Request filtering
+//
+// See LoggerConfig documentation for detailed configuration examples and options.
+//
+// Example:
+//
+//	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
+//		Format: "${time_rfc3339} ${status} ${method} ${uri} ${latency_human}\n",
+//		Output: customLogWriter,
+//		Skipper: func(c echo.Context) bool {
+//			return c.Request().URL.Path == "/health"
+//		},
+//	}))
 func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 	// Defaults
 	if config.Skipper == nil {
