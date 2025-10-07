@@ -692,7 +692,7 @@ func (r *Router) Find(method, path string, c Context) {
 
 			// update indexes/search in case we need to backtrack when no handler match is found
 			paramIndex++
-			searchIndex += +len(search)
+			searchIndex += len(search)
 			search = ""
 
 			if h := currentNode.findMethod(method); h != nil {
