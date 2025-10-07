@@ -52,7 +52,7 @@ Click [here](https://github.com/sponsors/labstack) for more information on spons
 
 ```sh
 // go get github.com/labstack/echo/{version}
-go get github.com/labstack/echo/v4
+go install github.com/labstack/echo/v4@latest
 ```
 Latest version of Echo supports last four Go major [releases](https://go.dev/doc/devel/release) and might work with older versions.
 
