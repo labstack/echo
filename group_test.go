@@ -28,7 +28,7 @@ func TestGroup(t *testing.T) {
 	g.Any("/", h)
 	g.Match([]string{http.MethodGet, http.MethodPost}, "/", h)
 	g.Static("/static", "/tmp")
-	g.File("/walle", "_fixture/images//walle.png")
+	g.File("/walle", "_fixture/images/walle.png")
 }
 
 func TestGroupFile(t *testing.T) {
