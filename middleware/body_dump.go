@@ -6,6 +6,7 @@ package middleware
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"errors"
 	"io"
 	"net"
@@ -67,7 +68,11 @@ func BodyDumpWithConfig(config BodyDumpConfig) echo.MiddlewareFunc {
 			// Request
 			reqBody := []byte{}
 			if c.Request().Body != nil { // Read
-				reqBody, _ = io.ReadAll(c.Request().Body)
+				var errRead error
+				reqBody, errRead = io.ReadAll(c.Request().Body)
+				if errRead != nil {
+					return errRead
+				}
 			}
 			c.Request().Body = io.NopCloser(bytes.NewBuffer(reqBody)) // Reset
 
@@ -100,7 +105,7 @@ func (w *bodyDumpResponseWriter) Write(b []byte) (int, error) {
 func (w *bodyDumpResponseWriter) Flush() {
 	err := http.NewResponseController(w.ResponseWriter).Flush()
 	if err != nil && errors.Is(err, http.ErrNotSupported) {
-		panic(errors.New("response writer flushing is not supported"))
+		panic(fmt.Errorf("echo: response writer %T does not support flushing (http.Flusher interface)", w.ResponseWriter))
 	}
 }
 
