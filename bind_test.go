@@ -1684,3 +1684,376 @@ func TestTimeFormatBinding(t *testing.T) {
 		})
 	}
 }
+
+func TestBindNestedFormData(t *testing.T) {
+	type NestedStruct struct {
+		Name string `form:"name"`
+		Value string `form:"value"`
+	}
+
+	type NestedGroup struct {
+		Items []NestedStruct `form:"items"`
+		Others []NestedStruct `form:"others"`
+	}
+
+	type NestedTestStruct struct {
+		GroupA NestedGroup `form:"groupA"`
+		GroupB NestedGroup `form:"groupB"`
+	}
+
+	testCases := []struct {
+		name        string
+		formData    string
+		expected    NestedTestStruct
+		expectError bool
+	}{
+		{
+			name: "ok, basic nested form binding with array index",
+			formData: "groupA.items[0].name=item1&groupA.items[0].value=val1&" +
+				"groupA.items[1].name=item2&groupA.items[1].value=val2&" +
+				"groupA.others[0].name=other1&groupA.others[0].value=otherval1",
+			expected: NestedTestStruct{
+				GroupA: NestedGroup{
+					Items: []NestedStruct{
+						{Name: "item1", Value: "val1"},
+						{Name: "item2", Value: "val2"},
+					},
+					Others: []NestedStruct{
+						{Name: "other1", Value: "otherval1"},
+					},
+				},
+			},
+		},
+		{
+			name: "ok, complex nested structure binding",
+			formData: "groupA.items[0].name=a1&groupA.items[0].value=av1&" +
+				"groupB.items[0].name=b1&groupB.items[0].value=bv1&" +
+				"groupB.others[0].name=b2&groupB.others[0].value=bv2",
+			expected: NestedTestStruct{
+				GroupA: NestedGroup{
+					Items: []NestedStruct{
+						{Name: "a1", Value: "av1"},
+					},
+				},
+				GroupB: NestedGroup{
+					Items: []NestedStruct{
+						{Name: "b1", Value: "bv1"},
+					},
+					Others: []NestedStruct{
+						{Name: "b2", Value: "bv2"},
+					},
+				},
+			},
+		},
+		{
+			name:     "ok, partial binding with empty values",
+			formData: "groupA.items[0].name=onlyname&groupB.others[0].value=onlyvalue",
+			expected: NestedTestStruct{
+				GroupA: NestedGroup{
+					Items: []NestedStruct{
+						{Name: "onlyname", Value: ""},
+					},
+				},
+				GroupB: NestedGroup{
+					Others: []NestedStruct{
+						{Name: "", Value: "onlyvalue"},
+					},
+				},
+			},
+		},
+		{
+			name:     "ok, non-sequential array indices",
+			formData: "groupA.items[0].name=first&groupA.items[2].name=third&groupA.items[1].name=second",
+			expected: NestedTestStruct{
+				GroupA: NestedGroup{
+					Items: []NestedStruct{
+						{Name: "first", Value: ""},
+						{Name: "second", Value: ""},
+						{Name: "third", Value: ""},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(tc.formData))
+			req.Header.Set(HeaderContentType, MIMEApplicationForm)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			var result NestedTestStruct
+			err := c.Bind(&result)
+
+			if tc.expectError {
+				assert.Error(t, err)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func TestBindNestedPointerStructs(t *testing.T) {
+	type NestedPtrStruct struct {
+		Field1 string `form:"field1"`
+		Field2 string `form:"field2"`
+	}
+
+	type PointerTestStruct struct {
+		Name   string           `form:"name"`
+		Nested *NestedPtrStruct `form:"nested"`
+	}
+
+	type ContainerWithPtrs struct {
+		Name  string               `form:"name"`
+		Items []*PointerTestStruct `form:"items"`
+	}
+
+	testCases := []struct {
+		name        string
+		formData    string
+		expected    ContainerWithPtrs
+		expectError bool
+	}{
+		{
+			name: "ok, nested pointer struct binding",
+			formData: "name=Container&" +
+				"items[0].name=Item1&items[0].nested.field1=value1&items[0].nested.field2=value2&" +
+				"items[1].name=Item2&items[1].nested.field1=value3&items[1].nested.field2=value4",
+			expected: ContainerWithPtrs{
+				Name: "Container",
+				Items: []*PointerTestStruct{
+					{
+						Name: "Item1",
+						Nested: &NestedPtrStruct{
+							Field1: "value1",
+							Field2: "value2",
+						},
+					},
+					{
+						Name: "Item2",
+						Nested: &NestedPtrStruct{
+							Field1: "value3",
+							Field2: "value4",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:     "ok, partial nested pointer binding",
+			formData: "name=PartialContainer&items[0].name=PartialItem",
+			expected: ContainerWithPtrs{
+				Name: "PartialContainer",
+				Items: []*PointerTestStruct{
+					{
+						Name:   "PartialItem",
+						Nested: nil,
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(tc.formData))
+			req.Header.Set(HeaderContentType, MIMEApplicationForm)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			var result ContainerWithPtrs
+			err := c.Bind(&result)
+
+			if tc.expectError {
+				assert.Error(t, err)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func TestBindDeeplyNestedStructs(t *testing.T) {
+	type DeepConfig struct {
+		Value string `form:"value"`
+	}
+
+	type DeepService struct {
+		Name   string     `form:"name"`
+		Config DeepConfig `form:"config"`
+	}
+
+	type DeepModule struct {
+		Services []DeepService `form:"services"`
+	}
+
+	type DeepTestStruct struct {
+		Modules []DeepModule `form:"modules"`
+	}
+
+	testCases := []struct {
+		name     string
+		formData string
+		expected DeepTestStruct
+	}{
+		{
+			name: "ok, deeply nested structure binding",
+			formData: "modules[0].services[0].name=service1&modules[0].services[0].config.value=config1&" +
+				"modules[0].services[1].name=service2&modules[0].services[1].config.value=config2&" +
+				"modules[1].services[0].name=service3&modules[1].services[0].config.value=config3",
+			expected: DeepTestStruct{
+				Modules: []DeepModule{
+					{
+						Services: []DeepService{
+							{
+								Name:   "service1",
+								Config: DeepConfig{Value: "config1"},
+							},
+							{
+								Name:   "service2",
+								Config: DeepConfig{Value: "config2"},
+							},
+						},
+					},
+					{
+						Services: []DeepService{
+							{
+								Name:   "service3",
+								Config: DeepConfig{Value: "config3"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(tc.formData))
+			req.Header.Set(HeaderContentType, MIMEApplicationForm)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			var result DeepTestStruct
+			err := c.Bind(&result)
+
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func TestParseFieldPath(t *testing.T) {
+	testCases := []struct {
+		input    string
+		expected []interface{}
+	}{
+		{
+			input:    "group.items[0].name",
+			expected: []interface{}{"group", "items", 0, "name"},
+		},
+		{
+			input:    "simple",
+			expected: []interface{}{"simple"},
+		},
+		{
+			input:    "array[5]",
+			expected: []interface{}{"array", 5},
+		},
+		{
+			input:    "nested.field.value",
+			expected: []interface{}{"nested", "field", "value"},
+		},
+		{
+			input:    "complex[0].nested[1].deep[2].value",
+			expected: []interface{}{"complex", 0, "nested", 1, "deep", 2, "value"},
+		},
+		{
+			input:    "field.subfield[0].prop",
+			expected: []interface{}{"field", "subfield", 0, "prop"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.input, func(t *testing.T) {
+			result := parseFieldPath(tc.input)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func TestBindNestedFormEdgeCases(t *testing.T) {
+	type EdgeCaseItem struct {
+		ID   int    `form:"id"`
+		Name string `form:"name"`
+	}
+
+	type EdgeCaseContainer struct {
+		Items []EdgeCaseItem `form:"items"`
+	}
+
+	testCases := []struct {
+		name        string
+		formData    string
+		expected    EdgeCaseContainer
+		expectError bool
+	}{
+		{
+			name:     "ok, sparse array indices",
+			formData: "items[0].id=1&items[0].name=first&items[5].id=6&items[5].name=sixth",
+			expected: EdgeCaseContainer{
+				Items: []EdgeCaseItem{
+					{ID: 1, Name: "first"},
+					{ID: 0, Name: ""},
+					{ID: 0, Name: ""},
+					{ID: 0, Name: ""},
+					{ID: 0, Name: ""},
+					{ID: 6, Name: "sixth"},
+				},
+			},
+		},
+		{
+			name:     "ok, out-of-order indices",
+			formData: "items[2].id=3&items[0].id=1&items[1].id=2",
+			expected: EdgeCaseContainer{
+				Items: []EdgeCaseItem{
+					{ID: 1, Name: ""},
+					{ID: 2, Name: ""},
+					{ID: 3, Name: ""},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(tc.formData))
+			req.Header.Set(HeaderContentType, MIMEApplicationForm)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			var result EdgeCaseContainer
+			err := c.Bind(&result)
+
+			if tc.expectError {
+				assert.Error(t, err)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
