@@ -95,9 +95,7 @@ func (b *DefaultBinder) BindBody(c Context, i interface{}) (err error) {
 		}
 	case MIMEApplicationXML, MIMETextXML:
 		if err = xml.NewDecoder(req.Body).Decode(i); err != nil {
-			if ute, ok := err.(*xml.UnsupportedTypeError); ok {
-				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Unsupported type error: type=%v, error=%v", ute.Type, ute.Error())).SetInternal(err)
-			} else if se, ok := err.(*xml.SyntaxError); ok {
+			if se, ok := err.(*xml.SyntaxError); ok {
 				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Syntax error: line=%v, error=%v", se.Line, se.Error())).SetInternal(err)
 			}
 			return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
