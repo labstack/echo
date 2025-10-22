@@ -134,12 +134,18 @@ var DefaultProxyConfig = ProxyConfig{
 func proxyRaw(t *ProxyTarget, c echo.Context, config ProxyConfig) http.Handler {
 	var dialFunc func(ctx context.Context, network, addr string) (net.Conn, error)
 	if transport, ok := config.Transport.(*http.Transport); ok {
-		if transport.TLSClientConfig != nil {
+		switch {
+		case transport.DialTLSContext != nil:
+			dialFunc = transport.DialTLSContext
+		case transport.DialContext != nil:
+			dialFunc = transport.DialContext
+		case transport.TLSClientConfig != nil:
 			d := tls.Dialer{
 				Config: transport.TLSClientConfig,
 			}
 			dialFunc = d.DialContext
 		}
+			
 	}
 	if dialFunc == nil {
 		var d net.Dialer
