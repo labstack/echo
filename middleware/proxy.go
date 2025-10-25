@@ -158,6 +158,7 @@ func proxyRaw(t *ProxyTarget, c echo.Context, config ProxyConfig) http.Handler {
 			c.Set("_error", echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("proxy raw, dial error=%v, url=%s", err, t.URL)))
 			return
 		}
+		defer out.Close()
 
 		// Write header
 		err = r.Write(out)
