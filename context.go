@@ -45,6 +45,10 @@ type Context interface {
 	// The behavior can be configured using `Echo#IPExtractor`.
 	RealIP() string
 
+	// AnonymizedIP returns the client's network address with anonymization applied.
+	// It uses RealIP() to get the original IP address and then applies anonymization.
+	AnonymizedIP() string
+
 	// Path returns the registered path for the handler.
 	Path() string
 
@@ -315,6 +319,32 @@ func (c *context) RealIP() string {
 	}
 	ra, _, _ := net.SplitHostPort(c.request.RemoteAddr)
 	return ra
+}
+
+func (c *context) AnonymizedIP() string {
+	ip := c.RealIP()
+
+	if ip == "" {
+		return "" // safeguard
+	}
+	parsedIP := net.ParseIP(ip)
+	if parsedIP == nil {
+		return ip // safeguard, not an ip
+	}
+
+	// IPv4
+	if parsedIP.To4() != nil {
+		ipParts := strings.Split(parsedIP.String(), ".")
+		if len(ipParts) == 4 {
+			ipParts[3] = "0"
+			return strings.Join(ipParts, ".")
+		}
+	}
+
+	// IPv6
+	ipParts := strings.Split(parsedIP.String(), ":")
+	ipParts[len(ipParts)-1] = "0"
+	return strings.Join(ipParts, ":")
 }
 
 func (c *context) Path() string {
