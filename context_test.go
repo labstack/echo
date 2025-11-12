@@ -961,6 +961,50 @@ func TestContext_Scheme(t *testing.T) {
 	}
 }
 
+func TestContext_SchemeForwarded(t *testing.T) {
+	tests := []struct {
+		c Context
+		s *Forwarded
+	}{
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderForwarded: []string{"for=192.0.2.60;proto=http;by=203.0.113.43"}},
+				},
+			},
+			&Forwarded{
+				For:   []string{"192.0.2.60"},
+				Proto: []string{"http"},
+				By:    []string{"203.0.113.43"},
+			},
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderForwarded: []string{"for=192.0.2.43, for=198.51.100.17"}},
+				},
+			},
+			&Forwarded{
+				For: []string{"192.0.2.43", "198.51.100.17"},
+			},
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderForwarded: []string{"for=192.0.2.43, for=[2001:db8:cafe::17]"}},
+				},
+			},
+			&Forwarded{
+				For: []string{"192.0.2.43", "2001:db8:cafe::17"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		assert.Equal(t, tt.s, tt.c.SchemeForwarded())
+	}
+}
+
 func TestContext_IsWebSocket(t *testing.T) {
 	tests := []struct {
 		c  Context
@@ -1061,6 +1105,22 @@ func TestContext_RealIP(t *testing.T) {
 				},
 			},
 			"127.0.0.1",
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderForwarded: []string{"for=192.0.2.43, for=198.51.100.17"}},
+				},
+			},
+			"192.0.2.43",
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderForwarded: []string{"for=[2001:db8:85a3:8d3:1319:8a2e:370:7348], for=2001:db8::1"}},
+				},
+			},
+			"2001:db8:85a3:8d3:1319:8a2e:370:7348",
 		},
 		{
 			&context{
