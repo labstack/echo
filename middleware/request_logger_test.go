@@ -4,8 +4,6 @@
 package middleware
 
 import (
-	"github.com/labstack/echo/v4"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -13,6 +11,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRequestLoggerWithConfig(t *testing.T) {
@@ -292,24 +293,25 @@ func TestRequestLogger_allFields(t *testing.T) {
 			expect = values
 			return nil
 		},
-		LogLatency:       true,
-		LogProtocol:      true,
-		LogRemoteIP:      true,
-		LogHost:          true,
-		LogMethod:        true,
-		LogURI:           true,
-		LogURIPath:       true,
-		LogRoutePath:     true,
-		LogRequestID:     true,
-		LogReferer:       true,
-		LogUserAgent:     true,
-		LogStatus:        true,
-		LogError:         true,
-		LogContentLength: true,
-		LogResponseSize:  true,
-		LogHeaders:       []string{"accept-encoding", "User-Agent"},
-		LogQueryParams:   []string{"lang", "checked"},
-		LogFormValues:    []string{"csrf", "multiple"},
+		LogLatency:        true,
+		LogProtocol:       true,
+		LogRemoteIP:       true,
+		LogHost:           true,
+		LogMethod:         true,
+		LogURI:            true,
+		LogURIPath:        true,
+		LogRoutePath:      true,
+		LogRequestID:      true,
+		LogReferer:        true,
+		LogUserAgent:      true,
+		LogStatus:         true,
+		LogError:          true,
+		LogContentLength:  true,
+		LogResponseSize:   true,
+		LogHeaders:        []string{"accept-encoding", "User-Agent"},
+		LogQueryParams:    []string{"lang", "checked"},
+		LogFormValues:     []string{"csrf", "multiple"},
+		AnonymizeRemoteIP: true,
 		timeNow: func() time.Time {
 			if isFirstNowCall {
 				isFirstNowCall = false
@@ -346,7 +348,7 @@ func TestRequestLogger_allFields(t *testing.T) {
 	assert.Equal(t, time.Unix(1631045377, 0), expect.StartTime)
 	assert.Equal(t, 10*time.Second, expect.Latency)
 	assert.Equal(t, "HTTP/1.1", expect.Protocol)
-	assert.Equal(t, "8.8.8.8", expect.RemoteIP)
+	assert.Equal(t, "8.8.8.0", expect.RemoteIP)
 	assert.Equal(t, "example.com", expect.Host)
 	assert.Equal(t, http.MethodPost, expect.Method)
 	assert.Equal(t, "/test?lang=en&checked=1&checked=2", expect.URI)

@@ -112,6 +112,7 @@ import (
 // ## Request Information
 //   - id: Request ID from X-Request-ID header
 //   - remote_ip: Client IP address (respects proxy headers)
+//   - remote_ip_anon: Client IP address anonymized (respects proxy headers, drops last octet)
 //   - uri: Full request URI with query parameters
 //   - host: Host header value
 //   - method: HTTP method (GET, POST, etc.)
@@ -328,6 +329,8 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 					return buf.WriteString(id)
 				case "remote_ip":
 					return buf.WriteString(c.RealIP())
+				case "remote_ip_anon":
+					return buf.WriteString(c.AnonymizedIP())
 				case "host":
 					return buf.WriteString(req.Host)
 				case "uri":
