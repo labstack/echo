@@ -130,6 +130,19 @@ func TestLoggerWithLoggerConfig(t *testing.T) {
 		expect         string
 	}{
 		{
+			name: "ok, skipper",
+			givenConfig: LoggerConfig{
+				Skipper: func(c echo.Context) bool { return true },
+			},
+			expect: ``,
+		},
+		{ // this is an example how format that does not seem to be JSON is not currently escaped
+			name:        "ok, NON json string is not escaped: method",
+			givenConfig: LoggerConfig{Format: `method:"${method}"`},
+			whenMethod:  `","method":":D"`,
+			expect:      `method:"","method":":D""`,
+		},
+		{
 			name:        "ok, json string escape: method",
 			givenConfig: LoggerConfig{Format: `{"method":"${method}"}`},
 			whenMethod:  `","method":":D"`,
@@ -157,37 +170,37 @@ func TestLoggerWithLoggerConfig(t *testing.T) {
 			name:        "ok, json string escape: path",
 			givenConfig: LoggerConfig{Format: `{"path":"${path}"}`},
 			whenPath:    `\","` + "\n",
-			expect:      `{"path":"\\\",\"\f"}`,
+			expect:      `{"path":"\\\",\"\n"}`,
 		},
 		{
 			name:        "ok, json string escape: route",
 			givenConfig: LoggerConfig{Format: `{"route":"${route}"}`},
 			whenRoute:   `\","` + "\n",
-			expect:      `{"route":"\\\",\"\f"}`,
+			expect:      `{"route":"\\\",\"\n"}`,
 		},
 		{
 			name:        "ok, json string escape: proto",
 			givenConfig: LoggerConfig{Format: `{"protocol":"${protocol}"}`},
 			whenProto:   `\","` + "\n",
-			expect:      `{"protocol":"\\\",\"\f"}`,
+			expect:      `{"protocol":"\\\",\"\n"}`,
 		},
 		{
 			name:        "ok, json string escape: referer",
 			givenConfig: LoggerConfig{Format: `{"referer":"${referer}"}`},
 			whenHeader:  map[string]string{"Referer": `\","` + "\n"},
-			expect:      `{"referer":"\\\",\"\f"}`,
+			expect:      `{"referer":"\\\",\"\n"}`,
 		},
 		{
 			name:        "ok, json string escape: user_agent",
 			givenConfig: LoggerConfig{Format: `{"user_agent":"${user_agent}"}`},
 			whenHeader:  map[string]string{"User-Agent": `\","` + "\n"},
-			expect:      `{"user_agent":"\\\",\"\f"}`,
+			expect:      `{"user_agent":"\\\",\"\n"}`,
 		},
 		{
 			name:        "ok, json string escape: bytes_in",
 			givenConfig: LoggerConfig{Format: `{"bytes_in":"${bytes_in}"}`},
 			whenHeader:  map[string]string{echo.HeaderContentLength: `\","` + "\n"},
-			expect:      `{"bytes_in":"\\\",\"\f"}`,
+			expect:      `{"bytes_in":"\\\",\"\n"}`,
 		},
 		{
 			name:        "ok, json string escape: query param",
@@ -199,7 +212,7 @@ func TestLoggerWithLoggerConfig(t *testing.T) {
 			name:        "ok, json string escape: header",
 			givenConfig: LoggerConfig{Format: `{"header":"${header:referer}"}`},
 			whenHeader:  map[string]string{"referer": `\","` + "\n"},
-			expect:      `{"header":"\\\",\"\f"}`,
+			expect:      `{"header":"\\\",\"\n"}`,
 		},
 		{
 			name:           "ok, json string escape: form",
@@ -217,22 +230,39 @@ func TestLoggerWithLoggerConfig(t *testing.T) {
 			expect:      `{"cookie":""}`,
 		},
 		{
-			name: "ok, format time_unix_milli",
-			givenConfig: LoggerConfig{
-				Format: `${time_unix_milli}`,
-			},
+			name:           "ok, format time_unix",
+			givenConfig:    LoggerConfig{Format: `${time_unix}`},
+			whenStatusCode: http.StatusOK,
+			whenResponse:   "test",
+			expect:         `1588037200`,
+		},
+		{
+			name:           "ok, format time_unix_milli",
+			givenConfig:    LoggerConfig{Format: `${time_unix_milli}`},
 			whenStatusCode: http.StatusOK,
 			whenResponse:   "test",
 			expect:         `1588037200000`,
 		},
 		{
-			name: "ok, format time_unix_micro",
-			givenConfig: LoggerConfig{
-				Format: `${time_unix_micro}`,
-			},
+			name:           "ok, format time_unix_micro",
+			givenConfig:    LoggerConfig{Format: `${time_unix_micro}`},
 			whenStatusCode: http.StatusOK,
 			whenResponse:   "test",
 			expect:         `1588037200000000`,
+		},
+		{
+			name:           "ok, format time_unix_nano",
+			givenConfig:    LoggerConfig{Format: `${time_unix_nano}`},
+			whenStatusCode: http.StatusOK,
+			whenResponse:   "test",
+			expect:         `1588037200000000000`,
+		},
+		{
+			name:           "ok, format time_rfc3339",
+			givenConfig:    LoggerConfig{Format: `${time_rfc3339}`},
+			whenStatusCode: http.StatusOK,
+			whenResponse:   "test",
+			expect:         `2020-04-28T01:26:40Z`,
 		},
 		{
 			name:           "ok, status 200",
