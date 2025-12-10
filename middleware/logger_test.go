@@ -5,12 +5,13 @@ package middleware
 
 import (
 	"bytes"
+	"cmp"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"strconv"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -20,72 +21,293 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestLogger(t *testing.T) {
-	// Note: Just for the test coverage, not a real test.
-	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	h := Logger()(func(c echo.Context) error {
-		return c.String(http.StatusOK, "test")
-	})
+func TestLoggerDefaultMW(t *testing.T) {
+	var testCases = []struct {
+		name           string
+		whenHeader     map[string]string
+		whenStatusCode int
+		whenResponse   string
+		whenError      error
+		expect         string
+	}{
+		{
+			name:           "ok, status 200",
+			whenStatusCode: http.StatusOK,
+			whenResponse:   "test",
+			expect:         `{"time":"2020-04-28T01:26:40Z","id":"","remote_ip":"192.0.2.1","host":"example.com","method":"GET","uri":"/","user_agent":"","status":200,"error":"","latency":1,"latency_human":"1µs","bytes_in":0,"bytes_out":4}` + "\n",
+		},
+		{
+			name:           "ok, status 300",
+			whenStatusCode: http.StatusTemporaryRedirect,
+			whenResponse:   "test",
+			expect:         `{"time":"2020-04-28T01:26:40Z","id":"","remote_ip":"192.0.2.1","host":"example.com","method":"GET","uri":"/","user_agent":"","status":307,"error":"","latency":1,"latency_human":"1µs","bytes_in":0,"bytes_out":4}` + "\n",
+		},
+		{
+			name:      "ok, handler error = status 500",
+			whenError: errors.New("error"),
+			expect:    `{"time":"2020-04-28T01:26:40Z","id":"","remote_ip":"192.0.2.1","host":"example.com","method":"GET","uri":"/","user_agent":"","status":500,"error":"error","latency":1,"latency_human":"1µs","bytes_in":0,"bytes_out":36}` + "\n",
+		},
+		{
+			name:           "ok, remote_ip from X-Real-Ip header",
+			whenHeader:     map[string]string{echo.HeaderXRealIP: "127.0.0.1"},
+			whenStatusCode: http.StatusOK,
+			whenResponse:   "test",
+			expect:         `{"time":"2020-04-28T01:26:40Z","id":"","remote_ip":"127.0.0.1","host":"example.com","method":"GET","uri":"/","user_agent":"","status":200,"error":"","latency":1,"latency_human":"1µs","bytes_in":0,"bytes_out":4}` + "\n",
+		},
+		{
+			name:           "ok, remote_ip from X-Forwarded-For header",
+			whenHeader:     map[string]string{echo.HeaderXForwardedFor: "127.0.0.1"},
+			whenStatusCode: http.StatusOK,
+			whenResponse:   "test",
+			expect:         `{"time":"2020-04-28T01:26:40Z","id":"","remote_ip":"127.0.0.1","host":"example.com","method":"GET","uri":"/","user_agent":"","status":200,"error":"","latency":1,"latency_human":"1µs","bytes_in":0,"bytes_out":4}` + "\n",
+		},
+	}
 
-	// Status 2xx
-	h(c)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			if len(tc.whenHeader) > 0 {
+				for k, v := range tc.whenHeader {
+					req.Header.Add(k, v)
+				}
+			}
 
-	// Status 3xx
-	rec = httptest.NewRecorder()
-	c = e.NewContext(req, rec)
-	h = Logger()(func(c echo.Context) error {
-		return c.String(http.StatusTemporaryRedirect, "test")
-	})
-	h(c)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
 
-	// Status 4xx
-	rec = httptest.NewRecorder()
-	c = e.NewContext(req, rec)
-	h = Logger()(func(c echo.Context) error {
-		return c.String(http.StatusNotFound, "test")
-	})
-	h(c)
+			DefaultLoggerConfig.timeNow = func() time.Time { return time.Unix(1588037200, 0).UTC() }
+			h := Logger()(func(c echo.Context) error {
+				if tc.whenError != nil {
+					return tc.whenError
+				}
+				return c.String(tc.whenStatusCode, tc.whenResponse)
+			})
+			buf := new(bytes.Buffer)
+			e.Logger.SetOutput(buf)
 
-	// Status 5xx with empty path
-	req = httptest.NewRequest(http.MethodGet, "/", nil)
-	rec = httptest.NewRecorder()
-	c = e.NewContext(req, rec)
-	h = Logger()(func(c echo.Context) error {
-		return errors.New("error")
-	})
-	h(c)
+			err := h(c)
+			assert.NoError(t, err)
+
+			result := buf.String()
+			// handle everchanging latency numbers
+			result = regexp.MustCompile(`"latency":\d+,`).ReplaceAllString(result, `"latency":1,`)
+			result = regexp.MustCompile(`"latency_human":"[^"]+"`).ReplaceAllString(result, `"latency_human":"1µs"`)
+
+			assert.Equal(t, tc.expect, result)
+		})
+	}
 }
 
-func TestLoggerIPAddress(t *testing.T) {
-	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	buf := new(bytes.Buffer)
-	e.Logger.SetOutput(buf)
-	ip := "127.0.0.1"
-	h := Logger()(func(c echo.Context) error {
-		return c.String(http.StatusOK, "test")
-	})
+func TestLoggerWithLoggerConfig(t *testing.T) {
+	// to handle everchanging latency numbers
+	jsonLatency := map[string]*regexp.Regexp{
+		`"latency":1,`:          regexp.MustCompile(`"latency":\d+,`),
+		`"latency_human":"1µs"`: regexp.MustCompile(`"latency_human":"[^"]+"`),
+	}
 
-	// With X-Real-IP
-	req.Header.Add(echo.HeaderXRealIP, ip)
-	h(c)
-	assert.Contains(t, buf.String(), ip)
+	form := make(url.Values)
+	form.Set("csrf", "token")
+	form.Add("multiple", "1")
+	form.Add("multiple", "2")
 
-	// With X-Forwarded-For
-	buf.Reset()
-	req.Header.Del(echo.HeaderXRealIP)
-	req.Header.Add(echo.HeaderXForwardedFor, ip)
-	h(c)
-	assert.Contains(t, buf.String(), ip)
+	var testCases = []struct {
+		name           string
+		givenConfig    LoggerConfig
+		whenURI        string
+		whenMethod     string
+		whenHost       string
+		whenPath       string
+		whenRoute      string
+		whenProto      string
+		whenRequestURI string
+		whenHeader     map[string]string
+		whenFormValues url.Values
+		whenStatusCode int
+		whenResponse   string
+		whenError      error
+		whenReplacers  map[string]*regexp.Regexp
+		expect         string
+	}{
+		{
+			name:        "ok, json string escape: method",
+			givenConfig: LoggerConfig{Format: `{"method":"${method}"}`},
+			whenMethod:  `","method":":D"`,
+			expect:      `{"method":"\",\"method\":\":D\""}`,
+		},
+		{
+			name:        "ok, json string escape: id",
+			givenConfig: LoggerConfig{Format: `{"id":"${id}"}`},
+			whenHeader:  map[string]string{echo.HeaderXRequestID: `\"127.0.0.1\"`},
+			expect:      `{"id":"\\\"127.0.0.1\\\""}`,
+		},
+		{
+			name:        "ok, json string escape: remote_ip",
+			givenConfig: LoggerConfig{Format: `{"remote_ip":"${remote_ip}"}`},
+			whenHeader:  map[string]string{echo.HeaderXForwardedFor: `\"127.0.0.1\"`},
+			expect:      `{"remote_ip":"\\\"127.0.0.1\\\""}`,
+		},
+		{
+			name:        "ok, json string escape: host",
+			givenConfig: LoggerConfig{Format: `{"host":"${host}"}`},
+			whenHost:    `\"127.0.0.1\"`,
+			expect:      `{"host":"\\\"127.0.0.1\\\""}`,
+		},
+		{
+			name:        "ok, json string escape: path",
+			givenConfig: LoggerConfig{Format: `{"path":"${path}"}`},
+			whenPath:    `\","` + "\n",
+			expect:      `{"path":"\\\",\"\f"}`,
+		},
+		{
+			name:        "ok, json string escape: route",
+			givenConfig: LoggerConfig{Format: `{"route":"${route}"}`},
+			whenRoute:   `\","` + "\n",
+			expect:      `{"route":"\\\",\"\f"}`,
+		},
+		{
+			name:        "ok, json string escape: proto",
+			givenConfig: LoggerConfig{Format: `{"protocol":"${protocol}"}`},
+			whenProto:   `\","` + "\n",
+			expect:      `{"protocol":"\\\",\"\f"}`,
+		},
+		{
+			name:        "ok, json string escape: referer",
+			givenConfig: LoggerConfig{Format: `{"referer":"${referer}"}`},
+			whenHeader:  map[string]string{"Referer": `\","` + "\n"},
+			expect:      `{"referer":"\\\",\"\f"}`,
+		},
+		{
+			name:        "ok, json string escape: user_agent",
+			givenConfig: LoggerConfig{Format: `{"user_agent":"${user_agent}"}`},
+			whenHeader:  map[string]string{"User-Agent": `\","` + "\n"},
+			expect:      `{"user_agent":"\\\",\"\f"}`,
+		},
+		{
+			name:        "ok, json string escape: bytes_in",
+			givenConfig: LoggerConfig{Format: `{"bytes_in":"${bytes_in}"}`},
+			whenHeader:  map[string]string{echo.HeaderContentLength: `\","` + "\n"},
+			expect:      `{"bytes_in":"\\\",\"\f"}`,
+		},
+		{
+			name:        "ok, json string escape: query param",
+			givenConfig: LoggerConfig{Format: `{"query":"${query:test}"}`},
+			whenURI:     `/?test=1","`,
+			expect:      `{"query":"1\",\""}`,
+		},
+		{
+			name:        "ok, json string escape: header",
+			givenConfig: LoggerConfig{Format: `{"header":"${header:referer}"}`},
+			whenHeader:  map[string]string{"referer": `\","` + "\n"},
+			expect:      `{"header":"\\\",\"\f"}`,
+		},
+		{
+			name:           "ok, json string escape: form",
+			givenConfig:    LoggerConfig{Format: `{"csrf":"${form:csrf}"}`},
+			whenMethod:     http.MethodPost,
+			whenFormValues: url.Values{"csrf": {`token","`}},
+			expect:         `{"csrf":"token\",\""}`,
+		},
+		{
+			name: "nok, json string escape: cookie - will not accept invalid chars",
+			// net/cookie.go: validCookieValueByte function allows these byte in cookie value
+			// only `0x20 <= b && b < 0x7f && b != '"' && b != ';' && b != '\\'`
+			givenConfig: LoggerConfig{Format: `{"cookie":"${cookie:session}"}`},
+			whenHeader:  map[string]string{"Cookie": `_ga=GA1.2.000000000.0000000000; session=test\n`},
+			expect:      `{"cookie":""}`,
+		},
+		{
+			name: "ok, format time_unix_milli",
+			givenConfig: LoggerConfig{
+				Format: `${time_unix_milli}`,
+			},
+			whenStatusCode: http.StatusOK,
+			whenResponse:   "test",
+			expect:         `1588037200000`,
+		},
+		{
+			name: "ok, format time_unix_micro",
+			givenConfig: LoggerConfig{
+				Format: `${time_unix_micro}`,
+			},
+			whenStatusCode: http.StatusOK,
+			whenResponse:   "test",
+			expect:         `1588037200000000`,
+		},
+		{
+			name:           "ok, status 200",
+			whenStatusCode: http.StatusOK,
+			whenResponse:   "test",
+			whenReplacers:  jsonLatency,
+			expect:         `{"time":"2020-04-28T01:26:40Z","id":"","remote_ip":"192.0.2.1","host":"example.com","method":"GET","uri":"/","user_agent":"","status":200,"error":"","latency":1,"latency_human":"1µs","bytes_in":0,"bytes_out":4}` + "\n",
+		},
+	}
 
-	buf.Reset()
-	h(c)
-	assert.Contains(t, buf.String(), ip)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+
+			req := httptest.NewRequest(http.MethodGet, cmp.Or(tc.whenURI, "/"), nil)
+			if tc.whenFormValues != nil {
+				req = httptest.NewRequest(http.MethodGet, cmp.Or(tc.whenURI, "/"), strings.NewReader(tc.whenFormValues.Encode()))
+				req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationForm)
+			}
+
+			for k, v := range tc.whenHeader {
+				req.Header.Add(k, v)
+			}
+			if tc.whenHost != "" {
+				req.Host = tc.whenHost
+			}
+			if tc.whenMethod != "" {
+				req.Method = tc.whenMethod
+			}
+			if tc.whenProto != "" {
+				req.Proto = tc.whenProto
+			}
+			if tc.whenRequestURI != "" {
+				req.RequestURI = tc.whenRequestURI
+			}
+			if tc.whenPath != "" {
+				req.URL.Path = tc.whenPath
+			}
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			if tc.whenFormValues != nil {
+				c.FormValue("to trigger form parsing")
+			}
+			if tc.whenRoute != "" {
+				c.SetPath(tc.whenRoute)
+			}
+
+			config := tc.givenConfig
+			if config.timeNow == nil {
+				config.timeNow = func() time.Time { return time.Unix(1588037200, 0).UTC() }
+			}
+			buf := new(bytes.Buffer)
+			if config.Output == nil {
+				e.Logger.SetOutput(buf)
+			}
+
+			h := LoggerWithConfig(config)(func(c echo.Context) error {
+				if tc.whenError != nil {
+					return tc.whenError
+				}
+				return c.String(cmp.Or(tc.whenStatusCode, http.StatusOK), cmp.Or(tc.whenResponse, "test"))
+			})
+
+			err := h(c)
+			assert.NoError(t, err)
+
+			result := buf.String()
+
+			for replaceTo, replacer := range tc.whenReplacers {
+				result = replacer.ReplaceAllString(result, replaceTo)
+			}
+
+			assert.Equal(t, tc.expect, result)
+		})
+	}
 }
 
 func TestLoggerTemplate(t *testing.T) {
@@ -270,50 +492,4 @@ func BenchmarkLoggerWithConfig_withMapFields(b *testing.B) {
 		mw(c)
 		buf.Reset()
 	}
-}
-
-func TestLoggerTemplateWithTimeUnixMilli(t *testing.T) {
-	buf := new(bytes.Buffer)
-
-	e := echo.New()
-	e.Use(LoggerWithConfig(LoggerConfig{
-		Format: `${time_unix_milli}`,
-		Output: buf,
-	}))
-
-	e.GET("/", func(c echo.Context) error {
-		return c.String(http.StatusOK, "OK")
-	})
-
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-
-	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-
-	unixMillis, err := strconv.ParseInt(buf.String(), 10, 64)
-	assert.NoError(t, err)
-	assert.WithinDuration(t, time.Unix(unixMillis/1000, 0), time.Now(), 3*time.Second)
-}
-
-func TestLoggerTemplateWithTimeUnixMicro(t *testing.T) {
-	buf := new(bytes.Buffer)
-
-	e := echo.New()
-	e.Use(LoggerWithConfig(LoggerConfig{
-		Format: `${time_unix_micro}`,
-		Output: buf,
-	}))
-
-	e.GET("/", func(c echo.Context) error {
-		return c.String(http.StatusOK, "OK")
-	})
-
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-
-	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-
-	unixMicros, err := strconv.ParseInt(buf.String(), 10, 64)
-	assert.NoError(t, err)
-	assert.WithinDuration(t, time.Unix(unixMicros/1000000, 0), time.Now(), 3*time.Second)
 }
