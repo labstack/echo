@@ -237,6 +237,8 @@ var DefaultLoggerConfig = LoggerConfig{
 //	"bytes_in":0,"bytes_out":42}
 //
 // For custom configurations, use LoggerWithConfig instead.
+//
+// Deprecated: please use middleware.RequestLogger or middleware.RequestLoggerWithConfig instead.
 func Logger() echo.MiddlewareFunc {
 	return LoggerWithConfig(DefaultLoggerConfig)
 }
@@ -261,6 +263,8 @@ func Logger() echo.MiddlewareFunc {
 //			return c.Request().URL.Path == "/health"
 //		},
 //	}))
+//
+// Deprecated: please use middleware.RequestLoggerWithConfig instead.
 func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 	// Defaults
 	if config.Skipper == nil {

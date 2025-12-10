@@ -1,5 +1,22 @@
 # Changelog
 
+## v4.14.0 - 2025-12-xx
+
+**Security**
+
+* Logger middleware: escape string values when logger format looks like JSON
+
+
+**Enhancements**
+
+* Add `middleware.RequestLogger` function to replace `middleware.Logger`. `middleware.RequestLogger` uses default slog logger.
+  Default slog logger output can be configured to JSON format like that:
+  ```go
+  slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
+  e.Use(middleware.RequestLogger())
+  ```
+* Deprecate `middleware.Logger` function and point users to `middleware.RequestLogger` and `middleware.RequestLoggerWithConfig`
+
 ## v4.13.4 - 2025-05-22
 
 **Enhancements**
