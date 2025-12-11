@@ -48,6 +48,21 @@ func TestLoggerDefaultMW(t *testing.T) {
 			expect:    `{"time":"2020-04-28T01:26:40Z","id":"","remote_ip":"192.0.2.1","host":"example.com","method":"GET","uri":"/","user_agent":"","status":500,"error":"error","latency":1,"latency_human":"1µs","bytes_in":0,"bytes_out":36}` + "\n",
 		},
 		{
+			name:      "error with invalid UTF-8 sequences",
+			whenError: errors.New("invalid data: \xFF\xFE"),
+			expect:    `{"time":"2020-04-28T01:26:40Z","id":"","remote_ip":"192.0.2.1","host":"example.com","method":"GET","uri":"/","user_agent":"","status":500,"error":"invalid data: \ufffd\ufffd","latency":1,"latency_human":"1µs","bytes_in":0,"bytes_out":36}` + "\n",
+		},
+		{
+			name:      "error with JSON special characters (quotes and backslashes)",
+			whenError: errors.New(`error with "quotes" and \backslash`),
+			expect:    `{"time":"2020-04-28T01:26:40Z","id":"","remote_ip":"192.0.2.1","host":"example.com","method":"GET","uri":"/","user_agent":"","status":500,"error":"error with \"quotes\" and \\backslash","latency":1,"latency_human":"1µs","bytes_in":0,"bytes_out":36}` + "\n",
+		},
+		{
+			name:      "error with control characters (newlines and tabs)",
+			whenError: errors.New("error\nwith\nnewlines\tand\ttabs"),
+			expect:    `{"time":"2020-04-28T01:26:40Z","id":"","remote_ip":"192.0.2.1","host":"example.com","method":"GET","uri":"/","user_agent":"","status":500,"error":"error\nwith\nnewlines\tand\ttabs","latency":1,"latency_human":"1µs","bytes_in":0,"bytes_out":36}` + "\n",
+		},
+		{
 			name:           "ok, remote_ip from X-Real-Ip header",
 			whenHeader:     map[string]string{echo.HeaderXRealIP: "127.0.0.1"},
 			whenStatusCode: http.StatusOK,
