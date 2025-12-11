@@ -197,6 +197,7 @@ type LoggerConfig struct {
 	template *fasttemplate.Template
 	colorer  *color.Color
 	pool     *sync.Pool
+	timeNow  func() time.Time
 }
 
 // DefaultLoggerConfig is the default Logger middleware config.
@@ -208,6 +209,7 @@ var DefaultLoggerConfig = LoggerConfig{
 		`,"bytes_in":${bytes_in},"bytes_out":${bytes_out}}` + "\n",
 	CustomTimeFormat: "2006-01-02 15:04:05.00000",
 	colorer:          color.New(),
+	timeNow:          time.Now,
 }
 
 // Logger returns a middleware that logs HTTP requests using the default configuration.
@@ -235,6 +237,8 @@ var DefaultLoggerConfig = LoggerConfig{
 //	"bytes_in":0,"bytes_out":42}
 //
 // For custom configurations, use LoggerWithConfig instead.
+//
+// Deprecated: please use middleware.RequestLogger or middleware.RequestLoggerWithConfig instead.
 func Logger() echo.MiddlewareFunc {
 	return LoggerWithConfig(DefaultLoggerConfig)
 }
@@ -259,6 +263,8 @@ func Logger() echo.MiddlewareFunc {
 //			return c.Request().URL.Path == "/health"
 //		},
 //	}))
+//
+// Deprecated: please use middleware.RequestLoggerWithConfig instead.
 func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 	// Defaults
 	if config.Skipper == nil {
@@ -267,8 +273,17 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 	if config.Format == "" {
 		config.Format = DefaultLoggerConfig.Format
 	}
+	writeString := func(buf *bytes.Buffer, in string) (int, error) { return buf.WriteString(in) }
+	if config.Format[0] == '{' { // format looks like JSON, so we need to escape invalid characters
+		writeString = writeJSONSafeString
+	}
+
 	if config.Output == nil {
 		config.Output = DefaultLoggerConfig.Output
+	}
+	timeNow := DefaultLoggerConfig.timeNow
+	if config.timeNow != nil {
+		timeNow = config.timeNow
 	}
 
 	config.template = fasttemplate.New(config.Format, "${", "}")
@@ -305,49 +320,47 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 					}
 					return config.CustomTagFunc(c, buf)
 				case "time_unix":
-					return buf.WriteString(strconv.FormatInt(time.Now().Unix(), 10))
+					return buf.WriteString(strconv.FormatInt(timeNow().Unix(), 10))
 				case "time_unix_milli":
-					// go 1.17 or later, it supports time#UnixMilli()
-					return buf.WriteString(strconv.FormatInt(time.Now().UnixNano()/1000000, 10))
+					return buf.WriteString(strconv.FormatInt(timeNow().UnixMilli(), 10))
 				case "time_unix_micro":
-					// go 1.17 or later, it supports time#UnixMicro()
-					return buf.WriteString(strconv.FormatInt(time.Now().UnixNano()/1000, 10))
+					return buf.WriteString(strconv.FormatInt(timeNow().UnixMicro(), 10))
 				case "time_unix_nano":
-					return buf.WriteString(strconv.FormatInt(time.Now().UnixNano(), 10))
+					return buf.WriteString(strconv.FormatInt(timeNow().UnixNano(), 10))
 				case "time_rfc3339":
-					return buf.WriteString(time.Now().Format(time.RFC3339))
+					return buf.WriteString(timeNow().Format(time.RFC3339))
 				case "time_rfc3339_nano":
-					return buf.WriteString(time.Now().Format(time.RFC3339Nano))
+					return buf.WriteString(timeNow().Format(time.RFC3339Nano))
 				case "time_custom":
-					return buf.WriteString(time.Now().Format(config.CustomTimeFormat))
+					return buf.WriteString(timeNow().Format(config.CustomTimeFormat))
 				case "id":
 					id := req.Header.Get(echo.HeaderXRequestID)
 					if id == "" {
 						id = res.Header().Get(echo.HeaderXRequestID)
 					}
-					return buf.WriteString(id)
+					return writeString(buf, id)
 				case "remote_ip":
-					return buf.WriteString(c.RealIP())
+					return writeString(buf, c.RealIP())
 				case "host":
-					return buf.WriteString(req.Host)
+					return writeString(buf, req.Host)
 				case "uri":
-					return buf.WriteString(req.RequestURI)
+					return writeString(buf, req.RequestURI)
 				case "method":
-					return buf.WriteString(req.Method)
+					return writeString(buf, req.Method)
 				case "path":
 					p := req.URL.Path
 					if p == "" {
 						p = "/"
 					}
-					return buf.WriteString(p)
+					return writeString(buf, p)
 				case "route":
-					return buf.WriteString(c.Path())
+					return writeString(buf, c.Path())
 				case "protocol":
-					return buf.WriteString(req.Proto)
+					return writeString(buf, req.Proto)
 				case "referer":
-					return buf.WriteString(req.Referer())
+					return writeString(buf, req.Referer())
 				case "user_agent":
-					return buf.WriteString(req.UserAgent())
+					return writeString(buf, req.UserAgent())
 				case "status":
 					n := res.Status
 					s := config.colorer.Green(n)
@@ -377,17 +390,17 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 					if cl == "" {
 						cl = "0"
 					}
-					return buf.WriteString(cl)
+					return writeString(buf, cl)
 				case "bytes_out":
 					return buf.WriteString(strconv.FormatInt(res.Size, 10))
 				default:
 					switch {
 					case strings.HasPrefix(tag, "header:"):
-						return buf.Write([]byte(c.Request().Header.Get(tag[7:])))
+						return writeString(buf, c.Request().Header.Get(tag[7:]))
 					case strings.HasPrefix(tag, "query:"):
-						return buf.Write([]byte(c.QueryParam(tag[6:])))
+						return writeString(buf, c.QueryParam(tag[6:]))
 					case strings.HasPrefix(tag, "form:"):
-						return buf.Write([]byte(c.FormValue(tag[5:])))
+						return writeString(buf, c.FormValue(tag[5:]))
 					case strings.HasPrefix(tag, "cookie:"):
 						cookie, err := c.Cookie(tag[7:])
 						if err == nil {

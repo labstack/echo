@@ -4,8 +4,10 @@
 package middleware
 
 import (
-	"github.com/labstack/echo/v4"
-	"github.com/stretchr/testify/assert"
+	"bytes"
+	"encoding/json"
+	"errors"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -13,7 +15,104 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 )
+
+func TestRequestLoggerOK(t *testing.T) {
+	old := slog.Default()
+	t.Cleanup(func() {
+		slog.SetDefault(old)
+	})
+
+	buf := new(bytes.Buffer)
+	slog.SetDefault(slog.New(slog.NewJSONHandler(buf, nil)))
+
+	e := echo.New()
+	e.Use(RequestLogger())
+
+	e.POST("/test", func(c echo.Context) error {
+		return c.String(http.StatusTeapot, "OK")
+	})
+
+	reader := strings.NewReader(`{"foo":"bar"}`)
+	req := httptest.NewRequest(http.MethodPost, "/test", reader)
+	req.Header.Set(echo.HeaderContentLength, strconv.Itoa(int(reader.Size())))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set(echo.HeaderXRealIP, "8.8.8.8")
+	req.Header.Set("User-Agent", "curl/7.68.0")
+
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	logAttrs := map[string]interface{}{}
+	assert.NoError(t, json.Unmarshal(buf.Bytes(), &logAttrs))
+	logAttrs["latency"] = 123
+	logAttrs["time"] = "x"
+
+	expect := map[string]interface{}{
+		"level":      "INFO",
+		"msg":        "REQUEST",
+		"method":     "POST",
+		"uri":        "/test",
+		"status":     float64(418),
+		"bytes_in":   "13",
+		"host":       "example.com",
+		"bytes_out":  float64(2),
+		"user_agent": "curl/7.68.0",
+		"remote_ip":  "8.8.8.8",
+		"request_id": "",
+
+		"time":    "x",
+		"latency": 123,
+	}
+	assert.Equal(t, expect, logAttrs)
+}
+
+func TestRequestLoggerError(t *testing.T) {
+	old := slog.Default()
+	t.Cleanup(func() {
+		slog.SetDefault(old)
+	})
+
+	buf := new(bytes.Buffer)
+	slog.SetDefault(slog.New(slog.NewJSONHandler(buf, nil)))
+
+	e := echo.New()
+	e.Use(RequestLogger())
+
+	e.GET("/test", func(c echo.Context) error {
+		return errors.New("nope")
+	})
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	logAttrs := map[string]interface{}{}
+	assert.NoError(t, json.Unmarshal(buf.Bytes(), &logAttrs))
+	logAttrs["latency"] = 123
+	logAttrs["time"] = "x"
+
+	expect := map[string]interface{}{
+		"level":      "ERROR",
+		"msg":        "REQUEST_ERROR",
+		"method":     "GET",
+		"uri":        "/test",
+		"status":     float64(500),
+		"bytes_in":   "",
+		"host":       "example.com",
+		"bytes_out":  float64(36.0),
+		"user_agent": "",
+		"remote_ip":  "192.0.2.1",
+		"request_id": "",
+		"error":      "nope",
+
+		"latency": 123,
+		"time":    "x",
+	}
+	assert.Equal(t, expect, logAttrs)
+}
 
 func TestRequestLoggerWithConfig(t *testing.T) {
 	e := echo.New()

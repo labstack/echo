@@ -73,8 +73,8 @@ func main() {
   e := echo.New()
 
   // Middleware
-  e.Use(middleware.Logger())
-  e.Use(middleware.Recover())
+  e.Use(middleware.RequestLogger()) // use the default RequestLogger middleware with slog logger
+  e.Use(middleware.Recover()) // recover panics as errors for proper error handling
 
   // Routes
   e.GET("/", hello)

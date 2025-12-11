@@ -4,7 +4,9 @@
 package middleware
 
 import (
+	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -240,6 +242,72 @@ type RequestLoggerValues struct {
 
 // RequestLoggerWithConfig returns a RequestLogger middleware with config.
 func RequestLoggerWithConfig(config RequestLoggerConfig) echo.MiddlewareFunc {
+	mw, err := config.ToMiddleware()
+	if err != nil {
+		panic(err)
+	}
+	return mw
+}
+
+// RequestLogger returns a RequestLogger middleware with default configuration which
+// uses default slog.slog logger.
+//
+// To customize slog output format replace slog default logger:
+// For JSON format: `slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))`
+func RequestLogger() echo.MiddlewareFunc {
+	config := RequestLoggerConfig{
+		LogLatency:       true,
+		LogProtocol:      false,
+		LogRemoteIP:      true,
+		LogHost:          true,
+		LogMethod:        true,
+		LogURI:           true,
+		LogURIPath:       false,
+		LogRoutePath:     false,
+		LogRequestID:     true,
+		LogReferer:       false,
+		LogUserAgent:     true,
+		LogStatus:        true,
+		LogError:         true,
+		LogContentLength: true,
+		LogResponseSize:  true,
+		LogHeaders:       nil,
+		LogQueryParams:   nil,
+		LogFormValues:    nil,
+		HandleError:      true, // forwards error to the global error handler, so it can decide appropriate status code
+		LogValuesFunc: func(c echo.Context, v RequestLoggerValues) error {
+			if v.Error == nil {
+				slog.LogAttrs(context.Background(), slog.LevelInfo, "REQUEST",
+					slog.String("method", v.Method),
+					slog.String("uri", v.URI),
+					slog.Int("status", v.Status),
+					slog.Duration("latency", v.Latency),
+					slog.String("host", v.Host),
+					slog.String("bytes_in", v.ContentLength),
+					slog.Int64("bytes_out", v.ResponseSize),
+					slog.String("user_agent", v.UserAgent),
+					slog.String("remote_ip", v.RemoteIP),
+					slog.String("request_id", v.RequestID),
+				)
+			} else {
+				slog.LogAttrs(context.Background(), slog.LevelError, "REQUEST_ERROR",
+					slog.String("method", v.Method),
+					slog.String("uri", v.URI),
+					slog.Int("status", v.Status),
+					slog.Duration("latency", v.Latency),
+					slog.String("host", v.Host),
+					slog.String("bytes_in", v.ContentLength),
+					slog.Int64("bytes_out", v.ResponseSize),
+					slog.String("user_agent", v.UserAgent),
+					slog.String("remote_ip", v.RemoteIP),
+					slog.String("request_id", v.RequestID),
+
+					slog.String("error", v.Error.Error()),
+				)
+			}
+			return nil
+		},
+	}
 	mw, err := config.ToMiddleware()
 	if err != nil {
 		panic(err)
