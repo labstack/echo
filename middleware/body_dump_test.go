@@ -140,3 +140,65 @@ func TestBodyDumpResponseWriter_CanNotHijack(t *testing.T) {
 	_, _, err := bdrw.Hijack()
 	assert.EqualError(t, err, "feature not supported")
 }
+
+func TestBodyDump_ReadError(t *testing.T) {
+	e := echo.New()
+
+	// Create a reader that fails during read
+	failingReader := &failingReadCloser{
+		data:     []byte("partial data"),
+		failAt:   7, // Fail after 7 bytes
+		failWith: errors.New("connection reset"),
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/", failingReader)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	h := func(c echo.Context) error {
+		// This handler should not be reached if body read fails
+		body, _ := io.ReadAll(c.Request().Body)
+		return c.String(http.StatusOK, string(body))
+	}
+
+	requestBodyReceived := ""
+	mw := BodyDump(func(c echo.Context, reqBody, resBody []byte) {
+		requestBodyReceived = string(reqBody)
+	})
+
+	err := mw(h)(c)
+
+	// Verify error is propagated
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "connection reset")
+
+	// Verify handler was not executed (callback wouldn't have received data)
+	assert.Empty(t, requestBodyReceived)
+}
+
+// failingReadCloser is a helper type for testing read errors
+type failingReadCloser struct {
+	data     []byte
+	pos      int
+	failAt   int
+	failWith error
+}
+
+func (f *failingReadCloser) Read(p []byte) (n int, err error) {
+	if f.pos >= f.failAt {
+		return 0, f.failWith
+	}
+
+	n = copy(p, f.data[f.pos:])
+	f.pos += n
+
+	if f.pos >= f.failAt {
+		return n, f.failWith
+	}
+
+	return n, nil
+}
+
+func (f *failingReadCloser) Close() error {
+	return nil
+}
