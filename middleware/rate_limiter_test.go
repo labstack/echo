@@ -410,6 +410,33 @@ func TestNewRateLimiterMemoryStore(t *testing.T) {
 	}
 }
 
+func TestRateLimiterMemoryStore_FractionalRateDefaultBurst(t *testing.T) {
+	store := NewRateLimiterMemoryStoreWithConfig(RateLimiterMemoryStoreConfig{
+		Rate: 0.5, // fractional rate should get a burst of at least 1
+	})
+
+	base := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+	store.timeNow = func() time.Time {
+		return base
+	}
+
+	allowed, err := store.Allow("user")
+	assert.NoError(t, err)
+	assert.True(t, allowed, "first request should not be blocked")
+
+	allowed, err = store.Allow("user")
+	assert.NoError(t, err)
+	assert.False(t, allowed, "burst token should be consumed immediately")
+
+	store.timeNow = func() time.Time {
+		return base.Add(2 * time.Second)
+	}
+
+	allowed, err = store.Allow("user")
+	assert.NoError(t, err)
+	assert.True(t, allowed, "token should refill for fractional rate after time passes")
+}
+
 func generateAddressList(count int) []string {
 	addrs := make([]string, count)
 	for i := 0; i < count; i++ {
