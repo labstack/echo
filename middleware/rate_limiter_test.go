@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -456,4 +457,143 @@ func BenchmarkRateLimiterMemoryStore_100000(b *testing.B) {
 func BenchmarkRateLimiterMemoryStore_conc100_10000(b *testing.B) {
 	var store = NewRateLimiterMemoryStoreWithConfig(RateLimiterMemoryStoreConfig{Rate: 100, Burst: 200, ExpiresIn: testExpiresIn})
 	benchmarkStore(store, 100, 10000, b)
+}
+
+// TestRateLimiterMemoryStore_TOCTOUFix verifies that the TOCTOU race condition is fixed
+// by ensuring timeNow() is only called once per Allow() call
+func TestRateLimiterMemoryStore_TOCTOUFix(t *testing.T) {
+	t.Parallel()
+
+	store := NewRateLimiterMemoryStoreWithConfig(RateLimiterMemoryStoreConfig{
+		Rate:      1,
+		Burst:     1,
+		ExpiresIn: 2 * time.Second,
+	})
+
+	// Track time calls to verify we use the same time value
+	timeCallCount := 0
+	baseTime := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+
+	store.timeNow = func() time.Time {
+		timeCallCount++
+		return baseTime
+	}
+
+	// First request - should succeed
+	allowed, err := store.Allow("127.0.0.1")
+	assert.NoError(t, err)
+	assert.True(t, allowed, "First request should be allowed")
+
+	// Verify timeNow() was only called once
+	assert.Equal(t, 1, timeCallCount, "timeNow() should only be called once per Allow()")
+}
+
+// TestRateLimiterMemoryStore_ConcurrentAccess verifies rate limiting correctness under concurrent load
+func TestRateLimiterMemoryStore_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
+
+	store := NewRateLimiterMemoryStoreWithConfig(RateLimiterMemoryStoreConfig{
+		Rate:      10,
+		Burst:     5,
+		ExpiresIn: 5 * time.Second,
+	})
+
+	const goroutines = 50
+	const requestsPerGoroutine = 20
+
+	var wg sync.WaitGroup
+	var allowedCount, deniedCount int32
+
+	for i := 0; i < goroutines; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < requestsPerGoroutine; j++ {
+				allowed, err := store.Allow("test-user")
+				assert.NoError(t, err)
+				if allowed {
+					atomic.AddInt32(&allowedCount, 1)
+				} else {
+					atomic.AddInt32(&deniedCount, 1)
+				}
+				time.Sleep(time.Millisecond)
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	totalRequests := goroutines * requestsPerGoroutine
+	allowed := int(allowedCount)
+	denied := int(deniedCount)
+
+	assert.Equal(t, totalRequests, allowed+denied, "All requests should be processed")
+	assert.Greater(t, denied, 0, "Some requests should be denied due to rate limiting")
+	assert.Greater(t, allowed, 0, "Some requests should be allowed")
+}
+
+// TestRateLimiterMemoryStore_RaceDetection verifies no data races with high concurrency
+// Run with: go test -race ./middleware -run TestRateLimiterMemoryStore_RaceDetection
+func TestRateLimiterMemoryStore_RaceDetection(t *testing.T) {
+	t.Parallel()
+
+	store := NewRateLimiterMemoryStoreWithConfig(RateLimiterMemoryStoreConfig{
+		Rate:      100,
+		Burst:     200,
+		ExpiresIn: 1 * time.Second,
+	})
+
+	const goroutines = 100
+	const requestsPerGoroutine = 100
+
+	var wg sync.WaitGroup
+	identifiers := []string{"user1", "user2", "user3", "user4", "user5"}
+
+	for i := 0; i < goroutines; i++ {
+		wg.Add(1)
+		go func(routineID int) {
+			defer wg.Done()
+			for j := 0; j < requestsPerGoroutine; j++ {
+				identifier := identifiers[routineID%len(identifiers)]
+				_, err := store.Allow(identifier)
+				assert.NoError(t, err)
+			}
+		}(i)
+	}
+
+	wg.Wait()
+}
+
+// TestRateLimiterMemoryStore_TimeOrdering verifies time ordering consistency in rate limiting decisions
+func TestRateLimiterMemoryStore_TimeOrdering(t *testing.T) {
+	t.Parallel()
+
+	store := NewRateLimiterMemoryStoreWithConfig(RateLimiterMemoryStoreConfig{
+		Rate:      1,
+		Burst:     2,
+		ExpiresIn: 5 * time.Second,
+	})
+
+	currentTime := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+	store.timeNow = func() time.Time {
+		return currentTime
+	}
+
+	// First two requests should succeed (burst=2)
+	allowed1, _ := store.Allow("user1")
+	assert.True(t, allowed1, "Request 1 should be allowed (burst)")
+
+	allowed2, _ := store.Allow("user1")
+	assert.True(t, allowed2, "Request 2 should be allowed (burst)")
+
+	// Third request should be denied
+	allowed3, _ := store.Allow("user1")
+	assert.False(t, allowed3, "Request 3 should be denied (burst exhausted)")
+
+	// Advance time by 1 second
+	currentTime = currentTime.Add(1 * time.Second)
+
+	// Fourth request should succeed
+	allowed4, _ := store.Allow("user1")
+	assert.True(t, allowed4, "Request 4 should be allowed (1 token available)")
 }
