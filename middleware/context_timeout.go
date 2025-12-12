@@ -11,6 +11,39 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+// ContextTimeout Middleware
+//
+// ContextTimeout provides request timeout functionality using Go's context mechanism.
+// It is the recommended replacement for the deprecated Timeout middleware.
+//
+//
+// Basic Usage:
+//
+//	e.Use(middleware.ContextTimeout(30 * time.Second))
+//
+// With Configuration:
+//
+//	e.Use(middleware.ContextTimeoutWithConfig(middleware.ContextTimeoutConfig{
+//	    Timeout: 30 * time.Second,
+//	    Skipper: middleware.DefaultSkipper,
+//	}))
+//
+// Handler Example:
+//
+//	e.GET("/task", func(c echo.Context) error {
+//	    ctx := c.Request().Context()
+//
+//	    result, err := performTaskWithContext(ctx)
+//	    if err != nil {
+//	        if errors.Is(err, context.DeadlineExceeded) {
+//	            return echo.NewHTTPError(http.StatusServiceUnavailable, "timeout")
+//	        }
+//	        return err
+//	    }
+//
+//	    return c.JSON(http.StatusOK, result)
+//	})
+
 // ContextTimeoutConfig defines the config for ContextTimeout middleware.
 type ContextTimeoutConfig struct {
 	// Skipper defines a function to skip middleware.
