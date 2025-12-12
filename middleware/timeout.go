@@ -59,6 +59,12 @@ import (
 //
 
 // TimeoutConfig defines the config for Timeout middleware.
+//
+// Deprecated: Use ContextTimeoutConfig with ContextTimeout or ContextTimeoutWithConfig instead.
+// The Timeout middleware has architectural issues that cause data races due to response writer
+// manipulation across goroutines. It must be the first middleware in the chain, making it fragile.
+// The ContextTimeout middleware provides timeout functionality using Go's context mechanism,
+// which is race-free and can be placed anywhere in the middleware chain.
 type TimeoutConfig struct {
 	// Skipper defines a function to skip middleware.
 	Skipper Skipper
@@ -89,11 +95,38 @@ var DefaultTimeoutConfig = TimeoutConfig{
 
 // Timeout returns a middleware which returns error (503 Service Unavailable error) to client immediately when handler
 // call runs for longer than its time limit. NB: timeout does not stop handler execution.
+//
+// Deprecated: Use ContextTimeout instead. This middleware has known data race issues due to response writer
+// manipulation. See https://github.com/labstack/echo/blob/master/middleware/context_timeout.go for the
+// recommended alternative.
+//
+// Example migration:
+//
+//	// Before:
+//	e.Use(middleware.Timeout())
+//
+//	// After:
+//	e.Use(middleware.ContextTimeout(30 * time.Second))
 func Timeout() echo.MiddlewareFunc {
 	return TimeoutWithConfig(DefaultTimeoutConfig)
 }
 
 // TimeoutWithConfig returns a Timeout middleware with config or panics on invalid configuration.
+//
+// Deprecated: Use ContextTimeoutWithConfig instead. This middleware has architectural data race issues.
+// See the ContextTimeout middleware for a race-free alternative that uses Go's context mechanism.
+//
+// Example migration:
+//
+//	// Before:
+//	e.Use(middleware.TimeoutWithConfig(middleware.TimeoutConfig{
+//		Timeout: 30 * time.Second,
+//	}))
+//
+//	// After:
+//	e.Use(middleware.ContextTimeoutWithConfig(middleware.ContextTimeoutConfig{
+//		Timeout: 30 * time.Second,
+//	}))
 func TimeoutWithConfig(config TimeoutConfig) echo.MiddlewareFunc {
 	mw, err := config.ToMiddleware()
 	if err != nil {
@@ -103,6 +136,8 @@ func TimeoutWithConfig(config TimeoutConfig) echo.MiddlewareFunc {
 }
 
 // ToMiddleware converts Config to middleware or returns an error for invalid configuration
+//
+// Deprecated: Use ContextTimeoutConfig.ToMiddleware instead.
 func (config TimeoutConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 	if config.Skipper == nil {
 		config.Skipper = DefaultTimeoutConfig.Skipper
