@@ -284,7 +284,7 @@ func TestGzipErrorReturnedInvalidConfig(t *testing.T) {
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
-	assert.Contains(t, rec.Body.String(), "gzip")
+	assert.Contains(t, rec.Body.String(), `{"message":"invalid pool object"}`)
 }
 
 // Issue #806
