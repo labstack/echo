@@ -101,6 +101,48 @@ func TestStatic(t *testing.T) {
 			expectContains: "{\"message\":\"Not Found\"}\n",
 		},
 		{
+			name:           "nok, URL encoded path traversal (single encoding)",
+			whenURL:        "/%2e%2e%2fmiddleware/basic_auth.go",
+			expectCode:     http.StatusNotFound,
+			expectContains: "{\"message\":\"Not Found\"}\n",
+		},
+		{
+			name:           "nok, URL encoded path traversal (double encoding)",
+			whenURL:        "/%252e%252e%252fmiddleware/basic_auth.go",
+			expectCode:     http.StatusNotFound,
+			expectContains: "{\"message\":\"Not Found\"}\n",
+		},
+		{
+			name:           "nok, URL encoded path traversal (mixed encoding)",
+			whenURL:        "/%2e%2e/middleware/basic_auth.go",
+			expectCode:     http.StatusNotFound,
+			expectContains: "{\"message\":\"Not Found\"}\n",
+		},
+		{
+			name:           "nok, backslash URL encoded",
+			whenURL:        "/..%5c..%5cmiddleware/basic_auth.go",
+			expectCode:     http.StatusNotFound,
+			expectContains: "{\"message\":\"Not Found\"}\n",
+		},
+		{
+			name:           "nok, null byte injection",
+			whenURL:        "/index.html%00.jpg",
+			expectCode:     http.StatusInternalServerError,
+			expectContains: "{\"message\":\"Internal Server Error\"}\n",
+		},
+		{
+			name:           "nok, mixed backslash and forward slash traversal",
+			whenURL:        "/..\\../middleware/basic_auth.go",
+			expectCode:     http.StatusNotFound,
+			expectContains: "{\"message\":\"Not Found\"}\n",
+		},
+		{
+			name:           "nok, trailing dots (Windows edge case)",
+			whenURL:        "/../middleware/basic_auth.go...",
+			expectCode:     http.StatusNotFound,
+			expectContains: "{\"message\":\"Not Found\"}\n",
+		},
+		{
 			name:           "ok, do not serve file, when a handler took care of the request",
 			whenURL:        "/regular-handler",
 			expectCode:     http.StatusOK,
