@@ -115,6 +115,7 @@ of middlewares in this list.
 | [github.com/darkweak/souin/plugins/echo](https://github.com/darkweak/souin/tree/master/plugins/echo) | HTTP cache system based on [Souin](https://github.com/darkweak/souin) to automatically get your endpoints cached. It supports some distributed and non-distributed storage systems depending your needs. |
 | [github.com/mikestefanello/pagoda](https://github.com/mikestefanello/pagoda)                         | Rapid, easy full-stack web development starter kit built with Echo.                                                                                                                                      |
 | [github.com/go-woo/protoc-gen-echo](https://github.com/go-woo/protoc-gen-echo)                       | ProtoBuf generate Echo server side code                                                                                                                                                                  |
+| [github.com/oaswrap/spec/adapter/echopenapi](https://github.com/oaswrap/spec/tree/main/adapter/echoopenapi) | Echo adapter for OpenAPI 3.x specification generation with automatic route documentation.                                                                                                             |
 
 Please send a PR to add your own library here.
 
