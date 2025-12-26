@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/websocket"
 )
@@ -37,6 +37,7 @@ func TestProxy(t *testing.T) {
 	}))
 	defer t2.Close()
 	url2, _ := url.Parse(t2.URL)
+
 	targets := []*ProxyTarget{
 		{
 			Name: "target 1",
@@ -60,7 +61,7 @@ func TestProxy(t *testing.T) {
 
 	// Random
 	e := echo.New()
-	e.Use(Proxy(rb))
+	e.Use(ProxyWithConfig(ProxyConfig{Balancer: rb}))
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -82,7 +83,7 @@ func TestProxy(t *testing.T) {
 	// Round-robin
 	rrb := NewRoundRobinBalancer(targets)
 	e = echo.New()
-	e.Use(Proxy(rrb))
+	e.Use(ProxyWithConfig(ProxyConfig{Balancer: rrb}))
 
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -112,68 +113,24 @@ func TestProxy(t *testing.T) {
 
 	// ProxyTarget is set in context
 	contextObserver := func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) (err error) {
+		return func(c *echo.Context) (err error) {
 			next(c)
 			assert.Contains(t, targets, c.Get("target"), "target is not set in context")
 			return nil
 		}
 	}
-	rrb1 := NewRoundRobinBalancer(targets)
 
 	e = echo.New()
 	e.Use(contextObserver)
-	e.Use(Proxy(rrb1))
+	e.Use(ProxyWithConfig(ProxyConfig{Balancer: NewRoundRobinBalancer(targets)}))
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 }
 
-type testProvider struct {
-	commonBalancer
-	target *ProxyTarget
-	err    error
-}
-
-func (p *testProvider) Next(c echo.Context) *ProxyTarget {
-	return &ProxyTarget{}
-}
-
-func (p *testProvider) NextTarget(c echo.Context) (*ProxyTarget, error) {
-	return p.target, p.err
-}
-
-func TestTargetProvider(t *testing.T) {
-	t1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "target 1")
-	}))
-	defer t1.Close()
-	url1, _ := url.Parse(t1.URL)
-
-	e := echo.New()
-	tp := &testProvider{}
-	tp.target = &ProxyTarget{Name: "target 1", URL: url1}
-	e.Use(Proxy(tp))
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	e.ServeHTTP(rec, req)
-	body := rec.Body.String()
-	assert.Equal(t, "target 1", body)
-}
-
-func TestFailNextTarget(t *testing.T) {
-	url1, err := url.Parse("http://dummy:8080")
-	assert.Nil(t, err)
-
-	e := echo.New()
-	tp := &testProvider{}
-	tp.target = &ProxyTarget{Name: "target 1", URL: url1}
-	tp.err = echo.NewHTTPError(http.StatusInternalServerError, "method could not select target")
-
-	e.Use(Proxy(tp))
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	e.ServeHTTP(rec, req)
-	body := rec.Body.String()
-	assert.Equal(t, "{\"message\":\"method could not select target\"}\n", body)
+func TestMustProxyWithConfig_emptyBalancerPanics(t *testing.T) {
+	assert.Panics(t, func() {
+		ProxyWithConfig(ProxyConfig{Balancer: nil})
+	})
 }
 
 func TestProxyRealIPHeader(t *testing.T) {
@@ -183,7 +140,7 @@ func TestProxyRealIPHeader(t *testing.T) {
 	url, _ := url.Parse(upstream.URL)
 	rrb := NewRoundRobinBalancer([]*ProxyTarget{{Name: "upstream", URL: url}})
 	e := echo.New()
-	e.Use(Proxy(rrb))
+	e.Use(ProxyWithConfig(ProxyConfig{Balancer: rrb}))
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 
@@ -388,7 +345,7 @@ func TestProxyError(t *testing.T) {
 
 	// Random
 	e := echo.New()
-	e.Use(Proxy(rb))
+	e.Use(ProxyWithConfig(ProxyConfig{Balancer: rb}))
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 	// Remote unreachable
@@ -399,8 +356,108 @@ func TestProxyError(t *testing.T) {
 	assert.Equal(t, http.StatusBadGateway, rec.Code)
 }
 
-func TestProxyRetries(t *testing.T) {
+func TestClientCancelConnectionResultsHTTPCode499(t *testing.T) {
+	var timeoutStop sync.WaitGroup
+	timeoutStop.Add(1)
+	HTTPTarget := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		timeoutStop.Wait() // wait until we have canceled the request
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer HTTPTarget.Close()
+	targetURL, _ := url.Parse(HTTPTarget.URL)
+	target := &ProxyTarget{
+		Name: "target",
+		URL:  targetURL,
+	}
+	rb := NewRandomBalancer(nil)
+	assert.True(t, rb.AddTarget(target))
+	e := echo.New()
+	e.Use(ProxyWithConfig(ProxyConfig{Balancer: rb}))
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	ctx, cancel := context.WithCancel(req.Context())
+	req = req.WithContext(ctx)
+	go func() {
+		time.Sleep(10 * time.Millisecond)
+		cancel()
+	}()
+	e.ServeHTTP(rec, req)
+	timeoutStop.Done()
+	assert.Equal(t, 499, rec.Code)
+}
 
+type testProvider struct {
+	commonBalancer
+	target *ProxyTarget
+	err    error
+}
+
+func (p *testProvider) Next(c *echo.Context) (*ProxyTarget, error) {
+	return p.target, p.err
+}
+
+func TestTargetProvider(t *testing.T) {
+	t1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "target 1")
+	}))
+	defer t1.Close()
+	url1, _ := url.Parse(t1.URL)
+
+	e := echo.New()
+	tp := &testProvider{}
+	tp.target = &ProxyTarget{Name: "target 1", URL: url1}
+	e.Use(Proxy(tp))
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	e.ServeHTTP(rec, req)
+	body := rec.Body.String()
+	assert.Equal(t, "target 1", body)
+}
+
+func TestFailNextTarget(t *testing.T) {
+	url1, err := url.Parse("http://dummy:8080")
+	assert.Nil(t, err)
+
+	e := echo.New()
+	tp := &testProvider{}
+	tp.target = &ProxyTarget{Name: "target 1", URL: url1}
+	tp.err = echo.NewHTTPError(http.StatusInternalServerError, "method could not select target")
+
+	e.Use(Proxy(tp))
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	e.ServeHTTP(rec, req)
+	body := rec.Body.String()
+	assert.Equal(t, "{\"message\":\"method could not select target\"}\n", body)
+}
+
+func TestRandomBalancerWithNoTargets(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/?id=1&name=Jon+Snow", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	// Assert balancer with empty targets does return `nil` on `Next()`
+	rb := NewRandomBalancer(nil)
+	target, err := rb.Next(c)
+	assert.Nil(t, target)
+	assert.NoError(t, err)
+}
+
+func TestRoundRobinBalancerWithNoTargets(t *testing.T) {
+	// Assert balancer with empty targets does return `nil` on `Next()`
+	rrb := NewRoundRobinBalancer([]*ProxyTarget{})
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/?id=1&name=Jon+Snow", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	target, err := rrb.Next(c)
+	assert.Nil(t, target)
+	assert.NoError(t, err)
+}
+
+func TestProxyRetries(t *testing.T) {
 	newServer := func(res int) (*url.URL, *httptest.Server) {
 		server := httptest.NewServer(
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -431,13 +488,13 @@ func TestProxyRetries(t *testing.T) {
 		URL:  targetURL,
 	}
 
-	alwaysRetryFilter := func(c echo.Context, e error) bool { return true }
-	neverRetryFilter := func(c echo.Context, e error) bool { return false }
+	alwaysRetryFilter := func(c *echo.Context, e error) bool { return true }
+	neverRetryFilter := func(c *echo.Context, e error) bool { return false }
 
 	testCases := []struct {
 		name             string
 		retryCount       int
-		retryFilters     []func(c echo.Context, e error) bool
+		retryFilters     []func(c *echo.Context, e error) bool
 		targets          []*ProxyTarget
 		expectedResponse int
 	}{
@@ -460,7 +517,7 @@ func TestProxyRetries(t *testing.T) {
 		{
 			name:       "retry count 1 does retry on handler return true",
 			retryCount: 1,
-			retryFilters: []func(c echo.Context, e error) bool{
+			retryFilters: []func(c *echo.Context, e error) bool{
 				alwaysRetryFilter,
 			},
 			targets: []*ProxyTarget{
@@ -472,7 +529,7 @@ func TestProxyRetries(t *testing.T) {
 		{
 			name:       "retry count 1 does not retry on handler return false",
 			retryCount: 1,
-			retryFilters: []func(c echo.Context, e error) bool{
+			retryFilters: []func(c *echo.Context, e error) bool{
 				neverRetryFilter,
 			},
 			targets: []*ProxyTarget{
@@ -484,7 +541,7 @@ func TestProxyRetries(t *testing.T) {
 		{
 			name:       "retry count 2 returns error when no more retries left",
 			retryCount: 2,
-			retryFilters: []func(c echo.Context, e error) bool{
+			retryFilters: []func(c *echo.Context, e error) bool{
 				alwaysRetryFilter,
 				alwaysRetryFilter,
 			},
@@ -499,7 +556,7 @@ func TestProxyRetries(t *testing.T) {
 		{
 			name:       "retry count 2 returns error when retries left but handler returns false",
 			retryCount: 3,
-			retryFilters: []func(c echo.Context, e error) bool{
+			retryFilters: []func(c *echo.Context, e error) bool{
 				alwaysRetryFilter,
 				alwaysRetryFilter,
 				neverRetryFilter,
@@ -515,7 +572,7 @@ func TestProxyRetries(t *testing.T) {
 		{
 			name:       "retry count 3 succeeds",
 			retryCount: 3,
-			retryFilters: []func(c echo.Context, e error) bool{
+			retryFilters: []func(c *echo.Context, e error) bool{
 				alwaysRetryFilter,
 				alwaysRetryFilter,
 				alwaysRetryFilter,
@@ -543,7 +600,7 @@ func TestProxyRetries(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 
 			retryFilterCall := 0
-			retryFilter := func(c echo.Context, e error) bool {
+			retryFilter := func(c *echo.Context, e error) bool {
 				if len(tc.retryFilters) == 0 {
 					assert.FailNow(t, fmt.Sprintf("unexpected calls, %d, to retry handler", retryFilterCall))
 				}
@@ -658,13 +715,13 @@ func TestProxyErrorHandler(t *testing.T) {
 	testCases := []struct {
 		name             string
 		target           *ProxyTarget
-		errorHandler     func(c echo.Context, e error) error
+		errorHandler     func(c *echo.Context, e error) error
 		expectFinalError func(t *testing.T, err error)
 	}{
 		{
 			name:   "Error handler not invoked when request success",
 			target: goodTarget,
-			errorHandler: func(c echo.Context, e error) error {
+			errorHandler: func(c *echo.Context, e error) error {
 				assert.FailNow(t, "error handler should not be invoked")
 				return e
 			},
@@ -672,7 +729,7 @@ func TestProxyErrorHandler(t *testing.T) {
 		{
 			name:   "Error handler invoked when request fails",
 			target: badTarget,
-			errorHandler: func(c echo.Context, e error) error {
+			errorHandler: func(c *echo.Context, e error) error {
 				httpErr, ok := e.(*echo.HTTPError)
 				assert.True(t, ok, "expected http error to be passed to handler")
 				assert.Equal(t, http.StatusBadGateway, httpErr.Code, "expected http bad gateway error to be passed to handler")
@@ -695,10 +752,11 @@ func TestProxyErrorHandler(t *testing.T) {
 			))
 
 			errorHandlerCalled := false
-			e.HTTPErrorHandler = func(err error, c echo.Context) {
+			dheh := echo.DefaultHTTPErrorHandler(false)
+			e.HTTPErrorHandler = func(c *echo.Context, err error) {
 				errorHandlerCalled = true
 				tc.expectFinalError(t, err)
-				e.DefaultHTTPErrorHandler(err, c)
+				dheh(c, err)
 			}
 
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -714,47 +772,7 @@ func TestProxyErrorHandler(t *testing.T) {
 	}
 }
 
-func TestClientCancelConnectionResultsHTTPCode499(t *testing.T) {
-	var timeoutStop sync.WaitGroup
-	timeoutStop.Add(1)
-	HTTPTarget := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		timeoutStop.Wait() // wait until we have canceled the request
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer HTTPTarget.Close()
-	targetURL, _ := url.Parse(HTTPTarget.URL)
-	target := &ProxyTarget{
-		Name: "target",
-		URL:  targetURL,
-	}
-	rb := NewRandomBalancer(nil)
-	assert.True(t, rb.AddTarget(target))
-	e := echo.New()
-	e.Use(Proxy(rb))
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	ctx, cancel := context.WithCancel(req.Context())
-	req = req.WithContext(ctx)
-	go func() {
-		time.Sleep(10 * time.Millisecond)
-		cancel()
-	}()
-	e.ServeHTTP(rec, req)
-	timeoutStop.Done()
-	assert.Equal(t, 499, rec.Code)
-}
-
-// Assert balancer with empty targets does return `nil` on `Next()`
-func TestProxyBalancerWithNoTargets(t *testing.T) {
-	rb := NewRandomBalancer(nil)
-	assert.Nil(t, rb.Next(nil))
-
-	rrb := NewRoundRobinBalancer([]*ProxyTarget{})
-	assert.Nil(t, rrb.Next(nil))
-}
-
 type testContextKey string
-
 type customBalancer struct {
 	target *ProxyTarget
 }
@@ -762,15 +780,14 @@ type customBalancer struct {
 func (b *customBalancer) AddTarget(target *ProxyTarget) bool {
 	return false
 }
-
 func (b *customBalancer) RemoveTarget(name string) bool {
 	return false
 }
 
-func (b *customBalancer) Next(c echo.Context) *ProxyTarget {
+func (b *customBalancer) Next(c *echo.Context) (*ProxyTarget, error) {
 	ctx := context.WithValue(c.Request().Context(), testContextKey("FROM_BALANCER"), "CUSTOM_BALANCER")
 	c.SetRequest(c.Request().WithContext(ctx))
-	return b.target
+	return b.target, nil
 }
 
 func TestModifyResponseUseContext(t *testing.T) {
@@ -781,7 +798,6 @@ func TestModifyResponseUseContext(t *testing.T) {
 		}),
 	)
 	defer server.Close()
-
 	targetURL, _ := url.Parse(server.URL)
 	e := echo.New()
 	e.Use(ProxyWithConfig(
@@ -802,12 +818,9 @@ func TestModifyResponseUseContext(t *testing.T) {
 			},
 		},
 	))
-
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
-
 	e.ServeHTTP(rec, req)
-
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "OK", rec.Body.String())
 	assert.Equal(t, "CUSTOM_BALANCER", rec.Header().Get("FROM_BALANCER"))

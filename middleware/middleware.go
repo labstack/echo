@@ -9,15 +9,14 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
-// Skipper defines a function to skip middleware. Returning true skips processing
-// the middleware.
-type Skipper func(c echo.Context) bool
+// Skipper defines a function to skip middleware. Returning true skips processing the middleware.
+type Skipper func(c *echo.Context) bool
 
 // BeforeFunc defines a function which is executed just before the middleware.
-type BeforeFunc func(c echo.Context)
+type BeforeFunc func(c *echo.Context)
 
 func captureTokens(pattern *regexp.Regexp, input string) *strings.Replacer {
 	groups := pattern.FindAllStringSubmatch(input, -1)
@@ -54,7 +53,7 @@ func rewriteURL(rewriteRegex map[*regexp.Regexp]string, req *http.Request) error
 		return nil
 	}
 
-	// Depending on how HTTP request is sent RequestURI could contain Scheme://Host/path or be just /path.
+	// Depending how HTTP request is sent RequestURI could contain Scheme://Host/path or be just /path.
 	// We only want to use path part for rewriting and therefore trim prefix if it exists
 	rawURI := req.RequestURI
 	if rawURI != "" && rawURI[0] != '/' {
@@ -85,13 +84,11 @@ func rewriteURL(rewriteRegex map[*regexp.Regexp]string, req *http.Request) error
 }
 
 // DefaultSkipper returns false which processes the middleware.
-func DefaultSkipper(echo.Context) bool {
+func DefaultSkipper(c *echo.Context) bool {
 	return false
 }
 
-func toMiddlewareOrPanic(config interface {
-	ToMiddleware() (echo.MiddlewareFunc, error)
-}) echo.MiddlewareFunc {
+func toMiddlewareOrPanic(config echo.MiddlewareConfigurator) echo.MiddlewareFunc {
 	mw, err := config.ToMiddleware()
 	if err != nil {
 		panic(err)

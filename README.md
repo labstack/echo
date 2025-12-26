@@ -52,7 +52,7 @@ Click [here](https://github.com/sponsors/labstack) for more information on spons
 
 ```sh
 // go get github.com/labstack/echo/{version}
-go get github.com/labstack/echo/v4
+go get github.com/labstack/echo/v5
 ```
 Latest version of Echo supports last four Go major [releases](https://go.dev/doc/devel/release) and might work with older versions.
 
@@ -62,8 +62,9 @@ Latest version of Echo supports last four Go major [releases](https://go.dev/doc
 package main
 
 import (
-  "github.com/labstack/echo/v4"
-  "github.com/labstack/echo/v4/middleware"
+  "errors"
+  "github.com/labstack/echo/v5"
+  "github.com/labstack/echo/v5/middleware"
   "log/slog"
   "net/http"
 )
@@ -73,20 +74,20 @@ func main() {
   e := echo.New()
 
   // Middleware
-  e.Use(middleware.RequestLogger()) // use the default RequestLogger middleware with slog logger
+  e.Use(middleware.RequestLogger()) // use the RequestLogger middleware with slog logger
   e.Use(middleware.Recover()) // recover panics as errors for proper error handling
 
   // Routes
   e.GET("/", hello)
 
   // Start server
-  if err := e.Start(":8080"); err != nil && !errors.Is(err, http.ErrServerClosed) {
+  if err := e.Start(":8080"); err != nil {
     slog.Error("failed to start server", "error", err)
   }
 }
 
 // Handler
-func hello(c echo.Context) error {
+func hello(c *echo.Context) error {
   return c.String(http.StatusOK, "Hello, World!")
 }
 ```
