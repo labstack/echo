@@ -4,6 +4,7 @@
 package middleware
 
 import (
+	"crypto/subtle"
 	"encoding/base64"
 	"errors"
 	"net/http"
@@ -11,116 +12,177 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestBasicAuth(t *testing.T) {
-	e := echo.New()
+	validatorFunc := func(c *echo.Context, u, p string) (bool, error) {
+		// Use constant-time comparison to prevent timing attacks
+		userMatch := subtle.ConstantTimeCompare([]byte(u), []byte("joe")) == 1
+		passMatch := subtle.ConstantTimeCompare([]byte(p), []byte("secret")) == 1
 
-	mockValidator := func(u, p string, c echo.Context) (bool, error) {
-		if u == "joe" && p == "secret" {
+		if userMatch && passMatch {
 			return true, nil
 		}
+
+		// Special case for testing error handling
+		if u == "error" {
+			return false, errors.New(p)
+		}
+
 		return false, nil
 	}
+	defaultConfig := BasicAuthConfig{Validator: validatorFunc}
 
-	tests := []struct {
-		name           string
-		authHeader     string
-		expectedCode   int
-		expectedAuth   string
-		skipperResult  bool
-		expectedErr    bool
-		expectedErrMsg string
+	var testCases = []struct {
+		name         string
+		givenConfig  BasicAuthConfig
+		whenAuth     []string
+		expectHeader string
+		expectErr    string
 	}{
 		{
-			name:         "Valid credentials",
-			authHeader:   basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:secret")),
-			expectedCode: http.StatusOK,
+			name:        "ok",
+			givenConfig: defaultConfig,
+			whenAuth:    []string{basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:secret"))},
 		},
 		{
-			name:         "Case-insensitive header scheme",
-			authHeader:   strings.ToUpper(basic) + " " + base64.StdEncoding.EncodeToString([]byte("joe:secret")),
-			expectedCode: http.StatusOK,
+			name:        "ok, multiple",
+			givenConfig: BasicAuthConfig{Validator: validatorFunc, AllowedCheckLimit: 2},
+			whenAuth: []string{
+				"Bearer " + base64.StdEncoding.EncodeToString([]byte("token")),
+				basic + " NOT_BASE64",
+				basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:secret")),
+			},
 		},
 		{
-			name:           "Invalid credentials",
-			authHeader:     basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:invalid-password")),
-			expectedCode:   http.StatusUnauthorized,
-			expectedAuth:   basic + ` realm="someRealm"`,
-			expectedErr:    true,
-			expectedErrMsg: "Unauthorized",
+			name:        "nok, multiple, valid out of limit",
+			givenConfig: BasicAuthConfig{Validator: validatorFunc, AllowedCheckLimit: 1},
+			whenAuth: []string{
+				"Bearer " + base64.StdEncoding.EncodeToString([]byte("token")),
+				basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:invalid_password")),
+				// limit only check first and should not check auth below
+				basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:secret")),
+			},
+			expectHeader: basic + ` realm="Restricted"`,
+			expectErr:    "Unauthorized",
 		},
 		{
-			name:           "Invalid base64 string",
-			authHeader:     basic + " invalidString",
-			expectedCode:   http.StatusBadRequest,
-			expectedErr:    true,
-			expectedErrMsg: "Bad Request",
+			name:         "nok, invalid Authorization header",
+			givenConfig:  defaultConfig,
+			whenAuth:     []string{strings.ToUpper(basic) + " " + base64.StdEncoding.EncodeToString([]byte("invalid"))},
+			expectHeader: basic + ` realm="Restricted"`,
+			expectErr:    "Unauthorized",
 		},
 		{
-			name:           "Missing Authorization header",
-			expectedCode:   http.StatusUnauthorized,
-			expectedErr:    true,
-			expectedErrMsg: "Unauthorized",
+			name:        "nok, not base64 Authorization header",
+			givenConfig: defaultConfig,
+			whenAuth:    []string{strings.ToUpper(basic) + " NOT_BASE64"},
+			expectErr:   "code=400, message=Bad Request, err=illegal base64 data at input byte 3",
 		},
 		{
-			name:           "Invalid Authorization header",
-			authHeader:     base64.StdEncoding.EncodeToString([]byte("invalid")),
-			expectedCode:   http.StatusUnauthorized,
-			expectedErr:    true,
-			expectedErrMsg: "Unauthorized",
+			name:         "nok, missing Authorization header",
+			givenConfig:  defaultConfig,
+			expectHeader: basic + ` realm="Restricted"`,
+			expectErr:    "Unauthorized",
 		},
 		{
-			name:          "Skipped Request",
-			authHeader:    basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:skip")),
-			expectedCode:  http.StatusOK,
-			skipperResult: true,
+			name:        "ok, realm",
+			givenConfig: BasicAuthConfig{Validator: validatorFunc, Realm: "someRealm"},
+			whenAuth:    []string{basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:secret"))},
+		},
+		{
+			name:        "ok, realm, case-insensitive header scheme",
+			givenConfig: BasicAuthConfig{Validator: validatorFunc, Realm: "someRealm"},
+			whenAuth:    []string{strings.ToUpper(basic) + " " + base64.StdEncoding.EncodeToString([]byte("joe:secret"))},
+		},
+		{
+			name:         "nok, realm, invalid Authorization header",
+			givenConfig:  BasicAuthConfig{Validator: validatorFunc, Realm: "someRealm"},
+			whenAuth:     []string{strings.ToUpper(basic) + " " + base64.StdEncoding.EncodeToString([]byte("invalid"))},
+			expectHeader: basic + ` realm="someRealm"`,
+			expectErr:    "Unauthorized",
+		},
+		{
+			name:        "nok, validator func returns an error",
+			givenConfig: defaultConfig,
+			whenAuth:    []string{strings.ToUpper(basic) + " " + base64.StdEncoding.EncodeToString([]byte("error:my_error"))},
+			expectErr:   "my_error",
+		},
+		{
+			name: "ok, skipped",
+			givenConfig: BasicAuthConfig{Validator: validatorFunc, Skipper: func(c *echo.Context) bool {
+				return true
+			}},
+			whenAuth: []string{strings.ToUpper(basic) + " " + base64.StdEncoding.EncodeToString([]byte("invalid"))},
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			res := httptest.NewRecorder()
 			c := e.NewContext(req, res)
 
-			if tt.authHeader != "" {
-				req.Header.Set(echo.HeaderAuthorization, tt.authHeader)
-			}
+			config := tc.givenConfig
 
-			h := BasicAuthWithConfig(BasicAuthConfig{
-				Validator: mockValidator,
-				Realm:     "someRealm",
-				Skipper: func(c echo.Context) bool {
-					return tt.skipperResult
-				},
-			})(func(c echo.Context) error {
-				return c.String(http.StatusOK, "test")
+			mw, err := config.ToMiddleware()
+			assert.NoError(t, err)
+
+			h := mw(func(c *echo.Context) error {
+				return c.String(http.StatusTeapot, "test")
 			})
 
-			err := h(c)
-
-			if tt.expectedErr {
-				var he *echo.HTTPError
-				errors.As(err, &he)
-				assert.Equal(t, tt.expectedCode, he.Code)
-				if tt.expectedAuth != "" {
-					assert.Equal(t, tt.expectedAuth, res.Header().Get(echo.HeaderWWWAuthenticate))
+			if len(tc.whenAuth) != 0 {
+				for _, a := range tc.whenAuth {
+					req.Header.Add(echo.HeaderAuthorization, a)
 				}
+			}
+			err = h(c)
+
+			if tc.expectErr != "" {
+				assert.Equal(t, http.StatusOK, res.Code)
+				assert.EqualError(t, err, tc.expectErr)
 			} else {
+				assert.Equal(t, http.StatusTeapot, res.Code)
 				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedCode, res.Code)
+			}
+			if tc.expectHeader != "" {
+				assert.Equal(t, tc.expectHeader, res.Header().Get(echo.HeaderWWWAuthenticate))
 			}
 		})
 	}
 }
 
+func TestBasicAuth_panic(t *testing.T) {
+	assert.Panics(t, func() {
+		mw := BasicAuth(nil)
+		assert.NotNil(t, mw)
+	})
+
+	mw := BasicAuth(func(c *echo.Context, user string, password string) (bool, error) {
+		return true, nil
+	})
+	assert.NotNil(t, mw)
+}
+
+func TestBasicAuthWithConfig_panic(t *testing.T) {
+	assert.Panics(t, func() {
+		mw := BasicAuthWithConfig(BasicAuthConfig{Validator: nil})
+		assert.NotNil(t, mw)
+	})
+
+	mw := BasicAuthWithConfig(BasicAuthConfig{Validator: func(c *echo.Context, user string, password string) (bool, error) {
+		return true, nil
+	}})
+	assert.NotNil(t, mw)
+}
+
 func TestBasicAuthRealm(t *testing.T) {
 	e := echo.New()
-	mockValidator := func(u, p string, c echo.Context) (bool, error) {
+	mockValidator := func(c *echo.Context, u, p string) (bool, error) {
 		return false, nil // Always fail to trigger WWW-Authenticate header
 	}
 
@@ -165,15 +227,13 @@ func TestBasicAuthRealm(t *testing.T) {
 			h := BasicAuthWithConfig(BasicAuthConfig{
 				Validator: mockValidator,
 				Realm:     tt.realm,
-			})(func(c echo.Context) error {
+			})(func(c *echo.Context) error {
 				return c.String(http.StatusOK, "test")
 			})
 
 			err := h(c)
 
-			var he *echo.HTTPError
-			errors.As(err, &he)
-			assert.Equal(t, http.StatusUnauthorized, he.Code)
+			assert.Equal(t, echo.ErrUnauthorized, err)
 			assert.Equal(t, tt.expectedAuth, res.Header().Get(echo.HeaderWWWAuthenticate))
 		})
 	}

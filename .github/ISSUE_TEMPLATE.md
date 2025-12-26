@@ -6,7 +6,7 @@
 package main
 
 import (
-  "github.com/labstack/echo/v4"
+  "github.com/labstack/echo/v5"
   "net/http"
   "net/http/httptest"
   "testing"
@@ -15,7 +15,7 @@ import (
 func TestExample(t *testing.T) {
   e := echo.New()
 
-  e.GET("/", func(c echo.Context) error {
+  e.GET("/", func(c *echo.Context) error {
     return c.String(http.StatusOK, "Hello, World!")
   })
 

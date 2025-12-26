@@ -10,8 +10,7 @@ import (
 )
 
 func TestContextGetOK(t *testing.T) {
-	e := New()
-	c := e.NewContext(nil, nil)
+	c := NewContext(nil, nil)
 
 	c.Set("key", int64(123))
 
@@ -21,8 +20,7 @@ func TestContextGetOK(t *testing.T) {
 }
 
 func TestContextGetNonExistentKey(t *testing.T) {
-	e := New()
-	c := e.NewContext(nil, nil)
+	c := NewContext(nil, nil)
 
 	c.Set("key", int64(123))
 
@@ -32,8 +30,7 @@ func TestContextGetNonExistentKey(t *testing.T) {
 }
 
 func TestContextGetInvalidCast(t *testing.T) {
-	e := New()
-	c := e.NewContext(nil, nil)
+	c := NewContext(nil, nil)
 
 	c.Set("key", int64(123))
 
@@ -43,8 +40,7 @@ func TestContextGetInvalidCast(t *testing.T) {
 }
 
 func TestContextGetOrOK(t *testing.T) {
-	e := New()
-	c := e.NewContext(nil, nil)
+	c := NewContext(nil, nil)
 
 	c.Set("key", int64(123))
 
@@ -54,8 +50,7 @@ func TestContextGetOrOK(t *testing.T) {
 }
 
 func TestContextGetOrNonExistentKey(t *testing.T) {
-	e := New()
-	c := e.NewContext(nil, nil)
+	c := NewContext(nil, nil)
 
 	c.Set("key", int64(123))
 
@@ -65,8 +60,7 @@ func TestContextGetOrNonExistentKey(t *testing.T) {
 }
 
 func TestContextGetOrInvalidCast(t *testing.T) {
-	e := New()
-	c := e.NewContext(nil, nil)
+	c := NewContext(nil, nil)
 
 	c.Set("key", int64(123))
 

@@ -1,10 +1,13 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: © 2015 LabStack LLC and Echo contributors
+
 package echo
 
 import "io"
 
 // Renderer is the interface that wraps the Render function.
 type Renderer interface {
-	Render(io.Writer, string, interface{}, Context) error
+	Render(c *Context, w io.Writer, templateName string, data any) error
 }
 
 // TemplateRenderer is helper to ease creating renderers for `html/template` and `text/template` packages.
@@ -24,6 +27,6 @@ type TemplateRenderer struct {
 }
 
 // Render renders the template with given data.
-func (t *TemplateRenderer) Render(w io.Writer, name string, data interface{}, c Context) error {
+func (t *TemplateRenderer) Render(c *Context, w io.Writer, name string, data any) error {
 	return t.Template.ExecuteTemplate(w, name, data)
 }

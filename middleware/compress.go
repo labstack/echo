@@ -7,13 +7,18 @@ import (
 	"bufio"
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"io"
 	"net"
 	"net/http"
 	"strings"
 	"sync"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
+)
+
+const (
+	gzipScheme = "gzip"
 )
 
 // GzipConfig defines the config for Gzip middleware.
@@ -23,7 +28,7 @@ type GzipConfig struct {
 
 	// Gzip compression level.
 	// Optional. Default value -1.
-	Level int `yaml:"level"`
+	Level int
 
 	// Length threshold before gzip compression is applied.
 	// Optional. Default value 0.
@@ -50,42 +55,36 @@ type gzipResponseWriter struct {
 	code              int
 }
 
-const (
-	gzipScheme = "gzip"
-)
-
-// DefaultGzipConfig is the default Gzip middleware config.
-var DefaultGzipConfig = GzipConfig{
-	Skipper:   DefaultSkipper,
-	Level:     -1,
-	MinLength: 0,
-}
-
-// Gzip returns a middleware which compresses HTTP response using gzip compression
-// scheme.
+// Gzip returns a middleware which compresses HTTP response using gzip compression scheme.
 func Gzip() echo.MiddlewareFunc {
-	return GzipWithConfig(DefaultGzipConfig)
+	return GzipWithConfig(GzipConfig{})
 }
 
-// GzipWithConfig return Gzip middleware with config.
-// See: `Gzip()`.
+// GzipWithConfig returns a middleware which compresses HTTP response using gzip compression scheme.
 func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
-	// Defaults
+	return toMiddlewareOrPanic(config)
+}
+
+// ToMiddleware converts GzipConfig to middleware or returns an error for invalid configuration
+func (config GzipConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 	if config.Skipper == nil {
-		config.Skipper = DefaultGzipConfig.Skipper
+		config.Skipper = DefaultSkipper
+	}
+	if config.Level < -2 || config.Level > 9 { // these are consts: gzip.HuffmanOnly and gzip.BestCompression
+		return nil, errors.New("invalid gzip level")
 	}
 	if config.Level == 0 {
-		config.Level = DefaultGzipConfig.Level
+		config.Level = -1
 	}
 	if config.MinLength < 0 {
-		config.MinLength = DefaultGzipConfig.MinLength
+		config.MinLength = 0
 	}
 
 	pool := gzipCompressPool(config)
 	bpool := bufferPool()
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
+		return func(c *echo.Context) error {
 			if config.Skipper(c) {
 				return next(c)
 			}
@@ -98,13 +97,18 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 				if !ok {
 					return echo.NewHTTPError(http.StatusInternalServerError, "invalid pool object")
 				}
-				rw := res.Writer
+				rw := res
 				w.Reset(rw)
-
 				buf := bpool.Get().(*bytes.Buffer)
 				buf.Reset()
 
-				grw := &gzipResponseWriter{Writer: w, ResponseWriter: rw, minLength: config.MinLength, buffer: buf}
+				grw := &gzipResponseWriter{
+					Writer:         w,
+					ResponseWriter: rw,
+					minLength:      config.MinLength,
+					buffer:         buf,
+				}
+				c.SetResponse(grw)
 				defer func() {
 					// There are different reasons for cases when we have not yet written response to the client and now need to do so.
 					// a) handler response had only response code and no response body (ala 404 or redirects etc). Response code need to be written now.
@@ -119,26 +123,25 @@ func GzipWithConfig(config GzipConfig) echo.MiddlewareFunc {
 						// We have to reset response to it's pristine state when
 						// nothing is written to body or error is returned.
 						// See issue #424, #407.
-						res.Writer = rw
+						c.SetResponse(rw)
 						w.Reset(io.Discard)
 					} else if !grw.minLengthExceeded {
 						// Write uncompressed response
-						res.Writer = rw
+						c.SetResponse(rw)
 						if grw.wroteHeader {
 							grw.ResponseWriter.WriteHeader(grw.code)
 						}
-						grw.buffer.WriteTo(rw)
+						_, _ = grw.buffer.WriteTo(rw)
 						w.Reset(io.Discard)
 					}
-					w.Close()
+					_ = w.Close()
 					bpool.Put(buf)
 					pool.Put(w)
 				}()
-				res.Writer = grw
 			}
 			return next(c)
 		}
-	}
+	}, nil
 }
 
 func (w *gzipResponseWriter) WriteHeader(code int) {
@@ -186,7 +189,7 @@ func (w *gzipResponseWriter) Flush() {
 			w.ResponseWriter.WriteHeader(w.code)
 		}
 
-		w.Writer.Write(w.buffer.Bytes())
+		_, _ = w.Writer.Write(w.buffer.Bytes())
 	}
 
 	if gw, ok := w.Writer.(*gzip.Writer); ok {
@@ -195,12 +198,12 @@ func (w *gzipResponseWriter) Flush() {
 	_ = http.NewResponseController(w.ResponseWriter).Flush()
 }
 
-func (w *gzipResponseWriter) Unwrap() http.ResponseWriter {
-	return w.ResponseWriter
-}
-
 func (w *gzipResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return http.NewResponseController(w.ResponseWriter).Hijack()
+}
+
+func (w *gzipResponseWriter) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
 }
 
 func (w *gzipResponseWriter) Push(target string, opts *http.PushOptions) error {
@@ -212,7 +215,7 @@ func (w *gzipResponseWriter) Push(target string, opts *http.PushOptions) error {
 
 func gzipCompressPool(config GzipConfig) sync.Pool {
 	return sync.Pool{
-		New: func() interface{} {
+		New: func() any {
 			w, err := gzip.NewWriterLevel(io.Discard, config.Level)
 			if err != nil {
 				return err
@@ -224,7 +227,7 @@ func gzipCompressPool(config GzipConfig) sync.Pool {
 
 func bufferPool() sync.Pool {
 	return sync.Pool{
-		New: func() interface{} {
+		New: func() any {
 			b := &bytes.Buffer{}
 			return b
 		},
