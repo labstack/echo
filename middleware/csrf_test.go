@@ -559,7 +559,7 @@ func TestCSRFConfig_checkSecFetchSiteRequest(t *testing.T) {
 			whenMethod:       http.MethodPost,
 			whenSecFetchSite: "same-site",
 			expectAllow:      false,
-			expectErr:        `code=403, message=same-site request blocked by CSRF`,
+			expectErr:        ``,
 		},
 		{
 			name:             "ok, unsafe POST + same-origin passes",
@@ -617,7 +617,7 @@ func TestCSRFConfig_checkSecFetchSiteRequest(t *testing.T) {
 			whenMethod:       http.MethodPut,
 			whenSecFetchSite: "same-site",
 			expectAllow:      false,
-			expectErr:        `code=403, message=same-site request blocked by CSRF`,
+			expectErr:        ``,
 		},
 		{
 			name:             "nok, unsafe DELETE + cross-site is blocked",
@@ -633,7 +633,7 @@ func TestCSRFConfig_checkSecFetchSiteRequest(t *testing.T) {
 			whenMethod:       http.MethodDelete,
 			whenSecFetchSite: "same-site",
 			expectAllow:      false,
-			expectErr:        `code=403, message=same-site request blocked by CSRF`,
+			expectErr:        ``,
 		},
 		{
 			name:             "nok, unsafe PATCH + cross-site is blocked",

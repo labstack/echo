@@ -291,13 +291,13 @@ func (config CSRFConfig) checkSecFetchSiteRequest(c echo.Context) (bool, error) 
 	}
 	// we are here when request is state-changing and `cross-site` or `same-site`
 
-	// Note: if you want to allow `same-site` use config.TrustedOrigins or `config.AllowSecFetchSiteFunc`
+	// Note: if you want to block `same-site` use config.TrustedOrigins or `config.AllowSecFetchSiteFunc`
 	if config.AllowSecFetchSiteFunc != nil {
 		return config.AllowSecFetchSiteFunc(c)
 	}
 
 	if secFetchSite == "same-site" {
-		return false, echo.NewHTTPError(http.StatusForbidden, "same-site request blocked by CSRF")
+		return false, nil // fall back to legacy token
 	}
 	return false, echo.NewHTTPError(http.StatusForbidden, "cross-site request blocked by CSRF")
 }
