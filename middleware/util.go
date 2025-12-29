@@ -6,7 +6,9 @@ package middleware
 import (
 	"bufio"
 	"crypto/rand"
+	"fmt"
 	"io"
+	"net/url"
 	"strings"
 	"sync"
 )
@@ -100,4 +102,27 @@ func randomString(length uint8) string {
 			}
 		}
 	}
+}
+
+func validateOrigins(origins []string, what string) error {
+	for _, o := range origins {
+		if err := validateOrigin(o, what); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateOrigin(origin string, what string) error {
+	u, err := url.Parse(origin)
+	if err != nil {
+		return fmt.Errorf("can not parse %s: %w", what, err)
+	}
+	if u.Scheme == "" || u.Host == "" {
+		return fmt.Errorf("%s is missing scheme or host: %s", what, origin)
+	}
+	if u.Path != "" || u.RawQuery != "" || u.Fragment != "" {
+		return fmt.Errorf("%s can not have path, query, and fragments: %s", what, origin)
+	}
+	return nil
 }
