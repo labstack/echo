@@ -4,6 +4,7 @@
 package middleware
 
 import (
+	"cmp"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -16,15 +17,16 @@ import (
 
 func TestCSRF_tokenExtractors(t *testing.T) {
 	var testCases = []struct {
-		name              string
-		whenTokenLookup   string
-		whenCookieName    string
-		givenCSRFCookie   string
-		givenMethod       string
-		givenQueryTokens  map[string][]string
-		givenFormTokens   map[string][]string
-		givenHeaderTokens map[string][]string
-		expectError       string
+		name                    string
+		whenTokenLookup         string
+		whenCookieName          string
+		givenCSRFCookie         string
+		givenMethod             string
+		givenQueryTokens        map[string][]string
+		givenFormTokens         map[string][]string
+		givenHeaderTokens       map[string][]string
+		expectError             string
+		expectToMiddlewareError string
 	}{
 		{
 			name:            "ok, multiple token lookups sources, succeeds on last one",
@@ -146,6 +148,14 @@ func TestCSRF_tokenExtractors(t *testing.T) {
 			givenQueryTokens: map[string][]string{},
 			expectError:      "code=400, message=missing csrf token in the query string",
 		},
+		{
+			name:                    "nok, invalid TokenLookup",
+			whenTokenLookup:         "q",
+			givenCSRFCookie:         "token",
+			givenMethod:             http.MethodPut,
+			givenQueryTokens:        map[string][]string{},
+			expectToMiddlewareError: "extractor source for lookup could not be split into needed parts: q",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -188,20 +198,146 @@ func TestCSRF_tokenExtractors(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			csrf := CSRFWithConfig(CSRFConfig{
+			config := CSRFConfig{
 				TokenLookup: tc.whenTokenLookup,
 				CookieName:  tc.whenCookieName,
-			})
+			}
+			csrf, err := config.ToMiddleware()
+			if tc.expectToMiddlewareError != "" {
+				assert.EqualError(t, err, tc.expectToMiddlewareError)
+				return
+			} else if err != nil {
+				assert.NoError(t, err)
+			}
 
 			h := csrf(func(c echo.Context) error {
 				return c.String(http.StatusOK, "test")
 			})
 
-			err := h(c)
+			err = h(c)
 			if tc.expectError != "" {
 				assert.EqualError(t, err, tc.expectError)
 			} else {
 				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestCSRFWithConfig(t *testing.T) {
+	token := randomString(16)
+
+	var testCases = []struct {
+		name                 string
+		givenConfig          *CSRFConfig
+		whenMethod           string
+		whenHeaders          map[string]string
+		expectEmptyBody      bool
+		expectMWError        string
+		expectCookieContains string
+		expectErr            string
+	}{
+		{
+			name:                 "ok, GET",
+			whenMethod:           http.MethodGet,
+			expectCookieContains: "_csrf",
+		},
+		{
+			name: "ok, POST valid token",
+			whenHeaders: map[string]string{
+				echo.HeaderCookie:     "_csrf=" + token,
+				echo.HeaderXCSRFToken: token,
+			},
+			whenMethod:           http.MethodPost,
+			expectCookieContains: "_csrf",
+		},
+		{
+			name:            "nok, POST without token",
+			whenMethod:      http.MethodPost,
+			expectEmptyBody: true,
+			expectErr:       `code=400, message=missing csrf token in request header`,
+		},
+		{
+			name:            "nok, POST empty token",
+			whenHeaders:     map[string]string{echo.HeaderXCSRFToken: ""},
+			whenMethod:      http.MethodPost,
+			expectEmptyBody: true,
+			expectErr:       `code=403, message=invalid csrf token`,
+		},
+		{
+			name: "nok, invalid trusted origin in Config",
+			givenConfig: &CSRFConfig{
+				TrustedOrigins: []string{"http://example.com", "invalid"},
+			},
+			expectMWError: `trusted origin is missing scheme or host: invalid`,
+		},
+		{
+			name: "ok, TokenLength",
+			givenConfig: &CSRFConfig{
+				TokenLength: 16,
+			},
+			whenMethod:           http.MethodGet,
+			expectCookieContains: "_csrf",
+		},
+		{
+			name: "ok, unsafe method + SecFetchSite=same-origin passes",
+			whenHeaders: map[string]string{
+				echo.HeaderSecFetchSite: "same-origin",
+			},
+			whenMethod: http.MethodPost,
+		},
+		{
+			name: "nok, unsafe method + SecFetchSite=same-cross blocked",
+			whenHeaders: map[string]string{
+				echo.HeaderSecFetchSite: "same-cross",
+			},
+			whenMethod:      http.MethodPost,
+			expectEmptyBody: true,
+			expectErr:       `code=403, message=cross-site request blocked by CSRF`,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+
+			req := httptest.NewRequest(cmp.Or(tc.whenMethod, http.MethodPost), "/", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			for key, value := range tc.whenHeaders {
+				req.Header.Set(key, value)
+			}
+
+			config := CSRFConfig{}
+			if tc.givenConfig != nil {
+				config = *tc.givenConfig
+			}
+			mw, err := config.ToMiddleware()
+			if tc.expectMWError != "" {
+				assert.EqualError(t, err, tc.expectMWError)
+				return
+			}
+			assert.NoError(t, err)
+
+			h := mw(func(c echo.Context) error {
+				return c.String(http.StatusOK, "test")
+			})
+
+			err = h(c)
+			if tc.expectErr != "" {
+				assert.EqualError(t, err, tc.expectErr)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			expect := "test"
+			if tc.expectEmptyBody {
+				expect = ""
+			}
+			assert.Equal(t, expect, rec.Body.String())
+
+			if tc.expectCookieContains != "" {
+				assert.Contains(t, rec.Header().Get(echo.HeaderSetCookie), tc.expectCookieContains)
 			}
 		})
 	}
@@ -221,26 +357,6 @@ func TestCSRF(t *testing.T) {
 	h(c)
 	assert.Contains(t, rec.Header().Get(echo.HeaderSetCookie), "_csrf")
 
-	// Without CSRF cookie
-	req = httptest.NewRequest(http.MethodPost, "/", nil)
-	rec = httptest.NewRecorder()
-	c = e.NewContext(req, rec)
-	assert.Error(t, h(c))
-
-	// Empty/invalid CSRF token
-	req = httptest.NewRequest(http.MethodPost, "/", nil)
-	rec = httptest.NewRecorder()
-	c = e.NewContext(req, rec)
-	req.Header.Set(echo.HeaderXCSRFToken, "")
-	assert.Error(t, h(c))
-
-	// Valid CSRF token
-	token := randomString(32)
-	req.Header.Set(echo.HeaderCookie, "_csrf="+token)
-	req.Header.Set(echo.HeaderXCSRFToken, token)
-	if assert.NoError(t, h(c)) {
-		assert.Equal(t, http.StatusOK, rec.Code)
-	}
 }
 
 func TestCSRFSetSameSiteMode(t *testing.T) {
@@ -304,9 +420,10 @@ func TestCSRFWithSameSiteModeNone(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
-	csrf := CSRFWithConfig(CSRFConfig{
+	csrf, err := CSRFConfig{
 		CookieSameSite: http.SameSiteNoneMode,
-	})
+	}.ToMiddleware()
+	assert.NoError(t, err)
 
 	h := csrf(func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
@@ -381,4 +498,355 @@ func TestCSRFErrorHandling(t *testing.T) {
 
 	assert.Equal(t, http.StatusTeapot, res.Code)
 	assert.Equal(t, "{\"message\":\"error_handler_executed\"}\n", res.Body.String())
+}
+
+func TestCSRFConfig_checkSecFetchSiteRequest(t *testing.T) {
+	var testCases = []struct {
+		name             string
+		givenConfig      CSRFConfig
+		whenMethod       string
+		whenSecFetchSite string
+		whenOrigin       string
+		expectAllow      bool
+		expectErr        string
+	}{
+		{
+			name:             "ok, unsafe POST, no SecFetchSite is not blocked",
+			givenConfig:      CSRFConfig{},
+			whenMethod:       http.MethodPost,
+			whenSecFetchSite: "",
+			expectAllow:      false, // should fall back to token CSRF
+		},
+		{
+			name:             "ok, safe GET + same-origin passes",
+			givenConfig:      CSRFConfig{},
+			whenMethod:       http.MethodGet,
+			whenSecFetchSite: "same-origin",
+			expectAllow:      true,
+		},
+		{
+			name:             "ok, safe GET + none passes",
+			givenConfig:      CSRFConfig{},
+			whenMethod:       http.MethodGet,
+			whenSecFetchSite: "none",
+			expectAllow:      true,
+		},
+		{
+			name:             "ok, safe GET + same-site passes",
+			givenConfig:      CSRFConfig{},
+			whenMethod:       http.MethodGet,
+			whenSecFetchSite: "same-site",
+			expectAllow:      true,
+		},
+		{
+			name:             "ok, safe GET + cross-site passes",
+			givenConfig:      CSRFConfig{},
+			whenMethod:       http.MethodGet,
+			whenSecFetchSite: "cross-site",
+			expectAllow:      true,
+		},
+		{
+			name:             "nok, unsafe POST + cross-site is blocked",
+			givenConfig:      CSRFConfig{},
+			whenMethod:       http.MethodPost,
+			whenSecFetchSite: "cross-site",
+			expectAllow:      false,
+			expectErr:        `code=403, message=cross-site request blocked by CSRF`,
+		},
+		{
+			name:             "nok, unsafe POST + same-site is blocked",
+			givenConfig:      CSRFConfig{},
+			whenMethod:       http.MethodPost,
+			whenSecFetchSite: "same-site",
+			expectAllow:      false,
+			expectErr:        `code=403, message=same-site request blocked by CSRF`,
+		},
+		{
+			name:             "ok, unsafe POST + same-origin passes",
+			givenConfig:      CSRFConfig{},
+			whenMethod:       http.MethodPost,
+			whenSecFetchSite: "same-origin",
+			expectAllow:      true,
+		},
+		{
+			name:             "ok, unsafe POST + none passes",
+			givenConfig:      CSRFConfig{},
+			whenMethod:       http.MethodPost,
+			whenSecFetchSite: "none",
+			expectAllow:      true,
+		},
+		{
+			name:             "ok, unsafe PUT + same-origin passes",
+			givenConfig:      CSRFConfig{},
+			whenMethod:       http.MethodPut,
+			whenSecFetchSite: "same-origin",
+			expectAllow:      true,
+		},
+		{
+			name:             "ok, unsafe PUT + none passes",
+			givenConfig:      CSRFConfig{},
+			whenMethod:       http.MethodPut,
+			whenSecFetchSite: "none",
+			expectAllow:      true,
+		},
+		{
+			name:             "ok, unsafe DELETE + same-origin passes",
+			givenConfig:      CSRFConfig{},
+			whenMethod:       http.MethodDelete,
+			whenSecFetchSite: "same-origin",
+			expectAllow:      true,
+		},
+		{
+			name:             "ok, unsafe PATCH + same-origin passes",
+			givenConfig:      CSRFConfig{},
+			whenMethod:       http.MethodPatch,
+			whenSecFetchSite: "same-origin",
+			expectAllow:      true,
+		},
+		{
+			name:             "nok, unsafe PUT + cross-site is blocked",
+			givenConfig:      CSRFConfig{},
+			whenMethod:       http.MethodPut,
+			whenSecFetchSite: "cross-site",
+			expectAllow:      false,
+			expectErr:        `code=403, message=cross-site request blocked by CSRF`,
+		},
+		{
+			name:             "nok, unsafe PUT + same-site is blocked",
+			givenConfig:      CSRFConfig{},
+			whenMethod:       http.MethodPut,
+			whenSecFetchSite: "same-site",
+			expectAllow:      false,
+			expectErr:        `code=403, message=same-site request blocked by CSRF`,
+		},
+		{
+			name:             "nok, unsafe DELETE + cross-site is blocked",
+			givenConfig:      CSRFConfig{},
+			whenMethod:       http.MethodDelete,
+			whenSecFetchSite: "cross-site",
+			expectAllow:      false,
+			expectErr:        `code=403, message=cross-site request blocked by CSRF`,
+		},
+		{
+			name:             "nok, unsafe DELETE + same-site is blocked",
+			givenConfig:      CSRFConfig{},
+			whenMethod:       http.MethodDelete,
+			whenSecFetchSite: "same-site",
+			expectAllow:      false,
+			expectErr:        `code=403, message=same-site request blocked by CSRF`,
+		},
+		{
+			name:             "nok, unsafe PATCH + cross-site is blocked",
+			givenConfig:      CSRFConfig{},
+			whenMethod:       http.MethodPatch,
+			whenSecFetchSite: "cross-site",
+			expectAllow:      false,
+			expectErr:        `code=403, message=cross-site request blocked by CSRF`,
+		},
+		{
+			name:             "ok, safe HEAD + same-origin passes",
+			givenConfig:      CSRFConfig{},
+			whenMethod:       http.MethodHead,
+			whenSecFetchSite: "same-origin",
+			expectAllow:      true,
+		},
+		{
+			name:             "ok, safe HEAD + cross-site passes",
+			givenConfig:      CSRFConfig{},
+			whenMethod:       http.MethodHead,
+			whenSecFetchSite: "cross-site",
+			expectAllow:      true,
+		},
+		{
+			name:             "ok, safe OPTIONS + cross-site passes",
+			givenConfig:      CSRFConfig{},
+			whenMethod:       http.MethodOptions,
+			whenSecFetchSite: "cross-site",
+			expectAllow:      true,
+		},
+		{
+			name:             "ok, safe TRACE + cross-site passes",
+			givenConfig:      CSRFConfig{},
+			whenMethod:       http.MethodTrace,
+			whenSecFetchSite: "cross-site",
+			expectAllow:      true,
+		},
+		{
+			name: "ok, unsafe POST + cross-site + matching trusted origin passes",
+			givenConfig: CSRFConfig{
+				TrustedOrigins: []string{"https://trusted.example.com"},
+			},
+			whenMethod:       http.MethodPost,
+			whenSecFetchSite: "cross-site",
+			whenOrigin:       "https://trusted.example.com",
+			expectAllow:      true,
+		},
+		{
+			name: "ok, unsafe POST + same-site + matching trusted origin passes",
+			givenConfig: CSRFConfig{
+				TrustedOrigins: []string{"https://trusted.example.com"},
+			},
+			whenMethod:       http.MethodPost,
+			whenSecFetchSite: "same-site",
+			whenOrigin:       "https://trusted.example.com",
+			expectAllow:      true,
+		},
+		{
+			name: "nok, unsafe POST + cross-site + non-matching origin is blocked",
+			givenConfig: CSRFConfig{
+				TrustedOrigins: []string{"https://trusted.example.com"},
+			},
+			whenMethod:       http.MethodPost,
+			whenSecFetchSite: "cross-site",
+			whenOrigin:       "https://evil.example.com",
+			expectAllow:      false,
+			expectErr:        `code=403, message=cross-site request blocked by CSRF`,
+		},
+		{
+			name: "ok, unsafe POST + cross-site + case-insensitive trusted origin match passes",
+			givenConfig: CSRFConfig{
+				TrustedOrigins: []string{"https://trusted.example.com"},
+			},
+			whenMethod:       http.MethodPost,
+			whenSecFetchSite: "cross-site",
+			whenOrigin:       "https://TRUSTED.example.com",
+			expectAllow:      true,
+		},
+		{
+			name: "ok, unsafe POST + same-origin + trusted origins configured but not matched passes",
+			givenConfig: CSRFConfig{
+				TrustedOrigins: []string{"https://trusted.example.com"},
+			},
+			whenMethod:       http.MethodPost,
+			whenSecFetchSite: "same-origin",
+			whenOrigin:       "https://different.example.com",
+			expectAllow:      true,
+		},
+		{
+			name: "nok, unsafe POST + cross-site + empty origin + trusted origins configured is blocked",
+			givenConfig: CSRFConfig{
+				TrustedOrigins: []string{"https://trusted.example.com"},
+			},
+			whenMethod:       http.MethodPost,
+			whenSecFetchSite: "cross-site",
+			whenOrigin:       "",
+			expectAllow:      false,
+			expectErr:        `code=403, message=cross-site request blocked by CSRF`,
+		},
+		{
+			name: "ok, unsafe POST + cross-site + multiple trusted origins, second one matches",
+			givenConfig: CSRFConfig{
+				TrustedOrigins: []string{"https://first.example.com", "https://second.example.com"},
+			},
+			whenMethod:       http.MethodPost,
+			whenSecFetchSite: "cross-site",
+			whenOrigin:       "https://second.example.com",
+			expectAllow:      true,
+		},
+		{
+			name: "ok, unsafe POST + same-site + custom func allows",
+			givenConfig: CSRFConfig{
+				AllowSecFetchSiteFunc: func(c echo.Context) (bool, error) {
+					return true, nil
+				},
+			},
+			whenMethod:       http.MethodPost,
+			whenSecFetchSite: "same-site",
+			expectAllow:      true,
+		},
+		{
+			name: "ok, unsafe POST + cross-site + custom func allows",
+			givenConfig: CSRFConfig{
+				AllowSecFetchSiteFunc: func(c echo.Context) (bool, error) {
+					return true, nil
+				},
+			},
+			whenMethod:       http.MethodPost,
+			whenSecFetchSite: "cross-site",
+			expectAllow:      true,
+		},
+		{
+			name: "nok, unsafe POST + same-site + custom func returns custom error",
+			givenConfig: CSRFConfig{
+				AllowSecFetchSiteFunc: func(c echo.Context) (bool, error) {
+					return false, echo.NewHTTPError(http.StatusTeapot, "custom error from func")
+				},
+			},
+			whenMethod:       http.MethodPost,
+			whenSecFetchSite: "same-site",
+			expectAllow:      false,
+			expectErr:        `code=418, message=custom error from func`,
+		},
+		{
+			name: "nok, unsafe POST + cross-site + custom func returns false with nil error",
+			givenConfig: CSRFConfig{
+				AllowSecFetchSiteFunc: func(c echo.Context) (bool, error) {
+					return false, nil
+				},
+			},
+			whenMethod:       http.MethodPost,
+			whenSecFetchSite: "cross-site",
+			expectAllow:      false,
+			expectErr:        "", // custom func returns nil error, so no error expected
+		},
+		{
+			name:             "nok, unsafe POST + invalid Sec-Fetch-Site value treated as cross-site",
+			givenConfig:      CSRFConfig{},
+			whenMethod:       http.MethodPost,
+			whenSecFetchSite: "invalid-value",
+			expectAllow:      false,
+			expectErr:        `code=403, message=cross-site request blocked by CSRF`,
+		},
+		{
+			name: "ok, unsafe POST + cross-site + trusted origin takes precedence over custom func",
+			givenConfig: CSRFConfig{
+				TrustedOrigins: []string{"https://trusted.example.com"},
+				AllowSecFetchSiteFunc: func(c echo.Context) (bool, error) {
+					return false, echo.NewHTTPError(http.StatusTeapot, "should not be called")
+				},
+			},
+			whenMethod:       http.MethodPost,
+			whenSecFetchSite: "cross-site",
+			whenOrigin:       "https://trusted.example.com",
+			expectAllow:      true,
+		},
+		{
+			name: "nok, unsafe POST + cross-site + trusted origin not matched, custom func blocks",
+			givenConfig: CSRFConfig{
+				TrustedOrigins: []string{"https://trusted.example.com"},
+				AllowSecFetchSiteFunc: func(c echo.Context) (bool, error) {
+					return false, echo.NewHTTPError(http.StatusTeapot, "custom block")
+				},
+			},
+			whenMethod:       http.MethodPost,
+			whenSecFetchSite: "cross-site",
+			whenOrigin:       "https://evil.example.com",
+			expectAllow:      false,
+			expectErr:        `code=418, message=custom block`,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(tc.whenMethod, "/", nil)
+			if tc.whenSecFetchSite != "" {
+				req.Header.Set(echo.HeaderSecFetchSite, tc.whenSecFetchSite)
+			}
+			if tc.whenOrigin != "" {
+				req.Header.Set(echo.HeaderOrigin, tc.whenOrigin)
+			}
+
+			res := httptest.NewRecorder()
+			e := echo.New()
+			c := e.NewContext(req, res)
+
+			allow, err := tc.givenConfig.checkSecFetchSiteRequest(c)
+
+			assert.Equal(t, tc.expectAllow, allow)
+			if tc.expectErr != "" {
+				assert.EqualError(t, err, tc.expectErr)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
