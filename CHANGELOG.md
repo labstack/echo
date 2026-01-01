@@ -1,6 +1,88 @@
 # Changelog
 
-## v4.15.0 - TBD
+## v4.15.0 - 2026-01-01
+
+
+**Security**
+
+NB: **If your application relies on cross-origin or same-site (same subdomain) requests do not blindly push this version to production**
+
+
+The CSRF middleware now supports the [**Sec-Fetch-Site**](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Sec-Fetch-Site) header as a modern, defense-in-depth approach to [CSRF
+protection](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html#fetch-metadata-headers), implementing the OWASP-recommended Fetch Metadata API alongside the traditional token-based mechanism.
+
+**How it works:**
+
+Modern browsers automatically send the `Sec-Fetch-Site` header with all requests, indicating the relationship
+between the request origin and the target. The middleware uses this to make security decisions:
+
+- **`same-origin`** or **`none`**: Requests are allowed (exact origin match or direct user navigation)
+- **`same-site`**: Falls back to token validation (e.g., subdomain to main domain)
+- **`cross-site`**: Blocked by default with 403 error for unsafe methods (POST, PUT, DELETE, PATCH)
+
+For browsers that don't send this header (older browsers), the middleware seamlessly falls back to
+traditional token-based CSRF protection.
+
+**New Configuration Options:**
+- `TrustedOrigins []string`: Allowlist specific origins for cross-site requests (useful for OAuth callbacks, webhooks)
+- `AllowSecFetchSiteFunc func(echo.Context) (bool, error)`: Custom logic for same-site/cross-site request validation
+
+**Example:**
+  ```go
+  e.Use(middleware.CSRFWithConfig(middleware.CSRFConfig{
+      // Allow OAuth callbacks from trusted provider
+      TrustedOrigins: []string{"https://oauth-provider.com"},
+
+      // Custom validation for same-site requests
+      AllowSecFetchSiteFunc: func(c echo.Context) (bool, error) {
+          // Your custom authorization logic here
+          return validateCustomAuth(c), nil
+          // return true, err  // blocks request with error
+          // return true, nil  // allows CSRF request through
+          // return false, nil // falls back to legacy token logic
+      },
+  }))
+  ```
+PR: https://github.com/labstack/echo/pull/2858
+
+**Type-Safe Generic Parameter Binding**
+
+* Added generic functions for type-safe parameter extraction and context access by @aldas in https://github.com/labstack/echo/pull/2856
+
+  Echo now provides generic functions for extracting path, query, and form parameters with automatic type conversion,
+  eliminating manual string parsing and type assertions.
+
+  **New Functions:**
+  - Path parameters: `PathParam[T]`, `PathParamOr[T]`
+  - Query parameters: `QueryParam[T]`, `QueryParamOr[T]`, `QueryParams[T]`, `QueryParamsOr[T]`
+  - Form values: `FormParam[T]`, `FormParamOr[T]`, `FormParams[T]`, `FormParamsOr[T]`
+  - Context store: `ContextGet[T]`, `ContextGetOr[T]`
+
+  **Supported Types:**
+  Primitives (`bool`, `string`, `int`/`uint` variants, `float32`/`float64`), `time.Duration`, `time.Time`
+  (with custom layouts and Unix timestamp support), and custom types implementing `BindUnmarshaler`,
+  `TextUnmarshaler`, or `JSONUnmarshaler`.
+
+  **Example:**
+  ```go
+  // Before: Manual parsing
+  idStr := c.Param("id")
+  id, err := strconv.Atoi(idStr)
+
+  // After: Type-safe with automatic parsing
+  id, err := echo.PathParam[int](c, "id")
+
+  // With default values
+  page, err := echo.QueryParamOr[int](c, "page", 1)
+  limit, err := echo.QueryParamOr[int](c, "limit", 20)
+
+  // Type-safe context access (no more panics from type assertions)
+  user, err := echo.ContextGet[*User](c, "user")
+  ```
+  
+PR: https://github.com/labstack/echo/pull/2856
+
+
 
 **DEPRECATION NOTICE** Timeout Middleware Deprecated - Use ContextTimeout Instead
 
@@ -35,25 +117,6 @@ e.Use(middleware.Timeout())
 
 // After (recommended):
 e.Use(middleware.ContextTimeout(30 * time.Second))
-```
-
-With configuration:
-```go
-// Before (deprecated):
-e.Use(middleware.TimeoutWithConfig(middleware.TimeoutConfig{
-    Timeout: 30 * time.Second,
-    Skipper: func(c echo.Context) bool {
-        return c.Path() == "/health"
-    },
-}))
-
-// After (recommended):
-e.Use(middleware.ContextTimeoutWithConfig(middleware.ContextTimeoutConfig{
-    Timeout: 30 * time.Second,
-    Skipper: func(c echo.Context) bool {
-        return c.Path() == "/health"
-    },
-}))
 ```
 
 **Important Behavioral Differences:**
@@ -111,6 +174,12 @@ e.GET("/async-task", func(c echo.Context) error {
     }
 })
 ```
+
+**Enhancements**
+
+* Fixes by @aldas in https://github.com/labstack/echo/pull/2852
+* Generic functions by @aldas in https://github.com/labstack/echo/pull/2856
+* CRSF with Sec-Fetch-Site checks by @aldas in https://github.com/labstack/echo/pull/2858
 
 
 ## v4.14.0 - 2025-12-11
