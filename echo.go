@@ -349,6 +349,9 @@ var (
 
 // NotFoundHandler is the handler that router uses in case there was no matching route found. Returns an error that results
 // HTTP 404 status code.
+//
+// Note: Group-level middleware registers catch-all routes using NotFoundHandler to ensure the middleware chain executes.
+// If you want a custom 404 for those groups, override NotFoundHandler or register a group RouteNotFound handler.
 var NotFoundHandler = func(c Context) error {
 	return ErrNotFound
 }
