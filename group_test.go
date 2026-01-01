@@ -204,17 +204,17 @@ func TestGroup_RouteNotFoundWithMiddleware(t *testing.T) {
 			expectCode:     http.StatusNotFound,
 		},
 		{
-			name:           "ok, root 404 handler is used as fallback with middleware",
+			name:           "ok, default group 404 handler is called with middleware",
 			givenCustom404: false,
 			whenURL:        "/group/test3",
-			expectBody:     "GET /group/*",
+			expectBody:     "{\"message\":\"Not Found\"}\n",
 			expectCode:     http.StatusNotFound,
 		},
 		{
-			name:           "ok, (no slash) root 404 handler is used as fallback with middleware",
+			name:           "ok, (no slash) default group 404 handler is called with middleware",
 			givenCustom404: false,
 			whenURL:        "/group",
-			expectBody:     "GET /group",
+			expectBody:     "{\"message\":\"Not Found\"}\n",
 			expectCode:     http.StatusNotFound,
 		},
 	}
@@ -256,26 +256,4 @@ func TestGroup_RouteNotFoundWithMiddleware(t *testing.T) {
 			assert.Equal(t, tc.expectBody, rec.Body.String())
 		})
 	}
-}
-
-func TestGroup_RouteNotFoundWithMiddleware_NoRootHandler(t *testing.T) {
-	e := New()
-
-	middlewareCalled := false
-	g := e.Group("/group")
-	g.Use(func(next HandlerFunc) HandlerFunc {
-		return func(c Context) error {
-			middlewareCalled = true
-			return next(c)
-		}
-	})
-
-	req := httptest.NewRequest(http.MethodGet, "/group/unknown", nil)
-	rec := httptest.NewRecorder()
-
-	e.ServeHTTP(rec, req)
-
-	assert.True(t, middlewareCalled)
-	assert.Equal(t, http.StatusNotFound, rec.Code)
-	assert.Equal(t, "{\"message\":\"Not Found\"}\n", rec.Body.String())
 }

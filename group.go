@@ -28,17 +28,8 @@ func (g *Group) Use(middleware ...MiddlewareFunc) {
 	// are only executed if they are added to the Router with route.
 	// So we register catch all route (404 is a safe way to emulate route match) for this group and now during routing the
 	// Router would find route to match our request path and therefore guarantee the middleware(s) will get executed.
-	//
-	// We use a fallback handler that checks for a root-level RouteNotFound handler at request time.
-	// This allows the root's custom 404 handler to be used as fallback for groups.
-	fallbackNotFoundHandler := func(c Context) error {
-		if g.echo.routeNotFoundHandler != nil {
-			return g.echo.routeNotFoundHandler(c)
-		}
-		return NotFoundHandler(c)
-	}
-	g.RouteNotFound("", fallbackNotFoundHandler)
-	g.RouteNotFound("/*", fallbackNotFoundHandler)
+	g.RouteNotFound("", NotFoundHandler)
+	g.RouteNotFound("/*", NotFoundHandler)
 }
 
 // CONNECT implements `Echo#CONNECT()` for sub-routes within the Group.

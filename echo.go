@@ -105,10 +105,6 @@ type Echo struct {
 	Debug             bool
 	HideBanner        bool
 	HidePort          bool
-
-	// routeNotFoundHandler is the handler registered via RouteNotFound for "/*" path.
-	// It is used as a fallback for groups with middleware that don't have their own RouteNotFound handler.
-	routeNotFoundHandler HandlerFunc
 }
 
 // Route contains a handler and information for matching against requests.
@@ -353,6 +349,9 @@ var (
 
 // NotFoundHandler is the handler that router uses in case there was no matching route found. Returns an error that results
 // HTTP 404 status code.
+//
+// Note: Group-level middleware registers catch-all routes using NotFoundHandler to ensure the middleware chain executes.
+// If you want a custom 404 for those groups, override NotFoundHandler or register a group RouteNotFound handler.
 var NotFoundHandler = func(c Context) error {
 	return ErrNotFound
 }
@@ -546,10 +545,6 @@ func (e *Echo) TRACE(path string, h HandlerFunc, m ...MiddlewareFunc) *Route {
 //
 // Example: `e.RouteNotFound("/*", func(c echo.Context) error { return c.NoContent(http.StatusNotFound) })`
 func (e *Echo) RouteNotFound(path string, h HandlerFunc, m ...MiddlewareFunc) *Route {
-	// Store the handler for "/*" path so it can be used as fallback for groups with middleware
-	if path == "/*" || path == "*" {
-		e.routeNotFoundHandler = h
-	}
 	return e.Add(RouteNotFound, path, h, m...)
 }
 
