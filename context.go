@@ -4,7 +4,6 @@
 package echo
 
 import (
-	"bytes"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -414,11 +413,9 @@ func (c *Context) Render(code int, name string, data any) (err error) {
 	if c.echo.Renderer == nil {
 		return ErrRendererNotRegistered
 	}
-	buf := new(bytes.Buffer)
-	if err = c.echo.Renderer.Render(c, buf, name, data); err != nil {
-		return
-	}
-	return c.HTMLBlob(code, buf.Bytes())
+	return c.HTMLWrite(code, func(wr io.Writer) error {
+		return c.echo.Renderer.Render(c, wr, name, data)
+	})
 }
 
 // HTML sends an HTTP response with status code.
@@ -429,6 +426,10 @@ func (c *Context) HTML(code int, html string) (err error) {
 // HTMLBlob sends an HTTP blob response with status code.
 func (c *Context) HTMLBlob(code int, b []byte) (err error) {
 	return c.Blob(code, MIMETextHTMLCharsetUTF8, b)
+}
+
+func (c *Context) HTMLWrite(code int, w func(io.Writer) error) (err error) {
+	return c.BlobWrite(code, MIMETextHTMLCharsetUTF8, w)
 }
 
 // String sends a string response with status code.
@@ -532,6 +533,13 @@ func (c *Context) Blob(code int, contentType string, b []byte) (err error) {
 	c.writeContentType(contentType)
 	c.response.WriteHeader(code)
 	_, err = c.response.Write(b)
+	return
+}
+
+func (c *Context) BlobWrite(code int, contentType string, w func(io.Writer) error) (err error) {
+	c.writeContentType(contentType)
+	c.response.WriteHeader(code)
+	err = w(c.response)
 	return
 }
 
