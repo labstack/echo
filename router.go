@@ -231,8 +231,17 @@ func (r *Router) insert(method, path string, h HandlerFunc) {
 			}
 			j := i + 1
 
+			startingPoint := i
 			r.insertNode(method, path[:i], staticKind, routeMethod{})
-			for ; i < lcpIndex && path[i] != '/'; i++ {
+			for ; i < lcpIndex; i++ {
+				if path[i] == '/' {
+					break
+				}
+
+				if i > startingPoint && path[i-1] == '\\' && string(path[i]) == ":" {
+					i--
+					break
+				}
 			}
 
 			pnames = append(pnames, path[j:i])
@@ -672,7 +681,13 @@ func (r *Router) Find(method, path string, c Context) {
 				// act similarly to any node - consider all remaining search as match
 				i = l
 			} else {
-				for ; i < l && search[i] != '/'; i++ {
+				for ; i < l; i++ {
+					if search[i] == '/' {
+						break
+					}
+					if i > 0 && search[i-1] != '/' && string(search[i]) == ":" {
+						break
+					}
 				}
 			}
 
