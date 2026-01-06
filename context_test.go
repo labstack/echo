@@ -138,6 +138,25 @@ func TestContextRenderTemplate(t *testing.T) {
 	}
 }
 
+func BenchmarkContextRenderTemplate(b *testing.B) {
+	e := New()
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userJSON))
+
+	tmpl := &Template{
+		templates: template.Must(template.New("hello").Parse("Hello, {{.}}!")),
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.Echo().Renderer = tmpl
+		_ = c.Render(http.StatusOK, "hello", "Jon Snow")
+	}
+}
+
 func TestContextRenderErrorsOnNoRenderer(t *testing.T) {
 	e := New()
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userJSON))
@@ -193,6 +212,23 @@ func TestContextHTMLBlob(t *testing.T) {
 	c := e.NewContext(req, rec)
 
 	err := c.HTMLBlob(http.StatusOK, []byte("Hi, Jon Snow"))
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, MIMETextHTMLCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, "Hi, Jon Snow", rec.Body.String())
+	}
+}
+
+func TestContextHTMLWrite(t *testing.T) {
+	e := New()
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	c := e.NewContext(req, rec)
+
+	err := c.HTMLWrite(http.StatusOK, func(w io.Writer) error {
+		_, err := w.Write([]byte("Hi, Jon Snow"))
+		return err
+	})
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, MIMETextHTMLCharsetUTF8, rec.Header().Get(HeaderContentType))
