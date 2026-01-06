@@ -4,8 +4,11 @@
 package echo
 
 import (
+	"bufio"
 	"errors"
+	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 )
 
@@ -70,6 +73,30 @@ func (r *Response) Write(b []byte) (n int, err error) {
 		fn()
 	}
 	return
+}
+
+// Flush implements the http.Flusher interface to allow an HTTP handler to flush
+// buffered data to the client.
+// See [http.Flusher](https://golang.org/pkg/net/http/#Flusher)
+func (r *Response) Flush() {
+	err := http.NewResponseController(r.ResponseWriter).Flush()
+	if err != nil && errors.Is(err, http.ErrNotSupported) {
+		panic(fmt.Errorf("echo: response writer %T does not support flushing (http.Flusher interface)", r.ResponseWriter))
+	}
+}
+
+// Hijack implements the http.Hijacker interface to allow an HTTP handler to
+// take over the connection.
+// This method is relevant to Websocket connection upgrades, proxis, and other advanced use cases.
+// See [http.Hijacker](https://golang.org/pkg/net/http/#Hijacker)
+func (r *Response) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	// newer code should do response hijacking like that
+	// http.NewResponseController(responseWriter).Hijack()
+	//
+	// but there are older libraries that are not aware of `http.NewResponseController` and try to hijack directly
+	// `hj, ok := resp.(http.Hijacker)` <-- which would fail without Response directly implementing Hijack method
+	// so for that purpose we need to implement http.Hijacker interface
+	return http.NewResponseController(r.ResponseWriter).Hijack()
 }
 
 // Unwrap returns the original http.ResponseWriter.
