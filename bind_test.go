@@ -1684,3 +1684,958 @@ func TestTimeFormatBinding(t *testing.T) {
 		})
 	}
 }
+
+func TestBindNestedFormData(t *testing.T) {
+	type NestedStruct struct {
+		Name string `form:"name"`
+		Value string `form:"value"`
+	}
+
+	type NestedGroup struct {
+		Items []NestedStruct `form:"items"`
+		Others []NestedStruct `form:"others"`
+	}
+
+	type NestedTestStruct struct {
+		GroupA NestedGroup `form:"groupA"`
+		GroupB NestedGroup `form:"groupB"`
+	}
+
+	testCases := []struct {
+		name        string
+		formData    string
+		expected    NestedTestStruct
+		expectError bool
+	}{
+		{
+			name: "ok, basic nested form binding with array index",
+			formData: "groupA.items[0].name=item1&groupA.items[0].value=val1&" +
+				"groupA.items[1].name=item2&groupA.items[1].value=val2&" +
+				"groupA.others[0].name=other1&groupA.others[0].value=otherval1",
+			expected: NestedTestStruct{
+				GroupA: NestedGroup{
+					Items: []NestedStruct{
+						{Name: "item1", Value: "val1"},
+						{Name: "item2", Value: "val2"},
+					},
+					Others: []NestedStruct{
+						{Name: "other1", Value: "otherval1"},
+					},
+				},
+			},
+		},
+		{
+			name: "ok, complex nested structure binding",
+			formData: "groupA.items[0].name=a1&groupA.items[0].value=av1&" +
+				"groupB.items[0].name=b1&groupB.items[0].value=bv1&" +
+				"groupB.others[0].name=b2&groupB.others[0].value=bv2",
+			expected: NestedTestStruct{
+				GroupA: NestedGroup{
+					Items: []NestedStruct{
+						{Name: "a1", Value: "av1"},
+					},
+				},
+				GroupB: NestedGroup{
+					Items: []NestedStruct{
+						{Name: "b1", Value: "bv1"},
+					},
+					Others: []NestedStruct{
+						{Name: "b2", Value: "bv2"},
+					},
+				},
+			},
+		},
+		{
+			name:     "ok, partial binding with empty values",
+			formData: "groupA.items[0].name=onlyname&groupB.others[0].value=onlyvalue",
+			expected: NestedTestStruct{
+				GroupA: NestedGroup{
+					Items: []NestedStruct{
+						{Name: "onlyname", Value: ""},
+					},
+				},
+				GroupB: NestedGroup{
+					Others: []NestedStruct{
+						{Name: "", Value: "onlyvalue"},
+					},
+				},
+			},
+		},
+		{
+			name:     "ok, non-sequential array indices",
+			formData: "groupA.items[0].name=first&groupA.items[2].name=third&groupA.items[1].name=second",
+			expected: NestedTestStruct{
+				GroupA: NestedGroup{
+					Items: []NestedStruct{
+						{Name: "first", Value: ""},
+						{Name: "second", Value: ""},
+						{Name: "third", Value: ""},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(tc.formData))
+			req.Header.Set(HeaderContentType, MIMEApplicationForm)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			var result NestedTestStruct
+			err := c.Bind(&result)
+
+			if tc.expectError {
+				assert.Error(t, err)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func TestBindNestedPointerStructs(t *testing.T) {
+	type NestedPtrStruct struct {
+		Field1 string `form:"field1"`
+		Field2 string `form:"field2"`
+	}
+
+	type PointerTestStruct struct {
+		Name   string           `form:"name"`
+		Nested *NestedPtrStruct `form:"nested"`
+	}
+
+	type ContainerWithPtrs struct {
+		Name  string               `form:"name"`
+		Items []*PointerTestStruct `form:"items"`
+	}
+
+	testCases := []struct {
+		name        string
+		formData    string
+		expected    ContainerWithPtrs
+		expectError bool
+	}{
+		{
+			name: "ok, nested pointer struct binding",
+			formData: "name=Container&" +
+				"items[0].name=Item1&items[0].nested.field1=value1&items[0].nested.field2=value2&" +
+				"items[1].name=Item2&items[1].nested.field1=value3&items[1].nested.field2=value4",
+			expected: ContainerWithPtrs{
+				Name: "Container",
+				Items: []*PointerTestStruct{
+					{
+						Name: "Item1",
+						Nested: &NestedPtrStruct{
+							Field1: "value1",
+							Field2: "value2",
+						},
+					},
+					{
+						Name: "Item2",
+						Nested: &NestedPtrStruct{
+							Field1: "value3",
+							Field2: "value4",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:     "ok, partial nested pointer binding",
+			formData: "name=PartialContainer&items[0].name=PartialItem",
+			expected: ContainerWithPtrs{
+				Name: "PartialContainer",
+				Items: []*PointerTestStruct{
+					{
+						Name:   "PartialItem",
+						Nested: nil,
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(tc.formData))
+			req.Header.Set(HeaderContentType, MIMEApplicationForm)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			var result ContainerWithPtrs
+			err := c.Bind(&result)
+
+			if tc.expectError {
+				assert.Error(t, err)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func TestBindDeeplyNestedStructs(t *testing.T) {
+	type DeepConfig struct {
+		Value string `form:"value"`
+	}
+
+	type DeepService struct {
+		Name   string     `form:"name"`
+		Config DeepConfig `form:"config"`
+	}
+
+	type DeepModule struct {
+		Services []DeepService `form:"services"`
+	}
+
+	type DeepTestStruct struct {
+		Modules []DeepModule `form:"modules"`
+	}
+
+	testCases := []struct {
+		name     string
+		formData string
+		expected DeepTestStruct
+	}{
+		{
+			name: "ok, deeply nested structure binding",
+			formData: "modules[0].services[0].name=service1&modules[0].services[0].config.value=config1&" +
+				"modules[0].services[1].name=service2&modules[0].services[1].config.value=config2&" +
+				"modules[1].services[0].name=service3&modules[1].services[0].config.value=config3",
+			expected: DeepTestStruct{
+				Modules: []DeepModule{
+					{
+						Services: []DeepService{
+							{
+								Name:   "service1",
+								Config: DeepConfig{Value: "config1"},
+							},
+							{
+								Name:   "service2",
+								Config: DeepConfig{Value: "config2"},
+							},
+						},
+					},
+					{
+						Services: []DeepService{
+							{
+								Name:   "service3",
+								Config: DeepConfig{Value: "config3"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(tc.formData))
+			req.Header.Set(HeaderContentType, MIMEApplicationForm)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			var result DeepTestStruct
+			err := c.Bind(&result)
+
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func TestParseFieldPath(t *testing.T) {
+	testCases := []struct {
+		input    string
+		expected []interface{}
+	}{
+		{
+			input:    "group.items[0].name",
+			expected: []interface{}{"group", "items", 0, "name"},
+		},
+		{
+			input:    "simple",
+			expected: []interface{}{"simple"},
+		},
+		{
+			input:    "array[5]",
+			expected: []interface{}{"array", 5},
+		},
+		{
+			input:    "nested.field.value",
+			expected: []interface{}{"nested", "field", "value"},
+		},
+		{
+			input:    "complex[0].nested[1].deep[2].value",
+			expected: []interface{}{"complex", 0, "nested", 1, "deep", 2, "value"},
+		},
+		{
+			input:    "field.subfield[0].prop",
+			expected: []interface{}{"field", "subfield", 0, "prop"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.input, func(t *testing.T) {
+			result := parseFieldPath(tc.input)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func TestBindNestedFormEdgeCases(t *testing.T) {
+	type EdgeCaseItem struct {
+		ID   int    `form:"id"`
+		Name string `form:"name"`
+	}
+
+	type EdgeCaseContainer struct {
+		Items []EdgeCaseItem `form:"items"`
+	}
+
+	testCases := []struct {
+		name        string
+		formData    string
+		expected    EdgeCaseContainer
+		expectError bool
+	}{
+		{
+			name:     "ok, sparse array indices",
+			formData: "items[0].id=1&items[0].name=first&items[5].id=6&items[5].name=sixth",
+			expected: EdgeCaseContainer{
+				Items: []EdgeCaseItem{
+					{ID: 1, Name: "first"},
+					{ID: 0, Name: ""},
+					{ID: 0, Name: ""},
+					{ID: 0, Name: ""},
+					{ID: 0, Name: ""},
+					{ID: 6, Name: "sixth"},
+				},
+			},
+		},
+		{
+			name:     "ok, out-of-order indices",
+			formData: "items[2].id=3&items[0].id=1&items[1].id=2",
+			expected: EdgeCaseContainer{
+				Items: []EdgeCaseItem{
+					{ID: 1, Name: ""},
+					{ID: 2, Name: ""},
+					{ID: 3, Name: ""},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(tc.formData))
+			req.Header.Set(HeaderContentType, MIMEApplicationForm)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			var result EdgeCaseContainer
+			err := c.Bind(&result)
+
+			if tc.expectError {
+				assert.Error(t, err)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func TestSetFieldErrorCases(t *testing.T) {
+	t.Run("setIntField with invalid value", func(t *testing.T) {
+		field := reflect.ValueOf(new(int)).Elem()
+		err := setIntField("invalid", 32, field)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid syntax")
+	})
+
+	t.Run("setUintField with invalid value", func(t *testing.T) {
+		field := reflect.ValueOf(new(uint)).Elem()
+		err := setUintField("invalid", 32, field)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid syntax")
+	})
+
+	t.Run("setBoolField with invalid value", func(t *testing.T) {
+		field := reflect.ValueOf(new(bool)).Elem()
+		err := setBoolField("invalid", field)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid syntax")
+	})
+
+	t.Run("setFloatField with invalid value", func(t *testing.T) {
+		field := reflect.ValueOf(new(float64)).Elem()
+		err := setFloatField("invalid", 64, field)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid syntax")
+	})
+}
+
+func TestMultipartFileBinding_DefaultCase(t *testing.T) {
+	t.Run("setMultipartFileHeaderTypes with unsupported type", func(t *testing.T) {
+		field := reflect.ValueOf(new(string)).Elem()
+		files := map[string][]*multipart.FileHeader{
+			"file": {{}},
+		}
+
+		result := setMultipartFileHeaderTypes(field, "file", files)
+		assert.False(t, result)
+	})
+
+	t.Run("setMultipartFileHeaderTypes with empty files", func(t *testing.T) {
+		field := reflect.ValueOf(new(*multipart.FileHeader)).Elem()
+		files := map[string][]*multipart.FileHeader{
+			"file": {},
+		}
+
+		result := setMultipartFileHeaderTypes(field, "file", files)
+		assert.False(t, result)
+	})
+}
+
+func TestBindPathParamsError(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetPath("/users/:id")
+	c.SetParamNames("id")
+	c.SetParamValues("invalid")
+
+	target := struct {
+		ID int `param:"id"`
+	}{}
+
+	binder := &DefaultBinder{}
+	err := binder.BindPathParams(c, &target)
+	assert.Error(t, err)
+	assert.IsType(t, &HTTPError{}, err)
+}
+
+func TestBindWithNonStructTypes(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(http.MethodGet, "/?value=test", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	t.Run("bind to string pointer", func(t *testing.T) {
+		var target string
+		binder := &DefaultBinder{}
+		err := binder.bindData(&target, c.QueryParams(), "query", nil)
+		assert.NoError(t, err)
+	})
+
+	t.Run("bind to slice", func(t *testing.T) {
+		var target []string
+		binder := &DefaultBinder{}
+		err := binder.bindData(&target, c.QueryParams(), "query", nil)
+		assert.NoError(t, err)
+	})
+}
+
+func TestBindBodyWithPOSTMethod(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(http.MethodPost, "/?id=999", strings.NewReader(`{"name":"John"}`))
+	req.Header.Set(HeaderContentType, MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	target := struct {
+		ID   int    `query:"id" json:"id"`
+		Name string `json:"name"`
+	}{}
+
+	err := c.Bind(&target)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, target.ID)
+	assert.Equal(t, "John", target.Name)
+}
+
+func TestBindDataEmptyInputs(t *testing.T) {
+	binder := &DefaultBinder{}
+
+	t.Run("nil destination", func(t *testing.T) {
+		err := binder.bindData(nil, map[string][]string{}, "form", nil)
+		assert.NoError(t, err)
+	})
+
+	t.Run("empty data and files", func(t *testing.T) {
+		target := struct{}{}
+		err := binder.bindData(&target, map[string][]string{}, "form", map[string][]*multipart.FileHeader{})
+		assert.NoError(t, err)
+	})
+
+	t.Run("bind to non-struct with form tag", func(t *testing.T) {
+		var target int
+		err := binder.bindData(&target, map[string][]string{"test": {"1"}}, "form", nil)
+		assert.EqualError(t, err, "binding element must be a struct")
+	})
+
+	t.Run("bind to non-struct with param tag", func(t *testing.T) {
+		var target int
+		err := binder.bindData(&target, map[string][]string{"test": {"1"}}, "param", nil)
+		assert.NoError(t, err)
+	})
+}
+
+func TestBindBodyJSONHTTPError(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{"invalid": json}`))
+	req.Header.Set(HeaderContentType, MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	e.JSONSerializer = &customErrorJSONSerializer{}
+
+	var target struct{}
+	binder := &DefaultBinder{}
+	err := binder.BindBody(c, &target)
+
+	assert.Error(t, err)
+	httpErr, ok := err.(*HTTPError)
+	assert.True(t, ok)
+	assert.Equal(t, http.StatusTeapot, httpErr.Code)
+}
+
+
+
+func TestBindMethodsEdgeCases(t *testing.T) {
+	e := New()
+
+	t.Run("HEAD method binds query params", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodHead, "/?id=123", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		target := struct {
+			ID int `query:"id"`
+		}{}
+
+		binder := &DefaultBinder{}
+		err := binder.Bind(&target, c)
+		assert.NoError(t, err)
+		assert.Equal(t, 123, target.ID)
+	})
+
+	t.Run("PUT method skips query params", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPut, "/?id=123", strings.NewReader(`{"id":456}`))
+		req.Header.Set(HeaderContentType, MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		target := struct {
+			ID int `query:"id" json:"id"`
+		}{}
+
+		binder := &DefaultBinder{}
+		err := binder.Bind(&target, c)
+		assert.NoError(t, err)
+		assert.Equal(t, 456, target.ID)
+	})
+}
+
+type customErrorJSONSerializer struct{}
+
+func (s *customErrorJSONSerializer) Serialize(c Context, i interface{}, indent string) error {
+	return NewHTTPError(http.StatusTeapot, "custom json error")
+}
+
+func (s *customErrorJSONSerializer) Deserialize(c Context, i interface{}) error {
+	return NewHTTPError(http.StatusTeapot, "custom json error")
+}
+
+func TestSetValueByPartsEdgeCases(t *testing.T) {
+	t.Run("empty parts", func(t *testing.T) {
+		val := reflect.ValueOf(&struct{}{}).Elem()
+		typ := val.Type()
+		err := setValueByParts(val, typ, []interface{}{}, "value")
+		assert.NoError(t, err)
+	})
+
+	t.Run("field not found", func(t *testing.T) {
+		target := struct {
+			Name string `form:"name"`
+		}{}
+		val := reflect.ValueOf(&target).Elem()
+		typ := val.Type()
+		err := setValueByParts(val, typ, []interface{}{"nonexistent"}, "value")
+		assert.NoError(t, err)
+	})
+
+	t.Run("int part with non-slice", func(t *testing.T) {
+		target := struct {
+			Name string `form:"name"`
+		}{}
+		val := reflect.ValueOf(&target).Elem()
+		typ := val.Type()
+		err := setValueByParts(val, typ, []interface{}{0}, "value")
+		assert.NoError(t, err)
+	})
+
+	t.Run("unknown part type", func(t *testing.T) {
+		target := struct {
+			Name string `form:"name"`
+		}{}
+		val := reflect.ValueOf(&target).Elem()
+		typ := val.Type()
+		err := setValueByParts(val, typ, []interface{}{12.34}, "value")
+		assert.NoError(t, err)
+	})
+}
+
+func TestSetFieldFunctions_EmptyValues(t *testing.T) {
+	t.Run("setIntField with empty value", func(t *testing.T) {
+		field := reflect.ValueOf(new(int)).Elem()
+		err := setIntField("", 32, field)
+		assert.NoError(t, err)
+		assert.Equal(t, int64(0), field.Int())
+	})
+
+	t.Run("setUintField with empty value", func(t *testing.T) {
+		field := reflect.ValueOf(new(uint)).Elem()
+		err := setUintField("", 32, field)
+		assert.NoError(t, err)
+		assert.Equal(t, uint64(0), field.Uint())
+	})
+
+	t.Run("setBoolField with empty value", func(t *testing.T) {
+		field := reflect.ValueOf(new(bool)).Elem()
+		err := setBoolField("", field)
+		assert.NoError(t, err)
+		assert.Equal(t, false, field.Bool())
+	})
+
+	t.Run("setFloatField with empty value", func(t *testing.T) {
+		field := reflect.ValueOf(new(float64)).Elem()
+		err := setFloatField("", 64, field)
+		assert.NoError(t, err)
+		assert.Equal(t, float64(0.0), field.Float())
+	})
+}
+
+func TestIsFieldMultipartFile_ErrorCase(t *testing.T) {
+	result, err := isFieldMultipartFile(reflect.TypeFor[multipart.FileHeader]())
+	assert.True(t, result)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "binding to multipart.FileHeader struct is not supported")
+}
+
+
+
+func TestBindXMLSyntaxErrorCoverage(t *testing.T) {
+	e := New()
+
+	body := strings.NewReader(`<root><unclosed>data</root>`) // Missing closing tag
+	req := httptest.NewRequest(http.MethodPost, "/", body)
+	req.Header.Set(HeaderContentType, MIMEApplicationXML)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	target := struct {
+		Data string `xml:"data"`
+	}{}
+	binder := &DefaultBinder{}
+	err := binder.BindBody(c, &target)
+
+	assert.Error(t, err)
+	httpErr, ok := err.(*HTTPError)
+	assert.True(t, ok)
+	assert.Equal(t, http.StatusBadRequest, httpErr.Code)
+	assert.Contains(t, err.Error(), "Syntax error")
+}
+
+func TestBindFormParamsErrorCoverage(t *testing.T) {
+	e := New()
+
+	largeData := strings.Repeat("a=b&", 1000000)
+	body := strings.NewReader(largeData)
+	req := httptest.NewRequest(http.MethodPost, "/", body)
+	req.Header.Set(HeaderContentType, MIMEApplicationForm)
+	req.Header.Set("Content-Length", "-1")
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	target := struct {
+		A string `form:"a"`
+	}{}
+	binder := &DefaultBinder{}
+	err := binder.BindBody(c, &target)
+
+	if err != nil {
+		httpErr, ok := err.(*HTTPError)
+		assert.True(t, ok)
+		assert.Equal(t, http.StatusBadRequest, httpErr.Code)
+	}
+}
+
+func TestBindMultipartFormErrorCoverage(t *testing.T) {
+	e := New()
+
+	body := strings.NewReader("--boundary\r\nInvalid multipart data without proper headers")
+	req := httptest.NewRequest(http.MethodPost, "/", body)
+	req.Header.Set(HeaderContentType, "multipart/form-data; boundary=boundary")
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	target := struct {
+		File string `form:"file"`
+	}{}
+	binder := &DefaultBinder{}
+	err := binder.BindBody(c, &target)
+
+	assert.Error(t, err)
+	httpErr, ok := err.(*HTTPError)
+	assert.True(t, ok)
+	assert.Equal(t, http.StatusBadRequest, httpErr.Code)
+}
+
+func TestBindPathParamsErrorInBindCoverage(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetParamNames("id")
+	c.SetParamValues("not_a_number")
+
+	target := struct {
+		ID int `param:"id"`
+	}{}
+
+	binder := &DefaultBinder{}
+	err := binder.Bind(&target, c)
+
+	assert.Error(t, err)
+	httpErr, ok := err.(*HTTPError)
+	assert.True(t, ok)
+	assert.Equal(t, http.StatusBadRequest, httpErr.Code)
+}
+
+func TestBindDataRecursiveErrorCoverage(t *testing.T) {
+	type NestedStruct struct {
+		Value int `form:"value"`
+	}
+
+	type TestStruct struct {
+		Nested NestedStruct
+	}
+
+	data := map[string][]string{
+		"value": {"not_a_number"},
+	}
+
+	target := TestStruct{}
+	binder := &DefaultBinder{}
+	err := binder.bindData(&target, data, "form", nil)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid syntax")
+}
+
+func TestBindDataMultipartFileErrorCoverage(t *testing.T) {
+	type TestStruct struct {
+		File multipart.FileHeader `form:"file"`
+	}
+
+	files := map[string][]*multipart.FileHeader{
+		"file": {{}},
+	}
+
+	target := TestStruct{}
+	binder := &DefaultBinder{}
+	err := binder.bindData(&target, map[string][]string{}, "form", files)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "binding to multipart.FileHeader struct is not supported")
+}
+
+func TestBindDataSliceSetErrorCoverage(t *testing.T) {
+	type TestStruct struct {
+		Values []int `form:"values"`
+	}
+
+	data := map[string][]string{
+		"values": {"1", "not_a_number", "3"},
+	}
+
+	target := TestStruct{}
+	binder := &DefaultBinder{}
+	err := binder.bindData(&target, data, "form", nil)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid syntax")
+}
+
+func TestBindDataNestedFormFieldErrorCoverage(t *testing.T) {
+	type TestStruct struct {
+		Nested struct {
+			Value int `form:"value"`
+		} `form:"nested"`
+	}
+
+	data := map[string][]string{
+		"nested.value": {"not_a_number"},
+	}
+
+	target := TestStruct{}
+	binder := &DefaultBinder{}
+	err := binder.bindData(&target, data, "form", nil)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid syntax")
+}
+
+func TestBindQueryParamsErrorInBindCoverage(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(http.MethodGet, "/?id=not_a_number", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	target := struct {
+		ID int `query:"id"`
+	}{}
+
+	binder := &DefaultBinder{}
+	err := binder.Bind(&target, c)
+
+	assert.Error(t, err)
+	httpErr, ok := err.(*HTTPError)
+	assert.True(t, ok)
+	assert.Equal(t, http.StatusBadRequest, httpErr.Code)
+}
+
+func TestIsFieldMultipartFileAllCasesCoverage(t *testing.T) {
+	testCases := []struct {
+		name     string
+		fieldType interface{}
+		expectOk bool
+		expectErr bool
+	}{
+		{
+			name:     "multipart.FileHeader pointer",
+			fieldType: (*multipart.FileHeader)(nil),
+			expectOk: true,
+			expectErr: false,
+		},
+		{
+			name:     "slice of multipart.FileHeader",
+			fieldType: []multipart.FileHeader{},
+			expectOk: true,
+			expectErr: false,
+		},
+		{
+			name:     "slice of multipart.FileHeader pointers",
+			fieldType: []*multipart.FileHeader{},
+			expectOk: true,
+			expectErr: false,
+		},
+		{
+			name:     "multipart.FileHeader struct",
+			fieldType: multipart.FileHeader{},
+			expectOk: true,
+			expectErr: true,
+		},
+		{
+			name:     "other type",
+			fieldType: "",
+			expectOk: false,
+			expectErr: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := isFieldMultipartFile(reflect.TypeOf(tc.fieldType))
+			assert.Equal(t, tc.expectOk, result)
+			if tc.expectErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestSpecialFormBindingErrorsCoverage(t *testing.T) {
+	e := New()
+
+	body := &corruptedReaderForBinding{}
+	req := httptest.NewRequest(http.MethodPost, "/", body)
+	req.Header.Set(HeaderContentType, MIMEApplicationForm)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	target := struct {
+		Test string `form:"test"`
+	}{}
+	binder := &DefaultBinder{}
+	err := binder.BindBody(c, &target)
+
+	assert.Error(t, err)
+}
+
+func TestCorruptedMultipartFormCoverage(t *testing.T) {
+	e := New()
+
+	body := strings.NewReader("--boundary\r\nContent-Disposition: form-data; name=\"test\"\r\nCorrupted data without proper ending")
+	req := httptest.NewRequest(http.MethodPost, "/", body)
+	req.Header.Set(HeaderContentType, "multipart/form-data; boundary=boundary")
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	target := struct {
+		Test string `form:"test"`
+	}{}
+	binder := &DefaultBinder{}
+	err := binder.BindBody(c, &target)
+
+	assert.Error(t, err)
+	httpErr, ok := err.(*HTTPError)
+	assert.True(t, ok)
+	assert.Equal(t, http.StatusBadRequest, httpErr.Code)
+}
+
+type corruptedReaderForBinding struct{}
+
+func (r *corruptedReaderForBinding) Read(p []byte) (n int, err error) {
+	return 0, io.ErrUnexpectedEOF
+}
+
+
+
+
+
+
+
+
+
+func TestSetValueByPartsSliceElementFinal(t *testing.T) {
+	type TestStruct struct {
+		Items []string `form:"items"`
+	}
+
+	target := TestStruct{}
+	val := reflect.ValueOf(&target).Elem()
+	typ := val.Type()
+
+	err := setValueByParts(val, typ, []interface{}{"Items", 0}, "test_value")
+
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"test_value"}, target.Items)
+}

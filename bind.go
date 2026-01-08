@@ -95,9 +95,7 @@ func (b *DefaultBinder) BindBody(c Context, i interface{}) (err error) {
 		}
 	case MIMEApplicationXML, MIMETextXML:
 		if err = xml.NewDecoder(req.Body).Decode(i); err != nil {
-			if ute, ok := err.(*xml.UnsupportedTypeError); ok {
-				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Unsupported type error: type=%v, error=%v", ute.Type, ute.Error())).SetInternal(err)
-			} else if se, ok := err.(*xml.SyntaxError); ok {
+			if se, ok := err.(*xml.SyntaxError); ok {
 				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Syntax error: line=%v, error=%v", se.Line, se.Error())).SetInternal(err)
 			}
 			return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
@@ -302,6 +300,14 @@ func (b *DefaultBinder) bindData(destination interface{}, data map[string][]stri
 			return err
 		}
 	}
+
+	for key, values := range data {
+		if strings.Contains(key, ".") || strings.Contains(key, "[") {
+			if err := bindNestedFormField(val, typ, key, values); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
@@ -486,4 +492,101 @@ func setMultipartFileHeaderTypes(structField reflect.Value, inputFieldName strin
 	}
 
 	return result
+}
+
+func parseFieldPath(key string) []interface{} {
+	var parts []interface{}
+	var buf strings.Builder
+	for i := 0; i < len(key); i++ {
+		ch := key[i]
+		switch ch {
+		case '.':
+			if buf.Len() > 0 {
+				parts = append(parts, buf.String())
+				buf.Reset()
+			}
+		case '[':
+			if buf.Len() > 0 {
+				parts = append(parts, buf.String())
+				buf.Reset()
+			}
+			j := i + 1
+			for ; j < len(key) && key[j] != ']'; j++ {
+				buf.WriteByte(key[j])
+			}
+			index, _ := strconv.Atoi(buf.String())
+			parts = append(parts, index)
+			buf.Reset()
+			i = j
+		default:
+			buf.WriteByte(ch)
+		}
+	}
+	if buf.Len() > 0 {
+		parts = append(parts, buf.String())
+	}
+	return parts
+}
+
+func bindNestedFormField(val reflect.Value, typ reflect.Type, key string, values []string) error {
+	parts := parseFieldPath(key)
+	return setValueByParts(val, typ, parts, values[0])
+}
+
+func setValueByParts(val reflect.Value, typ reflect.Type, parts []interface{}, value string) error {
+	if len(parts) == 0 {
+		return nil
+	}
+	part := parts[0]
+	switch v := part.(type) {
+	case string:
+		fieldIdx := -1
+		for i := 0; i < typ.NumField(); i++ {
+			ft := typ.Field(i)
+			if ft.Tag.Get("form") == v || strings.EqualFold(ft.Name, v) {
+				fieldIdx = i
+				break
+			}
+		}
+		if fieldIdx == -1 {
+			return nil
+		}
+		fv := val.Field(fieldIdx)
+		ft := typ.Field(fieldIdx)
+		if fv.Kind() == reflect.Ptr {
+			if fv.IsNil() {
+				fv.Set(reflect.New(ft.Type.Elem()))
+			}
+			fv = fv.Elem()
+			ft.Type = ft.Type.Elem()
+		}
+		if len(parts) == 1 {
+			return setWithProperType(fv.Kind(), value, fv)
+		}
+		return setValueByParts(fv, ft.Type, parts[1:], value)
+	case int:
+		if val.Kind() != reflect.Slice {
+			return nil
+		}
+		for val.Len() <= v {
+			val.Set(reflect.Append(val, reflect.Zero(val.Type().Elem())))
+		}
+		elem := val.Index(v)
+		elemType := val.Type().Elem()
+
+		if elemType.Kind() == reflect.Ptr {
+			if elem.IsNil() {
+				elem.Set(reflect.New(elemType.Elem()))
+			}
+			elem = elem.Elem()
+			elemType = elemType.Elem()
+		}
+
+		if len(parts) == 1 {
+			return setWithProperType(elem.Kind(), value, elem)
+		}
+
+		return setValueByParts(elem, elemType, parts[1:], value)
+	}
+	return nil
 }
