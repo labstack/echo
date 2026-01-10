@@ -501,7 +501,7 @@ func (c *context) jsonPBlob(code int, callback string, i any) (err error) {
 
 func (c *context) json(code int, i any, indent string) error {
 	c.writeContentType(MIMEApplicationJSON)
-	c.response.Status = code
+	c.response.WriteHeader(code)
 	return c.echo.JSONSerializer.Serialize(c, i, indent)
 }
 
