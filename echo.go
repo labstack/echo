@@ -323,7 +323,7 @@ func NewWithConfig(config Config) *Echo {
 
 // New creates an instance of Echo.
 func New() *Echo {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	e := &Echo{
 		Logger:             logger,
 		Filesystem:         newDefaultFS(),
