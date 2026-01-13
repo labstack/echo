@@ -727,10 +727,7 @@ func (e *Echo) Start(address string) error {
 	sc := StartConfig{Address: address}
 	ctx, cancel := signal.NotifyContext(stdContext.Background(), os.Interrupt, syscall.SIGTERM) // start shutdown process on ctrl+c
 	defer cancel()
-	if err := sc.Start(ctx, e); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		return err
-	}
-	return nil
+	return sc.Start(ctx, e)
 }
 
 // WrapHandler wraps `http.Handler` into `echo.HandlerFunc`.
