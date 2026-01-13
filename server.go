@@ -94,7 +94,7 @@ func (sc StartConfig) start(ctx stdContext.Context, h http.Handler) error {
 	if e, ok := h.(*Echo); ok {
 		logger = e.Logger
 	} else {
-		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
+		logger = slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	}
 
 	server := http.Server{
@@ -132,10 +132,10 @@ func (sc StartConfig) start(ctx stdContext.Context, h http.Handler) error {
 	}
 	if !sc.HideBanner {
 		bannerText := fmt.Sprintf(banner, Version)
-		logger.Info(bannerText)
+		logger.Info(bannerText, "version", Version)
 	}
 	if !sc.HidePort {
-		logger.Info("http(s) server started", "address", listener.Addr())
+		logger.Info("http(s) server started", "address", listener.Addr().String())
 	}
 
 	go gracefulShutdown(ctx, &sc, &server, logger)
