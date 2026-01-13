@@ -6,6 +6,7 @@ package echo
 import (
 	stdContext "context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log/slog"
@@ -138,8 +139,16 @@ func (sc StartConfig) start(ctx stdContext.Context, h http.Handler) error {
 		logger.Info("http(s) server started", "address", listener.Addr().String())
 	}
 
-	go gracefulShutdown(ctx, &sc, &server, logger)
-	return server.Serve(listener)
+	if sc.GracefulTimeout >= 0 {
+		gCtx, cancel := stdContext.WithCancel(ctx) // end goroutine when Serve returns early
+		defer cancel()
+		go gracefulShutdown(gCtx, &sc, &server, logger)
+	}
+
+	if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
+	return nil
 }
 
 func filepathOrContent(fileOrContent any, certFilesystem fs.FS) (content []byte, err error) {
