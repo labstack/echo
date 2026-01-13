@@ -582,6 +582,9 @@ func (e *Echo) File(path, file string, m ...MiddlewareFunc) *Route {
 
 func (e *Echo) add(host, method, path string, handler HandlerFunc, middlewares ...MiddlewareFunc) *Route {
 	router := e.findRouter(host)
+	if handler == nil {
+		panic(fmt.Errorf("echo: adding route without handler function: %s:%s", method, path))
+	}
 	//FIXME: when handler+middleware are both nil ... make it behave like handler removal
 	name := handlerName(handler)
 	route := router.add(method, path, name, func(c Context) error {

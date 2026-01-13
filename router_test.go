@@ -2889,3 +2889,16 @@ func BenchmarkRouterGooglePlusAPIMisses(b *testing.B) {
 func BenchmarkRouterParamsAndAnyAPI(b *testing.B) {
 	benchmarkRouterRoutes(b, paramAndAnyAPI, paramAndAnyAPIToFind)
 }
+
+func TestRouter_AddNilHandlerPanics(t *testing.T) {
+	e := New()
+	r := e.router
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatalf("expected panic when adding route with nil handler")
+		}
+	}()
+
+	r.Add(http.MethodGet, "/nil", nil)
+}

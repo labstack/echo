@@ -216,9 +216,8 @@ func (r *Router) insert(method, path string, h HandlerFunc) {
 	pnames := []string{} // Param names
 	ppath := path        // Pristine path
 
-	if h == nil && r.echo.Logger != nil {
-		// FIXME: in future we should return error
-		r.echo.Logger.Errorf("Adding route without handler function: %v:%v", method, path)
+	if h == nil {
+		panic(fmt.Errorf("echo: adding route without handler function: %v:%v", method, path))
 	}
 
 	for i, lcpIndex := 0, len(path); i < lcpIndex; i++ {

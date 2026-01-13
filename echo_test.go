@@ -1860,3 +1860,13 @@ func BenchmarkEchoGitHubAPIMisses(b *testing.B) {
 func BenchmarkEchoParseAPI(b *testing.B) {
 	benchmarkEchoRoutes(b, parseAPI)
 }
+
+func TestEcho_AddNilHandlerPanics(t *testing.T) {
+	e := New()
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatalf("expected panic when adding route with nil handler")
+		}
+	}()
+	e.Add(http.MethodGet, "/nil", nil)
+}
