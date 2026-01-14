@@ -581,6 +581,19 @@ func TestBindParam(t *testing.T) {
 		assert.Equal(t, "Jon Snow", u.Name)
 	}
 
+	// Bind param with escaped characters
+	{
+		c := e.NewContext(req, rec)
+		c.SetPath("/users/:name")
+		c.SetParamNames("name")
+		c.SetParamValues("John%2FSnow")
+
+		err := c.Bind(u)
+		if assert.NoError(t, err) {
+			assert.Equal(t, "John/Snow", u.Name)
+		}
+	}
+
 	// Second test for the absence of a param
 	c2 := e.NewContext(req, rec)
 	c2.SetPath("/users/:id")
