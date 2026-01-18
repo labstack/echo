@@ -48,6 +48,15 @@ Click [here](https://github.com/sponsors/labstack) for more information on spons
 
 ## [Guide](https://echo.labstack.com/guide)
 
+### Supported Echo versions
+
+- Latest major version of Echo is `v5` as of 2026-01-18.
+  - Until 2026-03-31, any critical issues requiring breaking API changes will be addressed, even if this violates semantic versioning.
+  - See [API_CHANGES_V5.md](./API_CHANGES_V5.md) for public API changes between `v4` and `v5`, notes on upgrading.
+  - If you are using Echo in a production environment, it is recommended to wait until after 2026-03-31 before upgrading.
+- Echo `v4` is supported with **security*** updates and **bug** fixes until **2026-12-31**
+
+
 ### Installation
 
 ```sh
@@ -55,6 +64,7 @@ Click [here](https://github.com/sponsors/labstack) for more information on spons
 go get github.com/labstack/echo/v5
 ```
 Latest version of Echo supports last four Go major [releases](https://go.dev/doc/devel/release) and might work with older versions.
+
 
 ### Example
 
