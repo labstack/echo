@@ -77,7 +77,7 @@ func (config RecoverConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 					if !config.DisablePrintStack {
 						stack := make([]byte, config.StackSize)
 						length := runtime.Stack(stack, !config.DisableStackAll)
-						tmpErr = fmt.Errorf("[PANIC RECOVER] %w %s", tmpErr, stack[:length])
+						tmpErr = &PanicStackError{Stack: stack[:length], Err: tmpErr}
 					}
 					err = tmpErr
 				}
@@ -85,4 +85,19 @@ func (config RecoverConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			return next(c)
 		}
 	}, nil
+}
+
+// PanicStackError is an error type that wraps an error along with its stack trace.
+// It is returned when config.DisablePrintStack is set to false.
+type PanicStackError struct {
+	Stack []byte
+	Err   error
+}
+
+func (e *PanicStackError) Error() string {
+	return fmt.Sprintf("[PANIC RECOVER] %s %s", e.Err.Error(), e.Stack)
+}
+
+func (e *PanicStackError) Unwrap() error {
+	return e.Err
 }
