@@ -5,6 +5,7 @@ package middleware
 
 import (
 	"bytes"
+	"errors"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -26,6 +27,14 @@ func TestRecover(t *testing.T) {
 	})
 	err := h(c)
 	assert.Contains(t, err.Error(), "[PANIC RECOVER] test goroutine")
+
+	var pse *PanicStackError
+	if errors.As(err, &pse) {
+		assert.Contains(t, string(pse.Stack), "middleware/recover.go")
+	} else {
+		assert.Fail(t, "not of type PanicStackError")
+	}
+
 	assert.Equal(t, http.StatusOK, rec.Code) // status is still untouched. err is returned from middleware chain
 	assert.Contains(t, buf.String(), "")     // nothing is logged
 }
