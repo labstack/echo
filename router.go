@@ -885,10 +885,10 @@ func (r *DefaultRouter) Route(c *Context) HandlerFunc {
 				// NOTE: this case (backtracking from static node to previous any node) can not happen by current any matching logic. Any node is end of search currently
 				//} else if nk == anyKind {
 				//	goto Any
-			} else {
-				// Not found (this should never be possible for static node we are looking currently)
-				break
 			}
+
+			// Not found (this should never be possible for static node we are looking currently)
+			break
 		}
 
 		// The full prefix has matched, remove the prefix from the remaining search
@@ -977,10 +977,10 @@ func (r *DefaultRouter) Route(c *Context) HandlerFunc {
 			goto Param
 		} else if nk == anyKind {
 			goto Any
-		} else {
-			// Not found
-			break
 		}
+
+		// Not found
+		break
 	}
 
 	if currentNode == nil && previousBestMatchNode == nil {
