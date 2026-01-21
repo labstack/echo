@@ -62,6 +62,10 @@ type bindTestStruct struct {
 	I8          int8
 }
 
+type bindQueryArrayTestStruct struct {
+	Foo []string `query:"foo"`
+}
+
 type bindTestStructWithTags struct {
 	T           Timestamp  `json:"T" form:"T"`
 	GoT         time.Time  `json:"GoT" form:"GoT"`
@@ -272,6 +276,30 @@ func TestBindQueryParamsCaseSensitivePrioritized(t *testing.T) {
 	if assert.NoError(t, err) {
 		assert.Equal(t, 1, u.ID)
 		assert.Equal(t, "Jon Doe", u.Name)
+	}
+}
+
+func TestBindQueryArrayParams(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(http.MethodGet, "/?foo=one&foo=two", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	q := new(bindQueryArrayTestStruct)
+	err := c.Bind(q)
+	if assert.NoError(t, err) {
+		assert.Equal(t, []string{"one", "two"}, q.Foo)
+	}
+}
+
+func TestBindQueryArrayParamsWithSuffix(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(http.MethodGet, "/?foo[]=one&foo[]=two", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	q := new(bindQueryArrayTestStruct)
+	err := c.Bind(q)
+	if assert.NoError(t, err) {
+		assert.Equal(t, []string{"one", "two"}, q.Foo)
 	}
 }
 
