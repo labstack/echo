@@ -153,7 +153,8 @@ func (c *Context) IsTLS() bool {
 // IsWebSocket returns true if HTTP connection is WebSocket otherwise false.
 func (c *Context) IsWebSocket() bool {
 	upgrade := c.request.Header.Get(HeaderUpgrade)
-	return strings.EqualFold(upgrade, "websocket")
+	connection := c.request.Header.Get(HeaderConnection)
+	return strings.EqualFold(upgrade, "websocket") && strings.Contains(strings.ToLower(connection), "upgrade")
 }
 
 // Scheme returns the HTTP protocol scheme, `http` or `https`.
