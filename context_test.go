@@ -1119,7 +1119,10 @@ func TestContext_IsWebSocket(t *testing.T) {
 		{
 			&Context{
 				request: &http.Request{
-					Header: http.Header{HeaderUpgrade: []string{"websocket"}},
+					Header: http.Header{
+						HeaderUpgrade:    []string{"websocket"},
+						HeaderConnection: []string{"upgrade"},
+					},
 				},
 			},
 			assert.True,
@@ -1127,7 +1130,10 @@ func TestContext_IsWebSocket(t *testing.T) {
 		{
 			&Context{
 				request: &http.Request{
-					Header: http.Header{HeaderUpgrade: []string{"Websocket"}},
+					Header: http.Header{
+						HeaderUpgrade:    []string{"Websocket"},
+						HeaderConnection: []string{"Upgrade"},
+					},
 				},
 			},
 			assert.True,
@@ -1142,6 +1148,17 @@ func TestContext_IsWebSocket(t *testing.T) {
 			&Context{
 				request: &http.Request{
 					Header: http.Header{HeaderUpgrade: []string{"other"}},
+				},
+			},
+			assert.False,
+		},
+		{
+			&Context{
+				request: &http.Request{
+					Header: http.Header{
+						HeaderUpgrade:    []string{"websocket"},
+						HeaderConnection: []string{"close"},
+					},
 				},
 			},
 			assert.False,
