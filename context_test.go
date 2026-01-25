@@ -191,10 +191,9 @@ func TestContextStream(t *testing.T) {
 }
 
 func TestContextHTML(t *testing.T) {
-	e := New()
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	c := e.NewContext(req, rec)
+	c := NewContext(req, rec)
 
 	err := c.HTML(http.StatusOK, "Hi, Jon Snow")
 	if assert.NoError(t, err) {
@@ -205,10 +204,9 @@ func TestContextHTML(t *testing.T) {
 }
 
 func TestContextHTMLBlob(t *testing.T) {
-	e := New()
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	c := e.NewContext(req, rec)
+	c := NewContext(req, rec)
 
 	err := c.HTMLBlob(http.StatusOK, []byte("Hi, Jon Snow"))
 	if assert.NoError(t, err) {
@@ -240,6 +238,21 @@ func TestContextJSONErrorsOut(t *testing.T) {
 
 	err := c.JSON(http.StatusOK, make(chan bool))
 	assert.EqualError(t, err, "json: unsupported type: chan bool")
+
+	assert.Equal(t, http.StatusOK, rec.Code) // status code must not be sent to the client
+	assert.Empty(t, rec.Body.String())       // body must not be sent to the client
+}
+
+func TestContextJSONWithNotEchoResponse(t *testing.T) {
+	e := New()
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userJSON))
+	c := e.NewContext(req, rec)
+
+	c.SetResponse(rec)
+
+	err := c.JSON(http.StatusOK, map[string]interface{}{"foo": "bar"})
+	assert.EqualError(t, err, "json: response does not unwrap to *echo.Response")
 
 	assert.Equal(t, http.StatusOK, rec.Code) // status code must not be sent to the client
 	assert.Empty(t, rec.Body.String())       // body must not be sent to the client
