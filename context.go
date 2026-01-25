@@ -139,8 +139,8 @@ func (c *Context) Response() http.ResponseWriter {
 	return c.response
 }
 
-// SetResponse sets `*http.ResponseWriter`. Some middleware require that given ResponseWriter implements following
-// method `Unwrap() http.ResponseWriter` which eventually should return echo.Response instance.
+// SetResponse sets `*http.ResponseWriter`. Some context methods and/or middleware require that given ResponseWriter implements following
+// method `Unwrap() http.ResponseWriter` which eventually should return *echo.Response instance.
 func (c *Context) SetResponse(r http.ResponseWriter) {
 	c.response = r
 }
@@ -454,7 +454,16 @@ func (c *Context) jsonPBlob(code int, callback string, i any) (err error) {
 
 func (c *Context) json(code int, i any, indent string) error {
 	c.writeContentType(MIMEApplicationJSON)
-	c.response.WriteHeader(code)
+
+	if r, err := UnwrapResponse(c.response); err == nil {
+		// *echo.Response can delay sending status code until the first Write is called. As serialization can fail, we should delay
+		// sending the status code to the client until serialization is complete (first Write would be an indication it succeeded)
+		// Unsuccessful serialization error needs to go through the error handler and get a proper status code there.
+		r.Status = code
+	} else {
+		return fmt.Errorf("json: response does not unwrap to *echo.Response")
+	}
+
 	return c.echo.JSONSerializer.Serialize(c, i, indent)
 }
 

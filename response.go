@@ -126,7 +126,7 @@ func UnwrapResponse(rw http.ResponseWriter) (*Response, error) {
 			rw = t.Unwrap()
 			continue
 		default:
-			return nil, errors.New("ResponseWriter does not implement 'Unwrap() http.ResponseWriter' interface")
+			return nil, errors.New("ResponseWriter does not implement 'Unwrap() http.ResponseWriter' interface or unwrap to *echo.Response")
 		}
 	}
 }
