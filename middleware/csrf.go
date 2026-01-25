@@ -13,7 +13,7 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-// CSRFUsingSecFetchSite is a context key for CSRF middleware what is set when the client browser is using Sec-Fetch-Site
+// CSRFUsingSecFetchSite is a context key value for CSRF middleware that is set when the client browser is using Sec-Fetch-Site
 // header and the request is deemed safe.
 // It is a dummy token value that can be used to render CSRF token for form by handlers.
 const CSRFUsingSecFetchSite = "_echo_csrf_using_sec_fetch_site_"
