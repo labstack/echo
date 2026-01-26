@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 )
@@ -15,37 +16,28 @@ import (
 // by an HTTP handler to construct an HTTP response.
 // See: https://golang.org/pkg/net/http/#ResponseWriter
 type Response struct {
-	Writer      http.ResponseWriter
-	echo        *Echo
+	http.ResponseWriter
+	logger *slog.Logger
+	// beforeFuncs are functions that are called just before the response (status) is written. Happens only once, during WriteHeader call.
 	beforeFuncs []func()
-	afterFuncs  []func()
-	Status      int
-	Size        int64
-	Committed   bool
+	// afterFuncs are functions that are called just after the response is written. During every `Write` method call.
+	afterFuncs []func()
+	Status     int
+	Size       int64
+	Committed  bool
 }
 
 // NewResponse creates a new instance of Response.
-func NewResponse(w http.ResponseWriter, e *Echo) (r *Response) {
-	return &Response{Writer: w, echo: e}
+func NewResponse(w http.ResponseWriter, logger *slog.Logger) (r *Response) {
+	return &Response{ResponseWriter: w, logger: logger}
 }
 
-// Header returns the header map for the writer that will be sent by
-// WriteHeader. Changing the header after a call to WriteHeader (or Write) has
-// no effect unless the modified headers were declared as trailers by setting
-// the "Trailer" header before the call to WriteHeader (see example)
-// To suppress implicit response headers, set their value to nil.
-// Example: https://golang.org/pkg/net/http/#example_ResponseWriter_trailers
-func (r *Response) Header() http.Header {
-	return r.Writer.Header()
-}
-
-// Before registers a function which is called just before the response is written.
+// Before registers a function which is called just before the response (status) is written.
 func (r *Response) Before(fn func()) {
 	r.beforeFuncs = append(r.beforeFuncs, fn)
 }
 
 // After registers a function which is called just after the response is written.
-// If the `Content-Length` is unknown, none of the after function is executed.
 func (r *Response) After(fn func()) {
 	r.afterFuncs = append(r.afterFuncs, fn)
 }
@@ -56,14 +48,14 @@ func (r *Response) After(fn func()) {
 // used to send error codes.
 func (r *Response) WriteHeader(code int) {
 	if r.Committed {
-		r.echo.Logger.Warn("response already committed")
+		r.logger.Error("echo: response already written to client")
 		return
 	}
 	r.Status = code
 	for _, fn := range r.beforeFuncs {
 		fn()
 	}
-	r.Writer.WriteHeader(r.Status)
+	r.ResponseWriter.WriteHeader(r.Status)
 	r.Committed = true
 }
 
@@ -75,7 +67,7 @@ func (r *Response) Write(b []byte) (n int, err error) {
 		}
 		r.WriteHeader(r.Status)
 	}
-	n, err = r.Writer.Write(b)
+	n, err = r.ResponseWriter.Write(b)
 	r.Size += int64(n)
 	for _, fn := range r.afterFuncs {
 		fn()
@@ -87,31 +79,54 @@ func (r *Response) Write(b []byte) (n int, err error) {
 // buffered data to the client.
 // See [http.Flusher](https://golang.org/pkg/net/http/#Flusher)
 func (r *Response) Flush() {
-	err := http.NewResponseController(r.Writer).Flush()
+	err := http.NewResponseController(r.ResponseWriter).Flush()
 	if err != nil && errors.Is(err, http.ErrNotSupported) {
-		panic(fmt.Errorf("echo: response writer %T does not support flushing (http.Flusher interface)", r.Writer))
+		panic(fmt.Errorf("echo: response writer %T does not support flushing (http.Flusher interface)", r.ResponseWriter))
 	}
 }
 
 // Hijack implements the http.Hijacker interface to allow an HTTP handler to
 // take over the connection.
+// This method is relevant to Websocket connection upgrades, proxis, and other advanced use cases.
 // See [http.Hijacker](https://golang.org/pkg/net/http/#Hijacker)
 func (r *Response) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	return http.NewResponseController(r.Writer).Hijack()
+	// newer code should do response hijacking like that
+	// http.NewResponseController(responseWriter).Hijack()
+	//
+	// but there are older libraries that are not aware of `http.NewResponseController` and try to hijack directly
+	// `hj, ok := resp.(http.Hijacker)` <-- which would fail without Response directly implementing Hijack method
+	// so for that purpose we need to implement http.Hijacker interface
+	return http.NewResponseController(r.ResponseWriter).Hijack()
 }
 
 // Unwrap returns the original http.ResponseWriter.
 // ResponseController can be used to access the original http.ResponseWriter.
 // See [https://go.dev/blog/go1.20]
 func (r *Response) Unwrap() http.ResponseWriter {
-	return r.Writer
+	return r.ResponseWriter
 }
 
 func (r *Response) reset(w http.ResponseWriter) {
 	r.beforeFuncs = nil
 	r.afterFuncs = nil
-	r.Writer = w
+	r.ResponseWriter = w
 	r.Size = 0
 	r.Status = http.StatusOK
 	r.Committed = false
+}
+
+// UnwrapResponse unwraps given ResponseWriter to return contexts original Echo Response. rw has to implement
+// following method `Unwrap() http.ResponseWriter`
+func UnwrapResponse(rw http.ResponseWriter) (*Response, error) {
+	for {
+		switch t := rw.(type) {
+		case *Response:
+			return t, nil
+		case interface{ Unwrap() http.ResponseWriter }:
+			rw = t.Unwrap()
+			continue
+		default:
+			return nil, errors.New("ResponseWriter does not implement 'Unwrap() http.ResponseWriter' interface")
+		}
+	}
 }

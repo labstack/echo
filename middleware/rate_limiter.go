@@ -4,18 +4,18 @@
 package middleware
 
 import (
+	"errors"
 	"math"
 	"net/http"
 	"sync"
 	"time"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"golang.org/x/time/rate"
 )
 
 // RateLimiterStore is the interface to be implemented by custom stores.
 type RateLimiterStore interface {
-	// Stores for the rate limiter have to implement the Allow method
 	Allow(identifier string) (bool, error)
 }
 
@@ -23,18 +23,18 @@ type RateLimiterStore interface {
 type RateLimiterConfig struct {
 	Skipper    Skipper
 	BeforeFunc BeforeFunc
-	// IdentifierExtractor uses echo.Context to extract the identifier for a visitor
+	// IdentifierExtractor uses *echo.Context to extract the identifier for a visitor
 	IdentifierExtractor Extractor
 	// Store defines a store for the rate limiter
 	Store RateLimiterStore
 	// ErrorHandler provides a handler to be called when IdentifierExtractor returns an error
-	ErrorHandler func(context echo.Context, err error) error
+	ErrorHandler func(c *echo.Context, err error) error
 	// DenyHandler provides a handler to be called when RateLimiter denies access
-	DenyHandler func(context echo.Context, identifier string, err error) error
+	DenyHandler func(c *echo.Context, identifier string, err error) error
 }
 
-// Extractor is used to extract data from echo.Context
-type Extractor func(context echo.Context) (string, error)
+// Extractor is used to extract data from *echo.Context
+type Extractor func(c *echo.Context) (string, error)
 
 // ErrRateLimitExceeded denotes an error raised when rate limit is exceeded
 var ErrRateLimitExceeded = echo.NewHTTPError(http.StatusTooManyRequests, "rate limit exceeded")
@@ -45,23 +45,15 @@ var ErrExtractorError = echo.NewHTTPError(http.StatusForbidden, "error while ext
 // DefaultRateLimiterConfig defines default values for RateLimiterConfig
 var DefaultRateLimiterConfig = RateLimiterConfig{
 	Skipper: DefaultSkipper,
-	IdentifierExtractor: func(ctx echo.Context) (string, error) {
+	IdentifierExtractor: func(ctx *echo.Context) (string, error) {
 		id := ctx.RealIP()
 		return id, nil
 	},
-	ErrorHandler: func(context echo.Context, err error) error {
-		return &echo.HTTPError{
-			Code:     ErrExtractorError.Code,
-			Message:  ErrExtractorError.Message,
-			Internal: err,
-		}
+	ErrorHandler: func(c *echo.Context, err error) error {
+		return ErrExtractorError.Wrap(err)
 	},
-	DenyHandler: func(context echo.Context, identifier string, err error) error {
-		return &echo.HTTPError{
-			Code:     ErrRateLimitExceeded.Code,
-			Message:  ErrRateLimitExceeded.Message,
-			Internal: err,
-		}
+	DenyHandler: func(c *echo.Context, identifier string, err error) error {
+		return ErrRateLimitExceeded.Wrap(err)
 	},
 }
 
@@ -72,7 +64,7 @@ RateLimiter returns a rate limiting middleware
 
 	limiterStore := middleware.NewRateLimiterMemoryStore(20)
 
-	e.GET("/rate-limited", func(c echo.Context) error {
+	e.GET("/rate-limited", func(c *echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}, RateLimiter(limiterStore))
 */
@@ -89,15 +81,15 @@ RateLimiterWithConfig returns a rate limiting middleware
 	e := echo.New()
 
 	config := middleware.RateLimiterConfig{
-		Skipper: DefaultSkipper,
+		Skipper: DefaultSkipper,https://github.com/labstack/echo/pulls
 		Store: middleware.NewRateLimiterMemoryStore(
 			middleware.RateLimiterMemoryStoreConfig{Rate: 10, Burst: 30, ExpiresIn: 3 * time.Minute}
 		)
-		IdentifierExtractor: func(ctx echo.Context) (string, error) {
+		IdentifierExtractor: func(ctx *echo.Context) (string, error) {
 			id := ctx.RealIP()
 			return id, nil
 		},
-		ErrorHandler: func(context echo.Context, err error) error {
+		ErrorHandler: func(context *echo.Context, err error) error {
 			return context.JSON(http.StatusTooManyRequests, nil)
 		},
 		DenyHandler: func(context echo.Context, identifier string, err error) error {
@@ -105,11 +97,16 @@ RateLimiterWithConfig returns a rate limiting middleware
 		},
 	}
 
-	e.GET("/rate-limited", func(c echo.Context) error {
+	e.GET("/rate-limited", func(c *echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}, middleware.RateLimiterWithConfig(config))
 */
 func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
+	return toMiddlewareOrPanic(config)
+}
+
+// ToMiddleware converts RateLimiterConfig to middleware or returns an error for invalid configuration
+func (config RateLimiterConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 	if config.Skipper == nil {
 		config.Skipper = DefaultRateLimiterConfig.Skipper
 	}
@@ -123,10 +120,10 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 		config.DenyHandler = DefaultRateLimiterConfig.DenyHandler
 	}
 	if config.Store == nil {
-		panic("Store configuration must be provided")
+		return nil, errors.New("echo rate limiter store configuration must be provided")
 	}
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
+		return func(c *echo.Context) error {
 			if config.Skipper(c) {
 				return next(c)
 			}
@@ -136,25 +133,22 @@ func RateLimiterWithConfig(config RateLimiterConfig) echo.MiddlewareFunc {
 
 			identifier, err := config.IdentifierExtractor(c)
 			if err != nil {
-				c.Error(config.ErrorHandler(c, err))
-				return nil
+				return config.ErrorHandler(c, err)
 			}
 
-			if allow, err := config.Store.Allow(identifier); !allow {
-				c.Error(config.DenyHandler(c, identifier, err))
-				return nil
+			if allow, allowErr := config.Store.Allow(identifier); !allow {
+				return config.DenyHandler(c, identifier, allowErr)
 			}
 			return next(c)
 		}
-	}
+	}, nil
 }
 
 // RateLimiterMemoryStore is the built-in store implementation for RateLimiter
 type RateLimiterMemoryStore struct {
-	visitors map[string]*Visitor
-	mutex    sync.Mutex
-	rate     rate.Limit // for more info check out Limiter docs - https://pkg.go.dev/golang.org/x/time/rate#Limit.
-
+	visitors    map[string]*Visitor
+	mutex       sync.Mutex
+	rate        float64 // for more info check out Limiter docs - https://pkg.go.dev/golang.org/x/time/rate#Limit
 	burst       int
 	expiresIn   time.Duration
 	lastCleanup time.Time
@@ -181,9 +175,9 @@ Example (with 20 requests/sec):
 
 	limiterStore := middleware.NewRateLimiterMemoryStore(20)
 */
-func NewRateLimiterMemoryStore(rate rate.Limit) (store *RateLimiterMemoryStore) {
+func NewRateLimiterMemoryStore(rateLimit float64) (store *RateLimiterMemoryStore) {
 	return NewRateLimiterMemoryStoreWithConfig(RateLimiterMemoryStoreConfig{
-		Rate: rate,
+		Rate: rateLimit,
 	})
 }
 
@@ -226,7 +220,7 @@ func NewRateLimiterMemoryStoreWithConfig(config RateLimiterMemoryStoreConfig) (s
 
 // RateLimiterMemoryStoreConfig represents configuration for RateLimiterMemoryStore
 type RateLimiterMemoryStoreConfig struct {
-	Rate      rate.Limit    // Rate of requests allowed to pass as req/s. For more info check out Limiter docs - https://pkg.go.dev/golang.org/x/time/rate#Limit.
+	Rate      float64       // Rate of requests allowed to pass as req/s. For more info check out Limiter docs - https://pkg.go.dev/golang.org/x/time/rate#Limit.
 	Burst     int           // Burst is maximum number of requests to pass at the same moment. It additionally allows a number of requests to pass when rate limit is reached.
 	ExpiresIn time.Duration // ExpiresIn is the duration after that a rate limiter is cleaned up
 }
@@ -242,13 +236,13 @@ func (store *RateLimiterMemoryStore) Allow(identifier string) (bool, error) {
 	limiter, exists := store.visitors[identifier]
 	if !exists {
 		limiter = new(Visitor)
-		limiter.Limiter = rate.NewLimiter(store.rate, store.burst)
+		limiter.Limiter = rate.NewLimiter(rate.Limit(store.rate), store.burst)
 		store.visitors[identifier] = limiter
 	}
 	now := store.timeNow()
 	limiter.lastSeen = now
 	if now.Sub(store.lastCleanup) > store.expiresIn {
-		store.cleanupStaleVisitors()
+		store.cleanupStaleVisitors(now)
 	}
 	allowed := limiter.AllowN(now, 1)
 	store.mutex.Unlock()
@@ -259,11 +253,11 @@ func (store *RateLimiterMemoryStore) Allow(identifier string) (bool, error) {
 cleanupStaleVisitors helps manage the size of the visitors map by removing stale records
 of users who haven't visited again after the configured expiry time has elapsed
 */
-func (store *RateLimiterMemoryStore) cleanupStaleVisitors() {
+func (store *RateLimiterMemoryStore) cleanupStaleVisitors(now time.Time) {
 	for id, visitor := range store.visitors {
-		if store.timeNow().Sub(visitor.lastSeen) > store.expiresIn {
+		if now.Sub(visitor.lastSeen) > store.expiresIn {
 			delete(store.visitors, id)
 		}
 	}
-	store.lastCleanup = store.timeNow()
+	store.lastCleanup = now
 }

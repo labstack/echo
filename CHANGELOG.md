@@ -1,5 +1,42 @@
 # Changelog
 
+## v5.0.0 - 2026-01-18
+
+Echo `v5` is maintenance release with **major breaking changes**
+- `Context` is now struct instead of interface and we can add method to it in the future in minor versions.
+- Adds new `Router` interface for possible new routing implementations.
+- Drops old logging interface and uses moderm `log/slog` instead.
+- Rearranges alot of methods/function signatures to make them more consistent.
+
+Upgrade notes and `v4` support:
+- Echo `v4` is supported with **security*** updates and **bug** fixes until **2026-12-31**
+- If you are using Echo in a production environment, it is recommended to wait until after 2026-03-31 before upgrading.
+- Until 2026-03-31, any critical issues requiring breaking `v5` API changes will be addressed, even if this violates semantic versioning.
+
+See [API_CHANGES_V5.md](./API_CHANGES_V5.md) for public API changes between `v4` and `v5`, notes on **upgrading**.
+
+Upgrading TLDR:
+
+If you are using Linux you can migrate easier parts like that:
+```bash
+find . -type f -name "*.go" -exec sed -i 's/ echo.Context/ *echo.Context/g' {} +
+find . -type f -name "*.go" -exec sed -i 's/echo\/v4/echo\/v5/g' {} +
+```
+macOS
+```bash
+find . -type f -name "*.go" -exec sed -i '' 's/ echo.Context/ *echo.Context/g' {} +
+find . -type f -name "*.go" -exec sed -i '' 's/echo\/v4/echo\/v5/g' {} +
+```
+
+or in your favorite IDE
+
+Replace all:
+1. ` echo.Context` -> ` *echo.Context`
+2. `echo/v4` -> `echo/v5`
+
+This should solve most of the issues. Probably the hardest part is updating all the tests.
+
+
 ## v4.15.0 - 2026-01-01
 
 

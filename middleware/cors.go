@@ -4,12 +4,13 @@
 package middleware
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
-	"regexp"
 	"strconv"
 	"strings"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 // CORSConfig defines the config for CORS middleware.
@@ -19,29 +20,41 @@ type CORSConfig struct {
 
 	// AllowOrigins determines the value of the Access-Control-Allow-Origin
 	// response header.  This header defines a list of origins that may access the
-	// resource.  The wildcard characters '*' and '?' are supported and are
-	// converted to regex fragments '.*' and '.' accordingly.
+	// resource.
+	//
+	// Origin consist of following parts: `scheme + "://" + host + optional ":" + port`
+	// Wildcard can be used, but has to be set explicitly []string{"*"}
+	// Example: `https://example.com`, `http://example.com:8080`, `*`
 	//
 	// Security: use extreme caution when handling the origin, and carefully
 	// validate any logic. Remember that attackers may register hostile domain names.
 	// See https://blog.portswigger.net/2016/10/exploiting-cors-misconfigurations-for.html
-	//
-	// Optional. Default value []string{"*"}.
-	//
 	// See also: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin
-	AllowOrigins []string `yaml:"allow_origins"`
+	//
+	// Mandatory.
+	AllowOrigins []string
 
-	// AllowOriginFunc is a custom function to validate the origin. It takes the
-	// origin as an argument and returns true if allowed or false otherwise. If
-	// an error is returned, it is returned by the handler. If this option is
-	// set, AllowOrigins is ignored.
+	// UnsafeAllowOriginFunc is an optional custom function to validate the origin. It takes the
+	// origin as an argument and returns
+	// - string, allowed origin
+	// - bool, true if allowed or false otherwise.
+	// - error, if an error is returned, it is returned immediately by the handler.
+	// If this option is set, AllowOrigins is ignored.
 	//
 	// Security: use extreme caution when handling the origin, and carefully
-	// validate any logic. Remember that attackers may register hostile domain names.
+	// validate any logic. Remember that attackers may register hostile (sub)domain names.
 	// See https://blog.portswigger.net/2016/10/exploiting-cors-misconfigurations-for.html
+	//
+	// Sub-domain checks example:
+	// 		UnsafeAllowOriginFunc: func(c *echo.Context, origin string) (string, bool, error) {
+	//			if strings.HasSuffix(origin, ".example.com") {
+	//				return origin, true, nil
+	//			}
+	//			return "", false, nil
+	//		},
 	//
 	// Optional.
-	AllowOriginFunc func(origin string) (bool, error) `yaml:"-"`
+	UnsafeAllowOriginFunc func(c *echo.Context, origin string) (allowedOrigin string, allowed bool, err error)
 
 	// AllowMethods determines the value of the Access-Control-Allow-Methods
 	// response header.  This header specified the list of methods allowed when
@@ -53,16 +66,16 @@ type CORSConfig struct {
 	// from `Allow` header that echo.Router set into context.
 	//
 	// See also: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Methods
-	AllowMethods []string `yaml:"allow_methods"`
+	AllowMethods []string
 
 	// AllowHeaders determines the value of the Access-Control-Allow-Headers
 	// response header.  This header is used in response to a preflight request to
 	// indicate which HTTP headers can be used when making the actual request.
 	//
-	// Optional. Default value []string{}.
+	// Optional. Defaults to empty list. No domains allowed for CORS.
 	//
 	// See also: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Headers
-	AllowHeaders []string `yaml:"allow_headers"`
+	AllowHeaders []string
 
 	// AllowCredentials determines the value of the
 	// Access-Control-Allow-Credentials response header.  This header indicates
@@ -79,16 +92,7 @@ type CORSConfig struct {
 	// https://blog.portswigger.net/2016/10/exploiting-cors-misconfigurations-for.html
 	//
 	// See also: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Credentials
-	AllowCredentials bool `yaml:"allow_credentials"`
-
-	// UnsafeWildcardOriginWithAllowCredentials UNSAFE/INSECURE: allows wildcard '*' origin to be used with AllowCredentials
-	// flag. In that case we consider any origin allowed and send it back to the client with `Access-Control-Allow-Origin` header.
-	//
-	// This is INSECURE and potentially leads to [cross-origin](https://portswigger.net/research/exploiting-cors-misconfigurations-for-bitcoins-and-bounties)
-	// attacks. See: https://github.com/labstack/echo/issues/2400 for discussion on the subject.
-	//
-	// Optional. Default value is false.
-	UnsafeWildcardOriginWithAllowCredentials bool `yaml:"unsafe_wildcard_origin_with_allow_credentials"`
+	AllowCredentials bool
 
 	// ExposeHeaders determines the value of Access-Control-Expose-Headers, which
 	// defines a list of headers that clients are allowed to access.
@@ -96,7 +100,7 @@ type CORSConfig struct {
 	// Optional. Default value []string{}, in which case the header is not set.
 	//
 	// See also: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Expose-Header
-	ExposeHeaders []string `yaml:"expose_headers"`
+	ExposeHeaders []string
 
 	// MaxAge determines the value of the Access-Control-Max-Age response header.
 	// This header indicates how long (in seconds) the results of a preflight
@@ -106,18 +110,15 @@ type CORSConfig struct {
 	// Optional. Default value 0 - meaning header is not sent.
 	//
 	// See also: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Max-Age
-	MaxAge int `yaml:"max_age"`
-}
-
-// DefaultCORSConfig is the default CORS middleware config.
-var DefaultCORSConfig = CORSConfig{
-	Skipper:      DefaultSkipper,
-	AllowOrigins: []string{"*"},
-	AllowMethods: []string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete},
+	MaxAge int
 }
 
 // CORS returns a Cross-Origin Resource Sharing (CORS) middleware.
 // See also [MDN: Cross-Origin Resource Sharing (CORS)].
+//
+// Origin consist of following parts: `scheme + "://" + host + optional ":" + port`
+// Wildcard `*` can be used, but has to be set explicitly.
+// Example: `https://example.com`, `http://example.com:8080`, `*`
 //
 // Security: Poorly configured CORS can compromise security because it allows
 // relaxation of the browser's Same-Origin policy.  See [Exploiting CORS
@@ -127,45 +128,29 @@ var DefaultCORSConfig = CORSConfig{
 // [MDN: Cross-Origin Resource Sharing (CORS)]: https://developer.mozilla.org/en/docs/Web/HTTP/Access_control_CORS
 // [Exploiting CORS misconfigurations for Bitcoins and bounties]: https://blog.portswigger.net/2016/10/exploiting-cors-misconfigurations-for.html
 // [Portswigger: Cross-origin resource sharing (CORS)]: https://portswigger.net/web-security/cors
-func CORS() echo.MiddlewareFunc {
-	return CORSWithConfig(DefaultCORSConfig)
+func CORS(allowOrigins ...string) echo.MiddlewareFunc {
+	c := CORSConfig{
+		AllowOrigins: allowOrigins,
+	}
+	return CORSWithConfig(c)
 }
 
-// CORSWithConfig returns a CORS middleware with config.
+// CORSWithConfig returns a CORS middleware with config or panics on invalid configuration.
 // See: [CORS].
 func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
+	return toMiddlewareOrPanic(config)
+}
+
+// ToMiddleware converts CORSConfig to middleware or returns an error for invalid configuration
+func (config CORSConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 	// Defaults
 	if config.Skipper == nil {
-		config.Skipper = DefaultCORSConfig.Skipper
-	}
-	if len(config.AllowOrigins) == 0 {
-		config.AllowOrigins = DefaultCORSConfig.AllowOrigins
+		config.Skipper = DefaultSkipper
 	}
 	hasCustomAllowMethods := true
 	if len(config.AllowMethods) == 0 {
 		hasCustomAllowMethods = false
-		config.AllowMethods = DefaultCORSConfig.AllowMethods
-	}
-
-	allowOriginPatterns := make([]*regexp.Regexp, 0, len(config.AllowOrigins))
-	for _, origin := range config.AllowOrigins {
-		if origin == "*" {
-			continue // "*" is handled differently and does not need regexp
-		}
-		pattern := regexp.QuoteMeta(origin)
-		pattern = strings.ReplaceAll(pattern, "\\*", ".*")
-		pattern = strings.ReplaceAll(pattern, "\\?", ".")
-		pattern = "^" + pattern + "$"
-
-		re, err := regexp.Compile(pattern)
-		if err != nil {
-			// this is to preserve previous behaviour - invalid patterns were just ignored.
-			// If we would turn this to panic, users with invalid patterns
-			// would have applications crashing in production due unrecovered panic.
-			// TODO: this should be turned to error/panic in `v5`
-			continue
-		}
-		allowOriginPatterns = append(allowOriginPatterns, re)
+		config.AllowMethods = []string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete}
 	}
 
 	allowMethods := strings.Join(config.AllowMethods, ",")
@@ -177,8 +162,29 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 		maxAge = strconv.Itoa(config.MaxAge)
 	}
 
+	allowOriginFunc := config.UnsafeAllowOriginFunc
+	if config.UnsafeAllowOriginFunc == nil {
+		if len(config.AllowOrigins) == 0 {
+			return nil, errors.New("at least one AllowOrigins is required or UnsafeAllowOriginFunc must be provided")
+		}
+		allowOriginFunc = config.defaultAllowOriginFunc
+		for _, origin := range config.AllowOrigins {
+			if origin == "*" {
+				if config.AllowCredentials {
+					return nil, fmt.Errorf("* as allowed origin and AllowCredentials=true is insecure and not allowed. Use custom UnsafeAllowOriginFunc")
+				}
+				allowOriginFunc = config.starAllowOriginFunc
+				break
+			}
+			if err := validateOrigin(origin, "allow origin"); err != nil {
+				return nil, err
+			}
+		}
+		config.AllowOrigins = append([]string(nil), config.AllowOrigins...)
+	}
+
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
+		return func(c *echo.Context) error {
 			if config.Skipper(c) {
 				return next(c)
 			}
@@ -186,7 +192,6 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 			req := c.Request()
 			res := c.Response()
 			origin := req.Header.Get(echo.HeaderOrigin)
-			allowOrigin := ""
 
 			res.Header().Add(echo.HeaderVary, echo.HeaderOrigin)
 
@@ -211,76 +216,51 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 
 			// No Origin provided. This is (probably) not request from actual browser - proceed executing middleware chain
 			if origin == "" {
-				if !preflight {
-					return next(c)
+				if preflight { // req.Method=OPTIONS
+					return c.NoContent(http.StatusNoContent)
 				}
-				return c.NoContent(http.StatusNoContent)
+				return next(c) // let non-browser calls through
 			}
 
-			if config.AllowOriginFunc != nil {
-				allowed, err := config.AllowOriginFunc(origin)
-				if err != nil {
-					return err
+			allowedOrigin, allowed, err := allowOriginFunc(c, origin)
+			if err != nil {
+				return err
+			}
+			if !allowed {
+				// Origin existed and was NOT allowed
+				if preflight {
+					// From: https://github.com/labstack/echo/issues/2767
+					// If the request's origin isn't allowed by the CORS configuration,
+					// the middleware should simply omit the relevant CORS headers from the response
+					// and let the browser fail the CORS check (if any).
+					return c.NoContent(http.StatusNoContent)
 				}
-				if allowed {
-					allowOrigin = origin
-				}
-			} else {
-				// Check allowed origins
-				for _, o := range config.AllowOrigins {
-					if o == "*" && config.AllowCredentials && config.UnsafeWildcardOriginWithAllowCredentials {
-						allowOrigin = origin
-						break
-					}
-					if o == "*" || o == origin {
-						allowOrigin = o
-						break
-					}
-					if matchSubdomain(origin, o) {
-						allowOrigin = origin
-						break
-					}
-				}
-
-				checkPatterns := false
-				if allowOrigin == "" {
-					// to avoid regex cost by invalid (long) domains (253 is domain name max limit)
-					if len(origin) <= (253+3+5) && strings.Contains(origin, "://") {
-						checkPatterns = true
-					}
-				}
-				if checkPatterns {
-					for _, re := range allowOriginPatterns {
-						if match := re.MatchString(origin); match {
-							allowOrigin = origin
-							break
-						}
-					}
-				}
+				// From: https://github.com/labstack/echo/issues/2767
+				// no CORS middleware should block non-preflight requests;
+				// such requests should be let through. One reason is that not all requests that
+				// carry an Origin header participate in the CORS protocol.
+				return next(c)
 			}
 
-			// Origin not allowed
-			if allowOrigin == "" {
-				if !preflight {
-					return next(c)
-				}
-				return c.NoContent(http.StatusNoContent)
-			}
+			// Origin existed and was allowed
 
-			res.Header().Set(echo.HeaderAccessControlAllowOrigin, allowOrigin)
+			res.Header().Set(echo.HeaderAccessControlAllowOrigin, allowedOrigin)
 			if config.AllowCredentials {
 				res.Header().Set(echo.HeaderAccessControlAllowCredentials, "true")
 			}
 
-			// Simple request
+			// Simple request will be let though
 			if !preflight {
 				if exposeHeaders != "" {
 					res.Header().Set(echo.HeaderAccessControlExposeHeaders, exposeHeaders)
 				}
 				return next(c)
 			}
-
-			// Preflight request
+			// Below code is for Preflight (OPTIONS) request
+			//
+			// Preflight will end with c.NoContent(http.StatusNoContent) as we do not know if
+			// at the end of handler chain is actual OPTIONS route or 404/405 route which
+			// response code will confuse browsers
 			res.Header().Add(echo.HeaderVary, echo.HeaderAccessControlRequestMethod)
 			res.Header().Add(echo.HeaderVary, echo.HeaderAccessControlRequestHeaders)
 
@@ -303,5 +283,18 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 			}
 			return c.NoContent(http.StatusNoContent)
 		}
+	}, nil
+}
+
+func (config CORSConfig) starAllowOriginFunc(c *echo.Context, origin string) (string, bool, error) {
+	return "*", true, nil
+}
+
+func (config CORSConfig) defaultAllowOriginFunc(c *echo.Context, origin string) (string, bool, error) {
+	for _, allowedOrigin := range config.AllowOrigins {
+		if strings.EqualFold(allowedOrigin, origin) {
+			return allowedOrigin, true, nil
+		}
 	}
+	return "", false, nil
 }

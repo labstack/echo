@@ -48,13 +48,23 @@ Click [here](https://github.com/sponsors/labstack) for more information on spons
 
 ## [Guide](https://echo.labstack.com/guide)
 
+### Supported Echo versions
+
+- Latest major version of Echo is `v5` as of 2026-01-18.
+  - Until 2026-03-31, any critical issues requiring breaking API changes will be addressed, even if this violates semantic versioning.
+  - See [API_CHANGES_V5.md](./API_CHANGES_V5.md) for public API changes between `v4` and `v5`, notes on upgrading.
+  - If you are using Echo in a production environment, it is recommended to wait until after 2026-03-31 before upgrading.
+- Echo `v4` is supported with **security*** updates and **bug** fixes until **2026-12-31**
+
+
 ### Installation
 
 ```sh
 // go get github.com/labstack/echo/{version}
-go get github.com/labstack/echo/v4
+go get github.com/labstack/echo/v5
 ```
 Latest version of Echo supports last four Go major [releases](https://go.dev/doc/devel/release) and might work with older versions.
+
 
 ### Example
 
@@ -62,8 +72,9 @@ Latest version of Echo supports last four Go major [releases](https://go.dev/doc
 package main
 
 import (
-  "github.com/labstack/echo/v4"
-  "github.com/labstack/echo/v4/middleware"
+  "errors"
+  "github.com/labstack/echo/v5"
+  "github.com/labstack/echo/v5/middleware"
   "log/slog"
   "net/http"
 )
@@ -73,20 +84,20 @@ func main() {
   e := echo.New()
 
   // Middleware
-  e.Use(middleware.RequestLogger()) // use the default RequestLogger middleware with slog logger
+  e.Use(middleware.RequestLogger()) // use the RequestLogger middleware with slog logger
   e.Use(middleware.Recover()) // recover panics as errors for proper error handling
 
   // Routes
   e.GET("/", hello)
 
   // Start server
-  if err := e.Start(":8080"); err != nil && !errors.Is(err, http.ErrServerClosed) {
+  if err := e.Start(":8080"); err != nil {
     slog.Error("failed to start server", "error", err)
   }
 }
 
 // Handler
-func hello(c echo.Context) error {
+func hello(c *echo.Context) error {
   return c.String(http.StatusOK, "Hello, World!")
 }
 ```

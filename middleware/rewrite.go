@@ -4,9 +4,10 @@
 package middleware
 
 import (
+	"errors"
 	"regexp"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 // RewriteConfig defines the config for Rewrite middleware.
@@ -22,40 +23,39 @@ type RewriteConfig struct {
 	// "/js/*":             "/public/javascripts/$1",
 	// "/users/*/orders/*": "/user/$1/order/$2",
 	// Required.
-	Rules map[string]string `yaml:"rules"`
+	Rules map[string]string
 
 	// RegexRules defines the URL path rewrite rules using regexp.Rexexp with captures
 	// Every capture group in the values can be retrieved by index e.g. $1, $2 and so on.
 	// Example:
 	// "^/old/[0.9]+/":     "/new",
 	// "^/api/.+?/(.*)":     "/v2/$1",
-	RegexRules map[*regexp.Regexp]string `yaml:"-"`
-}
-
-// DefaultRewriteConfig is the default Rewrite middleware config.
-var DefaultRewriteConfig = RewriteConfig{
-	Skipper: DefaultSkipper,
+	RegexRules map[*regexp.Regexp]string
 }
 
 // Rewrite returns a Rewrite middleware.
 //
 // Rewrite middleware rewrites the URL path based on the provided rules.
 func Rewrite(rules map[string]string) echo.MiddlewareFunc {
-	c := DefaultRewriteConfig
+	c := RewriteConfig{}
 	c.Rules = rules
 	return RewriteWithConfig(c)
 }
 
-// RewriteWithConfig returns a Rewrite middleware with config.
-// See: `Rewrite()`.
+// RewriteWithConfig returns a Rewrite middleware or panics on invalid configuration.
+//
+// Rewrite middleware rewrites the URL path based on the provided rules.
 func RewriteWithConfig(config RewriteConfig) echo.MiddlewareFunc {
-	// Defaults
-	if config.Rules == nil && config.RegexRules == nil {
-		panic("echo: rewrite middleware requires url path rewrite rules or regex rules")
-	}
+	return toMiddlewareOrPanic(config)
+}
 
+// ToMiddleware converts RewriteConfig to middleware or returns an error for invalid configuration
+func (config RewriteConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 	if config.Skipper == nil {
-		config.Skipper = DefaultBodyDumpConfig.Skipper
+		config.Skipper = DefaultSkipper
+	}
+	if config.Rules == nil && config.RegexRules == nil {
+		return nil, errors.New("echo rewrite middleware requires url path rewrite rules or regex rules")
 	}
 
 	if config.RegexRules == nil {
@@ -66,7 +66,7 @@ func RewriteWithConfig(config RewriteConfig) echo.MiddlewareFunc {
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) (err error) {
+		return func(c *echo.Context) (err error) {
 			if config.Skipper(c) {
 				return next(c)
 			}
@@ -76,5 +76,5 @@ func RewriteWithConfig(config RewriteConfig) echo.MiddlewareFunc {
 			}
 			return next(c)
 		}
-	}
+	}, nil
 }

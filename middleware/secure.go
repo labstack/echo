@@ -6,7 +6,7 @@ package middleware
 import (
 	"fmt"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 // SecureConfig defines the config for Secure middleware.
@@ -17,12 +17,12 @@ type SecureConfig struct {
 	// XSSProtection provides protection against cross-site scripting attack (XSS)
 	// by setting the `X-XSS-Protection` header.
 	// Optional. Default value "1; mode=block".
-	XSSProtection string `yaml:"xss_protection"`
+	XSSProtection string
 
 	// ContentTypeNosniff provides protection against overriding Content-Type
 	// header by setting the `X-Content-Type-Options` header.
 	// Optional. Default value "nosniff".
-	ContentTypeNosniff string `yaml:"content_type_nosniff"`
+	ContentTypeNosniff string
 
 	// XFrameOptions can be used to indicate whether or not a browser should
 	// be allowed to render a page in a <frame>, <iframe> or <object> .
@@ -34,45 +34,45 @@ type SecureConfig struct {
 	// - "SAMEORIGIN" - The page can only be displayed in a frame on the same origin as the page itself.
 	// - "DENY" - The page cannot be displayed in a frame, regardless of the site attempting to do so.
 	// - "ALLOW-FROM uri" - The page can only be displayed in a frame on the specified origin.
-	XFrameOptions string `yaml:"x_frame_options"`
+	XFrameOptions string
 
 	// HSTSMaxAge sets the `Strict-Transport-Security` header to indicate how
 	// long (in seconds) browsers should remember that this site is only to
 	// be accessed using HTTPS. This reduces your exposure to some SSL-stripping
 	// man-in-the-middle (MITM) attacks.
 	// Optional. Default value 0.
-	HSTSMaxAge int `yaml:"hsts_max_age"`
+	HSTSMaxAge int
 
 	// HSTSExcludeSubdomains won't include subdomains tag in the `Strict Transport Security`
 	// header, excluding all subdomains from security policy. It has no effect
 	// unless HSTSMaxAge is set to a non-zero value.
 	// Optional. Default value false.
-	HSTSExcludeSubdomains bool `yaml:"hsts_exclude_subdomains"`
+	HSTSExcludeSubdomains bool
 
 	// ContentSecurityPolicy sets the `Content-Security-Policy` header providing
 	// security against cross-site scripting (XSS), clickjacking and other code
 	// injection attacks resulting from execution of malicious content in the
 	// trusted web page context.
 	// Optional. Default value "".
-	ContentSecurityPolicy string `yaml:"content_security_policy"`
+	ContentSecurityPolicy string
 
 	// CSPReportOnly would use the `Content-Security-Policy-Report-Only` header instead
 	// of the `Content-Security-Policy` header. This allows iterative updates of the
 	// content security policy by only reporting the violations that would
 	// have occurred instead of blocking the resource.
 	// Optional. Default value false.
-	CSPReportOnly bool `yaml:"csp_report_only"`
+	CSPReportOnly bool
 
 	// HSTSPreloadEnabled will add the preload tag in the `Strict Transport Security`
 	// header, which enables the domain to be included in the HSTS preload list
 	// maintained by Chrome (and used by Firefox and Safari): https://hstspreload.org/
 	// Optional.  Default value false.
-	HSTSPreloadEnabled bool `yaml:"hsts_preload_enabled"`
+	HSTSPreloadEnabled bool
 
 	// ReferrerPolicy sets the `Referrer-Policy` header providing security against
 	// leaking potentially sensitive request paths to third parties.
 	// Optional. Default value "".
-	ReferrerPolicy string `yaml:"referrer_policy"`
+	ReferrerPolicy string
 }
 
 // DefaultSecureConfig is the default Secure middleware config.
@@ -92,16 +92,20 @@ func Secure() echo.MiddlewareFunc {
 	return SecureWithConfig(DefaultSecureConfig)
 }
 
-// SecureWithConfig returns a Secure middleware with config.
-// See: `Secure()`.
+// SecureWithConfig returns a Secure middleware with config or panics on invalid configuration.
 func SecureWithConfig(config SecureConfig) echo.MiddlewareFunc {
+	return toMiddlewareOrPanic(config)
+}
+
+// ToMiddleware converts SecureConfig to middleware or returns an error for invalid configuration
+func (config SecureConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 	// Defaults
 	if config.Skipper == nil {
 		config.Skipper = DefaultSecureConfig.Skipper
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
+		return func(c *echo.Context) error {
 			if config.Skipper(c) {
 				return next(c)
 			}
@@ -140,5 +144,5 @@ func SecureWithConfig(config SecureConfig) echo.MiddlewareFunc {
 			}
 			return next(c)
 		}
-	}
+	}, nil
 }

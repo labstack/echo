@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/time/rate"
 )
@@ -21,25 +21,25 @@ import (
 func TestRateLimiter(t *testing.T) {
 	e := echo.New()
 
-	handler := func(c echo.Context) error {
+	handler := func(c *echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}
 
 	var inMemoryStore = NewRateLimiterMemoryStoreWithConfig(RateLimiterMemoryStoreConfig{Rate: 1, Burst: 3})
 
-	mw := RateLimiter(inMemoryStore)
+	mw := RateLimiterWithConfig(RateLimiterConfig{Store: inMemoryStore})
 
 	testCases := []struct {
-		id   string
-		code int
+		id        string
+		expectErr string
 	}{
-		{"127.0.0.1", http.StatusOK},
-		{"127.0.0.1", http.StatusOK},
-		{"127.0.0.1", http.StatusOK},
-		{"127.0.0.1", http.StatusTooManyRequests},
-		{"127.0.0.1", http.StatusTooManyRequests},
-		{"127.0.0.1", http.StatusTooManyRequests},
-		{"127.0.0.1", http.StatusTooManyRequests},
+		{id: "127.0.0.1"},
+		{id: "127.0.0.1"},
+		{id: "127.0.0.1"},
+		{id: "127.0.0.1", expectErr: "code=429, message=rate limit exceeded"},
+		{id: "127.0.0.1", expectErr: "code=429, message=rate limit exceeded"},
+		{id: "127.0.0.1", expectErr: "code=429, message=rate limit exceeded"},
+		{id: "127.0.0.1", expectErr: "code=429, message=rate limit exceeded"},
 	}
 
 	for _, tc := range testCases {
@@ -49,20 +49,25 @@ func TestRateLimiter(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		_ = mw(handler)(c)
-		assert.Equal(t, tc.code, rec.Code)
+		err := mw(handler)(c)
+		if tc.expectErr != "" {
+			assert.EqualError(t, err, tc.expectErr)
+		} else {
+			assert.NoError(t, err)
+		}
+		assert.Equal(t, http.StatusOK, rec.Code)
 	}
 }
 
-func TestRateLimiter_panicBehaviour(t *testing.T) {
+func TestMustRateLimiterWithConfig_panicBehaviour(t *testing.T) {
 	var inMemoryStore = NewRateLimiterMemoryStoreWithConfig(RateLimiterMemoryStoreConfig{Rate: 1, Burst: 3})
 
 	assert.Panics(t, func() {
-		RateLimiter(nil)
+		RateLimiterWithConfig(RateLimiterConfig{})
 	})
 
 	assert.NotPanics(t, func() {
-		RateLimiter(inMemoryStore)
+		RateLimiterWithConfig(RateLimiterConfig{Store: inMemoryStore})
 	})
 }
 
@@ -71,26 +76,27 @@ func TestRateLimiterWithConfig(t *testing.T) {
 
 	e := echo.New()
 
-	handler := func(c echo.Context) error {
+	handler := func(c *echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}
 
-	mw := RateLimiterWithConfig(RateLimiterConfig{
-		IdentifierExtractor: func(c echo.Context) (string, error) {
+	mw, err := RateLimiterConfig{
+		IdentifierExtractor: func(c *echo.Context) (string, error) {
 			id := c.Request().Header.Get(echo.HeaderXRealIP)
 			if id == "" {
 				return "", errors.New("invalid identifier")
 			}
 			return id, nil
 		},
-		DenyHandler: func(ctx echo.Context, identifier string, err error) error {
+		DenyHandler: func(ctx *echo.Context, identifier string, err error) error {
 			return ctx.JSON(http.StatusForbidden, nil)
 		},
-		ErrorHandler: func(ctx echo.Context, err error) error {
+		ErrorHandler: func(ctx *echo.Context, err error) error {
 			return ctx.JSON(http.StatusBadRequest, nil)
 		},
 		Store: inMemoryStore,
-	})
+	}.ToMiddleware()
+	assert.NoError(t, err)
 
 	testCases := []struct {
 		id   string
@@ -113,8 +119,9 @@ func TestRateLimiterWithConfig(t *testing.T) {
 
 		c := e.NewContext(req, rec)
 
-		_ = mw(handler)(c)
+		err := mw(handler)(c)
 
+		assert.NoError(t, err)
 		assert.Equal(t, tc.code, rec.Code)
 	}
 }
@@ -124,12 +131,12 @@ func TestRateLimiterWithConfig_defaultDenyHandler(t *testing.T) {
 
 	e := echo.New()
 
-	handler := func(c echo.Context) error {
+	handler := func(c *echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}
 
-	mw := RateLimiterWithConfig(RateLimiterConfig{
-		IdentifierExtractor: func(c echo.Context) (string, error) {
+	mw, err := RateLimiterConfig{
+		IdentifierExtractor: func(c *echo.Context) (string, error) {
 			id := c.Request().Header.Get(echo.HeaderXRealIP)
 			if id == "" {
 				return "", errors.New("invalid identifier")
@@ -137,19 +144,20 @@ func TestRateLimiterWithConfig_defaultDenyHandler(t *testing.T) {
 			return id, nil
 		},
 		Store: inMemoryStore,
-	})
+	}.ToMiddleware()
+	assert.NoError(t, err)
 
 	testCases := []struct {
-		id   string
-		code int
+		id        string
+		expectErr string
 	}{
-		{"127.0.0.1", http.StatusOK},
-		{"127.0.0.1", http.StatusOK},
-		{"127.0.0.1", http.StatusOK},
-		{"127.0.0.1", http.StatusTooManyRequests},
-		{"", http.StatusForbidden},
-		{"127.0.0.1", http.StatusTooManyRequests},
-		{"127.0.0.1", http.StatusTooManyRequests},
+		{id: "127.0.0.1"},
+		{id: "127.0.0.1"},
+		{id: "127.0.0.1"},
+		{id: "127.0.0.1", expectErr: "code=429, message=rate limit exceeded"},
+		{expectErr: "code=403, message=error while extracting identifier, err=invalid identifier"},
+		{id: "127.0.0.1", expectErr: "code=429, message=rate limit exceeded"},
+		{id: "127.0.0.1", expectErr: "code=429, message=rate limit exceeded"},
 	}
 
 	for _, tc := range testCases {
@@ -160,9 +168,13 @@ func TestRateLimiterWithConfig_defaultDenyHandler(t *testing.T) {
 
 		c := e.NewContext(req, rec)
 
-		_ = mw(handler)(c)
-
-		assert.Equal(t, tc.code, rec.Code)
+		err := mw(handler)(c)
+		if tc.expectErr != "" {
+			assert.EqualError(t, err, tc.expectErr)
+		} else {
+			assert.NoError(t, err)
+		}
+		assert.Equal(t, http.StatusOK, rec.Code)
 	}
 }
 
@@ -172,25 +184,26 @@ func TestRateLimiterWithConfig_defaultConfig(t *testing.T) {
 
 		e := echo.New()
 
-		handler := func(c echo.Context) error {
+		handler := func(c *echo.Context) error {
 			return c.String(http.StatusOK, "test")
 		}
 
-		mw := RateLimiterWithConfig(RateLimiterConfig{
+		mw, err := RateLimiterConfig{
 			Store: inMemoryStore,
-		})
+		}.ToMiddleware()
+		assert.NoError(t, err)
 
 		testCases := []struct {
-			id   string
-			code int
+			id        string
+			expectErr string
 		}{
-			{"127.0.0.1", http.StatusOK},
-			{"127.0.0.1", http.StatusOK},
-			{"127.0.0.1", http.StatusOK},
-			{"127.0.0.1", http.StatusTooManyRequests},
-			{"127.0.0.1", http.StatusTooManyRequests},
-			{"127.0.0.1", http.StatusTooManyRequests},
-			{"127.0.0.1", http.StatusTooManyRequests},
+			{id: "127.0.0.1"},
+			{id: "127.0.0.1"},
+			{id: "127.0.0.1"},
+			{id: "127.0.0.1", expectErr: "code=429, message=rate limit exceeded"},
+			{id: "127.0.0.1", expectErr: "code=429, message=rate limit exceeded"},
+			{id: "127.0.0.1", expectErr: "code=429, message=rate limit exceeded"},
+			{id: "127.0.0.1", expectErr: "code=429, message=rate limit exceeded"},
 		}
 
 		for _, tc := range testCases {
@@ -201,9 +214,13 @@ func TestRateLimiterWithConfig_defaultConfig(t *testing.T) {
 
 			c := e.NewContext(req, rec)
 
-			_ = mw(handler)(c)
-
-			assert.Equal(t, tc.code, rec.Code)
+			err := mw(handler)(c)
+			if tc.expectErr != "" {
+				assert.EqualError(t, err, tc.expectErr)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, http.StatusOK, rec.Code)
 		}
 	}
 }
@@ -212,7 +229,7 @@ func TestRateLimiterWithConfig_skipper(t *testing.T) {
 	e := echo.New()
 
 	var beforeFuncRan bool
-	handler := func(c echo.Context) error {
+	handler := func(c *echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}
 	var inMemoryStore = NewRateLimiterMemoryStore(5)
@@ -224,21 +241,23 @@ func TestRateLimiterWithConfig_skipper(t *testing.T) {
 
 	c := e.NewContext(req, rec)
 
-	mw := RateLimiterWithConfig(RateLimiterConfig{
-		Skipper: func(c echo.Context) bool {
+	mw, err := RateLimiterConfig{
+		Skipper: func(c *echo.Context) bool {
 			return true
 		},
-		BeforeFunc: func(c echo.Context) {
+		BeforeFunc: func(c *echo.Context) {
 			beforeFuncRan = true
 		},
 		Store: inMemoryStore,
-		IdentifierExtractor: func(ctx echo.Context) (string, error) {
+		IdentifierExtractor: func(ctx *echo.Context) (string, error) {
 			return "127.0.0.1", nil
 		},
-	})
+	}.ToMiddleware()
+	assert.NoError(t, err)
 
-	_ = mw(handler)(c)
+	err = mw(handler)(c)
 
+	assert.NoError(t, err)
 	assert.Equal(t, false, beforeFuncRan)
 }
 
@@ -246,7 +265,7 @@ func TestRateLimiterWithConfig_skipperNoSkip(t *testing.T) {
 	e := echo.New()
 
 	var beforeFuncRan bool
-	handler := func(c echo.Context) error {
+	handler := func(c *echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}
 	var inMemoryStore = NewRateLimiterMemoryStore(5)
@@ -258,18 +277,19 @@ func TestRateLimiterWithConfig_skipperNoSkip(t *testing.T) {
 
 	c := e.NewContext(req, rec)
 
-	mw := RateLimiterWithConfig(RateLimiterConfig{
-		Skipper: func(c echo.Context) bool {
+	mw, err := RateLimiterConfig{
+		Skipper: func(c *echo.Context) bool {
 			return false
 		},
-		BeforeFunc: func(c echo.Context) {
+		BeforeFunc: func(c *echo.Context) {
 			beforeFuncRan = true
 		},
 		Store: inMemoryStore,
-		IdentifierExtractor: func(ctx echo.Context) (string, error) {
+		IdentifierExtractor: func(ctx *echo.Context) (string, error) {
 			return "127.0.0.1", nil
 		},
-	})
+	}.ToMiddleware()
+	assert.NoError(t, err)
 
 	_ = mw(handler)(c)
 
@@ -279,7 +299,7 @@ func TestRateLimiterWithConfig_skipperNoSkip(t *testing.T) {
 func TestRateLimiterWithConfig_beforeFunc(t *testing.T) {
 	e := echo.New()
 
-	handler := func(c echo.Context) error {
+	handler := func(c *echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}
 
@@ -293,18 +313,20 @@ func TestRateLimiterWithConfig_beforeFunc(t *testing.T) {
 
 	c := e.NewContext(req, rec)
 
-	mw := RateLimiterWithConfig(RateLimiterConfig{
-		BeforeFunc: func(c echo.Context) {
+	mw, err := RateLimiterConfig{
+		BeforeFunc: func(c *echo.Context) {
 			beforeRan = true
 		},
 		Store: inMemoryStore,
-		IdentifierExtractor: func(ctx echo.Context) (string, error) {
+		IdentifierExtractor: func(ctx *echo.Context) (string, error) {
 			return "127.0.0.1", nil
 		},
-	})
+	}.ToMiddleware()
+	assert.NoError(t, err)
 
-	_ = mw(handler)(c)
+	err = mw(handler)(c)
 
+	assert.NoError(t, err)
 	assert.Equal(t, true, beforeRan)
 }
 
@@ -372,7 +394,7 @@ func TestRateLimiterMemoryStore_cleanupStaleVisitors(t *testing.T) {
 	}
 
 	inMemoryStore.Allow("D")
-	inMemoryStore.cleanupStaleVisitors()
+	inMemoryStore.cleanupStaleVisitors(time.Now())
 
 	var exists bool
 
@@ -391,7 +413,7 @@ func TestRateLimiterMemoryStore_cleanupStaleVisitors(t *testing.T) {
 
 func TestNewRateLimiterMemoryStore(t *testing.T) {
 	testCases := []struct {
-		rate              rate.Limit
+		rate              float64
 		burst             int
 		expiresIn         time.Duration
 		expectedExpiresIn time.Duration

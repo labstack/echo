@@ -7,14 +7,16 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"io"
+	"io/fs"
 	"net/http"
 	"net/url"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/gommon/bytes"
+	"github.com/labstack/echo/v5"
 )
 
 // StaticConfig defines the config for Static middleware.
@@ -22,35 +24,44 @@ type StaticConfig struct {
 	// Skipper defines a function to skip middleware.
 	Skipper Skipper
 
-	// Root directory from where the static content is served.
+	// Root directory from where the static content is served (relative to given Filesystem).
+	// `Root: "."` means root folder from Filesystem.
 	// Required.
-	Root string `yaml:"root"`
+	Root string
+
+	// Filesystem provides access to the static content.
+	// Optional. Defaults to echo.Filesystem (serves files from `.` folder where executable is started)
+	Filesystem fs.FS
 
 	// Index file for serving a directory.
 	// Optional. Default value "index.html".
-	Index string `yaml:"index"`
+	Index string
 
 	// Enable HTML5 mode by forwarding all not-found requests to root so that
 	// SPA (single-page application) can handle the routing.
 	// Optional. Default value false.
-	HTML5 bool `yaml:"html5"`
+	HTML5 bool
 
 	// Enable directory browsing.
 	// Optional. Default value false.
-	Browse bool `yaml:"browse"`
+	Browse bool
 
 	// Enable ignoring of the base of the URL path.
 	// Example: when assigning a static middleware to a non root path group,
 	// the filesystem path is not doubled
 	// Optional. Default value false.
-	IgnoreBase bool `yaml:"ignoreBase"`
+	IgnoreBase bool
 
-	// Filesystem provides access to the static content.
-	// Optional. Defaults to http.Dir(config.Root)
-	Filesystem http.FileSystem `yaml:"-"`
+	// DisablePathUnescaping disables path parameter (param: *) unescaping. This is useful when router is set to unescape
+	// all parameter and doing it again in this middleware would corrupt filename that is requested.
+	DisablePathUnescaping bool
+
+	// DirectoryListTemplate is template to list directory contents
+	// Optional. Default to `directoryListHTMLTemplate` constant below.
+	DirectoryListTemplate string
 }
 
-const html = `
+const directoryListHTMLTemplate = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -128,17 +139,20 @@ var DefaultStaticConfig = StaticConfig{
 	Index:   "index.html",
 }
 
-// Static returns a Static middleware to serves static content from the provided
-// root directory.
+// Static returns a Static middleware to serves static content from the provided root directory.
 func Static(root string) echo.MiddlewareFunc {
 	c := DefaultStaticConfig
 	c.Root = root
 	return StaticWithConfig(c)
 }
 
-// StaticWithConfig returns a Static middleware with config.
-// See `Static()`.
+// StaticWithConfig returns a Static middleware to serves static content or panics on invalid configuration.
 func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
+	return toMiddlewareOrPanic(config)
+}
+
+// ToMiddleware converts StaticConfig to middleware or returns an error for invalid configuration
+func (config StaticConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 	// Defaults
 	if config.Root == "" {
 		config.Root = "." // For security we want to restrict to CWD.
@@ -149,30 +163,32 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 	if config.Index == "" {
 		config.Index = DefaultStaticConfig.Index
 	}
-	if config.Filesystem == nil {
-		config.Filesystem = http.Dir(config.Root)
-		config.Root = "."
+	if config.DirectoryListTemplate == "" {
+		config.DirectoryListTemplate = directoryListHTMLTemplate
 	}
 
-	// Index template
-	t, tErr := template.New("index").Parse(html)
+	dirListTemplate, tErr := template.New("index").Parse(config.DirectoryListTemplate)
 	if tErr != nil {
-		panic(fmt.Errorf("echo: %w", tErr))
+		return nil, fmt.Errorf("echo static middleware directory list template parsing error: %w", tErr)
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) (err error) {
+		return func(c *echo.Context) (err error) {
 			if config.Skipper(c) {
 				return next(c)
 			}
 
 			p := c.Request().URL.Path
+			pathUnescape := true
 			if strings.HasSuffix(c.Path(), "*") { // When serving from a group, e.g. `/static*`.
 				p = c.Param("*")
+				pathUnescape = !config.DisablePathUnescaping // because router could already do PathUnescape
 			}
-			p, err = url.PathUnescape(p)
-			if err != nil {
-				return
+			if pathUnescape {
+				p, err = url.PathUnescape(p)
+				if err != nil {
+					return err
+				}
 			}
 			// Security: We use path.Clean() (not filepath.Clean()) because:
 			// 1. HTTP URLs always use forward slashes, regardless of server OS
@@ -191,24 +207,29 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 				}
 			}
 
-			file, err := config.Filesystem.Open(name)
+			currentFS := config.Filesystem
+			if currentFS == nil {
+				currentFS = c.Echo().Filesystem
+			}
+
+			file, err := currentFS.Open(name)
 			if err != nil {
 				if !isIgnorableOpenFileError(err) {
 					return err
 				}
-
 				// file with that path did not exist, so we continue down in middleware/handler chain, hoping that we end up in
 				// handler that is meant to handle this request
-				if err = next(c); err == nil {
-					return err
+				err = next(c)
+				if err == nil {
+					return nil
 				}
 
-				var he *echo.HTTPError
-				if !(errors.As(err, &he) && config.HTML5 && he.Code == http.StatusNotFound) {
+				var he echo.HTTPStatusCoder
+				if !(errors.As(err, &he) && config.HTML5 && he.StatusCode() == http.StatusNotFound) {
 					return err
 				}
-
-				file, err = config.Filesystem.Open(path.Join(config.Root, config.Index))
+				// is case HTML5 mode is enabled + echo 404 we serve index to the client
+				file, err = currentFS.Open(path.Join(config.Root, config.Index))
 				if err != nil {
 					return err
 				}
@@ -222,10 +243,10 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 			}
 
 			if info.IsDir() {
-				index, err := config.Filesystem.Open(path.Join(name, config.Index))
+				index, err := currentFS.Open(path.Join(name, config.Index))
 				if err != nil {
 					if config.Browse {
-						return listDir(t, name, file, c.Response())
+						return listDir(dirListTemplate, name, currentFS, c.Response())
 					}
 
 					return next(c)
@@ -243,34 +264,81 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 
 			return serveFile(c, file, info)
 		}
-	}
+	}, nil
 }
 
-func serveFile(c echo.Context, file http.File, info os.FileInfo) error {
-	http.ServeContent(c.Response(), c.Request(), info.Name(), info.ModTime(), file)
+func serveFile(c *echo.Context, file fs.File, info os.FileInfo) error {
+	ff, ok := file.(io.ReadSeeker)
+	if !ok {
+		return errors.New("file does not implement io.ReadSeeker")
+	}
+	http.ServeContent(c.Response(), c.Request(), info.Name(), info.ModTime(), ff)
 	return nil
 }
 
-func listDir(t *template.Template, name string, dir http.File, res *echo.Response) (err error) {
-	files, err := dir.Readdir(-1)
-	if err != nil {
-		return
-	}
-
+func listDir(t *template.Template, name string, filesystem fs.FS, res http.ResponseWriter) error {
 	// Create directory index
 	res.Header().Set(echo.HeaderContentType, echo.MIMETextHTMLCharsetUTF8)
 	data := struct {
 		Name  string
-		Files []interface{}
+		Files []any
 	}{
 		Name: name,
 	}
-	for _, f := range files {
+	err := fs.WalkDir(filesystem, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		info, infoErr := d.Info()
+		if infoErr != nil {
+			return fmt.Errorf("static middleware list dir error when getting file info: %w", infoErr)
+		}
 		data.Files = append(data.Files, struct {
 			Name string
 			Dir  bool
 			Size string
-		}{f.Name(), f.IsDir(), bytes.Format(f.Size())})
+		}{d.Name(), d.IsDir(), format(info.Size())})
+
+		return nil
+	})
+	if err != nil {
+		return err
 	}
+
 	return t.Execute(res, data)
+}
+
+// format formats bytes integer to human readable string.
+// For example, 31323 bytes will return 30.59KB.
+func format(b int64) string {
+	multiple := ""
+	value := float64(b)
+
+	switch {
+	case b >= EB:
+		value /= float64(EB)
+		multiple = "EB"
+	case b >= PB:
+		value /= float64(PB)
+		multiple = "PB"
+	case b >= TB:
+		value /= float64(TB)
+		multiple = "TB"
+	case b >= GB:
+		value /= float64(GB)
+		multiple = "GB"
+	case b >= MB:
+		value /= float64(MB)
+		multiple = "MB"
+	case b >= KB:
+		value /= float64(KB)
+		multiple = "KB"
+	case b == 0:
+		return "0"
+	default:
+		return strconv.FormatInt(b, 10) + "B"
+	}
+
+	return fmt.Sprintf("%.2f%s", value, multiple)
 }

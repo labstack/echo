@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -70,10 +70,10 @@ func TestAddTrailingSlashWithConfig(t *testing.T) {
 		t.Run(tc.whenURL, func(t *testing.T) {
 			e := echo.New()
 
-			mw := AddTrailingSlashWithConfig(TrailingSlashConfig{
+			mw := AddTrailingSlashWithConfig(AddTrailingSlashConfig{
 				RedirectCode: http.StatusMovedPermanently,
 			})
-			h := mw(func(c echo.Context) error {
+			h := mw(func(c *echo.Context) error {
 				return nil
 			})
 
@@ -123,7 +123,7 @@ func TestAddTrailingSlash(t *testing.T) {
 		t.Run(tc.whenURL, func(t *testing.T) {
 			e := echo.New()
 
-			h := AddTrailingSlash()(func(c echo.Context) error {
+			h := AddTrailingSlash()(func(c *echo.Context) error {
 				return nil
 			})
 
@@ -206,10 +206,10 @@ func TestRemoveTrailingSlashWithConfig(t *testing.T) {
 		t.Run(tc.whenURL, func(t *testing.T) {
 			e := echo.New()
 
-			mw := RemoveTrailingSlashWithConfig(TrailingSlashConfig{
+			mw := RemoveTrailingSlashWithConfig(RemoveTrailingSlashConfig{
 				RedirectCode: http.StatusMovedPermanently,
 			})
-			h := mw(func(c echo.Context) error {
+			h := mw(func(c *echo.Context) error {
 				return nil
 			})
 
@@ -262,7 +262,7 @@ func TestRemoveTrailingSlash(t *testing.T) {
 		t.Run(tc.whenURL, func(t *testing.T) {
 			e := echo.New()
 
-			h := RemoveTrailingSlash()(func(c echo.Context) error {
+			h := RemoveTrailingSlash()(func(c *echo.Context) error {
 				return nil
 			})
 

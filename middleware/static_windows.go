@@ -4,6 +4,8 @@
 package middleware
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 )
 
@@ -21,6 +23,12 @@ func isIgnorableOpenFileError(err error) bool {
 	if os.IsNotExist(err) {
 		return true
 	}
+	var pErr *fs.PathError
+	if errors.As(err, &pErr) {
+		err = pErr.Err
+	}
 	errTxt := err.Error()
-	return errTxt == "http: invalid or unsafe file path" || errTxt == "invalid path"
+	return errTxt == "http: invalid or unsafe file path" ||
+		errTxt == "invalid path" ||
+		errTxt == "invalid argument"
 }
