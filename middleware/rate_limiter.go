@@ -81,7 +81,7 @@ RateLimiterWithConfig returns a rate limiting middleware
 	e := echo.New()
 
 	config := middleware.RateLimiterConfig{
-		Skipper: DefaultSkipper,https://github.com/labstack/echo/pulls
+		Skipper: DefaultSkipper,
 		Store: middleware.NewRateLimiterMemoryStore(
 			middleware.RateLimiterMemoryStoreConfig{Rate: 10, Burst: 30, ExpiresIn: 3 * time.Minute}
 		)
