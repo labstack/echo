@@ -12,6 +12,7 @@ import (
 	"io"
 	"io/fs"
 	"log/slog"
+	"math"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -138,6 +139,24 @@ func TestContextRenderTemplate(t *testing.T) {
 	}
 }
 
+func TestContextRenderTemplateError(t *testing.T) {
+	// we test that when template rendering fails, no response is sent to the client yet, so the global error handler can decide what to do
+	e := New()
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userJSON))
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	tmpl := &Template{
+		templates: template.Must(template.New("hello").Parse("Hello, {{.}}!")),
+	}
+	c.Echo().Renderer = tmpl
+	err := c.Render(http.StatusOK, "not_existing", "Jon Snow")
+
+	assert.EqualError(t, err, `template: no template "not_existing" associated with template "hello"`)
+	assert.Equal(t, http.StatusOK, rec.Code) // status code must not be sent to the client
+	assert.Empty(t, rec.Body.String())       // body must not be sent to the client
+}
+
 func TestContextRenderErrorsOnNoRenderer(t *testing.T) {
 	e := New()
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userJSON))
@@ -173,10 +192,9 @@ func TestContextStream(t *testing.T) {
 }
 
 func TestContextHTML(t *testing.T) {
-	e := New()
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	c := e.NewContext(req, rec)
+	c := NewContext(req, rec)
 
 	err := c.HTML(http.StatusOK, "Hi, Jon Snow")
 	if assert.NoError(t, err) {
@@ -187,10 +205,9 @@ func TestContextHTML(t *testing.T) {
 }
 
 func TestContextHTMLBlob(t *testing.T) {
-	e := New()
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	c := e.NewContext(req, rec)
+	c := NewContext(req, rec)
 
 	err := c.HTMLBlob(http.StatusOK, []byte("Hi, Jon Snow"))
 	if assert.NoError(t, err) {
@@ -222,6 +239,24 @@ func TestContextJSONErrorsOut(t *testing.T) {
 
 	err := c.JSON(http.StatusOK, make(chan bool))
 	assert.EqualError(t, err, "json: unsupported type: chan bool")
+
+	assert.Equal(t, http.StatusOK, rec.Code) // status code must not be sent to the client
+	assert.Empty(t, rec.Body.String())       // body must not be sent to the client
+}
+
+func TestContextJSONWithNotEchoResponse(t *testing.T) {
+	e := New()
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userJSON))
+	c := e.NewContext(req, rec)
+
+	c.SetResponse(rec)
+
+	err := c.JSON(http.StatusCreated, map[string]float64{"foo": math.NaN()})
+	assert.EqualError(t, err, "json: unsupported value: NaN")
+
+	assert.Equal(t, http.StatusOK, rec.Code) // status code must not be sent to the client
+	assert.Empty(t, rec.Body.String())       // body must not be sent to the client
 }
 
 func TestContextJSONPretty(t *testing.T) {

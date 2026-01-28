@@ -139,8 +139,8 @@ func (c *Context) Response() http.ResponseWriter {
 	return c.response
 }
 
-// SetResponse sets `*http.ResponseWriter`. Some middleware require that given ResponseWriter implements following
-// method `Unwrap() http.ResponseWriter` which eventually should return echo.Response instance.
+// SetResponse sets `*http.ResponseWriter`. Some context methods and/or middleware require that given ResponseWriter implements following
+// method `Unwrap() http.ResponseWriter` which eventually should return *echo.Response instance.
 func (c *Context) SetResponse(r http.ResponseWriter) {
 	c.response = r
 }
@@ -415,6 +415,15 @@ func (c *Context) Render(code int, name string, data any) (err error) {
 	if c.echo.Renderer == nil {
 		return ErrRendererNotRegistered
 	}
+	// as Renderer.Render can fail, and in that case we need to delay sending status code to the client until
+	// (global) error handler decides the correct status code for the error to be sent to the client, so we need to write
+	//  the rendered template to the buffer first.
+	//
+	// html.Template.ExecuteTemplate() documentations writes:
+	// > If an error occurs executing the template or writing its output,
+	// > execution stops, but partial results may already have been written to
+	// > the output writer.
+
 	buf := new(bytes.Buffer)
 	if err = c.echo.Renderer.Render(c, buf, name, data); err != nil {
 		return
@@ -454,7 +463,18 @@ func (c *Context) jsonPBlob(code int, callback string, i any) (err error) {
 
 func (c *Context) json(code int, i any, indent string) error {
 	c.writeContentType(MIMEApplicationJSON)
-	c.response.WriteHeader(code)
+
+	// as JSONSerializer.Serialize can fail, and in that case we need to delay sending status code to the client until
+	// (global) error handler decides correct status code for the error to be sent to the client.
+	// For that we need to use writer that can store the proposed status code until the first Write is called.
+	if r, err := UnwrapResponse(c.response); err == nil {
+		r.Status = code
+	} else {
+		resp := c.Response()
+		c.SetResponse(&delayedStatusWriter{ResponseWriter: resp, status: code})
+		defer c.SetResponse(resp)
+	}
+
 	return c.echo.JSONSerializer.Serialize(c, i, indent)
 }
 

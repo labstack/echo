@@ -126,7 +126,47 @@ func UnwrapResponse(rw http.ResponseWriter) (*Response, error) {
 			rw = t.Unwrap()
 			continue
 		default:
-			return nil, errors.New("ResponseWriter does not implement 'Unwrap() http.ResponseWriter' interface")
+			return nil, errors.New("ResponseWriter does not implement 'Unwrap() http.ResponseWriter' interface or unwrap to *echo.Response")
 		}
 	}
+}
+
+// delayedStatusWriter is a wrapper around http.ResponseWriter that delays writing the status code until first Write is called.
+// This allows (global) error handler to decide correct status code to be sent to the client.
+type delayedStatusWriter struct {
+	http.ResponseWriter
+	commited bool
+	status   int
+}
+
+func (w *delayedStatusWriter) WriteHeader(statusCode int) {
+	// in case something else writes status code explicitly before us we need mark response commited
+	w.commited = true
+	w.ResponseWriter.WriteHeader(statusCode)
+}
+
+func (w *delayedStatusWriter) Write(data []byte) (int, error) {
+	if !w.commited {
+		w.commited = true
+		if w.status == 0 {
+			w.status = http.StatusOK
+		}
+		w.ResponseWriter.WriteHeader(w.status)
+	}
+	return w.ResponseWriter.Write(data)
+}
+
+func (w *delayedStatusWriter) Flush() {
+	err := http.NewResponseController(w.ResponseWriter).Flush()
+	if err != nil && errors.Is(err, http.ErrNotSupported) {
+		panic(errors.New("response writer flushing is not supported"))
+	}
+}
+
+func (w *delayedStatusWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	return http.NewResponseController(w.ResponseWriter).Hijack()
+}
+
+func (w *delayedStatusWriter) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
 }

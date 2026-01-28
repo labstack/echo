@@ -115,3 +115,19 @@ func TestResponse_FlushPanics(t *testing.T) {
 		res.Flush()
 	})
 }
+
+func TestResponse_UnwrapResponse(t *testing.T) {
+	orgRes := NewResponse(httptest.NewRecorder(), nil)
+	res, err := UnwrapResponse(orgRes)
+
+	assert.NotNil(t, res)
+	assert.NoError(t, err)
+}
+
+func TestResponse_UnwrapResponse_error(t *testing.T) {
+	rw := new(testResponseWriter)
+	res, err := UnwrapResponse(rw)
+
+	assert.Nil(t, res)
+	assert.EqualError(t, err, "ResponseWriter does not implement 'Unwrap() http.ResponseWriter' interface or unwrap to *echo.Response")
+}
