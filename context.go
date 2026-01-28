@@ -467,9 +467,13 @@ func (c *Context) json(code int, i any, indent string) error {
 	// as JSONSerializer.Serialize can fail, and in that case we need to delay sending status code to the client until
 	// (global) error handler decides correct status code for the error to be sent to the client.
 	// For that we need to use writer that can store the proposed status code until the first Write is called.
-	resp := c.Response()
-	c.SetResponse(&delayedStatusWriter{ResponseWriter: resp, status: code})
-	defer c.SetResponse(resp)
+	if r, err := UnwrapResponse(c.response); err == nil {
+		r.Status = code
+	} else {
+		resp := c.Response()
+		c.SetResponse(&delayedStatusWriter{ResponseWriter: resp, status: code})
+		defer c.SetResponse(resp)
+	}
 
 	return c.echo.JSONSerializer.Serialize(c, i, indent)
 }
