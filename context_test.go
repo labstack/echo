@@ -12,6 +12,7 @@ import (
 	"io"
 	"io/fs"
 	"log/slog"
+	"math"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -251,8 +252,8 @@ func TestContextJSONWithNotEchoResponse(t *testing.T) {
 
 	c.SetResponse(rec)
 
-	err := c.JSON(http.StatusOK, map[string]interface{}{"foo": "bar"})
-	assert.EqualError(t, err, "json: response does not unwrap to *echo.Response")
+	err := c.JSON(http.StatusCreated, map[string]float64{"foo": math.NaN()})
+	assert.EqualError(t, err, "json: unsupported value: NaN")
 
 	assert.Equal(t, http.StatusOK, rec.Code) // status code must not be sent to the client
 	assert.Empty(t, rec.Body.String())       // body must not be sent to the client

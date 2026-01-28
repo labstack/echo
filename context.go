@@ -415,6 +415,15 @@ func (c *Context) Render(code int, name string, data any) (err error) {
 	if c.echo.Renderer == nil {
 		return ErrRendererNotRegistered
 	}
+	// as Renderer.Render can fail, and in that case we need to delay sending status code to the client until
+	// (global) error handler decides the correct status code for the error to be sent to the client, so we need to write
+	//  the rendered template to the buffer first.
+	//
+	// html.Template.ExecuteTemplate() documentations writes:
+	// > If an error occurs executing the template or writing its output,
+	// > execution stops, but partial results may already have been written to
+	// > the output writer.
+
 	buf := new(bytes.Buffer)
 	if err = c.echo.Renderer.Render(c, buf, name, data); err != nil {
 		return
@@ -455,14 +464,12 @@ func (c *Context) jsonPBlob(code int, callback string, i any) (err error) {
 func (c *Context) json(code int, i any, indent string) error {
 	c.writeContentType(MIMEApplicationJSON)
 
-	if r, err := UnwrapResponse(c.response); err == nil {
-		// *echo.Response can delay sending status code until the first Write is called. As serialization can fail, we should delay
-		// sending the status code to the client until serialization is complete (first Write would be an indication it succeeded)
-		// Unsuccessful serialization error needs to go through the error handler and get a proper status code there.
-		r.Status = code
-	} else {
-		return fmt.Errorf("json: response does not unwrap to *echo.Response")
-	}
+	// as JSONSerializer.Serialize can fail, and in that case we need to delay sending status code to the client until
+	// (global) error handler decides correct status code for the error to be sent to the client.
+	// For that we need to use writer that can store the proposed status code until the first Write is called.
+	resp := c.Response()
+	c.SetResponse(&delayedStatusWriter{ResponseWriter: resp, status: code})
+	defer c.SetResponse(resp)
 
 	return c.echo.JSONSerializer.Serialize(c, i, indent)
 }
