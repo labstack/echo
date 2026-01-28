@@ -1,5 +1,13 @@
 # Changelog
 
+## v5.0.1 - 2026-01-28
+
+* Panic MW: will now return a custom PanicStackError with stack trace by @aldas in https://github.com/labstack/echo/pull/2871
+* Docs: add missing err parameter to DenyHandler example by @cgalibern in https://github.com/labstack/echo/pull/2878
+* improve: improve websocket checks in IsWebSocket() [per RFC 6455] by @raju-mechatronics in https://github.com/labstack/echo/pull/2875
+* fix: Context.Json() should not send status code before serialization is complete by @aldas in https://github.com/labstack/echo/pull/2877
+
+
 ## v5.0.0 - 2026-01-18
 
 Echo `v5` is maintenance release with **major breaking changes**
