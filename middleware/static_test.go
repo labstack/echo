@@ -577,3 +577,67 @@ func TestStatic_CustomFS(t *testing.T) {
 		})
 	}
 }
+
+func TestStatic_DirectoryBrowsing(t *testing.T) {
+	var testCases = []struct {
+		name              string
+		givenConfig       StaticConfig
+		whenURL           string
+		expectContains    string
+		expectNotContains []string
+		expectCode        int
+	}{
+		{
+			name: "ok, should return index.html contents from Root=public folder",
+			givenConfig: StaticConfig{
+				Root:       "public",
+				Filesystem: os.DirFS("../_fixture/dist"),
+				Browse:     true,
+			},
+			whenURL:        "/",
+			expectCode:     http.StatusOK,
+			expectContains: `<h1>Hello from index</h1>`,
+		},
+		{
+			name: "ok, should return only subfolder folder listing from Root=public/assets",
+			givenConfig: StaticConfig{
+				Root:       "public",
+				Filesystem: os.DirFS("../_fixture/dist"),
+				Browse:     true,
+			},
+			whenURL:        "/assets",
+			expectCode:     http.StatusOK,
+			expectContains: `<a class="file" href="/assets/readme.md">readme.md</a>`,
+			expectNotContains: []string{
+				`<h1>Hello from index</h1>`, // should see the listing, not index.html contents
+				`private.txt`,               // file from the parent folder
+				`subfolder.md`,              // file from subfolder
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+
+			middlewareFunc, err := tc.givenConfig.ToMiddleware()
+			assert.NoError(t, err)
+
+			e.Use(middlewareFunc)
+
+			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
+			rec := httptest.NewRecorder()
+
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, tc.expectCode, rec.Code)
+
+			responseBody := rec.Body.String()
+			if tc.expectContains != "" {
+				assert.Contains(t, responseBody, tc.expectContains, "body should contain: "+tc.expectContains)
+			}
+			for _, notContains := range tc.expectNotContains {
+				assert.NotContains(t, responseBody, notContains, "body should NOT contain: "+notContains)
+			}
+		})
+	}
+}

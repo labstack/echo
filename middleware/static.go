@@ -118,12 +118,13 @@ const directoryListHTMLTemplate = `
 	</header>
 	<ul>
 		{{ range .Files }}
+    {{ $href := .Name }}{{ if ne $.Name "/" }}{{ $href = print $.Name "/" .Name }}{{ end }}
 		<li>
 		{{ if .Dir }}
 			{{ $name := print .Name "/" }}
-			<a class="dir" href="{{ $name }}">{{ $name }}</a>
+			<a class="dir" href="{{ $href }}">{{ $name }}</a>
 			{{ else }}
-			<a class="file" href="{{ .Name }}">{{ .Name }}</a>
+			<a class="file" href="{{ $href }}">{{ .Name }}</a>
 			<span>{{ .Size }}</span>
 		{{ end }}
 		</li>
@@ -196,14 +197,15 @@ func (config StaticConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			// 3. The "/" prefix forces absolute path interpretation, removing ".." components
 			// 4. Backslashes are treated as literal characters (not path separators), preventing traversal
 			// See static_windows.go for Go 1.20+ filepath.Clean compatibility notes
-			name := path.Join(config.Root, path.Clean("/"+p)) // "/"+ for security
+			requestedPath := path.Clean("/" + p) // "/"+ for security
+			filePath := path.Join(config.Root, requestedPath)
 
 			if config.IgnoreBase {
 				routePath := path.Base(strings.TrimRight(c.Path(), "/*"))
 				baseURLPath := path.Base(p)
 				if baseURLPath == routePath {
-					i := strings.LastIndex(name, routePath)
-					name = name[:i] + strings.Replace(name[i:], routePath, "", 1)
+					i := strings.LastIndex(filePath, routePath)
+					filePath = filePath[:i] + strings.Replace(filePath[i:], routePath, "", 1)
 				}
 			}
 
@@ -212,7 +214,7 @@ func (config StaticConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				currentFS = c.Echo().Filesystem
 			}
 
-			file, err := currentFS.Open(name)
+			file, err := currentFS.Open(filePath)
 			if err != nil {
 				if !isIgnorableOpenFileError(err) {
 					return err
@@ -243,10 +245,10 @@ func (config StaticConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			}
 
 			if info.IsDir() {
-				index, err := currentFS.Open(path.Join(name, config.Index))
+				index, err := currentFS.Open(path.Join(filePath, config.Index))
 				if err != nil {
 					if config.Browse {
-						return listDir(dirListTemplate, name, currentFS, c.Response())
+						return listDir(dirListTemplate, requestedPath, filePath, currentFS, c.Response())
 					}
 
 					return next(c)
@@ -276,34 +278,36 @@ func serveFile(c *echo.Context, file fs.File, info os.FileInfo) error {
 	return nil
 }
 
-func listDir(t *template.Template, name string, filesystem fs.FS, res http.ResponseWriter) error {
+func listDir(t *template.Template, requestedPath string, pathInFs string, filesystem fs.FS, res http.ResponseWriter) error {
+	files, err := fs.ReadDir(filesystem, pathInFs)
+	if err != nil {
+		return fmt.Errorf("static middleware failed to read directory for listing: %w", err)
+	}
+
 	// Create directory index
 	res.Header().Set(echo.HeaderContentType, echo.MIMETextHTMLCharsetUTF8)
 	data := struct {
 		Name  string
 		Files []any
 	}{
-		Name: name,
+		Name: requestedPath,
 	}
-	err := fs.WalkDir(filesystem, ".", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
+
+	for _, f := range files {
+		var size int64
+		if !f.IsDir() {
+			info, err := f.Info()
+			if err != nil {
+				return fmt.Errorf("static middleware failed to get file info for listing: %w", err)
+			}
+			size = info.Size()
 		}
 
-		info, infoErr := d.Info()
-		if infoErr != nil {
-			return fmt.Errorf("static middleware list dir error when getting file info: %w", infoErr)
-		}
 		data.Files = append(data.Files, struct {
 			Name string
 			Dir  bool
 			Size string
-		}{d.Name(), d.IsDir(), format(info.Size())})
-
-		return nil
-	})
-	if err != nil {
-		return err
+		}{f.Name(), f.IsDir(), format(size)})
 	}
 
 	return t.Execute(res, data)
