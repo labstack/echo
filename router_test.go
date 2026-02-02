@@ -671,6 +671,21 @@ func checkUnusedParamValues(t *testing.T, c *Context, expectParam map[string]str
 	}
 }
 
+func TestRouterFillsRequestPatternField(t *testing.T) {
+	path := "/folders/a/files/echo.gif"
+	req := httptest.NewRequest(http.MethodGet, path, nil)
+	rec := httptest.NewRecorder()
+
+	e := New()
+	e.GET(path, handlerFunc)
+
+	c := e.NewContext(req, rec)
+	_ = e.router.Route(c)
+
+	assert.Equal(t, path, c.Path())
+	assert.Equal(t, path, c.Request().Pattern)
+}
+
 func TestRouterStatic(t *testing.T) {
 	path := "/folders/a/files/echo.gif"
 	req := httptest.NewRequest(http.MethodGet, path, nil)
