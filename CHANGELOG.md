@@ -1,5 +1,12 @@
 # Changelog
 
+## v5.0.2 - 2026-02-02
+
+**Security**
+
+* Fix Static middleware with `config.Browse=true` lists all files/subfolders from `config.Filesystem` root and not starting from `config.Root` in https://github.com/labstack/echo/pull/2887
+
+
 ## v5.0.1 - 2026-01-28
 
 * Panic MW: will now return a custom PanicStackError with stack trace by @aldas in https://github.com/labstack/echo/pull/2871
