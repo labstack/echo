@@ -1039,8 +1039,8 @@ func (r *DefaultRouter) Route(c *Context) HandlerFunc {
 	}
 
 	c.InitializeRoute(rInfo, &pathValues)
-	c.SetPath(rPath) // after InitializeRoute so we would not accidentally change `notFoundRouteInfo` or `methodNotAllowedRouteInfo` Path
-
+	c.SetPath(rPath)          // after InitializeRoute so we would not accidentally change `notFoundRouteInfo` or `methodNotAllowedRouteInfo` Path
+	c.request.Pattern = rPath // help standard library based middlewares. This is a deliberate choice not to call `request.SetPathValue` for params.
 	return rHandler
 }
 
