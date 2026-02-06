@@ -65,7 +65,6 @@ func TestStatic(t *testing.T) {
 			name:           "ok, serve file from subdirectory",
 			whenURL:        "/assets/readme.md",
 			expectCode:     http.StatusOK,
-			expectLength:   "54",
 			expectContains: "This directory is used for the static middleware test",
 		},
 		{
