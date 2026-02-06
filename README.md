@@ -72,7 +72,6 @@ Latest version of Echo supports last four Go major [releases](https://go.dev/doc
 package main
 
 import (
-  "errors"
   "github.com/labstack/echo/v5"
   "github.com/labstack/echo/v5/middleware"
   "log/slog"
