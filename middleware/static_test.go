@@ -473,7 +473,7 @@ func TestStatic_DirectoryBrowsing(t *testing.T) {
 			},
 			whenURL:        "/assets",
 			expectCode:     http.StatusOK,
-			expectContains: `<a class="file" href="/assets/readme.md">readme.md</a>`,
+			expectContains: `<a class="file" href="readme.md">readme.md</a>`,
 			expectNotContains: []string{
 				`<h1>Hello from index</h1>`, // should see the listing, not index.html contents
 				`private.txt`,               // file from the parent folder
