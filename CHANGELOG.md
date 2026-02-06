@@ -1,5 +1,19 @@
 # Changelog
 
+## v5.0.3 - 2026-02-06
+
+**Security**
+
+* Fix directory traversal vulnerability under Windows in Static middleware when default Echo filesystem is used. Reported by @shblue21.
+
+This applies to cases when:
+- Windows is used as OS
+- `middleware.StaticConfig.Filesystem` is `nil` (default)
+- `echo.Filesystem` is has not been set explicitly (default)
+
+Exposure is restricted to the active process working directory and its subfolders.
+
+
 ## v5.0.2 - 2026-02-02
 
 **Security**

@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -21,9 +20,7 @@ func TestStatic_useCaseForApiAndSPAs(t *testing.T) {
 
 	// serve single page application (SPA) files from server root
 	e.Use(StaticWithConfig(StaticConfig{
-		Root: ".",
-		// by default Echo filesystem is fixed to `./` but this does not allow `../` (moving up in folder structure past filesystem root)
-		Filesystem: os.DirFS("../_fixture"),
+		Root: "testdata/dist/public",
 	}))
 
 	// all requests to `/api/*` will end up in echo handlers (assuming there is not `api` folder and files)
@@ -43,7 +40,7 @@ func TestStatic_useCaseForApiAndSPAs(t *testing.T) {
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Contains(t, rec.Body.String(), "<title>Echo</title>")
+	assert.Contains(t, rec.Body.String(), "<h1>Hello from index</h1>\n")
 
 }
 
@@ -54,6 +51,7 @@ func TestStatic(t *testing.T) {
 		givenAttachedToGroup string
 		whenURL              string
 		expectContains       string
+		expectNotContains    string
 		expectLength         string
 		expectCode           int
 	}{
@@ -61,73 +59,61 @@ func TestStatic(t *testing.T) {
 			name:           "ok, serve index with Echo message",
 			whenURL:        "/",
 			expectCode:     http.StatusOK,
-			expectContains: "<title>Echo</title>",
+			expectContains: "<h1>Hello from index</h1>",
 		},
 		{
-			name:         "ok, serve file from subdirectory",
-			whenURL:      "/images/walle.png",
-			expectCode:   http.StatusOK,
-			expectLength: "219885",
+			name:           "ok, serve file from subdirectory",
+			whenURL:        "/assets/readme.md",
+			expectCode:     http.StatusOK,
+			expectContains: "This directory is used for the static middleware test",
 		},
 		{
 			name: "ok, when html5 mode serve index for any static file that does not exist",
 			givenConfig: &StaticConfig{
-				Root:  "_fixture",
+				Root:  "testdata/dist/public",
 				HTML5: true,
 			},
 			whenURL:        "/random",
 			expectCode:     http.StatusOK,
-			expectContains: "<title>Echo</title>",
+			expectContains: "<h1>Hello from index</h1>",
 		},
 		{
 			name: "ok, serve index as directory index listing files directory",
 			givenConfig: &StaticConfig{
-				Root:   "_fixture/certs",
+				Root:   "testdata/dist/public/assets",
 				Browse: true,
 			},
 			whenURL:        "/",
 			expectCode:     http.StatusOK,
-			expectContains: "cert.pem",
+			expectContains: `<a class="file" href="readme.md">readme.md</a>`,
 		},
 		{
 			name: "ok, serve directory index with IgnoreBase and browse",
 			givenConfig: &StaticConfig{
-				Root:       "_fixture/_fixture/", // <-- last `_fixture/` is overlapping with group path and needs to be ignored
+				Root:       "testdata/dist/public/assets/", // <-- last `assets/` is overlapping with group path and needs to be ignored
 				IgnoreBase: true,
 				Browse:     true,
 			},
-			givenAttachedToGroup: "/_fixture",
-			whenURL:              "/_fixture/",
+			givenAttachedToGroup: "/assets",
+			whenURL:              "/assets/",
 			expectCode:           http.StatusOK,
-			expectContains:       `<a class="file" href="README.md">README.md</a>`,
+			expectContains:       `<a class="file" href="readme.md">readme.md</a>`,
 		},
 		{
 			name: "ok, serve file with IgnoreBase",
 			givenConfig: &StaticConfig{
-				Root:       "_fixture/_fixture/", // <-- last `_fixture/` is overlapping with group path and needs to be ignored
+				Root:       "testdata/dist/public/assets", // <-- last `assets/` is overlapping with group path and needs to be ignored
 				IgnoreBase: true,
 				Browse:     true,
 			},
-			givenAttachedToGroup: "/_fixture",
-			whenURL:              "/_fixture/README.md",
+			givenAttachedToGroup: "/assets",
+			whenURL:              "/assets/readme.md",
 			expectCode:           http.StatusOK,
 			expectContains:       "This directory is used for the static middleware test",
 		},
 		{
 			name:           "nok, file not found",
 			whenURL:        "/none",
-			expectCode:     http.StatusNotFound,
-			expectContains: "{\"message\":\"Not Found\"}\n",
-		},
-		{
-			name:           "nok, do not allow directory traversal (backslash - windows separator)",
-			whenURL:        `/..\\middleware/basic_auth.go`,
-			expectCode:     http.StatusNotFound,
-			expectContains: "{\"message\":\"Not Found\"}\n",
-		},
-		{
-			name:           "nok,do not allow directory traversal (slash - unix separator)",
-			whenURL:        `/../middleware/basic_auth.go`,
 			expectCode:     http.StatusNotFound,
 			expectContains: "{\"message\":\"Not Found\"}\n",
 		},
@@ -140,7 +126,7 @@ func TestStatic(t *testing.T) {
 		{
 			name: "ok, skip middleware and serve handler",
 			givenConfig: &StaticConfig{
-				Root: "_fixture/images/",
+				Root: "testdata/dist/public",
 				Skipper: func(c *echo.Context) bool {
 					return true
 				},
@@ -152,9 +138,9 @@ func TestStatic(t *testing.T) {
 		{
 			name: "nok, when html5 fail if the index file does not exist",
 			givenConfig: &StaticConfig{
-				Root:  "_fixture",
+				Root:  "testdata/dist/public",
 				HTML5: true,
-				Index: "missing.html",
+				Index: "missing.html", // that folder contains `index.html`
 			},
 			whenURL:    "/random",
 			expectCode: http.StatusInternalServerError,
@@ -162,36 +148,68 @@ func TestStatic(t *testing.T) {
 		{
 			name: "ok, serve from http.FileSystem",
 			givenConfig: &StaticConfig{
-				Root:       "_fixture",
-				Filesystem: os.DirFS(".."),
+				Root:       "public",
+				Filesystem: os.DirFS("testdata/dist"),
 			},
 			whenURL:        "/",
 			expectCode:     http.StatusOK,
-			expectContains: "<title>Echo</title>",
+			expectContains: "<h1>Hello from index</h1>",
 		},
 		{
-			name:           "nok, URL encoded path traversal (single encoding)",
-			whenURL:        "/%2e%2e%2fmiddleware/basic_auth.go",
-			expectCode:     http.StatusNotFound,
-			expectContains: "{\"message\":\"Not Found\"}\n",
+			name:              "nok, do not allow directory traversal (backslash - windows separator)",
+			whenURL:           `/..\\private.txt`,
+			expectCode:        http.StatusNotFound,
+			expectContains:    "{\"message\":\"Not Found\"}\n",
+			expectNotContains: `private file`,
 		},
 		{
-			name:           "nok, URL encoded path traversal (double encoding)",
-			whenURL:        "/%252e%252e%252fmiddleware/basic_auth.go",
-			expectCode:     http.StatusNotFound,
-			expectContains: "{\"message\":\"Not Found\"}\n",
+			name:              "nok,do not allow directory traversal (slash - unix separator)",
+			whenURL:           `/../private.txt`,
+			expectCode:        http.StatusNotFound,
+			expectContains:    "{\"message\":\"Not Found\"}\n",
+			expectNotContains: `private file`,
 		},
 		{
-			name:           "nok, URL encoded path traversal (mixed encoding)",
-			whenURL:        "/%2e%2e/middleware/basic_auth.go",
-			expectCode:     http.StatusNotFound,
-			expectContains: "{\"message\":\"Not Found\"}\n",
+			name:              "nok, URL encoded path traversal (single encoding, slash - unix separator)",
+			whenURL:           "/%2e%2e%2fprivate.txt",
+			expectCode:        http.StatusNotFound,
+			expectContains:    "{\"message\":\"Not Found\"}\n",
+			expectNotContains: `private file`,
 		},
 		{
-			name:           "nok, backslash URL encoded",
-			whenURL:        "/..%5c..%5cmiddleware/basic_auth.go",
-			expectCode:     http.StatusNotFound,
-			expectContains: "{\"message\":\"Not Found\"}\n",
+			name:              "nok, URL encoded path traversal (single encoding, backslash - windows separator)",
+			whenURL:           "/%2e%2e%5cprivate.txt",
+			expectCode:        http.StatusNotFound,
+			expectContains:    "{\"message\":\"Not Found\"}\n",
+			expectNotContains: `private file`,
+		},
+		{
+			name:              "nok, URL encoded path traversal (double encoding, slash - unix separator)",
+			whenURL:           "/%252e%252e%252fprivate.txt",
+			expectCode:        http.StatusNotFound,
+			expectContains:    "{\"message\":\"Not Found\"}\n",
+			expectNotContains: `private file`,
+		},
+		{
+			name:              "nok, URL encoded path traversal (double encoding, backslash - windows separator)",
+			whenURL:           "/%252e%252e%255cprivate.txt",
+			expectCode:        http.StatusNotFound,
+			expectContains:    "{\"message\":\"Not Found\"}\n",
+			expectNotContains: `private file`,
+		},
+		{
+			name:              "nok, URL encoded path traversal (mixed encoding)",
+			whenURL:           "/%2e%2e/private.txt",
+			expectCode:        http.StatusNotFound,
+			expectContains:    "{\"message\":\"Not Found\"}\n",
+			expectNotContains: `private file`,
+		},
+		{
+			name:              "nok, backslash URL encoded",
+			whenURL:           "/..%5c..%5cprivate.txt",
+			expectCode:        http.StatusNotFound,
+			expectContains:    "{\"message\":\"Not Found\"}\n",
+			expectNotContains: `private file`,
 		},
 		//{ // Under windows, %00 gets cleaned out by `http.ReadRequest` making this test to fail with different code
 		//	name:           "nok, null byte injection",
@@ -200,25 +218,26 @@ func TestStatic(t *testing.T) {
 		//	expectContains: "{\"message\":\"Internal Server Error\"}\n",
 		//},
 		{
-			name:           "nok, mixed backslash and forward slash traversal",
-			whenURL:        "/..\\../middleware/basic_auth.go",
-			expectCode:     http.StatusNotFound,
-			expectContains: "{\"message\":\"Not Found\"}\n",
+			name:              "nok, mixed backslash and forward slash traversal",
+			whenURL:           "/..\\../private.txt",
+			expectCode:        http.StatusNotFound,
+			expectContains:    "{\"message\":\"Not Found\"}\n",
+			expectNotContains: `private file`,
 		},
 		{
-			name:           "nok, trailing dots (Windows edge case)",
-			whenURL:        "/../middleware/basic_auth.go...",
-			expectCode:     http.StatusNotFound,
-			expectContains: "{\"message\":\"Not Found\"}\n",
+			name:              "nok, trailing dots (Windows edge case)",
+			whenURL:           "/../private.txt...",
+			expectCode:        http.StatusNotFound,
+			expectContains:    "{\"message\":\"Not Found\"}\n",
+			expectNotContains: `private file`,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			e := echo.New()
-			e.Filesystem = os.DirFS("../")
 
-			config := StaticConfig{Root: "_fixture"}
+			config := StaticConfig{Root: "testdata/dist/public"}
 			if tc.givenConfig != nil {
 				config = *tc.givenConfig
 			}
@@ -247,169 +266,15 @@ func TestStatic(t *testing.T) {
 			e.ServeHTTP(rec, req)
 
 			assert.Equal(t, tc.expectCode, rec.Code)
+			responseBody := rec.Body.String()
 			if tc.expectContains != "" {
-				responseBody := rec.Body.String()
 				assert.Contains(t, responseBody, tc.expectContains)
 			}
+			if tc.expectNotContains != "" {
+				assert.NotContains(t, responseBody, tc.expectNotContains)
+			}
 			if tc.expectLength != "" {
-				assert.Equal(t, rec.Header().Get(echo.HeaderContentLength), tc.expectLength)
-			}
-		})
-	}
-}
-
-func TestStatic_GroupWithStatic(t *testing.T) {
-	var testCases = []struct {
-		name                 string
-		givenGroup           string
-		givenPrefix          string
-		givenRoot            string
-		whenURL              string
-		expectStatus         int
-		expectHeaderLocation string
-		expectBodyStartsWith string
-	}{
-		{
-			name:                 "ok",
-			givenPrefix:          "/images",
-			givenRoot:            "_fixture/images",
-			whenURL:              "/group/images/walle.png",
-			expectStatus:         http.StatusOK,
-			expectBodyStartsWith: string([]byte{0x89, 0x50, 0x4e, 0x47}),
-		},
-		{
-			name:                 "No file",
-			givenPrefix:          "/images",
-			givenRoot:            "_fixture/scripts",
-			whenURL:              "/group/images/bolt.png",
-			expectStatus:         http.StatusNotFound,
-			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
-		},
-		{
-			name:                 "Directory not found (no trailing slash)",
-			givenPrefix:          "/images",
-			givenRoot:            "_fixture/images",
-			whenURL:              "/group/images/",
-			expectStatus:         http.StatusNotFound,
-			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
-		},
-		{
-			name:                 "Directory redirect",
-			givenPrefix:          "/",
-			givenRoot:            "_fixture",
-			whenURL:              "/group/folder",
-			expectStatus:         http.StatusMovedPermanently,
-			expectHeaderLocation: "/group/folder/",
-			expectBodyStartsWith: "",
-		},
-		{
-			name:                 "Directory redirect",
-			givenPrefix:          "/",
-			givenRoot:            "_fixture",
-			whenURL:              "/group/folder%2f..",
-			expectStatus:         http.StatusMovedPermanently,
-			expectHeaderLocation: "/group/folder/../",
-			expectBodyStartsWith: "",
-		},
-		{
-			name:                 "Prefixed directory 404 (request URL without slash)",
-			givenGroup:           "_fixture",
-			givenPrefix:          "/folder/", // trailing slash will intentionally not match "/folder"
-			givenRoot:            "_fixture",
-			whenURL:              "/_fixture/folder", // no trailing slash
-			expectStatus:         http.StatusNotFound,
-			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
-		},
-		{
-			name:                 "Prefixed directory redirect (without slash redirect to slash)",
-			givenGroup:           "_fixture",
-			givenPrefix:          "/folder", // no trailing slash shall match /folder and /folder/*
-			givenRoot:            "_fixture",
-			whenURL:              "/_fixture/folder", // no trailing slash
-			expectStatus:         http.StatusMovedPermanently,
-			expectHeaderLocation: "/_fixture/folder/",
-			expectBodyStartsWith: "",
-		},
-		{
-			name:                 "Directory with index.html",
-			givenPrefix:          "/",
-			givenRoot:            "_fixture",
-			whenURL:              "/group/",
-			expectStatus:         http.StatusOK,
-			expectBodyStartsWith: "<!doctype html>",
-		},
-		{
-			name:                 "Prefixed directory with index.html (prefix ending with slash)",
-			givenPrefix:          "/assets/",
-			givenRoot:            "_fixture",
-			whenURL:              "/group/assets/",
-			expectStatus:         http.StatusOK,
-			expectBodyStartsWith: "<!doctype html>",
-		},
-		{
-			name:                 "Prefixed directory with index.html (prefix ending without slash)",
-			givenPrefix:          "/assets",
-			givenRoot:            "_fixture",
-			whenURL:              "/group/assets/",
-			expectStatus:         http.StatusOK,
-			expectBodyStartsWith: "<!doctype html>",
-		},
-		{
-			name:                 "Sub-directory with index.html",
-			givenPrefix:          "/",
-			givenRoot:            "_fixture",
-			whenURL:              "/group/folder/",
-			expectStatus:         http.StatusOK,
-			expectBodyStartsWith: "<!doctype html>",
-		},
-		{
-			name:                 "do not allow directory traversal (backslash - windows separator)",
-			givenPrefix:          "/",
-			givenRoot:            "_fixture/",
-			whenURL:              `/group/..\\middleware/basic_auth.go`,
-			expectStatus:         http.StatusNotFound,
-			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
-		},
-		{
-			name:                 "do not allow directory traversal (slash - unix separator)",
-			givenPrefix:          "/",
-			givenRoot:            "_fixture/",
-			whenURL:              `/group/../middleware/basic_auth.go`,
-			expectStatus:         http.StatusNotFound,
-			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			e := echo.New()
-			e.Filesystem = os.DirFS("../") // so we can access test files
-
-			group := "/group"
-			if tc.givenGroup != "" {
-				group = tc.givenGroup
-			}
-			g := e.Group(group)
-			g.Static(tc.givenPrefix, tc.givenRoot)
-
-			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
-			rec := httptest.NewRecorder()
-
-			e.ServeHTTP(rec, req)
-
-			assert.Equal(t, tc.expectStatus, rec.Code)
-			body := rec.Body.String()
-			if tc.expectBodyStartsWith != "" {
-				assert.True(t, strings.HasPrefix(body, tc.expectBodyStartsWith))
-			} else {
-				assert.Equal(t, "", body)
-			}
-
-			if tc.expectHeaderLocation != "" {
-				assert.Equal(t, tc.expectHeaderLocation, rec.Header().Get(echo.HeaderLocation))
-			} else {
-				_, ok := rec.Result().Header[echo.HeaderLocation]
-				assert.False(t, ok)
+				assert.Equal(t, tc.expectLength, rec.Header().Get(echo.HeaderContentLength))
 			}
 		})
 	}
@@ -607,7 +472,7 @@ func TestStatic_DirectoryBrowsing(t *testing.T) {
 			},
 			whenURL:        "/assets",
 			expectCode:     http.StatusOK,
-			expectContains: `<a class="file" href="/assets/readme.md">readme.md</a>`,
+			expectContains: `<a class="file" href="readme.md">readme.md</a>`,
 			expectNotContains: []string{
 				`<h1>Hello from index</h1>`, // should see the listing, not index.html contents
 				`private.txt`,               // file from the parent folder

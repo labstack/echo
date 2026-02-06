@@ -467,13 +467,14 @@ func TestGroup_Static(t *testing.T) {
 
 func TestGroup_StaticMultiTest(t *testing.T) {
 	var testCases = []struct {
-		name                 string
-		givenPrefix          string
-		givenRoot            string
-		whenURL              string
-		expectHeaderLocation string
-		expectBodyStartsWith string
-		expectStatus         int
+		name                  string
+		givenPrefix           string
+		givenRoot             string
+		whenURL               string
+		expectHeaderLocation  string
+		expectBodyStartsWith  string
+		expectBodyNotContains string
+		expectStatus          int
 	}{
 		{
 			name:                 "ok",
@@ -583,6 +584,22 @@ func TestGroup_StaticMultiTest(t *testing.T) {
 			expectBodyStartsWith: "<!doctype html>",
 		},
 		{
+			name:                  "nok, URL encoded path traversal (single encoding, slash - unix separator)",
+			givenRoot:             "_fixture/dist/public",
+			whenURL:               "/%2e%2e%2fprivate.txt",
+			expectStatus:          http.StatusNotFound,
+			expectBodyStartsWith:  "{\"message\":\"Not Found\"}\n",
+			expectBodyNotContains: `private file`,
+		},
+		{
+			name:                  "nok, URL encoded path traversal (single encoding, backslash - windows separator)",
+			givenRoot:             "_fixture/dist/public",
+			whenURL:               "/%2e%2e%5cprivate.txt",
+			expectStatus:          http.StatusNotFound,
+			expectBodyStartsWith:  "{\"message\":\"Not Found\"}\n",
+			expectBodyNotContains: `private file`,
+		},
+		{
 			name:                 "do not allow directory traversal (backslash - windows separator)",
 			givenPrefix:          "/",
 			givenRoot:            "_fixture/",
@@ -617,6 +634,9 @@ func TestGroup_StaticMultiTest(t *testing.T) {
 				assert.True(t, strings.HasPrefix(body, tc.expectBodyStartsWith))
 			} else {
 				assert.Equal(t, "", body)
+			}
+			if tc.expectBodyNotContains != "" {
+				assert.NotContains(t, body, tc.expectBodyNotContains)
 			}
 
 			if tc.expectHeaderLocation != "" {
