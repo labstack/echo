@@ -15,6 +15,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -579,6 +580,7 @@ func (c *Context) FileFS(file string, filesystem fs.FS) error {
 }
 
 func fsFile(c *Context, file string, filesystem fs.FS) error {
+	file = path.Clean(file) // `os.Open` and `os.DirFs.Open()` behave differently, later does not like ``, `.`, `..` at all, but we allowed those now need to clean
 	f, err := filesystem.Open(file)
 	if err != nil {
 		return ErrNotFound

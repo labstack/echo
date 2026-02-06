@@ -785,14 +785,11 @@ func newDefaultFS() *defaultFS {
 	dir, _ := os.Getwd()
 	return &defaultFS{
 		prefix: dir,
-		fs:     nil,
+		fs:     os.DirFS(dir),
 	}
 }
 
 func (fs defaultFS) Open(name string) (fs.File, error) {
-	if fs.fs == nil {
-		return os.Open(name) // #nosec G304
-	}
 	return fs.fs.Open(name)
 }
 

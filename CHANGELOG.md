@@ -1,5 +1,12 @@
 # Changelog
 
+## v5.0.3 - 2026-02-06
+
+**Security**
+
+* Fix directory traversal vulnerability under Windows in Static middleware when default Echo filesytem is used (effectively `middleware.StaticConfig{Filesystem: nil}`).
+
+
 ## v5.0.2 - 2026-02-02
 
 **Security**
