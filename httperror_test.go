@@ -65,3 +65,55 @@ func TestNewHTTPError(t *testing.T) {
 
 	assert.Equal(t, err2, err)
 }
+
+func TestHTTPError_Is(t *testing.T) {
+	var testCases = []struct {
+		name   string
+		err    *HTTPError
+		target error
+		expect bool
+	}{
+		{
+			name:   "ok, same instance",
+			err:    &HTTPError{Code: http.StatusNotFound},
+			target: &HTTPError{Code: http.StatusNotFound},
+			expect: true,
+		},
+		{
+			name:   "ok, different instance, same code",
+			err:    &HTTPError{Code: http.StatusNotFound},
+			target: &HTTPError{Code: http.StatusNotFound, Message: "different"},
+			expect: true,
+		},
+		{
+			name:   "ok, target is sentinel error",
+			err:    &HTTPError{Code: http.StatusNotFound},
+			target: ErrNotFound,
+			expect: true,
+		},
+		{
+			name:   "nok, different code",
+			err:    &HTTPError{Code: http.StatusNotFound},
+			target: &HTTPError{Code: http.StatusInternalServerError},
+			expect: false,
+		},
+		{
+			name:   "nok, target is sentinel error with different code",
+			err:    &HTTPError{Code: http.StatusNotFound},
+			target: ErrInternalServerError,
+			expect: false,
+		},
+		{
+			name:   "nok, target is different error type",
+			err:    &HTTPError{Code: http.StatusNotFound},
+			target: errors.New("some error"),
+			expect: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.expect, errors.Is(tc.err, tc.target))
+		})
+	}
+}

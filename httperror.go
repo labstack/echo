@@ -73,6 +73,20 @@ func (he *HTTPError) Error() string {
 	return fmt.Sprintf("code=%d, message=%v, err=%v", he.Code, msg, he.err.Error())
 }
 
+// Is checks if this error is equal to the target error.
+func (he *HTTPError) Is(target error) bool {
+	if he == target {
+		return true
+	}
+	switch t := target.(type) {
+	case *HTTPError:
+		return he.Code == t.Code
+	case *httpError:
+		return he.Code == t.code
+	}
+	return false
+}
+
 // Wrap eturns new HTTPError with given errors wrapped inside
 func (he HTTPError) Wrap(err error) error {
 	return &HTTPError{
