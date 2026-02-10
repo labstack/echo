@@ -288,6 +288,7 @@ func TestCSRFWithConfig(t *testing.T) {
 				echo.HeaderSecFetchSite: "same-origin",
 			},
 			whenMethod: http.MethodPost,
+			expectCookieContains: "_csrf",
 		},
 		{
 			name: "nok, unsafe method + SecFetchSite=same-cross blocked",
@@ -297,6 +298,22 @@ func TestCSRFWithConfig(t *testing.T) {
 			whenMethod:      http.MethodPost,
 			expectEmptyBody: true,
 			expectErr:       `code=403, message=cross-site request blocked by CSRF`,
+		},
+		{
+			name: "ok, safe GET + SecFetchSite=none sets token and cookie",
+			whenHeaders: map[string]string{
+				echo.HeaderSecFetchSite: "none",
+			},
+			whenMethod:           http.MethodGet,
+			expectCookieContains: "_csrf",
+		},
+		{
+			name: "ok, safe GET + SecFetchSite=same-origin sets token and cookie",
+			whenHeaders: map[string]string{
+				echo.HeaderSecFetchSite: "same-origin",
+			},
+			whenMethod:           http.MethodGet,
+			expectCookieContains: "_csrf",
 		},
 	}
 	for _, tc := range testCases {
@@ -848,6 +865,84 @@ func TestCSRFConfig_checkSecFetchSiteRequest(t *testing.T) {
 				assert.EqualError(t, err, tc.expectErr)
 			} else {
 				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestCSRF_SecFetchSiteSetsTokenInContext(t *testing.T) {
+	// Regression test for https://github.com/labstack/echo/issues/2874
+	// When Sec-Fetch-Site validation passes (e.g. direct navigation with "none"),
+	// the middleware must still set the CSRF token in context and cookie so that
+	// handlers can render forms with the token for subsequent POST requests.
+	var testCases = []struct {
+		name             string
+		whenMethod       string
+		whenSecFetchSite string
+		whenExistingCookie string
+	}{
+		{
+			name:             "GET with Sec-Fetch-Site: none (direct navigation)",
+			whenMethod:       http.MethodGet,
+			whenSecFetchSite: "none",
+		},
+		{
+			name:             "GET with Sec-Fetch-Site: same-origin",
+			whenMethod:       http.MethodGet,
+			whenSecFetchSite: "same-origin",
+		},
+		{
+			name:             "POST with Sec-Fetch-Site: same-origin",
+			whenMethod:       http.MethodPost,
+			whenSecFetchSite: "same-origin",
+		},
+		{
+			name:               "GET with Sec-Fetch-Site: none reuses existing cookie token",
+			whenMethod:         http.MethodGet,
+			whenSecFetchSite:   "none",
+			whenExistingCookie: "existing_token_value",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+
+			req := httptest.NewRequest(tc.whenMethod, "/", nil)
+			req.Header.Set(echo.HeaderSecFetchSite, tc.whenSecFetchSite)
+			if tc.whenExistingCookie != "" {
+				req.Header.Set(echo.HeaderCookie, "_csrf="+tc.whenExistingCookie)
+			}
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			csrf := CSRF()
+			var contextToken string
+			h := csrf(func(c *echo.Context) error {
+				token, ok := c.Get("csrf").(string)
+				if !ok {
+					t.Fatal("CSRF token not found in context")
+				}
+				contextToken = token
+				return c.String(http.StatusOK, "test")
+			})
+
+			err := h(c)
+			assert.NoError(t, err)
+
+			// Token must be set in context
+			assert.NotEmpty(t, contextToken, "CSRF token should be set in context")
+
+			// Cookie must be set in response
+			setCookie := rec.Header().Get(echo.HeaderSetCookie)
+			assert.Contains(t, setCookie, "_csrf", "CSRF cookie should be set in response")
+
+			// Vary header must include Cookie
+			assert.Contains(t, rec.Header().Get(echo.HeaderVary), echo.HeaderCookie, "Vary header should include Cookie")
+
+			// If there was an existing cookie, the token should match
+			if tc.whenExistingCookie != "" {
+				assert.Equal(t, tc.whenExistingCookie, contextToken, "should reuse existing cookie token")
 			}
 		})
 	}

@@ -152,6 +152,42 @@ func (config CSRFConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 		return nil, cErr
 	}
 
+	// setTokenInContext retrieves the existing CSRF token from the cookie or generates a new one,
+	// then sets the cookie and stores the token in the context so handlers can access it
+	// (e.g. to render it in forms).
+	setTokenInContext := func(c *echo.Context) {
+		token := ""
+		if k, err := c.Cookie(config.CookieName); err != nil {
+			token = config.Generator() // Generate token
+		} else {
+			token = k.Value // Reuse token
+		}
+
+		// Set CSRF cookie
+		cookie := new(http.Cookie)
+		cookie.Name = config.CookieName
+		cookie.Value = token
+		if config.CookiePath != "" {
+			cookie.Path = config.CookiePath
+		}
+		if config.CookieDomain != "" {
+			cookie.Domain = config.CookieDomain
+		}
+		if config.CookieSameSite != http.SameSiteDefaultMode {
+			cookie.SameSite = config.CookieSameSite
+		}
+		cookie.Expires = time.Now().Add(time.Duration(config.CookieMaxAge) * time.Second)
+		cookie.Secure = config.CookieSecure
+		cookie.HttpOnly = config.CookieHTTPOnly
+		c.SetCookie(cookie)
+
+		// Store token in the context
+		c.Set(config.ContextKey, token)
+
+		// Protect clients from caching the response
+		c.Response().Header().Add(echo.HeaderVary, echo.HeaderCookie)
+	}
+
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c *echo.Context) error {
 			if config.Skipper(c) {
@@ -164,6 +200,10 @@ func (config CSRFConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				return err
 			}
 			if allow {
+				// Even though the Sec-Fetch-Site check passed, we still need to set
+				// the CSRF token in the context and cookie so that handlers can access
+				// the token (e.g. to render it in forms for subsequent POST requests).
+				setTokenInContext(c)
 				return next(c)
 			}
 
