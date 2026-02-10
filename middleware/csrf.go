@@ -13,6 +13,15 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
+// CSRFUsingSecFetchSite is a context key for CSRF middleware what is set when the client browser is using Sec-Fetch-Site
+// header and the request is deemed safe.
+// It is a dummy token value that can be used to render CSRF token for form by handlers.
+//
+// We know that the client is using a browser that supports Sec-Fetch-Site header, so when the form is submitted in
+// the future with this dummy token value it is OK. Although the request is safe, the template rendered by the
+// handler may need this value to render CSRF token for form.
+const CSRFUsingSecFetchSite = "_echo_csrf_using_sec_fetch_site_"
+
 // CSRFConfig defines the config for CSRF middleware.
 type CSRFConfig struct {
 	// Skipper defines a function to skip middleware.
@@ -277,6 +286,11 @@ func (config CSRFConfig) checkSecFetchSiteRequest(c *echo.Context) (bool, error)
 	}
 
 	if isSafe {
+		// This helps handlers that support older token-based CSRF protection.
+		// We know that the client is using a browser that supports Sec-Fetch-Site header, so when the form is submitted in
+		// the future with this dummy token value it is OK. Although the request is safe, the template rendered by the
+		// handler may need this value to render CSRF token for form.
+		c.Set(config.ContextKey, CSRFUsingSecFetchSite)
 		return true, nil
 	}
 	// we are here when request is state-changing and `cross-site` or `same-site`
