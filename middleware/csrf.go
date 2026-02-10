@@ -13,6 +13,15 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+// CSRFUsingSecFetchSite is a context key for CSRF middleware what is set when the client browser is using Sec-Fetch-Site
+// header and the request is deemed safe.
+// It is a dummy token value that can be used to render CSRF token for form by handlers.
+//
+// We know that the client is using a browser that supports Sec-Fetch-Site header, so when the form is submitted in
+// the future with this dummy token value it is OK. Although the request is safe, the template rendered by the
+// handler may need this value to render CSRF token for form.
+const CSRFUsingSecFetchSite = "_echo_csrf_using_sec_fetch_site_"
+
 // CSRFConfig defines the config for CSRF middleware.
 type CSRFConfig struct {
 	// Skipper defines a function to skip middleware.
@@ -83,6 +92,8 @@ type CSRFConfig struct {
 
 	// ErrorHandler defines a function which is executed for returning custom errors.
 	ErrorHandler CSRFErrorHandler
+
+	generator func(length uint8) string
 }
 
 // CSRFErrorHandler is a function which is executed for creating custom errors.
@@ -145,6 +156,10 @@ func (config CSRFConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 		}
 		config.TrustedOrigins = append([]string(nil), config.TrustedOrigins...)
 	}
+	tokenGenerator := randomString
+	if config.generator != nil {
+		tokenGenerator = config.generator
+	}
 
 	extractors, cErr := CreateExtractors(config.TokenLookup)
 	if cErr != nil {
@@ -170,7 +185,7 @@ func (config CSRFConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 
 			token := ""
 			if k, err := c.Cookie(config.CookieName); err != nil {
-				token = randomString(config.TokenLength)
+				token = tokenGenerator(config.TokenLength)
 			} else {
 				token = k.Value // Reuse token
 			}
@@ -287,6 +302,11 @@ func (config CSRFConfig) checkSecFetchSiteRequest(c echo.Context) (bool, error) 
 	}
 
 	if isSafe {
+		// This helps handlers that support older token-based CSRF protection.
+		// We know that the client is using a browser that supports Sec-Fetch-Site header, so when the form is submitted in
+		// the future with this dummy token value it is OK. Although the request is safe, the template rendered by the
+		// handler may need this value to render CSRF token for form.
+		c.Set(config.ContextKey, CSRFUsingSecFetchSite)
 		return true, nil
 	}
 	// we are here when request is state-changing and `cross-site` or `same-site`

@@ -86,7 +86,7 @@ func TestCSRF_tokenExtractors(t *testing.T) {
 			},
 		},
 		{
-			name:            "ok, token from POST header, second token passes",
+			name:            "nok, token from POST header, tokens limited to 1, second token would pass",
 			whenTokenLookup: "header:" + echo.HeaderXCSRFToken,
 			givenCSRFCookie: "token",
 			givenMethod:     http.MethodPost,
@@ -122,7 +122,7 @@ func TestCSRF_tokenExtractors(t *testing.T) {
 			},
 		},
 		{
-			name:            "ok, token from PUT query form, second token passes",
+			name:            "nok, token from PUT query form, second token would pass",
 			whenTokenLookup: "query:csrf",
 			givenCSRFCookie: "token",
 			givenMethod:     http.MethodPut,
@@ -235,12 +235,14 @@ func TestCSRFWithConfig(t *testing.T) {
 		expectEmptyBody      bool
 		expectMWError        string
 		expectCookieContains string
+		expectTokenInContext string
 		expectErr            string
 	}{
 		{
 			name:                 "ok, GET",
 			whenMethod:           http.MethodGet,
 			expectCookieContains: "_csrf",
+			expectTokenInContext: "TESTTOKEN",
 		},
 		{
 			name: "ok, POST valid token",
@@ -250,6 +252,7 @@ func TestCSRFWithConfig(t *testing.T) {
 			},
 			whenMethod:           http.MethodPost,
 			expectCookieContains: "_csrf",
+			expectTokenInContext: token,
 		},
 		{
 			name:            "nok, POST without token",
@@ -278,13 +281,23 @@ func TestCSRFWithConfig(t *testing.T) {
 			},
 			whenMethod:           http.MethodGet,
 			expectCookieContains: "_csrf",
+			expectTokenInContext: "TESTTOKEN",
 		},
 		{
 			name: "ok, unsafe method + SecFetchSite=same-origin passes",
 			whenHeaders: map[string]string{
 				echo.HeaderSecFetchSite: "same-origin",
 			},
-			whenMethod: http.MethodPost,
+			whenMethod:           http.MethodPost,
+			expectTokenInContext: "_echo_csrf_using_sec_fetch_site_",
+		},
+		{
+			name: "ok, safe method + SecFetchSite=same-origin passes",
+			whenHeaders: map[string]string{
+				echo.HeaderSecFetchSite: "same-origin",
+			},
+			whenMethod:           http.MethodGet,
+			expectTokenInContext: "_echo_csrf_using_sec_fetch_site_",
 		},
 		{
 			name: "nok, unsafe method + SecFetchSite=same-cross blocked",
@@ -312,6 +325,11 @@ func TestCSRFWithConfig(t *testing.T) {
 			if tc.givenConfig != nil {
 				config = *tc.givenConfig
 			}
+			if config.generator == nil {
+				config.generator = func(_ uint8) string {
+					return "TESTTOKEN"
+				}
+			}
 			mw, err := config.ToMiddleware()
 			if tc.expectMWError != "" {
 				assert.EqualError(t, err, tc.expectMWError)
@@ -320,6 +338,8 @@ func TestCSRFWithConfig(t *testing.T) {
 			assert.NoError(t, err)
 
 			h := mw(func(c echo.Context) error {
+				cToken := c.Get(cmp.Or(config.ContextKey, DefaultCSRFConfig.ContextKey))
+				assert.Equal(t, tc.expectTokenInContext, cToken)
 				return c.String(http.StatusOK, "test")
 			})
 
@@ -559,7 +579,6 @@ func TestCSRFConfig_checkSecFetchSiteRequest(t *testing.T) {
 			whenMethod:       http.MethodPost,
 			whenSecFetchSite: "same-site",
 			expectAllow:      false,
-			expectErr:        ``,
 		},
 		{
 			name:             "ok, unsafe POST + same-origin passes",
@@ -617,7 +636,6 @@ func TestCSRFConfig_checkSecFetchSiteRequest(t *testing.T) {
 			whenMethod:       http.MethodPut,
 			whenSecFetchSite: "same-site",
 			expectAllow:      false,
-			expectErr:        ``,
 		},
 		{
 			name:             "nok, unsafe DELETE + cross-site is blocked",
@@ -633,7 +651,6 @@ func TestCSRFConfig_checkSecFetchSiteRequest(t *testing.T) {
 			whenMethod:       http.MethodDelete,
 			whenSecFetchSite: "same-site",
 			expectAllow:      false,
-			expectErr:        ``,
 		},
 		{
 			name:             "nok, unsafe PATCH + cross-site is blocked",
