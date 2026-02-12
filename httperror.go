@@ -73,18 +73,14 @@ func (he *HTTPError) Error() string {
 	return fmt.Sprintf("code=%d, message=%v, err=%v", he.Code, msg, he.err.Error())
 }
 
-// Is checks if this error is equal to the target error.
-func (he *HTTPError) Is(target error) bool {
-	if he == target {
-		return true
+// HTTPStatusCode returns status code from error if it implements HTTPStatusCoder interface.
+// If error does not implement the interface it returns 0.
+func HTTPStatusCode(err error) int {
+	var sc HTTPStatusCoder
+	if errors.As(err, &sc) {
+		return sc.StatusCode()
 	}
-	switch t := target.(type) {
-	case *HTTPError:
-		return he.Code == t.Code
-	case *httpError:
-		return he.Code == t.code
-	}
-	return false
+	return 0
 }
 
 // Wrap eturns new HTTPError with given errors wrapped inside

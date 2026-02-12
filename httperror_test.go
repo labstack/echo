@@ -5,9 +5,11 @@ package echo
 
 import (
 	"errors"
-	"github.com/stretchr/testify/assert"
+	"fmt"
 	"net/http"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestHTTPError_StatusCode(t *testing.T) {
@@ -66,54 +68,42 @@ func TestNewHTTPError(t *testing.T) {
 	assert.Equal(t, err2, err)
 }
 
-func TestHTTPError_Is(t *testing.T) {
+func TestHTTPStatusCode(t *testing.T) {
 	var testCases = []struct {
 		name   string
-		err    *HTTPError
-		target error
-		expect bool
+		err    error
+		expect int
 	}{
 		{
-			name:   "ok, same instance",
+			name:   "ok, HTTPError",
 			err:    &HTTPError{Code: http.StatusNotFound},
-			target: &HTTPError{Code: http.StatusNotFound},
-			expect: true,
+			expect: http.StatusNotFound,
 		},
 		{
-			name:   "ok, different instance, same code",
-			err:    &HTTPError{Code: http.StatusNotFound},
-			target: &HTTPError{Code: http.StatusNotFound, Message: "different"},
-			expect: true,
+			name:   "ok, sentinel error",
+			err:    ErrNotFound,
+			expect: http.StatusNotFound,
 		},
 		{
-			name:   "ok, target is sentinel error",
-			err:    &HTTPError{Code: http.StatusNotFound},
-			target: ErrNotFound,
-			expect: true,
+			name:   "ok, wrapped HTTPError",
+			err:    fmt.Errorf("wrapped: %w", &HTTPError{Code: http.StatusTeapot}),
+			expect: http.StatusTeapot,
 		},
 		{
-			name:   "nok, different code",
-			err:    &HTTPError{Code: http.StatusNotFound},
-			target: &HTTPError{Code: http.StatusInternalServerError},
-			expect: false,
+			name:   "nok, normal error",
+			err:    errors.New("error"),
+			expect: 0,
 		},
 		{
-			name:   "nok, target is sentinel error with different code",
-			err:    &HTTPError{Code: http.StatusNotFound},
-			target: ErrInternalServerError,
-			expect: false,
-		},
-		{
-			name:   "nok, target is different error type",
-			err:    &HTTPError{Code: http.StatusNotFound},
-			target: errors.New("some error"),
-			expect: false,
+			name:   "nok, nil",
+			err:    nil,
+			expect: 0,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert.Equal(t, tc.expect, errors.Is(tc.err, tc.target))
+			assert.Equal(t, tc.expect, HTTPStatusCode(tc.err))
 		})
 	}
 }
