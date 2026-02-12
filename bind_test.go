@@ -1691,3 +1691,40 @@ func TestTimeFormatBinding(t *testing.T) {
 		})
 	}
 }
+
+func TestIsFieldMultipartFile_NonPointer_FileHeader_ReturnsError(t *testing.T) {
+	ok, err := isFieldMultipartFile(reflect.TypeOf(multipart.FileHeader{}))
+	assert.True(t, ok)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "binding to multipart.FileHeader struct is not supported")
+
+	// pointer type should be ok and no error
+	ok, err = isFieldMultipartFile(reflect.TypeOf((*multipart.FileHeader)(nil)))
+	assert.True(t, ok)
+	assert.NoError(t, err)
+}
+
+func TestSetMultipartFileHeaderTypes_NoFiles_ReturnsFalse(t *testing.T) {
+	var s struct {
+		Files []multipart.FileHeader
+	}
+	v := reflect.ValueOf(&s).Elem().Field(0)
+	ok := setMultipartFileHeaderTypes(v, "files", map[string][]*multipart.FileHeader{})
+	assert.False(t, ok)
+}
+
+func TestDefaultBinder_bindData_NonStruct_ReturnsError(t *testing.T) {
+	b := &DefaultBinder{}
+	// destination is pointer to slice (non-struct), tag is form -> should return error
+	err := b.bindData(&[]int{}, map[string][]string{"a": {"1"}}, "form", nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "binding element must be a struct")
+
+	// for param/query/header tag should return nil (handled earlier)
+	err = b.bindData(&[]int{}, map[string][]string{"a": {"1"}}, "param", nil)
+	assert.NoError(t, err)
+
+	// also header
+	err = b.bindData(&[]int{}, map[string][]string{"a": {"1"}}, "header", nil)
+	assert.NoError(t, err)
+}
