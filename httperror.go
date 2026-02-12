@@ -14,6 +14,16 @@ type HTTPStatusCoder interface {
 	StatusCode() int
 }
 
+// StatusCode returns status code from error if it implements HTTPStatusCoder interface.
+// If error does not implement the interface it returns 0.
+func StatusCode(err error) int {
+	var sc HTTPStatusCoder
+	if errors.As(err, &sc) {
+		return sc.StatusCode()
+	}
+	return 0
+}
+
 // Following errors can produce HTTP status code by implementing HTTPStatusCoder interface
 var (
 	ErrBadRequest                  = &httpError{http.StatusBadRequest}            // 400

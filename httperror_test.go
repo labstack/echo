@@ -5,9 +5,11 @@ package echo
 
 import (
 	"errors"
-	"github.com/stretchr/testify/assert"
+	"fmt"
 	"net/http"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestHTTPError_StatusCode(t *testing.T) {
@@ -64,4 +66,44 @@ func TestNewHTTPError(t *testing.T) {
 	err2 := &HTTPError{Code: http.StatusBadRequest, Message: "bad"}
 
 	assert.Equal(t, err2, err)
+}
+
+func TestStatusCode(t *testing.T) {
+	var testCases = []struct {
+		name   string
+		err    error
+		expect int
+	}{
+		{
+			name:   "ok, HTTPError",
+			err:    &HTTPError{Code: http.StatusNotFound},
+			expect: http.StatusNotFound,
+		},
+		{
+			name:   "ok, sentinel error",
+			err:    ErrNotFound,
+			expect: http.StatusNotFound,
+		},
+		{
+			name:   "ok, wrapped HTTPError",
+			err:    fmt.Errorf("wrapped: %w", &HTTPError{Code: http.StatusTeapot}),
+			expect: http.StatusTeapot,
+		},
+		{
+			name:   "nok, normal error",
+			err:    errors.New("error"),
+			expect: 0,
+		},
+		{
+			name:   "nok, nil",
+			err:    nil,
+			expect: 0,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.expect, StatusCode(tc.err))
+		})
+	}
 }
