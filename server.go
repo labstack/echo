@@ -13,6 +13,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -139,10 +140,18 @@ func (sc StartConfig) start(ctx stdContext.Context, h http.Handler) error {
 		logger.Info("http(s) server started", "address", listener.Addr().String())
 	}
 
+	wg := sync.WaitGroup{}
+	defer wg.Wait() // wait for graceful shutdown goroutine to finish
+
+	gCtx, cancel := stdContext.WithCancel(ctx) // end graceful goroutine when Serve returns early
+	defer cancel()
+
 	if sc.GracefulTimeout >= 0 {
-		gCtx, cancel := stdContext.WithCancel(ctx) // end goroutine when Serve returns early
-		defer cancel()
-		go gracefulShutdown(gCtx, &sc, &server, logger)
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			gracefulShutdown(gCtx, &sc, &server, logger)
+		}()
 	}
 
 	if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
