@@ -107,3 +107,80 @@ func TestStatusCode(t *testing.T) {
 		})
 	}
 }
+
+func TestResolveResponseStatus(t *testing.T) {
+	someErr := errors.New("some error")
+
+	var testCases = []struct {
+		name         string
+		whenResp     http.ResponseWriter
+		whenErr      error
+		expectStatus int
+		expectResp   bool
+	}{
+		{
+			name:         "nil resp, nil err -> 200",
+			whenResp:     nil,
+			whenErr:      nil,
+			expectStatus: http.StatusOK,
+			expectResp:   false,
+		},
+		{
+			name:         "resp suggested status used when no error",
+			whenResp:     &Response{Status: http.StatusCreated},
+			whenErr:      nil,
+			expectStatus: http.StatusCreated,
+			expectResp:   true,
+		},
+		{
+			name:         "error overrides suggested status with StatusCode(err)",
+			whenResp:     &Response{Status: http.StatusAccepted},
+			whenErr:      ErrBadRequest,
+			expectStatus: http.StatusBadRequest,
+			expectResp:   true,
+		},
+		{
+			name:         "error overrides suggested status with 500 when StatusCode(err)==0",
+			whenResp:     &Response{Status: http.StatusAccepted},
+			whenErr:      ErrInternalServerError,
+			expectStatus: http.StatusInternalServerError,
+			expectResp:   true,
+		},
+		{
+			name:         "nil resp, error -> 500 when StatusCode(err)==0",
+			whenResp:     nil,
+			whenErr:      someErr,
+			expectStatus: http.StatusInternalServerError,
+			expectResp:   false,
+		},
+		{
+			name:         "committed response wins over error",
+			whenResp:     &Response{Committed: true, Status: http.StatusNoContent},
+			whenErr:      someErr,
+			expectStatus: http.StatusNoContent,
+			expectResp:   true,
+		},
+		{
+			name:         "committed response with status 0 falls back to 200 (defensive)",
+			whenResp:     &Response{Committed: true, Status: 0},
+			whenErr:      someErr,
+			expectStatus: http.StatusOK,
+			expectResp:   true,
+		},
+		{
+			name:         "resp with status 0 and no error -> 200",
+			whenResp:     &Response{Status: 0},
+			whenErr:      nil,
+			expectStatus: http.StatusOK,
+			expectResp:   true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			resp, status := ResolveResponseStatus(tc.whenResp, tc.whenErr)
+
+			assert.Equal(t, tc.expectResp, resp != nil)
+			assert.Equal(t, tc.expectStatus, status)
+		})
+	}
+}
