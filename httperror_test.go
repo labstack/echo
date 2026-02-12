@@ -68,7 +68,7 @@ func TestNewHTTPError(t *testing.T) {
 	assert.Equal(t, err2, err)
 }
 
-func TestHTTPStatusCode(t *testing.T) {
+func TestStatusCode(t *testing.T) {
 	var testCases = []struct {
 		name   string
 		err    error
@@ -103,7 +103,7 @@ func TestHTTPStatusCode(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert.Equal(t, tc.expect, HTTPStatusCode(tc.err))
+			assert.Equal(t, tc.expect, StatusCode(tc.err))
 		})
 	}
 }
