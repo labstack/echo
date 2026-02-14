@@ -234,7 +234,7 @@ func (b *commonBalancer) RemoveTarget(name string) bool {
 // Next randomly returns an upstream target.
 //
 // Note: `nil` is returned in case upstream target list is empty.
-func (b *randomBalancer) Next(c *echo.Context) (*ProxyTarget, error) {
+func (b *randomBalancer) Next(_ *echo.Context) (*ProxyTarget, error) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 	if len(b.targets) == 0 {
@@ -314,7 +314,8 @@ func (config ProxyConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 	}
 	if config.RetryFilter == nil {
 		config.RetryFilter = func(c *echo.Context, e error) bool {
-			if httpErr, ok := e.(*echo.HTTPError); ok {
+			var httpErr *echo.HTTPError
+			if errors.As(e, &httpErr) {
 				return httpErr.Code == http.StatusBadGateway
 			}
 			return false

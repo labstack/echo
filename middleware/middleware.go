@@ -84,7 +84,7 @@ func rewriteURL(rewriteRegex map[*regexp.Regexp]string, req *http.Request) error
 }
 
 // DefaultSkipper returns false which processes the middleware.
-func DefaultSkipper(c *echo.Context) bool {
+func DefaultSkipper(_ *echo.Context) bool {
 	return false
 }
 
