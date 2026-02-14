@@ -128,6 +128,12 @@ of middlewares in this list.
 
 Please send a PR to add your own library here.
 
+## Learning Resources
+
+| Resource | Description |
+|----------|-------------|
+| [Go Interview Practice](https://github.com/RezaSi/go-interview-practice) | Interactive platform with hands-on Echo challenges covering routing, middleware, validation, and authentication. Practice Echo development without any setup. |
+
 ## Contribute
 
 **Use issues for everything**
