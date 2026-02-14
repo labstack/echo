@@ -3079,10 +3079,6 @@ func TestDefaultRouter_AddDuplicateRouteNotAllowed(t *testing.T) {
 	assert.Equal(t, "OLD", body)
 }
 
-func TestName(t *testing.T) {
-
-}
-
 // See issue #1531, #1258 - there are cases when path parameter need to be unescaped
 func TestDefaultRouter_UnescapePathParamValues(t *testing.T) {
 	var testCases = []struct {

@@ -160,8 +160,8 @@ type RequestLoggerConfig struct {
 	LogReferer bool
 	// LogUserAgent instructs logger to extract request user agent values.
 	LogUserAgent bool
-	// LogStatus instructs logger to extract response status code. If handler chain returns an echo.HTTPError,
-	// the status code is extracted from the echo.HTTPError returned
+	// LogStatus instructs logger to extract response status code. If handler chain returns an error,
+	// the status code is extracted from the error satisfying echo.StatusCoder interface.
 	LogStatus bool
 	// LogContentLength instructs logger to extract content length header value. Note: this value could be different from
 	// actual request body size as it could be spoofed etc.
@@ -211,7 +211,7 @@ type RequestLoggerValues struct {
 	Referer string
 	// UserAgent is request user agent values.
 	UserAgent string
-	// Status is response status code. Then handler returns an echo.HTTPError then code from there.
+	// Status is a response status code. When the handler returns an error satisfying echo.StatusCoder interface, then code from it.
 	Status int
 	// Error is error returned from executed handler chain.
 	Error error
@@ -272,7 +272,6 @@ func (config RequestLoggerConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			}
 
 			req := c.Request()
-			res := c.Response()
 			start := now()
 
 			if config.BeforeNextFunc != nil {
@@ -284,6 +283,7 @@ func (config RequestLoggerConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				// checked with `c.Response().Committed` field.
 				c.Echo().HTTPErrorHandler(c, err)
 			}
+			res := c.Response()
 
 			v := RequestLoggerValues{
 				StartTime: start,
@@ -330,26 +330,16 @@ func (config RequestLoggerConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				v.UserAgent = req.UserAgent()
 			}
 
-			var resp *echo.Response
 			if config.LogStatus || config.LogResponseSize {
-				if r, err := echo.UnwrapResponse(res); err != nil {
-					c.Logger().Error("can not determine response status and/or size. ResponseWriter in context does not implement unwrapper interface")
-				} else {
-					resp = r
-				}
-			}
+				resp, status := echo.ResolveResponseStatus(res, err)
 
-			if config.LogStatus {
-				v.Status = -1
-				if resp != nil {
-					v.Status = resp.Status
+				if config.LogStatus {
+					v.Status = status
 				}
-				if err != nil && !config.HandleError {
-					//  this block should not be executed in case of HandleError=true as the global error handler will decide
-					//  the status code. In that case status code could be different from what err contains.
-					var hsc echo.HTTPStatusCoder
-					if errors.As(err, &hsc) {
-						v.Status = hsc.StatusCode()
+				if config.LogResponseSize {
+					v.ResponseSize = -1
+					if resp != nil {
+						v.ResponseSize = resp.Size
 					}
 				}
 			}
@@ -358,12 +348,6 @@ func (config RequestLoggerConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			}
 			if config.LogContentLength {
 				v.ContentLength = req.Header.Get(echo.HeaderContentLength)
-			}
-			if config.LogResponseSize {
-				v.ResponseSize = -1
-				if resp != nil {
-					v.ResponseSize = resp.Size
-				}
 			}
 			if logHeaders {
 				v.Headers = map[string][]string{}

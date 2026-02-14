@@ -9,21 +9,6 @@ import (
 	"net/http"
 )
 
-// HTTPStatusCoder is interface that errors can implement to produce status code for HTTP response
-type HTTPStatusCoder interface {
-	StatusCode() int
-}
-
-// StatusCode returns status code from error if it implements HTTPStatusCoder interface.
-// If error does not implement the interface it returns 0.
-func StatusCode(err error) int {
-	var sc HTTPStatusCoder
-	if errors.As(err, &sc) {
-		return sc.StatusCode()
-	}
-	return 0
-}
-
 // Following errors can produce HTTP status code by implementing HTTPStatusCoder interface
 var (
 	ErrBadRequest                  = &httpError{http.StatusBadRequest}            // 400
@@ -49,6 +34,66 @@ var (
 	ErrInvalidCertOrKeyType   = errors.New("invalid cert or key type, must be string or []byte")
 	ErrInvalidListenerNetwork = errors.New("invalid listener network")
 )
+
+// HTTPStatusCoder is interface that errors can implement to produce status code for HTTP response
+type HTTPStatusCoder interface {
+	StatusCode() int
+}
+
+// StatusCode returns status code from error if it implements HTTPStatusCoder interface.
+// If error does not implement the interface it returns 0.
+func StatusCode(err error) int {
+	var sc HTTPStatusCoder
+	if errors.As(err, &sc) {
+		return sc.StatusCode()
+	}
+	return 0
+}
+
+// ResolveResponseStatus returns the Response and HTTP status code that should be (or has been) sent for rw,
+// given an optional error.
+//
+// This function is useful for middleware and handlers that need to figure out the HTTP status
+// code to return based on the error that occurred or what was set in the response.
+//
+// Precedence rules:
+//  1. If the response has already been committed, the committed status wins (err is ignored).
+//  2. Otherwise, start with 200 OK (net/http default if WriteHeader is never called).
+//  3. If the response has a non-zero suggested status, use it.
+//  4. If err != nil, it overrides the suggested status:
+//     - StatusCode(err) if non-zero
+//     - otherwise 500 Internal Server Error.
+func ResolveResponseStatus(rw http.ResponseWriter, err error) (resp *Response, status int) {
+	resp, _ = UnwrapResponse(rw)
+
+	// once committed (sent to the client), the wire status is fixed; err cannot change it.
+	if resp != nil && resp.Committed {
+		if resp.Status == 0 {
+			// unlikely path, but fall back to net/http implicit default if handler never calls WriteHeader
+			return resp, http.StatusOK
+		}
+		return resp, resp.Status
+	}
+
+	// net/http implicit default if handler never calls WriteHeader.
+	status = http.StatusOK
+
+	// suggested status written from middleware/handlers, if present.
+	if resp != nil && resp.Status != 0 {
+		status = resp.Status
+	}
+
+	// error overrides suggested status (matches typical Echo error-handler semantics).
+	if err != nil {
+		if s := StatusCode(err); s != 0 {
+			status = s
+		} else {
+			status = http.StatusInternalServerError
+		}
+	}
+
+	return resp, status
+}
 
 // NewHTTPError creates new instance of HTTPError
 func NewHTTPError(code int, message string) *HTTPError {
