@@ -1,5 +1,18 @@
 # Changelog
 
+## v5.0.4 - 2026-02-15
+
+**Enhancements**
+
+* Remove unused import 'errors' from README example by @kumapower17 in https://github.com/labstack/echo/pull/2889
+* Fix Graceful shutdown: after `http.Server.Serve` returns we need to wait for graceful shutdown goroutine to finish by @aldas in https://github.com/labstack/echo/pull/2898
+* Update location of oapi-codegen in README by @mromaszewicz in https://github.com/labstack/echo/pull/2896
+* Add Go 1.26 to CI flow by @aldas in https://github.com/labstack/echo/pull/2899
+* Add new function `echo.StatusCode` by @suwakei in https://github.com/labstack/echo/pull/2892
+* CSRF: support older token-based CSRF protection handler that want to render token into template by @aldas in https://github.com/labstack/echo/pull/2894
+* Add `echo.ResolveResponseStatus` function to help middleware/handlers determine HTTP status code and echo.Response by @aldas in https://github.com/labstack/echo/pull/2900
+
+
 ## v5.0.3 - 2026-02-06
 
 **Security**
