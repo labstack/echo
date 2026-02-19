@@ -850,3 +850,93 @@ func TestCSRFConfig_checkSecFetchSiteRequest(t *testing.T) {
 		})
 	}
 }
+
+func TestCSRF_SecFetchSite_SetsTokenInContext(t *testing.T) {
+	// Test for issue #2874: CSRF middleware should set token in context
+	// even when Sec-Fetch-Site validation passes
+	var testCases = []struct {
+		name               string
+		whenMethod         string
+		whenSecFetchSite   string
+		expectTokenInCtx   bool
+		expectCookie       bool
+	}{
+		{
+			name:             "ok, GET with Sec-Fetch-Site: none sets token in context",
+			whenMethod:       http.MethodGet,
+			whenSecFetchSite: "none",
+			expectTokenInCtx: true,
+			expectCookie:     true,
+		},
+		{
+			name:             "ok, GET with Sec-Fetch-Site: same-origin sets token in context",
+			whenMethod:       http.MethodGet,
+			whenSecFetchSite: "same-origin",
+			expectTokenInCtx: true,
+			expectCookie:     true,
+		},
+		{
+			name:             "ok, POST with Sec-Fetch-Site: none sets token in context",
+			whenMethod:       http.MethodPost,
+			whenSecFetchSite: "none",
+			expectTokenInCtx: true,
+			expectCookie:     true,
+		},
+		{
+			name:             "ok, POST with Sec-Fetch-Site: same-origin sets token in context",
+			whenMethod:       http.MethodPost,
+			whenSecFetchSite: "same-origin",
+			expectTokenInCtx: true,
+			expectCookie:     true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+			req := httptest.NewRequest(tc.whenMethod, "/", nil)
+			req.Header.Set(echo.HeaderSecFetchSite, tc.whenSecFetchSite)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			var tokenInContext string
+			csrf := CSRFWithConfig(CSRFConfig{
+				TokenLookup: "form:csrf",
+			})
+
+			h := csrf(func(c echo.Context) error {
+				// Handler expects CSRF token in context for form rendering
+				token, ok := c.Get("csrf").(string)
+				if !ok {
+					return echo.NewHTTPError(http.StatusInternalServerError, "CSRF token not found")
+				}
+				tokenInContext = token
+				return c.String(http.StatusOK, "test")
+			})
+
+			err := h(c)
+			assert.NoError(t, err)
+
+			if tc.expectTokenInCtx {
+				assert.NotEmpty(t, tokenInContext, "token should be set in context")
+			} else {
+				assert.Empty(t, tokenInContext, "token should not be set in context")
+			}
+
+			if tc.expectCookie {
+				cookies := rec.Result().Cookies()
+				assert.NotEmpty(t, cookies, "CSRF cookie should be set")
+				var csrfCookie *http.Cookie
+				for _, cookie := range cookies {
+					if cookie.Name == "_csrf" {
+						csrfCookie = cookie
+						break
+					}
+				}
+				assert.NotNil(t, csrfCookie, "CSRF cookie should exist")
+				assert.NotEmpty(t, csrfCookie.Value, "CSRF cookie value should not be empty")
+				assert.Equal(t, tokenInContext, csrfCookie.Value, "token in context should match cookie value")
+			}
+		})
+	}
+}

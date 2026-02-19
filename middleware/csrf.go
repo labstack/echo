@@ -162,18 +162,45 @@ func (config CSRFConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			if err != nil {
 				return err
 			}
-			if allow {
-				return next(c)
-			}
 
-			// Fallback to legacy token based CSRF protection
-
+			// Get or generate token (needed even for "safe" requests to render forms)
 			token := ""
 			if k, err := c.Cookie(config.CookieName); err != nil {
 				token = randomString(config.TokenLength)
 			} else {
 				token = k.Value // Reuse token
 			}
+
+			// If request is deemed safe by Sec-Fetch-Site, skip token validation
+			// but still set token in context and cookie for form rendering
+			if allow {
+				cookie := new(http.Cookie)
+				cookie.Name = config.CookieName
+				cookie.Value = token
+				if config.CookiePath != "" {
+					cookie.Path = config.CookiePath
+				}
+				if config.CookieDomain != "" {
+					cookie.Domain = config.CookieDomain
+				}
+				if config.CookieSameSite != http.SameSiteDefaultMode {
+					cookie.SameSite = config.CookieSameSite
+				}
+				cookie.Expires = time.Now().Add(time.Duration(config.CookieMaxAge) * time.Second)
+				cookie.Secure = config.CookieSecure
+				cookie.HttpOnly = config.CookieHTTPOnly
+				c.SetCookie(cookie)
+
+				// Store token in context for handlers
+				c.Set(config.ContextKey, token)
+
+				// Protect clients from caching the response
+				c.Response().Header().Add(echo.HeaderVary, echo.HeaderCookie)
+
+				return next(c)
+			}
+
+			// Fallback to legacy token based CSRF protection
 
 			switch c.Request().Method {
 			case http.MethodGet, http.MethodHead, http.MethodOptions, http.MethodTrace:
