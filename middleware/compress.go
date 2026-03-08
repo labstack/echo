@@ -134,9 +134,17 @@ func (config GzipConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 						_, _ = grw.buffer.WriteTo(rw)
 						w.Reset(io.Discard)
 					}
-					_ = w.Close()
+
+					// Close the writer and check for errors to prevent putting corrupted writers back in the pool
+					err := w.Close()
 					bpool.Put(buf)
-					pool.Put(w)
+
+					// Only put the writer back in the pool if it closed successfully
+					// This prevents resource leaks from corrupted gzip writers
+					if err == nil {
+						pool.Put(w)
+					}
+					// If Close() failed, the writer is not returned to the pool and will be GC'd
 				}()
 			}
 			return next(c)
@@ -189,16 +197,25 @@ func (w *gzipResponseWriter) Flush() {
 			w.ResponseWriter.WriteHeader(w.code)
 		}
 
-		_, _ = w.Writer.Write(w.buffer.Bytes())
+		_, err := w.Writer.Write(w.buffer.Bytes())
+		if err == nil {
+			// Only clear buffer if write succeeded
+			w.buffer.Reset() // Clear buffer to prevent memory leaks in SSE/streaming scenarios
+		}
 	}
 
 	if gw, ok := w.Writer.(*gzip.Writer); ok {
-		gw.Flush()
+		_ = gw.Flush() // Flush error is intentionally ignored as data is already written
 	}
 	_ = http.NewResponseController(w.ResponseWriter).Flush()
 }
 
 func (w *gzipResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	// Close gzip writer before hijacking to prevent resource leaks
+	// When connection is hijacked (e.g., WebSocket), the defer function won't properly clean up
+	if gw, ok := w.Writer.(*gzip.Writer); ok {
+		_ = gw.Close()
+	}
 	return http.NewResponseController(w.ResponseWriter).Hijack()
 }
 
