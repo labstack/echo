@@ -24,10 +24,10 @@ type ContextConfig struct {
 	// Response will be used instead of default `httptest.NewRecorder()`
 	Response *httptest.ResponseRecorder
 
-	// QueryValues wil be set as Request.URL.RawQuery value
+	// QueryValues will be set as Request.URL.RawQuery value
 	QueryValues url.Values
 
-	// Headers wil be set as Request.Header value
+	// Headers will be set as Request.Header value
 	Headers http.Header
 
 	// PathValues initializes context.PathValues with given value.
