@@ -38,7 +38,7 @@ type StartConfig struct {
 	// ListenerNetwork is used configure on which Network listener will use.
 	ListenerNetwork string
 	// ListenerAddrFunc will be called after listener is created and started to listen for connections. This is useful in
-	// testing situations when server is started on random port `addres = ":0"` in that case you can get actual port where
+	// testing situations when server is started on random port `address = ":0"` in that case you can get actual port where
 	// listener is listening on.
 	ListenerAddrFunc func(addr net.Addr)
 

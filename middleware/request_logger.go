@@ -405,7 +405,7 @@ func RequestLogger() echo.MiddlewareFunc {
 		LogContentLength: true,
 		LogResponseSize:  true,
 		// forwards error to the global error handler, so it can decide appropriate status code.
-		// NB: side-effect of that is - request is now "commited" written to the client. Middlewares up in chain can not
+		// NB: side-effect of that is - request is now "committed" written to the client. Middlewares up in chain can not
 		// change Response status code or response body.
 		HandleError: true,
 		LogValuesFunc: func(c *echo.Context, v RequestLoggerValues) error {
