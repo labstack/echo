@@ -626,3 +626,83 @@ func Test_allowOriginFunc(t *testing.T) {
 		}
 	}
 }
+
+// TestCORSProxyChain tests that CORS headers are not duplicated when
+// multiple CORS middlewares are chained in a proxy scenario
+func TestCORSProxyChain(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set(echo.HeaderOrigin, "http://example.com")
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	// Simulate Service B (upstream) that already set CORS headers
+	upstreamHandler := func(c *echo.Context) error {
+		c.Response().Header().Set(echo.HeaderAccessControlAllowOrigin, "http://example.com")
+		c.Response().Header().Set(echo.HeaderVary, "Origin")
+		return c.String(http.StatusOK, "test")
+	}
+
+	// Apply CORS middleware on Service A (proxy layer)
+	mw := CORS("*")
+	handler := mw(upstreamHandler)
+
+	err := handler(c)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	// Verify headers are not duplicated
+	assert.Equal(t, "http://example.com", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
+	
+	// Check that Vary header contains "Origin" only once
+	varyHeader := rec.Header().Get(echo.HeaderVary)
+	assert.Contains(t, varyHeader, "Origin")
+	
+	// Count occurrences of "Origin" in Vary header - should be exactly 1
+	originCount := strings.Count(varyHeader, "Origin")
+	assert.Equal(t, 1, originCount, "Vary header should contain 'Origin' only once, got: %s", varyHeader)
+
+	// Verify there's no duplicate Access-Control-Allow-Origin header
+	allowOriginHeaders := rec.Header().Values(echo.HeaderAccessControlAllowOrigin)
+	assert.Equal(t, 1, len(allowOriginHeaders), "Should have exactly one Access-Control-Allow-Origin header")
+}
+
+// TestCORSProxyChainPreflight tests preflight requests in proxy chains
+func TestCORSProxyChainPreflight(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodOptions, "/", nil)
+	req.Header.Set(echo.HeaderOrigin, "http://example.com")
+	req.Header.Set(echo.HeaderAccessControlRequestMethod, "POST")
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	// Simulate Service B (upstream) that already set CORS headers
+	upstreamHandler := func(c *echo.Context) error {
+		c.Response().Header().Set(echo.HeaderAccessControlAllowOrigin, "*")
+		c.Response().Header().Set(echo.HeaderVary, "Origin, Access-Control-Request-Method, Access-Control-Request-Headers")
+		c.Response().Header().Set(echo.HeaderAccessControlAllowMethods, "GET,POST,PUT")
+		return c.NoContent(http.StatusNoContent)
+	}
+
+	// Apply CORS middleware on Service A (proxy layer)
+	mw := CORS("*")
+	handler := mw(upstreamHandler)
+
+	err := handler(c)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+
+	// Verify headers are not duplicated
+	assert.Equal(t, "*", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
+	
+	// Check that Vary header contains each value only once
+	varyHeader := rec.Header().Get(echo.HeaderVary)
+	assert.Contains(t, varyHeader, "Origin")
+	
+	originCount := strings.Count(varyHeader, "Origin")
+	assert.Equal(t, 1, originCount, "Vary header should contain 'Origin' only once, got: %s", varyHeader)
+
+	// Verify there's no duplicate Access-Control-Allow-Origin header
+	allowOriginHeaders := rec.Header().Values(echo.HeaderAccessControlAllowOrigin)
+	assert.Equal(t, 1, len(allowOriginHeaders), "Should have exactly one Access-Control-Allow-Origin header")
+}
