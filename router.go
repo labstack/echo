@@ -1011,12 +1011,28 @@ func (r *DefaultRouter) Route(c *Context) HandlerFunc {
 			rPath = matchedRouteMethod.Path
 			rHandler = matchedRouteMethod.handler
 		} else if currentNode.isHandler {
-			rInfo = methodNotAllowedRouteInfo
+			// Walk up the tree to find a parent's notFoundHandler
+			// This allows RouteNotFound handlers defined at a higher level in the tree
+			// (e.g., root level) to handle 404s for sub-paths (e.g., groups)
+			var parentNode *node
+			for parentNode = currentNode.parent; parentNode != nil; parentNode = parentNode.parent {
+				if parentNode.methods.notFoundHandler != nil {
+					matchedRouteMethod = parentNode.methods.notFoundHandler
+					rInfo = matchedRouteMethod.RouteInfo
+					rPath = matchedRouteMethod.Path
+					rHandler = matchedRouteMethod.handler
+					break
+				}
+			}
 
-			c.Set(ContextKeyHeaderAllow, currentNode.methods.allowHeader)
-			rHandler = r.methodNotAllowedHandler
-			if req.Method == http.MethodOptions {
-				rHandler = r.optionsMethodHandler
+			// If no parent notFoundHandler was found, use methodNotAllowedHandler
+			if rHandler == nil {
+				rInfo = methodNotAllowedRouteInfo
+				c.Set(ContextKeyHeaderAllow, currentNode.methods.allowHeader)
+				rHandler = r.methodNotAllowedHandler
+				if req.Method == http.MethodOptions {
+					rHandler = r.optionsMethodHandler
+				}
 			}
 		}
 	}

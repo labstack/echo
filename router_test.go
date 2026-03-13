@@ -3656,3 +3656,39 @@ func BenchmarkRouterGooglePlusAPIMisses(b *testing.B) {
 func BenchmarkRouterParamsAndAnyAPI(b *testing.B) {
 	benchmarkRouterRoutes(b, paramAndAnyAPI, paramAndAnyAPIToFind)
 }
+
+// TestRouterRouteNotFoundParentWalkBug verifies the fix for issue #2485
+// This test should FAIL on unpatched code and PASS with the fix
+func TestRouterRouteNotFoundParentWalkBug(t *testing.T) {
+	e := New()
+	handlerID := ""
+
+	// Register a GET route inside a group
+	g := e.Group("/api")
+	g.GET("/users", func(c *Context) error {
+		handlerID = "users-get"
+		return nil
+	})
+
+	// Register RouteNotFound on the root at exact prefix "/api" (no wildcard)
+	// This is the critical scenario: without parent-walk fix, this handler won't be found
+	e.RouteNotFound("/api", func(c *Context) error {
+		handlerID = "root-not-found"
+		return nil
+	})
+
+	// Test case: request exists in router but with wrong HTTP method
+	// Without fix: should fall back to methodNotAllowedHandler (405)
+	// With fix: should find parent's RouteNotFound handler
+	req := httptest.NewRequest(http.MethodPost, "/api/users", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	handler := e.router.Route(c)
+
+	_ = handler(c)
+
+	// This assertion should FAIL on unpatched code (handlerID will be empty)
+	// and PASS with the fix (handlerID will be "root-not-found")
+	assert.Equal(t, "root-not-found", handlerID,
+		"Expected root RouteNotFound handler to fire for POST /api/users")
+}
