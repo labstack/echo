@@ -911,6 +911,16 @@ func (r *DefaultRouter) Route(c *Context) HandlerFunc {
 			} else if currentNode.methods.notFoundHandler != nil {
 				matchedRouteMethod = currentNode.methods.notFoundHandler
 				break
+			} else if currentNode.paramChild != nil && currentNode.anyChild == nil &&
+				currentNode.parent != nil && currentNode.parent.paramChild != nil {
+				// Path exactly matches this static node. Prefer this over backtracking to a param route
+				// that would match the last segment (e.g. POST /VerifiedCallerId/Verification should not
+				// match GET /VerifiedCallerId/:phone_number). Only when parent has paramChild (backtrack
+				// would match) - otherwise we'd return 405 for paths that should be 404 (e.g. /a3 with route /a3/:id).
+				if previousBestMatchNode == nil {
+					previousBestMatchNode = currentNode.paramChild
+				}
+				break
 			}
 		}
 

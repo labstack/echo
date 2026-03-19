@@ -1514,6 +1514,25 @@ func TestRouterMatchAnyPrefixIssue(t *testing.T) {
 	}
 }
 
+// TestRouterRoutePreferExactPathOverParam tests issue #2547: POST to path without param
+// should return 405 with Allow: POST (from the more specific route), not 405 from
+// the param route that would capture the last segment.
+func TestRouterRoutePreferExactPathOverParam(t *testing.T) {
+	e := New()
+	e.GET("/VerifiedCallerId/:phone_number", handlerFunc)
+	e.POST("/VerifiedCallerId/Verification/:verification_uuid", handlerFunc)
+
+	req := httptest.NewRequest(http.MethodPost, "/VerifiedCallerId/Verification/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	handler := e.router.Route(c)
+
+	err := handler(c)
+	assert.ErrorIs(t, err, ErrMethodNotAllowed)
+	assert.Contains(t, rec.Header().Get("Allow"), "POST")
+	assert.NotContains(t, rec.Header().Get("Allow"), "GET")
+}
+
 // TestRouterMatchAnySlash shall verify finding the best route
 // for any routes with trailing slash requests
 func TestRouterMatchAnySlash(t *testing.T) {
