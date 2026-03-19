@@ -33,9 +33,14 @@ type StartConfig struct {
 
 	// CertFilesystem is filesystem is used to read `certFile` and `keyFile` when StartTLS method is called.
 	CertFilesystem fs.FS
-	TLSConfig      *tls.Config
 
+	// TLSConfig is used to configure TLS. If Listener is set, TLSConfig is not used to create the listener.
+	TLSConfig *tls.Config
+
+	// Listener is used to start server with the custom listener.
+	Listener net.Listener
 	// ListenerNetwork is used configure on which Network listener will use.
+	// If Listener is set, ListenerNetwork is not used.
 	ListenerNetwork string
 	// ListenerAddrFunc will be called after listener is created and started to listen for connections. This is useful in
 	// testing situations when server is started on random port `address = ":0"` in that case you can get actual port where
@@ -108,20 +113,23 @@ func (sc StartConfig) start(ctx stdContext.Context, h http.Handler) error {
 		WriteTimeout: 30 * time.Second,
 	}
 
-	listenerNetwork := sc.ListenerNetwork
-	if listenerNetwork == "" {
-		listenerNetwork = "tcp"
+	listener := sc.Listener
+	if listener == nil {
+		listenerNetwork := sc.ListenerNetwork
+		if listenerNetwork == "" {
+			listenerNetwork = "tcp"
+		}
+		var err error
+		if sc.TLSConfig != nil {
+			listener, err = tls.Listen(listenerNetwork, sc.Address, sc.TLSConfig)
+		} else {
+			listener, err = net.Listen(listenerNetwork, sc.Address)
+		}
+		if err != nil {
+			return err
+		}
 	}
-	var listener net.Listener
-	var err error
-	if sc.TLSConfig != nil {
-		listener, err = tls.Listen(listenerNetwork, sc.Address, sc.TLSConfig)
-	} else {
-		listener, err = net.Listen(listenerNetwork, sc.Address)
-	}
-	if err != nil {
-		return err
-	}
+
 	if sc.ListenerAddrFunc != nil {
 		sc.ListenerAddrFunc(listener.Addr())
 	}
