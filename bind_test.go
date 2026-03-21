@@ -1463,6 +1463,37 @@ func TestBindInt8(t *testing.T) {
 	})
 }
 
+func TestBindPointer(t *testing.T) {
+	t.Run("nok, binding fails", func(t *testing.T) {
+		type target struct {
+			V *time.Time `query:"v"`
+		}
+		p := target{}
+		err := testBindURL("/?v=x", &p)
+		assert.EqualError(t, err, "code=400, message=parsing time \"x\" as \"2006-01-02T15:04:05Z07:00\": cannot parse \"x\" as \"2006\", internal=parsing time \"x\" as \"2006-01-02T15:04:05Z07:00\": cannot parse \"x\" as \"2006\"")
+	})
+
+	t.Run("ok, bind empty value to nil", func(t *testing.T) {
+		type target struct {
+			V *time.Time `query:"v"`
+		}
+		p := target{}
+		err := testBindURL("/?v=", &p)
+		assert.NoError(t, err)
+		assert.Nil(t, p.V)
+	})
+
+	t.Run("ok, binds to provided value", func(t *testing.T) {
+		type target struct {
+			V *time.Time `query:"v"`
+		}
+		p := target{}
+		err := testBindURL("/?v=2006-01-02T15:04:05Z", &p)
+		assert.NoError(t, err)
+		assert.Equal(t, "2006-01-02T15:04:05Z", p.V.Format(time.RFC3339))
+	})
+}
+
 func TestBindMultipartFormFiles(t *testing.T) {
 	file1 := createTestFormFile("file", "file1.txt")
 	file11 := createTestFormFile("file", "file11.txt")
