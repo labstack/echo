@@ -3,7 +3,9 @@
 
 package echo
 
-import "errors"
+import (
+	"errors"
+)
 
 // ErrNonExistentKey is error that is returned when key does not exist
 var ErrNonExistentKey = errors.New("non existent key")
@@ -36,7 +38,7 @@ func ContextGet[T any](c *Context, key string) (T, error) {
 // is missing. Returns ErrInvalidKeyType error if the value is not castable to type T.
 func ContextGetOr[T any](c *Context, key string, defaultValue T) (T, error) {
 	typed, err := ContextGet[T](c, key)
-	if err == ErrNonExistentKey {
+	if errors.Is(err, ErrNonExistentKey) {
 		return defaultValue, nil
 	}
 	return typed, err
