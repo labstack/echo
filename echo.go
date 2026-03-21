@@ -92,6 +92,9 @@ type Echo struct {
 
 	// formParseMaxMemory is passed to Context for multipart form parsing (See http.Request.ParseMultipartForm)
 	formParseMaxMemory int64
+
+	//SkipMiddlewareOnNotFound is a flag, when route is not found, echo prevents wasting compute resources
+	SkipMiddlewareOnNotFound bool
 }
 
 // JSONSerializer is the interface that encodes and decodes JSON to and from interfaces.
@@ -684,13 +687,38 @@ func (e *Echo) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	defer e.contextPool.Put(c)
 
 	c.Reset(r, w)
+
 	var h HandlerFunc
 
 	if e.premiddleware == nil {
-		h = applyMiddleware(e.router.Route(c), e.middleware...)
+		// --- THE FIX START ---
+		// Perform routing immediately
+		h = e.router.Route(c)
+
+		// Check if the global middleware chain for 404/405 should be skipped
+		// We use c.InternalRouteInfo() to check if it's a "virtual" route (404/405)
+		if e.SkipMiddlewareOnNotFound && (c.IsNotFound() || c.IsMethodNotAllowed()) {
+			// Execute the 404/405 handler directly, skipping e.middleware...
+			if err := h(c); err != nil {
+				e.HTTPErrorHandler(c, err)
+			}
+			return
+		}
+		// Otherwise apply the middleware chain normally
+		h = applyMiddleware(h, e.middleware...)
+		// --- THE FIX END ---
 	} else {
+		// If premiddleware exists, we must wrap the routing logic inside a function
+		// because premiddleware might change the URL (Rewrite/TrailingSlash)
 		h = func(cc *Context) error {
-			h1 := applyMiddleware(e.router.Route(cc), e.middleware...)
+			rh := e.router.Route(cc)
+
+			// Apply logic inside the premiddleware-triggered chain
+			if e.SkipMiddlewareOnNotFound && (cc.IsNotFound() || cc.IsMethodNotAllowed()) {
+				return rh(cc)
+			}
+
+			h1 := applyMiddleware(rh, e.middleware...)
 			return h1(cc)
 		}
 		h = applyMiddleware(h, e.premiddleware...)

@@ -146,6 +146,16 @@ func (c *Context) SetResponse(r http.ResponseWriter) {
 	c.response = r
 }
 
+// IsNotFound returns true if the route is not found otherwise false
+func (c *Context) IsNotFound() bool {
+	return c.route == notFoundRouteInfo
+}
+
+// IsMethodAllowed returns true if the method is not allowed otherwise false
+func (c *Context) IsMethodNotAllowed() bool {
+	return c.route == methodNotAllowedRouteInfo
+}
+
 // IsTLS returns true if HTTP connection is TLS otherwise false.
 func (c *Context) IsTLS() bool {
 	return c.request.TLS != nil
