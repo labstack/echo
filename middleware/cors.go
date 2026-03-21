@@ -193,7 +193,25 @@ func (config CORSConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			res := c.Response()
 			origin := req.Header.Get(echo.HeaderOrigin)
 
-			res.Header().Add(echo.HeaderVary, echo.HeaderOrigin)
+			// Check if CORS headers already exist (e.g., from a proxied upstream service)
+			// to avoid duplication in proxy chains
+			if res.Header().Get(echo.HeaderAccessControlAllowOrigin) != "" {
+				// CORS headers already present, likely from upstream - skip processing
+				if preflight := req.Method == http.MethodOptions; preflight {
+					return c.NoContent(http.StatusNoContent)
+				}
+				return next(c)
+			}
+
+			// Add Origin to Vary header only if not already present
+			varyHeader := res.Header().Get(echo.HeaderVary)
+			if !strings.Contains(varyHeader, echo.HeaderOrigin) {
+				if varyHeader == "" {
+					res.Header().Set(echo.HeaderVary, echo.HeaderOrigin)
+				} else {
+					res.Header().Set(echo.HeaderVary, varyHeader+", "+echo.HeaderOrigin)
+				}
+			}
 
 			// Preflight request is an OPTIONS request, using three HTTP request headers: Access-Control-Request-Method,
 			// Access-Control-Request-Headers, and the Origin header. See: https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request
@@ -261,8 +279,20 @@ func (config CORSConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			// Preflight will end with c.NoContent(http.StatusNoContent) as we do not know if
 			// at the end of handler chain is actual OPTIONS route or 404/405 route which
 			// response code will confuse browsers
-			res.Header().Add(echo.HeaderVary, echo.HeaderAccessControlRequestMethod)
-			res.Header().Add(echo.HeaderVary, echo.HeaderAccessControlRequestHeaders)
+
+			// Add to Vary header only if not already present
+			varyHeader = res.Header().Get(echo.HeaderVary)
+			varyValues := []string{echo.HeaderAccessControlRequestMethod, echo.HeaderAccessControlRequestHeaders}
+			for _, varyValue := range varyValues {
+				if !strings.Contains(varyHeader, varyValue) {
+					if varyHeader == "" {
+						varyHeader = varyValue
+					} else {
+						varyHeader = varyHeader + ", " + varyValue
+					}
+				}
+			}
+			res.Header().Set(echo.HeaderVary, varyHeader)
 
 			if !hasCustomAllowMethods && routerAllowMethods != "" {
 				res.Header().Set(echo.HeaderAccessControlAllowMethods, routerAllowMethods)
