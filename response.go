@@ -135,19 +135,19 @@ func UnwrapResponse(rw http.ResponseWriter) (*Response, error) {
 // This allows (global) error handler to decide correct status code to be sent to the client.
 type delayedStatusWriter struct {
 	http.ResponseWriter
-	commited bool
+	committed bool
 	status   int
 }
 
 func (w *delayedStatusWriter) WriteHeader(statusCode int) {
-	// in case something else writes status code explicitly before us we need mark response commited
-	w.commited = true
+	// in case something else writes status code explicitly before us we need mark response committed
+	w.committed = true
 	w.ResponseWriter.WriteHeader(statusCode)
 }
 
 func (w *delayedStatusWriter) Write(data []byte) (int, error) {
-	if !w.commited {
-		w.commited = true
+	if !w.committed {
+		w.committed = true
 		if w.status == 0 {
 			w.status = http.StatusOK
 		}

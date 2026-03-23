@@ -28,7 +28,7 @@ type CSRFConfig struct {
 	Skipper Skipper
 	// TrustedOrigin permits any request with `Sec-Fetch-Site` header whose `Origin` header
 	// exactly matches the specified value.
-	// Values should be formated as Origin header "scheme://host[:port]".
+	// Values should be formatted as Origin header "scheme://host[:port]".
 	//
 	// See [Origin]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Origin
 	// See [Sec-Fetch-Site]: https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html#fetch-metadata-headers
