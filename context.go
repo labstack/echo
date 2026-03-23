@@ -151,7 +151,8 @@ func (c *Context) IsNotFound() bool {
 	return c.route == notFoundRouteInfo
 }
 
-// IsMethodAllowed returns true if the method is not allowed otherwise false
+// IsMethodNotAllowed returns true if the request resulted in a 405 Method Not Allowed error,
+// indicating the path exists but the specific HTTP method is not supported for that route.
 func (c *Context) IsMethodNotAllowed() bool {
 	return c.route == methodNotAllowedRouteInfo
 }

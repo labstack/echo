@@ -93,7 +93,9 @@ type Echo struct {
 	// formParseMaxMemory is passed to Context for multipart form parsing (See http.Request.ParseMultipartForm)
 	formParseMaxMemory int64
 
-	//SkipMiddlewareOnNotFound is a flag, when route is not found, echo prevents wasting compute resources
+	// SkipMiddlewareOnNotFound, when enabled, executes the router before the middleware chain.
+	// This ensures that global middlewares (like Auth or Logging) are bypassed for 404/405
+	// responses, reducing resource overhead for invalid requests.
 	SkipMiddlewareOnNotFound bool
 }
 

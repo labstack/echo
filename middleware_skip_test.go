@@ -10,10 +10,10 @@ import (
 func BenchmarkMiddleware404(b *testing.B) {
 	e := New()
 
-	// Simulate a "Heavy" middleware (e.g., Auth or Logging)
+	// Simulate a middleware work (e.g., Auth or Logging)
 	e.Use(func(next HandlerFunc) HandlerFunc {
 		return func(c *Context) error {
-			c.Set("user_id", "12345") // Simulate some work
+			c.Set("user_id", "12345")
 			return next(c)
 		}
 	})
