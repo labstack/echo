@@ -169,7 +169,7 @@ for more info check out Limiter docs - https://pkg.go.dev/golang.org/x/time/rate
 
 Burst and ExpiresIn will be set to default values.
 
-Note that if the provided rate is a float number and Burst is zero, Burst will be treated as the rounded down value of the rate.
+Note that if the provided rate is a float number and Burst is zero, Burst will be treated as the rounded up value of the rate.
 
 Example (with 20 requests/sec):
 
@@ -183,7 +183,7 @@ func NewRateLimiterMemoryStore(rateLimit float64) (store *RateLimiterMemoryStore
 
 /*
 NewRateLimiterMemoryStoreWithConfig returns an instance of RateLimiterMemoryStore
-with the provided configuration. Rate must be provided. Burst will be set to the rounded down value of
+with the provided configuration. Rate must be provided. Burst will be set to the rounded up value of
 the configured rate if not provided or set to 0.
 
 The built-in memory store is usually capable for modest loads. For higher loads other
