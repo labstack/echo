@@ -693,7 +693,6 @@ func (e *Echo) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	var h HandlerFunc
 
 	if e.premiddleware == nil {
-		// --- THE FIX START ---
 		// Perform routing immediately
 		h = e.router.Route(c)
 
@@ -708,7 +707,6 @@ func (e *Echo) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		// Otherwise apply the middleware chain normally
 		h = applyMiddleware(h, e.middleware...)
-		// --- THE FIX END ---
 	} else {
 		// If premiddleware exists, we must wrap the routing logic inside a function
 		// because premiddleware might change the URL (Rewrite/TrailingSlash)
