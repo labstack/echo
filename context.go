@@ -566,6 +566,9 @@ func (c *Context) Stream(code int, contentType string, r io.Reader) (err error) 
 }
 
 // File sends a response with the content of the file.
+//
+// Avoid using the leading `/` slash as most of the Go standard library fs.FS implementations require relative paths for
+// file operations.
 func (c *Context) File(file string) error {
 	return fsFile(c, file, c.echo.Filesystem)
 }
@@ -608,11 +611,17 @@ func fsFile(c *Context, file string, filesystem fs.FS) error {
 }
 
 // Attachment sends a response as attachment, prompting client to save the file.
+//
+// Avoid using the leading `/` slash as most of the Go standard library fs.FS implementations require relative paths for
+// file operations.
 func (c *Context) Attachment(file, name string) error {
 	return c.contentDisposition(file, name, "attachment")
 }
 
 // Inline sends a response as inline, opening the file in the browser.
+//
+// Avoid using the leading `/` slash as most of the Go standard library fs.FS implementations require relative paths for
+// file operations.
 func (c *Context) Inline(file, name string) error {
 	return c.contentDisposition(file, name, "inline")
 }
