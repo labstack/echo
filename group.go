@@ -129,11 +129,17 @@ func (g *Group) StaticFS(pathPrefix string, filesystem fs.FS, middleware ...Midd
 }
 
 // FileFS implements `Echo#FileFS()` for sub-routes within the Group.
+//
+// Avoid using the leading `/` slash as most of the Go standard library fs.FS implementations require relative paths for
+// file operations.
 func (g *Group) FileFS(path, file string, filesystem fs.FS, m ...MiddlewareFunc) RouteInfo {
 	return g.GET(path, StaticFileHandler(file, filesystem), m...)
 }
 
 // File implements `Echo#File()` for sub-routes within the Group. Panics on error.
+//
+// Avoid using the leading `/` slash as most of the Go standard library fs.FS implementations require relative paths for
+// file operations.
 func (g *Group) File(path, file string, middleware ...MiddlewareFunc) RouteInfo {
 	handler := func(c *Context) error {
 		return c.File(file)

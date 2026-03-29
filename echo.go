@@ -68,7 +68,8 @@ import (
 type Echo struct {
 	serveHTTPFunc func(http.ResponseWriter, *http.Request)
 
-	Binder           Binder
+	Binder Binder
+	// Filesystem is the file system used for serving static files. Defaults to the current working directory.
 	Filesystem       fs.FS
 	Renderer         Renderer
 	Validator        Validator
@@ -576,11 +577,17 @@ func StaticDirectoryHandler(fileSystem fs.FS, disablePathUnescaping bool) Handle
 }
 
 // FileFS registers a new route with path to serve file from the provided file system.
+//
+// Avoid using the leading `/` slash as most of the Go standard library fs.FS implementations require relative paths for
+// file operations.
 func (e *Echo) FileFS(path, file string, filesystem fs.FS, m ...MiddlewareFunc) RouteInfo {
 	return e.GET(path, StaticFileHandler(file, filesystem), m...)
 }
 
-// StaticFileHandler creates handler function to serve file from provided file system
+// StaticFileHandler creates handler function to serve file from provided file system.
+//
+// Avoid using the leading `/` slash as most of the Go standard library fs.FS implementations require relative paths for
+// file operations.
 func StaticFileHandler(file string, filesystem fs.FS) HandlerFunc {
 	return func(c *Context) error {
 		return fsFile(c, file, filesystem)
@@ -588,6 +595,9 @@ func StaticFileHandler(file string, filesystem fs.FS) HandlerFunc {
 }
 
 // File registers a new route with path to serve a static file with optional route-level middleware. Panics on error.
+//
+// Avoid using the leading `/` slash as most of the Go standard library fs.FS implementations require relative paths for
+// file operations.
 func (e *Echo) File(path, file string, middleware ...MiddlewareFunc) RouteInfo {
 	handler := func(c *Context) error {
 		return c.File(file)
