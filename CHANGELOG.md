@@ -1,5 +1,34 @@
 # Changelog
 
+## v5.1.0 - 2026-03-31
+
+**Security**
+
+This change does not break the API contract, but it does introduce breaking changes in logic/behavior.
+If your application is using `c.RealIP()` beware and read https://echo.labstack.com/docs/ip-address
+
+`v4` behavior can be restored with:
+```go
+e := echo.New()
+e.IPExtractor = echo.LegacyIPExtractor()
+```
+
+* Remove legacy IP extraction logic from context.RealIP method by @aldas in https://github.com/labstack/echo/pull/2933
+
+
+**Enhancements**
+
+* Add echo-opentelemetry to the README.md by @aldas in https://github.com/labstack/echo/pull/2908
+* fix: correct spelling mistakes in comments and field name by @crawfordxx in https://github.com/labstack/echo/pull/2916
+* Add https://github.com/labstack/echo-prometheus to the middleware list in README.md by @aldas in https://github.com/labstack/echo/pull/2919
+* Add StartConfig.Listener so server with custom Listener is easier to create by @aldas in https://github.com/labstack/echo/pull/2920
+* Fix rate limiter documentation for default burst value by @karesansui-u in https://github.com/labstack/echo/pull/2925
+* Add doc comments to clarify usage of File related methods and leading slash handling by @aldas in https://github.com/labstack/echo/pull/2928
+* Add NewDefaultFS function to help create filesystem that allows absolute paths by @aldas in https://github.com/labstack/echo/pull/2931
+* Do not set http.Server.WriteTimeout in StartConfig by @aldas in https://github.com/labstack/echo/pull/2932
+
+
+
 ## v5.0.4 - 2026-02-15
 
 **Enhancements**

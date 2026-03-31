@@ -1,5 +1,5 @@
 [![Sourcegraph](https://sourcegraph.com/github.com/labstack/echo/-/badge.svg?style=flat-square)](https://sourcegraph.com/github.com/labstack/echo?badge)
-[![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://pkg.go.dev/github.com/labstack/echo/v4)
+[![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://pkg.go.dev/github.com/labstack/echo/v5)
 [![Go Report Card](https://goreportcard.com/badge/github.com/labstack/echo?style=flat-square)](https://goreportcard.com/report/github.com/labstack/echo)
 [![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/labstack/echo/echo.yml?style=flat-square)](https://github.com/labstack/echo/actions)
 [![Codecov](https://img.shields.io/codecov/c/github/labstack/echo.svg?style=flat-square)](https://codecov.io/gh/labstack/echo)
@@ -50,11 +50,7 @@ Click [here](https://github.com/sponsors/labstack) for more information on spons
 ### Supported Echo versions
 
 - Latest major version of Echo is `v5` as of 2026-01-18.
-  - Until 2026-03-31, any critical issues requiring breaking API changes will be addressed, even if this violates
-    semantic versioning.
   - See [API_CHANGES_V5.md](./API_CHANGES_V5.md) for public API changes between `v4` and `v5`, notes on upgrading.
-  - If you are using Echo in a production environment, it is recommended to wait until after 2026-03-31 before
-    upgrading.
 - Echo `v4` is supported with **security*** updates and **bug** fixes until **2026-12-31**
 
 ### Installation
