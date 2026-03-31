@@ -8,6 +8,7 @@ import (
 	stdContext "context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"log/slog"
 	"net"
@@ -15,6 +16,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -77,6 +79,57 @@ func TestNewWithConfig(t *testing.T) {
 
 	assert.Equal(t, http.StatusTeapot, rec.Code)
 	assert.Equal(t, `Hello, World!`, rec.Body.String())
+}
+
+func TestNewDefaultFS(t *testing.T) {
+	tempDir := t.TempDir()
+	filename := filepath.Join(tempDir, "file.txt")
+	if err := os.WriteFile(filename, []byte("hello"), 0644); err != nil {
+		t.Fatalf("failed to write file: %v", err)
+	}
+
+	var testCases = []struct {
+		name          string
+		givenDir      string
+		whenName      string
+		expectedError string
+	}{
+		{
+			name:     "ok, can open absolute path",
+			givenDir: tempDir,
+			whenName: filename,
+		},
+		{
+			name:     "ok, can open path to fs",
+			givenDir: tempDir,
+			whenName: "file.txt",
+		},
+		{
+			name:          "nok, can not use ./ in path",
+			givenDir:      tempDir,
+			whenName:      "./file.txt",
+			expectedError: `open ./file.txt: invalid argument`,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			myFs := NewDefaultFS(tc.givenDir)
+
+			f, err := myFs.Open(tc.whenName)
+			if tc.expectedError != "" {
+				assert.EqualError(t, err, tc.expectedError)
+				return
+			}
+			if err != nil {
+				t.Fatalf("failed to read file: %v", err)
+			}
+			defer f.Close()
+
+			contents, err := io.ReadAll(f)
+			assert.NoError(t, err)
+			assert.Equal(t, []byte("hello"), contents)
+		})
+	}
 }
 
 func TestEcho_StaticFS(t *testing.T) {
