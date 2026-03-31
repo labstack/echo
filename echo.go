@@ -804,7 +804,7 @@ type defaultFS struct {
 func NewDefaultFS(dir string) fs.FS {
 	return &defaultFS{
 		prefix: dir,
-		fs:     os.DirFS(filepath.ToSlash(filepath.Clean(dir))),
+		fs:     os.DirFS(dir),
 	}
 }
 
@@ -814,10 +814,9 @@ func (fs defaultFS) Open(name string) (fs.File, error) {
 	// a file with an absolute path we need to remove prefix and then call fs.FS.Open().
 	// not to force users to cut prefix from file name we do it here.
 	if filepath.IsAbs(name) {
-		name = filepath.ToSlash(filepath.Clean(name))
 		if strings.HasPrefix(name, fs.prefix) {
 			name = name[len(fs.prefix):]
-			if len(name) > 1 && name[0] == '/' {
+			if len(name) > 1 && os.IsPathSeparator(name[0]) {
 				name = name[1:]
 			}
 		}
