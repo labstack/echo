@@ -16,6 +16,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -82,7 +83,7 @@ func TestNewWithConfig(t *testing.T) {
 
 func TestNewDefaultFS(t *testing.T) {
 	tempDir := t.TempDir()
-	filename := tempDir + "/file.txt"
+	filename := filepath.Join(tempDir, "file.txt")
 	if err := os.WriteFile(filename, []byte("hello"), 0644); err != nil {
 		t.Fatalf("failed to write file: %v", err)
 	}
