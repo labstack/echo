@@ -1,0 +1,24 @@
+version: "2"
+linters:
+#  default: none
+  enable:
+    - revive
+  disable:
+    - errcheck
+  settings:
+    revive:
+      rules:
+        - name: exported
+  exclusions:
+    generated: lax
+    presets:
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - _test\.go$
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - _test\.go$
