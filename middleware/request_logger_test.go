@@ -27,6 +27,7 @@ func TestRequestLoggerOK(t *testing.T) {
 	})
 
 	e := echo.New()
+	e.IPExtractor = echo.LegacyIPExtractor()
 	buf := new(bytes.Buffer)
 	e.Logger = slog.New(slog.NewJSONHandler(buf, nil))
 	e.Use(RequestLogger())
@@ -439,7 +440,7 @@ func TestRequestLogger_allFields(t *testing.T) {
 	assert.Equal(t, time.Unix(1631045377, 0), expect.StartTime)
 	assert.Equal(t, 10*time.Second, expect.Latency)
 	assert.Equal(t, "HTTP/1.1", expect.Protocol)
-	assert.Equal(t, "8.8.8.8", expect.RemoteIP)
+	assert.Equal(t, "192.0.2.1", expect.RemoteIP)
 	assert.Equal(t, "example.com", expect.Host)
 	assert.Equal(t, http.MethodPost, expect.Method)
 	assert.Equal(t, "/test?lang=en&checked=1&checked=2", expect.URI)
@@ -530,7 +531,7 @@ func TestTestRequestLogger(t *testing.T) {
 			assert.Contains(t, string(rawlog), `"uri":"/test?lang=en&checked=1&checked=2"`)
 			assert.Contains(t, string(rawlog), `"latency":`) // this value varies
 			assert.Contains(t, string(rawlog), `"request_id":"MY_ID"`)
-			assert.Contains(t, string(rawlog), `"remote_ip":"8.8.8.8"`)
+			assert.Contains(t, string(rawlog), `"remote_ip":"192.0.2.1"`)
 			assert.Contains(t, string(rawlog), `"host":"example.com"`)
 			assert.Contains(t, string(rawlog), `"user_agent":"curl/7.68.0"`)
 			assert.Contains(t, string(rawlog), `"bytes_in":"32"`)

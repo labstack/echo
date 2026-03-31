@@ -180,29 +180,28 @@ func (c *Context) Scheme() string {
 	return "http"
 }
 
-// RealIP returns the client's network address based on `X-Forwarded-For`
-// or `X-Real-IP` request header.
-// The behavior can be configured using `Echo#IPExtractor`.
+// RealIP returns the client IP address using the configured extraction strategy.
+//
+// If Echo#IPExtractor is set, it is used to resolve the client IP from the incoming request (typically via proxy
+// headers such as X-Forwarded-For or X-Real-IP).
+// Look into the `ip.go` file for comments and examples.
+//
+// See:
+//   - Echo#ExtractIPFromXFFHeader for `X-Forwarded-For` handling with trust checks
+//   - Echo#ExtractIPFromRealIPHeader for `X-Real-IP` handling with trust checks
+//   - Echo#LegacyIPExtractor for `v4` compatibility (spoofable, no trust checks built in)
+//
+// If no extractor is configured, RealIP falls back to the request RemoteAddr, returning only the host portion.
+//
+// Notes:
+//   - No validation or trust enforcement is performed unless implemented by the configured IPExtractor.
+//   - When relying on proxy headers, ensure the application is deployed behind trusted intermediaries to avoid spoofing.
 func (c *Context) RealIP() string {
 	if c.echo != nil && c.echo.IPExtractor != nil {
 		return c.echo.IPExtractor(c.request)
 	}
-	// Fall back to legacy behavior
-	if ip := c.request.Header.Get(HeaderXForwardedFor); ip != "" {
-		i := strings.IndexAny(ip, ",")
-		if i > 0 {
-			xffip := strings.TrimSpace(ip[:i])
-			xffip = strings.TrimPrefix(xffip, "[")
-			xffip = strings.TrimSuffix(xffip, "]")
-			return xffip
-		}
-		return ip
-	}
-	if ip := c.request.Header.Get(HeaderXRealIP); ip != "" {
-		ip = strings.TrimPrefix(ip, "[")
-		ip = strings.TrimSuffix(ip, "]")
-		return ip
-	}
+	// req.RemoteAddr is the IP address of the remote end of the connection, which may be a proxy. It is populated by the
+	// http.conn.readRequest() method and uses net.Conn.RemoteAddr().String() which we trust.
 	ra, _, _ := net.SplitHostPort(c.request.RemoteAddr)
 	return ra
 }
