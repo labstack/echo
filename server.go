@@ -109,8 +109,10 @@ func (sc StartConfig) start(ctx stdContext.Context, h http.Handler) error {
 		ErrorLog: slog.NewLogLogger(logger.Handler(), slog.LevelError),
 		// defaults for GoSec rule G112 // https://github.com/securego/gosec
 		// G112 (CWE-400): Potential Slowloris Attack because ReadHeaderTimeout is not configured in the http.Server
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
+		ReadTimeout: 30 * time.Second,
+		// WriteTimeout is a max time allowed to write the response
+		// IMPORTANT: set this to 0 when using Server-Sent-Events (SSE) or some larger duration when serving static files
+		// WriteTimeout: 30 * time.Second,
 	}
 
 	listener := sc.Listener
