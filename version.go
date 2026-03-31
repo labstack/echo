@@ -5,5 +5,5 @@ package echo
 
 const (
 	// Version of Echo
-	Version = "5.0.4"
+	Version = "5.1.0"
 )
