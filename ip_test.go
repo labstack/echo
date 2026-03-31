@@ -714,3 +714,75 @@ func TestExtractIPFromXFFHeader(t *testing.T) {
 		})
 	}
 }
+
+func TestLegacyIPExtractor(t *testing.T) {
+	var testCases = []struct {
+		name          string
+		whenReq       *http.Request
+		expect        string
+		expectedError string
+	}{
+		{
+			name:    "extract first ip from X-Forwarded-For",
+			whenReq: &http.Request{Header: http.Header{"X-Forwarded-For": []string{"203.0.113.10, 198.51.100.7"}}},
+			expect:  "203.0.113.10",
+		},
+		{
+			name:    "extract single ip from X-Forwarded-For",
+			whenReq: &http.Request{Header: http.Header{"X-Forwarded-For": []string{"203.0.113.10"}}},
+			expect:  "203.0.113.10",
+		},
+		{
+			name:    "trim brackets from ipv6 in X-Forwarded-For when multiple values",
+			whenReq: &http.Request{Header: http.Header{"X-Forwarded-For": []string{"[2001:db8::1], 198.51.100.7"}}},
+			expect:  "2001:db8::1",
+		},
+		{
+			name: "prefer X-Forwarded-For over X-Real-Ip",
+			whenReq: &http.Request{
+				Header: http.Header{
+					"X-Forwarded-For": []string{"203.0.113.10"},
+					"X-Real-Ip":       []string{"198.51.100.7"},
+				},
+			},
+			expect: "203.0.113.10",
+		},
+		{
+			name:    "extract from X-Real-Ip",
+			whenReq: &http.Request{Header: http.Header{"X-Real-Ip": []string{"[2001:db8::1]"}}},
+			expect:  "2001:db8::1",
+		},
+		{
+			name:    "extract plain ipv4 from X-Real-Ip",
+			whenReq: &http.Request{Header: http.Header{"X-Real-Ip": []string{"203.0.113.10"}}},
+			expect:  "203.0.113.10",
+		},
+		{
+			name:    "fallback to RemoteAddr host",
+			whenReq: &http.Request{RemoteAddr: "203.0.113.10:12345"},
+			expect:  "203.0.113.10",
+		},
+		{
+			name:    "fallback to RemoteAddr ipv6 host",
+			whenReq: &http.Request{RemoteAddr: "[2001:db8::1]:12345"},
+			expect:  "2001:db8::1",
+		},
+		{
+			name:    "returns empty string when RemoteAddr is invalid and no headers exist",
+			whenReq: &http.Request{RemoteAddr: "not-a-host-port"},
+			expect:  "",
+		},
+		{
+			name:    "trim brackets from single ipv6 in X-Forwarded-For",
+			whenReq: &http.Request{Header: http.Header{"X-Forwarded-For": []string{"[2001:db8::1]"}}},
+			expect:  "2001:db8::1",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ip := LegacyIPExtractor()(tc.whenReq)
+			assert.Equal(t, tc.expect, ip)
+		})
+	}
+}

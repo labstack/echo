@@ -202,8 +202,8 @@ func (c *ipChecker) trust(ip net.IP) bool {
 // See https://echo.labstack.com/guide/ip-address for more details.
 type IPExtractor func(*http.Request) string
 
-// ExtractIPDirect extracts IP address using actual IP address.
-// Use this if your server faces to internet directory (i.e.: uses no proxy).
+// ExtractIPDirect extracts an IP address using an actual IP address.
+// Use this if your server faces to internet directly (i.e.: uses no proxy).
 func ExtractIPDirect() IPExtractor {
 	return extractIP
 }
@@ -219,7 +219,7 @@ func extractIP(req *http.Request) string {
 	return host
 }
 
-// ExtractIPFromRealIPHeader extracts IP address using x-real-ip header.
+// ExtractIPFromRealIPHeader extracts IP address using `x-real-ip` header.
 // Use this if you put proxy which uses this header.
 func ExtractIPFromRealIPHeader(options ...TrustOption) IPExtractor {
 	checker := newIPChecker(options)
@@ -236,7 +236,7 @@ func ExtractIPFromRealIPHeader(options ...TrustOption) IPExtractor {
 	}
 }
 
-// ExtractIPFromXFFHeader extracts IP address using x-forwarded-for header.
+// ExtractIPFromXFFHeader extracts IP address using `x-forwarded-for` header.
 // Use this if you put proxy which uses this header.
 // This returns nearest untrustable IP. If all IPs are trustable, returns furthest one (i.e.: XFF[0]).
 func ExtractIPFromXFFHeader(options ...TrustOption) IPExtractor {
@@ -264,4 +264,46 @@ func ExtractIPFromXFFHeader(options ...TrustOption) IPExtractor {
 		// All of the IPs are trusted; return first element because it is furthest from server (best effort strategy).
 		return strings.TrimSpace(ips[0])
 	}
+}
+
+// LegacyIPExtractor returns an IPExtractor that derives the client IP address
+// from common proxy headers, falling back to the request's remote address.
+//
+// Resolution order:
+//  1. X-Forwarded-For: returns the first IP in the comma-separated list.
+//     If multiple values are present, only the left-most (original client)
+//     is used. Surrounding brackets (for IPv6) are stripped.
+//  2. X-Real-IP: used if X-Forwarded-For is absent. Surrounding brackets
+//     (for IPv6) are stripped.
+//  3. req.RemoteAddr: used as a fallback; the host portion is extracted
+//     via net.SplitHostPort.
+//
+// Notes:
+//   - No validation is performed on header values.
+//   - This function trusts headers as-is and is therefore not safe against
+//     spoofing unless the application is behind a trusted proxy that is
+//     configured to strip/replace/modify headers correctly.
+//
+// Use ExtractIPFromXFFHeader or ExtractIPFromRealIPHeader instead of LegacyIPExtractor.
+func LegacyIPExtractor() IPExtractor {
+	return legacyIPExtractor
+}
+
+func legacyIPExtractor(req *http.Request) string {
+	if ip := req.Header.Get(HeaderXForwardedFor); ip != "" {
+		i := strings.IndexAny(ip, ",")
+		if i > 0 {
+			ip = strings.TrimSpace(ip[:i])
+		}
+		ip = strings.TrimPrefix(ip, "[")
+		ip = strings.TrimSuffix(ip, "]")
+		return ip
+	}
+	if ip := req.Header.Get(HeaderXRealIP); ip != "" {
+		ip = strings.TrimPrefix(ip, "[")
+		ip = strings.TrimSuffix(ip, "]")
+		return ip
+	}
+	ra, _, _ := net.SplitHostPort(req.RemoteAddr)
+	return ra
 }

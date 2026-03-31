@@ -14,6 +14,7 @@ import (
 	"log/slog"
 	"math"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -1220,91 +1221,42 @@ func TestContext_Bind(t *testing.T) {
 }
 
 func TestContext_RealIP(t *testing.T) {
-	tests := []struct {
-		c *Context
-		s string
+	_, ipv6ForRemoteAddrExternalRange, _ := net.ParseCIDR("2001:db8::/64")
+
+	var testCases = []struct {
+		name            string
+		givenIPExtrator IPExtractor
+		whenReq         *http.Request
+		expect          string
 	}{
 		{
-			&Context{
-				request: &http.Request{
-					Header: http.Header{HeaderXForwardedFor: []string{"127.0.0.1, 127.0.1.1, "}},
-				},
-			},
-			"127.0.0.1",
+			name:            "ip from remote addr",
+			givenIPExtrator: nil,
+			whenReq:         &http.Request{RemoteAddr: "89.89.89.89:1654"},
+			expect:          "89.89.89.89",
 		},
 		{
-			&Context{
-				request: &http.Request{
-					Header: http.Header{HeaderXForwardedFor: []string{"127.0.0.1,127.0.1.1"}},
+			name:            "ip from ip extractor",
+			givenIPExtrator: ExtractIPFromRealIPHeader(TrustIPRange(ipv6ForRemoteAddrExternalRange)),
+			whenReq: &http.Request{
+				Header: http.Header{
+					HeaderXRealIP:       []string{"[2001:db8::113:199]"},
+					HeaderXForwardedFor: []string{"[2001:db8::113:198], [2001:db8::113:197]"}, // <-- should not affect anything
 				},
+				RemoteAddr: "[2001:db8::113:1]:8080",
 			},
-			"127.0.0.1",
-		},
-		{
-			&Context{
-				request: &http.Request{
-					Header: http.Header{HeaderXForwardedFor: []string{"127.0.0.1"}},
-				},
-			},
-			"127.0.0.1",
-		},
-		{
-			&Context{
-				request: &http.Request{
-					Header: http.Header{HeaderXForwardedFor: []string{"[2001:db8:85a3:8d3:1319:8a2e:370:7348], 2001:db8::1, "}},
-				},
-			},
-			"2001:db8:85a3:8d3:1319:8a2e:370:7348",
-		},
-		{
-			&Context{
-				request: &http.Request{
-					Header: http.Header{HeaderXForwardedFor: []string{"[2001:db8:85a3:8d3:1319:8a2e:370:7348],[2001:db8::1]"}},
-				},
-			},
-			"2001:db8:85a3:8d3:1319:8a2e:370:7348",
-		},
-		{
-			&Context{
-				request: &http.Request{
-					Header: http.Header{HeaderXForwardedFor: []string{"2001:db8:85a3:8d3:1319:8a2e:370:7348"}},
-				},
-			},
-			"2001:db8:85a3:8d3:1319:8a2e:370:7348",
-		},
-		{
-			&Context{
-				request: &http.Request{
-					Header: http.Header{
-						"X-Real-Ip": []string{"192.168.0.1"},
-					},
-				},
-			},
-			"192.168.0.1",
-		},
-		{
-			&Context{
-				request: &http.Request{
-					Header: http.Header{
-						"X-Real-Ip": []string{"[2001:db8::1]"},
-					},
-				},
-			},
-			"2001:db8::1",
-		},
-
-		{
-			&Context{
-				request: &http.Request{
-					RemoteAddr: "89.89.89.89:1654",
-				},
-			},
-			"89.89.89.89",
+			expect: "2001:db8::113:199",
 		},
 	}
-
-	for _, tt := range tests {
-		assert.Equal(t, tt.s, tt.c.RealIP())
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			c := e.NewContext(tc.whenReq, nil)
+			if tc.givenIPExtrator != nil {
+				e.IPExtractor = tc.givenIPExtrator
+			}
+			assert.Equal(t, tc.expect, c.RealIP())
+		})
 	}
 }
 
