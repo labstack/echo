@@ -69,8 +69,15 @@ type Echo struct {
 	serveHTTPFunc func(http.ResponseWriter, *http.Request)
 
 	Binder Binder
-	// Filesystem is the file system used for serving static files. Defaults to the current working directory.
-	Filesystem       fs.FS
+
+	// Filesystem is the file system used for serving static files. Defaults to the current working directory (os.Getwd()).
+	//
+	// Note: fs.FS.Open() already assumes that file names are relative to FS root path and considers name with prefix `/` as invalid
+	// so if you have `fs := os.DirFS("/tmp")` and you try to `fs.Open("/tmp/file.txt")` it will fail, but "file.txt"
+	// would succeed. `echo.NewDefaultFS("/tmp")` overwrites this behavior and allows you to use Open with a matching
+	// absolute path prefix.
+	Filesystem fs.FS
+
 	Renderer         Renderer
 	Validator        Validator
 	JSONSerializer   JSONSerializer
@@ -324,10 +331,11 @@ func NewWithConfig(config Config) *Echo {
 
 // New creates an instance of Echo.
 func New() *Echo {
+	dir, _ := os.Getwd()
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	e := &Echo{
 		Logger:             logger,
-		Filesystem:         newDefaultFS(),
+		Filesystem:         NewDefaultFS(dir),
 		Binder:             &DefaultBinder{},
 		JSONSerializer:     &DefaultJSONSerializer{},
 		formParseMaxMemory: defaultMemory,
@@ -781,7 +789,7 @@ func applyMiddleware(h HandlerFunc, middleware ...MiddlewareFunc) HandlerFunc {
 	return h
 }
 
-// defaultFS emulates os.Open behaviour with filesystem opened by `os.DirFs`. Difference between `os.Open` and `fs.Open`
+// defaultFS emulates os.Open behavior with filesystem opened by `os.DirFs`. Difference between `os.Open` and `fs.Open`
 // is that FS does not allow to open path that start with `..` or `/` etc. For example previously you could have `../images`
 // in your application but `fs := os.DirFS("./")` would not allow you to use `fs.Open("../images")` and this would break
 // all old applications that rely on being able to traverse up from current executable run path.
@@ -791,15 +799,29 @@ type defaultFS struct {
 	prefix string
 }
 
-func newDefaultFS() *defaultFS {
-	dir, _ := os.Getwd()
+// NewDefaultFS returns a new defaultFS instance which allows `fs.FS.Open` to have absolute paths as input if it matches
+// then given dir as prefix.
+func NewDefaultFS(dir string) fs.FS {
 	return &defaultFS{
 		prefix: dir,
-		fs:     os.DirFS(dir),
+		fs:     os.DirFS(filepath.ToSlash(filepath.Clean(dir))),
 	}
 }
 
 func (fs defaultFS) Open(name string) (fs.File, error) {
+	// fs.FS.Open() already assumes that file names are relative to FS root path and considers name with prefix `/` as invalid
+	// For example `f.Name()` returns file names as absolute paths (e.g. `/tmp/data.csv`) so in case user wants to open
+	// a file with an absolute path we need to remove prefix and then call fs.FS.Open().
+	// not to force users to cut prefix from file name we do it here.
+	if filepath.IsAbs(name) {
+		name = filepath.ToSlash(filepath.Clean(name))
+		if strings.HasPrefix(name, fs.prefix) {
+			name = name[len(fs.prefix):]
+			if len(name) > 1 && name[0] == '/' {
+				name = name[1:]
+			}
+		}
+	}
 	return fs.fs.Open(name)
 }
 
