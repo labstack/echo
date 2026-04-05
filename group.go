@@ -12,9 +12,15 @@ import (
 // routes that share a common middleware or functionality that should be separate
 // from the parent echo instance while still inheriting from it.
 type Group struct {
-	echo       *Echo
-	prefix     string
-	middleware []MiddlewareFunc
+	echo          *Echo
+	prefix        string
+	middleware    []MiddlewareFunc
+	autoHeadInGet bool
+}
+
+// AutoHeadCancel implements `Echo#AutoHeadCancel()` for the Group struct.
+func (g *Group) AutoHeadCancel() {
+	g.autoHeadInGet = false
 }
 
 // Use implements `Echo#Use()` for sub-routes within the Group.
@@ -35,6 +41,10 @@ func (g *Group) DELETE(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInf
 
 // GET implements `Echo#GET()` for sub-routes within the Group. Panics on error.
 func (g *Group) GET(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo {
+	if g.autoHeadInGet {
+		g.Add(http.MethodHead, path, h, m...)
+	}
+
 	return g.Add(http.MethodGet, path, h, m...)
 }
 
