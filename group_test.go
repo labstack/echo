@@ -162,7 +162,7 @@ func TestGroupRouteMiddlewareWithMatchAny(t *testing.T) {
 
 }
 
-func TestAutoHeadCancel(t *testing.T) {
+func TestAutoHeadCancelInGroup(t *testing.T) {
 	e := New()
 	g := e.Group("/group")
 
