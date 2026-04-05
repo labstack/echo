@@ -100,6 +100,9 @@ type Echo struct {
 
 	// formParseMaxMemory is passed to Context for multipart form parsing (See http.Request.ParseMultipartForm)
 	formParseMaxMemory int64
+
+	// automatically registers a HEAD request within GET
+	autoHeadInGet bool
 }
 
 // JSONSerializer is the interface that encodes and decodes JSON to and from interfaces.
@@ -339,6 +342,7 @@ func New() *Echo {
 		Binder:             &DefaultBinder{},
 		JSONSerializer:     &DefaultJSONSerializer{},
 		formParseMaxMemory: defaultMemory,
+		autoHeadInGet:      true,
 	}
 
 	e.serveHTTPFunc = e.serveHTTP
@@ -348,6 +352,14 @@ func New() *Echo {
 		return newContext(nil, nil, e)
 	}
 	return e
+}
+
+// AutoHeadCancel turns the flag autoHeadInGet to false.
+//
+// This flag is used to register HEAD request automatically
+// everytime a GET request is registered.
+func (e *Echo) AutoHeadCancel() {
+	e.autoHeadInGet = false
 }
 
 // NewContext returns a new Context instance.
@@ -446,7 +458,14 @@ func (e *Echo) DELETE(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo
 
 // GET registers a new GET route for a path with matching handler in the router
 // with optional route-level middleware. Panics on error.
+//
+// Note: if autoHeadInGet flag is true, it will also register a HEAD request
+// to the same path.
 func (e *Echo) GET(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo {
+	if e.autoHeadInGet {
+		_ = e.Add(http.MethodHead, path, h, m...)
+	}
+
 	return e.Add(http.MethodGet, path, h, m...)
 }
 
