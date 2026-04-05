@@ -454,7 +454,7 @@ func (e *Echo) DELETE(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo
 // to the same path.
 func (e *Echo) GET(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo {
 	if e.autoHeadInGet {
-		e.Add(http.MethodHead, path, h, m...)
+		_ = e.Add(http.MethodHead, path, h, m...)
 	}
 
 	return e.Add(http.MethodGet, path, h, m...)

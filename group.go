@@ -42,7 +42,7 @@ func (g *Group) DELETE(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInf
 // GET implements `Echo#GET()` for sub-routes within the Group. Panics on error.
 func (g *Group) GET(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo {
 	if g.autoHeadInGet {
-		g.Add(http.MethodHead, path, h, m...)
+		_ = g.Add(http.MethodHead, path, h, m...)
 	}
 
 	return g.Add(http.MethodGet, path, h, m...)
