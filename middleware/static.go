@@ -250,7 +250,7 @@ func (config StaticConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				}
 
 				var he echo.HTTPStatusCoder
-				if !(errors.As(err, &he) && config.HTML5 && he.StatusCode() == http.StatusNotFound) {
+				if !errors.As(err, &he) || !config.HTML5 || he.StatusCode() != http.StatusNotFound {
 					return err
 				}
 				// is case HTML5 mode is enabled + echo 404 we serve index to the client
