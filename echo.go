@@ -454,7 +454,7 @@ func (e *Echo) DELETE(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo
 // to the same path.
 func (e *Echo) GET(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo {
 	if e.autoHeadInGet {
-		_ = e.Add(http.MethodHead, path, h, m...)
+		_ = e.HEAD(path, h, m...)
 	}
 
 	return e.Add(http.MethodGet, path, h, m...)
@@ -658,7 +658,7 @@ func (e *Echo) Add(method, path string, handler HandlerFunc, middleware ...Middl
 
 // Group creates a new router group with prefix and optional group-level middleware.
 func (e *Echo) Group(prefix string, m ...MiddlewareFunc) (g *Group) {
-	g = &Group{prefix: prefix, echo: e}
+	g = &Group{prefix: prefix, echo: e, autoHeadInGet: true}
 	g.Use(m...)
 	return
 }

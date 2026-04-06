@@ -598,9 +598,9 @@ func TestEchoAutoHead(t *testing.T) {
 		return c.String(http.StatusTeapot, "OK")
 	})
 
-	assert.Equal(t, http.MethodHead, ri.Method)
+	assert.Equal(t, http.MethodGet, ri.Method)
 	assert.Equal(t, "/", ri.Path)
-	assert.Equal(t, http.MethodHead+":/", ri.Name)
+	assert.Equal(t, http.MethodGet+":/", ri.Name)
 	assert.Nil(t, ri.Parameters)
 
 	status, body := request(http.MethodHead, "/", e)
@@ -937,7 +937,7 @@ func TestEchoMethodNotAllowed(t *testing.T) {
 	e.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
-	assert.Equal(t, "OPTIONS, GET", rec.Header().Get(HeaderAllow))
+	assert.Equal(t, "OPTIONS, GET, HEAD", rec.Header().Get(HeaderAllow))
 }
 
 func TestEcho_OnAddRoute(t *testing.T) {
@@ -978,6 +978,7 @@ func TestEcho_OnAddRoute(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 
 			e := New()
+			e.AutoHeadCancel()
 
 			added := make([]string, 0)
 			cnt := 0
