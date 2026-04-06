@@ -121,7 +121,7 @@ func (config BasicAuthConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				if i >= limit {
 					break
 				}
-				if !(len(auth) > l+1 && strings.EqualFold(auth[:l], basic)) {
+				if len(auth) <= l+1 || !strings.EqualFold(auth[:l], basic) {
 					continue
 				}
 				i++
