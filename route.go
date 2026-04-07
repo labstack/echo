@@ -86,7 +86,7 @@ func (r RouteInfo) Reverse(pathValues ...any) string {
 			for ; i < l && r.Path[i] != '/'; i++ {
 			}
 			fmt.Fprintf(uri, "%v", pathValues[n])
-				n++
+			n++
 		}
 		if i < l {
 			uri.WriteByte(r.Path[i])

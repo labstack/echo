@@ -155,7 +155,7 @@ func bindData(destination any, data map[string][]string, tag string, dataFiles m
 		isElemInterface := k == reflect.Interface
 		isElemString := k == reflect.String
 		isElemSliceOfStrings := k == reflect.Slice && typ.Elem().Elem().Kind() == reflect.String
-	  if !isElemSliceOfStrings && !isElemString && !isElemInterface {
+		if !isElemSliceOfStrings && !isElemString && !isElemInterface {
 			return nil
 		}
 		if val.IsNil() {
