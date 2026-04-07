@@ -995,7 +995,7 @@ func (r *DefaultRouter) Route(c *Context) HandlerFunc {
 	var rInfo *RouteInfo
 	if matchedRouteMethod != nil {
 		rHandler = matchedRouteMethod.handler
-		rPath = matchedRouteMethod.RouteInfo.Path
+		rPath = matchedRouteMethod.Path
 		rInfo = matchedRouteMethod.RouteInfo
 	} else {
 		// use previous match as basis. although we have no matching handler we have path match.

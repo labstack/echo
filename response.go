@@ -136,7 +136,7 @@ func UnwrapResponse(rw http.ResponseWriter) (*Response, error) {
 type delayedStatusWriter struct {
 	http.ResponseWriter
 	committed bool
-	status   int
+	status    int
 }
 
 func (w *delayedStatusWriter) WriteHeader(statusCode int) {

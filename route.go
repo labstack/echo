@@ -85,7 +85,7 @@ func (r RouteInfo) Reverse(pathValues ...any) string {
 			// in case of `*` wildcard or `:` (unescaped colon) param we replace everything till next slash or end of path
 			for ; i < l && r.Path[i] != '/'; i++ {
 			}
-			uri.WriteString(fmt.Sprintf("%v", pathValues[n]))
+			fmt.Fprintf(uri, "%v", pathValues[n])
 			n++
 		}
 		if i < l {
