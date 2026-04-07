@@ -582,6 +582,16 @@ func TestEchoWrapMiddleware(t *testing.T) {
 	assert.Equal(t, "/:id", actualPattern)
 }
 
+func TestAutoHeadCancel(t *testing.T) {
+	e := New()
+
+	assert.Equal(t, true, e.autoHeadInGet)
+
+	e.AutoHeadCancel()
+
+	assert.Equal(t, false, e.autoHeadInGet)
+}
+
 func TestEchoConnect(t *testing.T) {
 	e := New()
 
@@ -629,6 +639,24 @@ func TestEchoGet(t *testing.T) {
 	assert.Nil(t, ri.Parameters)
 
 	status, body := request(http.MethodGet, "/", e)
+	assert.Equal(t, http.StatusTeapot, status)
+	assert.Equal(t, "OK", body)
+}
+
+func TestEchoAutoHead(t *testing.T) {
+	e := New()
+
+	assert.Equal(t, true, e.autoHeadInGet) // guarantees the flag is true
+	ri := e.GET("/", func(c *Context) error {
+		return c.String(http.StatusTeapot, "OK")
+	})
+
+	assert.Equal(t, http.MethodGet, ri.Method)
+	assert.Equal(t, "/", ri.Path)
+	assert.Equal(t, http.MethodGet+":/", ri.Name)
+	assert.Nil(t, ri.Parameters)
+
+	status, body := request(http.MethodHead, "/", e)
 	assert.Equal(t, http.StatusTeapot, status)
 	assert.Equal(t, "OK", body)
 }
@@ -962,7 +990,7 @@ func TestEchoMethodNotAllowed(t *testing.T) {
 	e.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
-	assert.Equal(t, "OPTIONS, GET", rec.Header().Get(HeaderAllow))
+	assert.Equal(t, "OPTIONS, GET, HEAD", rec.Header().Get(HeaderAllow))
 }
 
 func TestEcho_OnAddRoute(t *testing.T) {
@@ -1003,6 +1031,7 @@ func TestEcho_OnAddRoute(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 
 			e := New()
+			e.AutoHeadCancel()
 
 			added := make([]string, 0)
 			cnt := 0

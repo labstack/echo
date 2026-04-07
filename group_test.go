@@ -162,6 +162,17 @@ func TestGroupRouteMiddlewareWithMatchAny(t *testing.T) {
 
 }
 
+func TestAutoHeadCancelInGroup(t *testing.T) {
+	e := New()
+	g := e.Group("/group")
+
+	assert.Equal(t, true, g.autoHeadInGet)
+
+	g.AutoHeadCancel()
+
+	assert.Equal(t, false, g.autoHeadInGet)
+}
+
 func TestGroup_CONNECT(t *testing.T) {
 	e := New()
 
@@ -196,6 +207,25 @@ func TestGroup_DELETE(t *testing.T) {
 	status, body := request(http.MethodDelete, "/users/activate", e)
 	assert.Equal(t, http.StatusTeapot, status)
 	assert.Equal(t, `OK`, body)
+}
+
+func TestGroup_AutoHEAD_in_GET(t *testing.T) {
+	e := New()
+
+	users := e.Group("/users")
+	ri := users.GET("/activate", func(c *Context) error {
+		return c.String(http.StatusTeapot, "OK")
+	})
+
+	assert.Equal(t, true, users.autoHeadInGet)
+	assert.Equal(t, http.MethodGet, ri.Method)
+	assert.Equal(t, "/users/activate", ri.Path)
+	assert.Equal(t, http.MethodGet+":/users/activate", ri.Name)
+	assert.Nil(t, ri.Parameters)
+
+	status, body := request(http.MethodHead, "/users/activate", e)
+	assert.Equal(t, http.StatusTeapot, status)
+	assert.Equal(t, "OK", body)
 }
 
 func TestGroup_HEAD(t *testing.T) {
