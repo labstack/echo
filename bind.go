@@ -351,6 +351,10 @@ func unmarshalInputsToField(valueKind reflect.Kind, values []string, field refle
 
 func unmarshalInputToField(valueKind reflect.Kind, val string, field reflect.Value, formatTag string) (bool, error) {
 	if valueKind == reflect.Ptr {
+		if val == "" {
+			field.Set(reflect.Zero(field.Type()))
+			return true, nil
+		}
 		if field.IsNil() {
 			field.Set(reflect.New(field.Type().Elem()))
 		}
