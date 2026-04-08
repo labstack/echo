@@ -193,7 +193,7 @@ func (w *gzipResponseWriter) Flush() {
 	}
 
 	if gw, ok := w.Writer.(*gzip.Writer); ok {
-		gw.Flush()
+		_ = gw.Flush()
 	}
 	_ = http.NewResponseController(w.ResponseWriter).Flush()
 }
