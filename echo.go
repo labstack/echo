@@ -54,6 +54,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -100,6 +101,7 @@ type Echo struct {
 
 	// formParseMaxMemory is passed to Context for multipart form parsing (See http.Request.ParseMultipartForm)
 	formParseMaxMemory int64
+	AutoHead           bool
 }
 
 // JSONSerializer is the interface that encodes and decodes JSON to and from interfaces.
@@ -288,6 +290,11 @@ type Config struct {
 	// FormParseMaxMemory is default value for memory limit that is used
 	// when parsing multipart forms (See (*http.Request).ParseMultipartForm)
 	FormParseMaxMemory int64
+
+	// AutoHead enables automatic registration of HEAD routes for GET routes.
+	// When enabled, a HEAD request to a GET-only path will be handled automatically
+	// using the same handler as GET, with the response body suppressed.
+	AutoHead bool
 }
 
 // NewWithConfig creates an instance of Echo with given configuration.
@@ -325,6 +332,9 @@ func NewWithConfig(config Config) *Echo {
 	}
 	if config.FormParseMaxMemory > 0 {
 		e.formParseMaxMemory = config.FormParseMaxMemory
+	}
+	if config.AutoHead {
+		e.AutoHead = config.AutoHead
 	}
 	return e
 }
@@ -418,6 +428,67 @@ func DefaultHTTPErrorHandler(exposeError bool) HTTPErrorHandler {
 		if cErr != nil {
 			c.Logger().Error("echo default error handler failed to send error to client", "error", cErr) // truly rare case. ala client already disconnected
 		}
+	}
+}
+
+// headResponseWriter wraps an http.ResponseWriter and suppresses the response body
+// while preserving headers and status code. Used for automatic HEAD route handling.
+// It counts the bytes that would have been written so we can set Content-Length accurately.
+type headResponseWriter struct {
+	http.ResponseWriter
+	bytesWritten int64
+	statusCode   int
+	wroteHeader  bool
+}
+
+// Write intercepts writes to the response body and counts bytes without actually writing them.
+func (hw *headResponseWriter) Write(b []byte) (int, error) {
+	if !hw.wroteHeader {
+		hw.statusCode = http.StatusOK
+		hw.wroteHeader = true
+	}
+	hw.bytesWritten += int64(len(b))
+	// Return success without actually writing the body for HEAD requests
+	return len(b), nil
+}
+
+// WriteHeader intercepts the status code but still writes it to the underlying ResponseWriter.
+func (hw *headResponseWriter) WriteHeader(statusCode int) {
+	if !hw.wroteHeader {
+		hw.statusCode = statusCode
+		hw.wroteHeader = true
+		hw.ResponseWriter.WriteHeader(statusCode)
+	}
+}
+
+// Unwrap returns the underlying http.ResponseWriter for compatibility with echo.Response unwrapping.
+func (hw *headResponseWriter) Unwrap() http.ResponseWriter {
+	return hw.ResponseWriter
+}
+
+func wrapHeadHandler(handler HandlerFunc) HandlerFunc {
+	return func(c *Context) error {
+		if c.Request().Method != http.MethodHead {
+			return handler(c)
+		}
+		originalWriter := c.Response()
+		headWriter := &headResponseWriter{ResponseWriter: originalWriter}
+
+		c.SetResponse(headWriter)
+		defer func() {
+			c.SetResponse(originalWriter)
+		}()
+		err := handler(c)
+
+		if headWriter.bytesWritten > 0 {
+			originalWriter.Header().Set("Content-Length", strconv.FormatInt(headWriter.bytesWritten, 10))
+		}
+
+		if !headWriter.wroteHeader && headWriter.statusCode > 0 {
+			originalWriter.WriteHeader(headWriter.statusCode)
+		}
+
+		return err
 	}
 }
 
@@ -634,6 +705,20 @@ func (e *Echo) add(route Route) (RouteInfo, error) {
 	if paramsCount > e.contextPathParamAllocSize.Load() {
 		e.contextPathParamAllocSize.Store(paramsCount)
 	}
+
+	// Auto-register HEAD route for GET if AutoHead is enabled
+	if e.AutoHead && route.Method == http.MethodGet {
+		headRoute := Route{
+			Method:      http.MethodHead,
+			Path:        route.Path,
+			Handler:     wrapHeadHandler(route.Handler),
+			Middlewares: route.Middlewares,
+			Name:        route.Name,
+		}
+		// Attempt to add HEAD route, but ignore errors if an explicit HEAD route already exists
+		_, _ = e.router.Add(headRoute)
+	}
+
 	return ri, nil
 }
 
@@ -642,6 +727,7 @@ func (e *Echo) add(route Route) (RouteInfo, error) {
 func (e *Echo) Add(method, path string, handler HandlerFunc, middleware ...MiddlewareFunc) RouteInfo {
 	ri, err := e.add(
 		Route{
+
 			Method:      method,
 			Path:        path,
 			Handler:     handler,
