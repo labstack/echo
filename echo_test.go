@@ -1423,6 +1423,325 @@ func TestDefaultHTTPErrorHandler_CommitedResponse(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.Code)
 }
 
+func TestRouterAutoHandleHEADFullHTTPHandlerFlow(t *testing.T) {
+	tests := []struct {
+		name                string
+		givenAutoHandleHEAD bool
+		whenMethod          string
+		expectBody          string
+		expectCode          int
+		expectContentLength string
+	}{
+		{
+			name:                "AutoHandleHEAD disabled - HEAD returns 405",
+			givenAutoHandleHEAD: false,
+			whenMethod:          http.MethodHead,
+			expectCode:          http.StatusMethodNotAllowed,
+			expectBody:          "",
+		},
+		{
+			name:                "AutoHandleHEAD enabled - HEAD returns 200 with Content-Length",
+			givenAutoHandleHEAD: true,
+			whenMethod:          http.MethodHead,
+			expectCode:          http.StatusOK,
+			expectBody:          "",
+			expectContentLength: "4",
+		},
+		{
+			name:                "GET request works normally with AutoHandleHEAD enabled",
+			givenAutoHandleHEAD: true,
+			whenMethod:          http.MethodGet,
+			expectCode:          http.StatusOK,
+			expectBody:          "test",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			e := NewWithConfig(Config{
+				Router: NewRouter(RouterConfig{
+					AutoHandleHEAD: tc.givenAutoHandleHEAD,
+				}),
+			})
+
+			e.GET("/hello", func(c *Context) error {
+				return c.String(http.StatusOK, "test")
+			})
+
+			req := httptest.NewRequest(tc.whenMethod, "/hello", nil)
+			rec := httptest.NewRecorder()
+
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, tc.expectCode, rec.Code)
+			assert.Equal(t, tc.expectContentLength, rec.Header().Get(HeaderContentLength))
+			assert.Equal(t, tc.expectBody, rec.Body.String())
+		})
+	}
+}
+
+func TestAutoHeadExplicitHeadTakesPrecedence(t *testing.T) {
+	e := NewWithConfig(Config{
+		Router: NewRouter(RouterConfig{
+			AutoHandleHEAD: true,
+		}),
+	})
+
+	// Register explicit HEAD route FIRST with custom behavior
+	e.HEAD("/api/users", func(c *Context) error {
+		c.Response().Header().Set("X-Custom-Header", "explicit-head")
+		return c.NoContent(http.StatusTeapot)
+	})
+
+	e.GET("/api/users", func(c *Context) error {
+		return c.JSON(http.StatusNotFound, map[string]string{"name": "John"})
+	})
+
+	req := httptest.NewRequest(http.MethodHead, "/api/users", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusTeapot, rec.Code)
+	assert.Equal(t, "explicit-head", rec.Header().Get("X-Custom-Header"))
+	assert.Equal(t, "", rec.Body.String())
+}
+
+func TestRouterAutoHandleHEAD_PathParams(t *testing.T) {
+	e := NewWithConfig(Config{
+		Router: NewRouter(RouterConfig{AutoHandleHEAD: true}),
+	})
+
+	e.GET("/users/:id", func(c *Context) error {
+		return c.String(http.StatusOK, "id="+c.Param("id"))
+	})
+
+	req := httptest.NewRequest(http.MethodHead, "/users/42", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, fmt.Sprintf("%d", len("id=42")), rec.Header().Get(HeaderContentLength))
+	assert.Equal(t, "", rec.Body.String())
+}
+
+func TestRouterAutoHandleHEAD_MultipleWriteCalls(t *testing.T) {
+	e := NewWithConfig(Config{
+		Router: NewRouter(RouterConfig{AutoHandleHEAD: true}),
+	})
+
+	e.GET("/multi", func(c *Context) error {
+		c.Response().WriteHeader(http.StatusOK)
+		c.Response().Write([]byte("foo")) // 3
+		c.Response().Write([]byte("bar")) // 3
+		return nil
+	})
+
+	req := httptest.NewRequest(http.MethodHead, "/multi", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "6", rec.Header().Get(HeaderContentLength))
+	assert.Equal(t, "", rec.Body.String())
+}
+
+func TestRouterAutoHandleHEAD_ExplicitContentLength(t *testing.T) {
+	e := NewWithConfig(Config{
+		Router: NewRouter(RouterConfig{AutoHandleHEAD: true}),
+	})
+
+	e.GET("/explicit", func(c *Context) error {
+		c.Response().Header().Set(HeaderContentLength, "1000")
+		return c.String(http.StatusOK, "short")
+	})
+
+	req := httptest.NewRequest(http.MethodHead, "/explicit", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, "1000", rec.Header().Get(HeaderContentLength))
+}
+
+func TestRouterAutoHandleHEAD_TransferEncoding(t *testing.T) {
+	e := NewWithConfig(Config{
+		Router: NewRouter(RouterConfig{AutoHandleHEAD: true}),
+	})
+
+	e.GET("/chunked", func(c *Context) error {
+		c.Response().Header().Set("Transfer-Encoding", "chunked")
+		return c.String(http.StatusOK, "data")
+	})
+
+	req := httptest.NewRequest(http.MethodHead, "/chunked", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, "", rec.Header().Get(HeaderContentLength))
+}
+
+func TestRouterAutoHandleHEAD_204Response(t *testing.T) {
+	e := NewWithConfig(Config{
+		Router: NewRouter(RouterConfig{AutoHandleHEAD: true}),
+	})
+
+	e.GET("/nocontent", func(c *Context) error {
+		return c.NoContent(http.StatusNoContent)
+	})
+
+	req := httptest.NewRequest(http.MethodHead, "/nocontent", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+	assert.Equal(t, "", rec.Header().Get(HeaderContentLength))
+}
+
+func TestRouterAutoHandleHEAD_304Response(t *testing.T) {
+	e := NewWithConfig(Config{
+		Router: NewRouter(RouterConfig{AutoHandleHEAD: true}),
+	})
+
+	e.GET("/notmodified", func(c *Context) error {
+		return c.NoContent(http.StatusNotModified)
+	})
+
+	req := httptest.NewRequest(http.MethodHead, "/notmodified", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNotModified, rec.Code)
+	assert.Equal(t, "", rec.Header().Get(HeaderContentLength))
+}
+
+func TestRouterAutoHandleHEAD_CustomResponseHeaders(t *testing.T) {
+	e := NewWithConfig(Config{
+		Router: NewRouter(RouterConfig{AutoHandleHEAD: true}),
+	})
+
+	e.GET("/headers", func(c *Context) error {
+		c.Response().Header().Set("X-Foo", "bar")
+		return c.String(http.StatusOK, "body")
+	})
+
+	req := httptest.NewRequest(http.MethodHead, "/headers", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, "bar", rec.Header().Get("X-Foo"))
+	assert.Equal(t, "", rec.Body.String())
+}
+
+func TestRouterAutoHandleHEAD_ContentType(t *testing.T) {
+	e := NewWithConfig(Config{
+		Router: NewRouter(RouterConfig{AutoHandleHEAD: true}),
+	})
+
+	e.GET("/json", func(c *Context) error {
+		return c.JSON(http.StatusOK, map[string]string{"key": "value"})
+	})
+
+	req := httptest.NewRequest(http.MethodHead, "/json", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Header().Get(HeaderContentType), MIMEApplicationJSON)
+	assert.Equal(t, "", rec.Body.String())
+}
+
+func TestRouterAutoHandleHEAD_WithMiddleware(t *testing.T) {
+	e := NewWithConfig(Config{
+		Router: NewRouter(RouterConfig{AutoHandleHEAD: true}),
+	})
+	e.Use(func(next HandlerFunc) HandlerFunc {
+		return func(c *Context) error {
+			c.Response().Header().Set("X-Middleware", "ran")
+			return next(c)
+		}
+	})
+
+	e.GET("/mw", func(c *Context) error {
+		return c.String(http.StatusOK, "body")
+	})
+
+	req := httptest.NewRequest(http.MethodHead, "/mw", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, "ran", rec.Header().Get("X-Middleware"))
+	assert.Equal(t, "", rec.Body.String())
+}
+
+func TestRouterAutoHandleHEAD_HandlerError_ErrorHandlerRuns(t *testing.T) {
+	e := NewWithConfig(Config{
+		Router: NewRouter(RouterConfig{AutoHandleHEAD: true}),
+	})
+
+	e.GET("/err", func(c *Context) error {
+		return ErrBadRequest
+	})
+
+	req := httptest.NewRequest(http.MethodHead, "/err", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Equal(t, "", rec.Body.String())
+}
+
+func TestRouterAutoHandleHEAD_NoGetRoute_Returns405(t *testing.T) {
+	e := NewWithConfig(Config{
+		Router: NewRouter(RouterConfig{AutoHandleHEAD: true}),
+	})
+
+	e.POST("/post-only", func(c *Context) error {
+		return c.String(http.StatusOK, "ok")
+	})
+
+	req := httptest.NewRequest(http.MethodHead, "/post-only", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
+}
+
+func TestRouterAutoHandleHEAD_AnyRoute_NotWrapped(t *testing.T) {
+	e := NewWithConfig(Config{
+		Router: NewRouter(RouterConfig{AutoHandleHEAD: true}),
+	})
+
+	e.Any("/resource", func(c *Context) error {
+		return c.String(http.StatusOK, "any-body")
+	})
+
+	req := httptest.NewRequest(http.MethodHead, "/resource", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "any-body", rec.Body.String())
+	// Content-Length must NOT be injected by wrapHeadHandler for RouteAny
+	assert.Equal(t, "", rec.Header().Get(HeaderContentLength))
+}
+
+func TestRouterAutoHandleHEAD_CatchAllRoute(t *testing.T) {
+	e := NewWithConfig(Config{
+		Router: NewRouter(RouterConfig{AutoHandleHEAD: true}),
+	})
+
+	e.GET("/*", func(c *Context) error {
+		return c.String(http.StatusOK, "wildcard")
+	})
+
+	req := httptest.NewRequest(http.MethodHead, "/anything/here", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, fmt.Sprintf("%d", len("wildcard")), rec.Header().Get(HeaderContentLength))
+	assert.Equal(t, "", rec.Body.String())
+}
+
 func benchmarkEchoRoutes(b *testing.B, routes []testRoute) {
 	e := New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
