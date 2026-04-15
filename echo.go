@@ -727,7 +727,6 @@ func (e *Echo) add(route Route) (RouteInfo, error) {
 func (e *Echo) Add(method, path string, handler HandlerFunc, middleware ...MiddlewareFunc) RouteInfo {
 	ri, err := e.add(
 		Route{
-
 			Method:      method,
 			Path:        path,
 			Handler:     handler,
