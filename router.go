@@ -69,6 +69,7 @@ type DefaultRouter struct {
 	allowOverwritingRoute    bool
 	unescapePathParamValues  bool
 	useEscapedPathForRouting bool
+	autoHandleHEAD           bool
 }
 
 // RouterConfig is configuration options for (default) router
@@ -79,6 +80,31 @@ type RouterConfig struct {
 	AllowOverwritingRoute     bool
 	UnescapePathParamValues   bool
 	UseEscapedPathForMatching bool
+
+	// AutoHandleHEAD enables automatic handling of HTTP HEAD requests by
+	// falling back to the corresponding GET route.
+	//
+	// When enabled, a HEAD request will match the same handler as GET for
+	// the route, but the response body is suppressed in accordance with
+	// HTTP semantics. Headers (e.g., Content-Length, Content-Type) are
+	// preserved as if a GET request was made.
+	//
+	// Security considerations: the GET handler is fully executed for every
+	// HEAD request, including all side effects:
+	//   - State-mutating operations (DB writes, audit logs, counters) run.
+	//   - Rate-limiting middleware consumes quota, enabling low-cost exhaustion.
+	//   - Expensive computations run with no response body returned to the
+	//     caller, making HEAD cheaper to abuse for DoS than GET.
+	//   - All GET routes become enumerable via HEAD probing (200 = route
+	//     exists, 405 = route absent).
+	//
+	// If route confidentiality/state-mutation is a concern, leave AutoHandleHEAD disabled
+	// and register explicit HEAD handlers only for routes that are safe to
+	// expose (e.g. e.HEAD("/public", handler)).
+	// You can leverage Echo.OnAddRoute callback to add HEAD routes explicitly from a single place.
+	//
+	// Disabled by default.
+	AutoHandleHEAD bool
 }
 
 // NewRouter returns a new Router instance.
@@ -98,6 +124,7 @@ func NewRouter(config RouterConfig) *DefaultRouter {
 		notFoundHandler:         notFoundHandler,
 		methodNotAllowedHandler: methodNotAllowedHandler,
 		optionsMethodHandler:    optionsMethodHandler,
+		autoHandleHEAD:          config.AutoHandleHEAD,
 	}
 	if config.NotFoundHandler != nil {
 		r.notFoundHandler = config.NotFoundHandler
@@ -141,8 +168,9 @@ const (
 
 type routeMethod struct {
 	*RouteInfo
-	handler      HandlerFunc
-	orgRouteInfo RouteInfo
+	handler            HandlerFunc
+	wrappedHeadHandler HandlerFunc // non-nil only for GET routes when autoHandleHEAD=true
+	orgRouteInfo       RouteInfo
 }
 
 type routeMethods struct {
@@ -210,7 +238,7 @@ func (m *routeMethods) set(method string, r *routeMethod) {
 	m.updateAllowHeader()
 }
 
-func (m *routeMethods) find(method string, fallbackToAny bool) *routeMethod {
+func (m *routeMethods) find(method string, fallbackToAny bool, autoHandleHEAD bool) *routeMethod {
 	var r *routeMethod
 	switch method {
 	case http.MethodConnect:
@@ -221,6 +249,9 @@ func (m *routeMethods) find(method string, fallbackToAny bool) *routeMethod {
 		r = m.get
 	case http.MethodHead:
 		r = m.head
+		if autoHandleHEAD && r == nil {
+			r = m.get
+		}
 	case http.MethodOptions:
 		r = m.options
 	case http.MethodPatch:
@@ -374,7 +405,7 @@ func (r *DefaultRouter) Remove(method string, path string) error {
 		return errors.New("could not find route to remove by given path")
 	}
 
-	if mh := nodeToRemove.methods.find(method, false); mh == nil {
+	if mh := nodeToRemove.methods.find(method, false, false); mh == nil {
 		return errors.New("could not find route to remove by given path and method")
 	}
 	nodeToRemove.setHandler(method, nil)
@@ -459,6 +490,10 @@ func (r *DefaultRouter) Add(route Route) (RouteInfo, error) {
 			}
 		}
 	}
+	var headH HandlerFunc
+	if r.autoHandleHEAD && method == http.MethodGet {
+		headH = wrapHeadHandler(h)
+	}
 
 	paramNames := make([]string, 0)
 	originalPath := path
@@ -486,9 +521,10 @@ func (r *DefaultRouter) Add(route Route) (RouteInfo, error) {
 				// path node is last fragment of route path. ie. `/users/:id`
 				ri = route.ToRouteInfo(paramNames)
 				rm := routeMethod{
-					RouteInfo:    &RouteInfo{Method: method, Path: originalPath, Parameters: paramNames, Name: route.Name},
-					handler:      h,
-					orgRouteInfo: ri,
+					RouteInfo:          &RouteInfo{Method: method, Path: originalPath, Parameters: paramNames, Name: route.Name},
+					handler:            h,
+					orgRouteInfo:       ri,
+					wrappedHeadHandler: headH,
 				}
 				r.insert(paramKind, path[:i], method, rm)
 				wasAdded = true
@@ -501,9 +537,10 @@ func (r *DefaultRouter) Add(route Route) (RouteInfo, error) {
 			paramNames = append(paramNames, "*")
 			ri = route.ToRouteInfo(paramNames)
 			rm := routeMethod{
-				RouteInfo:    &RouteInfo{Method: method, Path: originalPath, Parameters: paramNames, Name: route.Name},
-				handler:      h,
-				orgRouteInfo: ri,
+				RouteInfo:          &RouteInfo{Method: method, Path: originalPath, Parameters: paramNames, Name: route.Name},
+				handler:            h,
+				orgRouteInfo:       ri,
+				wrappedHeadHandler: headH,
 			}
 			r.insert(anyKind, path[:i+1], method, rm)
 			wasAdded = true
@@ -514,9 +551,10 @@ func (r *DefaultRouter) Add(route Route) (RouteInfo, error) {
 	if !wasAdded {
 		ri = route.ToRouteInfo(paramNames)
 		rm := routeMethod{
-			RouteInfo:    &RouteInfo{Method: method, Path: originalPath, Parameters: paramNames, Name: route.Name},
-			handler:      h,
-			orgRouteInfo: ri,
+			RouteInfo:          &RouteInfo{Method: method, Path: originalPath, Parameters: paramNames, Name: route.Name},
+			handler:            h,
+			orgRouteInfo:       ri,
+			wrappedHeadHandler: headH,
 		}
 		r.insert(staticKind, path, method, rm)
 	}
@@ -898,7 +936,7 @@ func (r *DefaultRouter) Route(c *Context) HandlerFunc {
 				if previousBestMatchNode == nil {
 					previousBestMatchNode = currentNode
 				}
-				if h := currentNode.methods.find(req.Method, true); h != nil {
+				if h := currentNode.methods.find(req.Method, true, r.autoHandleHEAD); h != nil {
 					matchedRouteMethod = h
 					break
 				}
@@ -949,7 +987,7 @@ func (r *DefaultRouter) Route(c *Context) HandlerFunc {
 			searchIndex += len(search)
 			search = ""
 
-			if rMethod := currentNode.methods.find(req.Method, true); rMethod != nil {
+			if rMethod := currentNode.methods.find(req.Method, true, r.autoHandleHEAD); rMethod != nil {
 				matchedRouteMethod = rMethod
 				break
 			}
@@ -989,6 +1027,11 @@ func (r *DefaultRouter) Route(c *Context) HandlerFunc {
 	var rInfo *RouteInfo
 	if matchedRouteMethod != nil {
 		rHandler = matchedRouteMethod.handler
+		if req.Method == http.MethodHead && matchedRouteMethod.wrappedHeadHandler != nil {
+			rHandler = matchedRouteMethod.wrappedHeadHandler
+			// we are not touching rInfo.Method and let it be value from GET routeInfo
+		}
+
 		rPath = matchedRouteMethod.Path
 		rInfo = matchedRouteMethod.RouteInfo
 	} else {
