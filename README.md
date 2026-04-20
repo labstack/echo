@@ -56,7 +56,7 @@ Click [here](https://github.com/sponsors/labstack) for more information on spons
 ### Installation
 
 ```sh
-// go get github.com/labstack/echo/{version}
+# go get github.com/labstack/echo/{version}
 go get github.com/labstack/echo/v5
 ```
 
@@ -111,7 +111,7 @@ Following list of middleware is maintained by Echo team.
 
 # Third-party middleware repositories
 
-Be careful when adding 3rd party middleware. Echo teams does not have time or manpower to guarantee safety and quality
+Be careful when adding 3rd party middleware. Echo team does not have time or manpower to guarantee safety and quality
 of middlewares in this list.
 
 | Repository                                                                                           | Description                                                                                                                                                                                              |
@@ -120,7 +120,7 @@ of middlewares in this list.
 | [github.com/swaggo/echo-swagger](https://github.com/swaggo/echo-swagger)                             | Automatically generate RESTful API documentation with [Swagger](https://swagger.io/) 2.0.                                                                                                                |
 | [github.com/ziflex/lecho](https://github.com/ziflex/lecho)                                           | [Zerolog](https://github.com/rs/zerolog) logging library wrapper for Echo logger interface.                                                                                                              |
 | [github.com/brpaz/echozap](https://github.com/brpaz/echozap)                                         | Uber´s [Zap](https://github.com/uber-go/zap) logging library wrapper for Echo logger interface.                                                                                                          |
-| [github.com/samber/slog-echo](https://github.com/samber/slog-echo)                                   | Go [slog](https://pkg.go.dev/golang.org/x/exp/slog) logging library wrapper for Echo logger interface.                                                                                                   |
+| [github.com/samber/slog-echo](https://github.com/samber/slog-echo)                                   | Go [slog](https://pkg.go.dev/log/slog) logging library wrapper for Echo logger interface.                                                                                                                |
 | [github.com/darkweak/souin/plugins/echo](https://github.com/darkweak/souin/tree/master/plugins/echo) | HTTP cache system based on [Souin](https://github.com/darkweak/souin) to automatically get your endpoints cached. It supports some distributed and non-distributed storage systems depending your needs. |
 | [github.com/mikestefanello/pagoda](https://github.com/mikestefanello/pagoda)                         | Rapid, easy full-stack web development starter kit built with Echo.                                                                                                                                      |
 | [github.com/go-woo/protoc-gen-echo](https://github.com/go-woo/protoc-gen-echo)                       | ProtoBuf generate Echo server side code                                                                                                                                                                  |
