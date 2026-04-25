@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"strconv"
 )
 
 // Response wraps an http.ResponseWriter and implements its interface to be used
@@ -169,4 +170,90 @@ func (w *delayedStatusWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 
 func (w *delayedStatusWriter) Unwrap() http.ResponseWriter {
 	return w.ResponseWriter
+}
+
+// headResponseWriter captures the response that a GET handler would produce for a
+// rewritten HEAD request, suppresses the body, and preserves response metadata.
+//
+// The writer buffers status until the downstream handler returns, so it
+// can compute a Content-Length value from the number of body bytes that would have
+// been written by the GET handler. If the handler already sets Content-Length
+// explicitly, that value is preserved.
+//
+// Flush is intentionally a no-op because emitting headers early would prevent
+// finalizing Content-Length after the handler completes.
+type headResponseWriter struct {
+	rw          http.ResponseWriter
+	status      int
+	wroteStatus bool
+	bodyBytes   int64
+}
+
+func (w *headResponseWriter) Header() http.Header {
+	return w.rw.Header()
+}
+
+func (w *headResponseWriter) WriteHeader(code int) {
+	if w.wroteStatus {
+		return
+	}
+	w.wroteStatus = true
+	w.status = code
+}
+
+func (w *headResponseWriter) Write(b []byte) (int, error) {
+	if !w.wroteStatus {
+		w.WriteHeader(http.StatusOK)
+	}
+	w.bodyBytes += int64(len(b))
+	return len(b), nil
+}
+
+func (w *headResponseWriter) Flush() {
+	// No-op on purpose. A HEAD response has no body, and flushing early would
+	// commit headers before Content-Length can be finalized.
+}
+
+func (w *headResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	return http.NewResponseController(w.rw).Hijack()
+}
+
+func (w *headResponseWriter) Unwrap() http.ResponseWriter {
+	return w.rw
+}
+
+func (w *headResponseWriter) commit() {
+	dst := w.rw.Header()
+	if dst.Get(HeaderContentLength) == "" &&
+		dst.Get("Transfer-Encoding") == "" &&
+		!statusMustNotHaveBody(w.status) {
+		dst.Set(HeaderContentLength, strconv.FormatInt(w.bodyBytes, 10))
+	}
+
+	// "commit" the Response only when the headers were written otherwise the Echo errorhandler cannot properly handle errors
+	if w.wroteStatus {
+		w.rw.WriteHeader(w.status)
+	}
+}
+
+func statusMustNotHaveBody(code int) bool {
+	return (code >= 100 && code < 200) ||
+		code == http.StatusNoContent ||
+		code == http.StatusNotModified
+}
+
+func wrapHeadHandler(handler HandlerFunc) HandlerFunc {
+	return func(c *Context) error {
+		originalWriter := c.Response()
+		headWriter := &headResponseWriter{rw: originalWriter}
+
+		c.SetResponse(headWriter)
+		defer func() {
+			c.SetResponse(originalWriter)
+		}()
+
+		err := handler(c)
+		headWriter.commit()
+		return err
+	}
 }
