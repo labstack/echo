@@ -1233,6 +1233,159 @@ func TestDefaultHTTPErrorHandler_CommitedResponse(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.Code)
 }
 
+func TestAutoHeadRoute(t *testing.T) {
+	tests := []struct {
+		name     string
+		autoHead bool
+		method   string
+		wantBody bool
+		wantCode int
+		wantCLen bool // expect Content-Length header
+	}{
+		{
+			name:     "AutoHead disabled - HEAD returns 405",
+			autoHead: false,
+			method:   http.MethodHead,
+			wantCode: http.StatusMethodNotAllowed,
+			wantBody: false,
+		},
+		{
+			name:     "AutoHead enabled - HEAD returns 200 with Content-Length",
+			autoHead: true,
+			method:   http.MethodHead,
+			wantCode: http.StatusOK,
+			wantBody: false,
+			wantCLen: true,
+		},
+		{
+			name:     "GET request works normally with AutoHead enabled",
+			autoHead: true,
+			method:   http.MethodGet,
+			wantCode: http.StatusOK,
+			wantBody: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create Echo instance with AutoHead configuration
+			e := New()
+			e.AutoHead = tt.autoHead
+
+			// Register a simple GET route
+			testBody := "Hello, World!"
+			e.GET("/hello", func(c *Context) error {
+				return c.String(http.StatusOK, testBody)
+			})
+
+			// Create request and response
+			req := httptest.NewRequest(tt.method, "/hello", nil)
+			rec := httptest.NewRecorder()
+
+			// Serve the request
+			e.ServeHTTP(rec, req)
+
+			// Verify status code
+			if rec.Code != tt.wantCode {
+				t.Errorf("expected status %d, got %d", tt.wantCode, rec.Code)
+			}
+
+			// Verify response body
+			if tt.wantBody {
+				if rec.Body.String() != testBody {
+					t.Errorf("expected body %q, got %q", testBody, rec.Body.String())
+				}
+			} else {
+				if rec.Body.String() != "" {
+					t.Errorf("expected empty body for HEAD, got %q", rec.Body.String())
+				}
+			}
+
+			// Verify Content-Length header for HEAD
+			if tt.wantCLen && tt.method == http.MethodHead {
+				clen := rec.Header().Get("Content-Length")
+				if clen == "" {
+					t.Error("expected Content-Length header for HEAD request")
+				}
+			}
+		})
+	}
+}
+
+func TestAutoHeadExplicitHeadTakesPrecedence(t *testing.T) {
+	e := New()
+	e.AutoHead = true
+
+	// Register explicit HEAD route FIRST with custom behavior
+	e.HEAD("/api/users", func(c *Context) error {
+		c.Response().Header().Set("X-Custom-Header", "explicit-head")
+		return c.NoContent(http.StatusOK)
+	})
+
+	// Then register GET route - AutoHead will try to add a HEAD route but fail silently
+	// since one already exists
+	e.GET("/api/users", func(c *Context) error {
+		return c.JSON(http.StatusOK, map[string]string{"name": "John"})
+	})
+
+	// Test that the explicit HEAD route behavior is preserved
+	req := httptest.NewRequest(http.MethodHead, "/api/users", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d", rec.Code)
+	}
+
+	if rec.Header().Get("X-Custom-Header") != "explicit-head" {
+		t.Error("expected explicit HEAD route to be used")
+	}
+
+	// Verify body is empty
+	if rec.Body.String() != "" {
+		t.Errorf("expected empty body for HEAD, got %q", rec.Body.String())
+	}
+}
+
+func TestAutoHeadWithMiddleware(t *testing.T) {
+	e := New()
+	e.AutoHead = true
+
+	// Add request logger middleware
+	middlewareExecuted := false
+	e.Use(func(next HandlerFunc) HandlerFunc {
+		return func(c *Context) error {
+			middlewareExecuted = true
+			c.Response().Header().Set("X-Middleware", "executed")
+			return next(c)
+		}
+	})
+
+	// Register GET route
+	e.GET("/test", func(c *Context) error {
+		return c.String(http.StatusOK, "test response")
+	})
+
+	// Test HEAD request goes through middleware
+	req := httptest.NewRequest(http.MethodHead, "/test", nil)
+	rec := httptest.NewRecorder()
+
+	middlewareExecuted = false
+	e.ServeHTTP(rec, req)
+
+	if !middlewareExecuted {
+		t.Error("middleware should execute for automatic HEAD route")
+	}
+
+	if rec.Header().Get("X-Middleware") != "executed" {
+		t.Error("middleware header not set")
+	}
+
+	if rec.Body.String() != "" {
+		t.Errorf("expected empty body for HEAD, got %q", rec.Body.String())
+	}
+}
+
 func benchmarkEchoRoutes(b *testing.B, routes []testRoute) {
 	e := New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -1277,4 +1430,24 @@ func BenchmarkEchoGitHubAPIMisses(b *testing.B) {
 
 func BenchmarkEchoParseAPI(b *testing.B) {
 	benchmarkEchoRoutes(b, parseAPI)
+}
+
+func BenchmarkAutoHeadRoute(b *testing.B) {
+	e := New()
+	e.AutoHead = true
+
+	e.GET("/bench", func(c *Context) error {
+		return c.String(http.StatusOK, "benchmark response body")
+	})
+
+	req := httptest.NewRequest(http.MethodHead, "/bench", nil)
+	rec := httptest.NewRecorder()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		rec.Body.Reset()
+		e.ServeHTTP(rec, req)
+	}
 }
