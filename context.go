@@ -158,6 +158,18 @@ func (c *Context) IsWebSocket() bool {
 	return strings.EqualFold(upgrade, "websocket") && strings.Contains(strings.ToLower(connection), "upgrade")
 }
 
+func isValidProto(proto string) bool {
+	if proto == "" {
+		return false
+	}
+	for _, p := range []string{"http", "https", "ws", "wss"} {
+		if strings.EqualFold(proto, p) {
+			return true
+		}
+	}
+	return false
+}
+
 // Scheme returns the HTTP protocol scheme, `http` or `https`.
 func (c *Context) Scheme() string {
 	// Can't use `r.Request.URL.Scheme`
@@ -165,16 +177,16 @@ func (c *Context) Scheme() string {
 	if c.IsTLS() {
 		return "https"
 	}
-	if scheme := c.request.Header.Get(HeaderXForwardedProto); scheme != "" {
+	if scheme := c.request.Header.Get(HeaderXForwardedProto); isValidProto(scheme) {
 		return scheme
 	}
-	if scheme := c.request.Header.Get(HeaderXForwardedProtocol); scheme != "" {
+	if scheme := c.request.Header.Get(HeaderXForwardedProtocol); isValidProto(scheme) {
 		return scheme
 	}
 	if ssl := c.request.Header.Get(HeaderXForwardedSsl); ssl == "on" {
 		return "https"
 	}
-	if scheme := c.request.Header.Get(HeaderXUrlScheme); scheme != "" {
+	if scheme := c.request.Header.Get(HeaderXUrlScheme); isValidProto(scheme) {
 		return scheme
 	}
 	return "http"
