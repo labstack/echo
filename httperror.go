@@ -9,7 +9,7 @@ import (
 	"net/http"
 )
 
-// Following errors can produce HTTP status code by implementing HTTPStatusCoder interface
+// The following errors can produce HTTP status code by implementing HTTPStatusCoder interface
 var (
 	ErrBadRequest                  = &httpError{http.StatusBadRequest}            // 400
 	ErrUnauthorized                = &httpError{http.StatusUnauthorized}          // 401
@@ -25,7 +25,7 @@ var (
 	ErrServiceUnavailable          = &httpError{http.StatusServiceUnavailable}    // 503
 )
 
-// Following errors fall into 500 (InternalServerError) category
+// The following errors fall into 500 (InternalServerError) category
 var (
 	ErrValidatorNotRegistered = errors.New("validator not registered")
 	ErrRendererNotRegistered  = errors.New("renderer not registered")
@@ -35,13 +35,13 @@ var (
 	ErrInvalidListenerNetwork = errors.New("invalid listener network")
 )
 
-// HTTPStatusCoder is interface that errors can implement to produce status code for HTTP response
+// HTTPStatusCoder is an interface that errors can implement to produce status code for HTTP response
 type HTTPStatusCoder interface {
 	StatusCode() int
 }
 
-// StatusCode returns status code from error if it implements HTTPStatusCoder interface.
-// If error does not implement the interface it returns 0.
+// StatusCode returns status code from err if it implements HTTPStatusCoder interface.
+// If err does not implement the interface, it returns 0.
 func StatusCode(err error) int {
 	var sc HTTPStatusCoder
 	if errors.As(err, &sc) {
@@ -95,7 +95,7 @@ func ResolveResponseStatus(rw http.ResponseWriter, err error) (resp *Response, s
 	return resp, status
 }
 
-// NewHTTPError creates new instance of HTTPError
+// NewHTTPError creates a new instance of HTTPError
 func NewHTTPError(code int, message string) *HTTPError {
 	return &HTTPError{
 		Code:    code,
@@ -116,7 +116,7 @@ func (he *HTTPError) StatusCode() int {
 	return he.Code
 }
 
-// Error makes it compatible with `error` interface.
+// Error makes it compatible with the ` error ` interface.
 func (he *HTTPError) Error() string {
 	msg := he.Message
 	if msg == "" {
@@ -128,8 +128,8 @@ func (he *HTTPError) Error() string {
 	return fmt.Sprintf("code=%d, message=%v, err=%v", he.Code, msg, he.err.Error())
 }
 
-// Wrap eturns new HTTPError with given errors wrapped inside
-func (he HTTPError) Wrap(err error) error {
+// Wrap returns a new HTTPError with given errors wrapped inside
+func (he *HTTPError) Wrap(err error) error {
 	return &HTTPError{
 		Code:    he.Code,
 		Message: he.Message,
