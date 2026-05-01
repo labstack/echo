@@ -904,60 +904,176 @@ func TestContext_Request(t *testing.T) {
 }
 
 func TestContext_Scheme(t *testing.T) {
-	tests := []struct {
-		c Context
-		s string
+	var testCases = []struct {
+		name         string
+		givenIsTLS   bool
+		givenHeaders http.Header
+		expect       string
 	}{
 		{
-			&context{
-				request: &http.Request{
-					TLS: &tls.ConnectionState{},
-				},
-			},
-			"https",
+			name:         "defaults to http without TLS or headers",
+			givenIsTLS:   false,
+			givenHeaders: nil,
+			expect:       "http",
 		},
 		{
-			&context{
-				request: &http.Request{
-					Header: http.Header{HeaderXForwardedProto: []string{"https"}},
-				},
-			},
-			"https",
+			name:         "returns https when TLS is enabled",
+			givenIsTLS:   true,
+			givenHeaders: nil,
+			expect:       "https",
 		},
 		{
-			&context{
-				request: &http.Request{
-					Header: http.Header{HeaderXForwardedProtocol: []string{"http"}},
-				},
+			name:       "TLS takes precedence over forwarded proto",
+			givenIsTLS: true,
+			givenHeaders: http.Header{
+				HeaderXForwardedProto: []string{"http"},
 			},
-			"http",
+			expect: "https",
 		},
 		{
-			&context{
-				request: &http.Request{
-					Header: http.Header{HeaderXForwardedSsl: []string{"on"}},
-				},
+			name:       "uses X-Forwarded-Proto http",
+			givenIsTLS: false,
+			givenHeaders: http.Header{
+				HeaderXForwardedProto: []string{"http"},
 			},
-			"https",
+			expect: "http",
 		},
 		{
-			&context{
-				request: &http.Request{
-					Header: http.Header{HeaderXUrlScheme: []string{"https"}},
-				},
+			name:       "uses X-Forwarded-Proto https",
+			givenIsTLS: false,
+			givenHeaders: http.Header{
+				HeaderXForwardedProto: []string{"https"},
 			},
-			"https",
+			expect: "https",
 		},
 		{
-			&context{
-				request: &http.Request{},
+			name:       "X-Forwarded-Proto is case insensitive",
+			givenIsTLS: false,
+			givenHeaders: http.Header{
+				HeaderXForwardedProto: []string{"HTTPS"},
 			},
-			"http",
+			expect: "HTTPS",
+		},
+		{
+			name:       "uses X-Forwarded-Proto ws",
+			givenIsTLS: false,
+			givenHeaders: http.Header{
+				HeaderXForwardedProto: []string{"ws"},
+			},
+			expect: "ws",
+		},
+		{
+			name:       "uses X-Forwarded-Proto wss",
+			givenIsTLS: false,
+			givenHeaders: http.Header{
+				HeaderXForwardedProto: []string{"wss"},
+			},
+			expect: "wss",
+		},
+		{
+			name:       "ignores invalid X-Forwarded-Proto and uses X-Forwarded-Protocol",
+			givenIsTLS: false,
+			givenHeaders: http.Header{
+				HeaderXForwardedProto:    []string{"ftp"},
+				HeaderXForwardedProtocol: []string{"https"},
+			},
+			expect: "https",
+		},
+		{
+			name:       "uses X-Forwarded-Protocol",
+			givenIsTLS: false,
+			givenHeaders: http.Header{
+				HeaderXForwardedProtocol: []string{"https"},
+			},
+			expect: "https",
+		},
+		{
+			name:       "X-Forwarded-Proto takes precedence over X-Forwarded-Protocol",
+			givenIsTLS: false,
+			givenHeaders: http.Header{
+				HeaderXForwardedProto:    []string{"http"},
+				HeaderXForwardedProtocol: []string{"https"},
+			},
+			expect: "http",
+		},
+		{
+			name:       "uses X-Forwarded-Ssl on",
+			givenIsTLS: false,
+			givenHeaders: http.Header{
+				HeaderXForwardedSsl: []string{"on"},
+			},
+			expect: "https",
+		},
+		{
+			name:       "X-Forwarded-Ssl on is case sensitive",
+			givenIsTLS: false,
+			givenHeaders: http.Header{
+				HeaderXForwardedSsl: []string{"ON"},
+			},
+			expect: "http",
+		},
+		{
+			name:       "X-Forwarded-Protocol takes precedence over X-Forwarded-Ssl",
+			givenIsTLS: false,
+			givenHeaders: http.Header{
+				HeaderXForwardedProtocol: []string{"http"},
+				HeaderXForwardedSsl:      []string{"on"},
+			},
+			expect: "http",
+		},
+		{
+			name:       "uses X-Url-Scheme",
+			givenIsTLS: false,
+			givenHeaders: http.Header{
+				HeaderXUrlScheme: []string{"https"},
+			},
+			expect: "https",
+		},
+		{
+			name:       "X-Forwarded-Ssl takes precedence over X-Url-Scheme",
+			givenIsTLS: false,
+			givenHeaders: http.Header{
+				HeaderXForwardedSsl: []string{"on"},
+				HeaderXUrlScheme:    []string{"http"},
+			},
+			expect: "https",
+		},
+		{
+			name:       "ignores invalid forwarded headers and falls back to http",
+			givenIsTLS: false,
+			givenHeaders: http.Header{
+				HeaderXForwardedProto:    []string{"ftp"},
+				HeaderXForwardedProtocol: []string{"smtp"},
+				HeaderXForwardedSsl:      []string{"off"},
+				HeaderXUrlScheme:         []string{"file"},
+			},
+			expect: "http",
+		},
+		{
+			name:       "ignores empty forwarded proto and uses X-Url-Scheme",
+			givenIsTLS: false,
+			givenHeaders: http.Header{
+				HeaderXForwardedProto: []string{""},
+				HeaderXUrlScheme:      []string{"https"},
+			},
+			expect: "https",
 		},
 	}
 
-	for _, tt := range tests {
-		assert.Equal(t, tt.s, tt.c.Scheme())
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			if tc.givenHeaders != nil {
+				req.Header = tc.givenHeaders
+			}
+			e := New()
+			c := e.NewContext(req, nil)
+			if tc.givenIsTLS {
+				c.Request().TLS = &tls.ConnectionState{}
+			}
+
+			assert.Equal(t, tc.expect, c.Scheme())
+		})
 	}
 }
 
