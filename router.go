@@ -69,6 +69,7 @@ type DefaultRouter struct {
 	allowOverwritingRoute    bool
 	unescapePathParamValues  bool
 	useEscapedPathForRouting bool
+	autoHandleHEAD           bool
 }
 
 // RouterConfig is configuration options for (default) router
@@ -79,6 +80,20 @@ type RouterConfig struct {
 	AllowOverwritingRoute     bool
 	UnescapePathParamValues   bool
 	UseEscapedPathForMatching bool
+
+	// AutoHandleHEAD enables automatic handling of HTTP HEAD requests by
+	// falling back to the corresponding GET route.
+	//
+	// When enabled, a HEAD request will match the same handler as GET for
+	// the route, but the response body is suppressed in accordance with
+	// HTTP semantics. Headers (e.g., Content-Length, Content-Type) are
+	// preserved as if a GET request was made.
+	//
+	// Note that the GET handler is still executed, so any side effects
+	// (such as database queries or logging) will occur.
+	//
+	// Disabled by default.
+	AutoHandleHEAD bool
 }
 
 // NewRouter returns a new Router instance.
@@ -98,6 +113,7 @@ func NewRouter(config RouterConfig) *DefaultRouter {
 		notFoundHandler:         notFoundHandler,
 		methodNotAllowedHandler: methodNotAllowedHandler,
 		optionsMethodHandler:    optionsMethodHandler,
+		autoHandleHEAD:          config.AutoHandleHEAD,
 	}
 	if config.NotFoundHandler != nil {
 		r.notFoundHandler = config.NotFoundHandler
@@ -210,7 +226,7 @@ func (m *routeMethods) set(method string, r *routeMethod) {
 	m.updateAllowHeader()
 }
 
-func (m *routeMethods) find(method string, fallbackToAny bool) *routeMethod {
+func (m *routeMethods) find(method string, fallbackToAny bool, autoHandleHEAD bool) *routeMethod {
 	var r *routeMethod
 	switch method {
 	case http.MethodConnect:
@@ -221,6 +237,9 @@ func (m *routeMethods) find(method string, fallbackToAny bool) *routeMethod {
 		r = m.get
 	case http.MethodHead:
 		r = m.head
+		if autoHandleHEAD && r == nil {
+			r = m.get
+		}
 	case http.MethodOptions:
 		r = m.options
 	case http.MethodPatch:
@@ -374,7 +393,7 @@ func (r *DefaultRouter) Remove(method string, path string) error {
 		return errors.New("could not find route to remove by given path")
 	}
 
-	if mh := nodeToRemove.methods.find(method, false); mh == nil {
+	if mh := nodeToRemove.methods.find(method, false, false); mh == nil {
 		return errors.New("could not find route to remove by given path and method")
 	}
 	nodeToRemove.setHandler(method, nil)
@@ -904,7 +923,7 @@ func (r *DefaultRouter) Route(c *Context) HandlerFunc {
 				if previousBestMatchNode == nil {
 					previousBestMatchNode = currentNode
 				}
-				if h := currentNode.methods.find(req.Method, true); h != nil {
+				if h := currentNode.methods.find(req.Method, true, r.autoHandleHEAD); h != nil {
 					matchedRouteMethod = h
 					break
 				}
@@ -955,7 +974,7 @@ func (r *DefaultRouter) Route(c *Context) HandlerFunc {
 			searchIndex += len(search)
 			search = ""
 
-			if rMethod := currentNode.methods.find(req.Method, true); rMethod != nil {
+			if rMethod := currentNode.methods.find(req.Method, true, r.autoHandleHEAD); rMethod != nil {
 				matchedRouteMethod = rMethod
 				break
 			}
@@ -995,6 +1014,11 @@ func (r *DefaultRouter) Route(c *Context) HandlerFunc {
 	var rInfo *RouteInfo
 	if matchedRouteMethod != nil {
 		rHandler = matchedRouteMethod.handler
+		if r.autoHandleHEAD && req.Method == http.MethodHead {
+			rHandler = wrapHeadHandler(rHandler)
+			// we are not touching rInfo.Method and let it be value from GET routeInfo
+		}
+
 		rPath = matchedRouteMethod.Path
 		rInfo = matchedRouteMethod.RouteInfo
 	} else {
