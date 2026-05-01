@@ -1,5 +1,23 @@
 # Changelog
 
+## v5.1.1 - 2026-05-01
+
+**Security**
+
+* `Context.Scheme()` should validate values taken from header by @aldas in https://github.com/labstack/echo/pull/2953
+
+Thanks to @shblue21 for reporting this [issue](https://github.com/labstack/echo/issues/2952).
+
+**Enhancements**
+
+* Add golangci linter configuration by @aldas in https://github.com/labstack/echo/pull/2930
+* Make StartConfig listener creation context-aware by @EricGusmao in https://github.com/labstack/echo/pull/2936
+* fix(lint): resolve staticcheck issues and improve code quality by @itsllyaz in https://github.com/labstack/echo/pull/2941
+* Context.Scheme should validate values taken from header by @aldas in https://github.com/labstack/echo/pull/2953
+* chore: fix typos in httperror.go by @tisonkun in https://github.com/labstack/echo/pull/2958
+* Context.Json should not unwrap response by @aldas in https://github.com/labstack/echo/pull/2964
+
+
 ## v5.1.0 - 2026-03-31
 
 **Security**
