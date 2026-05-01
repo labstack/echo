@@ -1,5 +1,21 @@
 # Changelog
 
+## v4.15.2 - 2026-05-01
+
+**Security**
+
+* `Context.Scheme()` should validate values taken from header by @aldas in https://github.com/labstack/echo/pull/2962
+
+Thanks to @shblue21 for reporting this [issue](https://github.com/labstack/echo/issues/2952).
+
+
+## v4.15.1 - 2026-02-22
+
+**Enhancements**
+
+* CSRF: support older token-based CSRF protection handler that want to render token into template by @aldas in https://github.com/labstack/echo/pull/2905
+
+
 ## v4.15.0 - 2026-01-01
 
 
