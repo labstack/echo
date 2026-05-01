@@ -129,7 +129,7 @@ func (he *HTTPError) Error() string {
 }
 
 // Wrap returns a new HTTPError with given errors wrapped inside
-func (he *HTTPError) Wrap(err error) error {
+func (he HTTPError) Wrap(err error) error {
 	return &HTTPError{
 		Code:    he.Code,
 		Message: he.Message,
