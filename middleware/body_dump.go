@@ -189,10 +189,7 @@ func (w *limitedWriter) Write(b []byte) (n int, err error) {
 	// Write to dump buffer only up to limit
 	if w.dumped < w.limit {
 		remaining := w.limit - w.dumped
-		toDump := int64(n)
-		if toDump > remaining {
-			toDump = remaining
-		}
+		toDump := min(int64(n), remaining)
 		w.dumpBuf.Write(b[:toDump])
 		w.dumped += toDump
 	}

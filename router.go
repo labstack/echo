@@ -558,10 +558,7 @@ func (r *DefaultRouter) insert(t kind, path string, method string, ri routeMetho
 		lcpLen := 0
 
 		// LCP - Longest Common Prefix (https://en.wikipedia.org/wiki/LCP_array)
-		maxL := prefixLen
-		if searchLen < maxL {
-			maxL = searchLen
-		}
+		maxL := min(searchLen, prefixLen)
 		for ; lcpLen < maxL && search[lcpLen] == currentNode.prefix[lcpLen]; lcpLen++ {
 		}
 
@@ -867,10 +864,7 @@ func (r *DefaultRouter) Route(c *Context) HandlerFunc {
 			prefixLen = len(currentNode.prefix)
 
 			// LCP - Longest Common Prefix (https://en.wikipedia.org/wiki/LCP_array)
-			lMax := prefixLen
-			if searchLen < lMax {
-				lMax = searchLen
-			}
+			lMax := min(searchLen, prefixLen)
 			for ; lcpLen < lMax && search[lcpLen] == currentNode.prefix[lcpLen]; lcpLen++ {
 			}
 		}
