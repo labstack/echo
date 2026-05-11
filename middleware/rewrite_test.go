@@ -190,7 +190,7 @@ func TestRewriteWithConfigPreMiddleware_Issue1143(t *testing.T) {
 		return c.String(http.StatusOK, "eng")
 	})
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/mgmt/proj/test/agt", nil)
 		rec := httptest.NewRecorder()
 		e.ServeHTTP(rec, req)

@@ -178,7 +178,7 @@ func TestContextStream(t *testing.T) {
 	r, w := io.Pipe()
 	go func() {
 		defer w.Close()
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			fmt.Fprintf(w, "data: index %v\n\n", i)
 			time.Sleep(5 * time.Millisecond)
 		}

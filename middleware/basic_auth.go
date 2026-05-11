@@ -133,9 +133,9 @@ func (config BasicAuthConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 					lastError = echo.ErrBadRequest.Wrap(errDecode)
 					continue
 				}
-				idx := bytes.IndexByte(b, ':')
-				if idx >= 0 {
-					valid, errValidate := config.Validator(c, string(b[:idx]), string(b[idx+1:]))
+				before, after, ok := bytes.Cut(b, []byte{':'})
+				if ok {
+					valid, errValidate := config.Validator(c, string(before), string(after))
 					if errValidate != nil {
 						lastError = errValidate
 					} else if valid {

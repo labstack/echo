@@ -381,7 +381,7 @@ func TestBodyDump_ClientGetsFullResponse(t *testing.T) {
 
 	h := func(c *echo.Context) error {
 		// Write response in chunks to test incremental writes
-		for i := 0; i < 4; i++ {
+		for range 4 {
 			c.Response().Write([]byte(strings.Repeat("DATA", 125)))
 		}
 		return nil

@@ -461,7 +461,7 @@ func TestRateLimiterMemoryStore_FractionalRateDefaultBurst(t *testing.T) {
 
 func generateAddressList(count int) []string {
 	addrs := make([]string, count)
-	for i := 0; i < count; i++ {
+	for i := range count {
 		addrs[i] = randomString(15)
 	}
 	return addrs
@@ -477,7 +477,7 @@ func run(wg *sync.WaitGroup, store RateLimiterStore, addrs []string, max int, b 
 func benchmarkStore(store RateLimiterStore, parallel int, max int, b *testing.B) {
 	addrs := generateAddressList(max)
 	wg := &sync.WaitGroup{}
-	for i := 0; i < parallel; i++ {
+	for range parallel {
 		wg.Add(1)
 		go run(wg, store, addrs, max, b)
 	}
@@ -553,11 +553,9 @@ func TestRateLimiterMemoryStore_ConcurrentAccess(t *testing.T) {
 	var wg sync.WaitGroup
 	var allowedCount, deniedCount int32
 
-	for i := 0; i < goroutines; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for j := 0; j < requestsPerGoroutine; j++ {
+	for range goroutines {
+		wg.Go(func() {
+			for range requestsPerGoroutine {
 				allowed, err := store.Allow("test-user")
 				assert.NoError(t, err)
 				if allowed {
@@ -567,7 +565,7 @@ func TestRateLimiterMemoryStore_ConcurrentAccess(t *testing.T) {
 				}
 				time.Sleep(time.Millisecond)
 			}
-		}()
+		})
 	}
 
 	wg.Wait()
@@ -598,11 +596,11 @@ func TestRateLimiterMemoryStore_RaceDetection(t *testing.T) {
 	var wg sync.WaitGroup
 	identifiers := []string{"user1", "user2", "user3", "user4", "user5"}
 
-	for i := 0; i < goroutines; i++ {
+	for i := range goroutines {
 		wg.Add(1)
 		go func(routineID int) {
 			defer wg.Done()
-			for j := 0; j < requestsPerGoroutine; j++ {
+			for range requestsPerGoroutine {
 				identifier := identifiers[routineID%len(identifiers)]
 				_, err := store.Allow(identifier)
 				assert.NoError(t, err)

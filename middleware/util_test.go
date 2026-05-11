@@ -82,7 +82,7 @@ func TestRandomStringBias(t *testing.T) {
 	counts := make(map[rune]int)
 	var count int64
 
-	for i := 0; i < loop; i++ {
+	for range loop {
 		s := randomString(slen)
 		require.Equal(t, slen, len(s))
 		for _, b := range s {

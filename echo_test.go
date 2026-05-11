@@ -1109,7 +1109,7 @@ func (ce *customError) StatusCode() int {
 }
 
 func (ce *customError) MarshalJSON() ([]byte, error) {
-	return []byte(fmt.Sprintf(`{"x":"%v"}`, ce.Message)), nil
+	return fmt.Appendf(nil, `{"x":"%v"}`, ce.Message), nil
 }
 
 func (ce *customError) Error() string {

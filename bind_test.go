@@ -641,7 +641,7 @@ func TestBindUnmarshalTypeError(t *testing.T) {
 
 func TestBindSetWithProperType(t *testing.T) {
 	ts := new(bindTestStruct)
-	typ := reflect.TypeOf(ts).Elem()
+	typ := reflect.TypeFor[bindTestStruct]()
 	val := reflect.ValueOf(ts).Elem()
 	for i := 0; i < typ.NumField(); i++ {
 		typeField := typ.Field(i)
@@ -662,7 +662,7 @@ func TestBindSetWithProperType(t *testing.T) {
 		Bar bytes.Buffer
 	}
 	v := &foo{}
-	typ = reflect.TypeOf(v).Elem()
+	typ = reflect.TypeFor[foo]()
 	val = reflect.ValueOf(v).Elem()
 	assert.Error(t, setWithProperType(typ.Field(0).Type.Kind(), "5", val.Field(0)))
 }

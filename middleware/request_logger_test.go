@@ -46,12 +46,12 @@ func TestRequestLoggerOK(t *testing.T) {
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
-	logAttrs := map[string]interface{}{}
+	logAttrs := map[string]any{}
 	assert.NoError(t, json.Unmarshal(buf.Bytes(), &logAttrs))
 	logAttrs["latency"] = 123
 	logAttrs["time"] = "x"
 
-	expect := map[string]interface{}{
+	expect := map[string]any{
 		"level":      "INFO",
 		"msg":        "REQUEST",
 		"method":     "POST",
@@ -88,12 +88,12 @@ func TestRequestLoggerError(t *testing.T) {
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
-	logAttrs := map[string]interface{}{}
+	logAttrs := map[string]any{}
 	assert.NoError(t, json.Unmarshal(buf.Bytes(), &logAttrs))
 	logAttrs["latency"] = 123
 	logAttrs["time"] = "x"
 
-	expect := map[string]interface{}{
+	expect := map[string]any{
 		"level":      "ERROR",
 		"msg":        "REQUEST_ERROR",
 		"method":     "GET",

@@ -188,7 +188,7 @@ func bindData(destination any, data map[string][]string, tag string, dataFiles m
 		typeField := typ.Field(i)
 		structField := val.Field(i)
 		if typeField.Anonymous {
-			if structField.Kind() == reflect.Ptr {
+			if structField.Kind() == reflect.Pointer {
 				structField = structField.Elem()
 			}
 		}
@@ -273,7 +273,7 @@ func bindData(destination any, data map[string][]string, tag string, dataFiles m
 			sliceOf := structField.Type().Elem().Kind()
 			numElems := len(inputValue)
 			slice := reflect.MakeSlice(structField.Type(), numElems, numElems)
-			for j := 0; j < numElems; j++ {
+			for j := range numElems {
 				if err := setWithProperType(sliceOf, inputValue[j], slice.Index(j)); err != nil {
 					return err
 				}
@@ -297,7 +297,7 @@ func setWithProperType(valueKind reflect.Kind, val string, structField reflect.V
 	}
 
 	switch valueKind {
-	case reflect.Ptr:
+	case reflect.Pointer:
 		return setWithProperType(structField.Elem().Kind(), val, structField.Elem())
 	case reflect.Int:
 		return setIntField(val, 0, structField)
@@ -334,7 +334,7 @@ func setWithProperType(valueKind reflect.Kind, val string, structField reflect.V
 }
 
 func unmarshalInputsToField(valueKind reflect.Kind, values []string, field reflect.Value) (bool, error) {
-	if valueKind == reflect.Ptr {
+	if valueKind == reflect.Pointer {
 		if field.IsNil() {
 			field.Set(reflect.New(field.Type().Elem()))
 		}
@@ -350,7 +350,7 @@ func unmarshalInputsToField(valueKind reflect.Kind, values []string, field refle
 }
 
 func unmarshalInputToField(valueKind reflect.Kind, val string, field reflect.Value, formatTag string) (bool, error) {
-	if valueKind == reflect.Ptr {
+	if valueKind == reflect.Pointer {
 		if field.IsNil() {
 			field.Set(reflect.New(field.Type().Elem()))
 		}

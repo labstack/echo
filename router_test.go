@@ -2235,8 +2235,8 @@ func testRouterAPI(t *testing.T, api []testRoute) {
 			c.SetRequest(httptest.NewRequest(route.Method, route.Path, nil))
 			e.router.Route(c)
 
-			tokens := strings.Split(route.Path[1:], "/")
-			for _, token := range tokens {
+			tokens := strings.SplitSeq(route.Path[1:], "/")
+			for token := range tokens {
 				if token[0] == ':' {
 					assert.Equal(t, c.pathValues.GetOr(token[1:], "---none---"), token)
 				}

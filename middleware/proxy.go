@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"math/rand"
 	"net"
 	"net/http"
@@ -330,9 +331,7 @@ func (config ProxyConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 		if config.RegexRewrite == nil {
 			config.RegexRewrite = make(map[*regexp.Regexp]string)
 		}
-		for k, v := range rewriteRulesRegex(config.Rewrite) {
-			config.RegexRewrite[k] = v
-		}
+		maps.Copy(config.RegexRewrite, rewriteRulesRegex(config.Rewrite))
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {

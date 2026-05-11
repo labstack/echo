@@ -676,15 +676,13 @@ func TestProxyRetryWithBackendTimeout(t *testing.T) {
 	))
 
 	var wg sync.WaitGroup
-	for i := 0; i < 20; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 20 {
+		wg.Go(func() {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			rec := httptest.NewRecorder()
 			e.ServeHTTP(rec, req)
 			assert.Equal(t, 200, rec.Code)
-		}()
+		})
 	}
 
 	wg.Wait()

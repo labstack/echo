@@ -54,13 +54,13 @@ func TestConcurrentRouter_ConcurrentReads(t *testing.T) {
 	routeCallsPerGoroutine := 50
 	routesCallsPerGoroutine := 20
 
-	for i := 0; i < numGoroutines; i++ {
+	for i := range numGoroutines {
 		wg.Add(1)
 		go func(goroutineID int) {
 			defer wg.Done()
 
 			// Call Route() 50 times
-			for j := 0; j < routeCallsPerGoroutine; j++ {
+			for j := range routeCallsPerGoroutine {
 				path := testPaths[j%len(testPaths)]
 				req := httptest.NewRequest(http.MethodGet, path, nil)
 				rec := httptest.NewRecorder()
@@ -73,7 +73,7 @@ func TestConcurrentRouter_ConcurrentReads(t *testing.T) {
 			}
 
 			// Call Routes() 20 times
-			for j := 0; j < routesCallsPerGoroutine; j++ {
+			for range routesCallsPerGoroutine {
 				routes := router.Routes()
 				if len(routes) == 5 {
 					routesCallCount.Add(1)
@@ -105,12 +105,12 @@ func TestConcurrentRouter_ConcurrentWrites(t *testing.T) {
 	numGoroutines := 5
 	addsPerGoroutine := 10
 
-	for i := 0; i < numGoroutines; i++ {
+	for i := range numGoroutines {
 		wg.Add(1)
 		go func(goroutineID int) {
 			defer wg.Done()
 
-			for j := 0; j < addsPerGoroutine; j++ {
+			for j := range addsPerGoroutine {
 				path := fmt.Sprintf("/route-g%d-n%d", goroutineID, j)
 				_, err := router.Add(Route{
 					Method:  http.MethodGet,
@@ -155,11 +155,9 @@ func TestConcurrentRouter_ConcurrentReadWrite(t *testing.T) {
 	var routesCallCount atomic.Int64
 
 	// Launch 4 reader goroutines: call Route() 100 times each
-	for i := 0; i < 4; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for j := 0; j < 100; j++ {
+	for range 4 {
+		wg.Go(func() {
+			for j := range 100 {
 				path := initialPaths[j%len(initialPaths)]
 
 				req := httptest.NewRequest(http.MethodGet, path, nil)
@@ -171,15 +169,15 @@ func TestConcurrentRouter_ConcurrentReadWrite(t *testing.T) {
 					routeCallCount.Add(1)
 				}
 			}
-		}()
+		})
 	}
 
 	// Launch 2 writer goroutines: call Add() 20 times each
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		wg.Add(1)
 		go func(goroutineID int) {
 			defer wg.Done()
-			for j := 0; j < 20; j++ {
+			for j := range 20 {
 				path := fmt.Sprintf("/write-g%d-n%d", goroutineID, j)
 				_, err := router.Add(Route{
 					Method:  http.MethodGet,
@@ -194,17 +192,15 @@ func TestConcurrentRouter_ConcurrentReadWrite(t *testing.T) {
 	}
 
 	// Launch 2 inspector goroutines: call Routes() 50 times each
-	for i := 0; i < 2; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for j := 0; j < 50; j++ {
+	for range 2 {
+		wg.Go(func() {
+			for range 50 {
 				routes := router.Routes()
 				if routes != nil {
 					routesCallCount.Add(1)
 				}
 			}
-		}()
+		})
 	}
 
 	wg.Wait()
@@ -226,7 +222,7 @@ func TestConcurrentRouter_RoutesIterationDuringModification(t *testing.T) {
 	router := NewConcurrentRouter(NewRouter(RouterConfig{}))
 
 	// Add initial routes
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		_, err := router.Add(Route{
 			Method:  http.MethodGet,
 			Path:    fmt.Sprintf("/initial-%d", i),
@@ -242,11 +238,11 @@ func TestConcurrentRouter_RoutesIterationDuringModification(t *testing.T) {
 	var addRemoveCount atomic.Int64
 
 	// Launch 3 goroutines that iterate over Routes() and access each element
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		wg.Add(1)
 		go func(goroutineID int) {
 			defer wg.Done()
-			for j := 0; j < 100; j++ {
+			for range 100 {
 				routes := router.Routes()
 				// Actually iterate and access the route data
 				// This would cause a data race if Routes() returned a direct reference
@@ -264,11 +260,11 @@ func TestConcurrentRouter_RoutesIterationDuringModification(t *testing.T) {
 	}
 
 	// Launch 2 goroutines that continuously Add routes
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		wg.Add(1)
 		go func(goroutineID int) {
 			defer wg.Done()
-			for j := 0; j < 30; j++ {
+			for j := range 30 {
 				path := fmt.Sprintf("/add-g%d-n%d", goroutineID, j)
 				_, err := router.Add(Route{
 					Method:  http.MethodPost,
@@ -319,11 +315,11 @@ func TestConcurrentRouter_ParametersNoRace(t *testing.T) {
 	var addCount atomic.Int64
 
 	// Launch 3 goroutines that read Parameters repeatedly
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		wg.Add(1)
 		go func(goroutineID int) {
 			defer wg.Done()
-			for j := 0; j < 100; j++ {
+			for range 100 {
 				routes := router.Routes()
 				// Actually access the Parameters slice data
 				// This would cause a data race if Parameters weren't deep-copied
@@ -341,11 +337,11 @@ func TestConcurrentRouter_ParametersNoRace(t *testing.T) {
 	}
 
 	// Launch 2 goroutines that add routes with parameters concurrently
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		wg.Add(1)
 		go func(goroutineID int) {
 			defer wg.Done()
-			for j := 0; j < 20; j++ {
+			for j := range 20 {
 				path := fmt.Sprintf("/api/:v%d/resource/:id", goroutineID*100+j)
 				_, err := router.Add(Route{
 					Method:  http.MethodPost,

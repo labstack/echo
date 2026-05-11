@@ -156,11 +156,9 @@ func (sc StartConfig) start(ctx stdContext.Context, h http.Handler) error {
 	defer cancel()
 
 	if sc.GracefulTimeout >= 0 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			gracefulShutdown(gCtx, &sc, &server, logger)
-		}()
+		})
 	}
 
 	if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
