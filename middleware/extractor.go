@@ -85,9 +85,9 @@ func createExtractors(lookups string, limit uint) ([]ValuesExtractor, error) {
 		limit = extractorLimit
 	}
 
-	sources := strings.Split(lookups, ",")
+	sources := strings.SplitSeq(lookups, ",")
 	var extractors = make([]ValuesExtractor, 0)
-	for _, source := range sources {
+	for source := range sources {
 		parts := strings.Split(source, ":")
 		if len(parts) < 2 {
 			return nil, fmt.Errorf("extractor source for lookup could not be split into needed parts: %v", source)
