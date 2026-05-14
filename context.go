@@ -613,8 +613,51 @@ func fsFile(c *Context, file string, filesystem fs.FS) error {
 	if !ok {
 		return errors.New("file does not implement io.ReadSeeker")
 	}
-	http.ServeContent(c.Response(), c.Request(), fi.Name(), fi.ModTime(), ff)
+
+	rw := c.Response()
+	// Check if the response can be optimized for ReadFrom (e.g. using sendfile)
+	if res, ok := rw.(*Response); ok && canReadFrom(res) {
+		rw = &responseWithReadFrom{res}
+	}
+
+	http.ServeContent(rw, c.Request(), fi.Name(), fi.ModTime(), ff)
 	return nil
+}
+
+// responseWithReadFrom is a wrapper around Response that implements io.ReaderFrom.
+// This allows http.ServeContent to use sendfile(2) or other zero-copy mechanisms
+// if the underlying ResponseWriter supports it.
+type responseWithReadFrom struct {
+	*Response
+}
+
+func (w *responseWithReadFrom) ReadFrom(src io.Reader) (n int64, err error) {
+	// Bridge the Echo's life-cycle: ensure headers and Before hooks are triggered
+	// before the first byte is sent via zero-copy.
+	if !w.Committed {
+		if w.Status == 0 {
+			w.Status = http.StatusOK
+		}
+		w.WriteHeader(w.Status)
+	}
+	// Delegate to io.Copy which will automatically use the underlying ResponseWriter's
+	// ReadFrom implementation if available (triggering zero-copy).
+	n, err = io.Copy(w.ResponseWriter, src)
+	w.Size += n
+	return n, err
+}
+
+// canReadFrom checks if the response is eligible for ReadFrom optimization.
+func canReadFrom(res *Response) bool {
+	// After hooks are called on every Write. Zero-copy (ReadFrom) would bypass
+	// these calls, so we disable the optimization if any After hooks are registered
+	// to maintain Echo's API semantics.
+	if len(res.afterFuncs) > 0 {
+		return false
+	}
+	// Only enable if the underlying ResponseWriter actually supports ReadFrom.
+	_, ok := res.ResponseWriter.(io.ReaderFrom)
+	return ok
 }
 
 // Attachment sends a response as attachment, prompting client to save the file.
