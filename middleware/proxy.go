@@ -365,6 +365,9 @@ func (config ProxyConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				if err != nil {
 					return config.ErrorHandler(c, err)
 				}
+				if tgt == nil || tgt.URL == nil {
+					return config.ErrorHandler(c, echo.NewHTTPError(http.StatusBadGateway, "no proxy target available"))
+				}
 
 				c.Set(config.ContextKey, tgt)
 
