@@ -26,16 +26,16 @@ const CSRFUsingSecFetchSite = "_echo_csrf_using_sec_fetch_site_"
 type CSRFConfig struct {
 	// Skipper defines a function to skip middleware.
 	Skipper Skipper
-	// TrustedOrigin permits any request with `Sec-Fetch-Site` header whose `Origin` header
-	// exactly matches the specified value.
+	// TrustedOrigins permits any request with `Sec-Fetch-Site` header whose `Origin` header
+	// exactly matches a configured origin.
 	// Values should be formatted as Origin header "scheme://host[:port]".
 	//
 	// See [Origin]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Origin
 	// See [Sec-Fetch-Site]: https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html#fetch-metadata-headers
 	TrustedOrigins []string
 
-	// AllowSecFetchSameSite allows custom behaviour for `Sec-Fetch-Site` requests that are about to
-	// fail with CRSF error, to be allowed or replaced with custom error.
+	// AllowSecFetchSiteFunc allows custom behaviour for `Sec-Fetch-Site` requests that are about to
+	// fail with CSRF error, to be allowed or replaced with custom error.
 	// This function applies to `Sec-Fetch-Site` values:
 	// - `same-site` 		same registrable domain (subdomain and/or different port)
 	// - `cross-site`		request originates from different site
