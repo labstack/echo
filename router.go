@@ -142,6 +142,7 @@ const (
 type routeMethod struct {
 	*RouteInfo
 	handler      HandlerFunc
+	middlewares  []MiddlewareFunc
 	orgRouteInfo RouteInfo
 }
 
@@ -296,6 +297,54 @@ func (m *routeMethods) updateAllowHeader() {
 		buf.WriteString(method)
 	}
 	m.allowHeader = buf.String()
+}
+
+func (m *routeMethods) optionsFallbackHandler(requestedMethod string) *routeMethod {
+	if requestedMethod != "" {
+		if h := m.find(requestedMethod, true); h != nil {
+			return h
+		}
+	}
+	if m.connect != nil {
+		return m.connect
+	}
+	if m.delete != nil {
+		return m.delete
+	}
+	if m.get != nil {
+		return m.get
+	}
+	if m.head != nil {
+		return m.head
+	}
+	if m.options != nil {
+		return m.options
+	}
+	if m.patch != nil {
+		return m.patch
+	}
+	if m.post != nil {
+		return m.post
+	}
+	if m.propfind != nil {
+		return m.propfind
+	}
+	if m.put != nil {
+		return m.put
+	}
+	if m.trace != nil {
+		return m.trace
+	}
+	if m.report != nil {
+		return m.report
+	}
+	if m.any != nil {
+		return m.any
+	}
+	for _, r := range m.anyOther {
+		return r
+	}
+	return nil
 }
 
 func (m *routeMethods) isHandler() bool {
@@ -488,6 +537,7 @@ func (r *DefaultRouter) Add(route Route) (RouteInfo, error) {
 				rm := routeMethod{
 					RouteInfo:    &RouteInfo{Method: method, Path: originalPath, Parameters: paramNames, Name: route.Name},
 					handler:      h,
+					middlewares:  append([]MiddlewareFunc(nil), route.Middlewares...),
 					orgRouteInfo: ri,
 				}
 				r.insert(paramKind, path[:i], method, rm)
@@ -503,6 +553,7 @@ func (r *DefaultRouter) Add(route Route) (RouteInfo, error) {
 			rm := routeMethod{
 				RouteInfo:    &RouteInfo{Method: method, Path: originalPath, Parameters: paramNames, Name: route.Name},
 				handler:      h,
+				middlewares:  append([]MiddlewareFunc(nil), route.Middlewares...),
 				orgRouteInfo: ri,
 			}
 			r.insert(anyKind, path[:i+1], method, rm)
@@ -516,6 +567,7 @@ func (r *DefaultRouter) Add(route Route) (RouteInfo, error) {
 		rm := routeMethod{
 			RouteInfo:    &RouteInfo{Method: method, Path: originalPath, Parameters: paramNames, Name: route.Name},
 			handler:      h,
+			middlewares:  append([]MiddlewareFunc(nil), route.Middlewares...),
 			orgRouteInfo: ri,
 		}
 		r.insert(staticKind, path, method, rm)
@@ -1011,6 +1063,10 @@ func (r *DefaultRouter) Route(c *Context) HandlerFunc {
 			rHandler = r.methodNotAllowedHandler
 			if req.Method == http.MethodOptions {
 				rHandler = r.optionsMethodHandler
+				requestedMethod := req.Header.Get(HeaderAccessControlRequestMethod)
+				if fallbackMethod := currentNode.methods.optionsFallbackHandler(requestedMethod); fallbackMethod != nil {
+					rHandler = applyMiddleware(rHandler, fallbackMethod.middlewares...)
+				}
 			}
 		}
 	}

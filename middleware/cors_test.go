@@ -581,6 +581,35 @@ func TestCorsHeaders(t *testing.T) {
 	}
 }
 
+func TestCORSWithConfig_GroupPreflightWithoutOptionsRoute(t *testing.T) {
+	e := echo.New()
+	g := e.Group("/myroute", CORSWithConfig(CORSConfig{
+		AllowOrigins: []string{"https://example.com"},
+		AllowHeaders: []string{
+			echo.HeaderOrigin,
+			echo.HeaderContentType,
+			echo.HeaderAccept,
+			echo.HeaderAuthorization,
+		},
+	}))
+	g.GET("", func(c *echo.Context) error {
+		return c.String(http.StatusOK, "OK")
+	})
+
+	req := httptest.NewRequest(http.MethodOptions, "/myroute", nil)
+	req.Header.Set(echo.HeaderOrigin, "https://example.com")
+	req.Header.Set(echo.HeaderAccessControlRequestMethod, http.MethodGet)
+	rec := httptest.NewRecorder()
+
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+	assert.Equal(t, "https://example.com", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
+	assert.Equal(t, "OPTIONS, GET", rec.Header().Get(echo.HeaderAccessControlAllowMethods))
+	assert.Equal(t, "Origin,Content-Type,Accept,Authorization", rec.Header().Get(echo.HeaderAccessControlAllowHeaders))
+	assert.Equal(t, "OPTIONS, GET", rec.Header().Get(echo.HeaderAllow))
+}
+
 func Test_allowOriginFunc(t *testing.T) {
 	returnTrue := func(c *echo.Context, origin string) (string, bool, error) {
 		return origin, true, nil
