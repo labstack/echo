@@ -168,7 +168,15 @@ func (w *gzipResponseWriter) Write(b []byte) (int, error) {
 				w.ResponseWriter.WriteHeader(w.code)
 			}
 
-			return w.Writer.Write(w.buffer.Bytes())
+			// The whole buffer (which already contains b) is flushed to the
+			// underlying writer, but we must report only len(b) as written to
+			// satisfy the io.Writer contract (0 <= n <= len(b)). Returning the
+			// buffer length here would over-report and panic callers such as
+			// io.Copy with "invalid write count".
+			if _, err := w.Writer.Write(w.buffer.Bytes()); err != nil {
+				return 0, err
+			}
+			return n, nil
 		}
 
 		return n, err
