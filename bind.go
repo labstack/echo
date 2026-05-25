@@ -181,9 +181,11 @@ func (b *DefaultBinder) bindData(destination interface{}, data map[string][]stri
 			if isElemString {
 				val.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v[0]))
 			} else if isElemInterface {
-				// To maintain backward compatibility, we always bind to the first string value
-				// and not the slice of strings when dealing with map[string]interface{}{}
-				val.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v[0]))
+				if len(v) == 1 {
+					val.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v[0]))
+				} else {
+					val.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v))
+				}
 			} else {
 				val.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v))
 			}
