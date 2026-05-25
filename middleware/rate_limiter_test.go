@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -623,4 +624,40 @@ func TestRateLimiterMemoryStore_TimeOrdering(t *testing.T) {
 	// Fourth request should succeed
 	allowed4, _ := store.Allow("user1")
 	assert.True(t, allowed4, "Request 4 should be allowed (1 token available)")
+}
+
+func TestRateLimiterMemoryStore_AllowContext_SetsHeaders(t *testing.T) {
+	store := NewRateLimiterMemoryStoreWithConfig(RateLimiterMemoryStoreConfig{Rate: 1, Burst: 3})
+	e := echo.New()
+
+	handler := func(c echo.Context) error {
+		return c.String(http.StatusOK, "test")
+	}
+	mw := RateLimiter(store)
+
+	for i := 0; i < 3; i++ {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set(echo.HeaderXRealIP, "127.0.0.1")
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		err := mw(handler)(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, "3", rec.Header().Get(HeaderXRateLimitLimit))
+		assert.Equal(t, strconv.Itoa(2-i), rec.Header().Get(HeaderXRateLimitRemaining))
+		assert.Empty(t, rec.Header().Get(echo.HeaderRetryAfter))
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set(echo.HeaderXRealIP, "127.0.0.1")
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	err := mw(handler)(c)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusTooManyRequests, rec.Code)
+	assert.Equal(t, "3", rec.Header().Get(HeaderXRateLimitLimit))
+	assert.Equal(t, "0", rec.Header().Get(HeaderXRateLimitRemaining))
+	assert.NotEmpty(t, rec.Header().Get(echo.HeaderRetryAfter))
 }
