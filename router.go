@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 // Router is the registry of all registered routes for an `Echo` instance for
@@ -153,6 +154,56 @@ func (r *Router) Routes() []*Route {
 		routes = append(routes, v)
 	}
 	return routes
+}
+
+func (r *Router) inheritedRouteNotFoundHandler(groupPrefix string) HandlerFunc {
+	var best *routeMethod
+	var walk func(n *node)
+	walk = func(n *node) {
+		if h := n.notFoundHandler; h != nil && isParentRouteNotFound(h.ppath, groupPrefix) {
+			if best == nil || routeNotFoundSpecificity(h.ppath) > routeNotFoundSpecificity(best.ppath) {
+				best = h
+			}
+		}
+		for _, child := range n.staticChildren {
+			walk(child)
+		}
+		if n.paramChild != nil {
+			walk(n.paramChild)
+		}
+		if n.anyChild != nil {
+			walk(n.anyChild)
+		}
+	}
+	walk(r.tree)
+	if best != nil {
+		return best.handler
+	}
+	return nil
+}
+
+func isParentRouteNotFound(routePath, groupPrefix string) bool {
+	if routePath == groupPrefix || routePath == groupPrefix+"/*" {
+		return false
+	}
+	if routePath == "" || routePath == "/*" {
+		return true
+	}
+	if strings.HasSuffix(routePath, "/*") {
+		base := strings.TrimSuffix(routePath, "/*")
+		if base == "" {
+			return true
+		}
+		return groupPrefix == base || strings.HasPrefix(groupPrefix, base+"/")
+	}
+	return groupPrefix == routePath || strings.HasPrefix(groupPrefix, routePath+"/")
+}
+
+func routeNotFoundSpecificity(path string) int {
+	if path == "" || path == "/*" {
+		return 0
+	}
+	return len(path)
 }
 
 // Reverse generates a URL from route name and provided parameters.

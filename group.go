@@ -28,8 +28,12 @@ func (g *Group) Use(middleware ...MiddlewareFunc) {
 	// are only executed if they are added to the Router with route.
 	// So we register catch all route (404 is a safe way to emulate route match) for this group and now during routing the
 	// Router would find route to match our request path and therefore guarantee the middleware(s) will get executed.
-	g.RouteNotFound("", NotFoundHandler)
-	g.RouteNotFound("/*", NotFoundHandler)
+	handler := NotFoundHandler
+	if inherited := g.echo.router.inheritedRouteNotFoundHandler(g.prefix); inherited != nil {
+		handler = inherited
+	}
+	g.RouteNotFound("", handler)
+	g.RouteNotFound("/*", handler)
 }
 
 // CONNECT implements `Echo#CONNECT()` for sub-routes within the Group.
