@@ -188,8 +188,6 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 			origin := req.Header.Get(echo.HeaderOrigin)
 			allowOrigin := ""
 
-			res.Header().Add(echo.HeaderVary, echo.HeaderOrigin)
-
 			// Preflight request is an OPTIONS request, using three HTTP request headers: Access-Control-Request-Method,
 			// Access-Control-Request-Headers, and the Origin header. See: https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request
 			// For simplicity we just consider method type and later `Origin` header.
@@ -211,6 +209,7 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 
 			// No Origin provided. This is (probably) not request from actual browser - proceed executing middleware chain
 			if origin == "" {
+				res.Header().Add(echo.HeaderVary, echo.HeaderOrigin)
 				if !preflight {
 					return next(c)
 				}
@@ -261,26 +260,36 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 
 			// Origin not allowed
 			if allowOrigin == "" {
+				res.Header().Add(echo.HeaderVary, echo.HeaderOrigin)
 				if !preflight {
 					return next(c)
 				}
 				return c.NoContent(http.StatusNoContent)
 			}
 
+			// Simple request
+			if !preflight {
+				err := next(c)
+				// Skip setting CORS headers when an upstream handler (e.g. reverse proxy) already set them.
+				if res.Header().Get(echo.HeaderAccessControlAllowOrigin) == "" {
+					res.Header().Add(echo.HeaderVary, echo.HeaderOrigin)
+					res.Header().Set(echo.HeaderAccessControlAllowOrigin, allowOrigin)
+					if config.AllowCredentials {
+						res.Header().Set(echo.HeaderAccessControlAllowCredentials, "true")
+					}
+					if exposeHeaders != "" {
+						res.Header().Set(echo.HeaderAccessControlExposeHeaders, exposeHeaders)
+					}
+				}
+				return err
+			}
+
+			// Preflight request
+			res.Header().Add(echo.HeaderVary, echo.HeaderOrigin)
 			res.Header().Set(echo.HeaderAccessControlAllowOrigin, allowOrigin)
 			if config.AllowCredentials {
 				res.Header().Set(echo.HeaderAccessControlAllowCredentials, "true")
 			}
-
-			// Simple request
-			if !preflight {
-				if exposeHeaders != "" {
-					res.Header().Set(echo.HeaderAccessControlExposeHeaders, exposeHeaders)
-				}
-				return next(c)
-			}
-
-			// Preflight request
 			res.Header().Add(echo.HeaderVary, echo.HeaderAccessControlRequestMethod)
 			res.Header().Add(echo.HeaderVary, echo.HeaderAccessControlRequestHeaders)
 
