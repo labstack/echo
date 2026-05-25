@@ -204,7 +204,7 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 				}
 
 				var he *echo.HTTPError
-				if !(errors.As(err, &he) && config.HTML5 && he.Code == http.StatusNotFound) {
+				if !(errors.As(err, &he) && config.HTML5 && he.Code == http.StatusNotFound && isRouterNotFoundError(c, err)) {
 					return err
 				}
 
@@ -243,6 +243,18 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 
 			return serveFile(c, file, info)
 		}
+	}
+}
+
+func isRouterNotFoundError(c echo.Context, err error) bool {
+	if errors.Is(err, echo.ErrNotFound) {
+		return true
+	}
+	switch c.Path() {
+	case "", "/*":
+		return true
+	default:
+		return false
 	}
 }
 

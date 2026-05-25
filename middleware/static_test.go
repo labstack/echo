@@ -454,3 +454,39 @@ func TestStatic_CustomFS(t *testing.T) {
 		})
 	}
 }
+
+func TestStaticHTML5DoesNotOverrideHandler404(t *testing.T) {
+	t.Parallel()
+
+	e := echo.New()
+	e.Use(StaticWithConfig(StaticConfig{
+		Root:  "../_fixture",
+		HTML5: true,
+	}))
+
+	e.GET("/api/test/:id", func(c echo.Context) error {
+		if c.Param("id") == "3" {
+			return echo.NewHTTPError(http.StatusNotFound, "not found")
+		}
+		return c.String(http.StatusOK, "ID: "+c.Param("id"))
+	})
+
+	t.Run("handler 404 is preserved", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/test/3", nil)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusNotFound, rec.Code)
+		assert.Contains(t, rec.Body.String(), "not found")
+		assert.NotContains(t, rec.Body.String(), "<title>Echo</title>")
+	})
+
+	t.Run("router 404 serves SPA index", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/client-route", nil)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Contains(t, rec.Body.String(), "<title>Echo</title>")
+	})
+}
