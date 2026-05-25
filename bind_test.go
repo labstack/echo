@@ -498,7 +498,7 @@ func TestDefaultBinder_bindDataToMap(t *testing.T) {
 		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param", nil))
 		assert.Equal(t,
 			map[string]interface{}{
-				"multiple": "1",
+				"multiple": []string{"1", "2"},
 				"single":   "3",
 			},
 			dest,
@@ -510,7 +510,7 @@ func TestDefaultBinder_bindDataToMap(t *testing.T) {
 		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param", nil))
 		assert.Equal(t,
 			map[string]interface{}{
-				"multiple": "1",
+				"multiple": []string{"1", "2"},
 				"single":   "3",
 			},
 			dest,
@@ -540,6 +540,24 @@ func TestDefaultBinder_bindDataToMap(t *testing.T) {
 		assert.NoError(t, new(DefaultBinder).bindData(&dest, exampleData, "param", nil))
 		assert.Equal(t, map[string][]int(nil), dest)
 	})
+}
+
+func TestBindMultipartFormToMapInterface(t *testing.T) {
+	bodyBuffer := new(bytes.Buffer)
+	mw := multipart.NewWriter(bodyBuffer)
+	assert.NoError(t, mw.WriteField("ima_slice", "WEBHOOK"))
+	assert.NoError(t, mw.WriteField("ima_slice", "OTHER"))
+	assert.NoError(t, mw.Close())
+
+	e := New()
+	req := httptest.NewRequest(http.MethodPost, "/", bodyBuffer)
+	req.Header.Set(HeaderContentType, mw.FormDataContentType())
+	c := e.NewContext(req, nil)
+
+	data := map[string]interface{}{}
+	err := c.Bind(&data)
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"WEBHOOK", "OTHER"}, data["ima_slice"])
 }
 
 func TestBindbindData(t *testing.T) {
