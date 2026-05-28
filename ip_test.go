@@ -255,7 +255,7 @@ func TestTrustPrivateNet(t *testing.T) {
 		},
 		{
 			name:   "do not trust IPv6 just out of /fd (upper bounds)",
-			whenIP: "/fe00:0000:0000:0000:0000",
+			whenIP: "fe00::",
 			expect: false,
 		},
 	}
