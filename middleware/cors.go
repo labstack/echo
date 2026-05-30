@@ -193,8 +193,6 @@ func (config CORSConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			res := c.Response()
 			origin := req.Header.Get(echo.HeaderOrigin)
 
-			res.Header().Add(echo.HeaderVary, echo.HeaderOrigin)
-
 			// Preflight request is an OPTIONS request, using three HTTP request headers: Access-Control-Request-Method,
 			// Access-Control-Request-Headers, and the Origin header. See: https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request
 			// For simplicity we just consider method type and later `Origin` header.
@@ -217,8 +215,12 @@ func (config CORSConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			// No Origin provided. This is (probably) not request from actual browser - proceed executing middleware chain
 			if origin == "" {
 				if preflight { // req.Method=OPTIONS
+					addVaryHeader(res.Header(), echo.HeaderOrigin)
 					return c.NoContent(http.StatusNoContent)
 				}
+				res.Before(func() {
+					addVaryHeader(res.Header(), echo.HeaderOrigin)
+				})
 				return next(c) // let non-browser calls through
 			}
 
@@ -239,21 +241,28 @@ func (config CORSConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				// no CORS middleware should block non-preflight requests;
 				// such requests should be let through. One reason is that not all requests that
 				// carry an Origin header participate in the CORS protocol.
+				res.Before(func() {
+					addVaryHeader(res.Header(), echo.HeaderOrigin)
+				})
 				return next(c)
 			}
 
 			// Origin existed and was allowed
 
-			res.Header().Set(echo.HeaderAccessControlAllowOrigin, allowedOrigin)
-			if config.AllowCredentials {
-				res.Header().Set(echo.HeaderAccessControlAllowCredentials, "true")
-			}
-
 			// Simple request will be let though
 			if !preflight {
-				if exposeHeaders != "" {
-					res.Header().Set(echo.HeaderAccessControlExposeHeaders, exposeHeaders)
-				}
+				res.Before(func() {
+					addVaryHeader(res.Header(), echo.HeaderOrigin)
+					res.Header().Set(echo.HeaderAccessControlAllowOrigin, allowedOrigin)
+					if config.AllowCredentials {
+						res.Header().Set(echo.HeaderAccessControlAllowCredentials, "true")
+					} else {
+						res.Header().Del(echo.HeaderAccessControlAllowCredentials)
+					}
+					if exposeHeaders != "" {
+						res.Header().Set(echo.HeaderAccessControlExposeHeaders, exposeHeaders)
+					}
+				})
 				return next(c)
 			}
 			// Below code is for Preflight (OPTIONS) request
@@ -261,8 +270,15 @@ func (config CORSConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			// Preflight will end with c.NoContent(http.StatusNoContent) as we do not know if
 			// at the end of handler chain is actual OPTIONS route or 404/405 route which
 			// response code will confuse browsers
-			res.Header().Add(echo.HeaderVary, echo.HeaderAccessControlRequestMethod)
-			res.Header().Add(echo.HeaderVary, echo.HeaderAccessControlRequestHeaders)
+			addVaryHeader(res.Header(), echo.HeaderOrigin)
+			res.Header().Set(echo.HeaderAccessControlAllowOrigin, allowedOrigin)
+			if config.AllowCredentials {
+				res.Header().Set(echo.HeaderAccessControlAllowCredentials, "true")
+			} else {
+				res.Header().Del(echo.HeaderAccessControlAllowCredentials)
+			}
+			addVaryHeader(res.Header(), echo.HeaderAccessControlRequestMethod)
+			addVaryHeader(res.Header(), echo.HeaderAccessControlRequestHeaders)
 
 			if !hasCustomAllowMethods && routerAllowMethods != "" {
 				res.Header().Set(echo.HeaderAccessControlAllowMethods, routerAllowMethods)
@@ -297,4 +313,19 @@ func (config CORSConfig) defaultAllowOriginFunc(c *echo.Context, origin string) 
 		}
 	}
 	return "", false, nil
+}
+
+func addVaryHeader(h http.Header, value string) {
+	if h.Get(echo.HeaderVary) == "" {
+		h.Set(echo.HeaderVary, value)
+		return
+	}
+	for _, v := range h.Values(echo.HeaderVary) {
+		for _, part := range strings.Split(v, ",") {
+			if strings.EqualFold(strings.TrimSpace(part), value) {
+				return
+			}
+		}
+	}
+	h.Add(echo.HeaderVary, value)
 }
