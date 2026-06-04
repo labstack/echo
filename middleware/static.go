@@ -242,6 +242,20 @@ func (config StaticConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				if !isIgnorableOpenFileError(err) {
 					return err
 				}
+
+				if config.HTML5 {
+					html5File, html5Err := currentFS.Open(filePath + ".html")
+					if html5Err == nil {
+						defer html5File.Close()
+
+						html5Info, err := html5File.Stat()
+						if err != nil {
+							return err
+						}
+
+						return serveFile(c, html5File, html5Info)
+					}
+				}
 				// file with that path did not exist, so we continue down in middleware/handler chain, hoping that we end up in
 				// handler that is meant to handle this request
 				err = next(c)
@@ -270,6 +284,20 @@ func (config StaticConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			if info.IsDir() {
 				index, err := currentFS.Open(path.Join(filePath, config.Index))
 				if err != nil {
+					if config.HTML5 && !config.Browse {
+						html5File, html5Err := currentFS.Open(filePath + ".html")
+						if html5Err == nil {
+							defer html5File.Close()
+
+							info, err = html5File.Stat()
+							if err != nil {
+								return err
+							}
+
+							return serveFile(c, html5File, info)
+						}
+					}
+
 					if config.Browse {
 						return listDir(dirListTemplate, filePath, currentFS, c.Response())
 					}

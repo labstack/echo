@@ -78,6 +78,16 @@ func TestStatic(t *testing.T) {
 			expectContains: "<h1>Hello from index</h1>",
 		},
 		{
+			name: "ok, when html5 mode serve route html next to a directory",
+			givenConfig: &StaticConfig{
+				Root:  "testdata/dist/public",
+				HTML5: true,
+			},
+			whenURL:        "/camera",
+			expectCode:     http.StatusOK,
+			expectContains: "<h1>Camera page</h1>",
+		},
+		{
 			name: "ok, serve index as directory index listing files directory",
 			givenConfig: &StaticConfig{
 				Root:   "testdata/dist/public/assets",
