@@ -22,7 +22,7 @@ type KeyAuthConfig struct {
 
 	// KeyLookup is a string in the form of "<source>:<name>" or "<source>:<name>,<source>:<name>" that is used
 	// to extract key from the request.
-	// Optional. Default value "header:Authorization".
+	// Optional. Default value "header:Authorization:Bearer ".
 	// Possible values:
 	// - "header:<name>" or "header:<name>:<cut-prefix>"
 	// 			`<cut-prefix>` is argument value to cut/trim prefix of the extracted value. This is useful if header
