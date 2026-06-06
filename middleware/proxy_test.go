@@ -1174,40 +1174,6 @@ func TestProxyWithConfigWebSocketTLS2NonTLS(t *testing.T) {
 // the proxy's own peer IP from the chain whenever upstream proxies had already
 // added entries.
 func TestProxyWebSocketXForwardedFor(t *testing.T) {
-	var (
-		mu             sync.Mutex
-		capturedHeader http.Header
-	)
-
-	// Upstream that captures the request header at WS Upgrade time, then echoes.
-	upstreamHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		wsHandler := func(conn *websocket.Conn) {
-			mu.Lock()
-			capturedHeader = conn.Request().Header.Clone()
-			mu.Unlock()
-
-			defer conn.Close()
-
-			var msg string
-			if err := websocket.Message.Receive(conn, &msg); err == nil {
-				_ = websocket.Message.Send(conn, msg)
-			}
-		}
-		websocket.Server{Handler: wsHandler}.ServeHTTP(w, r)
-	})
-	upstream := httptest.NewServer(upstreamHandler)
-	defer upstream.Close()
-
-	tgtURL, _ := url.Parse(upstream.URL)
-	e := echo.New()
-	balancer := NewRandomBalancer([]*ProxyTarget{{URL: tgtURL}})
-	e.Use(ProxyWithConfig(ProxyConfig{Balancer: balancer}))
-	proxySrv := httptest.NewServer(e)
-	defer proxySrv.Close()
-
-	proxyWSURL, _ := url.Parse(proxySrv.URL)
-	proxyWSURL.Scheme = "ws"
-
 	tests := []struct {
 		name        string
 		incomingXFF []string // nil = no incoming X-Forwarded-For header at all
@@ -1237,9 +1203,30 @@ func TestProxyWebSocketXForwardedFor(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mu.Lock()
-			capturedHeader = nil
-			mu.Unlock()
+			// Buffered so the upstream handler never blocks before the client reads.
+			headerCh := make(chan http.Header, 1)
+
+			upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				wsHandler := func(conn *websocket.Conn) {
+					headerCh <- conn.Request().Header.Clone()
+					defer conn.Close()
+					var msg string
+					if err := websocket.Message.Receive(conn, &msg); err == nil {
+						_ = websocket.Message.Send(conn, msg)
+					}
+				}
+				websocket.Server{Handler: wsHandler}.ServeHTTP(w, r)
+			}))
+			defer upstream.Close()
+
+			tgtURL, _ := url.Parse(upstream.URL)
+			e := echo.New()
+			e.Use(ProxyWithConfig(ProxyConfig{Balancer: NewRandomBalancer([]*ProxyTarget{{URL: tgtURL}})}))
+			proxySrv := httptest.NewServer(e)
+			defer proxySrv.Close()
+
+			proxyWSURL, _ := url.Parse(proxySrv.URL)
+			proxyWSURL.Scheme = "ws"
 
 			origin, _ := url.Parse(proxySrv.URL)
 			cfg := &websocket.Config{
@@ -1248,25 +1235,21 @@ func TestProxyWebSocketXForwardedFor(t *testing.T) {
 				Version:  websocket.ProtocolVersionHybi13,
 				Header:   http.Header{},
 			}
-
 			for _, v := range tt.incomingXFF {
 				cfg.Header.Add(echo.HeaderXForwardedFor, v)
 			}
 
 			wsConn, err := websocket.DialConfig(cfg)
 			assert.NoError(t, err)
-
 			defer wsConn.Close()
 
-			// Exchange one message to ensure the upstream handler has captured the header.
 			assert.NoError(t, websocket.Message.Send(wsConn, "ping"))
-
 			var got string
 			assert.NoError(t, websocket.Message.Receive(wsConn, &got))
 
-			mu.Lock()
-			xff := capturedHeader.Get(echo.HeaderXForwardedFor)
-			mu.Unlock()
+			// The handler sends to headerCh before echoing, so it arrives before Receive returns.
+			captured := <-headerCh
+			xff := captured.Get(echo.HeaderXForwardedFor)
 
 			// The middleware uses Header.Set, so the upstream sees exactly one
 			// X-Forwarded-For header line. Split it back into entries.
