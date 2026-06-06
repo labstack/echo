@@ -355,8 +355,14 @@ func (config ProxyConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			if req.Header.Get(echo.HeaderXForwardedProto) == "" {
 				req.Header.Set(echo.HeaderXForwardedProto, c.Scheme())
 			}
-			if c.IsWebSocket() && req.Header.Get(echo.HeaderXForwardedFor) == "" { // For HTTP, it is automatically set by Go HTTP reverse proxy.
-				req.Header.Set(echo.HeaderXForwardedFor, c.RealIP())
+			if c.IsWebSocket() { // For HTTP, this is set by Go HTTP reverse proxy.
+				// Append, not set, to preserve the incoming chain from upstream proxies.
+				prior := req.Header[echo.HeaderXForwardedFor]
+				if len(prior) > 0 {
+					req.Header.Set(echo.HeaderXForwardedFor, strings.Join(prior, ", ")+", "+c.RealIP())
+				} else {
+					req.Header.Set(echo.HeaderXForwardedFor, c.RealIP())
+				}
 			}
 
 			retries := config.RetryCount
