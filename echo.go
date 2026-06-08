@@ -110,6 +110,10 @@ type Echo struct {
 	// formParseMaxMemory is passed to Context for multipart form parsing (See http.Request.ParseMultipartForm)
 	formParseMaxMemory int64
 
+	// noGroupAutoRegisterRoutes is a flag that indicates whether echo.Group should NOT register 404 routes automatically
+	// when there are middlewares registered with the group.
+	noGroupAutoRegisterRoutes bool
+
 	enablePathUnescapingStaticFiles bool
 }
 
@@ -327,6 +331,12 @@ type Config struct {
 	//
 	// Applies to methods: Echo.Static, Echo.StaticFS, Group.Static, Group.StaticFS.
 	EnablePathUnescapingStaticFiles bool
+
+	// NoGroupAutoRegister404Routes bool is a flag that indicates whether echo.Group should NOT register 404 routes automatically
+	// when there are middlewares registered with the group.
+	// Note: if you decide not to register 404 routes automatically, make sure to check if all your middlewares are executed
+	// as expected. For example - CORS middleware.
+	NoGroupAutoRegister404Routes bool
 }
 
 // NewWithConfig creates an instance of Echo with given configuration.
@@ -367,6 +377,8 @@ func NewWithConfig(config Config) *Echo {
 	}
 	e.enablePathUnescapingStaticFiles = config.EnablePathUnescapingStaticFiles
 
+	e.noGroupAutoRegisterRoutes = config.NoGroupAutoRegister404Routes
+
 	return e
 }
 
@@ -383,7 +395,9 @@ func New() *Echo {
 	}
 
 	e.serveHTTPFunc = e.serveHTTP
-	e.router = NewRouter(RouterConfig{})
+	e.router = NewRouter(RouterConfig{
+		AllowOverwritingRoute: true,
+	})
 	e.HTTPErrorHandler = DefaultHTTPErrorHandler(false)
 	e.contextPool.New = func() any {
 		return newContext(nil, nil, e)
@@ -737,7 +751,11 @@ func (e *Echo) Add(method, path string, handler HandlerFunc, middleware ...Middl
 
 // Group creates a new router group with prefix and optional group-level middleware.
 func (e *Echo) Group(prefix string, m ...MiddlewareFunc) (g *Group) {
-	g = &Group{prefix: prefix, echo: e}
+	g = &Group{
+		prefix:               prefix,
+		echo:                 e,
+		noAutoRegisterRoutes: e.noGroupAutoRegisterRoutes,
+	}
 	g.Use(m...)
 	return
 }

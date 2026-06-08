@@ -15,12 +15,34 @@ type Group struct {
 	echo       *Echo
 	prefix     string
 	middleware []MiddlewareFunc
+
+	// noAutoRegisterRoutes is a flag that indicates whether Group should NOT register 404 routes automatically
+	// when there are middlewares registered with the group.
+	// Note: if you decide not to register 404 routes automatically, make sure to check if all your middlewares are executed
+	// as expected. For example - CORS middleware.
+	noAutoRegisterRoutes bool
 }
 
 // Use implements `Echo#Use()` for sub-routes within the Group.
-// Group middlewares are not executed on request when there is no matching route found.
+//
+// Important! Group middlewares are executed in case there was no exact route match as by default Group registers
+// `/*` NotFound routes for itself. If this kind of behavior is not needed, then create an Echo instance with the ` noAutoRegisterRoutes `
+// flag set to true. Example `echo.NewWithConfig(echo.Config{NoGroupAutoRegister404Routes: true})`.
 func (g *Group) Use(middleware ...MiddlewareFunc) {
 	g.middleware = append(g.middleware, middleware...)
+	if len(g.middleware) == 0 {
+		return
+	}
+	if g.noAutoRegisterRoutes {
+		return
+	}
+	// group level middlewares are different from Echo `Pre` and `Use` middlewares (those are global). Group level middlewares
+	// are only executed if they are added to the Router with route.
+	// So we register catch all route (404 is a safe way to emulate route match) for this group and now during routing the
+	// Router would find route to match our request path and therefore guarantee the middleware(s) will get executed.
+	// Note: we use nil handler so Router would choose the default 404 handler. This may not work with custom routers.
+	g.RouteNotFound("", nil)
+	g.RouteNotFound("/*", nil)
 }
 
 // CONNECT implements `Echo#CONNECT()` for sub-routes within the Group. Panics on error.
@@ -102,9 +124,10 @@ func (g *Group) Match(methods []string, path string, handler HandlerFunc, middle
 }
 
 // Group creates a new sub-group with prefix and optional sub-group-level middleware.
-// Important! Group middlewares are only executed in case there was exact route match and not
-// for 404 (not found) or 405 (method not allowed) cases. If this kind of behaviour is needed then add
-// a catch-all route `/*` for the group which handler returns always 404
+//
+// Important! Group middlewares are executed in case there was no exact route match as by default Group registers
+// `/*` NotFound routes for itself. If this kind of behavior is not needed, then create an Echo instance with the ` noAutoRegisterRoutes `
+// flag set to true. Example `echo.NewWithConfig(echo.Config{NoGroupAutoRegister404Routes: true})`.
 func (g *Group) Group(prefix string, middleware ...MiddlewareFunc) (sg *Group) {
 	m := make([]MiddlewareFunc, 0, len(g.middleware)+len(middleware))
 	m = append(m, g.middleware...)
