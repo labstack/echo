@@ -12,11 +12,14 @@ import (
 )
 
 // Route contains information to adding/registering new route with the router.
-// Method+Path pair uniquely identifies the Route. It is mandatory to provide Method+Path+Handler fields.
+// Method+Path pair uniquely identifies the Route. It is mandatory to provide Method+Path fields.
 type Route struct {
-	Method      string
-	Path        string
-	Name        string
+	Method string
+	Path   string
+	Name   string
+
+	// HandlerFunc is a function that handles HTTP requests. This could be left nil when the Router implementation allows
+	// fallback to default/global handlers in certain situations.
 	Handler     HandlerFunc
 	Middlewares []MiddlewareFunc
 }
