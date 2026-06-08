@@ -35,6 +35,27 @@ func TestGroup_withoutRouteWillExecuteMiddleware(t *testing.T) {
 	assert.True(t, called)
 }
 
+func TestGroup_withoutRouteWillNotExecuteMiddleware(t *testing.T) {
+	e := NewWithConfig(Config{NoGroupAutoRegister404Routes: true})
+
+	called := false
+	mw := func(next HandlerFunc) HandlerFunc {
+		return func(c *Context) error {
+			called = true
+			return c.NoContent(http.StatusTeapot)
+		}
+	}
+	// even though group has middleware it will be executed when there are no routes under that group
+	// because implicit routes ("" and "/*") are created for the group
+	_ = e.Group("/group", mw)
+
+	status, body := request(http.MethodGet, "/group/nope", e)
+	assert.Equal(t, http.StatusNotFound, status)
+	assert.Equal(t, `{"message":"Not Found"}`+"\n", body)
+
+	assert.False(t, called)
+}
+
 func TestGroup_withRoutesWillExecuteMiddlewareFor404(t *testing.T) {
 	e := New()
 
