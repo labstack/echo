@@ -280,6 +280,78 @@ func TestStatic(t *testing.T) {
 	}
 }
 
+func TestStaticMiddlewareAndRouterInconsistentEscaping(t *testing.T) {
+	var testCases = []struct {
+		name                  string
+		givenConfig           StaticConfig
+		whenURL               string
+		expectCode            int
+		expectBodyContains    string
+		expectBodyNotContains string
+	}{
+		{
+			name:               "ok, normal file is served",
+			givenConfig:        StaticConfig{Root: "testdata/dist/public"},
+			whenURL:            "/test.txt",
+			expectCode:         http.StatusOK,
+			expectBodyContains: "test",
+		},
+		{
+			name:        "ok, direct request to restricted path is blocked by ACL route",
+			givenConfig: StaticConfig{Root: "testdata/dist/public"},
+			whenURL:     "/admin/private.txt",
+			expectCode:  http.StatusForbidden,
+		},
+		{
+			// With EnablePathUnescaping=false (default/safe), the wildcard param "admin%2fprivate.txt"
+			// is NOT decoded, so the FS lookup is for literal "admin%2fprivate.txt" which does
+			// not exist → falls through to the /* handler → 404. ACL is not bypassed.
+			name:                  "ok, encoded slash returns 404 with default safe config (EnablePathUnescaping=false)",
+			givenConfig:           StaticConfig{Root: "testdata/dist/public"},
+			whenURL:               "/admin%2fprivate.txt",
+			expectCode:            http.StatusNotFound,
+			expectBodyNotContains: "private file",
+		},
+		{
+			// With EnablePathUnescaping=true, the wildcard param "admin%2fprivate.txt" IS decoded
+			// to "admin/private.txt". The router already routed to /* (encoded %2f prevented matching
+			// /admin/*), so the ACL guard never ran. The file is served — ACL bypass.
+			// Only use EnablePathUnescaping: true when not relying on route-based ACL guards.
+			name:               "nok, encoded slash bypasses ACL when EnablePathUnescaping=true",
+			givenConfig:        StaticConfig{Root: "testdata/dist/public", EnablePathUnescaping: true},
+			whenURL:            "/admin%2fprivate.txt",
+			expectCode:         http.StatusOK,
+			expectBodyContains: "private file",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+
+			// Global middleware runs for all matched routes. The /* wildcard route ensures
+			// the middleware takes the c.Param("*") branch (c.Path() ends with "*").
+			e.Use(StaticWithConfig(tc.givenConfig))
+			e.GET("/*", func(c *echo.Context) error { return echo.ErrNotFound })
+			// ACL guard: requests with a literal /admin/ prefix are forbidden.
+			e.GET("/admin/*", func(c *echo.Context) error { return echo.ErrForbidden })
+
+			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, tc.expectCode, rec.Code)
+			body := rec.Body.String()
+			if tc.expectBodyContains != "" {
+				assert.Contains(t, body, tc.expectBodyContains)
+			}
+			if tc.expectBodyNotContains != "" {
+				assert.NotContains(t, body, tc.expectBodyNotContains)
+			}
+		})
+	}
+}
+
 // Regression for GHSA-vfp3-v2gw-7wfq: the static middleware mounted on a group
 // must not let an encoded separator in the wildcard bypass route-level middleware
 // and disclose a file the matched route never authorized.

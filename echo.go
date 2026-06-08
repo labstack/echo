@@ -43,6 +43,7 @@ Learn more at https://echo.labstack.com
 package echo
 
 import (
+	"cmp"
 	stdContext "context"
 	"encoding/json"
 	"errors"
@@ -53,14 +54,11 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
-	"path"
 	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
-
-	"github.com/labstack/echo/v5/internal/pathutil"
 )
 
 // Echo is the top-level framework instance.
@@ -111,6 +109,8 @@ type Echo struct {
 
 	// formParseMaxMemory is passed to Context for multipart form parsing (See http.Request.ParseMultipartForm)
 	formParseMaxMemory int64
+
+	enablePathUnescapingStaticFiles bool
 }
 
 // JSONSerializer is the interface that encodes and decodes JSON to and from interfaces.
@@ -299,6 +299,19 @@ type Config struct {
 	// FormParseMaxMemory is default value for memory limit that is used
 	// when parsing multipart forms (See (*http.Request).ParseMultipartForm)
 	FormParseMaxMemory int64
+
+	// EnablePathUnescapingStaticFiles enables path parameter (param: *) unescaping for static file methods.
+	// Default false (safe): encoded slashes (%2f) in the wildcard param are NOT decoded,
+	// preventing ACL bypass where /admin%2fprivate.txt bypasses a /admin/* route guard by
+	// not matching that route but having its wildcard param decoded to admin/private.txt.
+	// Set to true only when serving files whose names contain URL-encoded characters
+	// (e.g. "hello world.txt" via /hello%20world.txt) and you are not relying on
+	// route-based ACL guards to restrict access.
+	// If you are enabling this option, make sure you understand the security implications.
+	// See: https://github.com/labstack/echo/security/advisories/GHSA-vfp3-v2gw-7wfq
+	// Enabling RouterConfig.UseEscapedPathForMatching makes path escaping in static files and router consistent.
+	// Applies to methods: Echo.Static, Echo.StaticFS, Group.Static, Group.StaticFS.
+	EnablePathUnescapingStaticFiles bool
 }
 
 // NewWithConfig creates an instance of Echo with given configuration.
@@ -337,6 +350,8 @@ func NewWithConfig(config Config) *Echo {
 	if config.FormParseMaxMemory > 0 {
 		e.formParseMaxMemory = config.FormParseMaxMemory
 	}
+	e.enablePathUnescapingStaticFiles = config.EnablePathUnescapingStaticFiles
+
 	return e
 }
 
@@ -567,7 +582,7 @@ func (e *Echo) Static(pathPrefix, fsRoot string, middleware ...MiddlewareFunc) R
 	return e.Add(
 		http.MethodGet,
 		pathPrefix+"*",
-		StaticDirectoryHandler(subFs, false),
+		StaticDirectoryHandler(subFs, !e.enablePathUnescapingStaticFiles),
 		middleware...,
 	)
 }
@@ -581,27 +596,23 @@ func (e *Echo) StaticFS(pathPrefix string, filesystem fs.FS, middleware ...Middl
 	return e.Add(
 		http.MethodGet,
 		pathPrefix+"*",
-		StaticDirectoryHandler(filesystem, false),
+		StaticDirectoryHandler(filesystem, !e.enablePathUnescapingStaticFiles),
 		middleware...,
 	)
 }
 
 // StaticDirectoryHandler creates handler function to serve files from provided file system
 // When disablePathUnescaping is set then file name from path is not unescaped and is served as is.
+//
+// Note: Router is matching against unescaped path and using disablePathUnescaping=false here can lead to serving files
+// outside of the intended directory - if there are Routes that are meant to forbit some subset of the served filesystem
+// to be accessed, but inconsistency between how Router sees an unescaped path and this function will use an escaped path.
+// Enabling RouterConfig.UseEscapedPathForMatching makes path escaping in static files and router consistent.
+// See https://github.com/labstack/echo/security/advisories/GHSA-vfp3-v2gw-7wfq
 func StaticDirectoryHandler(fileSystem fs.FS, disablePathUnescaping bool) HandlerFunc {
 	return func(c *Context) error {
 		p := c.Param("*")
 		if !disablePathUnescaping { // when router is already unescaping we do not want to do is twice
-			// By default the router matches routes against the raw, still-encoded request path
-			// (unless UseEscapedPathForMatching is enabled), so an encoded path separator is not
-			// treated as a segment boundary during routing. Unescaping it here would let it act as
-			// a separator and resolve a file outside the path the router authorized, bypassing
-			// route-level middleware (e.g. auth on a sibling route). No real filename contains a
-			// separator, so reject it as not found, carrying the reason internally for operators.
-			if pathutil.HasEncodedPathSeparator(p) {
-				return NewHTTPError(http.StatusNotFound, http.StatusText(http.StatusNotFound)).
-					Wrap(fmt.Errorf("rejected encoded path separator in static path %q", p))
-			}
 			tmpPath, err := url.PathUnescape(p)
 			if err != nil {
 				return fmt.Errorf("failed to unescape path variable: %w", err)
@@ -609,21 +620,21 @@ func StaticDirectoryHandler(fileSystem fs.FS, disablePathUnescaping bool) Handle
 			p = tmpPath
 		}
 
-		// fs.FS.Open() already assumes that file names are relative to FS root path and considers name with prefix `/` as invalid.
-		// Use path.Clean (not filepath.Clean): fs.FS paths are always forward-slash, so a backslash must stay a literal
-		// character rather than being interpreted as a separator on Windows (which would resolve a file across a boundary
-		// the router never matched on, the same Windows backslash traversal class as GHSA-pgvm-wxw2-hrv9).
-		name := path.Clean(strings.TrimPrefix(p, "/"))
+		// fs.FS.Open() already assumes that file names are relative to FS root path and considers name with prefix `/`
+		// as invalid
+		name := filepath.ToSlash(filepath.Clean(strings.TrimPrefix(p, "/")))
 		fi, err := fs.Stat(fileSystem, name)
 		if err != nil {
 			return ErrNotFound
 		}
 
-		// If the request is for a directory and does not end with "/"
-		p = c.Request().URL.Path // path must not be empty.
+		// If the request is for a directory and does not end with "/" redirect to path which ends with "/"
+		p = c.Request().URL.Path
 		if fi.IsDir() && len(p) > 0 && p[len(p)-1] != '/' {
-			// Redirect to ends with "/"
-			return c.Redirect(http.StatusMovedPermanently, sanitizeURI(p+"/"))
+			// prefer RawPath in redirect to avoid inconsistency when router is possible already escaping or not escaping
+			// as we are redirecting to same path, except added "/" at the end the RawPath is more consistent behavior
+			redirectPath := cmp.Or(c.Request().URL.RawPath, c.Request().URL.Path)
+			return c.Redirect(http.StatusMovedPermanently, sanitizeURI(redirectPath+"/"))
 		}
 		return fsFile(c, name, fileSystem)
 	}
