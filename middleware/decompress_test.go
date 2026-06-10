@@ -215,8 +215,6 @@ func BenchmarkDecompress(b *testing.B) {
 	e := echo.New()
 	body := `{"name": "echo"}`
 	gz, _ := gzipString(body)
-	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(gz)))
-	req.Header.Set(echo.HeaderContentEncoding, GZIPEncoding)
 
 	h := Decompress()(func(c *echo.Context) error {
 		c.Response().Write([]byte(body)) // For Content-Type sniffing
@@ -228,6 +226,8 @@ func BenchmarkDecompress(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		// Decompress
+		req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(gz))
+		req.Header.Set(echo.HeaderContentEncoding, GZIPEncoding)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 		h(c)
