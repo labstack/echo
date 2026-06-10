@@ -68,6 +68,31 @@ func TestBodyLimitConfig_ToMiddleware(t *testing.T) {
 	assert.Equal(t, http.StatusRequestEntityTooLarge, he.StatusCode())
 }
 
+func TestBodyLimitAfterDecompressUsesDecodedSize(t *testing.T) {
+	e := echo.New()
+	body := "ok"
+	gz, err := gzipString(body)
+	assert.NoError(t, err)
+	assert.Greater(t, len(gz), len(body))
+
+	req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(gz))
+	req.Header.Set(echo.HeaderContentEncoding, GZIPEncoding)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	err = Decompress()(BodyLimit(int64(len(body)))(func(c *echo.Context) error {
+		body, readErr := io.ReadAll(c.Request().Body)
+		if readErr != nil {
+			return readErr
+		}
+		return c.String(http.StatusOK, string(body))
+	}))(c)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, body, rec.Body.String())
+}
+
 func TestBodyLimitReader(t *testing.T) {
 	hw := []byte("Hello, World!")
 

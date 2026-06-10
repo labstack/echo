@@ -120,6 +120,7 @@ func (config DecompressConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				// -1 means explicitly unlimited (not recommended)
 				c.Request().Body = gr
 			}
+			c.Request().ContentLength = -1
 
 			return next(c)
 		}
