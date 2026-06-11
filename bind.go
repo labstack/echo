@@ -224,7 +224,12 @@ func bindData(destination any, data map[string][]string, tag string, dataFiles m
 			}
 		}
 
-		inputValue, exists := data[inputFieldName]
+		var inputValue []string
+		var exists bool
+		inputValue, exists = data[inputFieldName]
+		if !exists {
+			inputValue, exists = data[inputFieldName+"[]"]
+		}
 		if !exists {
 			// Go json.Unmarshal supports case-insensitive binding.  However the
 			// url params are bound case-sensitive which is inconsistent.  To
