@@ -30,7 +30,7 @@ Echo supports the **latest four Go major releases** and may work with older vers
 These are frequently-requested items being discussed. Inclusion here is **not** a
 commitment — each still needs design agreement before implementation:
 
-- **Automatic `HEAD` for `GET` routes** (#2944, #2937) — opt-in, likely via an
+- **Automatic `HEAD` for `GET` routes** (#2895; see #2949) — opt-in, likely via an
   `OnAddRoute` hook so users keep control.
 - **Rate limiter response metadata** — expose `Retry-After` / remaining quota
   through the store interface (#2961).

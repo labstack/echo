@@ -13,7 +13,7 @@
 
 High performance, extensible, minimalist Go web framework.
 
-Echo is built on Go's standard `net/http` — handlers stay `http.Handler`-compatible — and adds the parts the standard library leaves to you: a fast radix-tree router, request binding and validation, a deep middleware ecosystem, and centralized error handling. Actively maintained, with `v5` as the current release line (see badges above for the latest version and most recent commit).
+Echo is built on Go's standard `net/http` — and interoperates with it via `echo.WrapHandler` / `echo.WrapMiddleware` — adding the parts the standard library leaves to you: a fast radix-tree router, request binding (with a pluggable validator), a deep middleware ecosystem, and centralized error handling. Actively maintained, with `v5` as the current release line (see badges above for the latest version and most recent commit).
 
 * [Official website](https://echo.labstack.com)
 * [Quick start](https://echo.labstack.com/docs/quick-start)
