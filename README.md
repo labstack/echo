@@ -1,3 +1,5 @@
+[![Latest release](https://img.shields.io/github/v/release/labstack/echo?style=flat-square&label=release&color=00afd1)](https://github.com/labstack/echo/releases)
+[![Last commit](https://img.shields.io/github/last-commit/labstack/echo/master?style=flat-square)](https://github.com/labstack/echo/commits/master)
 [![Sourcegraph](https://sourcegraph.com/github.com/labstack/echo/-/badge.svg?style=flat-square)](https://sourcegraph.com/github.com/labstack/echo?badge)
 [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://pkg.go.dev/github.com/labstack/echo/v5)
 [![Go Report Card](https://goreportcard.com/badge/github.com/labstack/echo?style=flat-square)](https://goreportcard.com/report/github.com/labstack/echo)
@@ -10,6 +12,8 @@
 ## Echo
 
 High performance, extensible, minimalist Go web framework.
+
+Echo is built on Go's standard `net/http` — and interoperates with it via `echo.WrapHandler` / `echo.WrapMiddleware` — adding the parts the standard library leaves to you: a fast radix-tree router, request binding (with a pluggable validator), a deep middleware ecosystem, and centralized error handling. Actively maintained, with `v5` as the current release line (see badges above for the latest version and most recent commit).
 
 * [Official website](https://echo.labstack.com)
 * [Quick start](https://echo.labstack.com/docs/quick-start)
@@ -52,6 +56,8 @@ Click [here](https://github.com/sponsors/labstack) for more information on spons
 - Latest major version of Echo is `v5` as of 2026-01-18.
   - See [API_CHANGES_V5.md](./API_CHANGES_V5.md) for public API changes between `v4` and `v5`, notes on upgrading.
 - Echo `v4` is supported with **security*** updates and **bug** fixes until **2026-12-31**
+
+See [ROADMAP.md](./ROADMAP.md) for where Echo is heading and the version support policy.
 
 ### Installation
 
