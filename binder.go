@@ -66,6 +66,9 @@ import (
 */
 
 // BindingError represents an error that occurred while binding request data.
+//
+// Note: JSON serialization is handled by the MarshalJSON method below, not by the
+// struct tags (which are kept for documentation). MarshalJSON emits {"field","message"}.
 type BindingError struct {
 	// Field is the field name where value binding failed
 	Field string `json:"field"`
@@ -86,6 +89,24 @@ func NewBindingError(sourceParam string, values []string, message string, err er
 // Error returns error message
 func (be *BindingError) Error() string {
 	return fmt.Sprintf("%s, field=%s", be.HTTPError.Error(), be.Field)
+}
+
+// MarshalJSON implements json.Marshaler so that binding errors are serialized into
+// a structured response (e.g. {"field":"id","message":"..."}) rather than being
+// flattened to a generic message. DefaultHTTPErrorHandler routes errors that
+// implement json.Marshaler through their own encoding.
+func (be *BindingError) MarshalJSON() ([]byte, error) {
+	message := be.Message
+	if message == "" {
+		message = http.StatusText(be.Code)
+	}
+	return json.Marshal(struct {
+		Field   string `json:"field"`
+		Message string `json:"message"`
+	}{
+		Field:   be.Field,
+		Message: message,
+	})
 }
 
 // ValueBinder provides utility methods for binding query or path parameter to various Go built-in types
