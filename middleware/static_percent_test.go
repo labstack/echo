@@ -39,3 +39,26 @@ func TestStatic_servesFileWithPercentInName(t *testing.T) {
 		assert.Equal(t, want, rec.Body.String(), "GET %s should return the file contents", url)
 	}
 }
+
+// Companion to #2599: not unescaping the already-decoded path must not weaken
+// traversal protection. A percent-encoded "../" must not escape the served root
+// (and notably must not be re-assembled from double-encoded input, as the old
+// double-unescape could do).
+func TestStatic_percentEncodedTraversalIsBlocked(t *testing.T) {
+	e := echo.New()
+	e.Use(StaticWithConfig(StaticConfig{
+		Root: "public",
+		Filesystem: fstest.MapFS{
+			"public/page.txt": &fstest.MapFile{Data: []byte("public page")},
+			"secret.txt":      &fstest.MapFile{Data: []byte("SECRET")},
+		},
+	}))
+
+	for _, url := range []string{"/..%2fsecret.txt", "/..%252fsecret.txt", "/%2e%2e%2fsecret.txt"} {
+		req := httptest.NewRequest(http.MethodGet, url, nil)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+		assert.NotEqual(t, http.StatusOK, rec.Code, "GET %s must not escape the served root", url)
+		assert.NotContains(t, rec.Body.String(), "SECRET", "GET %s must not leak files above the root", url)
+	}
+}
