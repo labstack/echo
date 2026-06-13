@@ -88,6 +88,24 @@ func (be *BindingError) Error() string {
 	return fmt.Sprintf("%s, field=%s", be.HTTPError.Error(), be.Field)
 }
 
+// MarshalJSON implements json.Marshaler so that binding errors are serialized into
+// a structured response (e.g. {"field":"id","message":"..."}) rather than being
+// flattened to a generic message. DefaultHTTPErrorHandler routes errors that
+// implement json.Marshaler through their own encoding.
+func (be *BindingError) MarshalJSON() ([]byte, error) {
+	message := be.Message
+	if message == "" {
+		message = http.StatusText(be.Code)
+	}
+	return json.Marshal(struct {
+		Field   string `json:"field"`
+		Message string `json:"message"`
+	}{
+		Field:   be.Field,
+		Message: message,
+	})
+}
+
 // ValueBinder provides utility methods for binding query or path parameter to various Go built-in types
 type ValueBinder struct {
 	// ValueFunc is used to get single parameter (first) value from request
