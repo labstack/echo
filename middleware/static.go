@@ -196,7 +196,10 @@ func (config StaticConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			}
 
 			p := c.Request().URL.Path
-			pathUnescape := true
+			// URL.Path is already decoded by net/http, so it must not be unescaped
+			// again (doing so breaks file names containing '%', see #2599). Only the
+			// wildcard param from a group route (set below) may still be escaped.
+			pathUnescape := false
 			if strings.HasSuffix(c.Path(), "*") { // When serving from a group, e.g. `/static*`.
 				p = c.Param("*")
 				pathUnescape = !config.DisablePathUnescaping // because router could already do PathUnescape
