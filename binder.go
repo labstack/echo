@@ -66,6 +66,9 @@ import (
 */
 
 // BindingError represents an error that occurred while binding request data.
+//
+// Note: JSON serialization is handled by the MarshalJSON method below, not by the
+// struct tags (which are kept for documentation). MarshalJSON emits {"field","message"}.
 type BindingError struct {
 	// Field is the field name where value binding failed
 	Field string `json:"field"`

@@ -33,3 +33,14 @@ func TestBindingError_serializesToStructuredJSON(t *testing.T) {
 	assert.Equal(t, "docNum", body["field"], "binding error response must retain the field name")
 	assert.Equal(t, "failed to bind field value to int", body["message"], "binding error response must retain the binder message")
 }
+
+// When the binding error carries no message, MarshalJSON falls back to the
+// status text (mirroring DefaultHTTPErrorHandler's *HTTPError branch).
+func TestBindingError_marshalJSON_emptyMessageFallsBackToStatusText(t *testing.T) {
+	be := &BindingError{Field: "name", HTTPError: &HTTPError{Code: http.StatusBadRequest}}
+
+	b, err := be.MarshalJSON()
+
+	assert.NoError(t, err)
+	assert.JSONEq(t, `{"field":"name","message":"Bad Request"}`, string(b))
+}
