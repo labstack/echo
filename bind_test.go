@@ -842,7 +842,7 @@ func TestDefaultBinder_BindToStructFromMixedSources(t *testing.T) {
 			givenURL:     "/api/real_node/endpoint?id=nope",
 			givenContent: strings.NewReader(`{"id": 1, "node": "zzz"}`),
 			expect:       &Opts{ID: 0, Node: "node_from_path"}, // path params binding has already modified bind target
-			expectError:  `code=400, message=Bad Request, err=strconv.ParseInt: parsing "nope": invalid syntax`,
+			expectError:  `code=400, message=Bad Request, err=id: strconv.ParseInt: parsing "nope": invalid syntax`,
 		},
 		{
 			name:         "nok, GET body bind failure - trying to bind json array to struct",
@@ -1196,7 +1196,7 @@ func TestBindUnmarshalParamExtras(t *testing.T) {
 		}{}
 		err := testBindURL("/?t=xxxx", &result)
 
-		assert.EqualError(t, err, `code=400, message=Bad Request, err='xxxx' is not an integer`)
+		assert.EqualError(t, err, `code=400, message=Bad Request, err=t: 'xxxx' is not an integer`)
 	})
 
 	t.Run("ok, target is struct", func(t *testing.T) {
@@ -1301,7 +1301,7 @@ func TestBindUnmarshalParams(t *testing.T) {
 		}{}
 		err := testBindURL("/?t=xxxx", &result)
 
-		assert.EqualError(t, err, "code=400, message=Bad Request, err='xxxx' is not an integer")
+		assert.EqualError(t, err, "code=400, message=Bad Request, err=t: 'xxxx' is not an integer")
 	})
 
 	t.Run("ok, target is struct", func(t *testing.T) {
@@ -1368,7 +1368,7 @@ func TestBindInt8(t *testing.T) {
 		}
 		p := target{}
 		err := testBindURL("/?v=x&v=2", &p)
-		assert.EqualError(t, err, `code=400, message=Bad Request, err=strconv.ParseInt: parsing "x": invalid syntax`)
+		assert.EqualError(t, err, `code=400, message=Bad Request, err=v: strconv.ParseInt: parsing "x": invalid syntax`)
 	})
 
 	t.Run("nok, int8 embedded in struct", func(t *testing.T) {
