@@ -19,6 +19,14 @@ type RateLimiterStore interface {
 	Allow(identifier string) (bool, error)
 }
 
+// RateLimiterStoreContext is an optional interface a RateLimiterStore may implement.
+// When the configured store implements it, the rate limiter calls AllowContext
+// (with the request context) instead of Allow, allowing the store to set response
+// headers such as Retry-After or X-RateLimit-* on the allow/deny decision.
+type RateLimiterStoreContext interface {
+	AllowContext(c *echo.Context, identifier string) (bool, error)
+}
+
 // RateLimiterConfig defines the configuration for the rate limiter
 type RateLimiterConfig struct {
 	Skipper    Skipper
@@ -136,7 +144,14 @@ func (config RateLimiterConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				return config.ErrorHandler(c, err)
 			}
 
-			if allow, allowErr := config.Store.Allow(identifier); !allow {
+			var allow bool
+			var allowErr error
+			if sc, ok := config.Store.(RateLimiterStoreContext); ok {
+				allow, allowErr = sc.AllowContext(c, identifier)
+			} else {
+				allow, allowErr = config.Store.Allow(identifier)
+			}
+			if !allow {
 				return config.DenyHandler(c, identifier, allowErr)
 			}
 			return next(c)
