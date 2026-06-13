@@ -73,11 +73,27 @@ type DefaultRouter struct {
 
 // RouterConfig is configuration options for (default) router
 type RouterConfig struct {
-	NotFoundHandler           HandlerFunc
-	MethodNotAllowedHandler   HandlerFunc
-	OptionsMethodHandler      HandlerFunc
-	AllowOverwritingRoute     bool
-	UnescapePathParamValues   bool
+	// NotFoundHandler is a handler that is executed when no route matches the request.
+	NotFoundHandler HandlerFunc
+
+	// MethodNotAllowedHandler is a handler that is executed when no route with exact METHOD matches the request but
+	// there is a route with same path but different method.
+	MethodNotAllowedHandler HandlerFunc
+
+	// OptionsMethodHandler is a handler that is executed when an OPTIONS request is made.
+	OptionsMethodHandler HandlerFunc
+
+	// AllowOverwritingRoute allows overwriting existing routes. If false, then adding a route with the same method
+	// and path will return an error.
+	AllowOverwritingRoute bool
+
+	// UnescapePathParamValues forces router to unescape path parameter values before setting them in context.
+	UnescapePathParamValues bool
+
+	// UseEscapedPathForMatching forces router to use an escaped path (req.URL.RawPath instead of req.URL.Path) for matching.
+	// Difference between URL.RawPath and URL.Path is:
+	//  * URL.Path is where request path is stored. Value is stored in decoded form: /%47%6f%2f becomes /Go/.
+	//  * URL.RawPath is an optional field which only gets set if the default encoding is different from Path.
 	UseEscapedPathForMatching bool
 }
 
@@ -446,8 +462,16 @@ func newAddRouteError(route Route, err error) *AddRouteError {
 // Add registers a new route for method and path with matching handler.
 func (r *DefaultRouter) Add(route Route) (RouteInfo, error) {
 	if route.Handler == nil {
-		return RouteInfo{}, newAddRouteError(route, errors.New("adding route without handler function"))
+		switch route.Method {
+		case RouteNotFound:
+			route.Handler = r.notFoundHandler
+		case http.MethodOptions:
+			route.Handler = r.optionsMethodHandler
+		default:
+			return RouteInfo{}, newAddRouteError(route, errors.New("adding route without handler function"))
+		}
 	}
+
 	method := route.Method
 	path := normalizePathSlash(route.Path)
 

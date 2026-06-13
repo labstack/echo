@@ -824,12 +824,12 @@ func TestEchoServeHTTPPathEncoding(t *testing.T) {
 func TestEchoGroup(t *testing.T) {
 	e := New()
 	buf := new(bytes.Buffer)
-	e.Use(MiddlewareFunc(func(next HandlerFunc) HandlerFunc {
+	e.Use(func(next HandlerFunc) HandlerFunc {
 		return func(c *Context) error {
 			buf.WriteString("0")
 			return next(c)
 		}
-	}))
+	})
 	h := func(c *Context) error {
 		return c.NoContent(http.StatusOK)
 	}

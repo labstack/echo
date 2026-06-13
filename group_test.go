@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGroup_withoutRouteWillNotExecuteMiddleware(t *testing.T) {
+func TestGroup_withoutRouteWillExecuteMiddleware(t *testing.T) {
 	e := New()
 
 	called := false
@@ -24,7 +24,29 @@ func TestGroup_withoutRouteWillNotExecuteMiddleware(t *testing.T) {
 			return c.NoContent(http.StatusTeapot)
 		}
 	}
-	// even though group has middleware it will not be executed when there are no routes under that group
+	// even though group has middleware it will be executed when there are no routes under that group
+	// because implicit routes ("" and "/*") are created for the group
+	_ = e.Group("/group", mw)
+
+	status, body := request(http.MethodGet, "/group/nope", e)
+	assert.Equal(t, http.StatusTeapot, status)
+	assert.Equal(t, "", body)
+
+	assert.True(t, called)
+}
+
+func TestGroup_withoutRouteWillNotExecuteMiddleware(t *testing.T) {
+	e := NewWithConfig(Config{NoGroupAutoRegister404Routes: true})
+
+	called := false
+	mw := func(next HandlerFunc) HandlerFunc {
+		return func(c *Context) error {
+			called = true
+			return c.NoContent(http.StatusTeapot)
+		}
+	}
+	// even though group has middleware it will be executed when there are no routes under that group
+	// because implicit routes ("" and "/*") are created for the group
 	_ = e.Group("/group", mw)
 
 	status, body := request(http.MethodGet, "/group/nope", e)
@@ -34,7 +56,7 @@ func TestGroup_withoutRouteWillNotExecuteMiddleware(t *testing.T) {
 	assert.False(t, called)
 }
 
-func TestGroup_withRoutesWillNotExecuteMiddlewareFor404(t *testing.T) {
+func TestGroup_withRoutesWillExecuteMiddlewareFor404(t *testing.T) {
 	e := New()
 
 	called := false
@@ -45,15 +67,17 @@ func TestGroup_withRoutesWillNotExecuteMiddlewareFor404(t *testing.T) {
 		}
 	}
 	// even though group has middleware and routes when we have no match on some route the middlewares for that
-	// group will not be executed
+	// group will be executed
 	g := e.Group("/group", mw)
 	g.GET("/yes", handlerFunc)
 
+	// route was `/group/yes` but we are requesting `/group/nope` which will result 404 by Router, but middleware will be
+	// not reach the handler and return 418
 	status, body := request(http.MethodGet, "/group/nope", e)
-	assert.Equal(t, http.StatusNotFound, status)
-	assert.Equal(t, `{"message":"Not Found"}`+"\n", body)
+	assert.Equal(t, http.StatusTeapot, status)
+	assert.Equal(t, "", body)
 
-	assert.False(t, called)
+	assert.True(t, called)
 }
 
 func TestGroup_multiLevelGroup(t *testing.T) {
@@ -407,7 +431,9 @@ func TestGroup_Match(t *testing.T) {
 }
 
 func TestGroup_MatchWithErrors(t *testing.T) {
-	e := New()
+	e := NewWithConfig(Config{
+		Router: NewRouter(RouterConfig{AllowOverwritingRoute: false}), // to trigger "duplicate route" error
+	})
 
 	users := e.Group("/users")
 	users.GET("/activate", func(c *Context) error {
@@ -752,25 +778,25 @@ func TestGroup_RouteNotFoundWithMiddleware(t *testing.T) {
 			name:                   "ok, custom 404 handler is called with middleware",
 			givenCustom404:         true,
 			whenURL:                "/group/test3",
-			expectBody:             "404 GET /group/*",
+			expectBody:             "404 (local) GET /group/*",
 			expectCode:             http.StatusNotFound,
 			expectMiddlewareCalled: true, // because RouteNotFound is added after middleware is added
 		},
 		{
-			name:                   "ok, default group 404 handler is not called with middleware",
+			name:                   "ok, default group 404 handler is called with middleware",
 			givenCustom404:         false,
 			whenURL:                "/group/test3",
-			expectBody:             "404 GET /*",
+			expectBody:             "404 (global) GET /group/*",
 			expectCode:             http.StatusNotFound,
-			expectMiddlewareCalled: false, // because RouteNotFound is added before middleware is added
+			expectMiddlewareCalled: true, // because RouteNotFound is added before middleware is added
 		},
 		{
 			name:                   "ok, (no slash) default group 404 handler is called with middleware",
 			givenCustom404:         false,
 			whenURL:                "/group",
-			expectBody:             "404 GET /*",
+			expectBody:             "404 (global) GET /group",
 			expectCode:             http.StatusNotFound,
-			expectMiddlewareCalled: false, // because RouteNotFound is added before middleware is added
+			expectMiddlewareCalled: true, // because RouteNotFound is added before middleware is added
 		},
 	}
 	for _, tc := range testCases {
@@ -779,13 +805,23 @@ func TestGroup_RouteNotFoundWithMiddleware(t *testing.T) {
 			okHandler := func(c *Context) error {
 				return c.String(http.StatusOK, c.Request().Method+" "+c.Path())
 			}
-			notFoundHandler := func(c *Context) error {
-				return c.String(http.StatusNotFound, "404 "+c.Request().Method+" "+c.Path())
+			old404 := notFoundHandler
+			defer func() { notFoundHandler = old404 }()
+
+			localNotFoundHandler := func(c *Context) error {
+				return c.String(http.StatusNotFound, "404 (local) "+c.Request().Method+" "+c.Path())
 			}
 
-			e := New()
+			e := NewWithConfig(Config{
+				Router: NewRouter(RouterConfig{
+					AllowOverwritingRoute: true,
+					NotFoundHandler: func(c *Context) error {
+						return c.String(http.StatusNotFound, "404 (global) "+c.Request().Method+" "+c.Path())
+					},
+				}),
+			})
 			e.GET("/test1", okHandler)
-			e.RouteNotFound("/*", notFoundHandler)
+			e.RouteNotFound("/*", localNotFoundHandler)
 
 			g := e.Group("/group")
 			g.GET("/test1", okHandler)
@@ -798,7 +834,7 @@ func TestGroup_RouteNotFoundWithMiddleware(t *testing.T) {
 				}
 			})
 			if tc.givenCustom404 {
-				g.RouteNotFound("/*", notFoundHandler)
+				g.RouteNotFound("/*", localNotFoundHandler)
 			}
 
 			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
