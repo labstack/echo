@@ -7,6 +7,7 @@ import (
 	"encoding"
 	"encoding/xml"
 	"errors"
+	"fmt"
 	"mime/multipart"
 	"net/http"
 	"reflect"
@@ -249,7 +250,7 @@ func bindData(destination any, data map[string][]string, tag string, dataFiles m
 		// try unmarshalling first, in case we're dealing with an alias to an array type
 		if ok, err := unmarshalInputsToField(typeField.Type.Kind(), inputValue, structField); ok {
 			if err != nil {
-				return err
+				return fmt.Errorf("%s: %w", inputFieldName, err)
 			}
 			continue
 		}
@@ -257,7 +258,7 @@ func bindData(destination any, data map[string][]string, tag string, dataFiles m
 		formatTag := typeField.Tag.Get("format")
 		if ok, err := unmarshalInputToField(typeField.Type.Kind(), inputValue[0], structField, formatTag); ok {
 			if err != nil {
-				return err
+				return fmt.Errorf("%s: %w", inputFieldName, err)
 			}
 			continue
 		}
@@ -275,7 +276,7 @@ func bindData(destination any, data map[string][]string, tag string, dataFiles m
 			slice := reflect.MakeSlice(structField.Type(), numElems, numElems)
 			for j := range numElems {
 				if err := setWithProperType(sliceOf, inputValue[j], slice.Index(j)); err != nil {
-					return err
+					return fmt.Errorf("%s: %w", inputFieldName, err)
 				}
 			}
 			structField.Set(slice)
@@ -283,7 +284,7 @@ func bindData(destination any, data map[string][]string, tag string, dataFiles m
 		}
 
 		if err := setWithProperType(structFieldKind, inputValue[0], structField); err != nil {
-			return err
+			return fmt.Errorf("%s: %w", inputFieldName, err)
 		}
 	}
 	return nil
