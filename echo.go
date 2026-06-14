@@ -96,6 +96,14 @@ type Echo struct {
 	// middleware are middlewares that are called after routing is done and before handler is called
 	middleware []MiddlewareFunc
 
+	// chain is the global middleware chain (e.middleware) compiled once and reused for every request.
+	// It terminates in a dispatcher that invokes the route handler stored on the Context during routing.
+	// Rebuilt by Use(). See buildRouterChains.
+	chain HandlerFunc
+	// preChain is the pre-middleware chain (e.premiddleware) compiled once. It performs routing and then
+	// invokes chain. Rebuilt by Pre()/Use(). Only used when premiddleware is registered.
+	preChain HandlerFunc
+
 	contextPathParamAllocSize atomic.Int32
 
 	// formParseMaxMemory is passed to Context for multipart form parsing (See http.Request.ParseMultipartForm)
@@ -347,7 +355,26 @@ func New() *Echo {
 	e.contextPool.New = func() any {
 		return newContext(nil, nil, e)
 	}
+	e.buildRouterChains()
 	return e
+}
+
+// buildRouterChains compiles the global and pre-middleware chains once so that ServeHTTP does not have to
+// re-wrap middleware closures on every request. It must be called whenever e.middleware or e.premiddleware
+// changes (i.e. from Use/Pre). This is safe because middleware must not be mutated after the server starts.
+func (e *Echo) buildRouterChains() {
+	// dispatch is the terminal of the global chain: it invokes the handler resolved during routing.
+	dispatch := func(c *Context) error {
+		return c.handler(c)
+	}
+	e.chain = applyMiddleware(dispatch, e.middleware...)
+
+	// route performs routing (storing the matched handler on the Context) and then runs the global chain.
+	route := func(c *Context) error {
+		c.handler = e.router.Route(c)
+		return e.chain(c)
+	}
+	e.preChain = applyMiddleware(route, e.premiddleware...)
 }
 
 // NewContext returns a new Context instance.
@@ -425,11 +452,13 @@ func DefaultHTTPErrorHandler(exposeError bool) HTTPErrorHandler {
 // Meaning middleware is executed even for 404 (not found) cases.
 func (e *Echo) Pre(middleware ...MiddlewareFunc) {
 	e.premiddleware = append(e.premiddleware, middleware...)
+	e.buildRouterChains()
 }
 
 // Use adds middleware to the chain which is run after router has found matching route and before route/request handler method is executed.
 func (e *Echo) Use(middleware ...MiddlewareFunc) {
 	e.middleware = append(e.middleware, middleware...)
+	e.buildRouterChains()
 }
 
 // CONNECT registers a new CONNECT route for a path with matching handler in the
@@ -702,20 +731,18 @@ func (e *Echo) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	defer e.contextPool.Put(c)
 
 	c.Reset(r, w)
-	var h HandlerFunc
 
+	// The global (e.chain) and pre-middleware (e.preChain) chains are compiled once in buildRouterChains and
+	// reused here, so no middleware closures are allocated per request.
+	var err error
 	if e.premiddleware == nil {
-		h = applyMiddleware(e.router.Route(c), e.middleware...)
+		c.handler = e.router.Route(c)
+		err = e.chain(c)
 	} else {
-		h = func(cc *Context) error {
-			h1 := applyMiddleware(e.router.Route(cc), e.middleware...)
-			return h1(cc)
-		}
-		h = applyMiddleware(h, e.premiddleware...)
+		err = e.preChain(c)
 	}
 
-	// Execute chain
-	if err := h(c); err != nil {
+	if err != nil {
 		e.HTTPErrorHandler(c, err)
 	}
 }
