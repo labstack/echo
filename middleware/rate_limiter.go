@@ -7,6 +7,7 @@ import (
 	"errors"
 	"math"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -14,9 +15,23 @@ import (
 	"golang.org/x/time/rate"
 )
 
+// Rate limit response headers set by stores that implement RateLimiterStoreContext.
+const (
+	HeaderXRateLimitLimit     = "X-RateLimit-Limit"
+	HeaderXRateLimitRemaining = "X-RateLimit-Remaining"
+)
+
 // RateLimiterStore is the interface to be implemented by custom stores.
 type RateLimiterStore interface {
 	Allow(identifier string) (bool, error)
+}
+
+// RateLimiterStoreContext is an optional interface a RateLimiterStore may implement.
+// When the configured store implements it, the rate limiter calls AllowContext
+// (with the request context) instead of Allow, allowing the store to set response
+// headers such as Retry-After or X-RateLimit-* on the allow/deny decision.
+type RateLimiterStoreContext interface {
+	AllowContext(c *echo.Context, identifier string) (bool, error)
 }
 
 // RateLimiterConfig defines the configuration for the rate limiter
@@ -136,7 +151,14 @@ func (config RateLimiterConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				return config.ErrorHandler(c, err)
 			}
 
-			if allow, allowErr := config.Store.Allow(identifier); !allow {
+			var allow bool
+			var allowErr error
+			if sc, ok := config.Store.(RateLimiterStoreContext); ok {
+				allow, allowErr = sc.AllowContext(c, identifier)
+			} else {
+				allow, allowErr = config.Store.Allow(identifier)
+			}
+			if !allow {
 				return config.DenyHandler(c, identifier, allowErr)
 			}
 			return next(c)
@@ -232,7 +254,22 @@ var DefaultRateLimiterMemoryStoreConfig = RateLimiterMemoryStoreConfig{
 
 // Allow implements RateLimiterStore.Allow
 func (store *RateLimiterMemoryStore) Allow(identifier string) (bool, error) {
+	_, allowed := store.allow(identifier)
+	return allowed, nil
+}
+
+// AllowContext implements RateLimiterStoreContext: it makes the allow/deny decision
+// and sets the X-RateLimit-* (and Retry-After when denied) response headers.
+func (store *RateLimiterMemoryStore) AllowContext(c *echo.Context, identifier string) (bool, error) {
+	limiter, allowed := store.allow(identifier)
+	store.setRateLimitHeaders(c, limiter, allowed)
+	return allowed, nil
+}
+
+func (store *RateLimiterMemoryStore) allow(identifier string) (*rate.Limiter, bool) {
 	store.mutex.Lock()
+	defer store.mutex.Unlock()
+
 	limiter, exists := store.visitors[identifier]
 	if !exists {
 		limiter = new(Visitor)
@@ -244,9 +281,26 @@ func (store *RateLimiterMemoryStore) Allow(identifier string) (bool, error) {
 	if now.Sub(store.lastCleanup) > store.expiresIn {
 		store.cleanupStaleVisitors(now)
 	}
-	allowed := limiter.AllowN(now, 1)
-	store.mutex.Unlock()
-	return allowed, nil
+	return limiter.Limiter, limiter.AllowN(now, 1)
+}
+
+func (store *RateLimiterMemoryStore) setRateLimitHeaders(c *echo.Context, limiter *rate.Limiter, allowed bool) {
+	header := c.Response().Header()
+	header.Set(HeaderXRateLimitLimit, strconv.Itoa(store.burst))
+
+	remaining := int(math.Floor(limiter.Tokens()))
+	if remaining < 0 {
+		remaining = 0
+	}
+	header.Set(HeaderXRateLimitRemaining, strconv.Itoa(remaining))
+
+	if !allowed {
+		reservation := limiter.ReserveN(store.timeNow(), 1)
+		if delay := reservation.Delay(); delay > 0 {
+			header.Set(echo.HeaderRetryAfter, strconv.Itoa(int(math.Ceil(delay.Seconds()))))
+		}
+		reservation.Cancel()
+	}
 }
 
 /*
