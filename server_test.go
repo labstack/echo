@@ -54,7 +54,7 @@ func waitForServerStart(addrChan <-chan string, errCh <-chan error) (string, err
 		case addr := <-addrChan:
 			return addr, nil
 		case err := <-errCh:
-			if err == http.ErrServerClosed { // was closed normally before listener callback was called. should not be possible
+			if errors.Is(err, http.ErrServerClosed) { // was closed normally before listener callback was called. should not be possible
 				return "", nil
 			}
 			// failed to start and we did not manage to get even listener part.
@@ -522,7 +522,7 @@ func TestStartConfig_WithHideBanner(t *testing.T) {
 				},
 			}
 
-			if err := s.Start(ctx, e); err != http.ErrServerClosed {
+			if err := s.Start(ctx, e); !errors.Is(err, http.ErrServerClosed) {
 				assert.NoError(t, err)
 			}
 			assert.NoError(t, <-errCh)
@@ -581,7 +581,7 @@ func TestStartConfig_WithHidePort(t *testing.T) {
 					addrChan <- addr.String()
 				},
 			}
-			if err := s.Start(ctx, e); err != http.ErrServerClosed {
+			if err := s.Start(ctx, e); !errors.Is(err, http.ErrServerClosed) {
 				assert.NoError(t, err)
 			}
 			assert.NoError(t, <-errCh)

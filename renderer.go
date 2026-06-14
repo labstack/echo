@@ -27,6 +27,6 @@ type TemplateRenderer struct {
 }
 
 // Render renders the template with given data.
-func (t *TemplateRenderer) Render(c *Context, w io.Writer, name string, data any) error {
+func (t *TemplateRenderer) Render(_ *Context, w io.Writer, name string, data any) error {
 	return t.Template.ExecuteTemplate(w, name, data)
 }

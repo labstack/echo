@@ -286,11 +286,11 @@ func (config CORSConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 	}, nil
 }
 
-func (config CORSConfig) starAllowOriginFunc(c *echo.Context, origin string) (string, bool, error) {
+func (config CORSConfig) starAllowOriginFunc(_ *echo.Context, _ string) (string, bool, error) {
 	return "*", true, nil
 }
 
-func (config CORSConfig) defaultAllowOriginFunc(c *echo.Context, origin string) (string, bool, error) {
+func (config CORSConfig) defaultAllowOriginFunc(_ *echo.Context, origin string) (string, bool, error) {
 	for _, allowedOrigin := range config.AllowOrigins {
 		if strings.EqualFold(allowedOrigin, origin) {
 			return allowedOrigin, true, nil
