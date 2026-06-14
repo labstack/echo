@@ -6,6 +6,7 @@ package middleware
 import (
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
 	"github.com/labstack/echo/v5"
@@ -51,4 +52,38 @@ func TestRateLimiter_storeAllowContextIsPreferred(t *testing.T) {
 	assert.True(t, store.ctxAllowCalled, "AllowContext should be called when implemented")
 	assert.False(t, store.allowCalled, "Allow should not be called when AllowContext is implemented")
 	assert.Equal(t, "42", rec.Header().Get("Retry-After"), "store should be able to set headers via the context")
+}
+
+// The built-in memory store implements AllowContext, so it sets X-RateLimit-Limit /
+// X-RateLimit-Remaining on every request and Retry-After when the limit is hit (#2961).
+func TestRateLimiterMemoryStore_AllowContextSetsHeaders(t *testing.T) {
+	store := NewRateLimiterMemoryStoreWithConfig(RateLimiterMemoryStoreConfig{Rate: 1, Burst: 3})
+	e := echo.New()
+	e.GET("/", func(c *echo.Context) error { return c.String(http.StatusOK, "ok") },
+		RateLimiterWithConfig(RateLimiterConfig{
+			Store:               store,
+			IdentifierExtractor: func(c *echo.Context) (string, error) { return "id", nil },
+		}))
+
+	do := func() *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+		return rec
+	}
+
+	// Burst of 3: each allowed request advertises the limit and decreasing remaining.
+	for i := 0; i < 3; i++ {
+		rec := do()
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, "3", rec.Header().Get(HeaderXRateLimitLimit))
+		assert.Equal(t, strconv.Itoa(2-i), rec.Header().Get(HeaderXRateLimitRemaining))
+		assert.Empty(t, rec.Header().Get(echo.HeaderRetryAfter))
+	}
+
+	// 4th request is denied: 429, remaining 0, and a Retry-After hint.
+	rec := do()
+	assert.Equal(t, http.StatusTooManyRequests, rec.Code)
+	assert.Equal(t, "0", rec.Header().Get(HeaderXRateLimitRemaining))
+	assert.NotEmpty(t, rec.Header().Get(echo.HeaderRetryAfter))
 }
