@@ -140,13 +140,16 @@ func TestEcho_StaticFS(t *testing.T) {
 			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
 		},
 		{
-			name:                 "open redirect vulnerability",
+			// An encoded slash (%2f) is rejected outright (GHSA-vfp3-v2gw-7wfq): the router matches
+			// on the raw path so %2f is not a separator, and unescaping it here would let it act as
+			// one. No redirect is emitted, closing the open-redirect vector.
+			name:                 "encoded slash is rejected, not redirected",
 			givenPrefix:          "/",
 			givenFs:              os.DirFS("_fixture/"),
 			whenURL:              "/open.redirect.hackercom%2f..",
-			expectStatus:         http.StatusMovedPermanently,
-			expectHeaderLocation: "/open.redirect.hackercom/../", // location starting with `//open` would be very bad
-			expectBodyStartsWith: "",
+			expectStatus:         http.StatusNotFound,
+			expectHeaderLocation: "",
+			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
 		},
 	}
 
