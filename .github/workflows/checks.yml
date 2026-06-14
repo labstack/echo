@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - master
+      - v4
   pull_request:
     branches:
       - master
+      - v4
   workflow_dispatch:
 
 permissions:
