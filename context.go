@@ -19,6 +19,30 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"unsafe"
+)
+
+// stringToBytes returns a []byte view over s without copying, avoiding the allocation+copy of []byte(s)
+// on the response write path (the zero-copy technique used by fasthttp/fiber).
+//
+// Contract — all of the following must hold at every call site:
+//   - The result is read-only: writing through it is undefined behaviour.
+//   - The callee must NOT retain the slice beyond the call. It is only passed to the response
+//     Writer's Write, whose io.Writer contract forbids retaining/mutating the argument. Note the
+//     concrete writer may be a wrapping ResponseWriter (e.g. gzip); such writers must copy, not alias.
+//   - s must stay reachable for as long as the slice is used: the slice aliases s's backing array.
+func stringToBytes(s string) []byte {
+	if s == "" {
+		return nil
+	}
+	return unsafe.Slice(unsafe.StringData(s), len(s))
+}
+
+// jsonpOpen and jsonpClose are the constant byte wrappers for JSONP payloads, kept as package-level
+// slices to avoid allocating them on every JSONP response.
+var (
+	jsonpOpen  = []byte("(")
+	jsonpClose = []byte(");")
 )
 
 const (
@@ -49,6 +73,16 @@ type Context struct {
 	route      *RouteInfo
 	pathValues *PathValues
 
+	// handler is the route handler resolved during routing. It is invoked by the terminal of the global
+	// middleware chain (see Echo.buildRouterChains) so that the chain can be compiled once and reused.
+	handler HandlerFunc
+
+	// dsw is reused by json() so that each JSON response does not heap-allocate a delayedStatusWriter.
+	// It lives on the pooled Context; &c.dsw is a stable, allocation-free pointer. Only json() may point
+	// the response at &c.dsw, and only via the nested-call guard there — aliasing it to itself (wrapping
+	// &c.dsw around &c.dsw) would make the response writer reference itself.
+	dsw delayedStatusWriter
+
 	store  map[string]any
 	echo   *Echo
 	logger *slog.Logger
@@ -73,9 +107,9 @@ func NewContext(r *http.Request, w http.ResponseWriter, opts ...any) *Context {
 }
 
 func newContext(r *http.Request, w http.ResponseWriter, e *Echo) *Context {
+	// store is created lazily by Set and cleared (not freed) by Reset, so we deliberately do not allocate a map here.
 	c := &Context{
 		pathValues: nil,
-		store:      make(map[string]any),
 		echo:       e,
 		logger:     nil,
 	}
@@ -109,10 +143,14 @@ func (c *Context) Reset(r *http.Request, w http.ResponseWriter) {
 	c.orgResponse.reset(w)
 	c.response = c.orgResponse
 	c.query = nil
-	c.store = nil
+	// clear (rather than nil) keeps the map allocated on the pooled Context so that requests using Set
+	// do not allocate a fresh map each time. clear(nil) is a no-op.
+	clear(c.store)
 	c.logger = c.echo.Logger
 
 	c.route = nil
+	c.handler = nil
+	c.dsw = delayedStatusWriter{}
 	c.path = ""
 	// NOTE: empty by setting length to 0. PathValues has to have capacity of c.echo.contextPathParamAllocSize at all times
 	*c.pathValues = (*c.pathValues)[:0]
@@ -297,10 +335,38 @@ func (c *Context) setPathValues(pv *PathValues) {
 
 // QueryParam returns the query param for the provided name.
 func (c *Context) QueryParam(name string) string {
-	if c.query == nil {
-		c.query = c.request.URL.Query()
+	// If the full query map was already built (e.g. by QueryParams), use it. Otherwise look the single
+	// key up directly from the raw query, avoiding the url.Values map allocation for the common case of
+	// reading only a few params. The result is identical to url.Values.Get on the parsed query.
+	if c.query != nil {
+		return c.query.Get(name)
 	}
-	return c.query.Get(name)
+	return getRawQueryParam(c.request.URL.RawQuery, name)
+}
+
+// getRawQueryParam returns the first value for name parsed directly from a raw URL query string. It
+// matches url.Values.Get over url.ParseQuery output: first match wins, '+' decodes to space, percent
+// escapes are decoded, segments containing ';' are skipped, and pairs whose key or value fail to
+// unescape are skipped. It avoids allocating the full url.Values map for single-key lookups.
+func getRawQueryParam(query, name string) string {
+	for query != "" {
+		var seg string
+		seg, query, _ = strings.Cut(query, "&")
+		if seg == "" || strings.Contains(seg, ";") {
+			continue
+		}
+		key, value, _ := strings.Cut(seg, "=")
+		k, err := url.QueryUnescape(key)
+		if err != nil || k != name {
+			continue
+		}
+		v, err := url.QueryUnescape(value)
+		if err != nil {
+			continue
+		}
+		return v
+	}
+	return ""
 }
 
 // QueryParamOr returns the query param or default value for the provided name.
@@ -390,20 +456,21 @@ func (c *Context) Cookies() []*http.Cookie {
 // Get retrieves data from the context.
 // Method returns any(nil) when key does not exist which is different from typed nil (eg. []byte(nil)).
 func (c *Context) Get(key string) any {
+	// Unlock without defer to avoid the deferred-call overhead on this hot path.
 	c.lock.RLock()
-	defer c.lock.RUnlock()
-	return c.store[key]
+	v := c.store[key]
+	c.lock.RUnlock()
+	return v
 }
 
 // Set saves data in the context.
 func (c *Context) Set(key string, val any) {
 	c.lock.Lock()
-	defer c.lock.Unlock()
-
 	if c.store == nil {
 		c.store = make(map[string]any)
 	}
 	c.store[key] = val
+	c.lock.Unlock()
 }
 
 // Bind binds path params, query params and the request body into provided type `i`. The default binder
@@ -445,7 +512,7 @@ func (c *Context) Render(code int, name string, data any) (err error) {
 
 // HTML sends an HTTP response with status code.
 func (c *Context) HTML(code int, html string) (err error) {
-	return c.HTMLBlob(code, []byte(html))
+	return c.HTMLBlob(code, stringToBytes(html))
 }
 
 // HTMLBlob sends an HTTP blob response with status code.
@@ -455,19 +522,22 @@ func (c *Context) HTMLBlob(code int, b []byte) (err error) {
 
 // String sends a string response with status code.
 func (c *Context) String(code int, s string) (err error) {
-	return c.Blob(code, MIMETextPlainCharsetUTF8, []byte(s))
+	return c.Blob(code, MIMETextPlainCharsetUTF8, stringToBytes(s))
 }
 
 func (c *Context) jsonPBlob(code int, callback string, i any) (err error) {
 	c.writeContentType(MIMEApplicationJavaScriptCharsetUTF8)
 	c.response.WriteHeader(code)
-	if _, err = c.response.Write([]byte(callback + "(")); err != nil {
+	if _, err = c.response.Write(stringToBytes(callback)); err != nil {
+		return
+	}
+	if _, err = c.response.Write(jsonpOpen); err != nil {
 		return
 	}
 	if err = c.echo.JSONSerializer.Serialize(c, i, ""); err != nil {
 		return
 	}
-	if _, err = c.response.Write([]byte(");")); err != nil {
+	if _, err = c.response.Write(jsonpClose); err != nil {
 		return
 	}
 	return
@@ -480,7 +550,16 @@ func (c *Context) json(code int, i any, indent string) error {
 	// (global) error handler decides correct status code for the error to be sent to the client.
 	// For that we need to use writer that can store the proposed status code until the first Write is called.
 	resp := c.Response()
-	c.SetResponse(&delayedStatusWriter{ResponseWriter: resp, status: code})
+	// Reuse the Context-owned delayedStatusWriter to avoid heap-allocating one per JSON response.
+	// If we are already nested inside a delayed write (rare: a serializer or handler calling c.JSON
+	// re-entrantly), allocate a fresh writer so the outer call's writer (which is &c.dsw) is not
+	// clobbered — reusing c.dsw here would make it reference itself.
+	if _, nested := resp.(*delayedStatusWriter); nested {
+		c.SetResponse(&delayedStatusWriter{ResponseWriter: resp, status: code})
+	} else {
+		c.dsw = delayedStatusWriter{ResponseWriter: resp, status: code}
+		c.SetResponse(&c.dsw)
+	}
 	defer c.SetResponse(resp)
 
 	return c.echo.JSONSerializer.Serialize(c, i, indent)
@@ -512,13 +591,16 @@ func (c *Context) JSONP(code int, callback string, i any) (err error) {
 func (c *Context) JSONPBlob(code int, callback string, b []byte) (err error) {
 	c.writeContentType(MIMEApplicationJavaScriptCharsetUTF8)
 	c.response.WriteHeader(code)
-	if _, err = c.response.Write([]byte(callback + "(")); err != nil {
+	if _, err = c.response.Write(stringToBytes(callback)); err != nil {
+		return
+	}
+	if _, err = c.response.Write(jsonpOpen); err != nil {
 		return
 	}
 	if _, err = c.response.Write(b); err != nil {
 		return
 	}
-	_, err = c.response.Write([]byte(");"))
+	_, err = c.response.Write(jsonpClose)
 	return
 }
 

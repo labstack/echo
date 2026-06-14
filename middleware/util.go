@@ -50,12 +50,35 @@ const randomStringCharset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxy
 const randomStringCharsetLen = 52 // len(randomStringCharset)
 const randomStringMaxByte = 255 - (256 % randomStringCharsetLen)
 
+// randStringScratch holds the reusable working buffers for randomString so that ID generation does not
+// allocate scratch slices on every request (only the returned string is allocated). The buffers grow to
+// the largest requested length and are reused via randStringScratchPool.
+type randStringScratch struct {
+	b []byte // output bytes (copied into the returned string)
+	r []byte // random source bytes read from crypto/rand
+}
+
+var randStringScratchPool = sync.Pool{New: func() any { return new(randStringScratch) }}
+
 func randomString(length uint8) string {
 	reader := randomReaderPool.Get().(*bufio.Reader)
 	defer randomReaderPool.Put(reader)
+	sc := randStringScratchPool.Get().(*randStringScratch)
+	defer randStringScratchPool.Put(sc)
 
-	b := make([]byte, length)
-	r := make([]byte, length+(length/4)) // perf: avoid read from rand.Reader many times
+	n := int(length)
+	if cap(sc.b) < n {
+		sc.b = make([]byte, n)
+	} else {
+		sc.b = sc.b[:n]
+	}
+	rlen := n + n/4 // perf: avoid read from rand.Reader many times
+	if cap(sc.r) < rlen {
+		sc.r = make([]byte, rlen)
+	} else {
+		sc.r = sc.r[:rlen]
+	}
+	b, r := sc.b, sc.r
 	var i uint8 = 0
 
 	// security note:
@@ -77,7 +100,7 @@ func randomString(length uint8) string {
 			b[i] = randomStringCharset[rb%randomStringCharsetLen]
 			i++
 			if i == length {
-				return string(b)
+				return string(b[:length])
 			}
 		}
 	}
