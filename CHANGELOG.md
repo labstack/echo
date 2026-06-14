@@ -1,5 +1,14 @@
 # Changelog
 
+## v4.15.3 - 2026-06-14
+
+**Security**
+
+* fix(static): reject encoded path separators that bypass route-level middleware by @vishr in https://github.com/labstack/echo/pull/3011
+
+Fixes [GHSA-vfp3-v2gw-7wfq](https://github.com/labstack/echo/security/advisories/GHSA-vfp3-v2gw-7wfq): an encoded path separator (`%2F` or `%5C`) in a static file URL could bypass route-level middleware (e.g. authentication on a sibling route) and disclose static files. Both `StaticDirectoryHandler` (used by `Static`/`StaticFS`) and the `Static` middleware are affected. Backport of the v5 fix (#3009). Thanks to @a-tt-om and @oran-gugu for reporting.
+
+
 ## v4.15.2 - 2026-05-01
 
 **Security**
