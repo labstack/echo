@@ -280,6 +280,35 @@ func TestStatic(t *testing.T) {
 	}
 }
 
+// Regression for GHSA-vfp3-v2gw-7wfq: the static middleware mounted on a group
+// must not let an encoded separator in the wildcard bypass route-level middleware
+// and disclose a file the matched route never authorized.
+func TestStatic_EncodedSeparatorDoesNotBypassRoute(t *testing.T) {
+	fsys := fstest.MapFS{
+		"admin/secret.txt": {Data: []byte("TOP-SECRET")},
+		"index.html":       {Data: []byte("public")},
+	}
+	e := echo.New()
+	g := e.Group("/files", StaticWithConfig(StaticConfig{Filesystem: fsys}))
+	g.GET("/*", func(c *echo.Context) error { return echo.ErrNotFound })
+
+	cases := []struct {
+		target   string
+		wantCode int
+	}{
+		{"/files/index.html", http.StatusOK},
+		{"/files/admin%2Fsecret.txt", http.StatusNotFound},
+		{"/files/admin%5Csecret.txt", http.StatusNotFound},
+	}
+	for _, tc := range cases {
+		req := httptest.NewRequest(http.MethodGet, tc.target, nil)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+		assert.Equal(t, tc.wantCode, rec.Code, "GET %s", tc.target)
+		assert.NotContains(t, rec.Body.String(), "TOP-SECRET", "GET %s leaked protected file", tc.target)
+	}
+}
+
 func TestMustStaticWithConfig_panicsInvalidDirListTemplate(t *testing.T) {
 	assert.Panics(t, func() {
 		StaticWithConfig(StaticConfig{DirectoryListTemplate: `{{}`})

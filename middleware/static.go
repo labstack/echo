@@ -18,6 +18,7 @@ import (
 	"sync"
 
 	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v5/internal/pathutil"
 )
 
 // StaticConfig defines the config for Static middleware.
@@ -205,6 +206,14 @@ func (config StaticConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				pathUnescape = !config.DisablePathUnescaping // because router could already do PathUnescape
 			}
 			if pathUnescape {
+				// The router matched on the raw, still-encoded path (by default), so an encoded
+				// path separator in the wildcard would only now become a real separator and
+				// resolve a file the matched route never authorized, bypassing route-level
+				// middleware. Reject it before unescaping (see echo.StaticDirectoryHandler).
+				if pathutil.HasEncodedPathSeparator(p) {
+					return echo.NewHTTPError(http.StatusNotFound, http.StatusText(http.StatusNotFound)).
+						Wrap(fmt.Errorf("rejected encoded path separator in static path %q", p))
+				}
 				p, err = url.PathUnescape(p)
 				if err != nil {
 					return err

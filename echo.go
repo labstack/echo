@@ -53,11 +53,14 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
+
+	"github.com/labstack/echo/v5/internal/pathutil"
 )
 
 // Echo is the top-level framework instance.
@@ -589,6 +592,16 @@ func StaticDirectoryHandler(fileSystem fs.FS, disablePathUnescaping bool) Handle
 	return func(c *Context) error {
 		p := c.Param("*")
 		if !disablePathUnescaping { // when router is already unescaping we do not want to do is twice
+			// By default the router matches routes against the raw, still-encoded request path
+			// (unless UseEscapedPathForMatching is enabled), so an encoded path separator is not
+			// treated as a segment boundary during routing. Unescaping it here would let it act as
+			// a separator and resolve a file outside the path the router authorized, bypassing
+			// route-level middleware (e.g. auth on a sibling route). No real filename contains a
+			// separator, so reject it as not found, carrying the reason internally for operators.
+			if pathutil.HasEncodedPathSeparator(p) {
+				return NewHTTPError(http.StatusNotFound, http.StatusText(http.StatusNotFound)).
+					Wrap(fmt.Errorf("rejected encoded path separator in static path %q", p))
+			}
 			tmpPath, err := url.PathUnescape(p)
 			if err != nil {
 				return fmt.Errorf("failed to unescape path variable: %w", err)
@@ -596,8 +609,11 @@ func StaticDirectoryHandler(fileSystem fs.FS, disablePathUnescaping bool) Handle
 			p = tmpPath
 		}
 
-		// fs.FS.Open() already assumes that file names are relative to FS root path and considers name with prefix `/` as invalid
-		name := filepath.ToSlash(filepath.Clean(strings.TrimPrefix(p, "/")))
+		// fs.FS.Open() already assumes that file names are relative to FS root path and considers name with prefix `/` as invalid.
+		// Use path.Clean (not filepath.Clean): fs.FS paths are always forward-slash, so a backslash must stay a literal
+		// character rather than being interpreted as a separator on Windows (which would resolve a file across a boundary
+		// the router never matched on, the same Windows backslash traversal class as GHSA-pgvm-wxw2-hrv9).
+		name := path.Clean(strings.TrimPrefix(p, "/"))
 		fi, err := fs.Stat(fileSystem, name)
 		if err != nil {
 			return ErrNotFound
