@@ -416,24 +416,27 @@ func TestStartConfig_WithListenerNetwork(t *testing.T) {
 		{
 			name:    "tcp ipv4 address",
 			network: "tcp",
-			address: "127.0.0.1:1323",
+			address: "127.0.0.1:0",
 		},
 		{
 			name:    "tcp ipv6 address",
 			network: "tcp",
-			address: "[::1]:1323",
+			address: "[::1]:0",
 		},
 		{
 			name:    "tcp4 ipv4 address",
 			network: "tcp4",
-			address: "127.0.0.1:1323",
+			address: "127.0.0.1:0",
 		},
 		{
 			name:    "tcp6 ipv6 address",
 			network: "tcp6",
-			address: "[::1]:1323",
+			address: "[::1]:0",
 		},
 	}
+	// Use an ephemeral port (:0) and dial the actual bound address reported by ListenerAddrFunc, rather
+	// than a hard-coded port. A fixed port reused across these sequential sub-tests races with the prior
+	// server's shutdown/socket release and flakes on CI.
 
 	hasIPv6 := supportsIPv6()
 	for _, tc := range testCases {
@@ -465,10 +468,10 @@ func TestStartConfig_WithListenerNetwork(t *testing.T) {
 				errCh <- s.Start(ctx, e)
 			}()
 
-			_, err := waitForServerStart(addrChan, errCh)
+			boundAddr, err := waitForServerStart(addrChan, errCh)
 			assert.NoError(t, err)
 
-			code, body, err := doGet(fmt.Sprintf("http://%s/ok", tc.address))
+			code, body, err := doGet(fmt.Sprintf("http://%s/ok", boundAddr))
 			assert.NoError(t, err)
 			assert.Equal(t, http.StatusOK, code)
 			assert.Equal(t, "OK", body)
