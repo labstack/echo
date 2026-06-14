@@ -1,5 +1,45 @@
 # Changelog
 
+## v5.2.0 - 2026-06-14
+
+**Security**
+
+* fix(static): reject encoded path separators that bypass route-level middleware by @vishr in https://github.com/labstack/echo/pull/3009
+* fix(middleware/static): don't double-unescape request path (#2599) by @vishr in https://github.com/labstack/echo/pull/3006
+
+Fixes [GHSA-vfp3-v2gw-7wfq](https://github.com/labstack/echo/security/advisories/GHSA-vfp3-v2gw-7wfq): an encoded path separator (`%2F` or `%5C`) in a static file URL could bypass route-level middleware (e.g. authentication on a sibling route) and disclose static files. Both `StaticDirectoryHandler`/`StaticFS` and the `Static` middleware are affected. Thanks to @a-tt-om and @oran-gugu for reporting.
+
+**Enhancements**
+
+* feat(middleware): optional RateLimiterStoreContext for response headers (#2961) by @vishr in https://github.com/labstack/echo/pull/3007
+* perf: optimize core hot paths (chain, context, binding, responses) by @vishr in https://github.com/labstack/echo/pull/3008
+* fix(binder): include field name in bind conversion errors (#2629) by @vishr in https://github.com/labstack/echo/pull/3005
+* fix(binder): serialize BindingError to structured JSON (#2771) by @vishr in https://github.com/labstack/echo/pull/3004
+* fix(binder): MustUnixTime docs say time.Time, not time.Duration by @c-tonneslan in https://github.com/labstack/echo/pull/2988
+* fix(middleware): reset ContentLength after gzip decompression by @shblue21 in https://github.com/labstack/echo/pull/3000
+* fix(middleware/proxy): append RealIP to X-Forwarded-For for WebSocket requests by @kawaway in https://github.com/labstack/echo/pull/2994
+* Fix proxy panic when balancer has no targets by @shblue21 in https://github.com/labstack/echo/pull/2977
+* fix(middleware): correct documented KeyAuth KeyLookup default by @leestana01 in https://github.com/labstack/echo/pull/2992
+* test: lock in v5 group route method-handling (405 + OPTIONS) by @vishr in https://github.com/labstack/echo/pull/3003
+* docs: liveness signals in README + public ROADMAP by @vishr in https://github.com/labstack/echo/pull/3002
+* Fix typos in CSRFConfig comments by @shblue21 in https://github.com/labstack/echo/pull/2979
+* refactor: modernize code usage using gofix by @kumapower17 in https://github.com/labstack/echo/pull/2970
+* refactor: replace Split in loops with more efficient SplitSeq by @box4wangjing in https://github.com/labstack/echo/pull/2969
+* refactor: use the built-in max/min to simplify the code by @criciss in https://github.com/labstack/echo/pull/2966
+* Update GitHub actions deps versions by @aldas in https://github.com/labstack/echo/pull/2971
+
+**New Contributors**
+
+* @criciss made their first contribution in https://github.com/labstack/echo/pull/2966
+* @box4wangjing made their first contribution in https://github.com/labstack/echo/pull/2969
+* @shblue21 made their first contribution in https://github.com/labstack/echo/pull/2977
+* @c-tonneslan made their first contribution in https://github.com/labstack/echo/pull/2988
+* @leestana01 made their first contribution in https://github.com/labstack/echo/pull/2992
+* @kawaway made their first contribution in https://github.com/labstack/echo/pull/2994
+
+**Full Changelog**: https://github.com/labstack/echo/compare/v5.1.1...v5.2.0
+
+
 ## v5.1.1 - 2026-05-01
 
 **Security**
