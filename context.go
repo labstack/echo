@@ -78,7 +78,9 @@ type Context struct {
 	handler HandlerFunc
 
 	// dsw is reused by json() so that each JSON response does not heap-allocate a delayedStatusWriter.
-	// It lives on the pooled Context; &c.dsw is a stable, allocation-free pointer.
+	// It lives on the pooled Context; &c.dsw is a stable, allocation-free pointer. Only json() may point
+	// the response at &c.dsw, and only via the nested-call guard there — aliasing it to itself (wrapping
+	// &c.dsw around &c.dsw) would make the response writer reference itself.
 	dsw delayedStatusWriter
 
 	store  map[string]any
@@ -105,7 +107,7 @@ func NewContext(r *http.Request, w http.ResponseWriter, opts ...any) *Context {
 }
 
 func newContext(r *http.Request, w http.ResponseWriter, e *Echo) *Context {
-	// store is created lazily by Set (and reset to nil by Reset), so we deliberately do not allocate a map here.
+	// store is created lazily by Set and cleared (not freed) by Reset, so we deliberately do not allocate a map here.
 	c := &Context{
 		pathValues: nil,
 		echo:       e,
