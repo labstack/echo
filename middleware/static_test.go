@@ -256,13 +256,15 @@ func TestStatic_GroupWithStatic(t *testing.T) {
 			expectBodyStartsWith: "",
 		},
 		{
-			name:                 "Directory redirect",
+			// %2f (encoded slash) is now rejected before unescaping (GHSA-vfp3-v2gw-7wfq), so it no
+			// longer resolves a directory and emits a redirect — it is a 404 with no Location header.
+			name:                 "Encoded slash is rejected, not redirected",
 			givenPrefix:          "/",
 			givenRoot:            "../_fixture",
 			whenURL:              "/group/folder%2f..",
-			expectStatus:         http.StatusMovedPermanently,
-			expectHeaderLocation: "/group/folder/../",
-			expectBodyStartsWith: "",
+			expectStatus:         http.StatusNotFound,
+			expectHeaderLocation: "",
+			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
 		},
 		{
 			name:                 "Prefixed directory 404 (request URL without slash)",
