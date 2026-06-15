@@ -1,5 +1,54 @@
 # Changelog
 
+## v4.15.4 - 2026-06-15
+
+**Security**
+
+Fixes [GHSA-vfp3-v2gw-7wfq](https://github.com/labstack/echo/security/advisories/GHSA-vfp3-v2gw-7wfq)
+
+Make serving static file releated methods  and middleware not unescape path by default - so how the way Router interprets paths and Static methods/middleware is consistent.
+
+Given following situation:
+```go
+// 0.
+// given folder structure:
+// private.txt
+// public/
+// public/index.html
+// public/text.txt
+// public/admin/private.txt
+
+// 1. share `public/` folder contents from the server root. This folder actually contains subfolder `admin` which
+// contents we want to forbid from downloading
+e.Static("/", "public")
+
+// 2. naively assume that everything under /admin folder is now forbidden
+e.GET("/admin/*", func(c *Context) error {
+    return ErrForbidden
+})
+```
+
+Then requests to `/admin%2fprivate.txt` would not be matched to `GET /admin/*` route (routing does not look unescaped path) and static file serving will use unescaped path to serve the file.
+
+Note: this way of "guarding" subfolders will never work for for paths like `/assets/../admin%2fprivate.txt` which will `path.Clean("/assets/../admin%2fprivate.txt")` to `/admin/private.txt` and are servable if static file serving is configured to unescape paths.
+
+If you want to guard routes - use middlewares on `Static*` methods and before `Static` middleware.
+
+**Breaking change / migration:** If you serve files whose names contain URL-encoded characters (e.g., `/hello%20world.txt` → `hello world.txt`), you must now opt in:
+
+```go
+	e := echo.New()
+	e.EnablePathUnescapingStaticFiles = true  // <-- enable old behavior
+	e.Static("/", "public")
+```
+for static middleware
+```go
+	e.Use(middleware.StaticWithConfig(middleware.StaticConfig{
+		EnablePathUnescaping: true, // <-- enable old behavior
+	}))
+```
+
+
 ## v4.15.3 - 2026-06-14
 
 **Security**
