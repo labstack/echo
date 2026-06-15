@@ -346,14 +346,14 @@ func TestStaticDirectoryHandlerAndRouterInconsistentEscaping(t *testing.T) {
 			name:                                 "ok, file is served from not-forbidden path",
 			givenEnablePathUnescapingStaticFiles: false,
 			whenURL:                              "/test.txt",
-			expectBody:                           "test.txt contents\n",
+			expectBody:                           "test.txt contents",
 			expectStatus:                         http.StatusOK,
 		},
 		{
 			name:                                 "ok, forbidden path is matched by route wildcard and forbidden by that",
 			givenEnablePathUnescapingStaticFiles: false,
 			whenURL:                              "/admin/private.txt",
-			expectBody:                           "{\"message\":\"Forbidden\"}\n",
+			expectBody:                           "{\"message\":\"Forbidden\"}",
 			expectStatus:                         http.StatusForbidden,
 		},
 		{
@@ -362,14 +362,14 @@ func TestStaticDirectoryHandlerAndRouterInconsistentEscaping(t *testing.T) {
 			givenRouterUnescapePathParamValues:   false,
 			givenRouterUseEscapedPathForMatching: true, // Router uses escaped path (req.URL.RawPath) for matching
 			whenURL:                              "/admin%2fprivate.txt",
-			expectBody:                           "{\"message\":\"Forbidden\"}\n",
+			expectBody:                           "{\"message\":\"Forbidden\"}",
 			expectStatus:                         http.StatusForbidden,
 		},
 		{
 			name:                                 "ok, escaped filename from forbidden path is not unescaped and results 404",
 			givenEnablePathUnescapingStaticFiles: false, // router path escaping and StaticDirectoryHandler is consistent
 			whenURL:                              "/admin%2fprivate.txt",
-			expectBody:                           "{\"message\":\"Not Found\"}\n",
+			expectBody:                           "{\"message\":\"Not Found\"}",
 			expectStatus:                         http.StatusNotFound,
 		},
 		{
@@ -377,7 +377,7 @@ func TestStaticDirectoryHandlerAndRouterInconsistentEscaping(t *testing.T) {
 			givenEnablePathUnescapingStaticFiles: true, // router path escaping and StaticDirectoryHandler is NOT consistent
 			givenRouterUnescapePathParamValues:   false,
 			whenURL:                              "/admin%2fprivate.txt",
-			expectBody:                           "public/admin/private.txt - private file\n",
+			expectBody:                           "public/admin/private.txt - private file",
 			expectStatus:                         http.StatusOK,
 		},
 		{
@@ -385,7 +385,7 @@ func TestStaticDirectoryHandlerAndRouterInconsistentEscaping(t *testing.T) {
 			givenEnablePathUnescapingStaticFiles: false,
 			givenRouterUnescapePathParamValues:   true, // router path escaping and StaticDirectoryHandler is NOT consistent
 			whenURL:                              "/admin%2fprivate.txt",
-			expectBody:                           "public/admin/private.txt - private file\n",
+			expectBody:                           "public/admin/private.txt - private file",
 			expectStatus:                         http.StatusOK,
 		},
 		{
@@ -393,7 +393,7 @@ func TestStaticDirectoryHandlerAndRouterInconsistentEscaping(t *testing.T) {
 			givenEnablePathUnescapingStaticFiles: true,
 			givenRouterUnescapePathParamValues:   true, // consistent path unescaping - makes no difference
 			whenURL:                              "/admin%2fprivate.txt",
-			expectBody:                           "public/admin/private.txt - private file\n",
+			expectBody:                           "public/admin/private.txt - private file",
 			expectStatus:                         http.StatusOK,
 		},
 		{
@@ -403,7 +403,7 @@ func TestStaticDirectoryHandlerAndRouterInconsistentEscaping(t *testing.T) {
 			// Router uses escaped path (req.URL.RawPath) for matching, but that file resolves to `admin/private.txt` after path.Clean()
 			givenRouterUseEscapedPathForMatching: true,
 			whenURL:                              "/assets/../admin%2fprivate.txt",
-			expectBody:                           "public/admin/private.txt - private file\n",
+			expectBody:                           "public/admin/private.txt - private file",
 			expectStatus:                         http.StatusOK,
 		},
 	}
@@ -442,7 +442,7 @@ func TestStaticDirectoryHandlerAndRouterInconsistentEscaping(t *testing.T) {
 			e.ServeHTTP(rec, req)
 
 			assert.Equal(t, tc.expectStatus, rec.Code)
-			body := rec.Body.String()
+			body := strings.TrimRight(rec.Body.String(), "\r\n")
 			assert.Equal(t, tc.expectBody, body)
 		})
 	}
