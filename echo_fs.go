@@ -12,8 +12,6 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
-
-	"github.com/labstack/echo/v4/internal/pathutil"
 )
 
 type filesystem struct {
@@ -38,7 +36,7 @@ func (e *Echo) Static(pathPrefix, fsRoot string) *Route {
 	return e.Add(
 		http.MethodGet,
 		pathPrefix+"*",
-		StaticDirectoryHandler(subFs, false),
+		StaticDirectoryHandler(subFs, !e.EnablePathUnescapingStaticFiles),
 	)
 }
 
@@ -51,24 +49,23 @@ func (e *Echo) StaticFS(pathPrefix string, filesystem fs.FS) *Route {
 	return e.Add(
 		http.MethodGet,
 		pathPrefix+"*",
-		StaticDirectoryHandler(filesystem, false),
+		StaticDirectoryHandler(filesystem, !e.EnablePathUnescapingStaticFiles),
 	)
 }
 
-// StaticDirectoryHandler creates handler function to serve files from provided file system
+// StaticDirectoryHandler creates handler function to serve files from provided file system.
 // When disablePathUnescaping is set then file name from path is not unescaped and is served as is.
+//
+// Note: when disablePathUnescaping=false, the handler decodes the wildcard param before serving.
+// If route guards (e.g. e.GET("/admin/*", forbidden)) are used to restrict parts of the
+// filesystem, an encoded separator (%2F) or encoded dot-dot (%2E%2E) in the URL can resolve to
+// a path that the router never matched against the guard route. Do not rely on route guards
+// alone to restrict a filesystem served by this handler.
+// See https://github.com/labstack/echo/security/advisories/GHSA-vfp3-v2gw-7wfq
 func StaticDirectoryHandler(fileSystem fs.FS, disablePathUnescaping bool) HandlerFunc {
 	return func(c Context) error {
 		p := c.Param("*")
 		if !disablePathUnescaping { // when router is already unescaping we do not want to do is twice
-			// The router matches routes against the raw, still-encoded request path, so an
-			// encoded path separator (%2F or %5C) is not treated as a segment boundary during
-			// routing. Unescaping it here would let it act as a separator and resolve a file
-			// outside the path the router authorized, bypassing route-level middleware (e.g. auth
-			// on a sibling route). No real filename contains a separator, so reject it as not found.
-			if pathutil.HasEncodedPathSeparator(p) {
-				return ErrNotFound
-			}
 			tmpPath, err := url.PathUnescape(p)
 			if err != nil {
 				return fmt.Errorf("failed to unescape path variable: %w", err)

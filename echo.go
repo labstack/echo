@@ -106,6 +106,17 @@ type Echo struct {
 	Debug             bool
 	HideBanner        bool
 	HidePort          bool
+
+	// EnablePathUnescapingStaticFiles enables path parameter (param: *) unescaping for Static/StaticFS methods.
+	// Default false (safe): encoded slashes (%2f) in the wildcard param are NOT decoded,
+	// preventing ACL bypass where /admin%2fprivate.txt bypasses a /admin/* route guard by
+	// not matching that route but having its wildcard param decoded to admin/private.txt.
+	// Set to true only when serving files whose names contain URL-encoded characters
+	// (e.g. "hello world.txt" via /hello%20world.txt) and you are not relying on
+	// route-based ACL guards to restrict access.
+	// If you are enabling this option, make sure you understand the security implications.
+	// See: https://github.com/labstack/echo/security/advisories/GHSA-vfp3-v2gw-7wfq
+	EnablePathUnescapingStaticFiles bool
 }
 
 // Route contains a handler and information for matching against requests.
