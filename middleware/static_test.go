@@ -321,7 +321,7 @@ func TestStaticMiddlewareAndRouterInconsistentEscaping(t *testing.T) {
 			givenConfig:        StaticConfig{Root: "testdata/dist/public", EnablePathUnescaping: true},
 			whenURL:            "/admin%2fprivate.txt",
 			expectCode:         http.StatusOK,
-			expectBodyContains: "private file",
+			expectBodyContains: "dist/public/admin/private.txt - private file",
 		},
 	}
 

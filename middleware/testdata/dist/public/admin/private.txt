@@ -1,0 +1,1 @@
+dist/public/admin/private.txt - private file
