@@ -102,9 +102,11 @@ type testResponseWriterNoFlushHijack struct {
 
 func (w *testResponseWriterNoFlushHijack) WriteHeader(statusCode int) {
 }
+
 func (w *testResponseWriterNoFlushHijack) Write([]byte) (int, error) {
 	return 0, nil
 }
+
 func (w *testResponseWriterNoFlushHijack) Header() http.Header {
 	return nil
 }
@@ -116,12 +118,15 @@ type testResponseWriterUnwrapper struct {
 
 func (w *testResponseWriterUnwrapper) WriteHeader(statusCode int) {
 }
+
 func (w *testResponseWriterUnwrapper) Write([]byte) (int, error) {
 	return 0, nil
 }
+
 func (w *testResponseWriterUnwrapper) Header() http.Header {
 	return nil
 }
+
 func (w *testResponseWriterUnwrapper) Unwrap() http.ResponseWriter {
 	w.unwrapCalled++
 	return w.rw

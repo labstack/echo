@@ -7,19 +7,18 @@ package echo_test
 import (
 	"encoding/base64"
 	"fmt"
+	"github.com/labstack/echo/v4"
 	"log"
 	"net/http"
 	"net/http/httptest"
-
-	"github.com/labstack/echo/v5"
 )
 
 func ExampleValueBinder_BindErrors() {
 	// example route function that binds query params to different destinations and returns all bind errors in one go
-	routeFunc := func(c *echo.Context) error {
+	routeFunc := func(c echo.Context) error {
 		var opts struct {
-			IDs    []int64
 			Active bool
+			IDs    []int64
 		}
 		length := int64(50) // default length is 50
 
@@ -54,10 +53,10 @@ func ExampleValueBinder_BindErrors() {
 
 func ExampleValueBinder_BindError() {
 	// example route function that binds query params to different destinations and stops binding on first bind error
-	failFastRouteFunc := func(c *echo.Context) error {
+	failFastRouteFunc := func(c echo.Context) error {
 		var opts struct {
-			IDs    []int64
 			Active bool
+			IDs    []int64
 		}
 		length := int64(50) // default length is 50
 
@@ -90,7 +89,7 @@ func ExampleValueBinder_BindError() {
 
 func ExampleValueBinder_CustomFunc() {
 	// example route function that binds query params using custom function closure
-	routeFunc := func(c *echo.Context) error {
+	routeFunc := func(c echo.Context) error {
 		length := int64(50) // default length is 50
 		var binary []byte
 

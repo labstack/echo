@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -58,8 +58,8 @@ func TestRedirectHTTPSWWWRedirect(t *testing.T) {
 		},
 		{
 			whenHost:         "www.labstack.com",
-			expectLocation:   "https://www.labstack.com/",
-			expectStatusCode: http.StatusMovedPermanently,
+			expectLocation:   "",
+			expectStatusCode: http.StatusOK,
 		},
 		{
 			whenHost:         "a.com",
@@ -73,12 +73,6 @@ func TestRedirectHTTPSWWWRedirect(t *testing.T) {
 		},
 		{
 			whenHost:         "labstack.com",
-			whenHeader:       map[string][]string{echo.HeaderXForwardedProto: {"https"}},
-			expectLocation:   "https://www.labstack.com/",
-			expectStatusCode: http.StatusMovedPermanently,
-		},
-		{
-			whenHost:         "www.labstack.com",
 			whenHeader:       map[string][]string{echo.HeaderXForwardedProto: {"https"}},
 			expectLocation:   "",
 			expectStatusCode: http.StatusOK,
@@ -119,12 +113,6 @@ func TestRedirectHTTPSNonWWWRedirect(t *testing.T) {
 		},
 		{
 			whenHost:         "www.labstack.com",
-			whenHeader:       map[string][]string{echo.HeaderXForwardedProto: {"https"}},
-			expectLocation:   "https://labstack.com/",
-			expectStatusCode: http.StatusMovedPermanently,
-		},
-		{
-			whenHost:         "labstack.com",
 			whenHeader:       map[string][]string{echo.HeaderXForwardedProto: {"https"}},
 			expectLocation:   "",
 			expectStatusCode: http.StatusOK,
@@ -230,7 +218,7 @@ func TestNonWWWRedirectWithConfig(t *testing.T) {
 	var testCases = []struct {
 		name             string
 		givenCode        int
-		givenSkipFunc    func(c *echo.Context) bool
+		givenSkipFunc    func(c echo.Context) bool
 		whenHost         string
 		whenHeader       http.Header
 		expectLocation   string
@@ -244,7 +232,7 @@ func TestNonWWWRedirectWithConfig(t *testing.T) {
 		},
 		{
 			name: "redirect is skipped",
-			givenSkipFunc: func(c *echo.Context) bool {
+			givenSkipFunc: func(c echo.Context) bool {
 				return true // skip always
 			},
 			whenHost:         "www.labstack.com",
@@ -278,7 +266,7 @@ func TestNonWWWRedirectWithConfig(t *testing.T) {
 
 func redirectTest(fn middlewareGenerator, host string, header http.Header) *httptest.ResponseRecorder {
 	e := echo.New()
-	next := func(c *echo.Context) (err error) {
+	next := func(c echo.Context) (err error) {
 		return c.NoContent(http.StatusOK)
 	}
 	req := httptest.NewRequest(http.MethodGet, "/", nil)

@@ -11,9 +11,9 @@ package pathutil
 // Backslash is included as defense-in-depth against Windows-style separators even
 // though fs.FS itself only uses forward slashes.
 //
-// Such sequences let an attacker smuggle a separator past the router, which by
-// default matches on the raw encoded path, so they must be rejected before
-// unescaping when resolving static files.
+// Such sequences let an attacker smuggle a separator past the router, which
+// matches on the raw encoded path, so they must be rejected before unescaping
+// when resolving static files.
 func HasEncodedPathSeparator(s string) bool {
 	for i := 0; i+2 < len(s); i++ {
 		if s[i] != '%' {

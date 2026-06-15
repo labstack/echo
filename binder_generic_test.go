@@ -64,16 +64,15 @@ func TestPathParam(t *testing.T) {
 			name:       "nok, invalid value",
 			givenValue: "can_parse_me",
 			expect:     false,
-			expectErr:  `code=400, message=path value, err=failed to parse value, err: strconv.ParseBool: parsing "can_parse_me": invalid syntax, field=key`,
+			expectErr:  `code=400, message=path param, internal=failed to parse value, err: strconv.ParseBool: parsing "can_parse_me": invalid syntax, field=key`,
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			c := NewContext(nil, nil)
-			c.SetPathValues(PathValues{{
-				Name:  cmp.Or(tc.givenKey, "key"),
-				Value: tc.givenValue,
-			}})
+			e := New()
+			c := e.NewContext(nil, nil)
+			c.SetParamNames(cmp.Or(tc.givenKey, "key"))
+			c.SetParamValues(tc.givenValue)
 
 			v, err := PathParam[bool](c, "key")
 			if tc.expectErr != "" {
@@ -87,12 +86,14 @@ func TestPathParam(t *testing.T) {
 }
 
 func TestPathParam_UnsupportedType(t *testing.T) {
-	c := NewContext(nil, nil)
-	c.SetPathValues(PathValues{{Name: "key", Value: "true"}})
+	e := New()
+	c := e.NewContext(nil, nil)
+	c.SetParamNames("key")
+	c.SetParamValues("true")
 
 	v, err := PathParam[[]bool](c, "key")
 
-	expectErr := "code=400, message=path value, err=failed to parse value, err: unsupported value type: *[]bool, field=key"
+	expectErr := "code=400, message=path param, internal=failed to parse value, err: unsupported value type: *[]bool, field=key"
 	assert.EqualError(t, err, expectErr)
 	assert.Equal(t, []bool(nil), v)
 }
@@ -119,13 +120,14 @@ func TestQueryParam(t *testing.T) {
 			name:      "nok, invalid value",
 			givenURL:  "/?key=invalidbool",
 			expect:    false,
-			expectErr: `code=400, message=query param, err=failed to parse value, err: strconv.ParseBool: parsing "invalidbool": invalid syntax, field=key`,
+			expectErr: `code=400, message=query param, internal=failed to parse value, err: strconv.ParseBool: parsing "invalidbool": invalid syntax, field=key`,
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, tc.givenURL, nil)
-			c := NewContext(req, nil)
+			e := New()
+			c := e.NewContext(req, nil)
 
 			v, err := QueryParam[bool](c, "key")
 			if tc.expectErr != "" {
@@ -140,11 +142,12 @@ func TestQueryParam(t *testing.T) {
 
 func TestQueryParam_UnsupportedType(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/?key=bool", nil)
-	c := NewContext(req, nil)
+	e := New()
+	c := e.NewContext(req, nil)
 
 	v, err := QueryParam[[]bool](c, "key")
 
-	expectErr := "code=400, message=query param, err=failed to parse value, err: unsupported value type: *[]bool, field=key"
+	expectErr := "code=400, message=query param, internal=failed to parse value, err: unsupported value type: *[]bool, field=key"
 	assert.EqualError(t, err, expectErr)
 	assert.Equal(t, []bool(nil), v)
 }
@@ -171,13 +174,14 @@ func TestQueryParams(t *testing.T) {
 			name:      "nok, invalid value",
 			givenURL:  "/?key=true&key=invalidbool",
 			expect:    []bool(nil),
-			expectErr: `code=400, message=query params, err=failed to parse value, err: strconv.ParseBool: parsing "invalidbool": invalid syntax, field=key`,
+			expectErr: `code=400, message=query params, internal=failed to parse value, err: strconv.ParseBool: parsing "invalidbool": invalid syntax, field=key`,
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, tc.givenURL, nil)
-			c := NewContext(req, nil)
+			e := New()
+			c := e.NewContext(req, nil)
 
 			v, err := QueryParams[bool](c, "key")
 			if tc.expectErr != "" {
@@ -192,11 +196,12 @@ func TestQueryParams(t *testing.T) {
 
 func TestQueryParams_UnsupportedType(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/?key=bool", nil)
-	c := NewContext(req, nil)
+	e := New()
+	c := e.NewContext(req, nil)
 
 	v, err := QueryParams[[]bool](c, "key")
 
-	expectErr := "code=400, message=query params, err=failed to parse value, err: unsupported value type: *[]bool, field=key"
+	expectErr := "code=400, message=query params, internal=failed to parse value, err: unsupported value type: *[]bool, field=key"
 	assert.EqualError(t, err, expectErr)
 	assert.Equal(t, [][]bool(nil), v)
 }
@@ -223,15 +228,16 @@ func TestFormValue(t *testing.T) {
 			name:      "nok, invalid value",
 			givenURL:  "/?key=invalidbool",
 			expect:    false,
-			expectErr: `code=400, message=form value, err=failed to parse value, err: strconv.ParseBool: parsing "invalidbool": invalid syntax, field=key`,
+			expectErr: `code=400, message=form param, internal=failed to parse value, err: strconv.ParseBool: parsing "invalidbool": invalid syntax, field=key`,
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, tc.givenURL, nil)
-			c := NewContext(req, nil)
+			e := New()
+			c := e.NewContext(req, nil)
 
-			v, err := FormValue[bool](c, "key")
+			v, err := FormParam[bool](c, "key")
 			if tc.expectErr != "" {
 				assert.EqualError(t, err, tc.expectErr)
 			} else {
@@ -244,11 +250,12 @@ func TestFormValue(t *testing.T) {
 
 func TestFormValue_UnsupportedType(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/?key=bool", nil)
-	c := NewContext(req, nil)
+	e := New()
+	c := e.NewContext(req, nil)
 
-	v, err := FormValue[[]bool](c, "key")
+	v, err := FormParam[[]bool](c, "key")
 
-	expectErr := "code=400, message=form value, err=failed to parse value, err: unsupported value type: *[]bool, field=key"
+	expectErr := "code=400, message=form param, internal=failed to parse value, err: unsupported value type: *[]bool, field=key"
 	assert.EqualError(t, err, expectErr)
 	assert.Equal(t, []bool(nil), v)
 }
@@ -275,15 +282,16 @@ func TestFormValues(t *testing.T) {
 			name:      "nok, invalid value",
 			givenURL:  "/?key=true&key=invalidbool",
 			expect:    []bool(nil),
-			expectErr: `code=400, message=form values, err=failed to parse value, err: strconv.ParseBool: parsing "invalidbool": invalid syntax, field=key`,
+			expectErr: `code=400, message=form params, internal=failed to parse value, err: strconv.ParseBool: parsing "invalidbool": invalid syntax, field=key`,
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, tc.givenURL, nil)
-			c := NewContext(req, nil)
+			e := New()
+			c := e.NewContext(req, nil)
 
-			v, err := FormValues[bool](c, "key")
+			v, err := FormParams[bool](c, "key")
 			if tc.expectErr != "" {
 				assert.EqualError(t, err, tc.expectErr)
 			} else {
@@ -296,11 +304,12 @@ func TestFormValues(t *testing.T) {
 
 func TestFormValues_UnsupportedType(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/?key=bool", nil)
-	c := NewContext(req, nil)
+	e := New()
+	c := e.NewContext(req, nil)
 
-	v, err := FormValues[[]bool](c, "key")
+	v, err := FormParams[[]bool](c, "key")
 
-	expectErr := "code=400, message=form values, err=failed to parse value, err: unsupported value type: *[]bool, field=key"
+	expectErr := "code=400, message=form params, internal=failed to parse value, err: unsupported value type: *[]bool, field=key"
 	assert.EqualError(t, err, expectErr)
 	assert.Equal(t, [][]bool(nil), v)
 }
@@ -1424,13 +1433,15 @@ func TestPathParamOr(t *testing.T) {
 			givenKey:     "id",
 			givenValue:   "invalid",
 			defaultValue: 999,
-			expectErr:    "code=400, message=path value, err=failed to parse value",
+			expectErr:    "code=400, message=path param, internal=failed to parse value",
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			c := NewContext(nil, nil)
-			c.SetPathValues(PathValues{{Name: tc.givenKey, Value: tc.givenValue}})
+			e := New()
+			c := e.NewContext(nil, nil)
+			c.SetParamNames(tc.givenKey)
+			c.SetParamValues(tc.givenValue)
 
 			v, err := PathParamOr[int](c, "id", tc.defaultValue)
 			if tc.expectErr != "" {
@@ -1479,7 +1490,8 @@ func TestQueryParamOr(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, tc.givenURL, nil)
-			c := NewContext(req, nil)
+			e := New()
+			c := e.NewContext(req, nil)
 
 			v, err := QueryParamOr[int](c, "key", tc.defaultValue)
 			if tc.expectErr != "" {
@@ -1522,7 +1534,8 @@ func TestQueryParamsOr(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, tc.givenURL, nil)
-			c := NewContext(req, nil)
+			e := New()
+			c := e.NewContext(req, nil)
 
 			v, err := QueryParamsOr[int](c, "key", tc.defaultValue)
 			if tc.expectErr != "" {
@@ -1565,9 +1578,10 @@ func TestFormValueOr(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, tc.givenURL, nil)
-			c := NewContext(req, nil)
+			e := New()
+			c := e.NewContext(req, nil)
 
-			v, err := FormValueOr[string](c, "name", tc.defaultValue)
+			v, err := FormParamOr[string](c, "name", tc.defaultValue)
 			if tc.expectErr != "" {
 				assert.ErrorContains(t, err, tc.expectErr)
 			} else {
@@ -1602,9 +1616,10 @@ func TestFormValuesOr(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, tc.givenURL, nil)
-			c := NewContext(req, nil)
+			e := New()
+			c := e.NewContext(req, nil)
 
-			v, err := FormValuesOr[string](c, "tags", tc.defaultValue)
+			v, err := FormParamsOr[string](c, "tags", tc.defaultValue)
 			if tc.expectErr != "" {
 				assert.ErrorContains(t, err, tc.expectErr)
 			} else {

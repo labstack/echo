@@ -8,22 +8,20 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
-	"io/fs"
-	"log/slog"
 	"math"
 	"mime/multipart"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"strings"
 	"testing"
 	"text/template"
 	"time"
 
+	"github.com/labstack/gommon/log"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -31,14 +29,13 @@ type Template struct {
 	templates *template.Template
 }
 
-var testUser = user{ID: 1, Name: "Jon Snow"}
+var testUser = user{1, "Jon Snow"}
 
 func BenchmarkAllocJSONP(b *testing.B) {
 	e := New()
-	e.Logger = slog.New(slog.DiscardHandler)
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userJSON))
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
+	c := e.NewContext(req, rec).(*context)
 
 	b.ResetTimer()
 	b.ReportAllocs()
@@ -50,10 +47,9 @@ func BenchmarkAllocJSONP(b *testing.B) {
 
 func BenchmarkAllocJSON(b *testing.B) {
 	e := New()
-	e.Logger = slog.New(slog.DiscardHandler)
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userJSON))
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
+	c := e.NewContext(req, rec).(*context)
 
 	b.ResetTimer()
 	b.ReportAllocs()
@@ -65,10 +61,9 @@ func BenchmarkAllocJSON(b *testing.B) {
 
 func BenchmarkAllocXML(b *testing.B) {
 	e := New()
-	e.Logger = slog.New(slog.DiscardHandler)
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userJSON))
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
+	c := e.NewContext(req, rec).(*context)
 
 	b.ResetTimer()
 	b.ReportAllocs()
@@ -79,7 +74,7 @@ func BenchmarkAllocXML(b *testing.B) {
 }
 
 func BenchmarkRealIPForHeaderXForwardFor(b *testing.B) {
-	c := Context{request: &http.Request{
+	c := context{request: &http.Request{
 		Header: http.Header{HeaderXForwardedFor: []string{"127.0.0.1, 127.0.1.1, "}},
 	}}
 	for i := 0; i < b.N; i++ {
@@ -87,7 +82,7 @@ func BenchmarkRealIPForHeaderXForwardFor(b *testing.B) {
 	}
 }
 
-func (t *Template) Render(c *Context, w io.Writer, name string, data any) error {
+func (t *Template) Render(w io.Writer, name string, data any, c Context) error {
 	return t.templates.ExecuteTemplate(w, name, data)
 }
 
@@ -96,7 +91,7 @@ func TestContextEcho(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userJSON))
 	rec := httptest.NewRecorder()
 
-	c := e.NewContext(req, rec)
+	c := e.NewContext(req, rec).(*context)
 
 	assert.Equal(t, e, c.Echo())
 }
@@ -106,7 +101,7 @@ func TestContextRequest(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userJSON))
 	rec := httptest.NewRecorder()
 
-	c := e.NewContext(req, rec)
+	c := e.NewContext(req, rec).(*context)
 
 	assert.NotNil(t, c.Request())
 	assert.Equal(t, req, c.Request())
@@ -117,7 +112,7 @@ func TestContextResponse(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userJSON))
 	rec := httptest.NewRecorder()
 
-	c := e.NewContext(req, rec)
+	c := e.NewContext(req, rec).(*context)
 
 	assert.NotNil(t, c.Response())
 }
@@ -127,12 +122,12 @@ func TestContextRenderTemplate(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userJSON))
 	rec := httptest.NewRecorder()
 
-	c := e.NewContext(req, rec)
+	c := e.NewContext(req, rec).(*context)
 
 	tmpl := &Template{
 		templates: template.Must(template.New("hello").Parse("Hello, {{.}}!")),
 	}
-	c.Echo().Renderer = tmpl
+	c.echo.Renderer = tmpl
 	err := c.Render(http.StatusOK, "hello", "Jon Snow")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -140,91 +135,24 @@ func TestContextRenderTemplate(t *testing.T) {
 	}
 }
 
-func TestContextRenderTemplateError(t *testing.T) {
-	// we test that when template rendering fails, no response is sent to the client yet, so the global error handler can decide what to do
-	e := New()
-	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userJSON))
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-
-	tmpl := &Template{
-		templates: template.Must(template.New("hello").Parse("Hello, {{.}}!")),
-	}
-	c.Echo().Renderer = tmpl
-	err := c.Render(http.StatusOK, "not_existing", "Jon Snow")
-
-	assert.EqualError(t, err, `template: no template "not_existing" associated with template "hello"`)
-	assert.Equal(t, http.StatusOK, rec.Code) // status code must not be sent to the client
-	assert.Empty(t, rec.Body.String())       // body must not be sent to the client
-}
-
 func TestContextRenderErrorsOnNoRenderer(t *testing.T) {
 	e := New()
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userJSON))
 	rec := httptest.NewRecorder()
 
-	c := e.NewContext(req, rec)
+	c := e.NewContext(req, rec).(*context)
 
-	c.Echo().Renderer = nil
+	c.echo.Renderer = nil
 	assert.Error(t, c.Render(http.StatusOK, "hello", "Jon Snow"))
-}
-
-func TestContextStream(t *testing.T) {
-	e := New()
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	c := e.NewContext(req, rec)
-
-	r, w := io.Pipe()
-	go func() {
-		defer w.Close()
-		for i := range 3 {
-			fmt.Fprintf(w, "data: index %v\n\n", i)
-			time.Sleep(5 * time.Millisecond)
-		}
-	}()
-
-	err := c.Stream(http.StatusOK, "text/event-stream", r)
-	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, "text/event-stream", rec.Header().Get(HeaderContentType))
-		assert.Equal(t, "data: index 0\n\ndata: index 1\n\ndata: index 2\n\n", rec.Body.String())
-	}
-}
-
-func TestContextHTML(t *testing.T) {
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	c := NewContext(req, rec)
-
-	err := c.HTML(http.StatusOK, "Hi, Jon Snow")
-	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, MIMETextHTMLCharsetUTF8, rec.Header().Get(HeaderContentType))
-		assert.Equal(t, "Hi, Jon Snow", rec.Body.String())
-	}
-}
-
-func TestContextHTMLBlob(t *testing.T) {
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	c := NewContext(req, rec)
-
-	err := c.HTMLBlob(http.StatusOK, []byte("Hi, Jon Snow"))
-	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, MIMETextHTMLCharsetUTF8, rec.Header().Get(HeaderContentType))
-		assert.Equal(t, "Hi, Jon Snow", rec.Body.String())
-	}
 }
 
 func TestContextJSON(t *testing.T) {
 	e := New()
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userJSON))
-	c := e.NewContext(req, rec)
+	c := e.NewContext(req, rec).(*context)
 
-	err := c.JSON(http.StatusOK, user{ID: 1, Name: "Jon Snow"})
+	err := c.JSON(http.StatusOK, user{1, "Jon Snow"})
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, MIMEApplicationJSON, rec.Header().Get(HeaderContentType))
@@ -236,37 +164,33 @@ func TestContextJSONErrorsOut(t *testing.T) {
 	e := New()
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userJSON))
-	c := e.NewContext(req, rec)
+	c := e.NewContext(req, rec).(*context)
 
 	err := c.JSON(http.StatusOK, make(chan bool))
 	assert.EqualError(t, err, "json: unsupported type: chan bool")
-
-	assert.Equal(t, http.StatusOK, rec.Code) // status code must not be sent to the client
-	assert.Empty(t, rec.Body.String())       // body must not be sent to the client
 }
 
-func TestContextJSONWithNotEchoResponse(t *testing.T) {
+func TestContextJSONPrettyURL(t *testing.T) {
 	e := New()
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userJSON))
-	c := e.NewContext(req, rec)
+	req := httptest.NewRequest(http.MethodGet, "/?pretty", nil)
+	c := e.NewContext(req, rec).(*context)
 
-	c.SetResponse(rec)
-
-	err := c.JSON(http.StatusCreated, map[string]float64{"foo": math.NaN()})
-	assert.EqualError(t, err, "json: unsupported value: NaN")
-
-	assert.Equal(t, http.StatusOK, rec.Code) // status code must not be sent to the client
-	assert.Empty(t, rec.Body.String())       // body must not be sent to the client
+	err := c.JSON(http.StatusOK, user{1, "Jon Snow"})
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, MIMEApplicationJSON, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, userJSONPretty+"\n", rec.Body.String())
+	}
 }
 
 func TestContextJSONPretty(t *testing.T) {
 	e := New()
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	c := e.NewContext(req, rec)
+	c := e.NewContext(req, rec).(*context)
 
-	err := c.JSONPretty(http.StatusOK, user{ID: 1, Name: "Jon Snow"}, "  ")
+	err := c.JSONPretty(http.StatusOK, user{1, "Jon Snow"}, "  ")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, MIMEApplicationJSON, rec.Header().Get(HeaderContentType))
@@ -278,16 +202,16 @@ func TestContextJSONWithEmptyIntent(t *testing.T) {
 	e := New()
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	c := e.NewContext(req, rec)
+	c := e.NewContext(req, rec).(*context)
 
-	u := user{ID: 1, Name: "Jon Snow"}
+	u := user{1, "Jon Snow"}
 	emptyIndent := ""
 	buf := new(bytes.Buffer)
 
 	enc := json.NewEncoder(buf)
 	enc.SetIndent(emptyIndent, emptyIndent)
 	_ = enc.Encode(u)
-	err := c.JSONPretty(http.StatusOK, user{ID: 1, Name: "Jon Snow"}, emptyIndent)
+	err := c.json(http.StatusOK, user{1, "Jon Snow"}, emptyIndent)
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, MIMEApplicationJSON, rec.Header().Get(HeaderContentType))
@@ -299,10 +223,10 @@ func TestContextJSONP(t *testing.T) {
 	e := New()
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	c := e.NewContext(req, rec)
+	c := e.NewContext(req, rec).(*context)
 
 	callback := "callback"
-	err := c.JSONP(http.StatusOK, callback, user{ID: 1, Name: "Jon Snow"})
+	err := c.JSONP(http.StatusOK, callback, user{1, "Jon Snow"})
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, MIMEApplicationJavaScriptCharsetUTF8, rec.Header().Get(HeaderContentType))
@@ -314,9 +238,9 @@ func TestContextJSONBlob(t *testing.T) {
 	e := New()
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	c := e.NewContext(req, rec)
+	c := e.NewContext(req, rec).(*context)
 
-	data, err := json.Marshal(user{ID: 1, Name: "Jon Snow"})
+	data, err := json.Marshal(user{1, "Jon Snow"})
 	assert.NoError(t, err)
 	err = c.JSONBlob(http.StatusOK, data)
 	if assert.NoError(t, err) {
@@ -330,10 +254,10 @@ func TestContextJSONPBlob(t *testing.T) {
 	e := New()
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	c := e.NewContext(req, rec)
+	c := e.NewContext(req, rec).(*context)
 
 	callback := "callback"
-	data, err := json.Marshal(user{ID: 1, Name: "Jon Snow"})
+	data, err := json.Marshal(user{1, "Jon Snow"})
 	assert.NoError(t, err)
 	err = c.JSONPBlob(http.StatusOK, callback, data)
 	if assert.NoError(t, err) {
@@ -347,9 +271,9 @@ func TestContextXML(t *testing.T) {
 	e := New()
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	c := e.NewContext(req, rec)
+	c := e.NewContext(req, rec).(*context)
 
-	err := c.XML(http.StatusOK, user{ID: 1, Name: "Jon Snow"})
+	err := c.XML(http.StatusOK, user{1, "Jon Snow"})
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, MIMEApplicationXMLCharsetUTF8, rec.Header().Get(HeaderContentType))
@@ -357,13 +281,27 @@ func TestContextXML(t *testing.T) {
 	}
 }
 
+func TestContextXMLPrettyURL(t *testing.T) {
+	e := New()
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?pretty", nil)
+	c := e.NewContext(req, rec).(*context)
+
+	err := c.XML(http.StatusOK, user{1, "Jon Snow"})
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, MIMEApplicationXMLCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, xml.Header+userXMLPretty, rec.Body.String())
+	}
+}
+
 func TestContextXMLPretty(t *testing.T) {
 	e := New()
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	c := e.NewContext(req, rec)
+	c := e.NewContext(req, rec).(*context)
 
-	err := c.XMLPretty(http.StatusOK, user{ID: 1, Name: "Jon Snow"}, "  ")
+	err := c.XMLPretty(http.StatusOK, user{1, "Jon Snow"}, "  ")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, MIMEApplicationXMLCharsetUTF8, rec.Header().Get(HeaderContentType))
@@ -375,9 +313,9 @@ func TestContextXMLBlob(t *testing.T) {
 	e := New()
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	c := e.NewContext(req, rec)
+	c := e.NewContext(req, rec).(*context)
 
-	data, err := xml.Marshal(user{ID: 1, Name: "Jon Snow"})
+	data, err := xml.Marshal(user{1, "Jon Snow"})
 	assert.NoError(t, err)
 	err = c.XMLBlob(http.StatusOK, data)
 	if assert.NoError(t, err) {
@@ -391,16 +329,16 @@ func TestContextXMLWithEmptyIntent(t *testing.T) {
 	e := New()
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	c := e.NewContext(req, rec)
+	c := e.NewContext(req, rec).(*context)
 
-	u := user{ID: 1, Name: "Jon Snow"}
+	u := user{1, "Jon Snow"}
 	emptyIndent := ""
 	buf := new(bytes.Buffer)
 
 	enc := xml.NewEncoder(buf)
 	enc.Indent(emptyIndent, emptyIndent)
 	_ = enc.Encode(u)
-	err := c.XMLPretty(http.StatusOK, user{ID: 1, Name: "Jon Snow"}, emptyIndent)
+	err := c.xml(http.StatusOK, user{1, "Jon Snow"}, emptyIndent)
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, MIMEApplicationXMLCharsetUTF8, rec.Header().Get(HeaderContentType))
@@ -408,17 +346,71 @@ func TestContextXMLWithEmptyIntent(t *testing.T) {
 	}
 }
 
-func TestContext_JSON_CommitsCustomResponseCode(t *testing.T) {
-	e := New()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	err := c.JSON(http.StatusCreated, user{ID: 1, Name: "Jon Snow"})
+type responseWriterErr struct {
+}
 
+func (responseWriterErr) Header() http.Header {
+	return http.Header{}
+}
+
+func (responseWriterErr) Write([]byte) (int, error) {
+	return 0, errors.New("responseWriterErr")
+}
+
+func (responseWriterErr) WriteHeader(statusCode int) {
+}
+
+func TestContextXMLError(t *testing.T) {
+	e := New()
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?pretty", nil)
+	c := e.NewContext(req, rec).(*context)
+	c.response.Writer = responseWriterErr{}
+
+	err := c.XML(http.StatusOK, make(chan bool))
+	assert.EqualError(t, err, "responseWriterErr")
+}
+
+func TestContextString(t *testing.T) {
+	e := New()
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?pretty", nil)
+	c := e.NewContext(req, rec).(*context)
+
+	err := c.String(http.StatusOK, "Hello, World!")
 	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusCreated, rec.Code)
-		assert.Equal(t, MIMEApplicationJSON, rec.Header().Get(HeaderContentType))
-		assert.Equal(t, userJSON+"\n", rec.Body.String())
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, MIMETextPlainCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, "Hello, World!", rec.Body.String())
+	}
+}
+
+func TestContextHTML(t *testing.T) {
+	e := New()
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?pretty", nil)
+	c := e.NewContext(req, rec).(*context)
+
+	err := c.HTML(http.StatusOK, "Hello, <strong>World!</strong>")
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, MIMETextHTMLCharsetUTF8, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, "Hello, <strong>World!</strong>", rec.Body.String())
+	}
+}
+
+func TestContextStream(t *testing.T) {
+	e := New()
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?pretty", nil)
+	c := e.NewContext(req, rec).(*context)
+
+	r := strings.NewReader("response from a stream")
+	err := c.Stream(http.StatusOK, "application/octet-stream", r)
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, "application/octet-stream", rec.Header().Get(HeaderContentType))
+		assert.Equal(t, "response from a stream", rec.Body.String())
 	}
 }
 
@@ -444,7 +436,7 @@ func TestContextAttachment(t *testing.T) {
 			e := New()
 			rec := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
-			c := e.NewContext(req, rec)
+			c := e.NewContext(req, rec).(*context)
 
 			err := c.Attachment("_fixture/images/walle.png", tc.whenName)
 			if assert.NoError(t, err) {
@@ -479,7 +471,7 @@ func TestContextInline(t *testing.T) {
 			e := New()
 			rec := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
-			c := e.NewContext(req, rec)
+			c := e.NewContext(req, rec).(*context)
 
 			err := c.Inline("_fixture/images/walle.png", tc.whenName)
 			if assert.NoError(t, err) {
@@ -496,10 +488,67 @@ func TestContextNoContent(t *testing.T) {
 	e := New()
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/?pretty", nil)
-	c := e.NewContext(req, rec)
+	c := e.NewContext(req, rec).(*context)
 
 	c.NoContent(http.StatusOK)
 	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestContextError(t *testing.T) {
+	e := New()
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/?pretty", nil)
+	c := e.NewContext(req, rec).(*context)
+
+	c.Error(errors.New("error"))
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.True(t, c.Response().Committed)
+}
+
+func TestContextReset(t *testing.T) {
+	e := New()
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	c := e.NewContext(req, rec).(*context)
+
+	c.SetParamNames("foo")
+	c.SetParamValues("bar")
+	c.Set("foe", "ban")
+	c.query = url.Values(map[string][]string{"fon": {"baz"}})
+
+	c.Reset(req, httptest.NewRecorder())
+
+	assert.Len(t, c.ParamValues(), 0)
+	assert.Len(t, c.ParamNames(), 0)
+	assert.Len(t, c.Path(), 0)
+	assert.Len(t, c.QueryParams(), 0)
+	assert.Len(t, c.store, 0)
+}
+
+func TestContext_JSON_CommitsCustomResponseCode(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec).(*context)
+	err := c.JSON(http.StatusCreated, user{1, "Jon Snow"})
+
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusCreated, rec.Code)
+		assert.Equal(t, MIMEApplicationJSON, rec.Header().Get(HeaderContentType))
+		assert.Equal(t, userJSON+"\n", rec.Body.String())
+	}
+}
+
+func TestContext_JSON_DoesntCommitResponseCodePrematurely(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec).(*context)
+	err := c.JSON(http.StatusCreated, map[string]float64{"a": math.NaN()})
+
+	if assert.Error(t, err) {
+		assert.False(t, c.response.Committed)
+	}
 }
 
 func TestContextCookie(t *testing.T) {
@@ -510,7 +559,7 @@ func TestContextCookie(t *testing.T) {
 	req.Header.Add(HeaderCookie, theme)
 	req.Header.Add(HeaderCookie, user)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
+	c := e.NewContext(req, rec).(*context)
 
 	// Read single
 	cookie, err := c.Cookie("theme")
@@ -547,237 +596,107 @@ func TestContextCookie(t *testing.T) {
 	assert.Contains(t, rec.Header().Get(HeaderSetCookie), "HttpOnly")
 }
 
-func TestContext_PathValues(t *testing.T) {
-	var testCases = []struct {
-		name   string
-		given  PathValues
-		expect PathValues
-	}{
-		{
-			name: "param exists",
-			given: PathValues{
-				{Name: "uid", Value: "101"},
-				{Name: "fid", Value: "501"},
-			},
-			expect: PathValues{
-				{Name: "uid", Value: "101"},
-				{Name: "fid", Value: "501"},
-			},
-		},
-		{
-			name:   "params is empty",
-			given:  PathValues{},
-			expect: PathValues{},
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			e := New()
-			req := httptest.NewRequest(http.MethodGet, "/", nil)
-			c := e.NewContext(req, nil)
-
-			c.SetPathValues(tc.given)
-
-			assert.EqualValues(t, tc.expect, c.PathValues())
-		})
-	}
-}
-
-func TestContext_PathParam(t *testing.T) {
-	var testCases = []struct {
-		name          string
-		given         PathValues
-		whenParamName string
-		expect        string
-	}{
-		{
-			name: "param exists",
-			given: PathValues{
-				{Name: "uid", Value: "101"},
-				{Name: "fid", Value: "501"},
-			},
-			whenParamName: "uid",
-			expect:        "101",
-		},
-		{
-			name: "multiple same param values exists - return first",
-			given: PathValues{
-				{Name: "uid", Value: "101"},
-				{Name: "uid", Value: "202"},
-				{Name: "fid", Value: "501"},
-			},
-			whenParamName: "uid",
-			expect:        "101",
-		},
-		{
-			name: "param does not exists",
-			given: PathValues{
-				{Name: "uid", Value: "101"},
-			},
-			whenParamName: "nope",
-			expect:        "",
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			e := New()
-			req := httptest.NewRequest(http.MethodGet, "/", nil)
-			c := e.NewContext(req, nil)
-
-			c.SetPathValues(tc.given)
-
-			assert.EqualValues(t, tc.expect, c.Param(tc.whenParamName))
-		})
-	}
-}
-
-func TestContext_PathParamDefault(t *testing.T) {
-	var testCases = []struct {
-		name             string
-		given            PathValues
-		whenParamName    string
-		whenDefaultValue string
-		expect           string
-	}{
-		{
-			name: "param exists",
-			given: PathValues{
-				{Name: "uid", Value: "101"},
-				{Name: "fid", Value: "501"},
-			},
-			whenParamName:    "uid",
-			whenDefaultValue: "999",
-			expect:           "101",
-		},
-		{
-			name: "param exists and is empty",
-			given: PathValues{
-				{Name: "uid", Value: ""},
-				{Name: "fid", Value: "501"},
-			},
-			whenParamName:    "uid",
-			whenDefaultValue: "999",
-			expect:           "", // <-- this is different from QueryParamOr behaviour
-		},
-		{
-			name: "param does not exists",
-			given: PathValues{
-				{Name: "uid", Value: "101"},
-			},
-			whenParamName:    "nope",
-			whenDefaultValue: "999",
-			expect:           "999",
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			e := New()
-			req := httptest.NewRequest(http.MethodGet, "/", nil)
-			c := e.NewContext(req, nil)
-
-			c.SetPathValues(tc.given)
-
-			assert.EqualValues(t, tc.expect, c.ParamOr(tc.whenParamName, tc.whenDefaultValue))
-		})
-	}
-}
-
-func TestContextGetAndSetPathValuesMutability(t *testing.T) {
-	t.Run("c.PathValues() does not return copy and modifying raw slice mutates value in context", func(t *testing.T) {
-		e := New()
-		e.contextPathParamAllocSize.Store(1)
-
-		req := httptest.NewRequest(http.MethodGet, "/:foo", nil)
-		c := e.NewContext(req, nil)
-
-		params := PathValues{{Name: "foo", Value: "101"}}
-		c.SetPathValues(params)
-
-		// round-trip param values with modification
-		paramVals := c.PathValues()
-		assert.Equal(t, params, c.PathValues())
-
-		// PathValues() does not return copy and modifying raw slice mutates value in context
-		paramVals[0] = PathValue{Name: "xxx", Value: "yyy"}
-		assert.Equal(t, PathValues{PathValue{Name: "xxx", Value: "yyy"}}, c.PathValues())
-	})
-
-	t.Run("calling SetPathValues with bigger size changes capacity in context", func(t *testing.T) {
-		e := New()
-		e.contextPathParamAllocSize.Store(1)
-
-		req := httptest.NewRequest(http.MethodGet, "/:foo", nil)
-		c := e.NewContext(req, nil)
-		// increase path param capacity in context
-		pathValues := PathValues{
-			{Name: "aaa", Value: "bbb"},
-			{Name: "ccc", Value: "ddd"},
-		}
-		c.SetPathValues(pathValues)
-		assert.Equal(t, pathValues, c.PathValues())
-
-		// shouldn't explode during Reset() afterwards!
-		assert.NotPanics(t, func() {
-			c.Reset(nil, nil)
-		})
-		assert.Equal(t, PathValues{}, c.PathValues())
-		assert.Len(t, *c.pathValues, 0)
-		assert.Equal(t, 2, cap(*c.pathValues))
-	})
-
-	t.Run("calling SetPathValues with smaller size slice does not change capacity in context", func(t *testing.T) {
-		e := New()
-
-		req := httptest.NewRequest(http.MethodGet, "/:foo", nil)
-		c := e.NewContext(req, nil)
-		c.pathValues = &PathValues{
-			{Name: "aaa", Value: "bbb"},
-			{Name: "ccc", Value: "ddd"},
-		}
-
-		pathValues := PathValues{
-			{Name: "aaa", Value: "bbb"},
-		}
-		// given pathValues slice is smaller. this should not decrease c.pathValues capacity
-		c.SetPathValues(pathValues)
-		assert.Equal(t, pathValues, c.PathValues())
-
-		// shouldn't explode during Reset() afterwards!
-		assert.NotPanics(t, func() {
-			c.Reset(nil, nil)
-		})
-		assert.Equal(t, PathValues{}, c.PathValues())
-		assert.Len(t, *c.pathValues, 0)
-		assert.Equal(t, 2, cap(*c.pathValues))
-	})
-
-}
-
-// Issue #1655
-func TestContext_SetParamNamesShouldNotModifyPathValuesCapacity(t *testing.T) {
+func TestContextPath(t *testing.T) {
 	e := New()
+	r := e.Router()
+
+	handler := func(c Context) error { return c.String(http.StatusOK, "OK") }
+
+	r.Add(http.MethodGet, "/users/:id", handler)
 	c := e.NewContext(nil, nil)
+	r.Find(http.MethodGet, "/users/1", c)
 
-	assert.Equal(t, int32(0), e.contextPathParamAllocSize.Load())
-	expectedTwoParams := PathValues{
-		{Name: "1", Value: "one"},
-		{Name: "2", Value: "two"},
-	}
-	c.SetPathValues(expectedTwoParams)
-	assert.Equal(t, int32(0), e.contextPathParamAllocSize.Load())
-	assert.Equal(t, expectedTwoParams, c.PathValues())
+	assert.Equal(t, "/users/:id", c.Path())
 
-	expectedThreeParams := PathValues{
-		{Name: "1", Value: "one"},
-		{Name: "2", Value: "two"},
-		{Name: "3", Value: "three"},
+	r.Add(http.MethodGet, "/users/:uid/files/:fid", handler)
+	c = e.NewContext(nil, nil)
+	r.Find(http.MethodGet, "/users/1/files/1", c)
+	assert.Equal(t, "/users/:uid/files/:fid", c.Path())
+}
+
+func TestContextPathParam(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	c := e.NewContext(req, nil)
+
+	// ParamNames
+	c.SetParamNames("uid", "fid")
+	assert.EqualValues(t, []string{"uid", "fid"}, c.ParamNames())
+
+	// ParamValues
+	c.SetParamValues("101", "501")
+	assert.EqualValues(t, []string{"101", "501"}, c.ParamValues())
+
+	// Param
+	assert.Equal(t, "501", c.Param("fid"))
+	assert.Equal(t, "", c.Param("undefined"))
+}
+
+func TestContextGetAndSetParam(t *testing.T) {
+	e := New()
+	r := e.Router()
+	r.Add(http.MethodGet, "/:foo", func(Context) error { return nil })
+	req := httptest.NewRequest(http.MethodGet, "/:foo", nil)
+	c := e.NewContext(req, nil)
+	c.SetParamNames("foo")
+
+	// round-trip param values with modification
+	paramVals := c.ParamValues()
+	assert.EqualValues(t, []string{""}, c.ParamValues())
+	paramVals[0] = "bar"
+	c.SetParamValues(paramVals...)
+	assert.EqualValues(t, []string{"bar"}, c.ParamValues())
+
+	// shouldn't explode during Reset() afterwards!
+	assert.NotPanics(t, func() {
+		c.Reset(nil, nil)
+	})
+}
+
+func TestContextSetParamNamesEchoMaxParam(t *testing.T) {
+	e := New()
+	assert.Equal(t, 0, *e.maxParam)
+
+	expectedOneParam := []string{"one"}
+	expectedTwoParams := []string{"one", "two"}
+	expectedThreeParams := []string{"one", "two", ""}
+
+	{
+		c := e.AcquireContext()
+		c.SetParamNames("1", "2")
+		c.SetParamValues(expectedTwoParams...)
+		assert.Equal(t, 0, *e.maxParam) // has not been changed
+		assert.EqualValues(t, expectedTwoParams, c.ParamValues())
+		e.ReleaseContext(c)
 	}
-	c.SetPathValues(expectedThreeParams)
-	assert.Equal(t, int32(0), e.contextPathParamAllocSize.Load())
-	assert.Equal(t, expectedThreeParams, c.PathValues())
+
+	{
+		c := e.AcquireContext()
+		c.SetParamNames("1", "2", "3")
+		c.SetParamValues(expectedThreeParams...)
+		assert.Equal(t, 0, *e.maxParam) // has not been changed
+		assert.EqualValues(t, expectedThreeParams, c.ParamValues())
+		e.ReleaseContext(c)
+	}
+
+	{ // values is always same size as names length
+		c := e.NewContext(nil, nil)
+		c.SetParamValues([]string{"one", "two"}...) // more values than names should be ok
+		c.SetParamNames("1")
+		assert.Equal(t, 0, *e.maxParam) // has not been changed
+		assert.EqualValues(t, expectedOneParam, c.ParamValues())
+	}
+
+	e.GET("/:id", handlerFunc)
+	assert.Equal(t, 1, *e.maxParam) // has not been changed
+
+	{
+		c := e.NewContext(nil, nil)
+		c.SetParamValues([]string{"one", "two"}...)
+		c.SetParamNames("1")
+		assert.Equal(t, 1, *e.maxParam) // has not been changed
+		assert.EqualValues(t, expectedOneParam, c.ParamValues())
+	}
 }
 
 func TestContextFormValue(t *testing.T) {
@@ -794,151 +713,41 @@ func TestContextFormValue(t *testing.T) {
 	assert.Equal(t, "Jon Snow", c.FormValue("name"))
 	assert.Equal(t, "jon@labstack.com", c.FormValue("email"))
 
-	// FormValueOr
-	assert.Equal(t, "Jon Snow", c.FormValueOr("name", "nope"))
-	assert.Equal(t, "default", c.FormValueOr("missing", "default"))
-
-	// FormValues
-	values, err := c.FormValues()
+	// FormParams
+	params, err := c.FormParams()
 	if assert.NoError(t, err) {
 		assert.Equal(t, url.Values{
 			"name":  []string{"Jon Snow"},
 			"email": []string{"jon@labstack.com"},
-		}, values)
+		}, params)
 	}
 
 	// Multipart FormParams error
 	req = httptest.NewRequest(http.MethodPost, "/", strings.NewReader(f.Encode()))
 	req.Header.Add(HeaderContentType, MIMEMultipartForm)
 	c = e.NewContext(req, nil)
-	values, err = c.FormValues()
-	assert.Nil(t, values)
+	params, err = c.FormParams()
+	assert.Nil(t, params)
 	assert.Error(t, err)
 }
 
-func TestContext_QueryParams(t *testing.T) {
-	var testCases = []struct {
-		expect   url.Values
-		name     string
-		givenURL string
-	}{
-		{
-			name:     "multiple values in url",
-			givenURL: "/?test=1&test=2&email=jon%40labstack.com",
-			expect: url.Values{
-				"test":  []string{"1", "2"},
-				"email": []string{"jon@labstack.com"},
-			},
-		},
-		{
-			name:     "single value  in url",
-			givenURL: "/?nope=1",
-			expect: url.Values{
-				"nope": []string{"1"},
-			},
-		},
-		{
-			name:     "no query params in url",
-			givenURL: "/?",
-			expect:   url.Values{},
-		},
-	}
+func TestContextQueryParam(t *testing.T) {
+	q := make(url.Values)
+	q.Set("name", "Jon Snow")
+	q.Set("email", "jon@labstack.com")
+	req := httptest.NewRequest(http.MethodGet, "/?"+q.Encode(), nil)
+	e := New()
+	c := e.NewContext(req, nil)
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, tc.givenURL, nil)
-			e := New()
-			c := e.NewContext(req, nil)
+	// QueryParam
+	assert.Equal(t, "Jon Snow", c.QueryParam("name"))
+	assert.Equal(t, "jon@labstack.com", c.QueryParam("email"))
 
-			assert.Equal(t, tc.expect, c.QueryParams())
-		})
-	}
-}
-
-func TestContext_QueryParam(t *testing.T) {
-	var testCases = []struct {
-		name          string
-		givenURL      string
-		whenParamName string
-		expect        string
-	}{
-		{
-			name:          "value exists in url",
-			givenURL:      "/?test=1",
-			whenParamName: "test",
-			expect:        "1",
-		},
-		{
-			name:          "multiple values exists in url",
-			givenURL:      "/?test=9&test=8",
-			whenParamName: "test",
-			expect:        "9", // <-- first value in returned
-		},
-		{
-			name:          "value does not exists in url",
-			givenURL:      "/?nope=1",
-			whenParamName: "test",
-			expect:        "",
-		},
-		{
-			name:          "value is empty in url",
-			givenURL:      "/?test=",
-			whenParamName: "test",
-			expect:        "",
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, tc.givenURL, nil)
-			e := New()
-			c := e.NewContext(req, nil)
-
-			assert.Equal(t, tc.expect, c.QueryParam(tc.whenParamName))
-		})
-	}
-}
-
-func TestContext_QueryParamDefault(t *testing.T) {
-	var testCases = []struct {
-		name             string
-		givenURL         string
-		whenParamName    string
-		whenDefaultValue string
-		expect           string
-	}{
-		{
-			name:             "value exists in url",
-			givenURL:         "/?test=1",
-			whenParamName:    "test",
-			whenDefaultValue: "999",
-			expect:           "1",
-		},
-		{
-			name:             "value does not exists in url",
-			givenURL:         "/?nope=1",
-			whenParamName:    "test",
-			whenDefaultValue: "999",
-			expect:           "999",
-		},
-		{
-			name:             "value is empty in url",
-			givenURL:         "/?test=",
-			whenParamName:    "test",
-			whenDefaultValue: "999",
-			expect:           "999",
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, tc.givenURL, nil)
-			e := New()
-			c := e.NewContext(req, nil)
-
-			assert.Equal(t, tc.expect, c.QueryParamOr(tc.whenParamName, tc.whenDefaultValue))
-		})
-	}
+	// QueryParams
+	assert.Equal(t, url.Values{
+		"name":  []string{"Jon Snow"},
+		"email": []string{"jon@labstack.com"},
+	}, c.QueryParams())
 }
 
 func TestContextFormFile(t *testing.T) {
@@ -999,47 +808,16 @@ func TestContextRedirect(t *testing.T) {
 	assert.Error(t, c.Redirect(310, "http://labstack.github.io/echo"))
 }
 
-func TestContextGet(t *testing.T) {
-	var testCases = []struct {
-		name    string
-		given   any
-		whenKey string
-		expect  any
-	}{
-		{
-			name:    "ok, value exist",
-			given:   "Jon Snow",
-			whenKey: "key",
-			expect:  "Jon Snow",
-		},
-		{
-			name:    "ok, value does not exist",
-			given:   "Jon Snow",
-			whenKey: "nope",
-			expect:  nil,
-		},
-		{
-			name:    "ok, value is nil value",
-			given:   []byte(nil),
-			whenKey: "key",
-			expect:  []byte(nil),
-		},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			var c = new(Context)
-			c.Set("key", tc.given)
-
-			v := c.Get(tc.whenKey)
-			assert.Equal(t, tc.expect, v)
-		})
-	}
+func TestContextStore(t *testing.T) {
+	var c Context = new(context)
+	c.Set("name", "Jon Snow")
+	assert.Equal(t, "Jon Snow", c.Get("name"))
 }
 
 func BenchmarkContext_Store(b *testing.B) {
 	e := &Echo{}
 
-	c := &Context{
+	c := &context{
 		echo: e,
 	}
 
@@ -1049,6 +827,42 @@ func BenchmarkContext_Store(b *testing.B) {
 			b.Fail()
 		}
 	}
+}
+
+func TestContextHandler(t *testing.T) {
+	e := New()
+	r := e.Router()
+	b := new(bytes.Buffer)
+
+	r.Add(http.MethodGet, "/handler", func(Context) error {
+		_, err := b.Write([]byte("handler"))
+		return err
+	})
+	c := e.NewContext(nil, nil)
+	r.Find(http.MethodGet, "/handler", c)
+	err := c.Handler()(c)
+	assert.Equal(t, "handler", b.String())
+	assert.NoError(t, err)
+}
+
+func TestContext_SetHandler(t *testing.T) {
+	var c Context = new(context)
+
+	assert.Nil(t, c.Handler())
+
+	c.SetHandler(func(c Context) error {
+		return nil
+	})
+	assert.NotNil(t, c.Handler())
+}
+
+func TestContext_Path(t *testing.T) {
+	path := "/pa/th"
+
+	var c Context = new(context)
+
+	c.SetPath(path)
+	assert.Equal(t, path, c.Path())
 }
 
 type validator struct{}
@@ -1079,7 +893,7 @@ func TestContext_QueryString(t *testing.T) {
 }
 
 func TestContext_Request(t *testing.T) {
-	var c = new(Context)
+	var c Context = new(context)
 
 	assert.Nil(t, c.Request())
 
@@ -1252,9 +1066,10 @@ func TestContext_Scheme(t *testing.T) {
 			if tc.givenHeaders != nil {
 				req.Header = tc.givenHeaders
 			}
-			c := NewContext(req, nil)
+			e := New()
+			c := e.NewContext(req, nil)
 			if tc.givenIsTLS {
-				c.request.TLS = &tls.ConnectionState{}
+				c.Request().TLS = &tls.ConnectionState{}
 			}
 
 			assert.Equal(t, tc.expect, c.Scheme())
@@ -1264,52 +1079,35 @@ func TestContext_Scheme(t *testing.T) {
 
 func TestContext_IsWebSocket(t *testing.T) {
 	tests := []struct {
-		c  *Context
+		c  Context
 		ws assert.BoolAssertionFunc
 	}{
 		{
-			&Context{
+			&context{
 				request: &http.Request{
-					Header: http.Header{
-						HeaderUpgrade:    []string{"websocket"},
-						HeaderConnection: []string{"upgrade"},
-					},
+					Header: http.Header{HeaderUpgrade: []string{"websocket"}},
 				},
 			},
 			assert.True,
 		},
 		{
-			&Context{
+			&context{
 				request: &http.Request{
-					Header: http.Header{
-						HeaderUpgrade:    []string{"Websocket"},
-						HeaderConnection: []string{"Upgrade"},
-					},
+					Header: http.Header{HeaderUpgrade: []string{"Websocket"}},
 				},
 			},
 			assert.True,
 		},
 		{
-			&Context{
+			&context{
 				request: &http.Request{},
 			},
 			assert.False,
 		},
 		{
-			&Context{
+			&context{
 				request: &http.Request{
 					Header: http.Header{HeaderUpgrade: []string{"other"}},
-				},
-			},
-			assert.False,
-		},
-		{
-			&Context{
-				request: &http.Request{
-					Header: http.Header{
-						HeaderUpgrade:    []string{"websocket"},
-						HeaderConnection: []string{"close"},
-					},
 				},
 			},
 			assert.False,
@@ -1332,212 +1130,110 @@ func TestContext_Bind(t *testing.T) {
 	req.Header.Add(HeaderContentType, MIMEApplicationJSON)
 	err := c.Bind(u)
 	assert.NoError(t, err)
-	assert.Equal(t, &user{ID: 1, Name: "Jon Snow"}, u)
+	assert.Equal(t, &user{1, "Jon Snow"}, u)
 }
 
-func TestContext_RealIP(t *testing.T) {
-	_, ipv6ForRemoteAddrExternalRange, _ := net.ParseCIDR("2001:db8::/64")
-
-	var testCases = []struct {
-		name            string
-		givenIPExtrator IPExtractor
-		whenReq         *http.Request
-		expect          string
-	}{
-		{
-			name:            "ip from remote addr",
-			givenIPExtrator: nil,
-			whenReq:         &http.Request{RemoteAddr: "89.89.89.89:1654"},
-			expect:          "89.89.89.89",
-		},
-		{
-			name:            "ip from ip extractor",
-			givenIPExtrator: ExtractIPFromRealIPHeader(TrustIPRange(ipv6ForRemoteAddrExternalRange)),
-			whenReq: &http.Request{
-				Header: http.Header{
-					HeaderXRealIP:       []string{"[2001:db8::113:199]"},
-					HeaderXForwardedFor: []string{"[2001:db8::113:198], [2001:db8::113:197]"}, // <-- should not affect anything
-				},
-				RemoteAddr: "[2001:db8::113:1]:8080",
-			},
-			expect: "2001:db8::113:199",
-		},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			e := New()
-			c := e.NewContext(tc.whenReq, nil)
-			if tc.givenIPExtrator != nil {
-				e.IPExtractor = tc.givenIPExtrator
-			}
-			assert.Equal(t, tc.expect, c.RealIP())
-		})
-	}
-}
-
-func TestContext_File(t *testing.T) {
-	var testCases = []struct {
-		whenFS           fs.FS
-		name             string
-		whenFile         string
-		expectError      string
-		expectStartsWith []byte
-		expectStatus     int
-	}{
-		{
-			name:             "ok, from default file system",
-			whenFile:         "_fixture/images/walle.png",
-			whenFS:           nil,
-			expectStatus:     http.StatusOK,
-			expectStartsWith: []byte{0x89, 0x50, 0x4e},
-		},
-		{
-			name:             "ok, from custom file system",
-			whenFile:         "walle.png",
-			whenFS:           os.DirFS("_fixture/images"),
-			expectStatus:     http.StatusOK,
-			expectStartsWith: []byte{0x89, 0x50, 0x4e},
-		},
-		{
-			name:             "nok, not existent file",
-			whenFile:         "not.png",
-			whenFS:           os.DirFS("_fixture/images"),
-			expectStatus:     http.StatusOK,
-			expectStartsWith: nil,
-			expectError:      "Not Found",
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			e := New()
-			if tc.whenFS != nil {
-				e.Filesystem = tc.whenFS
-			}
-
-			handler := func(ec *Context) error {
-				return ec.File(tc.whenFile)
-			}
-
-			req := httptest.NewRequest(http.MethodGet, "/match.png", nil)
-			rec := httptest.NewRecorder()
-			c := e.NewContext(req, rec)
-
-			err := handler(c)
-
-			assert.Equal(t, tc.expectStatus, rec.Code)
-			if tc.expectError != "" {
-				assert.EqualError(t, err, tc.expectError)
-			} else {
-				assert.NoError(t, err)
-			}
-
-			body := rec.Body.Bytes()
-			if len(body) > len(tc.expectStartsWith) {
-				body = body[:len(tc.expectStartsWith)]
-			}
-			assert.Equal(t, tc.expectStartsWith, body)
-		})
-	}
-}
-
-func TestContext_FileFS(t *testing.T) {
-	var testCases = []struct {
-		whenFS           fs.FS
-		name             string
-		whenFile         string
-		expectError      string
-		expectStartsWith []byte
-		expectStatus     int
-	}{
-		{
-			name:             "ok",
-			whenFile:         "walle.png",
-			whenFS:           os.DirFS("_fixture/images"),
-			expectStatus:     http.StatusOK,
-			expectStartsWith: []byte{0x89, 0x50, 0x4e},
-		},
-		{
-			name:             "nok, not existent file",
-			whenFile:         "not.png",
-			whenFS:           os.DirFS("_fixture/images"),
-			expectStatus:     http.StatusOK,
-			expectStartsWith: nil,
-			expectError:      "Not Found",
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			e := New()
-
-			handler := func(ec *Context) error {
-				return ec.FileFS(tc.whenFile, tc.whenFS)
-			}
-
-			req := httptest.NewRequest(http.MethodGet, "/match.png", nil)
-			rec := httptest.NewRecorder()
-			c := e.NewContext(req, rec)
-
-			err := handler(c)
-
-			assert.Equal(t, tc.expectStatus, rec.Code)
-			if tc.expectError != "" {
-				assert.EqualError(t, err, tc.expectError)
-			} else {
-				assert.NoError(t, err)
-			}
-
-			body := rec.Body.Bytes()
-			if len(body) > len(tc.expectStartsWith) {
-				body = body[:len(tc.expectStartsWith)]
-			}
-			assert.Equal(t, tc.expectStartsWith, body)
-		})
-	}
-}
-
-func TestLogger(t *testing.T) {
+func TestContext_Logger(t *testing.T) {
 	e := New()
 	c := e.NewContext(nil, nil)
 
 	log1 := c.Logger()
 	assert.NotNil(t, log1)
-	assert.Equal(t, e.Logger, log1)
 
-	customLogger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	c.SetLogger(customLogger)
-	assert.Equal(t, customLogger, c.Logger())
+	log2 := log.New("echo2")
+	c.SetLogger(log2)
+	assert.Equal(t, log2, c.Logger())
 
-	// Resetting the context returns the initial Echo logger
+	// Resetting the context returns the initial logger
 	c.Reset(nil, nil)
-	assert.Equal(t, e.Logger, c.Logger())
+	assert.Equal(t, log1, c.Logger())
 }
 
-func TestRouteInfo(t *testing.T) {
-	e := New()
-	c := e.NewContext(nil, nil)
+func TestContext_RealIP(t *testing.T) {
+	tests := []struct {
+		c Context
+		s string
+	}{
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderXForwardedFor: []string{"127.0.0.1, 127.0.1.1, "}},
+				},
+			},
+			"127.0.0.1",
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderXForwardedFor: []string{"127.0.0.1,127.0.1.1"}},
+				},
+			},
+			"127.0.0.1",
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderXForwardedFor: []string{"127.0.0.1"}},
+				},
+			},
+			"127.0.0.1",
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderXForwardedFor: []string{"[2001:db8:85a3:8d3:1319:8a2e:370:7348], 2001:db8::1, "}},
+				},
+			},
+			"2001:db8:85a3:8d3:1319:8a2e:370:7348",
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderXForwardedFor: []string{"[2001:db8:85a3:8d3:1319:8a2e:370:7348],[2001:db8::1]"}},
+				},
+			},
+			"2001:db8:85a3:8d3:1319:8a2e:370:7348",
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{HeaderXForwardedFor: []string{"2001:db8:85a3:8d3:1319:8a2e:370:7348"}},
+				},
+			},
+			"2001:db8:85a3:8d3:1319:8a2e:370:7348",
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{
+						"X-Real-Ip": []string{"192.168.0.1"},
+					},
+				},
+			},
+			"192.168.0.1",
+		},
+		{
+			&context{
+				request: &http.Request{
+					Header: http.Header{
+						"X-Real-Ip": []string{"[2001:db8::1]"},
+					},
+				},
+			},
+			"2001:db8::1",
+		},
 
-	orgRI := RouteInfo{
-		Name:       "root",
-		Method:     http.MethodGet,
-		Path:       "/*",
-		Parameters: []string{"*"},
+		{
+			&context{
+				request: &http.Request{
+					RemoteAddr: "89.89.89.89:1654",
+				},
+			},
+			"89.89.89.89",
+		},
 	}
-	c.route = &orgRI
-	ri := c.RouteInfo()
-	assert.Equal(t, orgRI, ri)
 
-	// Test mutability when middlewares start to change things
-
-	// RouteInfo inside context will not be affected when returned instance is changed
-	expect := orgRI.Clone()
-	ri.Path = "changed"
-	ri.Parameters[0] = "changed"
-	assert.Equal(t, expect, c.RouteInfo())
-
-	// RouteInfo inside context will not be affected when returned instance is changed
-	expect = c.RouteInfo()
-	orgRI.Name = "changed"
-	assert.NotEqual(t, expect, c.RouteInfo())
+	for _, tt := range tests {
+		assert.Equal(t, tt.s, tt.c.RealIP())
+	}
 }

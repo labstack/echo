@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - master
+      - v4
   pull_request:
     branches:
       - master
+      - v4
   workflow_dispatch:
 
 permissions:
@@ -21,10 +23,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v5
 
       - name: Set up Go ${{ matrix.go }}
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.LATEST_GO_VERSION }}
           check-latest: true
@@ -44,4 +46,3 @@ jobs:
           go version
           go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./...
-

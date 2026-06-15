@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: © 2015 LabStack LLC and Echo contributors
+
 package echo
 
 import (
@@ -9,8 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Regression for GHSA-vfp3-v2gw-7wfq: an encoded slash (%2F) must not let a static
-// file request resolve across a path separator and bypass route-level middleware.
+// Regression for GHSA-vfp3-v2gw-7wfq (v4 backport): an encoded path separator (%2F or %5C)
+// must not let a static file request resolve across a separator and bypass route-level middleware.
 func TestStaticDirectoryHandler_EncodedSeparatorDoesNotBypassRoute(t *testing.T) {
 	fsys := fstest.MapFS{
 		"admin/secret.txt": {Data: []byte("TOP-SECRET")},
@@ -18,9 +21,9 @@ func TestStaticDirectoryHandler_EncodedSeparatorDoesNotBypassRoute(t *testing.T)
 	}
 	e := New()
 	g := e.Group("/admin", func(next HandlerFunc) HandlerFunc {
-		return func(c *Context) error { return c.String(http.StatusForbidden, "denied") }
+		return func(c Context) error { return c.String(http.StatusForbidden, "denied") }
 	})
-	g.GET("/*", func(c *Context) error { return c.String(http.StatusOK, "reached-protected-handler") })
+	g.GET("/*", func(c Context) error { return c.String(http.StatusOK, "reached-protected-handler") })
 	e.StaticFS("/", fsys)
 
 	cases := []struct {
@@ -31,7 +34,7 @@ func TestStaticDirectoryHandler_EncodedSeparatorDoesNotBypassRoute(t *testing.T)
 		{"/admin/secret.txt", http.StatusForbidden, "denied"}, // protected route fires
 		{"/admin%2Fsecret.txt", http.StatusNotFound, ""},      // encoded slash rejected, no disclosure
 		{"/admin%2fsecret.txt", http.StatusNotFound, ""},      // lower-case hex variant
-		{"/admin%5Csecret.txt", http.StatusNotFound, ""},      // encoded backslash variant
+		{"/admin%5Csecret.txt", http.StatusNotFound, ""},      // encoded backslash (Windows separator) neutralized by path.Clean
 		{"/admin%252Fsecret.txt", http.StatusNotFound, ""},    // double-encoded: single unescape -> literal filename, not a separator
 		{"/index.html", http.StatusOK, "public"},              // legitimate static file still served
 	}

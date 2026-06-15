@@ -6,10 +6,8 @@ package middleware
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"io"
-	"maps"
 	"math/rand"
 	"net"
 	"net/http"
@@ -20,7 +18,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v4"
 )
 
 // TODO: Handle TLS proxy
@@ -43,14 +41,14 @@ type ProxyConfig struct {
 	// of previous retries is less than RetryCount. If the function returns true, the
 	// request will be retried. The provided error indicates the reason for the request
 	// failure. When the ProxyTarget is unavailable, the error will be an instance of
-	// echo.HTTPError with a code of http.StatusBadGateway. In all other cases, the error
+	// echo.HTTPError with a Code of http.StatusBadGateway. In all other cases, the error
 	// will indicate an internal error in the Proxy middleware. When a RetryFilter is not
 	// specified, all requests that fail with http.StatusBadGateway will be retried. A custom
 	// RetryFilter can be provided to only retry specific requests. Note that RetryFilter is
 	// only called when the request to the target fails, or an internal error in the Proxy
 	// middleware has occurred. Successful requests that return a non-200 response code cannot
 	// be retried.
-	RetryFilter func(c *echo.Context, e error) bool
+	RetryFilter func(c echo.Context, e error) bool
 
 	// ErrorHandler defines a function which can be used to return custom errors from
 	// the Proxy middleware. ErrorHandler is only invoked when there has been
@@ -59,7 +57,7 @@ type ProxyConfig struct {
 	// when a ProxyTarget returns a non-200 response. In these cases, the response
 	// is already written so errors cannot be modified. ErrorHandler is only
 	// invoked after all retry attempts have been exhausted.
-	ErrorHandler func(c *echo.Context, err error) error
+	ErrorHandler func(c echo.Context, err error) error
 
 	// Rewrite defines URL path rewrite rules. The values captured in asterisk can be
 	// retrieved by index e.g. $1, $2 and so on.
@@ -93,14 +91,20 @@ type ProxyConfig struct {
 type ProxyTarget struct {
 	Name string
 	URL  *url.URL
-	Meta map[string]any
+	Meta echo.Map
 }
 
 // ProxyBalancer defines an interface to implement a load balancing technique.
 type ProxyBalancer interface {
-	AddTarget(target *ProxyTarget) bool
-	RemoveTarget(targetName string) bool
-	Next(c *echo.Context) (*ProxyTarget, error)
+	AddTarget(*ProxyTarget) bool
+	RemoveTarget(string) bool
+	Next(echo.Context) *ProxyTarget
+}
+
+// TargetProvider defines an interface that gives the opportunity for balancer
+// to return custom errors when selecting target.
+type TargetProvider interface {
+	NextTarget(echo.Context) (*ProxyTarget, error)
 }
 
 type commonBalancer struct {
@@ -127,7 +131,7 @@ var DefaultProxyConfig = ProxyConfig{
 	ContextKey: "target",
 }
 
-func proxyRaw(c *echo.Context, t *ProxyTarget, config ProxyConfig) http.Handler {
+func proxyRaw(t *ProxyTarget, c echo.Context, config ProxyConfig) http.Handler {
 	var dialFunc func(ctx context.Context, network, addr string) (net.Conn, error)
 	if transport, ok := config.Transport.(*http.Transport); ok {
 		if transport.TLSClientConfig != nil {
@@ -143,13 +147,12 @@ func proxyRaw(c *echo.Context, t *ProxyTarget, config ProxyConfig) http.Handler 
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		in, _, err := http.NewResponseController(w).Hijack()
+		in, _, err := c.Response().Hijack()
 		if err != nil {
 			c.Set("_error", fmt.Errorf("proxy raw, hijack error=%w, url=%s", err, t.URL))
 			return
 		}
 		defer in.Close()
-
 		out, err := dialFunc(c.Request().Context(), "tcp", t.URL.Host)
 		if err != nil {
 			c.Set("_error", echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("proxy raw, dial error=%v, url=%s", err, t.URL)))
@@ -189,9 +192,7 @@ func proxyRaw(c *echo.Context, t *ProxyTarget, config ProxyConfig) http.Handler 
 func NewRandomBalancer(targets []*ProxyTarget) ProxyBalancer {
 	b := randomBalancer{}
 	b.targets = targets
-	// G404 (CWE-338): Use of weak random number generator (math/rand or math/rand/v2 instead of crypto/rand)
-	// this random is used to select next target. I can not think of reason this must be cryptographically safe. If you can - please open PR.
-	b.random = rand.New(rand.NewSource(int64(time.Now().Nanosecond()))) // #nosec G404
+	b.random = rand.New(rand.NewSource(int64(time.Now().Nanosecond())))
 	return &b
 }
 
@@ -235,15 +236,15 @@ func (b *commonBalancer) RemoveTarget(name string) bool {
 // Next randomly returns an upstream target.
 //
 // Note: `nil` is returned in case upstream target list is empty.
-func (b *randomBalancer) Next(c *echo.Context) (*ProxyTarget, error) {
+func (b *randomBalancer) Next(c echo.Context) *ProxyTarget {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 	if len(b.targets) == 0 {
-		return nil, nil
+		return nil
 	} else if len(b.targets) == 1 {
-		return b.targets[0], nil
+		return b.targets[0]
 	}
-	return b.targets[b.random.Intn(len(b.targets))], nil
+	return b.targets[b.random.Intn(len(b.targets))]
 }
 
 // Next returns an upstream target using round-robin technique. In the case
@@ -254,13 +255,13 @@ func (b *randomBalancer) Next(c *echo.Context) (*ProxyTarget, error) {
 // return the original failed target.
 //
 // Note: `nil` is returned in case upstream target list is empty.
-func (b *roundRobinBalancer) Next(c *echo.Context) (*ProxyTarget, error) {
+func (b *roundRobinBalancer) Next(c echo.Context) *ProxyTarget {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 	if len(b.targets) == 0 {
-		return nil, nil
+		return nil
 	} else if len(b.targets) == 1 {
-		return b.targets[0], nil
+		return b.targets[0]
 	}
 
 	var i int
@@ -282,8 +283,9 @@ func (b *roundRobinBalancer) Next(c *echo.Context) (*ProxyTarget, error) {
 		i = b.i
 		b.i++
 	}
+
 	c.Set(lastIdxKey, i)
-	return b.targets[i], nil
+	return b.targets[i]
 }
 
 // Proxy returns a Proxy middleware.
@@ -295,26 +297,18 @@ func Proxy(balancer ProxyBalancer) echo.MiddlewareFunc {
 	return ProxyWithConfig(c)
 }
 
-// ProxyWithConfig returns a Proxy middleware or panics if configuration is invalid.
-//
-// Proxy middleware forwards the request to upstream server using a configured load balancing technique.
+// ProxyWithConfig returns a Proxy middleware with config.
+// See: `Proxy()`
 func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
-	return toMiddlewareOrPanic(config)
-}
-
-// ToMiddleware converts ProxyConfig to middleware or returns an error for invalid configuration
-func (config ProxyConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
+	if config.Balancer == nil {
+		panic("echo: proxy middleware requires balancer")
+	}
+	// Defaults
 	if config.Skipper == nil {
 		config.Skipper = DefaultProxyConfig.Skipper
 	}
-	if config.ContextKey == "" {
-		config.ContextKey = DefaultProxyConfig.ContextKey
-	}
-	if config.Balancer == nil {
-		return nil, errors.New("echo proxy middleware requires balancer")
-	}
 	if config.RetryFilter == nil {
-		config.RetryFilter = func(c *echo.Context, e error) bool {
+		config.RetryFilter = func(c echo.Context, e error) bool {
 			if httpErr, ok := e.(*echo.HTTPError); ok {
 				return httpErr.Code == http.StatusBadGateway
 			}
@@ -322,20 +316,23 @@ func (config ProxyConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 		}
 	}
 	if config.ErrorHandler == nil {
-		config.ErrorHandler = func(c *echo.Context, err error) error {
+		config.ErrorHandler = func(c echo.Context, err error) error {
 			return err
 		}
 	}
-
 	if config.Rewrite != nil {
 		if config.RegexRewrite == nil {
 			config.RegexRewrite = make(map[*regexp.Regexp]string)
 		}
-		maps.Copy(config.RegexRewrite, rewriteRulesRegex(config.Rewrite))
+		for k, v := range rewriteRulesRegex(config.Rewrite) {
+			config.RegexRewrite[k] = v
+		}
 	}
 
+	provider, isTargetProvider := config.Balancer.(TargetProvider)
+
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c *echo.Context) (err error) {
+		return func(c echo.Context) error {
 			if config.Skipper(c) {
 				return next(c)
 			}
@@ -355,24 +352,21 @@ func (config ProxyConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			if req.Header.Get(echo.HeaderXForwardedProto) == "" {
 				req.Header.Set(echo.HeaderXForwardedProto, c.Scheme())
 			}
-			if c.IsWebSocket() { // For HTTP, this is set by Go HTTP reverse proxy.
-				// Append, not set, to preserve the incoming chain from upstream proxies.
-				prior := req.Header[echo.HeaderXForwardedFor]
-				if len(prior) > 0 {
-					req.Header.Set(echo.HeaderXForwardedFor, strings.Join(prior, ", ")+", "+c.RealIP())
-				} else {
-					req.Header.Set(echo.HeaderXForwardedFor, c.RealIP())
-				}
+			if c.IsWebSocket() && req.Header.Get(echo.HeaderXForwardedFor) == "" { // For HTTP, it is automatically set by Go HTTP reverse proxy.
+				req.Header.Set(echo.HeaderXForwardedFor, c.RealIP())
 			}
 
 			retries := config.RetryCount
 			for {
-				tgt, err := config.Balancer.Next(c)
-				if err != nil {
-					return config.ErrorHandler(c, err)
-				}
-				if tgt == nil || tgt.URL == nil {
-					return config.ErrorHandler(c, echo.NewHTTPError(http.StatusBadGateway, "no proxy target available"))
+				var tgt *ProxyTarget
+				var err error
+				if isTargetProvider {
+					tgt, err = provider.NextTarget(c)
+					if err != nil {
+						return config.ErrorHandler(c, err)
+					}
+				} else {
+					tgt = config.Balancer.Next(c)
 				}
 
 				c.Set(config.ContextKey, tgt)
@@ -391,9 +385,9 @@ func (config ProxyConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				// Proxy
 				switch {
 				case c.IsWebSocket():
-					proxyRaw(c, tgt, config).ServeHTTP(res, req)
+					proxyRaw(tgt, c, config).ServeHTTP(res, req)
 				default: // even SSE requests
-					proxyHTTP(c, tgt, config).ServeHTTP(res, req)
+					proxyHTTP(tgt, c, config).ServeHTTP(res, req)
 				}
 
 				err, hasError := c.Get("_error").(error)
@@ -409,7 +403,7 @@ func (config ProxyConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				retries--
 			}
 		}
-	}, nil
+	}
 }
 
 // StatusCodeContextCanceled is a custom HTTP status code for situations
@@ -419,7 +413,7 @@ func (config ProxyConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 // 499 too instead of the more problematic 5xx, which does not allow to detect this situation
 const StatusCodeContextCanceled = 499
 
-func proxyHTTP(c *echo.Context, tgt *ProxyTarget, config ProxyConfig) http.Handler {
+func proxyHTTP(tgt *ProxyTarget, c echo.Context, config ProxyConfig) http.Handler {
 	proxy := httputil.NewSingleHostReverseProxy(tgt.URL)
 	proxy.ErrorHandler = func(resp http.ResponseWriter, req *http.Request, err error) {
 		desc := tgt.URL.String()
@@ -429,17 +423,15 @@ func proxyHTTP(c *echo.Context, tgt *ProxyTarget, config ProxyConfig) http.Handl
 		// If the client canceled the request (usually by closing the connection), we can report a
 		// client error (4xx) instead of a server error (5xx) to correctly identify the situation.
 		// The Go standard library (at of late 2020) wraps the exported, standard
-		// context. Canceled error with unexported garbage value requiring a substring check, see
+		// context.Canceled error with unexported garbage value requiring a substring check, see
 		// https://github.com/golang/go/blob/6965b01ea248cabb70c3749fd218b36089a21efb/src/net/net.go#L416-L430
-		// From Caddy https://github.com/caddyserver/caddy/blob/afa778ae05503f563af0d1015cdf7e5e78b1eeec/modules/caddyhttp/reverseproxy/reverseproxy.go#L1352
-		if errors.Is(err, context.Canceled) || strings.Contains(err.Error(), "operation was canceled") {
-			httpError := echo.NewHTTPError(StatusCodeContextCanceled, "client closed connection").Wrap(err)
+		if err == context.Canceled || strings.Contains(err.Error(), "operation was canceled") {
+			httpError := echo.NewHTTPError(StatusCodeContextCanceled, fmt.Sprintf("client closed connection: %v", err))
+			httpError.Internal = err
 			c.Set("_error", httpError)
 		} else {
-			httpError := echo.NewHTTPError(
-				http.StatusBadGateway,
-				"remote server unreachable, could not proxy request",
-			).Wrap(fmt.Errorf("server: %s, err: %w", desc, err))
+			httpError := echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("remote %s unreachable, could not forward: %v", desc, err))
+			httpError.Internal = err
 			c.Set("_error", httpError)
 		}
 	}

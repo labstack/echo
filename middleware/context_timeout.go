@@ -8,18 +8,51 @@ import (
 	"errors"
 	"time"
 
-	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v4"
 )
+
+// ContextTimeout Middleware
+//
+// ContextTimeout provides request timeout functionality using Go's context mechanism.
+// It is the recommended replacement for the deprecated Timeout middleware.
+//
+//
+// Basic Usage:
+//
+//	e.Use(middleware.ContextTimeout(30 * time.Second))
+//
+// With Configuration:
+//
+//	e.Use(middleware.ContextTimeoutWithConfig(middleware.ContextTimeoutConfig{
+//	    Timeout: 30 * time.Second,
+//	    Skipper: middleware.DefaultSkipper,
+//	}))
+//
+// Handler Example:
+//
+//	e.GET("/task", func(c echo.Context) error {
+//	    ctx := c.Request().Context()
+//
+//	    result, err := performTaskWithContext(ctx)
+//	    if err != nil {
+//	        if errors.Is(err, context.DeadlineExceeded) {
+//	            return echo.NewHTTPError(http.StatusServiceUnavailable, "timeout")
+//	        }
+//	        return err
+//	    }
+//
+//	    return c.JSON(http.StatusOK, result)
+//	})
 
 // ContextTimeoutConfig defines the config for ContextTimeout middleware.
 type ContextTimeoutConfig struct {
 	// Skipper defines a function to skip middleware.
 	Skipper Skipper
 
-	// ErrorHandler is a function when error arises in middeware execution.
-	ErrorHandler func(c *echo.Context, err error) error
+	// ErrorHandler is a function when error arises in middleware execution.
+	ErrorHandler func(err error, c echo.Context) error
 
-	// Timeout configures a timeout for the middleware
+	// Timeout configures a timeout for the middleware, defaults to 0 for no timeout
 	Timeout time.Duration
 }
 
@@ -31,7 +64,11 @@ func ContextTimeout(timeout time.Duration) echo.MiddlewareFunc {
 
 // ContextTimeoutWithConfig returns a Timeout middleware with config.
 func ContextTimeoutWithConfig(config ContextTimeoutConfig) echo.MiddlewareFunc {
-	return toMiddlewareOrPanic(config)
+	mw, err := config.ToMiddleware()
+	if err != nil {
+		panic(err)
+	}
+	return mw
 }
 
 // ToMiddleware converts Config to middleware.
@@ -43,16 +80,16 @@ func (config ContextTimeoutConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 		config.Skipper = DefaultSkipper
 	}
 	if config.ErrorHandler == nil {
-		config.ErrorHandler = func(c *echo.Context, err error) error {
+		config.ErrorHandler = func(err error, c echo.Context) error {
 			if err != nil && errors.Is(err, context.DeadlineExceeded) {
-				return echo.ErrServiceUnavailable.Wrap(err)
+				return echo.ErrServiceUnavailable.WithInternal(err)
 			}
 			return err
 		}
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c *echo.Context) error {
+		return func(c echo.Context) error {
 			if config.Skipper(c) {
 				return next(c)
 			}
@@ -63,7 +100,7 @@ func (config ContextTimeoutConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			c.SetRequest(c.Request().WithContext(timeoutContext))
 
 			if err := next(c); err != nil {
-				return config.ErrorHandler(c, err)
+				return config.ErrorHandler(err, c)
 			}
 			return nil
 		}

@@ -6,26 +6,39 @@ package middleware
 import (
 	"bytes"
 	"fmt"
+	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
-
-	"github.com/labstack/echo/v5"
-	"github.com/stretchr/testify/assert"
 )
+
+type pathParam struct {
+	name  string
+	value string
+}
+
+func setPathParams(c echo.Context, params []pathParam) {
+	names := make([]string, 0, len(params))
+	values := make([]string, 0, len(params))
+	for _, pp := range params {
+		names = append(names, pp.name)
+		values = append(values, pp.value)
+	}
+	c.SetParamNames(names...)
+	c.SetParamValues(values...)
+}
 
 func TestCreateExtractors(t *testing.T) {
 	var testCases = []struct {
 		name              string
 		givenRequest      func() *http.Request
-		givenPathValues   echo.PathValues
-		whenLookups       string
-		whenLimit         uint
+		givenPathParams   []pathParam
+		whenLoopups       string
 		expectValues      []string
-		expectSource      ExtractorSource
 		expectCreateError string
 		expectError       string
 	}{
@@ -36,9 +49,8 @@ func TestCreateExtractors(t *testing.T) {
 				req.Header.Set(echo.HeaderAuthorization, "Bearer token")
 				return req
 			},
-			whenLookups:  "header:Authorization:Bearer ",
+			whenLoopups:  "header:Authorization:Bearer ",
 			expectValues: []string{"token"},
-			expectSource: ExtractorSourceHeader,
 		},
 		{
 			name: "ok, form",
@@ -50,9 +62,8 @@ func TestCreateExtractors(t *testing.T) {
 				req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationForm)
 				return req
 			},
-			whenLookups:  "form:name",
+			whenLoopups:  "form:name",
 			expectValues: []string{"Jon Snow"},
-			expectSource: ExtractorSourceForm,
 		},
 		{
 			name: "ok, cookie",
@@ -61,18 +72,16 @@ func TestCreateExtractors(t *testing.T) {
 				req.Header.Set(echo.HeaderCookie, "_csrf=token")
 				return req
 			},
-			whenLookups:  "cookie:_csrf",
+			whenLoopups:  "cookie:_csrf",
 			expectValues: []string{"token"},
-			expectSource: ExtractorSourceCookie,
 		},
 		{
 			name: "ok, param",
-			givenPathValues: echo.PathValues{
-				{Name: "id", Value: "123"},
+			givenPathParams: []pathParam{
+				{name: "id", value: "123"},
 			},
-			whenLookups:  "param:id",
+			whenLoopups:  "param:id",
 			expectValues: []string{"123"},
-			expectSource: ExtractorSourcePathParam,
 		},
 		{
 			name: "ok, query",
@@ -80,13 +89,12 @@ func TestCreateExtractors(t *testing.T) {
 				req := httptest.NewRequest(http.MethodGet, "/?id=999", nil)
 				return req
 			},
-			whenLookups:  "query:id",
+			whenLoopups:  "query:id",
 			expectValues: []string{"999"},
-			expectSource: ExtractorSourceQuery,
 		},
 		{
 			name:              "nok, invalid lookup",
-			whenLookups:       "query",
+			whenLoopups:       "query",
 			expectCreateError: "extractor source for lookup could not be split into needed parts: query",
 		},
 	}
@@ -101,11 +109,11 @@ func TestCreateExtractors(t *testing.T) {
 			}
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
-			if tc.givenPathValues != nil {
-				c.SetPathValues(tc.givenPathValues)
+			if tc.givenPathParams != nil {
+				setPathParams(c, tc.givenPathParams)
 			}
 
-			extractors, err := CreateExtractors(tc.whenLookups, tc.whenLimit)
+			extractors, err := CreateExtractors(tc.whenLoopups)
 			if tc.expectCreateError != "" {
 				assert.EqualError(t, err, tc.expectCreateError)
 				return
@@ -113,9 +121,8 @@ func TestCreateExtractors(t *testing.T) {
 			assert.NoError(t, err)
 
 			for _, e := range extractors {
-				values, source, eErr := e(c)
+				values, eErr := e(c)
 				assert.Equal(t, tc.expectValues, values)
-				assert.Equal(t, tc.expectSource, source)
 				if tc.expectError != "" {
 					assert.EqualError(t, eErr, tc.expectError)
 					return
@@ -136,7 +143,6 @@ func TestValuesFromHeader(t *testing.T) {
 		givenRequest    func(req *http.Request)
 		whenName        string
 		whenValuePrefix string
-		whenLimit       uint
 		expectValues    []string
 		expectError     string
 	}{
@@ -162,7 +168,6 @@ func TestValuesFromHeader(t *testing.T) {
 			},
 			whenName:        echo.HeaderAuthorization,
 			whenValuePrefix: "basic ",
-			whenLimit:       2,
 			expectValues:    []string{"dXNlcjpwYXNzd29yZA==", "dGVzdDp0ZXN0"},
 		},
 		{
@@ -208,7 +213,6 @@ func TestValuesFromHeader(t *testing.T) {
 			},
 			whenName:        echo.HeaderAuthorization,
 			whenValuePrefix: "basic ",
-			whenLimit:       extractorLimit,
 			expectValues: []string{
 				"1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
 				"11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
@@ -223,7 +227,6 @@ func TestValuesFromHeader(t *testing.T) {
 			},
 			whenName:        echo.HeaderAuthorization,
 			whenValuePrefix: "",
-			whenLimit:       extractorLimit,
 			expectValues: []string{
 				"1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
 				"11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
@@ -242,11 +245,10 @@ func TestValuesFromHeader(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			extractor := valuesFromHeader(tc.whenName, tc.whenValuePrefix, tc.whenLimit)
+			extractor := valuesFromHeader(tc.whenName, tc.whenValuePrefix)
 
-			values, source, err := extractor(c)
+			values, err := extractor(c)
 			assert.Equal(t, tc.expectValues, values)
-			assert.Equal(t, ExtractorSourceHeader, source)
 			if tc.expectError != "" {
 				assert.EqualError(t, err, tc.expectError)
 			} else {
@@ -261,7 +263,6 @@ func TestValuesFromQuery(t *testing.T) {
 		name           string
 		givenQueryPart string
 		whenName       string
-		whenLimit      uint
 		expectValues   []string
 		expectError    string
 	}{
@@ -275,7 +276,6 @@ func TestValuesFromQuery(t *testing.T) {
 			name:           "ok, multiple value",
 			givenQueryPart: "?id=123&id=456&name=test",
 			whenName:       "id",
-			whenLimit:      2,
 			expectValues:   []string{"123", "456"},
 		},
 		{
@@ -290,8 +290,7 @@ func TestValuesFromQuery(t *testing.T) {
 				"&id=1&id=2&id=3&id=4&id=5&id=6&id=7&id=8&id=9&id=10" +
 				"&id=11&id=12&id=13&id=14&id=15&id=16&id=17&id=18&id=19&id=20" +
 				"&id=21&id=22&id=23&id=24&id=25",
-			whenName:  "id",
-			whenLimit: extractorLimit,
+			whenName: "id",
 			expectValues: []string{
 				"1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
 				"11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
@@ -307,11 +306,10 @@ func TestValuesFromQuery(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			extractor := valuesFromQuery(tc.whenName, tc.whenLimit)
+			extractor := valuesFromQuery(tc.whenName)
 
-			values, source, err := extractor(c)
+			values, err := extractor(c)
 			assert.Equal(t, tc.expectValues, values)
-			assert.Equal(t, ExtractorSourceQuery, source)
 			if tc.expectError != "" {
 				assert.EqualError(t, err, tc.expectError)
 			} else {
@@ -322,56 +320,53 @@ func TestValuesFromQuery(t *testing.T) {
 }
 
 func TestValuesFromParam(t *testing.T) {
-	examplePathValues := echo.PathValues{
-		{Name: "id", Value: "123"},
-		{Name: "gid", Value: "456"},
-		{Name: "gid", Value: "789"},
+	examplePathParams := []pathParam{
+		{name: "id", value: "123"},
+		{name: "gid", value: "456"},
+		{name: "gid", value: "789"},
 	}
-	examplePathValues20 := make(echo.PathValues, 0)
+	examplePathParams20 := make([]pathParam, 0)
 	for i := 1; i < 25; i++ {
-		examplePathValues20 = append(examplePathValues20, echo.PathValue{Name: "id", Value: fmt.Sprintf("%v", i)})
+		examplePathParams20 = append(examplePathParams20, pathParam{name: "id", value: fmt.Sprintf("%v", i)})
 	}
 
 	var testCases = []struct {
 		name            string
-		givenPathValues echo.PathValues
+		givenPathParams []pathParam
 		whenName        string
-		whenLimit       uint
 		expectValues    []string
 		expectError     string
 	}{
 		{
 			name:            "ok, single value",
-			givenPathValues: examplePathValues,
+			givenPathParams: examplePathParams,
 			whenName:        "id",
 			expectValues:    []string{"123"},
 		},
 		{
 			name:            "ok, multiple value",
-			givenPathValues: examplePathValues,
+			givenPathParams: examplePathParams,
 			whenName:        "gid",
-			whenLimit:       2,
 			expectValues:    []string{"456", "789"},
 		},
 		{
 			name:            "nok, no values",
-			givenPathValues: nil,
+			givenPathParams: nil,
 			whenName:        "nope",
 			expectValues:    nil,
 			expectError:     errParamExtractorValueMissing.Error(),
 		},
 		{
 			name:            "nok, no matching value",
-			givenPathValues: examplePathValues,
+			givenPathParams: examplePathParams,
 			whenName:        "nope",
 			expectValues:    nil,
 			expectError:     errParamExtractorValueMissing.Error(),
 		},
 		{
 			name:            "ok, cut values over extractorLimit",
-			givenPathValues: examplePathValues20,
+			givenPathParams: examplePathParams20,
 			whenName:        "id",
-			whenLimit:       extractorLimit,
 			expectValues: []string{
 				"1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
 				"11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
@@ -386,15 +381,14 @@ func TestValuesFromParam(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
-			if tc.givenPathValues != nil {
-				c.SetPathValues(tc.givenPathValues)
+			if tc.givenPathParams != nil {
+				setPathParams(c, tc.givenPathParams)
 			}
 
-			extractor := valuesFromParam(tc.whenName, tc.whenLimit)
+			extractor := valuesFromParam(tc.whenName)
 
-			values, source, err := extractor(c)
+			values, err := extractor(c)
 			assert.Equal(t, tc.expectValues, values)
-			assert.Equal(t, ExtractorSourcePathParam, source)
 			if tc.expectError != "" {
 				assert.EqualError(t, err, tc.expectError)
 			} else {
@@ -413,7 +407,6 @@ func TestValuesFromCookie(t *testing.T) {
 		name         string
 		givenRequest func(req *http.Request)
 		whenName     string
-		whenLimit    uint
 		expectValues []string
 		expectError  string
 	}{
@@ -430,7 +423,6 @@ func TestValuesFromCookie(t *testing.T) {
 				req.Header.Add(echo.HeaderCookie, "_csrf=token2")
 			},
 			whenName:     "_csrf",
-			whenLimit:    2,
 			expectValues: []string{"token", "token2"},
 		},
 		{
@@ -454,8 +446,7 @@ func TestValuesFromCookie(t *testing.T) {
 					req.Header.Add(echo.HeaderCookie, fmt.Sprintf("_csrf=%v", i))
 				}
 			},
-			whenName:  "_csrf",
-			whenLimit: extractorLimit,
+			whenName: "_csrf",
 			expectValues: []string{
 				"1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
 				"11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
@@ -474,11 +465,10 @@ func TestValuesFromCookie(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			extractor := valuesFromCookie(tc.whenName, tc.whenLimit)
+			extractor := valuesFromCookie(tc.whenName)
 
-			values, source, err := extractor(c)
+			values, err := extractor(c)
 			assert.Equal(t, tc.expectValues, values)
-			assert.Equal(t, ExtractorSourceCookie, source)
 			if tc.expectError != "" {
 				assert.EqualError(t, err, tc.expectError)
 			} else {
@@ -537,7 +527,6 @@ func TestValuesFromForm(t *testing.T) {
 		name         string
 		givenRequest *http.Request
 		whenName     string
-		whenLimit    uint
 		expectValues []string
 		expectError  string
 	}{
@@ -553,7 +542,6 @@ func TestValuesFromForm(t *testing.T) {
 				v.Add("emails[]", "snow@labstack.com")
 			}),
 			whenName:     "emails[]",
-			whenLimit:    2,
 			expectValues: []string{"jon@labstack.com", "snow@labstack.com"},
 		},
 		{
@@ -562,7 +550,6 @@ func TestValuesFromForm(t *testing.T) {
 				w.WriteField("emails[]", "snow@labstack.com")
 			}),
 			whenName:     "emails[]",
-			whenLimit:    2,
 			expectValues: []string{"jon@labstack.com", "snow@labstack.com"},
 		},
 		{
@@ -577,7 +564,6 @@ func TestValuesFromForm(t *testing.T) {
 				v.Add("emails[]", "snow@labstack.com")
 			}),
 			whenName:     "emails[]",
-			whenLimit:    2,
 			expectValues: []string{"jon@labstack.com", "snow@labstack.com"},
 		},
 		{
@@ -593,8 +579,7 @@ func TestValuesFromForm(t *testing.T) {
 					v.Add("id[]", fmt.Sprintf("%v", i))
 				}
 			}),
-			whenName:  "id[]",
-			whenLimit: extractorLimit,
+			whenName: "id[]",
 			expectValues: []string{
 				"1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
 				"11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
@@ -610,11 +595,10 @@ func TestValuesFromForm(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			extractor := valuesFromForm(tc.whenName, tc.whenLimit)
+			extractor := valuesFromForm(tc.whenName)
 
-			values, source, err := extractor(c)
+			values, err := extractor(c)
 			assert.Equal(t, tc.expectValues, values)
-			assert.Equal(t, ExtractorSourceForm, source)
 			if tc.expectError != "" {
 				assert.EqualError(t, err, tc.expectError)
 			} else {

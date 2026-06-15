@@ -4,87 +4,72 @@
 package middleware
 
 import (
-	"cmp"
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
-	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestCORS(t *testing.T) {
-	e := echo.New()
-	req := httptest.NewRequest(http.MethodOptions, "/", nil) // Preflight request
-	req.Header.Set(echo.HeaderOrigin, "http://example.com")
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-
-	mw := CORS("*")
-	handler := mw(func(c *echo.Context) error {
-		return nil
-	})
-
-	err := handler(c)
-	assert.NoError(t, err)
-	assert.Equal(t, http.StatusNoContent, rec.Code)
-	assert.Equal(t, "*", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
-}
-
-func TestCORSConfig(t *testing.T) {
 	var testCases = []struct {
 		name             string
-		givenConfig      *CORSConfig
+		givenMW          echo.MiddlewareFunc
 		whenMethod       string
 		whenHeaders      map[string]string
 		expectHeaders    map[string]string
 		notExpectHeaders map[string]string
-		expectErr        string
 	}{
 		{
-			name: "ok, wildcard origin",
-			givenConfig: &CORSConfig{
-				AllowOrigins: []string{"*"},
-			},
+			name:          "ok, wildcard origin",
 			whenHeaders:   map[string]string{echo.HeaderOrigin: "localhost"},
 			expectHeaders: map[string]string{echo.HeaderAccessControlAllowOrigin: "*"},
 		},
 		{
-			name: "ok, wildcard AllowedOrigin with no Origin header in request",
-			givenConfig: &CORSConfig{
-				AllowOrigins: []string{"*"},
-			},
+			name:             "ok, wildcard AllowedOrigin with no Origin header in request",
 			notExpectHeaders: map[string]string{echo.HeaderAccessControlAllowOrigin: ""},
 		},
 		{
+			name: "ok, invalid pattern is ignored",
+			givenMW: CORSWithConfig(CORSConfig{
+				AllowOrigins: []string{
+					"\xff", // Invalid UTF-8 makes regexp.Compile to error
+					"*.example.com",
+				},
+			}),
+			whenMethod:    http.MethodOptions,
+			whenHeaders:   map[string]string{echo.HeaderOrigin: "http://aaa.example.com"},
+			expectHeaders: map[string]string{echo.HeaderAccessControlAllowOrigin: "http://aaa.example.com"},
+		},
+		{
 			name: "ok, specific AllowOrigins and AllowCredentials",
-			givenConfig: &CORSConfig{
-				AllowOrigins:     []string{"http://localhost", "http://localhost:8080"},
+			givenMW: CORSWithConfig(CORSConfig{
+				AllowOrigins:     []string{"localhost"},
 				AllowCredentials: true,
 				MaxAge:           3600,
-			},
-			whenHeaders: map[string]string{echo.HeaderOrigin: "http://localhost"},
+			}),
+			whenHeaders: map[string]string{echo.HeaderOrigin: "localhost"},
 			expectHeaders: map[string]string{
-				echo.HeaderAccessControlAllowOrigin:      "http://localhost",
+				echo.HeaderAccessControlAllowOrigin:      "localhost",
 				echo.HeaderAccessControlAllowCredentials: "true",
 			},
 		},
 		{
 			name: "ok, preflight request with matching origin for `AllowOrigins`",
-			givenConfig: &CORSConfig{
-				AllowOrigins:     []string{"http://localhost"},
+			givenMW: CORSWithConfig(CORSConfig{
+				AllowOrigins:     []string{"localhost"},
 				AllowCredentials: true,
 				MaxAge:           3600,
-			},
+			}),
 			whenMethod: http.MethodOptions,
 			whenHeaders: map[string]string{
-				echo.HeaderOrigin:      "http://localhost",
+				echo.HeaderOrigin:      "localhost",
 				echo.HeaderContentType: echo.MIMEApplicationJSON,
 			},
 			expectHeaders: map[string]string{
-				echo.HeaderAccessControlAllowOrigin:      "http://localhost",
+				echo.HeaderAccessControlAllowOrigin:      "localhost",
 				echo.HeaderAccessControlAllowMethods:     "GET,HEAD,PUT,PATCH,POST,DELETE",
 				echo.HeaderAccessControlAllowCredentials: "true",
 				echo.HeaderAccessControlMaxAge:           "3600",
@@ -92,14 +77,14 @@ func TestCORSConfig(t *testing.T) {
 		},
 		{
 			name: "ok, preflight request when `Access-Control-Max-Age` is set",
-			givenConfig: &CORSConfig{
-				AllowOrigins:     []string{"http://localhost"},
+			givenMW: CORSWithConfig(CORSConfig{
+				AllowOrigins:     []string{"localhost"},
 				AllowCredentials: true,
 				MaxAge:           1,
-			},
+			}),
 			whenMethod: http.MethodOptions,
 			whenHeaders: map[string]string{
-				echo.HeaderOrigin:      "http://localhost",
+				echo.HeaderOrigin:      "localhost",
 				echo.HeaderContentType: echo.MIMEApplicationJSON,
 			},
 			expectHeaders: map[string]string{
@@ -108,14 +93,14 @@ func TestCORSConfig(t *testing.T) {
 		},
 		{
 			name: "ok, preflight request when `Access-Control-Max-Age` is set to 0 - not to cache response",
-			givenConfig: &CORSConfig{
-				AllowOrigins:     []string{"http://localhost"},
+			givenMW: CORSWithConfig(CORSConfig{
+				AllowOrigins:     []string{"localhost"},
 				AllowCredentials: true,
 				MaxAge:           -1, // forces `Access-Control-Max-Age: 0`
-			},
+			}),
 			whenMethod: http.MethodOptions,
 			whenHeaders: map[string]string{
-				echo.HeaderOrigin:      "http://localhost",
+				echo.HeaderOrigin:      "localhost",
 				echo.HeaderContentType: echo.MIMEApplicationJSON,
 			},
 			expectHeaders: map[string]string{
@@ -124,16 +109,16 @@ func TestCORSConfig(t *testing.T) {
 		},
 		{
 			name: "ok, CORS check are skipped",
-			givenConfig: &CORSConfig{
-				AllowOrigins:     []string{"http://localhost"},
+			givenMW: CORSWithConfig(CORSConfig{
+				AllowOrigins:     []string{"localhost"},
 				AllowCredentials: true,
-				Skipper: func(c *echo.Context) bool {
+				Skipper: func(c echo.Context) bool {
 					return true
 				},
-			},
+			}),
 			whenMethod: http.MethodOptions,
 			whenHeaders: map[string]string{
-				echo.HeaderOrigin:      "http://localhost",
+				echo.HeaderOrigin:      "localhost",
 				echo.HeaderContentType: echo.MIMEApplicationJSON,
 			},
 			notExpectHeaders: map[string]string{
@@ -144,33 +129,31 @@ func TestCORSConfig(t *testing.T) {
 			},
 		},
 		{
-			name: "nok, preflight request with wildcard `AllowOrigins` and `AllowCredentials` true",
-			givenConfig: &CORSConfig{
+			name: "ok, preflight request with wildcard `AllowOrigins` and `AllowCredentials` true",
+			givenMW: CORSWithConfig(CORSConfig{
 				AllowOrigins:     []string{"*"},
 				AllowCredentials: true,
 				MaxAge:           3600,
-			},
+			}),
 			whenMethod: http.MethodOptions,
 			whenHeaders: map[string]string{
 				echo.HeaderOrigin:      "localhost",
 				echo.HeaderContentType: echo.MIMEApplicationJSON,
 			},
-			expectErr: `* as allowed origin and AllowCredentials=true is insecure and not allowed. Use custom UnsafeAllowOriginFunc`,
-		},
-		{
-			name: "nok, preflight request with invalid `AllowOrigins` value",
-			givenConfig: &CORSConfig{
-				AllowOrigins: []string{"http://server", "missing-scheme"},
+			expectHeaders: map[string]string{
+				echo.HeaderAccessControlAllowOrigin:      "*", // Note: browsers will ignore and complain about responses having `*`
+				echo.HeaderAccessControlAllowMethods:     "GET,HEAD,PUT,PATCH,POST,DELETE",
+				echo.HeaderAccessControlAllowCredentials: "true",
+				echo.HeaderAccessControlMaxAge:           "3600",
 			},
-			expectErr: `allow origin is missing scheme or host: missing-scheme`,
 		},
 		{
 			name: "ok, preflight request with wildcard `AllowOrigins` and `AllowCredentials` false",
-			givenConfig: &CORSConfig{
+			givenMW: CORSWithConfig(CORSConfig{
 				AllowOrigins:     []string{"*"},
 				AllowCredentials: false, // important for this testcase
 				MaxAge:           3600,
-			},
+			}),
 			whenMethod: http.MethodOptions,
 			whenHeaders: map[string]string{
 				echo.HeaderOrigin:      "localhost",
@@ -187,23 +170,29 @@ func TestCORSConfig(t *testing.T) {
 		},
 		{
 			name: "ok, INSECURE preflight request with wildcard `AllowOrigins` and `AllowCredentials` true",
-			givenConfig: &CORSConfig{
-				AllowOrigins:     []string{"*"},
-				AllowCredentials: true,
-				MaxAge:           3600,
-			},
+			givenMW: CORSWithConfig(CORSConfig{
+				AllowOrigins:                             []string{"*"},
+				AllowCredentials:                         true,
+				UnsafeWildcardOriginWithAllowCredentials: true, // important for this testcase
+				MaxAge:                                   3600,
+			}),
 			whenMethod: http.MethodOptions,
 			whenHeaders: map[string]string{
 				echo.HeaderOrigin:      "localhost",
 				echo.HeaderContentType: echo.MIMEApplicationJSON,
 			},
-			expectErr: `* as allowed origin and AllowCredentials=true is insecure and not allowed. Use custom UnsafeAllowOriginFunc`,
+			expectHeaders: map[string]string{
+				echo.HeaderAccessControlAllowOrigin:      "localhost", // This could end up as cross-origin attack
+				echo.HeaderAccessControlAllowMethods:     "GET,HEAD,PUT,PATCH,POST,DELETE",
+				echo.HeaderAccessControlAllowCredentials: "true",
+				echo.HeaderAccessControlMaxAge:           "3600",
+			},
 		},
 		{
 			name: "ok, preflight request with Access-Control-Request-Headers",
-			givenConfig: &CORSConfig{
+			givenMW: CORSWithConfig(CORSConfig{
 				AllowOrigins: []string{"*"},
-			},
+			}),
 			whenMethod: http.MethodOptions,
 			whenHeaders: map[string]string{
 				echo.HeaderOrigin:                      "localhost",
@@ -218,28 +207,18 @@ func TestCORSConfig(t *testing.T) {
 		},
 		{
 			name: "ok, preflight request with `AllowOrigins` which allow all subdomains aaa with *",
-			givenConfig: &CORSConfig{
-				UnsafeAllowOriginFunc: func(c *echo.Context, origin string) (allowedOrigin string, allowed bool, err error) {
-					if strings.HasSuffix(origin, ".example.com") {
-						allowed = true
-					}
-					return origin, allowed, nil
-				},
-			},
+			givenMW: CORSWithConfig(CORSConfig{
+				AllowOrigins: []string{"http://*.example.com"},
+			}),
 			whenMethod:    http.MethodOptions,
 			whenHeaders:   map[string]string{echo.HeaderOrigin: "http://aaa.example.com"},
 			expectHeaders: map[string]string{echo.HeaderAccessControlAllowOrigin: "http://aaa.example.com"},
 		},
 		{
 			name: "ok, preflight request with `AllowOrigins` which allow all subdomains bbb with *",
-			givenConfig: &CORSConfig{
-				UnsafeAllowOriginFunc: func(c *echo.Context, origin string) (string, bool, error) {
-					if strings.HasSuffix(origin, ".example.com") {
-						return origin, true, nil
-					}
-					return "", false, nil
-				},
-			},
+			givenMW: CORSWithConfig(CORSConfig{
+				AllowOrigins: []string{"http://*.example.com"},
+			}),
 			whenMethod:    http.MethodOptions,
 			whenHeaders:   map[string]string{echo.HeaderOrigin: "http://bbb.example.com"},
 			expectHeaders: map[string]string{echo.HeaderAccessControlAllowOrigin: "http://bbb.example.com"},
@@ -249,26 +228,18 @@ func TestCORSConfig(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			e := echo.New()
 
-			var mw echo.MiddlewareFunc
-			var err error
-			if tc.givenConfig != nil {
-				mw, err = tc.givenConfig.ToMiddleware()
-			} else {
-				mw, err = CORSConfig{}.ToMiddleware()
+			mw := CORS()
+			if tc.givenMW != nil {
+				mw = tc.givenMW
 			}
-			if err != nil {
-				if tc.expectErr != "" {
-					assert.EqualError(t, err, tc.expectErr)
-					return
-				}
-				t.Fatal(err)
-			}
-
-			h := mw(func(c *echo.Context) error {
+			h := mw(func(c echo.Context) error {
 				return nil
 			})
 
-			method := cmp.Or(tc.whenMethod, http.MethodGet)
+			method := http.MethodGet
+			if tc.whenMethod != "" {
+				method = tc.whenMethod
+			}
 			req := httptest.NewRequest(method, "/", nil)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
@@ -276,7 +247,7 @@ func TestCORSConfig(t *testing.T) {
 				req.Header.Set(k, v)
 			}
 
-			err = h(c)
+			err := h(c)
 
 			assert.NoError(t, err)
 			header := rec.Header()
@@ -330,7 +301,98 @@ func Test_allowOriginScheme(t *testing.T) {
 		cors := CORSWithConfig(CORSConfig{
 			AllowOrigins: []string{tt.pattern},
 		})
-		h := cors(func(c *echo.Context) error { return echo.ErrNotFound })
+		h := cors(echo.NotFoundHandler)
+		h(c)
+
+		if tt.expected {
+			assert.Equal(t, tt.domain, rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
+		} else {
+			assert.NotContains(t, rec.Header(), echo.HeaderAccessControlAllowOrigin)
+		}
+	}
+}
+
+func Test_allowOriginSubdomain(t *testing.T) {
+	tests := []struct {
+		domain, pattern string
+		expected        bool
+	}{
+		{
+			domain:   "http://aaa.example.com",
+			pattern:  "http://*.example.com",
+			expected: true,
+		},
+		{
+			domain:   "http://bbb.aaa.example.com",
+			pattern:  "http://*.example.com",
+			expected: true,
+		},
+		{
+			domain:   "http://bbb.aaa.example.com",
+			pattern:  "http://*.aaa.example.com",
+			expected: true,
+		},
+		{
+			domain:   "http://aaa.example.com:8080",
+			pattern:  "http://*.example.com:8080",
+			expected: true,
+		},
+
+		{
+			domain:   "http://fuga.hoge.com",
+			pattern:  "http://*.example.com",
+			expected: false,
+		},
+		{
+			domain:   "http://ccc.bbb.example.com",
+			pattern:  "http://*.aaa.example.com",
+			expected: false,
+		},
+		{
+			domain: `http://1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890\
+		  .1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890\
+		  .1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890\
+		  .1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.example.com`,
+			pattern:  "http://*.example.com",
+			expected: false,
+		},
+		{
+			domain:   `http://1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.example.com`,
+			pattern:  "http://*.example.com",
+			expected: false,
+		},
+		{
+			domain:   "http://ccc.bbb.example.com",
+			pattern:  "http://example.com",
+			expected: false,
+		},
+		{
+			domain:   "https://prod-preview--aaa.bbb.com",
+			pattern:  "https://*--aaa.bbb.com",
+			expected: true,
+		},
+		{
+			domain:   "http://ccc.bbb.example.com",
+			pattern:  "http://*.example.com",
+			expected: true,
+		},
+		{
+			domain:   "http://ccc.bbb.example.com",
+			pattern:  "http://foo.[a-z]*.example.com",
+			expected: false,
+		},
+	}
+
+	e := echo.New()
+	for _, tt := range tests {
+		req := httptest.NewRequest(http.MethodOptions, "/", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		req.Header.Set(echo.HeaderOrigin, tt.domain)
+		cors := CORSWithConfig(CORSConfig{
+			AllowOrigins: []string{tt.pattern},
+		})
+		h := cors(echo.NotFoundHandler)
 		h(c)
 
 		if tt.expected {
@@ -343,53 +405,50 @@ func Test_allowOriginScheme(t *testing.T) {
 
 func TestCORSWithConfig_AllowMethods(t *testing.T) {
 	var testCases = []struct {
-		name                            string
-		givenAllowOrigins               []string
-		givenAllowMethods               []string
-		whenAllowContextKey             string
-		whenOrigin                      string
+		name            string
+		allowOrigins    []string
+		allowContextKey string
+
+		whenOrigin       string
+		whenAllowMethods []string
+
 		expectAllow                     string
 		expectAccessControlAllowMethods string
 	}{
 		{
-			name:                "custom AllowMethods, preflight, no origin, sets only allow header from context key",
-			givenAllowOrigins:   []string{"*"},
-			givenAllowMethods:   []string{http.MethodGet, http.MethodHead},
-			whenAllowContextKey: "OPTIONS, GET",
-			whenOrigin:          "",
-			expectAllow:         "OPTIONS, GET",
+			name:             "custom AllowMethods, preflight, no origin, sets only allow header from context key",
+			allowContextKey:  "OPTIONS, GET",
+			whenAllowMethods: []string{http.MethodGet, http.MethodHead},
+			whenOrigin:       "",
+			expectAllow:      "OPTIONS, GET",
 		},
 		{
-			name:                "default AllowMethods, preflight, no origin, no allow header in context key and in response",
-			givenAllowOrigins:   []string{"*"},
-			givenAllowMethods:   nil,
-			whenAllowContextKey: "",
-			whenOrigin:          "",
-			expectAllow:         "",
+			name:             "default AllowMethods, preflight, no origin, no allow header in context key and in response",
+			allowContextKey:  "",
+			whenAllowMethods: nil,
+			whenOrigin:       "",
+			expectAllow:      "",
 		},
 		{
 			name:                            "custom AllowMethods, preflight, existing origin, sets both headers different values",
-			givenAllowOrigins:               []string{"*"},
-			givenAllowMethods:               []string{http.MethodGet, http.MethodHead},
-			whenAllowContextKey:             "OPTIONS, GET",
+			allowContextKey:                 "OPTIONS, GET",
+			whenAllowMethods:                []string{http.MethodGet, http.MethodHead},
 			whenOrigin:                      "http://google.com",
 			expectAllow:                     "OPTIONS, GET",
 			expectAccessControlAllowMethods: "GET,HEAD",
 		},
 		{
 			name:                            "default AllowMethods, preflight, existing origin, sets both headers",
-			givenAllowOrigins:               []string{"*"},
-			givenAllowMethods:               nil,
-			whenAllowContextKey:             "OPTIONS, GET",
+			allowContextKey:                 "OPTIONS, GET",
+			whenAllowMethods:                nil,
 			whenOrigin:                      "http://google.com",
 			expectAllow:                     "OPTIONS, GET",
 			expectAccessControlAllowMethods: "OPTIONS, GET",
 		},
 		{
 			name:                            "default AllowMethods, preflight, existing origin, no allows, sets only CORS allow methods",
-			givenAllowOrigins:               []string{"*"},
-			givenAllowMethods:               nil,
-			whenAllowContextKey:             "",
+			allowContextKey:                 "",
+			whenAllowMethods:                nil,
 			whenOrigin:                      "http://google.com",
 			expectAllow:                     "",
 			expectAccessControlAllowMethods: "GET,HEAD,PUT,PATCH,POST,DELETE",
@@ -399,13 +458,13 @@ func TestCORSWithConfig_AllowMethods(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			e := echo.New()
-			e.GET("/test", func(c *echo.Context) error {
+			e.GET("/test", func(c echo.Context) error {
 				return c.String(http.StatusOK, "OK")
 			})
 
 			cors := CORSWithConfig(CORSConfig{
-				AllowOrigins: tc.givenAllowOrigins,
-				AllowMethods: tc.givenAllowMethods,
+				AllowOrigins: tc.allowOrigins,
+				AllowMethods: tc.whenAllowMethods,
 			})
 
 			req := httptest.NewRequest(http.MethodOptions, "/test", nil)
@@ -413,13 +472,11 @@ func TestCORSWithConfig_AllowMethods(t *testing.T) {
 			c := e.NewContext(req, rec)
 
 			req.Header.Set(echo.HeaderOrigin, tc.whenOrigin)
-			if tc.whenAllowContextKey != "" {
-				c.Set(echo.ContextKeyHeaderAllow, tc.whenAllowContextKey)
+			if tc.allowContextKey != "" {
+				c.Set(echo.ContextKeyHeaderAllow, tc.allowContextKey)
 			}
 
-			h := cors(func(c *echo.Context) error {
-				return c.String(http.StatusOK, "OK")
-			})
+			h := cors(echo.NotFoundHandler)
 			h(c)
 
 			assert.Equal(t, tc.expectAllow, rec.Header().Get(echo.HeaderAllow))
@@ -535,10 +592,10 @@ func TestCorsHeaders(t *testing.T) {
 				//MaxAge:           3600,
 			}))
 
-			e.GET("/", func(c *echo.Context) error {
+			e.GET("/", func(c echo.Context) error {
 				return c.String(http.StatusOK, "OK")
 			})
-			e.POST("/", func(c *echo.Context) error {
+			e.POST("/", func(c echo.Context) error {
 				return c.String(http.StatusCreated, "OK")
 			})
 
@@ -582,17 +639,17 @@ func TestCorsHeaders(t *testing.T) {
 }
 
 func Test_allowOriginFunc(t *testing.T) {
-	returnTrue := func(c *echo.Context, origin string) (string, bool, error) {
-		return origin, true, nil
+	returnTrue := func(origin string) (bool, error) {
+		return true, nil
 	}
-	returnFalse := func(c *echo.Context, origin string) (string, bool, error) {
-		return origin, false, nil
+	returnFalse := func(origin string) (bool, error) {
+		return false, nil
 	}
-	returnError := func(c *echo.Context, origin string) (string, bool, error) {
-		return origin, true, errors.New("this is a test error")
+	returnError := func(origin string) (bool, error) {
+		return true, errors.New("this is a test error")
 	}
 
-	allowOriginFuncs := []func(c *echo.Context, origin string) (string, bool, error){
+	allowOriginFuncs := []func(origin string) (bool, error){
 		returnTrue,
 		returnFalse,
 		returnError,
@@ -606,21 +663,21 @@ func Test_allowOriginFunc(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 		req.Header.Set(echo.HeaderOrigin, origin)
-		cors, err := CORSConfig{UnsafeAllowOriginFunc: allowOriginFunc}.ToMiddleware()
-		assert.NoError(t, err)
+		cors := CORSWithConfig(CORSConfig{
+			AllowOriginFunc: allowOriginFunc,
+		})
+		h := cors(echo.NotFoundHandler)
+		err := h(c)
 
-		h := cors(func(c *echo.Context) error { return echo.ErrNotFound })
-		err = h(c)
-
-		allowedOrigin, allowed, expectedErr := allowOriginFunc(c, origin)
+		expected, expectedErr := allowOriginFunc(origin)
 		if expectedErr != nil {
 			assert.Equal(t, expectedErr, err)
 			assert.Equal(t, "", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
 			continue
 		}
 
-		if allowed {
-			assert.Equal(t, allowedOrigin, rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
+		if expected {
+			assert.Equal(t, origin, rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
 		} else {
 			assert.Equal(t, "", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
 		}

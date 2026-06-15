@@ -4,19 +4,11 @@
 package middleware
 
 import (
-	"context"
-	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-type discardHandler struct {
-	slog.JSONHandler
-}
-
-func (d *discardHandler) Enabled(context.Context, slog.Level) bool { return false }
 
 func Test_matchScheme(t *testing.T) {
 	tests := []struct {
@@ -47,6 +39,62 @@ func Test_matchScheme(t *testing.T) {
 
 	for _, v := range tests {
 		assert.Equal(t, v.expected, matchScheme(v.domain, v.pattern))
+	}
+}
+
+func Test_matchSubdomain(t *testing.T) {
+	tests := []struct {
+		domain, pattern string
+		expected        bool
+	}{
+		{
+			domain:   "http://aaa.example.com",
+			pattern:  "http://*.example.com",
+			expected: true,
+		},
+		{
+			domain:   "http://bbb.aaa.example.com",
+			pattern:  "http://*.example.com",
+			expected: true,
+		},
+		{
+			domain:   "http://bbb.aaa.example.com",
+			pattern:  "http://*.aaa.example.com",
+			expected: true,
+		},
+		{
+			domain:   "http://aaa.example.com:8080",
+			pattern:  "http://*.example.com:8080",
+			expected: true,
+		},
+
+		{
+			domain:   "http://fuga.hoge.com",
+			pattern:  "http://*.example.com",
+			expected: false,
+		},
+		{
+			domain:   "http://ccc.bbb.example.com",
+			pattern:  "http://*.aaa.example.com",
+			expected: false,
+		},
+		{
+			domain: `http://1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890\
+      .1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890\
+      .1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890\
+      .1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.example.com`,
+			pattern:  "http://*.example.com",
+			expected: false,
+		},
+		{
+			domain:   "http://ccc.bbb.example.com",
+			pattern:  "http://example.com",
+			expected: false,
+		},
+	}
+
+	for _, v := range tests {
+		assert.Equal(t, v.expected, matchSubdomain(v.domain, v.pattern))
 	}
 }
 
@@ -82,7 +130,7 @@ func TestRandomStringBias(t *testing.T) {
 	counts := make(map[rune]int)
 	var count int64
 
-	for range loop {
+	for i := 0; i < loop; i++ {
 		s := randomString(slen)
 		require.Equal(t, slen, len(s))
 		for _, b := range s {

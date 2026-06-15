@@ -1,169 +1,28 @@
 # Changelog
 
-## v5.2.0 - 2026-06-14
+## v4.15.3 - 2026-06-14
 
 **Security**
 
-* fix(static): reject encoded path separators that bypass route-level middleware by @vishr in https://github.com/labstack/echo/pull/3009
-* fix(middleware/static): don't double-unescape request path (#2599) by @vishr in https://github.com/labstack/echo/pull/3006
+* fix(static): reject encoded path separators that bypass route-level middleware by @vishr in https://github.com/labstack/echo/pull/3011
 
-Fixes [GHSA-vfp3-v2gw-7wfq](https://github.com/labstack/echo/security/advisories/GHSA-vfp3-v2gw-7wfq): an encoded path separator (`%2F` or `%5C`) in a static file URL could bypass route-level middleware (e.g. authentication on a sibling route) and disclose static files. Both `StaticDirectoryHandler`/`StaticFS` and the `Static` middleware are affected. Thanks to @a-tt-om and @oran-gugu for reporting.
-
-**Enhancements**
-
-* feat(middleware): optional RateLimiterStoreContext for response headers (#2961) by @vishr in https://github.com/labstack/echo/pull/3007
-* perf: optimize core hot paths (chain, context, binding, responses) by @vishr in https://github.com/labstack/echo/pull/3008
-* fix(binder): include field name in bind conversion errors (#2629) by @vishr in https://github.com/labstack/echo/pull/3005
-* fix(binder): serialize BindingError to structured JSON (#2771) by @vishr in https://github.com/labstack/echo/pull/3004
-* fix(binder): MustUnixTime docs say time.Time, not time.Duration by @c-tonneslan in https://github.com/labstack/echo/pull/2988
-* fix(middleware): reset ContentLength after gzip decompression by @shblue21 in https://github.com/labstack/echo/pull/3000
-* fix(middleware/proxy): append RealIP to X-Forwarded-For for WebSocket requests by @kawaway in https://github.com/labstack/echo/pull/2994
-* Fix proxy panic when balancer has no targets by @shblue21 in https://github.com/labstack/echo/pull/2977
-* fix(middleware): correct documented KeyAuth KeyLookup default by @leestana01 in https://github.com/labstack/echo/pull/2992
-* test: lock in v5 group route method-handling (405 + OPTIONS) by @vishr in https://github.com/labstack/echo/pull/3003
-* docs: liveness signals in README + public ROADMAP by @vishr in https://github.com/labstack/echo/pull/3002
-* Fix typos in CSRFConfig comments by @shblue21 in https://github.com/labstack/echo/pull/2979
-* refactor: modernize code usage using gofix by @kumapower17 in https://github.com/labstack/echo/pull/2970
-* refactor: replace Split in loops with more efficient SplitSeq by @box4wangjing in https://github.com/labstack/echo/pull/2969
-* refactor: use the built-in max/min to simplify the code by @criciss in https://github.com/labstack/echo/pull/2966
-* Update GitHub actions deps versions by @aldas in https://github.com/labstack/echo/pull/2971
-
-**New Contributors**
-
-* @criciss made their first contribution in https://github.com/labstack/echo/pull/2966
-* @box4wangjing made their first contribution in https://github.com/labstack/echo/pull/2969
-* @shblue21 made their first contribution in https://github.com/labstack/echo/pull/2977
-* @c-tonneslan made their first contribution in https://github.com/labstack/echo/pull/2988
-* @leestana01 made their first contribution in https://github.com/labstack/echo/pull/2992
-* @kawaway made their first contribution in https://github.com/labstack/echo/pull/2994
-
-**Full Changelog**: https://github.com/labstack/echo/compare/v5.1.1...v5.2.0
+Fixes [GHSA-vfp3-v2gw-7wfq](https://github.com/labstack/echo/security/advisories/GHSA-vfp3-v2gw-7wfq): an encoded path separator (`%2F` or `%5C`) in a static file URL could bypass route-level middleware (e.g. authentication on a sibling route) and disclose static files. Both `StaticDirectoryHandler` (used by `Static`/`StaticFS`) and the `Static` middleware are affected. Backport of the v5 fix (#3009). Thanks to @a-tt-om and @oran-gugu for reporting.
 
 
-## v5.1.1 - 2026-05-01
+## v4.15.2 - 2026-05-01
 
 **Security**
 
-* `Context.Scheme()` should validate values taken from header by @aldas in https://github.com/labstack/echo/pull/2953
+* `Context.Scheme()` should validate values taken from header by @aldas in https://github.com/labstack/echo/pull/2962
 
 Thanks to @shblue21 for reporting this [issue](https://github.com/labstack/echo/issues/2952).
 
-**Enhancements**
 
-* Add golangci linter configuration by @aldas in https://github.com/labstack/echo/pull/2930
-* Make StartConfig listener creation context-aware by @EricGusmao in https://github.com/labstack/echo/pull/2936
-* fix(lint): resolve staticcheck issues and improve code quality by @itsllyaz in https://github.com/labstack/echo/pull/2941
-* Context.Scheme should validate values taken from header by @aldas in https://github.com/labstack/echo/pull/2953
-* chore: fix typos in httperror.go by @tisonkun in https://github.com/labstack/echo/pull/2958
-* Context.Json should not unwrap response by @aldas in https://github.com/labstack/echo/pull/2964
-
-
-## v5.1.0 - 2026-03-31
-
-**Security**
-
-This change does not break the API contract, but it does introduce breaking changes in logic/behavior.
-If your application is using `c.RealIP()` beware and read https://echo.labstack.com/docs/ip-address
-
-`v4` behavior can be restored with:
-```go
-e := echo.New()
-e.IPExtractor = echo.LegacyIPExtractor()
-```
-
-* Remove legacy IP extraction logic from context.RealIP method by @aldas in https://github.com/labstack/echo/pull/2933
-
+## v4.15.1 - 2026-02-22
 
 **Enhancements**
 
-* Add echo-opentelemetry to the README.md by @aldas in https://github.com/labstack/echo/pull/2908
-* fix: correct spelling mistakes in comments and field name by @crawfordxx in https://github.com/labstack/echo/pull/2916
-* Add https://github.com/labstack/echo-prometheus to the middleware list in README.md by @aldas in https://github.com/labstack/echo/pull/2919
-* Add StartConfig.Listener so server with custom Listener is easier to create by @aldas in https://github.com/labstack/echo/pull/2920
-* Fix rate limiter documentation for default burst value by @karesansui-u in https://github.com/labstack/echo/pull/2925
-* Add doc comments to clarify usage of File related methods and leading slash handling by @aldas in https://github.com/labstack/echo/pull/2928
-* Add NewDefaultFS function to help create filesystem that allows absolute paths by @aldas in https://github.com/labstack/echo/pull/2931
-* Do not set http.Server.WriteTimeout in StartConfig by @aldas in https://github.com/labstack/echo/pull/2932
-
-
-
-## v5.0.4 - 2026-02-15
-
-**Enhancements**
-
-* Remove unused import 'errors' from README example by @kumapower17 in https://github.com/labstack/echo/pull/2889
-* Fix Graceful shutdown: after `http.Server.Serve` returns we need to wait for graceful shutdown goroutine to finish by @aldas in https://github.com/labstack/echo/pull/2898
-* Update location of oapi-codegen in README by @mromaszewicz in https://github.com/labstack/echo/pull/2896
-* Add Go 1.26 to CI flow by @aldas in https://github.com/labstack/echo/pull/2899
-* Add new function `echo.StatusCode` by @suwakei in https://github.com/labstack/echo/pull/2892
-* CSRF: support older token-based CSRF protection handler that want to render token into template by @aldas in https://github.com/labstack/echo/pull/2894
-* Add `echo.ResolveResponseStatus` function to help middleware/handlers determine HTTP status code and echo.Response by @aldas in https://github.com/labstack/echo/pull/2900
-
-
-## v5.0.3 - 2026-02-06
-
-**Security**
-
-* Fix directory traversal vulnerability under Windows in Static middleware when default Echo filesystem is used. Reported by @shblue21.
-
-This applies to cases when:
-- Windows is used as OS
-- `middleware.StaticConfig.Filesystem` is `nil` (default)
-- `echo.Filesystem` is has not been set explicitly (default)
-
-Exposure is restricted to the active process working directory and its subfolders.
-
-
-## v5.0.2 - 2026-02-02
-
-**Security**
-
-* Fix Static middleware with `config.Browse=true` lists all files/subfolders from `config.Filesystem` root and not starting from `config.Root` in https://github.com/labstack/echo/pull/2887
-
-
-## v5.0.1 - 2026-01-28
-
-* Panic MW: will now return a custom PanicStackError with stack trace by @aldas in https://github.com/labstack/echo/pull/2871
-* Docs: add missing err parameter to DenyHandler example by @cgalibern in https://github.com/labstack/echo/pull/2878
-* improve: improve websocket checks in IsWebSocket() [per RFC 6455] by @raju-mechatronics in https://github.com/labstack/echo/pull/2875
-* fix: Context.Json() should not send status code before serialization is complete by @aldas in https://github.com/labstack/echo/pull/2877
-
-
-## v5.0.0 - 2026-01-18
-
-Echo `v5` is maintenance release with **major breaking changes**
-- `Context` is now struct instead of interface and we can add method to it in the future in minor versions.
-- Adds new `Router` interface for possible new routing implementations.
-- Drops old logging interface and uses moderm `log/slog` instead.
-- Rearranges alot of methods/function signatures to make them more consistent.
-
-Upgrade notes and `v4` support:
-- Echo `v4` is supported with **security*** updates and **bug** fixes until **2026-12-31**
-- If you are using Echo in a production environment, it is recommended to wait until after 2026-03-31 before upgrading.
-- Until 2026-03-31, any critical issues requiring breaking `v5` API changes will be addressed, even if this violates semantic versioning.
-
-See [API_CHANGES_V5.md](./API_CHANGES_V5.md) for public API changes between `v4` and `v5`, notes on **upgrading**.
-
-Upgrading TLDR:
-
-If you are using Linux you can migrate easier parts like that:
-```bash
-find . -type f -name "*.go" -exec sed -i 's/ echo.Context/ *echo.Context/g' {} +
-find . -type f -name "*.go" -exec sed -i 's/echo\/v4/echo\/v5/g' {} +
-```
-macOS
-```bash
-find . -type f -name "*.go" -exec sed -i '' 's/ echo.Context/ *echo.Context/g' {} +
-find . -type f -name "*.go" -exec sed -i '' 's/echo\/v4/echo\/v5/g' {} +
-```
-
-or in your favorite IDE
-
-Replace all:
-1. ` echo.Context` -> ` *echo.Context`
-2. `echo/v4` -> `echo/v5`
-
-This should solve most of the issues. Probably the hardest part is updating all the tests.
+* CSRF: support older token-based CSRF protection handler that want to render token into template by @aldas in https://github.com/labstack/echo/pull/2905
 
 
 ## v4.15.0 - 2026-01-01

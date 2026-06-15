@@ -16,7 +16,7 @@ import (
 /**
 	Following functions provide handful of methods for binding to Go native types from request query or path parameters.
     * QueryParamsBinder(c) - binds query parameters (source URL)
-    * PathValuesBinder(c) - binds path parameters (source URL)
+    * PathParamsBinder(c) - binds path parameters (source URL)
     * FormFieldBinder(c) - binds form fields (source URL + body)
 
 	Example:
@@ -66,9 +66,6 @@ import (
 */
 
 // BindingError represents an error that occurred while binding request data.
-//
-// Note: JSON serialization is handled by the MarshalJSON method below, not by the
-// struct tags (which are kept for documentation). MarshalJSON emits {"field","message"}.
 type BindingError struct {
 	// Field is the field name where value binding failed
 	Field string `json:"field"`
@@ -78,35 +75,21 @@ type BindingError struct {
 }
 
 // NewBindingError creates new instance of binding error
-func NewBindingError(sourceParam string, values []string, message string, err error) error {
+func NewBindingError(sourceParam string, values []string, message any, internalError error) error {
 	return &BindingError{
-		Field:     sourceParam,
-		Values:    values,
-		HTTPError: &HTTPError{Code: http.StatusBadRequest, Message: message, err: err},
+		Field:  sourceParam,
+		Values: values,
+		HTTPError: &HTTPError{
+			Code:     http.StatusBadRequest,
+			Message:  message,
+			Internal: internalError,
+		},
 	}
 }
 
 // Error returns error message
 func (be *BindingError) Error() string {
 	return fmt.Sprintf("%s, field=%s", be.HTTPError.Error(), be.Field)
-}
-
-// MarshalJSON implements json.Marshaler so that binding errors are serialized into
-// a structured response (e.g. {"field":"id","message":"..."}) rather than being
-// flattened to a generic message. DefaultHTTPErrorHandler routes errors that
-// implement json.Marshaler through their own encoding.
-func (be *BindingError) MarshalJSON() ([]byte, error) {
-	message := be.Message
-	if message == "" {
-		message = http.StatusText(be.Code)
-	}
-	return json.Marshal(struct {
-		Field   string `json:"field"`
-		Message string `json:"message"`
-	}{
-		Field:   be.Field,
-		Message: message,
-	})
 }
 
 // ValueBinder provides utility methods for binding query or path parameter to various Go built-in types
@@ -116,14 +99,14 @@ type ValueBinder struct {
 	// ValuesFunc is used to get all values for parameter from request. i.e. `/api/search?ids=1&ids=2`
 	ValuesFunc func(sourceParam string) []string
 	// ErrorFunc is used to create errors. Allows you to use your own error type, that for example marshals to your specific json response
-	ErrorFunc func(sourceParam string, values []string, message string, internalError error) error
+	ErrorFunc func(sourceParam string, values []string, message any, internalError error) error
 	errors    []error
 	// failFast is flag for binding methods to return without attempting to bind when previous binding already failed
 	failFast bool
 }
 
 // QueryParamsBinder creates query parameter value binder
-func QueryParamsBinder(c *Context) *ValueBinder {
+func QueryParamsBinder(c Context) *ValueBinder {
 	return &ValueBinder{
 		failFast:  true,
 		ValueFunc: c.QueryParam,
@@ -138,8 +121,8 @@ func QueryParamsBinder(c *Context) *ValueBinder {
 	}
 }
 
-// PathValuesBinder creates path parameter value binder
-func PathValuesBinder(c *Context) *ValueBinder {
+// PathParamsBinder creates path parameter value binder
+func PathParamsBinder(c Context) *ValueBinder {
 	return &ValueBinder{
 		failFast:  true,
 		ValueFunc: c.Param,
@@ -165,7 +148,7 @@ func PathValuesBinder(c *Context) *ValueBinder {
 // NB: when binding forms take note that this implementation uses standard library form parsing
 // which parses form data from BOTH URL and BODY if content type is not MIMEMultipartForm
 // See https://golang.org/pkg/net/http/#Request.ParseForm
-func FormFieldBinder(c *Context) *ValueBinder {
+func FormFieldBinder(c Context) *ValueBinder {
 	vb := &ValueBinder{
 		failFast: true,
 		ValueFunc: func(sourceParam string) string {
@@ -176,7 +159,7 @@ func FormFieldBinder(c *Context) *ValueBinder {
 	vb.ValuesFunc = func(sourceParam string) []string {
 		if c.Request().Form == nil {
 			// this is same as `Request().FormValue()` does internally
-			_, _ = c.MultipartForm() // we want to trigger c.request.ParseMultipartForm(c.formParseMaxMemory)
+			_ = c.Request().ParseMultipartForm(32 << 20)
 		}
 		values, ok := c.Request().Form[sourceParam]
 		if !ok {
@@ -548,11 +531,11 @@ func (b *ValueBinder) int(sourceParam string, value string, dest any, bitSize in
 	case *int64:
 		*d = n
 	case *int32:
-		*d = int32(n) // #nosec G115
+		*d = int32(n)
 	case *int16:
-		*d = int16(n) // #nosec G115
+		*d = int16(n)
 	case *int8:
-		*d = int8(n) // #nosec G115
+		*d = int8(n)
 	case *int:
 		*d = int(n)
 	}
@@ -776,13 +759,13 @@ func (b *ValueBinder) uint(sourceParam string, value string, dest any, bitSize i
 	case *uint64:
 		*d = n
 	case *uint32:
-		*d = uint32(n) // #nosec G115
+		*d = uint32(n)
 	case *uint16:
-		*d = uint16(n) // #nosec G115
+		*d = uint16(n)
 	case *uint8: // byte is alias to uint8
-		*d = uint8(n) // #nosec G115
+		*d = uint8(n)
 	case *uint:
-		*d = uint(n) // #nosec G115
+		*d = uint(n)
 	}
 	return b
 }
@@ -1260,7 +1243,7 @@ func (b *ValueBinder) UnixTime(sourceParam string, dest *time.Time) *ValueBinder
 	return b.unixTime(sourceParam, dest, false, time.Second)
 }
 
-// MustUnixTime requires parameter value to exist to bind to time.Time variable (in local time corresponding
+// MustUnixTime requires parameter value to exist to bind to time.Duration variable (in local time corresponding
 // to the given Unix time). Returns error when value does not exist.
 //
 // Example: 1609180603 bind to 2020-12-28T18:36:43.000000000+00:00
@@ -1281,7 +1264,7 @@ func (b *ValueBinder) UnixTimeMilli(sourceParam string, dest *time.Time) *ValueB
 	return b.unixTime(sourceParam, dest, false, time.Millisecond)
 }
 
-// MustUnixTimeMilli requires parameter value to exist to bind to time.Time variable (in local time corresponding
+// MustUnixTimeMilli requires parameter value to exist to bind to time.Duration variable  (in local time corresponding
 // to the given Unix time in millisecond precision). Returns error when value does not exist.
 //
 // Example: 1647184410140 bind to 2022-03-13T15:13:30.140000000+00:00
@@ -1305,8 +1288,8 @@ func (b *ValueBinder) UnixTimeNano(sourceParam string, dest *time.Time) *ValueBi
 	return b.unixTime(sourceParam, dest, false, time.Nanosecond)
 }
 
-// MustUnixTimeNano requires parameter value to exist to bind to time.Time variable (in local time corresponding
-// to the given Unix time value in nanosecond precision). Returns error when value does not exist.
+// MustUnixTimeNano requires parameter value to exist to bind to time.Duration variable  (in local Time corresponding
+// to the given Unix time value in nano second precision). Returns error when value does not exist.
 //
 // Example: 1609180603123456789 binds to 2020-12-28T18:36:43.123456789+00:00
 // Example:          1000000000 binds to 1970-01-01T00:00:01.000000000+00:00

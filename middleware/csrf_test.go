@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -57,7 +57,6 @@ func TestCSRF_tokenExtractors(t *testing.T) {
 			givenFormTokens: map[string][]string{
 				"csrf": {"invalid", "token"},
 			},
-			expectError: "code=403, message=invalid csrf token",
 		},
 		{
 			name:            "nok, invalid token from POST form",
@@ -75,7 +74,7 @@ func TestCSRF_tokenExtractors(t *testing.T) {
 			givenCSRFCookie: "token",
 			givenMethod:     http.MethodPost,
 			givenFormTokens: map[string][]string{},
-			expectError:     "code=400, message=Bad Request, err=missing value in the form",
+			expectError:     "code=400, message=missing csrf token in the form parameter",
 		},
 		{
 			name:            "ok, token from POST header",
@@ -94,7 +93,6 @@ func TestCSRF_tokenExtractors(t *testing.T) {
 			givenHeaderTokens: map[string][]string{
 				echo.HeaderXCSRFToken: {"invalid", "token"},
 			},
-			expectError: "code=403, message=invalid csrf token",
 		},
 		{
 			name:            "nok, invalid token from POST header",
@@ -112,7 +110,7 @@ func TestCSRF_tokenExtractors(t *testing.T) {
 			givenCSRFCookie:   "token",
 			givenMethod:       http.MethodPost,
 			givenHeaderTokens: map[string][]string{},
-			expectError:       "code=400, message=Bad Request, err=missing value in request header",
+			expectError:       "code=400, message=missing csrf token in request header",
 		},
 		{
 			name:            "ok, token from PUT query param",
@@ -131,7 +129,6 @@ func TestCSRF_tokenExtractors(t *testing.T) {
 			givenQueryTokens: map[string][]string{
 				"csrf": {"invalid", "token"},
 			},
-			expectError: "code=403, message=invalid csrf token",
 		},
 		{
 			name:            "nok, invalid token from PUT query form",
@@ -149,7 +146,7 @@ func TestCSRF_tokenExtractors(t *testing.T) {
 			givenCSRFCookie:  "token",
 			givenMethod:      http.MethodPut,
 			givenQueryTokens: map[string][]string{},
-			expectError:      "code=400, message=Bad Request, err=missing value in the query string",
+			expectError:      "code=400, message=missing csrf token in the query string",
 		},
 		{
 			name:                    "nok, invalid TokenLookup",
@@ -213,7 +210,7 @@ func TestCSRF_tokenExtractors(t *testing.T) {
 				assert.NoError(t, err)
 			}
 
-			h := csrf(func(c *echo.Context) error {
+			h := csrf(func(c echo.Context) error {
 				return c.String(http.StatusOK, "test")
 			})
 
@@ -261,7 +258,7 @@ func TestCSRFWithConfig(t *testing.T) {
 			name:            "nok, POST without token",
 			whenMethod:      http.MethodPost,
 			expectEmptyBody: true,
-			expectErr:       `code=400, message=Bad Request, err=missing value in request header`,
+			expectErr:       `code=400, message=missing csrf token in request header`,
 		},
 		{
 			name:            "nok, POST empty token",
@@ -328,12 +325,11 @@ func TestCSRFWithConfig(t *testing.T) {
 			if tc.givenConfig != nil {
 				config = *tc.givenConfig
 			}
-			if config.Generator == nil {
-				config.Generator = func() string {
+			if config.generator == nil {
+				config.generator = func(_ uint8) string {
 					return "TESTTOKEN"
 				}
 			}
-
 			mw, err := config.ToMiddleware()
 			if tc.expectMWError != "" {
 				assert.EqualError(t, err, tc.expectMWError)
@@ -341,7 +337,7 @@ func TestCSRFWithConfig(t *testing.T) {
 			}
 			assert.NoError(t, err)
 
-			h := mw(func(c *echo.Context) error {
+			h := mw(func(c echo.Context) error {
 				cToken := c.Get(cmp.Or(config.ContextKey, DefaultCSRFConfig.ContextKey))
 				assert.Equal(t, tc.expectTokenInContext, cToken)
 				return c.String(http.StatusOK, "test")
@@ -373,7 +369,7 @@ func TestCSRF(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	csrf := CSRF()
-	h := csrf(func(c *echo.Context) error {
+	h := csrf(func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	})
 
@@ -393,7 +389,7 @@ func TestCSRFSetSameSiteMode(t *testing.T) {
 		CookieSameSite: http.SameSiteStrictMode,
 	})
 
-	h := csrf(func(c *echo.Context) error {
+	h := csrf(func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	})
 
@@ -410,7 +406,7 @@ func TestCSRFWithoutSameSiteMode(t *testing.T) {
 
 	csrf := CSRFWithConfig(CSRFConfig{})
 
-	h := csrf(func(c *echo.Context) error {
+	h := csrf(func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	})
 
@@ -429,7 +425,7 @@ func TestCSRFWithSameSiteDefaultMode(t *testing.T) {
 		CookieSameSite: http.SameSiteDefaultMode,
 	})
 
-	h := csrf(func(c *echo.Context) error {
+	h := csrf(func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	})
 
@@ -449,7 +445,7 @@ func TestCSRFWithSameSiteModeNone(t *testing.T) {
 	}.ToMiddleware()
 	assert.NoError(t, err)
 
-	h := csrf(func(c *echo.Context) error {
+	h := csrf(func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	})
 
@@ -485,12 +481,12 @@ func TestCSRFConfig_skipper(t *testing.T) {
 			c := e.NewContext(req, rec)
 
 			csrf := CSRFWithConfig(CSRFConfig{
-				Skipper: func(c *echo.Context) bool {
+				Skipper: func(c echo.Context) bool {
 					return tc.whenSkip
 				},
 			})
 
-			h := csrf(func(c *echo.Context) error {
+			h := csrf(func(c echo.Context) error {
 				return c.String(http.StatusOK, "test")
 			})
 
@@ -504,13 +500,13 @@ func TestCSRFConfig_skipper(t *testing.T) {
 
 func TestCSRFErrorHandling(t *testing.T) {
 	cfg := CSRFConfig{
-		ErrorHandler: func(c *echo.Context, err error) error {
+		ErrorHandler: func(err error, c echo.Context) error {
 			return echo.NewHTTPError(http.StatusTeapot, "error_handler_executed")
 		},
 	}
 
 	e := echo.New()
-	e.POST("/", func(c *echo.Context) error {
+	e.POST("/", func(c echo.Context) error {
 		return c.String(http.StatusNotImplemented, "should not end up here")
 	})
 
@@ -583,7 +579,6 @@ func TestCSRFConfig_checkSecFetchSiteRequest(t *testing.T) {
 			whenMethod:       http.MethodPost,
 			whenSecFetchSite: "same-site",
 			expectAllow:      false,
-			expectErr:        `code=403, message=same-site request blocked by CSRF`,
 		},
 		{
 			name:             "ok, unsafe POST + same-origin passes",
@@ -641,7 +636,6 @@ func TestCSRFConfig_checkSecFetchSiteRequest(t *testing.T) {
 			whenMethod:       http.MethodPut,
 			whenSecFetchSite: "same-site",
 			expectAllow:      false,
-			expectErr:        `code=403, message=same-site request blocked by CSRF`,
 		},
 		{
 			name:             "nok, unsafe DELETE + cross-site is blocked",
@@ -657,7 +651,6 @@ func TestCSRFConfig_checkSecFetchSiteRequest(t *testing.T) {
 			whenMethod:       http.MethodDelete,
 			whenSecFetchSite: "same-site",
 			expectAllow:      false,
-			expectErr:        `code=403, message=same-site request blocked by CSRF`,
 		},
 		{
 			name:             "nok, unsafe PATCH + cross-site is blocked",
@@ -770,7 +763,7 @@ func TestCSRFConfig_checkSecFetchSiteRequest(t *testing.T) {
 		{
 			name: "ok, unsafe POST + same-site + custom func allows",
 			givenConfig: CSRFConfig{
-				AllowSecFetchSiteFunc: func(c *echo.Context) (bool, error) {
+				AllowSecFetchSiteFunc: func(c echo.Context) (bool, error) {
 					return true, nil
 				},
 			},
@@ -781,7 +774,7 @@ func TestCSRFConfig_checkSecFetchSiteRequest(t *testing.T) {
 		{
 			name: "ok, unsafe POST + cross-site + custom func allows",
 			givenConfig: CSRFConfig{
-				AllowSecFetchSiteFunc: func(c *echo.Context) (bool, error) {
+				AllowSecFetchSiteFunc: func(c echo.Context) (bool, error) {
 					return true, nil
 				},
 			},
@@ -792,7 +785,7 @@ func TestCSRFConfig_checkSecFetchSiteRequest(t *testing.T) {
 		{
 			name: "nok, unsafe POST + same-site + custom func returns custom error",
 			givenConfig: CSRFConfig{
-				AllowSecFetchSiteFunc: func(c *echo.Context) (bool, error) {
+				AllowSecFetchSiteFunc: func(c echo.Context) (bool, error) {
 					return false, echo.NewHTTPError(http.StatusTeapot, "custom error from func")
 				},
 			},
@@ -804,7 +797,7 @@ func TestCSRFConfig_checkSecFetchSiteRequest(t *testing.T) {
 		{
 			name: "nok, unsafe POST + cross-site + custom func returns false with nil error",
 			givenConfig: CSRFConfig{
-				AllowSecFetchSiteFunc: func(c *echo.Context) (bool, error) {
+				AllowSecFetchSiteFunc: func(c echo.Context) (bool, error) {
 					return false, nil
 				},
 			},
@@ -825,7 +818,7 @@ func TestCSRFConfig_checkSecFetchSiteRequest(t *testing.T) {
 			name: "ok, unsafe POST + cross-site + trusted origin takes precedence over custom func",
 			givenConfig: CSRFConfig{
 				TrustedOrigins: []string{"https://trusted.example.com"},
-				AllowSecFetchSiteFunc: func(c *echo.Context) (bool, error) {
+				AllowSecFetchSiteFunc: func(c echo.Context) (bool, error) {
 					return false, echo.NewHTTPError(http.StatusTeapot, "should not be called")
 				},
 			},
@@ -838,7 +831,7 @@ func TestCSRFConfig_checkSecFetchSiteRequest(t *testing.T) {
 			name: "nok, unsafe POST + cross-site + trusted origin not matched, custom func blocks",
 			givenConfig: CSRFConfig{
 				TrustedOrigins: []string{"https://trusted.example.com"},
-				AllowSecFetchSiteFunc: func(c *echo.Context) (bool, error) {
+				AllowSecFetchSiteFunc: func(c echo.Context) (bool, error) {
 					return false, echo.NewHTTPError(http.StatusTeapot, "custom block")
 				},
 			},
@@ -860,7 +853,8 @@ func TestCSRFConfig_checkSecFetchSiteRequest(t *testing.T) {
 			}
 
 			res := httptest.NewRecorder()
-			c := echo.NewContext(req, res)
+			e := echo.New()
+			c := e.NewContext(req, res)
 
 			allow, err := tc.givenConfig.checkSecFetchSiteRequest(c)
 
