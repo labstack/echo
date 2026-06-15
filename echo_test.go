@@ -20,6 +20,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -133,6 +134,11 @@ func TestNewDefaultFS(t *testing.T) {
 }
 
 func TestEcho_StaticFS(t *testing.T) {
+	dotsInFilenameFS := fstest.MapFS{
+		// On Windows filename `%2f..` can not be created but in Linux it is possible.
+		"%2f..": {Data: []byte("This filename is escaped to `/..` in URL.Path")},
+	}
+
 	var testCases = []struct {
 		givenFs                              fs.FS
 		name                                 string
@@ -280,12 +286,12 @@ func TestEcho_StaticFS(t *testing.T) {
 		{
 			name:                                 "possible open redirect vulnerability when not unescaping path variables in static handler",
 			givenPrefix:                          "/",
-			givenFs:                              os.DirFS("_fixture/dist/"),
+			givenFs:                              dotsInFilenameFS,
 			givenEnablePathUnescapingStaticFiles: false,
 			whenURL:                              "/%2f..",
 			expectStatus:                         http.StatusOK,
 			expectHeaderLocation:                 "",
-			expectBodyStartsWith:                 "This filename is escaped to `/..` in URL.Path\n",
+			expectBodyStartsWith:                 "This filename is escaped to `/..` in URL.Path",
 		},
 	}
 
