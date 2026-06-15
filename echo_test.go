@@ -20,6 +20,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -133,15 +134,21 @@ func TestNewDefaultFS(t *testing.T) {
 }
 
 func TestEcho_StaticFS(t *testing.T) {
+	dotsInFilenameFS := fstest.MapFS{
+		// On Windows filename `%2f..` can not be created but in Linux it is possible.
+		"%2f..": {Data: []byte("This filename is escaped to `/..` in URL.Path")},
+	}
+
 	var testCases = []struct {
-		givenFs              fs.FS
-		name                 string
-		givenPrefix          string
-		givenFsRoot          string
-		whenURL              string
-		expectHeaderLocation string
-		expectBodyStartsWith string
-		expectStatus         int
+		givenFs                              fs.FS
+		name                                 string
+		givenPrefix                          string
+		givenFsRoot                          string
+		givenEnablePathUnescapingStaticFiles bool
+		whenURL                              string
+		expectHeaderLocation                 string
+		expectBodyStartsWith                 string
+		expectStatus                         int
 	}{
 		{
 			name:                 "ok",
@@ -251,6 +258,33 @@ func TestEcho_StaticFS(t *testing.T) {
 			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
 		},
 		{
+			name:                                 "do not accept encoded dots in path (%2E%2E is `..`) to traverse within filesystem boundary",
+			givenPrefix:                          "/",
+			givenFs:                              os.DirFS("_fixture/"),
+			givenEnablePathUnescapingStaticFiles: false,
+			whenURL:                              `/dist/public/%2E%2E/private.txt`, // `/dist/public/../private.txt`
+			expectStatus:                         http.StatusNotFound,
+			expectBodyStartsWith:                 "{\"message\":\"Not Found\"}\n",
+		},
+		{
+			name:                                 "allow encoded dots in path (%2E%2E is `..`) to traverse within filesystem",
+			givenPrefix:                          "/",
+			givenFs:                              os.DirFS("_fixture/"),
+			givenEnablePathUnescapingStaticFiles: true,
+			whenURL:                              `/dist/public/%2E%2E/private.txt`, // `/dist/public/../private.txt`
+			expectStatus:                         http.StatusOK,
+			expectBodyStartsWith:                 "private file",
+		},
+		{
+			name:                                 "ok, file with space in name is served when path unescaping is enabled",
+			givenPrefix:                          "/",
+			givenFs:                              os.DirFS("_fixture/dist/public"),
+			givenEnablePathUnescapingStaticFiles: true,
+			whenURL:                              "/hello%20world.txt",
+			expectStatus:                         http.StatusOK,
+			expectBodyStartsWith:                 "hello world file",
+		},
+		{
 			name:                 "do not allow directory traversal (slash - unix separator)",
 			givenPrefix:          "/",
 			givenFs:              os.DirFS("_fixture/"),
@@ -259,22 +293,42 @@ func TestEcho_StaticFS(t *testing.T) {
 			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
 		},
 		{
-			// An encoded slash (%2f) is rejected outright (GHSA-vfp3-v2gw-7wfq): by default the
-			// router matches on the raw path so %2f is not a separator, and unescaping it here
-			// would let it act as one. No redirect is emitted, closing the open-redirect vector.
-			name:                 "encoded slash is rejected, not redirected",
+			name:                 "do not unescape path variables by default",
 			givenPrefix:          "/",
 			givenFs:              os.DirFS("_fixture/"),
 			whenURL:              "/open.redirect.hackercom%2f..",
 			expectStatus:         http.StatusNotFound,
-			expectHeaderLocation: "",
 			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
+		},
+		{
+			name:                                 "possible open redirect vulnerability when unescaping path variables in static handler",
+			givenPrefix:                          "/",
+			givenFs:                              os.DirFS("_fixture/"),
+			givenEnablePathUnescapingStaticFiles: true,
+			// `//open.redirect.hackercom/..` resolves to directory but does not end with `/` so redirect is done but this
+			// redirect can not be to path starting with `//` or `\\` (open redirect)
+			whenURL:              "/%2fopen.redirect.hackercom%2f..",
+			expectStatus:         http.StatusMovedPermanently,
+			expectHeaderLocation: "/open.redirect.hackercom/../", // location starting with `//open` would be very bad
+			expectBodyStartsWith: "",
+		},
+		{
+			name:                                 "possible open redirect vulnerability when not unescaping path variables in static handler",
+			givenPrefix:                          "/",
+			givenFs:                              dotsInFilenameFS,
+			givenEnablePathUnescapingStaticFiles: false,
+			whenURL:                              "/%2f..",
+			expectStatus:                         http.StatusOK,
+			expectHeaderLocation:                 "",
+			expectBodyStartsWith:                 "This filename is escaped to `/..` in URL.Path",
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			e := New()
+			e := NewWithConfig(Config{
+				EnablePathUnescapingStaticFiles: tc.givenEnablePathUnescapingStaticFiles,
+			})
 
 			tmpFs := tc.givenFs
 			if tc.givenFsRoot != "" {
@@ -301,6 +355,122 @@ func TestEcho_StaticFS(t *testing.T) {
 				_, ok := rec.Result().Header["Location"]
 				assert.False(t, ok)
 			}
+		})
+	}
+}
+
+func TestStaticDirectoryHandlerAndRouterInconsistentEscaping(t *testing.T) {
+	var testCases = []struct {
+		name                                 string
+		givenEnablePathUnescapingStaticFiles bool
+		givenRouterUnescapePathParamValues   bool
+		givenRouterUseEscapedPathForMatching bool
+		whenURL                              string
+		expectBody                           string
+		expectStatus                         int
+	}{
+		{
+			name:                                 "ok, file is served from not-forbidden path",
+			givenEnablePathUnescapingStaticFiles: false,
+			whenURL:                              "/test.txt",
+			expectBody:                           "test.txt contents",
+			expectStatus:                         http.StatusOK,
+		},
+		{
+			name:                                 "ok, forbidden path is matched by route wildcard and forbidden by that",
+			givenEnablePathUnescapingStaticFiles: false,
+			whenURL:                              "/admin/private.txt",
+			expectBody:                           "{\"message\":\"Forbidden\"}",
+			expectStatus:                         http.StatusForbidden,
+		},
+		{
+			name:                                 "ok, escaped filename from forbidden path is routed to guarded route",
+			givenEnablePathUnescapingStaticFiles: false,
+			givenRouterUnescapePathParamValues:   false,
+			givenRouterUseEscapedPathForMatching: true, // Router uses escaped path (req.URL.RawPath) for matching
+			whenURL:                              "/admin%2fprivate.txt",
+			expectBody:                           "{\"message\":\"Forbidden\"}",
+			expectStatus:                         http.StatusForbidden,
+		},
+		{
+			name:                                 "ok, escaped filename from forbidden path is not unescaped and results 404",
+			givenEnablePathUnescapingStaticFiles: false, // router path escaping and StaticDirectoryHandler is consistent
+			whenURL:                              "/admin%2fprivate.txt",
+			expectBody:                           "{\"message\":\"Not Found\"}",
+			expectStatus:                         http.StatusNotFound,
+		},
+		{
+			name:                                 "nok, escaped filename from forbidden path is unescaped and returns file contents (handler unescapes)",
+			givenEnablePathUnescapingStaticFiles: true, // router path escaping and StaticDirectoryHandler is NOT consistent
+			givenRouterUnescapePathParamValues:   false,
+			whenURL:                              "/admin%2fprivate.txt",
+			expectBody:                           "public/admin/private.txt - private file",
+			expectStatus:                         http.StatusOK,
+		},
+		{
+			name:                                 "nok, escaped filename from forbidden path is unescaped and returns file contents (router unescapes)",
+			givenEnablePathUnescapingStaticFiles: false,
+			givenRouterUnescapePathParamValues:   true, // router path escaping and StaticDirectoryHandler is NOT consistent
+			whenURL:                              "/admin%2fprivate.txt",
+			expectBody:                           "public/admin/private.txt - private file",
+			expectStatus:                         http.StatusOK,
+		},
+		{
+			name:                                 "nok, unescaped filename from forbidden path is escaped and returns file contents (router unescapes and method unescapes)",
+			givenEnablePathUnescapingStaticFiles: true,
+			givenRouterUnescapePathParamValues:   true, // consistent path unescaping - makes no difference
+			whenURL:                              "/admin%2fprivate.txt",
+			expectBody:                           "public/admin/private.txt - private file",
+			expectStatus:                         http.StatusOK,
+		},
+		{
+			name:                                 "nok, escaped filename, resolves to from forbidden path is not routed to guarded route and includes guarded file",
+			givenEnablePathUnescapingStaticFiles: false,
+			givenRouterUnescapePathParamValues:   false,
+			// Router uses escaped path (req.URL.RawPath) for matching, but that file resolves to `admin/private.txt` after path.Clean()
+			givenRouterUseEscapedPathForMatching: true,
+			whenURL:                              "/assets/../admin%2fprivate.txt",
+			expectBody:                           "public/admin/private.txt - private file",
+			expectStatus:                         http.StatusOK,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := NewRouter(RouterConfig{
+				UnescapePathParamValues:   tc.givenRouterUnescapePathParamValues,
+				UseEscapedPathForMatching: tc.givenRouterUseEscapedPathForMatching,
+			})
+			e := NewWithConfig(Config{
+				EnablePathUnescapingStaticFiles: tc.givenEnablePathUnescapingStaticFiles,
+				Router:                          r,
+				Filesystem:                      os.DirFS("./_fixture/dist"),
+			})
+
+			// 0.
+			// given folder structure:
+			// private.txt
+			// public/
+			// public/index.html
+			// public/text.txt
+			// public/admin/private.txt
+
+			// 1. share `public/` folder contents from the server root. This folder actually contains subfolder `admin` which
+			// contents we want to forbid from downloading
+			e.Static("/", "public")
+
+			// 2. naively assume that everything under /admin folder is now forbidden
+			e.GET("/admin/*", func(c *Context) error {
+				return ErrForbidden
+			})
+
+			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
+			rec := httptest.NewRecorder()
+
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, tc.expectStatus, rec.Code)
+			body := strings.TrimRight(rec.Body.String(), "\r\n")
+			assert.Equal(t, tc.expectBody, body)
 		})
 	}
 }

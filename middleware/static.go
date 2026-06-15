@@ -18,7 +18,6 @@ import (
 	"sync"
 
 	"github.com/labstack/echo/v5"
-	"github.com/labstack/echo/v5/internal/pathutil"
 )
 
 // StaticConfig defines the config for Static middleware.
@@ -54,9 +53,30 @@ type StaticConfig struct {
 	// Optional. Default value false.
 	IgnoreBase bool
 
-	// DisablePathUnescaping disables path parameter (param: *) unescaping. This is useful when router is set to unescape
-	// all parameter and doing it again in this middleware would corrupt filename that is requested.
+	// Deprecated: this field is ignored, use EnablePathUnescaping instead. DisablePathUnescaping will be removed in a future version.
+	// Note: previously the zero value (false) enabled unescaping, which was the unsafe default.
 	DisablePathUnescaping bool
+
+	// EnablePathUnescaping enables path parameter (param: *) unescaping.
+	// Default false (safe): encoded slashes (%2f) in the wildcard param are NOT decoded,
+	// preventing ACL bypass where /admin%2fprivate.txt bypasses a /admin/* route guard by
+	// not matching that route but having its wildcard param decoded to admin/private.txt.
+	// Set to true only when serving files whose names contain URL-encoded characters
+	// (e.g. "hello world.txt" via /hello%20world.txt) and you are not relying on
+	// route-based ACL guards to restrict access.
+	//
+	// Enabling echo.RouterConfig.UseEscapedPathForMatching makes this field irrelevant and can lead to security issues when
+	// using different Routes to exclude some of the files from being served.
+	// e.g. if you serve files from directory as such and use different route to exclude some of the files from being served.
+	// 0. given folder structure:
+	//   public/
+	//   public/index.html
+	//   public/admin/private.txt
+	// 1. share `public/` folder contents from the server root with `e.Static("/", "public")`
+	// 2. naively assume that everything under /admin folder is now forbidden
+	//       e.GET("/admin/*", func(c *Context) error { return echo.ErrForbidden })
+	// Then request to `/assets/../admin%2fprivate.txt` will be served as router does not match it to guarded route.
+	EnablePathUnescaping bool
 
 	// DirectoryListTemplate is template to list directory contents
 	// Optional. Default to `directoryListHTMLTemplate` constant below.
@@ -197,23 +217,10 @@ func (config StaticConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			}
 
 			p := c.Request().URL.Path
-			// URL.Path is already decoded by net/http, so it must not be unescaped
-			// again (doing so breaks file names containing '%', see #2599). Only the
-			// wildcard param from a group route (set below) may still be escaped.
-			pathUnescape := false
 			if strings.HasSuffix(c.Path(), "*") { // When serving from a group, e.g. `/static*`.
 				p = c.Param("*")
-				pathUnescape = !config.DisablePathUnescaping // because router could already do PathUnescape
 			}
-			if pathUnescape {
-				// The router matched on the raw, still-encoded path (by default), so an encoded
-				// path separator in the wildcard would only now become a real separator and
-				// resolve a file the matched route never authorized, bypassing route-level
-				// middleware. Reject it before unescaping (see echo.StaticDirectoryHandler).
-				if pathutil.HasEncodedPathSeparator(p) {
-					return echo.NewHTTPError(http.StatusNotFound, http.StatusText(http.StatusNotFound)).
-						Wrap(fmt.Errorf("rejected encoded path separator in static path %q", p))
-				}
+			if config.EnablePathUnescaping {
 				p, err = url.PathUnescape(p)
 				if err != nil {
 					return err
