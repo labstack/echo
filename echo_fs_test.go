@@ -15,14 +15,15 @@ import (
 
 func TestEcho_StaticFS(t *testing.T) {
 	var testCases = []struct {
-		name                 string
-		givenPrefix          string
-		givenFs              fs.FS
-		givenFsRoot          string
-		whenURL              string
-		expectStatus         int
-		expectHeaderLocation string
-		expectBodyStartsWith string
+		name                                 string
+		givenPrefix                          string
+		givenFs                              fs.FS
+		givenFsRoot                          string
+		givenEnablePathUnescapingStaticFiles bool
+		whenURL                              string
+		expectStatus                         int
+		expectHeaderLocation                 string
+		expectBodyStartsWith                 string
 	}{
 		{
 			name:                 "ok",
@@ -140,10 +141,7 @@ func TestEcho_StaticFS(t *testing.T) {
 			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
 		},
 		{
-			// An encoded slash (%2f) is rejected outright (GHSA-vfp3-v2gw-7wfq): the router matches
-			// on the raw path so %2f is not a separator, and unescaping it here would let it act as
-			// one. No redirect is emitted, closing the open-redirect vector.
-			name:                 "encoded slash is rejected, not redirected",
+			name:                 "do not unescape path variables by default",
 			givenPrefix:          "/",
 			givenFs:              os.DirFS("_fixture/"),
 			whenURL:              "/open.redirect.hackercom%2f..",
@@ -151,11 +149,30 @@ func TestEcho_StaticFS(t *testing.T) {
 			expectHeaderLocation: "",
 			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
 		},
+		{
+			name:                                 "do not accept encoded dots in path (%2E%2E is `..`) to traverse within filesystem boundary",
+			givenPrefix:                          "/",
+			givenFs:                              os.DirFS("_fixture/"),
+			givenEnablePathUnescapingStaticFiles: false,
+			whenURL:                              `/folder/%2E%2E/index.html`, // `/folder/../index.html`
+			expectStatus:                         http.StatusNotFound,
+			expectBodyStartsWith:                 "{\"message\":\"Not Found\"}\n",
+		},
+		{
+			name:                                 "allow encoded dots in path (%2E%2E is `..`) to traverse within filesystem when path unescaping is enabled",
+			givenPrefix:                          "/",
+			givenFs:                              os.DirFS("_fixture/"),
+			givenEnablePathUnescapingStaticFiles: true,
+			whenURL:                              `/folder/%2E%2E/index.html`, // `/folder/../index.html`
+			expectStatus:                         http.StatusOK,
+			expectBodyStartsWith:                 "<!doctype html>",
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			e := New()
+			e.EnablePathUnescapingStaticFiles = tc.givenEnablePathUnescapingStaticFiles
 
 			tmpFs := tc.givenFs
 			if tc.givenFsRoot != "" {

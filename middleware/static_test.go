@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -206,6 +207,82 @@ func TestStatic(t *testing.T) {
 			}
 			if tc.expectLength != "" {
 				assert.Equal(t, rec.Header().Get(echo.HeaderContentLength), tc.expectLength)
+			}
+		})
+	}
+}
+
+func TestStaticMiddlewareAndRouterInconsistentEscaping(t *testing.T) {
+	var testCases = []struct {
+		name                  string
+		givenConfig           StaticConfig
+		whenURL               string
+		expectCode            int
+		expectBodyContains    string
+		expectBodyNotContains string
+	}{
+		{
+			name:               "ok, normal file is served",
+			givenConfig:        StaticConfig{},
+			whenURL:            "/test.txt",
+			expectCode:         http.StatusOK,
+			expectBodyContains: "test",
+		},
+		{
+			name:        "ok, direct request to restricted path is blocked by ACL route",
+			givenConfig: StaticConfig{},
+			whenURL:     "/admin/secret.txt",
+			expectCode:  http.StatusForbidden,
+		},
+		{
+			// With EnablePathUnescaping=false (default/safe), the wildcard param "admin%2fsecret.txt"
+			// is NOT decoded, so the FS lookup is for literal "admin%2fsecret.txt" which does
+			// not exist → falls through to the /* handler → 404. ACL is not bypassed.
+			name:                  "ok, encoded slash returns 404 with default safe config (EnablePathUnescaping=false)",
+			givenConfig:           StaticConfig{},
+			whenURL:               "/admin%2fsecret.txt",
+			expectCode:            http.StatusNotFound,
+			expectBodyNotContains: "TOP-SECRET",
+		},
+		{
+			// With EnablePathUnescaping=true, the wildcard param "admin%2fsecret.txt" IS decoded
+			// to "admin/secret.txt". The router already routed to /* (encoded %2f prevented matching
+			// /admin/*), so the ACL guard never ran. The file is served — ACL bypass.
+			// Only use EnablePathUnescaping: true when not relying on route-based ACL guards.
+			name:               "nok, encoded slash bypasses ACL when EnablePathUnescaping=true",
+			givenConfig:        StaticConfig{EnablePathUnescaping: true},
+			whenURL:            "/admin%2fsecret.txt",
+			expectCode:         http.StatusOK,
+			expectBodyContains: "TOP-SECRET",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			assert.NoError(t, os.MkdirAll(filepath.Join(root, "admin"), 0o755))
+			assert.NoError(t, os.WriteFile(filepath.Join(root, "admin", "secret.txt"), []byte("TOP-SECRET"), 0o644))
+			assert.NoError(t, os.WriteFile(filepath.Join(root, "test.txt"), []byte("test content"), 0o644))
+
+			cfg := tc.givenConfig
+			cfg.Root = root
+
+			e := echo.New()
+			e.Use(StaticWithConfig(cfg))
+			e.GET("/*", func(c echo.Context) error { return echo.ErrNotFound })
+			e.GET("/admin/*", func(c echo.Context) error { return echo.ErrForbidden })
+
+			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, tc.expectCode, rec.Code)
+			body := rec.Body.String()
+			if tc.expectBodyContains != "" {
+				assert.Contains(t, body, tc.expectBodyContains)
+			}
+			if tc.expectBodyNotContains != "" {
+				assert.NotContains(t, body, tc.expectBodyNotContains)
 			}
 		})
 	}

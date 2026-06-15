@@ -23,7 +23,7 @@ func (g *Group) StaticFS(pathPrefix string, filesystem fs.FS) {
 	g.Add(
 		http.MethodGet,
 		pathPrefix+"*",
-		StaticDirectoryHandler(filesystem, false),
+		StaticDirectoryHandler(filesystem, !g.echo.EnablePathUnescapingStaticFiles),
 	)
 }
 
