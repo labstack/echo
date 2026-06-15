@@ -59,6 +59,7 @@ import (
 	"golang.org/x/crypto/acme"
 	"golang.org/x/crypto/acme/autocert"
 	"golang.org/x/net/http2"
+	//lint:ignore SA1019 h2c is required until v4 is supported (end of 2026)
 	"golang.org/x/net/http2/h2c"
 )
 
@@ -845,6 +846,7 @@ func (e *Echo) StartH2CServer(address string, h2s *http2.Server) error {
 	s.Addr = address
 	e.colorer.SetOutput(e.Logger.Output())
 	s.ErrorLog = e.StdLogger
+	//lint:ignore SA1019 h2c is required until v4 is supported (end of 2026)
 	s.Handler = h2c.NewHandler(e, h2s)
 	if e.Debug {
 		e.Logger.SetLevel(log.DEBUG)
