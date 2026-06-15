@@ -53,7 +53,7 @@ type StaticConfig struct {
 	// Optional. Default value false.
 	IgnoreBase bool
 
-	// Deprecated: Use EnablePathUnescaping instead. DisablePathUnescaping will be removed in a future version.
+	// Deprecated: this field is ignored, use EnablePathUnescaping instead. DisablePathUnescaping will be removed in a future version.
 	// Note: previously the zero value (false) enabled unescaping, which was the unsafe default.
 	DisablePathUnescaping bool
 
@@ -64,6 +64,18 @@ type StaticConfig struct {
 	// Set to true only when serving files whose names contain URL-encoded characters
 	// (e.g. "hello world.txt" via /hello%20world.txt) and you are not relying on
 	// route-based ACL guards to restrict access.
+	//
+	// Enabling echo.RouterConfig.UseEscapedPathForMatching makes this field irrelevant and can lead to security issues when
+	// using different Routes to exclude some of the files from being served.
+	// e.g. if you serve files from directory as such and use different route to exclude some of the files from being served.
+	// 0. given folder structure:
+	//   public/
+	//   public/index.html
+	//   public/admin/private.txt
+	// 1. share `public/` folder contents from the server root with `e.Static("/", "public")`
+	// 2. naively assume that everything under /admin folder is now forbidden
+	//       e.GET("/admin/*", func(c *Context) error { return echo.ErrForbidden })
+	// Then request to `/assets/../admin%2fprivate.txt` will be served as router does not match it to guarded route.
 	EnablePathUnescaping bool
 
 	// DirectoryListTemplate is template to list directory contents

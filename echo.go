@@ -43,7 +43,6 @@ Learn more at https://echo.labstack.com
 package echo
 
 import (
-	"cmp"
 	stdContext "context"
 	"encoding/json"
 	"errors"
@@ -310,7 +309,19 @@ type Config struct {
 	// route-based ACL guards to restrict access.
 	// If you are enabling this option, make sure you understand the security implications.
 	// See: https://github.com/labstack/echo/security/advisories/GHSA-vfp3-v2gw-7wfq
-	// Enabling RouterConfig.UseEscapedPathForMatching makes path escaping in static files and router consistent.
+	//
+	// Enabling RouterConfig.UseEscapedPathForMatching makes this field irrelevant and can lead to security issues when
+	// using different Routes to exclude some of the files from being served.
+	// e.g. if you serve files from directory as such and use different route to exclude some of the files from being served.
+	// 0. given folder structure:
+	//   public/
+	//   public/index.html
+	//   public/admin/private.txt
+	// 1. share `public/` folder contents from the server root with `e.Static("/", "public")`
+	// 2. naively assume that everything under /admin folder is now forbidden
+	//       e.GET("/admin/*", func(c *Context) error { return echo.ErrForbidden })
+	// Then request to `/assets/../admin%2fprivate.txt` will be served as router does not match it to guarded route.
+	//
 	// Applies to methods: Echo.Static, Echo.StaticFS, Group.Static, Group.StaticFS.
 	EnablePathUnescapingStaticFiles bool
 }
@@ -635,10 +646,7 @@ func StaticDirectoryHandler(fileSystem fs.FS, disablePathUnescaping bool) Handle
 		// If the request is for a directory and does not end with "/" redirect to path which ends with "/"
 		p = c.Request().URL.Path
 		if fi.IsDir() && len(p) > 0 && p[len(p)-1] != '/' {
-			// prefer RawPath in redirect to avoid inconsistency when router is possible already escaping or not escaping
-			// as we are redirecting to same path, except added "/" at the end the RawPath is more consistent behavior
-			redirectPath := cmp.Or(c.Request().URL.RawPath, c.Request().URL.Path)
-			return c.Redirect(http.StatusMovedPermanently, sanitizeURI(redirectPath+"/"))
+			return c.Redirect(http.StatusMovedPermanently, sanitizeURI(p+"/"))
 		}
 		return fsFile(c, name, fileSystem)
 	}

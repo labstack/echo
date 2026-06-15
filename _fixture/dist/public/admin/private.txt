@@ -1,1 +1,1 @@
-private file
+public/admin/private.txt - private file
