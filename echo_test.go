@@ -258,6 +258,24 @@ func TestEcho_StaticFS(t *testing.T) {
 			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
 		},
 		{
+			name:                                 "do not accept encoded dots in path (%2E%2E is `..`) to traverse within filesystem boundary",
+			givenPrefix:                          "/",
+			givenFs:                              os.DirFS("_fixture/"),
+			givenEnablePathUnescapingStaticFiles: false,
+			whenURL:                              `/dist/public/%2E%2E/private.txt`, // `/dist/public/../private.txt`
+			expectStatus:                         http.StatusNotFound,
+			expectBodyStartsWith:                 "{\"message\":\"Not Found\"}\n",
+		},
+		{
+			name:                                 "allow encoded dots in path (%2E%2E is `..`) to traverse within filesystem",
+			givenPrefix:                          "/",
+			givenFs:                              os.DirFS("_fixture/"),
+			givenEnablePathUnescapingStaticFiles: true,
+			whenURL:                              `/dist/public/%2E%2E/private.txt`, // `/dist/public/../private.txt`
+			expectStatus:                         http.StatusOK,
+			expectBodyStartsWith:                 "private file",
+		},
+		{
 			name:                 "do not allow directory traversal (slash - unix separator)",
 			givenPrefix:          "/",
 			givenFs:              os.DirFS("_fixture/"),
