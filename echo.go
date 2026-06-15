@@ -616,10 +616,13 @@ func (e *Echo) StaticFS(pathPrefix string, filesystem fs.FS, middleware ...Middl
 // StaticDirectoryHandler creates handler function to serve files from provided file system
 // When disablePathUnescaping is set then file name from path is not unescaped and is served as is.
 //
-// Note: Router is matching against unescaped path and using disablePathUnescaping=false here can lead to serving files
-// outside of the intended directory - if there are Routes that are meant to forbit some subset of the served filesystem
-// to be accessed, but inconsistency between how Router sees an unescaped path and this function will use an escaped path.
-// Enabling RouterConfig.UseEscapedPathForMatching makes path escaping in static files and router consistent.
+// Note: when disablePathUnescaping=false, the handler decodes the wildcard param before serving.
+// If route guards (e.g. e.GET("/admin/*", forbidden)) are used to restrict parts of the
+// filesystem, an encoded separator (%2F) or encoded dot-dot (%2E%2E) in the URL can resolve to
+// a path that the router never matched against the guard route. Enabling
+// RouterConfig.UseEscapedPathForMatching does NOT fix this — it changes which path the router
+// uses for matching but still lets path.Clean resolve ".." segments into a guarded directory.
+// Do not rely on route guards alone to restrict a filesystem served by this handler.
 // See https://github.com/labstack/echo/security/advisories/GHSA-vfp3-v2gw-7wfq
 func StaticDirectoryHandler(fileSystem fs.FS, disablePathUnescaping bool) HandlerFunc {
 	return func(c *Context) error {

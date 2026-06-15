@@ -276,6 +276,15 @@ func TestEcho_StaticFS(t *testing.T) {
 			expectBodyStartsWith:                 "private file",
 		},
 		{
+			name:                                 "ok, file with space in name is served when path unescaping is enabled",
+			givenPrefix:                          "/",
+			givenFs:                              os.DirFS("_fixture/dist/public"),
+			givenEnablePathUnescapingStaticFiles: true,
+			whenURL:                              "/hello%20world.txt",
+			expectStatus:                         http.StatusOK,
+			expectBodyStartsWith:                 "hello world file",
+		},
+		{
 			name:                 "do not allow directory traversal (slash - unix separator)",
 			givenPrefix:          "/",
 			givenFs:              os.DirFS("_fixture/"),
