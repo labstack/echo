@@ -54,9 +54,24 @@ type StaticConfig struct {
 	// Optional. Default value false.
 	IgnoreBase bool
 
-	// DisablePathUnescaping disables path parameter (param: *) unescaping. This is useful when router is set to unescape
-	// all parameter and doing it again in this middleware would corrupt filename that is requested.
+	// Deprecated: use EnablePathUnescaping instead. With unescaping now disabled by
+	// default, this flag is redundant; when set it still forces unescaping off (the
+	// safe direction) so existing code keeps working. Will be removed in a future version.
 	DisablePathUnescaping bool
+
+	// EnablePathUnescaping enables path parameter (param: *) unescaping.
+	//
+	// Default false (safe): the router matches the raw, still-encoded request path, so
+	// encoded separators/dot segments (%2F, %5C, %2E%2E) are NOT decoded when resolving
+	// the file. This prevents ACL bypass where e.g. /admin%2Fprivate.txt or
+	// /public/%2E%2E/admin/secret.txt resolve a file across a route-level middleware guard
+	// the encoded path never matched (GHSA-vfp3-v2gw-7wfq, GHSA-3pmx-cf9f-34xr).
+	//
+	// Set to true only when serving files whose names contain URL-encoded characters
+	// (e.g. "hello world.txt" via /hello%20world.txt) and you do not rely on route-based
+	// ACL guards to restrict access. Encoded separators and ".." segments are still
+	// rejected even when enabled.
+	EnablePathUnescaping bool
 
 	// DirectoryListTemplate is template to list directory contents
 	// Optional. Default to `directoryListHTMLTemplate` constant below.
@@ -200,14 +215,14 @@ func (config StaticConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			// URL.Path is already decoded by net/http, so it must not be unescaped
 			// again (doing so breaks file names containing '%', see #2599). Only the
 			// wildcard param from a group route (set below) may still be escaped.
-			pathUnescape := false
 			if strings.HasSuffix(c.Path(), "*") { // When serving from a group, e.g. `/static*`.
 				p = c.Param("*")
-				pathUnescape = !config.DisablePathUnescaping // because router could already do PathUnescape
 			}
-			if pathUnescape {
-				// The router matched on the raw, still-encoded path (by default), so an encoded
-				// path separator in the wildcard would only now become a real separator and
+			// Unescaping is opt-in (see EnablePathUnescaping). DisablePathUnescaping is the
+			// deprecated inverse and, if set, still forces it off (the safe direction).
+			if config.EnablePathUnescaping && !config.DisablePathUnescaping {
+				// The router matched on the raw, still-encoded path, so an encoded path
+				// separator in the wildcard would only now become a real separator and
 				// resolve a file the matched route never authorized, bypassing route-level
 				// middleware. Reject it before unescaping (see echo.StaticDirectoryHandler).
 				if pathutil.HasEncodedPathSeparator(p) {
@@ -218,6 +233,15 @@ func (config StaticConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				if err != nil {
 					return err
 				}
+			}
+			// Reject parent-directory traversal: a ".." segment present here was decoded
+			// after routing (encoded "%2E%2E", or decoded by the router itself when
+			// UseEscapedPathForMatching is set), so the matched route never saw it as
+			// traversal. Resolving it would cross the route/static-mount boundary the match
+			// authorized, bypassing route-level middleware (GHSA-3pmx-cf9f-34xr).
+			if pathutil.HasDotDotSegment(p) {
+				return echo.NewHTTPError(http.StatusNotFound, http.StatusText(http.StatusNotFound)).
+					Wrap(fmt.Errorf("rejected dot-dot path segment in static path %q", p))
 			}
 			// Security: We use path.Clean() (not filepath.Clean()) because:
 			// 1. HTTP URLs always use forward slashes, regardless of server OS

@@ -123,7 +123,7 @@ func (g *Group) StaticFS(pathPrefix string, filesystem fs.FS, middleware ...Midd
 	return g.Add(
 		http.MethodGet,
 		pathPrefix+"*",
-		StaticDirectoryHandler(filesystem, false),
+		StaticDirectoryHandler(filesystem, !g.echo.enablePathUnescapingStaticFiles),
 		middleware...,
 	)
 }

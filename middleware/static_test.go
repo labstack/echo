@@ -309,6 +309,73 @@ func TestStatic_EncodedSeparatorDoesNotBypassRoute(t *testing.T) {
 	}
 }
 
+// Regression for GHSA-3pmx-cf9f-34xr in the static middleware: encoded or
+// router-decoded ".." must not resolve a file across a route-level guard.
+func TestStatic_EncodedDotDotDoesNotBypassRoute(t *testing.T) {
+	run := func(t *testing.T, e *echo.Echo) {
+		fsys := fstest.MapFS{
+			"admin/secret.txt": {Data: []byte("TOP-SECRET")},
+			"public/ok.txt":    {Data: []byte("public")},
+		}
+		g := e.Group("/files", StaticWithConfig(StaticConfig{Filesystem: fsys}))
+		g.GET("/*", func(c *echo.Context) error { return echo.ErrNotFound })
+
+		cases := []struct {
+			target   string
+			wantCode int
+		}{
+			{"/files/public/ok.txt", http.StatusOK},
+			{"/files/public/%2E%2E/admin/secret.txt", http.StatusNotFound},
+			{"/files/public%2F..%2Fadmin%2Fsecret.txt", http.StatusNotFound},
+			{"/files/public/../admin/secret.txt", http.StatusNotFound},
+		}
+		for _, tc := range cases {
+			req := httptest.NewRequest(http.MethodGet, tc.target, nil)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+			assert.Equal(t, tc.wantCode, rec.Code, "GET %s", tc.target)
+			assert.NotContains(t, rec.Body.String(), "TOP-SECRET", "GET %s leaked protected file", tc.target)
+		}
+	}
+
+	t.Run("default router", func(t *testing.T) { run(t, echo.New()) })
+	t.Run("UseEscapedPathForMatching", func(t *testing.T) {
+		run(t, echo.NewWithConfig(echo.Config{Router: echo.NewRouter(echo.RouterConfig{UseEscapedPathForMatching: true})}))
+	})
+}
+
+// With EnablePathUnescaping the wildcard is unescaped (encoded file names work) but
+// encoded separators and ".." segments are still rejected.
+func TestStatic_EnablePathUnescaping(t *testing.T) {
+	fsys := fstest.MapFS{
+		"hello world.txt":  {Data: []byte("spaced")},
+		"admin/secret.txt": {Data: []byte("TOP-SECRET")},
+	}
+	e := echo.New()
+	g := e.Group("/files", StaticWithConfig(StaticConfig{Filesystem: fsys, EnablePathUnescaping: true}))
+	g.GET("/*", func(c *echo.Context) error { return echo.ErrNotFound })
+
+	cases := []struct {
+		target   string
+		wantCode int
+		wantBody string
+	}{
+		{"/files/hello%20world.txt", http.StatusOK, "spaced"},
+		{"/files/admin%2Fsecret.txt", http.StatusNotFound, ""},
+		{"/files/public/%2E%2E/admin/secret.txt", http.StatusNotFound, ""},
+	}
+	for _, tc := range cases {
+		req := httptest.NewRequest(http.MethodGet, tc.target, nil)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+		assert.Equal(t, tc.wantCode, rec.Code, "GET %s", tc.target)
+		if tc.wantBody != "" {
+			assert.Equal(t, tc.wantBody, rec.Body.String(), "GET %s", tc.target)
+		}
+		assert.NotContains(t, rec.Body.String(), "TOP-SECRET", "GET %s leaked protected file", tc.target)
+	}
+}
+
 func TestMustStaticWithConfig_panicsInvalidDirListTemplate(t *testing.T) {
 	assert.Panics(t, func() {
 		StaticWithConfig(StaticConfig{DirectoryListTemplate: `{{}`})

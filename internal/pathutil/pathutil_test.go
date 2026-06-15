@@ -25,3 +25,23 @@ func TestHasEncodedPathSeparator(t *testing.T) {
 		assert.Equal(t, want, HasEncodedPathSeparator(s), "input=%q", s)
 	}
 }
+
+func TestHasDotDotSegment(t *testing.T) {
+	for s, want := range map[string]bool{
+		"..":                      true,
+		"../x":                    true,
+		"x/..":                    true,
+		"a/../b":                  true,
+		"public/../admin/sec.txt": true,
+		"/..":                     true, // leading slash
+		"foo/bar.txt":             false,
+		"..foo":                   false, // not a standalone segment
+		"foo..":                   false,
+		"...":                     false, // three dots is a real name
+		"%2E%2E":                  false, // still-encoded, not yet a separator-bounded ".."
+		`a/..\b`:                  false, // backslash is literal on fs.FS, segment is "..\b"
+		"":                        false,
+	} {
+		assert.Equal(t, want, HasDotDotSegment(s), "input=%q", s)
+	}
+}

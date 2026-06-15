@@ -111,6 +111,10 @@ type Echo struct {
 
 	// formParseMaxMemory is passed to Context for multipart form parsing (See http.Request.ParseMultipartForm)
 	formParseMaxMemory int64
+
+	// enablePathUnescapingStaticFiles unescapes the static wildcard param (set via
+	// Config.EnablePathUnescapingStaticFiles). Default false (safe): see that field.
+	enablePathUnescapingStaticFiles bool
 }
 
 // JSONSerializer is the interface that encodes and decodes JSON to and from interfaces.
@@ -299,6 +303,21 @@ type Config struct {
 	// FormParseMaxMemory is default value for memory limit that is used
 	// when parsing multipart forms (See (*http.Request).ParseMultipartForm)
 	FormParseMaxMemory int64
+
+	// EnablePathUnescapingStaticFiles enables unescaping of the wildcard param (param: *)
+	// for static file methods (Echo.Static, Echo.StaticFS, Group.Static, Group.StaticFS).
+	//
+	// Default false (safe): the router matches the raw, still-encoded request path, so
+	// encoded separators/dot segments (%2F, %5C, %2E%2E) are NOT decoded when resolving
+	// the file. This prevents ACL bypass where e.g. /admin%2Fprivate.txt or
+	// /public/%2E%2E/admin/secret.txt resolve a file across a route-level middleware guard
+	// the encoded path never matched (GHSA-vfp3-v2gw-7wfq, GHSA-3pmx-cf9f-34xr).
+	//
+	// Set to true only when serving files whose names contain URL-encoded characters
+	// (e.g. "hello world.txt" via /hello%20world.txt) and you do not rely on route-based
+	// ACL guards to restrict access. Encoded separators and ".." segments are still
+	// rejected even when enabled.
+	EnablePathUnescapingStaticFiles bool
 }
 
 // NewWithConfig creates an instance of Echo with given configuration.
@@ -337,6 +356,7 @@ func NewWithConfig(config Config) *Echo {
 	if config.FormParseMaxMemory > 0 {
 		e.formParseMaxMemory = config.FormParseMaxMemory
 	}
+	e.enablePathUnescapingStaticFiles = config.EnablePathUnescapingStaticFiles
 	return e
 }
 
@@ -567,7 +587,7 @@ func (e *Echo) Static(pathPrefix, fsRoot string, middleware ...MiddlewareFunc) R
 	return e.Add(
 		http.MethodGet,
 		pathPrefix+"*",
-		StaticDirectoryHandler(subFs, false),
+		StaticDirectoryHandler(subFs, !e.enablePathUnescapingStaticFiles),
 		middleware...,
 	)
 }
@@ -581,7 +601,7 @@ func (e *Echo) StaticFS(pathPrefix string, filesystem fs.FS, middleware ...Middl
 	return e.Add(
 		http.MethodGet,
 		pathPrefix+"*",
-		StaticDirectoryHandler(filesystem, false),
+		StaticDirectoryHandler(filesystem, !e.enablePathUnescapingStaticFiles),
 		middleware...,
 	)
 }
@@ -607,6 +627,17 @@ func StaticDirectoryHandler(fileSystem fs.FS, disablePathUnescaping bool) Handle
 				return fmt.Errorf("failed to unescape path variable: %w", err)
 			}
 			p = tmpPath
+		}
+
+		// Reject parent-directory traversal in the resolved wildcard. A ".." segment is
+		// only ever present here because it was decoded after routing (encoded "%2E%2E"
+		// when unescaping is enabled, or decoded by the router itself when
+		// UseEscapedPathForMatching is set); the router matched a prefix that never
+		// contained it. Resolving it would cross the route/static-mount boundary the
+		// match authorized, bypassing route-level middleware (GHSA-3pmx-cf9f-34xr).
+		if pathutil.HasDotDotSegment(p) {
+			return NewHTTPError(http.StatusNotFound, http.StatusText(http.StatusNotFound)).
+				Wrap(fmt.Errorf("rejected dot-dot path segment in static path %q", p))
 		}
 
 		// fs.FS.Open() already assumes that file names are relative to FS root path and considers name with prefix `/` as invalid.
