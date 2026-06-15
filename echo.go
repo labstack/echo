@@ -54,6 +54,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -622,7 +623,10 @@ func StaticDirectoryHandler(fileSystem fs.FS, disablePathUnescaping bool) Handle
 
 		// fs.FS.Open() already assumes that file names are relative to FS root path and considers name with prefix `/`
 		// as invalid
-		name := filepath.ToSlash(filepath.Clean(strings.TrimPrefix(p, "/")))
+		// Use path.Clean (not filepath.Clean): fs.FS paths are always forward-slash, so a backslash must stay a literal
+		// character rather than being interpreted as a separator on Windows (which would resolve a file across a boundary
+		// the router never matched on, the same Windows backslash traversal class as GHSA-pgvm-wxw2-hrv9).
+		name := path.Clean(strings.TrimPrefix(p, "/"))
 		fi, err := fs.Stat(fileSystem, name)
 		if err != nil {
 			return ErrNotFound
