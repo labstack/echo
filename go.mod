@@ -3,7 +3,6 @@ module github.com/labstack/echo/v4
 go 1.25.0
 
 require (
-	github.com/labstack/echo/v5 v5.2.1
 	github.com/labstack/gommon v0.5.0
 	github.com/stretchr/testify v1.11.1
 	github.com/valyala/fasttemplate v1.2.2
