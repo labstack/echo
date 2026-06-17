@@ -269,9 +269,11 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 
 			// Simple request
 			if !preflight {
-				err := next(c)
 				// Skip setting CORS headers when an upstream handler (e.g. reverse proxy) already set them.
-				if res.Header().Get(echo.HeaderAccessControlAllowOrigin) == "" {
+				setHeaders := func() {
+					if res.Header().Get(echo.HeaderAccessControlAllowOrigin) != "" {
+						return
+					}
 					res.Header().Add(echo.HeaderVary, echo.HeaderOrigin)
 					res.Header().Set(echo.HeaderAccessControlAllowOrigin, allowOrigin)
 					if config.AllowCredentials {
@@ -280,6 +282,11 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 					if exposeHeaders != "" {
 						res.Header().Set(echo.HeaderAccessControlExposeHeaders, exposeHeaders)
 					}
+				}
+				res.Before(setHeaders)
+				err := next(c)
+				if !res.Committed {
+					setHeaders()
 				}
 				return err
 			}

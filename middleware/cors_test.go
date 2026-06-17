@@ -720,8 +720,11 @@ func TestCORSNoDuplicateHeadersFromUpstream(t *testing.T) {
 	rec := httptest.NewRecorder()
 	proxy.ServeHTTP(rec, req)
 
+	result := rec.Result()
+	defer result.Body.Close()
+
 	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, 1, len(rec.Header()[echo.HeaderAccessControlAllowOrigin]))
-	assert.Equal(t, "*", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
-	assert.Equal(t, 1, len(rec.Header()[echo.HeaderVary]))
+	assert.Equal(t, 1, len(result.Header[echo.HeaderAccessControlAllowOrigin]))
+	assert.Equal(t, "*", result.Header.Get(echo.HeaderAccessControlAllowOrigin))
+	assert.Equal(t, 1, len(result.Header[echo.HeaderVary]))
 }
