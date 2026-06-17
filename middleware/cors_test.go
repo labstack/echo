@@ -7,6 +7,9 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/http/httputil"
+	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/labstack/echo/v4"
@@ -682,4 +685,46 @@ func Test_allowOriginFunc(t *testing.T) {
 			assert.Equal(t, "", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
 		}
 	}
+}
+
+func TestCORSNoDuplicateHeadersFromUpstream(t *testing.T) {
+	t.Parallel()
+
+	backend := echo.New()
+	backend.Use(CORS())
+	backend.GET("/", func(c echo.Context) error {
+		return c.String(http.StatusOK, "ok")
+	})
+	backendServer := httptest.NewServer(backend)
+	t.Cleanup(backendServer.Close)
+
+	backendURL, err := url.Parse(backendServer.URL)
+	assert.NoError(t, err)
+	reverseProxy := httputil.NewSingleHostReverseProxy(backendURL)
+
+	proxy := echo.New()
+	proxy.Use(CORS())
+	proxy.Any("/*", func(c echo.Context) error {
+		req := c.Request()
+		res := c.Response()
+		req.URL.Path = strings.TrimPrefix(req.URL.Path, "/proxy")
+		if req.URL.Path == "" {
+			req.URL.Path = "/"
+		}
+		reverseProxy.ServeHTTP(res, req)
+		return nil
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/proxy/", nil)
+	req.Header.Set(echo.HeaderOrigin, "http://example.com")
+	rec := httptest.NewRecorder()
+	proxy.ServeHTTP(rec, req)
+
+	result := rec.Result()
+	defer result.Body.Close()
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, 1, len(result.Header[echo.HeaderAccessControlAllowOrigin]))
+	assert.Equal(t, "*", result.Header.Get(echo.HeaderAccessControlAllowOrigin))
+	assert.Equal(t, 1, len(result.Header[echo.HeaderVary]))
 }
