@@ -111,6 +111,14 @@ type bindTarget struct {
 	Active bool   `json:"active" query:"active"`
 }
 
+// nopReadCloser adapts a Reader to a ReadCloser without allocating, so the
+// request body can be reset and reused across benchmark iterations instead of
+// rebuilding the request (and its httptest machinery) inside the loop.
+type nopReadCloser struct{ r *strings.Reader }
+
+func (n nopReadCloser) Read(p []byte) (int, error) { return n.r.Read(p) }
+func (nopReadCloser) Close() error                 { return nil }
+
 func BenchmarkBind_JSON(b *testing.B) {
 	e := New()
 	body := `{"id":1,"name":"Jon Snow","email":"jon@winterfell.north","age":24,"active":true}`
@@ -118,14 +126,61 @@ func BenchmarkBind_JSON(b *testing.B) {
 		var t bindTarget
 		return c.Bind(&t)
 	})
+	// Build the request once and reset its body each iteration so the benchmark
+	// measures Echo's routing+binding cost, not httptest.NewRequest allocations.
+	r := strings.NewReader(body)
+	req := httptest.NewRequest(http.MethodPost, "/", r)
+	req.Header.Set(HeaderContentType, MIMEApplicationJSON)
+	req.Body = nopReadCloser{r}
+	w := &nopResponseWriter{}
 	b.ReportAllocs()
 	b.ResetTimer()
-	w := &nopResponseWriter{}
 	for i := 0; i < b.N; i++ {
 		w.h = nil
-		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body))
-		req.Header.Set(HeaderContentType, MIMEApplicationJSON)
+		r.Reset(body)
 		e.ServeHTTP(w, req)
+	}
+}
+
+// BenchmarkJSONSerialize/Deserialize exercise the DefaultJSONSerializer directly,
+// isolating JSON encode/decode cost from routing and request construction.
+func BenchmarkJSONDeserialize(b *testing.B) {
+	e := New()
+	body := `{"id":1,"name":"Jon Snow","email":"jon@winterfell.north","age":24,"active":true}`
+	r := strings.NewReader(body)
+	req := httptest.NewRequest(http.MethodPost, "/", r)
+	req.Body = nopReadCloser{r}
+	c := e.NewContext(req, &nopResponseWriter{})
+	s := DefaultJSONSerializer{}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		r.Reset(body)
+		var t bindTarget
+		if err := s.Deserialize(c, &t); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkJSONSerialize(b *testing.B) {
+	e := New()
+	type payload struct {
+		ID   int    `json:"id"`
+		Name string `json:"name"`
+		Tags []string
+	}
+	p := payload{ID: 1, Name: "Jon Snow", Tags: []string{"a", "b", "c"}}
+	w := &nopResponseWriter{}
+	c := e.NewContext(httptest.NewRequest(http.MethodGet, "/", nil), w)
+	s := DefaultJSONSerializer{}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		w.h = nil
+		if err := s.Serialize(c, p, ""); err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
