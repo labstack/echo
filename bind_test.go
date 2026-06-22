@@ -834,7 +834,7 @@ func TestDefaultBinder_BindToStructFromMixedSources(t *testing.T) {
 			givenURL:     "/api/real_node/endpoint?node=xxx",
 			givenContent: strings.NewReader(`{`),
 			expect:       &Opts{ID: 0, Node: "node_from_path"}, // query binding has already modified bind target
-			expectError:  "code=400, message=Bad Request, err=unexpected EOF",
+			expectError:  "code=400, message=Bad Request, err=unexpected end of JSON input",
 		},
 		{
 			name:         "nok, GET with body bind failure when types are not convertible",
@@ -1004,7 +1004,7 @@ func TestDefaultBinder_BindBody(t *testing.T) {
 			givenContentType: MIMEApplicationJSON,
 			givenContent:     strings.NewReader(`{`),
 			expect:           &Node{ID: 0, Node: ""},
-			expectError:      "code=400, message=Bad Request, err=unexpected EOF",
+			expectError:      "code=400, message=Bad Request, err=unexpected end of JSON input",
 		},
 		{
 			name:             "ok, XML POST bind to struct with: path + query + empty body",
