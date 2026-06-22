@@ -121,11 +121,15 @@ type node struct {
 	prefix         string
 	originalPath   string
 	staticChildren children
-	paramsCount    int
-	kind           kind
-	label          byte
-	isLeaf         bool
-	isHandler      bool
+	// scLabels holds the first byte (label) of each staticChildren entry in the
+	// same order. Scanning this contiguous byte slice during routing is more
+	// cache-friendly than dereferencing each *node to read its label.
+	scLabels    []byte
+	paramsCount int
+	kind        kind
+	label       byte
+	isLeaf      bool
+	isHandler   bool
 }
 
 type kind uint8
@@ -406,13 +410,14 @@ func (r *DefaultRouter) Remove(method string, path string) error {
 					}
 				}
 				parent.staticChildren = append(parent.staticChildren[:index], parent.staticChildren[index+1:]...)
+				parent.scLabels = append(parent.scLabels[:index], parent.scLabels[index+1:]...)
 			case paramKind:
 				parent.paramChild = nil
 			case anyKind:
 				parent.anyChild = nil
 			}
 
-			parent.isLeaf = parent.anyChild == nil && parent.paramChild == nil && len(parent.staticChildren) == 0
+			parent.refreshLeaf()
 			if !parent.isLeaf || parent.isHandler {
 				break
 			}
@@ -572,7 +577,7 @@ func (r *DefaultRouter) insert(t kind, path string, method string, ri routeMetho
 				currentNode.paramsCount = len(ri.Parameters)
 				currentNode.originalPath = ri.Path
 			}
-			currentNode.isLeaf = currentNode.staticChildren == nil && currentNode.paramChild == nil && currentNode.anyChild == nil
+			currentNode.refreshLeaf()
 		} else if lcpLen < prefixLen {
 			// Split node into two before we insert new node.
 			// This happens when we are inserting path that is submatch of any existing inserted paths.
@@ -607,6 +612,7 @@ func (r *DefaultRouter) insert(t kind, path string, method string, ri routeMetho
 			currentNode.label = currentNode.prefix[0]
 			currentNode.prefix = currentNode.prefix[:lcpLen]
 			currentNode.staticChildren = nil
+			currentNode.scLabels = nil
 			currentNode.methods = new(routeMethods)
 			currentNode.originalPath = ""
 			currentNode.paramsCount = 0
@@ -636,7 +642,7 @@ func (r *DefaultRouter) insert(t kind, path string, method string, ri routeMetho
 				// Only Static children could reach here
 				currentNode.addStaticChild(n)
 			}
-			currentNode.isLeaf = currentNode.staticChildren == nil && currentNode.paramChild == nil && currentNode.anyChild == nil
+			currentNode.refreshLeaf()
 		} else if lcpLen < searchLen {
 			search = search[lcpLen:]
 			c := currentNode.findChildWithLabel(search[0])
@@ -659,7 +665,7 @@ func (r *DefaultRouter) insert(t kind, path string, method string, ri routeMetho
 			case anyKind:
 				currentNode.anyChild = n
 			}
-			currentNode.isLeaf = currentNode.staticChildren == nil && currentNode.paramChild == nil && currentNode.anyChild == nil
+			currentNode.refreshLeaf()
 		} else {
 			// Node already exists
 			if ri.handler != nil {
@@ -683,30 +689,49 @@ func newNode(
 	paramChildren,
 	anyChildren *node,
 ) *node {
+	var scLabels []byte
+	if len(sc) > 0 {
+		scLabels = make([]byte, len(sc))
+		for i, c := range sc {
+			scLabels[i] = c.label
+		}
+	}
 	return &node{
 		kind:           t,
 		label:          pre[0],
 		prefix:         pre,
 		parent:         p,
 		staticChildren: sc,
+		scLabels:       scLabels,
 		originalPath:   ppath,
 		paramsCount:    paramsCount,
 		methods:        mh,
 		paramChild:     paramChildren,
 		anyChild:       anyChildren,
-		isLeaf:         sc == nil && paramChildren == nil && anyChildren == nil,
-		isHandler:      mh.isHandler(),
+		// len() (not == nil) so an empty-but-non-nil sc — e.g. a slice from a
+		// prior Remove that was spliced down to length 0 — is still treated as
+		// no children, matching refreshLeaf.
+		isLeaf:    len(sc) == 0 && paramChildren == nil && anyChildren == nil,
+		isHandler: mh.isHandler(),
 	}
+}
+
+// refreshLeaf recomputes whether the node is a leaf (has no children of any
+// kind). len() is used for staticChildren so it stays correct whether the slice
+// is nil or an emptied-but-non-nil slice left behind after a removal.
+func (n *node) refreshLeaf() {
+	n.isLeaf = len(n.staticChildren) == 0 && n.paramChild == nil && n.anyChild == nil
 }
 
 func (n *node) addStaticChild(c *node) {
 	n.staticChildren = append(n.staticChildren, c)
+	n.scLabels = append(n.scLabels, c.label)
 }
 
 func (n *node) findStaticChild(l byte) *node {
-	for _, c := range n.staticChildren {
-		if c.label == l {
-			return c
+	for i, cl := range n.scLabels {
+		if cl == l {
+			return n.staticChildren[i]
 		}
 	}
 	return nil
