@@ -58,7 +58,7 @@ type CSRFConfig struct {
 	TokenLookup string `yaml:"token_lookup"`
 
 	// Generator defines a function to generate token.
-	// Optional. Defaults tp randomString(TokenLength).
+	// Optional. Defaults to randomString(TokenLength).
 	Generator func() string
 
 	// Context key to store generated CSRF token into context.
