@@ -628,47 +628,93 @@ func Test_allowOriginFunc(t *testing.T) {
 }
 
 func TestCORSProxyChainedHeaders(t *testing.T) {
-	e := echo.New()
+	t.Run("with deduplication enabled", func(t *testing.T) {
+		e := echo.New()
 
-	// CORS middleware on the proxy
-	cors := CORSWithConfig(CORSConfig{
-		AllowOrigins: []string{"http://example.com"},
-	})
+		// CORS middleware on the proxy with deduplication enabled
+		cors := CORSWithConfig(CORSConfig{
+			AllowOrigins:             []string{"http://example.com"},
+			UnsafeDeduplicateHeaders: true,
+		})
 
-	// Proxy handler simulating upstream call that also returns CORS headers
-	proxyHandler := func(c *echo.Context) error {
-		// Mock upstream copying headers to response
-		// This simulates the behavior of httputil.ReverseProxy which copies headers from upstream
-		c.Response().Header().Add(echo.HeaderAccessControlAllowOrigin, "http://example.com")
-		c.Response().Header().Add(echo.HeaderVary, echo.HeaderOrigin)
-		c.Response().WriteHeader(http.StatusOK)
-		return nil
-	}
+		// Proxy handler simulating upstream call that also returns CORS headers
+		proxyHandler := func(c *echo.Context) error {
+			// Mock upstream copying headers to response
+			// This simulates the behavior of httputil.ReverseProxy which copies headers from upstream
+			c.Response().Header().Add(echo.HeaderAccessControlAllowOrigin, "http://example.com")
+			c.Response().Header().Add(echo.HeaderVary, echo.HeaderOrigin)
+			c.Response().WriteHeader(http.StatusOK)
+			return nil
+		}
 
-	h := cors(proxyHandler)
+		h := cors(proxyHandler)
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set(echo.HeaderOrigin, "http://example.com")
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set(echo.HeaderOrigin, "http://example.com")
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
 
-	err := h(c)
-	assert.NoError(t, err)
+		err := h(c)
+		assert.NoError(t, err)
 
-	// Verify that Access-Control-Allow-Origin is not duplicated
-	acaoHeaders := rec.Header()[echo.HeaderAccessControlAllowOrigin]
-	assert.Len(t, acaoHeaders, 1, "Access-Control-Allow-Origin should not be duplicated")
-	assert.Equal(t, "http://example.com", acaoHeaders[0])
+		// Verify that Access-Control-Allow-Origin is not duplicated
+		acaoHeaders := rec.Header()[echo.HeaderAccessControlAllowOrigin]
+		assert.Len(t, acaoHeaders, 1, "Access-Control-Allow-Origin should not be duplicated")
+		assert.Equal(t, "http://example.com", acaoHeaders[0])
 
-	// Verify that Vary: Origin is not duplicated
-	varyHeaders := rec.Header()[echo.HeaderVary]
-	originCount := 0
-	for _, v := range varyHeaders {
-		for _, part := range strings.Split(v, ",") {
-			if strings.EqualFold(strings.TrimSpace(part), echo.HeaderOrigin) {
-				originCount++
+		// Verify that Vary: Origin is not duplicated
+		varyHeaders := rec.Header()[echo.HeaderVary]
+		originCount := 0
+		for _, v := range varyHeaders {
+			for _, part := range strings.Split(v, ",") {
+				if strings.EqualFold(strings.TrimSpace(part), echo.HeaderOrigin) {
+					originCount++
+				}
 			}
 		}
-	}
-	assert.Equal(t, 1, originCount, "Vary Origin should not be duplicated")
+		assert.Equal(t, 1, originCount, "Vary Origin should not be duplicated")
+	})
+
+	t.Run("with deduplication disabled (default)", func(t *testing.T) {
+		e := echo.New()
+
+		// CORS middleware on the proxy with deduplication disabled
+		cors := CORSWithConfig(CORSConfig{
+			AllowOrigins: []string{"http://example.com"},
+		})
+
+		// Proxy handler simulating upstream call that also returns CORS headers
+		proxyHandler := func(c *echo.Context) error {
+			c.Response().Header().Add(echo.HeaderAccessControlAllowOrigin, "http://example.com")
+			c.Response().Header().Add(echo.HeaderVary, echo.HeaderOrigin)
+			c.Response().WriteHeader(http.StatusOK)
+			return nil
+		}
+
+		h := cors(proxyHandler)
+
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set(echo.HeaderOrigin, "http://example.com")
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		err := h(c)
+		assert.NoError(t, err)
+
+		// Verify that Access-Control-Allow-Origin is duplicated
+		acaoHeaders := rec.Header()[echo.HeaderAccessControlAllowOrigin]
+		assert.Len(t, acaoHeaders, 2, "Access-Control-Allow-Origin should be duplicated")
+
+		// Verify that Vary: Origin is duplicated
+		varyHeaders := rec.Header()[echo.HeaderVary]
+		originCount := 0
+		for _, v := range varyHeaders {
+			for _, part := range strings.Split(v, ",") {
+				if strings.EqualFold(strings.TrimSpace(part), echo.HeaderOrigin) {
+					originCount++
+				}
+			}
+		}
+		assert.Equal(t, 2, originCount, "Vary Origin should be duplicated")
+	})
 }

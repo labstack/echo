@@ -111,6 +111,13 @@ type CORSConfig struct {
 	//
 	// See also: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Max-Age
 	MaxAge int
+
+	// UnsafeDeduplicateHeaders is an optional configuration to deduplicate CORS and Vary headers.
+	// This is useful in chained proxy environments where duplicate CORS headers are returned from upstream.
+	// Enabling this wraps the ResponseWriter and has a minor performance cost.
+	//
+	// Optional. Default value false.
+	UnsafeDeduplicateHeaders bool
 }
 
 // CORS returns a Cross-Origin Resource Sharing (CORS) middleware.
@@ -189,9 +196,16 @@ func (config CORSConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				return next(c)
 			}
 
+			// Add Vary: Origin unconditionally to all requests
+			addVaryHeader(c.Response().Header(), echo.HeaderOrigin)
+
 			req := c.Request()
-			res := c.Response()
 			origin := req.Header.Get(echo.HeaderOrigin)
+
+			if config.UnsafeDeduplicateHeaders {
+				rw := &corsResponseWriter{ResponseWriter: c.Response()}
+				c.SetResponse(rw)
+			}
 
 			// Preflight request is an OPTIONS request, using three HTTP request headers: Access-Control-Request-Method,
 			// Access-Control-Request-Headers, and the Origin header. See: https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request
@@ -215,12 +229,8 @@ func (config CORSConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			// No Origin provided. This is (probably) not request from actual browser - proceed executing middleware chain
 			if origin == "" {
 				if preflight { // req.Method=OPTIONS
-					addVaryHeader(res.Header(), echo.HeaderOrigin)
 					return c.NoContent(http.StatusNoContent)
 				}
-				res.Before(func() {
-					addVaryHeader(res.Header(), echo.HeaderOrigin)
-				})
 				return next(c) // let non-browser calls through
 			}
 
@@ -241,9 +251,6 @@ func (config CORSConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				// no CORS middleware should block non-preflight requests;
 				// such requests should be let through. One reason is that not all requests that
 				// carry an Origin header participate in the CORS protocol.
-				res.Before(func() {
-					addVaryHeader(res.Header(), echo.HeaderOrigin)
-				})
 				return next(c)
 			}
 
@@ -251,18 +258,15 @@ func (config CORSConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 
 			// Simple request will be let though
 			if !preflight {
-				res.Before(func() {
-					addVaryHeader(res.Header(), echo.HeaderOrigin)
-					res.Header().Set(echo.HeaderAccessControlAllowOrigin, allowedOrigin)
-					if config.AllowCredentials {
-						res.Header().Set(echo.HeaderAccessControlAllowCredentials, "true")
-					} else {
-						res.Header().Del(echo.HeaderAccessControlAllowCredentials)
-					}
-					if exposeHeaders != "" {
-						res.Header().Set(echo.HeaderAccessControlExposeHeaders, exposeHeaders)
-					}
-				})
+				c.Response().Header().Set(echo.HeaderAccessControlAllowOrigin, allowedOrigin)
+				if config.AllowCredentials {
+					c.Response().Header().Set(echo.HeaderAccessControlAllowCredentials, "true")
+				} else {
+					c.Response().Header().Del(echo.HeaderAccessControlAllowCredentials)
+				}
+				if exposeHeaders != "" {
+					c.Response().Header().Set(echo.HeaderAccessControlExposeHeaders, exposeHeaders)
+				}
 				return next(c)
 			}
 			// Below code is for Preflight (OPTIONS) request
@@ -270,32 +274,31 @@ func (config CORSConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			// Preflight will end with c.NoContent(http.StatusNoContent) as we do not know if
 			// at the end of handler chain is actual OPTIONS route or 404/405 route which
 			// response code will confuse browsers
-			addVaryHeader(res.Header(), echo.HeaderOrigin)
-			res.Header().Set(echo.HeaderAccessControlAllowOrigin, allowedOrigin)
+			c.Response().Header().Set(echo.HeaderAccessControlAllowOrigin, allowedOrigin)
 			if config.AllowCredentials {
-				res.Header().Set(echo.HeaderAccessControlAllowCredentials, "true")
+				c.Response().Header().Set(echo.HeaderAccessControlAllowCredentials, "true")
 			} else {
-				res.Header().Del(echo.HeaderAccessControlAllowCredentials)
+				c.Response().Header().Del(echo.HeaderAccessControlAllowCredentials)
 			}
-			addVaryHeader(res.Header(), echo.HeaderAccessControlRequestMethod)
-			addVaryHeader(res.Header(), echo.HeaderAccessControlRequestHeaders)
+			addVaryHeader(c.Response().Header(), echo.HeaderAccessControlRequestMethod)
+			addVaryHeader(c.Response().Header(), echo.HeaderAccessControlRequestHeaders)
 
 			if !hasCustomAllowMethods && routerAllowMethods != "" {
-				res.Header().Set(echo.HeaderAccessControlAllowMethods, routerAllowMethods)
+				c.Response().Header().Set(echo.HeaderAccessControlAllowMethods, routerAllowMethods)
 			} else {
-				res.Header().Set(echo.HeaderAccessControlAllowMethods, allowMethods)
+				c.Response().Header().Set(echo.HeaderAccessControlAllowMethods, allowMethods)
 			}
 
 			if allowHeaders != "" {
-				res.Header().Set(echo.HeaderAccessControlAllowHeaders, allowHeaders)
+				c.Response().Header().Set(echo.HeaderAccessControlAllowHeaders, allowHeaders)
 			} else {
 				h := req.Header.Get(echo.HeaderAccessControlRequestHeaders)
 				if h != "" {
-					res.Header().Set(echo.HeaderAccessControlAllowHeaders, h)
+					c.Response().Header().Set(echo.HeaderAccessControlAllowHeaders, h)
 				}
 			}
 			if config.MaxAge != 0 {
-				res.Header().Set(echo.HeaderAccessControlMaxAge, maxAge)
+				c.Response().Header().Set(echo.HeaderAccessControlMaxAge, maxAge)
 			}
 			return c.NoContent(http.StatusNoContent)
 		}
@@ -328,4 +331,86 @@ func addVaryHeader(h http.Header, value string) {
 		}
 	}
 	h.Add(echo.HeaderVary, value)
+}
+
+type corsResponseWriter struct {
+	http.ResponseWriter
+	deduplicated bool
+}
+
+func (w *corsResponseWriter) WriteHeader(statusCode int) {
+	w.deduplicate()
+	w.ResponseWriter.WriteHeader(statusCode)
+}
+
+func (w *corsResponseWriter) Write(b []byte) (int, error) {
+	w.deduplicate()
+	return w.ResponseWriter.Write(b)
+}
+
+func (w *corsResponseWriter) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
+}
+
+func (w *corsResponseWriter) deduplicate() {
+	if w.deduplicated {
+		return
+	}
+	w.deduplicated = true
+
+	h := w.ResponseWriter.Header()
+	deduplicateHeader(h, echo.HeaderAccessControlAllowOrigin)
+	deduplicateHeader(h, echo.HeaderAccessControlAllowCredentials)
+	deduplicateHeader(h, echo.HeaderAccessControlExposeHeaders)
+	deduplicateHeader(h, echo.HeaderAccessControlAllowHeaders)
+	deduplicateHeader(h, echo.HeaderAccessControlAllowMethods)
+	deduplicateHeader(h, echo.HeaderAccessControlMaxAge)
+	deduplicateVary(h)
+}
+
+func deduplicateHeader(h http.Header, key string) {
+	values := h[key]
+	if len(values) <= 1 {
+		return
+	}
+	seen := make(map[string]bool)
+	var result []string
+	for _, v := range values {
+		trimmed := strings.TrimSpace(v)
+		if !seen[trimmed] {
+			seen[trimmed] = true
+			result = append(result, v)
+		}
+	}
+	h[key] = result
+}
+
+func deduplicateVary(h http.Header) {
+	values := h[echo.HeaderVary]
+	if len(values) == 0 {
+		return
+	}
+	seen := make(map[string]bool)
+	var varyParts []string
+	for _, v := range values {
+		for _, part := range strings.Split(v, ",") {
+			trimmed := strings.TrimSpace(part)
+			if trimmed == "" {
+				continue
+			}
+			lower := strings.ToLower(trimmed)
+			if !seen[lower] {
+				seen[lower] = true
+				varyParts = append(varyParts, trimmed)
+			}
+		}
+	}
+	if len(varyParts) > 0 {
+		h.Del(echo.HeaderVary)
+		for _, part := range varyParts {
+			h.Add(echo.HeaderVary, part)
+		}
+	} else {
+		h.Del(echo.HeaderVary)
+	}
 }
