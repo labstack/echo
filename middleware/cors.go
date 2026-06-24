@@ -125,6 +125,12 @@ type CORSConfig struct {
 // misconfigurations for Bitcoins and bounties] and [Portswigger: Cross-origin
 // resource sharing (CORS)] for more details.
 //
+// Duplicate CORS headers can appear in a chained-proxy setup where this
+// middleware runs on more than one layer and a reverse proxy copies an
+// upstream's CORS headers on top of the ones set here. Prefer enabling CORS
+// only at the edge; if a proxied upstream sets its own CORS headers, strip them
+// before they are copied (e.g. httputil.ReverseProxy.ModifyResponse).
+//
 // [MDN: Cross-Origin Resource Sharing (CORS)]: https://developer.mozilla.org/en/docs/Web/HTTP/Access_control_CORS
 // [Exploiting CORS misconfigurations for Bitcoins and bounties]: https://blog.portswigger.net/2016/10/exploiting-cors-misconfigurations-for.html
 // [Portswigger: Cross-origin resource sharing (CORS)]: https://portswigger.net/web-security/cors
