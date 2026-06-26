@@ -11,6 +11,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -91,7 +92,7 @@ func (config GzipConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 
 			res := c.Response()
 			res.Header().Add(echo.HeaderVary, echo.HeaderAcceptEncoding)
-			if strings.Contains(c.Request().Header.Get(echo.HeaderAcceptEncoding), gzipScheme) {
+			if acceptsGzip(c.Request().Header.Get(echo.HeaderAcceptEncoding)) {
 				i := pool.Get()
 				w, ok := i.(*gzip.Writer)
 				if !ok {
@@ -223,6 +224,48 @@ func gzipCompressPool(config GzipConfig) sync.Pool {
 			return w
 		},
 	}
+}
+
+func acceptsGzip(header string) bool {
+	if header == "" {
+		return false
+	}
+
+	accepted := false
+	for _, part := range strings.Split(header, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+
+		token, params, _ := strings.Cut(part, ";")
+		token = strings.TrimSpace(token)
+
+		q := 1.0
+		if params != "" {
+			for _, param := range strings.Split(params, ";") {
+				param = strings.TrimSpace(param)
+				if len(param) < 2 || !strings.HasPrefix(strings.ToLower(param), "q=") {
+					continue
+				}
+				parsed, err := strconv.ParseFloat(strings.TrimSpace(param[2:]), 64)
+				if err != nil {
+					continue
+				}
+				q = parsed
+				break
+			}
+		}
+
+		switch {
+		case strings.EqualFold(token, gzipScheme):
+			return q > 0
+		case token == "*" && q > 0:
+			accepted = true
+		}
+	}
+
+	return accepted
 }
 
 func bufferPool() sync.Pool {

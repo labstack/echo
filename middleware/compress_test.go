@@ -68,6 +68,25 @@ func TestGzip_AcceptEncodingHeader(t *testing.T) {
 	assert.Equal(t, "test", buf.String())
 }
 
+func TestGzip_AcceptEncodingHeaderWithZeroQuality(t *testing.T) {
+	h := Gzip()(func(c *echo.Context) error {
+		c.Response().Write([]byte("test"))
+		return nil
+	})
+
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set(echo.HeaderAcceptEncoding, "gzip;q=0")
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	err := h(c)
+	assert.NoError(t, err)
+
+	assert.Empty(t, rec.Header().Get(echo.HeaderContentEncoding))
+	assert.Equal(t, "test", rec.Body.String())
+}
+
 func TestGzip_chunked(t *testing.T) {
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
