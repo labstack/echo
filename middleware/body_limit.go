@@ -80,8 +80,11 @@ func (config BodyLimitConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 	}, nil
 }
 
-func (r *limitedReader) Read(b []byte) (n int, err error) {
-	n, err = r.reader.Read(b)
+func (r *limitedReader) Read(p []byte) (n int, err error) {
+	if r.read > r.LimitBytes {
+		return 0, echo.ErrStatusRequestEntityTooLarge
+	}
+	n, err = r.reader.Read(p)
 	r.read += int64(n)
 	if r.read > r.LimitBytes {
 		return n, echo.ErrStatusRequestEntityTooLarge
