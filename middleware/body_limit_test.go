@@ -171,3 +171,57 @@ func TestBodyLimit_panicOnInvalidLimit(t *testing.T) {
 		func() { BodyLimit("") },
 	)
 }
+
+func TestBodyLimit_Middleware_BodyRestoration(t *testing.T) {
+	e := echo.New()
+
+	e.Use(BodyLimit("1KB"))
+
+	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			bodyBytes, err := io.ReadAll(c.Request().Body)
+			if err != nil {
+				return err
+			}
+
+			c.Request().Body.Close()
+
+			c.Request().Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
+			return next(c)
+		}
+	})
+
+	e.POST("/", func(c echo.Context) error {
+		type Payload struct {
+			Message string `json:"message"`
+		}
+		p := new(Payload)
+		if err := c.Bind(p); err != nil {
+			return err
+		}
+		return c.String(http.StatusOK, p.Message)
+	})
+
+	t.Run("valid request under 1KB binds successfully", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader([]byte(`{"message": "hello"}`)))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		e.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, "hello", rec.Body.String())
+	})
+
+	t.Run("request exceeding 1KB returns 413 at middleware read phase", func(t *testing.T) {
+		largePayload := `{"message": "` + string(bytes.Repeat([]byte("A"), 2000)) + `"}`
+		req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader([]byte(largePayload)))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		e.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusRequestEntityTooLarge, rec.Code)
+	})
+}
