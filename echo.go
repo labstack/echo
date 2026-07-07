@@ -117,6 +117,11 @@ type Echo struct {
 	// If you are enabling this option, make sure you understand the security implications.
 	// See: https://github.com/labstack/echo/security/advisories/GHSA-vfp3-v2gw-7wfq
 	EnablePathUnescapingStaticFiles bool
+
+	// notFoundHandler is the user-provided RouteNotFound handler set on the root Echo instance.
+	// Groups propagate this handler so that catch-all 404 routes use the user's custom handler
+	// instead of the default NotFoundHandler.
+	notFoundHandler HandlerFunc
 }
 
 // Route contains a handler and information for matching against requests.
@@ -554,6 +559,7 @@ func (e *Echo) TRACE(path string, h HandlerFunc, m ...MiddlewareFunc) *Route {
 //
 // Example: `e.RouteNotFound("/*", func(c echo.Context) error { return c.NoContent(http.StatusNotFound) })`
 func (e *Echo) RouteNotFound(path string, h HandlerFunc, m ...MiddlewareFunc) *Route {
+	e.notFoundHandler = h
 	return e.Add(RouteNotFound, path, h, m...)
 }
 

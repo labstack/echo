@@ -204,17 +204,17 @@ func TestGroup_RouteNotFoundWithMiddleware(t *testing.T) {
 			expectCode:     http.StatusNotFound,
 		},
 		{
-			name:           "ok, default group 404 handler is called with middleware",
+			name:           "ok, root 404 handler propagates to group with middleware",
 			givenCustom404: false,
 			whenURL:        "/group/test3",
-			expectBody:     "{\"message\":\"Not Found\"}\n",
+			expectBody:     "GET /group/*",
 			expectCode:     http.StatusNotFound,
 		},
 		{
-			name:           "ok, (no slash) default group 404 handler is called with middleware",
+			name:           "ok, (no slash) root 404 handler propagates to group with middleware",
 			givenCustom404: false,
 			whenURL:        "/group",
-			expectBody:     "{\"message\":\"Not Found\"}\n",
+			expectBody:     "GET /group",
 			expectCode:     http.StatusNotFound,
 		},
 	}
