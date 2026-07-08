@@ -306,6 +306,24 @@ func TestGroup_TRACE(t *testing.T) {
 	assert.Equal(t, `OK`, body)
 }
 
+func TestGroup_QUERY(t *testing.T) {
+	e := New()
+
+	users := e.Group("/users")
+	ri := users.QUERY("/activate", func(c *Context) error {
+		return c.String(http.StatusTeapot, "OK")
+	})
+
+	assert.Equal(t, QUERY, ri.Method)
+	assert.Equal(t, "/users/activate", ri.Path)
+	assert.Equal(t, QUERY+":/users/activate", ri.Name)
+	assert.Nil(t, ri.Parameters)
+
+	status, body := request(QUERY, "/users/activate", e)
+	assert.Equal(t, http.StatusTeapot, status)
+	assert.Equal(t, `OK`, body)
+}
+
 func TestGroup_RouteNotFound(t *testing.T) {
 	var testCases = []struct {
 		expectRoute any

@@ -761,6 +761,7 @@ func TestRouter_addAndMatchAllSupportedMethods(t *testing.T) {
 		{name: "ok, PUT", whenMethod: http.MethodPut},
 		{name: "ok, TRACE", whenMethod: http.MethodTrace},
 		{name: "ok, REPORT", whenMethod: REPORT},
+		{name: "ok, QUERY", whenMethod: QUERY},
 		{name: "ok, NON_TRADITIONAL_METHOD", whenMethod: "NON_TRADITIONAL_METHOD"},
 		{
 			name:            "ok, NOT_EXISTING_METHOD",

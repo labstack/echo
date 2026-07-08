@@ -63,6 +63,11 @@ func (g *Group) PUT(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo {
 	return g.Add(http.MethodPut, path, h, m...)
 }
 
+// QUERY implements `Echo#QUERY()` for sub-routes within the Group. Panics on error.
+func (g *Group) QUERY(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo {
+	return g.Add(QUERY, path, h, m...)
+}
+
 // TRACE implements `Echo#TRACE()` for sub-routes within the Group. Panics on error.
 func (g *Group) TRACE(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo {
 	return g.Add(http.MethodTrace, path, h, m...)

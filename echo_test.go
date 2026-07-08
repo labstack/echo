@@ -908,6 +908,23 @@ func TestEchoTrace(t *testing.T) {
 	assert.Equal(t, "OK", body)
 }
 
+func TestEchoQuery(t *testing.T) {
+	e := New()
+
+	ri := e.QUERY("/", func(c *Context) error {
+		return c.String(http.StatusTeapot, "OK")
+	})
+
+	assert.Equal(t, QUERY, ri.Method)
+	assert.Equal(t, "/", ri.Path)
+	assert.Equal(t, QUERY+":/", ri.Name)
+	assert.Nil(t, ri.Parameters)
+
+	status, body := request(QUERY, "/", e)
+	assert.Equal(t, http.StatusTeapot, status)
+	assert.Equal(t, "OK", body)
+}
+
 func TestEcho_Any(t *testing.T) {
 	e := New()
 

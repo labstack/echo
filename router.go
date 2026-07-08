@@ -161,6 +161,7 @@ type routeMethods struct {
 	put      *routeMethod
 	trace    *routeMethod
 	report   *routeMethod
+	query    *routeMethod
 	any      *routeMethod
 	anyOther map[string]*routeMethod
 
@@ -196,6 +197,8 @@ func (m *routeMethods) set(method string, r *routeMethod) {
 		m.trace = r
 	case REPORT:
 		m.report = r
+	case QUERY:
+		m.query = r
 	case RouteAny:
 		m.any = r
 	case RouteNotFound:
@@ -239,6 +242,8 @@ func (m *routeMethods) find(method string, fallbackToAny bool) *routeMethod {
 		r = m.trace
 	case REPORT:
 		r = m.report
+	case QUERY:
+		r = m.query
 	case RouteAny:
 		r = m.any
 	case RouteNotFound:
@@ -295,6 +300,9 @@ func (m *routeMethods) updateAllowHeader() {
 	if hasAnyMethod || m.report != nil {
 		buf.WriteString(", REPORT")
 	}
+	if hasAnyMethod || m.query != nil {
+		buf.WriteString(", QUERY")
+	}
 	for method := range m.anyOther { // for simplicity, we use map and therefore order is not deterministic here
 		buf.WriteString(", ")
 		buf.WriteString(method)
@@ -314,6 +322,7 @@ func (m *routeMethods) isHandler() bool {
 		m.propfind != nil ||
 		m.trace != nil ||
 		m.report != nil ||
+		m.query != nil ||
 		m.any != nil ||
 		len(m.anyOther) != 0
 	// RouteNotFound/404 is not considered as a handler
