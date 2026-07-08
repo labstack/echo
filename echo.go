@@ -170,6 +170,9 @@ const (
 	PROPFIND = "PROPFIND"
 	// REPORT Method can be used to get information about a resource, see rfc 3253
 	REPORT = "REPORT"
+	// QUERY Method is a safe, idempotent request method carrying request content (a query) in its body, see rfc 10008.
+	// It is not (yet) part of the `net/http` standard library, so Echo defines it here.
+	QUERY = "QUERY"
 	// RouteNotFound is special method type for routes handling "route not found" (404) cases
 	RouteNotFound = "echo_route_not_found"
 	// RouteAny is special method type that matches any HTTP method in request. Any has lower
@@ -537,6 +540,12 @@ func (e *Echo) POST(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo {
 // router with optional route-level middleware. Panics on error.
 func (e *Echo) PUT(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo {
 	return e.Add(http.MethodPut, path, h, m...)
+}
+
+// QUERY registers a new QUERY route for a path with matching handler in the
+// router with optional route-level middleware. Panics on error.
+func (e *Echo) QUERY(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo {
+	return e.Add(QUERY, path, h, m...)
 }
 
 // TRACE registers a new TRACE route for a path with matching handler in the

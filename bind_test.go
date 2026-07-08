@@ -815,6 +815,13 @@ func TestDefaultBinder_BindToStructFromMixedSources(t *testing.T) {
 			expect:       &Opts{ID: 1, Node: "zzz"}, // for DELETE body is bound after query params
 		},
 		{
+			name:         "ok, QUERY bind to struct with: path param + query param + body",
+			givenMethod:  QUERY,
+			givenURL:     "/api/real_node/endpoint?node=xxx",
+			givenContent: strings.NewReader(`{"id": 1}`),
+			expect:       &Opts{ID: 1, Node: "xxx"}, // for QUERY query overwrites previous path value (like GET)
+		},
+		{
 			name:         "ok, POST bind to struct with: path param + body",
 			givenMethod:  http.MethodPost,
 			givenURL:     "/api/real_node/endpoint",
