@@ -11,8 +11,8 @@ Generated: 2026-01-01
 Echo `v5` is maintenance release with **major breaking changes** 
 - `Context` is now struct instead of interface and we can add method to it in the future in minor versions.
 - Adds new `Router` interface for possible new routing implementations.
-- Drops old logging interface and uses moderm `log/slog` instead.
-- Rearranges alot of methods/function signatures to make them more consistent.
+- Drops old logging interface and uses modern `log/slog` instead.
+- Rearranges a lot of methods/function signatures to make them more consistent.
 
 ## Executive Summary (by LLMs)
 
