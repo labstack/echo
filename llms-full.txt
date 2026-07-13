@@ -1,0 +1,412 @@
+# Echo
+
+> Echo is a high performance, extensible, minimalist Go web framework built on the standard `net/http` library. The current release line is **v5**, which introduces major breaking changes from v4. Echo adds a fast radix-tree router, request binding with pluggable validator, a deep middleware ecosystem, centralized error handling, and template rendering on top of the standard library.
+
+Import path: `github.com/labstack/echo/v5`
+Go version: 1.25+
+Handler signature: `func(c *echo.Context) error`
+
+## Critical v5 Breaking Changes
+
+### 1. Context: interface to struct
+
+v4: `type Context interface` with handler `func(c echo.Context) error`
+v5: `type Context struct` with handler `func(c *echo.Context) error`
+
+ALL handlers must use `*echo.Context` (pointer). The `Context` type is no longer an interface.
+
+### 2. Logger: custom interface to slog
+
+v4: `e.Logger` is a custom `Logger` interface with `Print`, `Debug`, `Info`, etc.
+v5: `e.Logger` is `*slog.Logger` from the standard library `log/slog` package.
+
+```go
+e.Logger = slog.Default()
+c.Logger().Info("message", "key", "value")
+```
+
+### 3. HTTPErrorHandler: parameters swapped
+
+v4: `type HTTPErrorHandler func(err error, c Context)`
+v5: `type HTTPErrorHandler func(c *Context, err error)`
+
+`DefaultHTTPErrorHandler` is now a factory: `echo.DefaultHTTPErrorHandler(exposeError bool) HTTPErrorHandler`
+
+### 4. HTTPError: message is string
+
+v4: `NewHTTPError(code int, message ...interface{})` - message is `interface{}`
+v5: `NewHTTPError(code int, message string)` - message is `string`
+
+Added `HTTPError.Wrap(err error)` and `HTTPError.StatusCode()` methods.
+
+### 5. Router: interface introduced
+
+v4: `func NewRouter(e *Echo) *Router` / `func (e *Echo) Router() *Router`
+v5: `func NewRouter(config RouterConfig) *DefaultRouter` / `func (e *Echo) Router() Router` (returns interface)
+
+New `Router` interface with `DefaultRouter` implementation. `NewConcurrentRouter(r Router) Router` for thread-safe routing.
+
+### 6. Route return types
+
+v4: `e.GET(...)` returns `*Route`, `e.Any(...)` returns `[]*Route`, `e.Routes()` returns `[]*Route`
+v5: `e.GET(...)` returns `RouteInfo`, `e.Any(...)` returns `RouteInfo`, new `Routes` type (`[]RouteInfo`) with filtering methods
+
+```go
+type RouteInfo struct {
+    Name       string
+    Method     string
+    Path       string
+    Parameters []string
+}
+```
+
+`Routes` has `FilterByMethod`, `FilterByName`, `FilterByPath`, `FindByMethodPath`, `Reverse` methods.
+
+### 7. Response type
+
+v4: `c.Response()` returns `*Response`
+v5: `c.Response()` returns `http.ResponseWriter`
+
+`Response` struct now embeds `http.ResponseWriter`. `NewResponse` takes `*slog.Logger` instead of `*Echo`.
+
+### 8. FormParam renamed to FormValue
+
+v4: `echo.FormParam[T](c Context, key string, ...)` / `FormParamOr` / `FormParams` / `FormParamsOr`
+v5: `echo.FormValue[T](c *Context, key string, ...)` / `FormValueOr` / `FormValues` / `FormValuesOr`
+
+### 9. Removed from Echo struct
+
+`StdLogger`, `Server`, `TLSServer`, `Listener`, `TLSListener`, `AutoTLSManager`, `ListenerNetwork`, `DisableHTTP2`, `Debug`, `HideBanner`, `HidePort` are all removed. Use `StartConfig` for server configuration.
+
+### 10. PathParams -> PathValues
+
+v4: `ParamNames()`, `ParamValues()`, `SetParamNames()`, `SetParamValues()`
+v5: `PathValues()` returns `PathValues` type (`[]PathValue`), `SetPathValues(PathValues)`
+
+### 11. Other renames
+
+- `PathParamsBinder` -> `PathValuesBinder`
+- `BindPathParams` -> `BindPathValues`
+- `Map` type removed (use `map[string]any`)
+- HTTP method constants removed (use `http.MethodGet`, etc.)
+- `GetPath(r *http.Request)` removed (use `r.URL.Path`)
+
+## Echo struct (v5)
+
+```go
+type Echo struct {
+    Binder           Binder
+    Filesystem       fs.FS
+    Renderer         Renderer
+    Validator        Validator
+    JSONSerializer   JSONSerializer
+    IPExtractor      IPExtractor
+    OnAddRoute       func(route Route) error
+    HTTPErrorHandler HTTPErrorHandler
+    Logger           *slog.Logger
+}
+```
+
+Constructor: `echo.New() *Echo` or `echo.NewWithConfig(config Config) *Echo`
+
+## Echo methods
+
+### Routing
+
+```go
+e.GET(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo
+e.POST(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo
+e.PUT(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo
+e.DELETE(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo
+e.PATCH(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo
+e.HEAD(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo
+e.OPTIONS(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo
+e.ANY(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo
+e.Match(methods []string, path string, handler HandlerFunc, middleware ...MiddlewareFunc) Routes
+e.RouteNotFound(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo
+e.AddRoute(route Route) (RouteInfo, error)
+```
+
+### Middleware
+
+```go
+e.Use(middleware ...MiddlewareFunc)
+e.Pre(middleware ...MiddlewareFunc)
+e.Middlewares() []MiddlewareFunc
+e.PreMiddlewares() []MiddlewareFunc
+```
+
+### Groups
+
+```go
+e.Group(prefix string, m ...MiddlewareFunc) *Group
+```
+
+### Static files
+
+```go
+e.Static(pathPrefix, fsRoot string, m ...MiddlewareFunc) RouteInfo
+e.StaticFS(pathPrefix string, filesystem fs.FS, m ...MiddlewareFunc) RouteInfo
+e.File(path, file string, m ...MiddlewareFunc) RouteInfo
+e.FileFS(file string, filesystem fs.FS, m ...MiddlewareFunc) RouteInfo
+```
+
+### Server
+
+```go
+e.Start(address string) error
+e.StartTLS(address string, certFile, keyFile any) error
+// v5 also: StartConfig.Start(ctx, handler) and StartConfig.StartTLS(ctx, handler, certFile, keyFile)
+```
+
+```go
+type StartConfig struct {
+    Address          string
+    HideBanner       bool
+    HidePort         bool
+    CertFilesystem   fs.FS
+    TLSConfig        *tls.Config
+    ListenerNetwork  string
+    ListenerAddrFunc func(addr net.Addr)
+    GracefulTimeout  time.Duration
+    OnShutdownError  func(err error)
+    BeforeServeFunc  func(s *http.Server) error
+}
+```
+
+### Context methods (v5)
+
+```go
+c.Request() *http.Request
+c.SetRequest(r *http.Request)
+c.Response() http.ResponseWriter
+c.SetResponse(rw http.ResponseWriter)
+c.IsTLS() bool
+c.IsWebSocket() bool
+c.Scheme() string
+c.RealIP() string
+c.Path() string
+c.SetPath(path string)
+c.RouteInfo() RouteInfo
+c.Param(name string) string
+c.ParamOr(name, defaultValue string) string
+c.PathValues() PathValues
+c.SetPathValues(pathValues PathValues)
+c.QueryParam(name string) string
+c.QueryParamOr(name, defaultValue string) string
+c.QueryParams() []string
+c.QueryString() string
+c.FormValue(name string) string
+c.FormValueOr(name, defaultValue string) string
+c.FormValues() []string
+c.FormFile(name string) (*multipart.FileHeader, error)
+c.MultipartForm() (*multipart.Form, error)
+c.Cookie(name string) (*http.Cookie, error)
+c.SetCookie(cookie *http.Cookie)
+c.Cookies() []*http.Cookie
+c.Get(key string) any
+c.Set(key string, val any)
+c.Bind(i any) error
+c.Validate(i any) error
+c.Render(code int, name string, data any) error
+c.HTML(code int, html string) error
+c.HTMLBlob(code int, b []byte) error
+c.String(code int, s string) error
+c.JSON(code int, i any) error
+c.JSONPretty(code int, i any, indent string) error
+c.JSONBlob(code int, b []byte) error
+c.JSONP(code int, callback string, i any) error
+c.JSONPBlob(code int, callback string, i any) error
+c.XML(code int, i any) error
+c.XMLPretty(code int, i any, indent string) error
+c.XMLBlob(code int, b []byte) error
+c.Blob(code int, contentType string, b []byte) error
+c.Stream(code int, contentType string, r io.Reader) error
+c.File(file string) error
+c.FileFS(file string, filesystem fs.FS) error
+c.Attachment(file, name string) error
+c.Inline(file, name string) error
+c.NoContent(code int) error
+c.Redirect(code int, url string) error
+c.Logger() *slog.Logger
+c.SetLogger(logger *slog.Logger)
+c.Echo() *Echo
+```
+
+### Generic helper functions (v5)
+
+```go
+echo.PathParam[T](c *Context, name string, opts ...any) (T, error)
+echo.PathParamOr[T](c *Context, name string, defaultValue T, opts ...any) (T, error)
+echo.QueryParam[T](c *Context, key string, opts ...any) (T, error)
+echo.QueryParamOr[T](c *Context, key string, defaultValue T, opts ...any) (T, error)
+echo.QueryParams[T](c *Context, key string, opts ...any) ([]T, error)
+echo.QueryParamsOr[T](c *Context, key string, defaultValue []T, opts ...any) ([]T, error)
+echo.FormValue[T](c *Context, key string, opts ...any) (T, error)
+echo.FormValueOr[T](c *Context, key string, defaultValue T, opts ...any) (T, error)
+echo.FormValues[T](c *Context, key string, opts ...any) ([]T, error)
+echo.FormValuesOr[T](c *Context, key string, defaultValue []T, opts ...any) ([]T, error)
+echo.ParseValue[T](value string, opts ...any) (T, error)
+echo.ParseValueOr[T](value string, defaultValue T, opts ...any) (T, error)
+echo.ParseValues[T](values []string, opts ...any) ([]T, error)
+echo.ParseValuesOr[T](values []string, defaultValue []T, opts ...any) ([]T, error)
+echo.ContextGet[T](c *Context, key string) (T, error)
+echo.ContextGetOr[T](c *Context, key string, defaultValue T) (T, error)
+```
+
+Supported generic types: bool, string, int/int8/int16/int32/int64, uint/uint8/uint16/uint32/uint64, float32/float64, time.Time, time.Duration, BindUnmarshaler, encoding.TextUnmarshaler, json.Unmarshaler
+
+### Binding functions (v5)
+
+```go
+echo.BindBody(c *Context, target any) error
+echo.BindHeaders(c *Context, target any) error
+echo.BindPathValues(c *Context, target any) error
+echo.BindQueryParams(c *Context, target any) error
+```
+
+### Binder helpers (v5)
+
+```go
+echo.PathValuesBinder(c *Context) *ValueBinder
+echo.QueryParamsBinder(c *Context) *ValueBinder
+echo.FormFieldBinder(c *Context) *ValueBinder
+```
+
+### Wrapping stdlib handlers
+
+```go
+echo.WrapHandler(h http.Handler) HandlerFunc
+echo.WrapMiddleware(m func(http.Handler) http.Handler) MiddlewareFunc
+```
+
+## Group methods
+
+```go
+g.Use(m ...MiddlewareFunc)
+g.Group(prefix string, m ...MiddlewareFunc) *Group
+g.GET(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo
+g.POST(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo
+g.PUT(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo
+g.DELETE(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo
+g.PATCH(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo
+g.ANY(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo
+g.Match(methods []string, path string, handler HandlerFunc, middleware ...MiddlewareFunc) Routes
+g.Static(pathPrefix, fsRoot string, m ...MiddlewareFunc) RouteInfo
+g.StaticFS(pathPrefix string, filesystem fs.FS, m ...MiddlewareFunc) RouteInfo
+g.File(path, file string, m ...MiddlewareFunc) RouteInfo
+g.FileFS(file string, filesystem fs.FS, m ...MiddlewareFunc) RouteInfo
+```
+
+## Built-in middleware
+
+| Middleware | Description |
+|---|---|
+| BasicAuth | HTTP basic authentication |
+| BodyDump | Dumps request and response bodies |
+| BodyLimit | Limits request body size |
+| Compress | Gzip response compression |
+| ContextTimeout | Request context timeout |
+| CORS | Cross-origin resource sharing |
+| CSRF | Cross-site request forgery protection |
+| Decompress | Gzip request decompression |
+| KeyAuth | Key-based authentication |
+| MethodOverride | HTTP method override |
+| Proxy | Reverse proxy |
+| RateLimiter | Rate limiting |
+| Recover | Panic recovery |
+| Redirect | HTTP redirect |
+| RequestID | Request ID header |
+| RequestLogger | Structured request logging |
+| Rewrite | URL rewriting |
+| Secure | Security headers |
+| Slash | Trailing slash handling |
+| Static | Static file serving |
+
+## PathValues type (v5)
+
+```go
+type PathValue struct {
+    Name  string
+    Value string
+}
+type PathValues []PathValue
+
+func (p PathValues) Get(name string) (string, bool)
+func (p PathValues) GetOr(name string, defaultValue string) string
+```
+
+## echotest package (v5 new)
+
+```go
+import "github.com/labstack/echo/v5/echotest"
+
+echotest.LoadBytes(t *testing.T, name string, opts ...loadBytesOpts) []byte
+echotest.TrimNewlineEnd(bytes []byte) []byte
+echotest.ContextConfig{...}
+echotest.MultipartForm{...}
+echotest.MultipartFormFile{...}
+```
+
+## Error variables (v5)
+
+```go
+echo.ErrBadRequest
+echo.ErrValidatorNotRegistered
+echo.ErrInvalidKeyType
+echo.ErrNonExistentKey
+```
+
+## Virtual host (v5 new)
+
+```go
+echo.NewVirtualHostHandler(vhosts map[string]*Echo) *Echo
+```
+
+## Complete server example with graceful shutdown
+
+```go
+package main
+
+import (
+    "context"
+    "log/slog"
+    "net/http"
+    "os"
+    "os/signal"
+    "syscall"
+    "time"
+
+    "github.com/labstack/echo/v5"
+    "github.com/labstack/echo/v5/middleware"
+)
+
+func main() {
+    e := echo.New()
+    e.Use(middleware.RequestLogger())
+    e.Use(middleware.Recover())
+
+    e.GET("/", func(c *echo.Context) error {
+        return c.String(http.StatusOK, "Hello, World!")
+    })
+
+    e.GET("/users/:id", func(c *echo.Context) error {
+        id, err := echo.PathParam[int](c, "id")
+        if err != nil {
+            return echo.NewHTTPError(http.StatusBadRequest, "invalid user id")
+        }
+        return c.JSON(http.StatusOK, map[string]int{"id": id})
+    })
+
+    ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+    defer cancel()
+
+    sc := echo.StartConfig{
+        Address:        ":8080",
+        GracefulTimeout: 10 * time.Second,
+    }
+    if err := sc.Start(ctx, e); err != nil {
+        slog.Error("server error", "error", err)
+    }
+}
+```
