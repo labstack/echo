@@ -1,0 +1,235 @@
+# Echo
+
+> Echo is a high performance, extensible, minimalist Go web framework built on the standard `net/http` library. The current release line is **v5**, which introduces major breaking changes from v4. Echo adds a fast radix-tree router, request binding with pluggable validator, a deep middleware ecosystem, centralized error handling, and template rendering on top of the standard library.
+
+Key facts for LLMs:
+- Import path is `github.com/labstack/echo/v5` (NOT `github.com/labstack/echo` which is v4)
+- Handlers use `*echo.Context` (pointer to struct), NOT `echo.Context` (interface) like v4
+- `Context` is a concrete struct in v5, not an interface
+- Logging uses `log/slog`, not the old custom `Logger` interface
+- Go 1.25+ required
+
+## Quick Reference
+
+- [Echo v5 API Changes](https://github.com/labstack/echo/blob/master/API_CHANGES_V5.md): Complete v4-to-v5 migration guide with all breaking changes
+- [Echo Official Docs](https://echo.labstack.com): Human-readable documentation site
+- [pkg.go.dev](https://pkg.go.dev/github.com/labstack/echo/v5): API reference on Go package discovery
+
+## Core Patterns (v5)
+
+### Server setup
+
+```go
+package main
+
+import (
+    "log/slog"
+    "net/http"
+
+    "github.com/labstack/echo/v5"
+    "github.com/labstack/echo/v5/middleware"
+)
+
+func hello(c *echo.Context) error {
+    return c.String(http.StatusOK, "Hello, World!")
+}
+
+func main() {
+    e := echo.New()
+    e.Use(middleware.RequestLogger())
+    e.Use(middleware.Recover())
+    e.GET("/", hello)
+    if err := e.Start(":8080"); err != nil {
+        slog.Error("failed to start server", "error", err)
+    }
+}
+```
+
+### Handler signature (v5 vs v4)
+
+```go
+// v5 - pointer to struct
+func handler(c *echo.Context) error {
+    return c.JSON(http.StatusOK, map[string]string{"hello": "world"})
+}
+
+// v4 (DO NOT USE in v5) - interface
+func handler(c echo.Context) error { ... }
+```
+
+### Route registration
+
+```go
+e := echo.New()
+e.GET("/users/:id", getUser)
+e.POST("/users", createUser)
+e.PUT("/users/:id", updateUser)
+e.DELETE("/users/:id", deleteUser)
+
+// Group routes
+g := e.Group("/api/v1")
+g.GET("/posts", listPosts)
+g.POST("/posts", createPost)
+
+// Group with middleware
+admin := e.Group("/admin", middleware.BasicAuth(basicAuthValidator))
+admin.GET("/stats", getStats)
+```
+
+### Generic parameter extraction (v5 new)
+
+```go
+// Type-safe path params
+id, err := echo.PathParam[int](c, "id")
+name, err := echo.PathParam[string](c, "name")
+
+// Query params with defaults
+page, err := echo.QueryParamOr[int](c, "page", 1)
+tags, err := echo.QueryParams[string](c, "tags")
+
+// Form values (renamed from FormParam* in v4)
+val, err := echo.FormValue[string](c, "field")
+val2, err := echo.FormValueOr[string](c, "field", "default")
+
+// Supported types: bool, string, int/int8/.../int64, uint/.../uint64,
+// float32/float64, time.Time, time.Duration
+```
+
+### Request binding
+
+```go
+type User struct {
+    Name  string `json:"name"`
+    Email string `json:"email"`
+}
+
+func createUser(c *echo.Context) error {
+    u := new(User)
+    if err := c.Bind(u); err != nil {
+        return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+    }
+    if err := c.Validate(u); err != nil {
+        return err
+    }
+    return c.JSON(http.StatusCreated, u)
+}
+```
+
+### Error handling (v5 changed)
+
+```go
+// v5 - NewHTTPError takes string, not interface{}
+err := echo.NewHTTPError(http.StatusBadRequest, "invalid input")
+
+// v5 - HTTPErrorHandler signature changed (params swapped, pointer)
+e.HTTPErrorHandler = func(c *echo.Context, err error) {
+    // custom error handling
+}
+
+// v5 - DefaultHTTPErrorHandler is now a factory
+e.HTTPErrorHandler = echo.DefaultHTTPErrorHandler(true) // exposeError bool
+```
+
+### Logging (v5 uses slog)
+
+```go
+// v5 - standard library slog
+e.Logger = slog.Default()
+
+// In handlers
+c.Logger().Info("request", "path", c.Path(), "method", c.Request().Method)
+
+// Custom logger
+logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+e.Logger = logger
+```
+
+### Middleware
+
+```go
+// Built-in middleware
+e.Use(middleware.RequestLogger())
+e.Use(middleware.Recover())
+e.Use(middleware.CORS())
+e.Use(middleware.Gzip())
+e.Use(middleware.BasicAuth(func(c *echo.Context, username, password string) (bool, error) {
+    return username == "admin" && password == "secret", nil
+}))
+e.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(20)))
+
+// Route-level middleware
+e.GET("/sensitive", handler, middleware.RequestID(), middleware.Logger())
+```
+
+### Response helpers
+
+```go
+c.String(http.StatusOK, "text")
+c.JSON(http.StatusOK, data)
+c.JSONPretty(http.StatusOK, data, "  ")
+c.XML(http.StatusOK, data)
+c.Blob(http.StatusOK, "image/png", bytes)
+c.Stream(http.StatusOK, "text/event-stream", reader)
+c.File("path/to/file")
+c.FileFS("file.txt", filesystem)
+c.Attachment("path/to/file", "download.txt")
+c.Redirect(http.StatusFound, "/new-path")
+c.NoContent(http.StatusOK)
+c.HTML(http.StatusOK, "<h1>Hello</h1>")
+```
+
+### Static files
+
+```go
+e.Static("/assets", "public")
+e.StaticFS("/static", filesystem)
+e.File("/robots.txt", "robots.txt")
+e.FileFS("file.txt", filesystem)
+```
+
+### Context store (v5 type-safe)
+
+```go
+// Set and get values on context
+c.Set("user", user)
+val, err := echo.ContextGet[*User](c, "user")
+count, err := echo.ContextGetOr[int](c, "count", 0)
+```
+
+### Graceful shutdown with StartConfig (v5 new)
+
+```go
+ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+defer cancel()
+
+sc := echo.StartConfig{
+    Address:        ":8080",
+    GracefulTimeout: 10 * time.Second,
+}
+if err := sc.Start(ctx, e); err != nil {
+    log.Fatal(err)
+}
+```
+
+## v4 to v5 Migration Checklist
+
+1. Change import from `github.com/labstack/echo` to `github.com/labstack/echo/v5`
+2. Change all handler signatures from `echo.Context` to `*echo.Context`
+3. Replace custom `Logger` interface with `log/slog`
+4. Update `HTTPErrorHandler` signature: `func(c *echo.Context, err error)` (params swapped)
+5. `NewHTTPError(code int, message string)` - message is now `string` not `interface{}`
+6. `FormParam*` renamed to `FormValue*`
+7. `PathParamsBinder` renamed to `PathValuesBinder`
+8. `Context.Response()` returns `http.ResponseWriter` instead of `*Response`
+9. `ParamNames()`/`ParamValues()` replaced by `PathValues()`
+10. Use `StartConfig` for server configuration instead of `Echo` struct fields
+11. Route methods return `RouteInfo` instead of `*Route`
+12. `Map` type removed - use `map[string]any` directly
+13. HTTP method constants removed - use `http.MethodGet`, `http.MethodPost`, etc.
+14. `BindPathParams` renamed to `BindPathValues`
+
+## Optional
+
+- [Echo GitHub Discussions](https://github.com/labstack/echo/discussions): Community Q&A and proposals
+- [Echo Roadmap](https://github.com/labstack/echo/blob/master/ROADMAP.md): Future plans
+- [Echo Changelog](https://github.com/labstack/echo/blob/master/CHANGELOG.md): Release history
