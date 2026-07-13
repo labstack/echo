@@ -1,21 +1,21 @@
 # Echo
 
-> Echo is a high performance, extensible, minimalist Go web framework built on the standard `net/http` library. The current release line is **v5**, which introduces major breaking changes from v4. Echo adds a fast radix-tree router, request binding with pluggable validator, a deep middleware ecosystem, centralized error handling, and template rendering on top of the standard library.
+> Echo is a high performance, extensible, minimalist Go web framework built on the standard `net/http` library. Echo adds a fast radix-tree router, request binding with pluggable validator, a deep middleware ecosystem, centralized error handling, and template rendering on top of the standard library.
 
 Key facts for LLMs:
-- Import path is `github.com/labstack/echo/v5` (NOT `github.com/labstack/echo` which is v4)
-- Handlers use `*echo.Context` (pointer to struct), NOT `echo.Context` (interface) like v4
-- `Context` is a concrete struct in v5, not an interface
-- Logging uses `log/slog`, not the old custom `Logger` interface
+- Import path is `github.com/labstack/echo/v5`
+- Handlers use `*echo.Context` (pointer to struct)
+- `Context` is a concrete struct, not an interface
+- Logging uses `log/slog`
 - Go 1.25+ required
 
 ## Quick Reference
 
-- [Echo v5 API Changes](https://github.com/labstack/echo/blob/master/API_CHANGES_V5.md): Complete v4-to-v5 migration guide with all breaking changes
+- [Echo v5 API Changes](https://github.com/labstack/echo/blob/master/API_CHANGES_V5.md): Breaking changes reference
 - [Echo Official Docs](https://echo.labstack.com): Human-readable documentation site
 - [pkg.go.dev](https://pkg.go.dev/github.com/labstack/echo/v5): API reference on Go package discovery
 
-## Core Patterns (v5)
+## Core Patterns
 
 ### Server setup
 
@@ -45,16 +45,12 @@ func main() {
 }
 ```
 
-### Handler signature (v5 vs v4)
+### Handler signature
 
 ```go
-// v5 - pointer to struct
 func handler(c *echo.Context) error {
     return c.JSON(http.StatusOK, map[string]string{"hello": "world"})
 }
-
-// v4 (DO NOT USE in v5) - interface
-func handler(c echo.Context) error { ... }
 ```
 
 ### Route registration
@@ -76,7 +72,7 @@ admin := e.Group("/admin", middleware.BasicAuth(basicAuthValidator))
 admin.GET("/stats", getStats)
 ```
 
-### Generic parameter extraction (v5 new)
+### Generic parameter extraction
 
 ```go
 // Type-safe path params
@@ -87,7 +83,7 @@ name, err := echo.PathParam[string](c, "name")
 page, err := echo.QueryParamOr[int](c, "page", 1)
 tags, err := echo.QueryParams[string](c, "tags")
 
-// Form values (renamed from FormParam* in v4)
+// Form values
 val, err := echo.FormValue[string](c, "field")
 val2, err := echo.FormValueOr[string](c, "field", "default")
 
@@ -115,25 +111,25 @@ func createUser(c *echo.Context) error {
 }
 ```
 
-### Error handling (v5 changed)
+### Error handling
 
 ```go
-// v5 - NewHTTPError takes string, not interface{}
+// NewHTTPError takes a string message
 err := echo.NewHTTPError(http.StatusBadRequest, "invalid input")
 
-// v5 - HTTPErrorHandler signature changed (params swapped, pointer)
+// Custom error handler
 e.HTTPErrorHandler = func(c *echo.Context, err error) {
     // custom error handling
 }
 
-// v5 - DefaultHTTPErrorHandler is now a factory
-e.HTTPErrorHandler = echo.DefaultHTTPErrorHandler(true) // exposeError bool
+// DefaultHTTPErrorHandler is a factory (exposeError bool)
+e.HTTPErrorHandler = echo.DefaultHTTPErrorHandler(true)
 ```
 
-### Logging (v5 uses slog)
+### Logging
 
 ```go
-// v5 - standard library slog
+// Echo uses the standard library slog
 e.Logger = slog.Default()
 
 // In handlers
@@ -187,7 +183,7 @@ e.File("/robots.txt", "robots.txt")
 e.FileFS("file.txt", filesystem)
 ```
 
-### Context store (v5 type-safe)
+### Context store (type-safe)
 
 ```go
 // Set and get values on context
@@ -196,7 +192,7 @@ val, err := echo.ContextGet[*User](c, "user")
 count, err := echo.ContextGetOr[int](c, "count", 0)
 ```
 
-### Graceful shutdown with StartConfig (v5 new)
+### Graceful shutdown with StartConfig
 
 ```go
 ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -211,25 +207,9 @@ if err := sc.Start(ctx, e); err != nil {
 }
 ```
 
-## v4 to v5 Migration Checklist
-
-1. Change import from `github.com/labstack/echo` to `github.com/labstack/echo/v5`
-2. Change all handler signatures from `echo.Context` to `*echo.Context`
-3. Replace custom `Logger` interface with `log/slog`
-4. Update `HTTPErrorHandler` signature: `func(c *echo.Context, err error)` (params swapped)
-5. `NewHTTPError(code int, message string)` - message is now `string` not `interface{}`
-6. `FormParam*` renamed to `FormValue*`
-7. `PathParamsBinder` renamed to `PathValuesBinder`
-8. `Context.Response()` returns `http.ResponseWriter` instead of `*Response`
-9. `ParamNames()`/`ParamValues()` replaced by `PathValues()`
-10. Use `StartConfig` for server configuration instead of `Echo` struct fields
-11. Route methods return `RouteInfo` instead of `*Route`
-12. `Map` type removed - use `map[string]any` directly
-13. HTTP method constants removed - use `http.MethodGet`, `http.MethodPost`, etc.
-14. `BindPathParams` renamed to `BindPathValues`
-
 ## Optional
 
 - [Echo GitHub Discussions](https://github.com/labstack/echo/discussions): Community Q&A and proposals
 - [Echo Roadmap](https://github.com/labstack/echo/blob/master/ROADMAP.md): Future plans
 - [Echo Changelog](https://github.com/labstack/echo/blob/master/CHANGELOG.md): Release history
+- [API_CHANGES_V5.md](https://github.com/labstack/echo/blob/master/API_CHANGES_V5.md): Full v5 breaking changes reference
