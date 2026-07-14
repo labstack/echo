@@ -44,6 +44,36 @@ func TestStatic_useCaseForApiAndSPAs(t *testing.T) {
 
 }
 
+func TestStaticHTML5PreservesMatchedHandlerNotFound(t *testing.T) {
+	e := echo.New()
+	e.Use(StaticWithConfig(StaticConfig{
+		Root:  "testdata/dist/public",
+		HTML5: true,
+	}))
+	e.GET("/api/users/:id", func(c *echo.Context) error {
+		return echo.NewHTTPError(http.StatusNotFound, "user not found")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/users/42", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.JSONEq(t, `{"message":"user not found"}`, rec.Body.String())
+
+	group := echo.New()
+	group.Group("/app", StaticWithConfig(StaticConfig{
+		Root:  "testdata/dist/public",
+		HTML5: true,
+	}))
+	req = httptest.NewRequest(http.MethodGet, "/app/dashboard", nil)
+	rec = httptest.NewRecorder()
+	group.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), "<h1>Hello from index</h1>\n")
+}
+
 func TestStatic(t *testing.T) {
 	var testCases = []struct {
 		name                 string
