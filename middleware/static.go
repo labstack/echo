@@ -269,10 +269,12 @@ func (config StaticConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				}
 
 				var he echo.HTTPStatusCoder
-				if !errors.As(err, &he) || !config.HTML5 || he.StatusCode() != http.StatusNotFound {
+				if (c.Path() != "" && c.RouteInfo().Method != echo.RouteNotFound) ||
+					!errors.As(err, &he) ||
+					!config.HTML5 || he.StatusCode() != http.StatusNotFound {
 					return err
 				}
-				// is case HTML5 mode is enabled + echo 404 we serve index to the client
+				// In HTML5 mode, serve index for a router-level 404.
 				file, err = currentFS.Open(config.Index)
 				if err != nil {
 					return err
