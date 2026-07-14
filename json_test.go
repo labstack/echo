@@ -136,7 +136,7 @@ func TestDefaultJSONCodec_Decode_RejectsTrailingData(t *testing.T) {
 // followed by a short one must each decode to exactly their own input.
 func TestDefaultJSONCodec_Decode_PooledBufferReuse(t *testing.T) {
 	e := New()
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		longName := strings.Repeat("x", 1000+i)
 		var long user
 		err := deserializeJSON(e, fmt.Sprintf(`{"id":%d,"name":%q}`, i, longName), &long)
@@ -159,7 +159,7 @@ func TestDefaultJSONCodec_Decode_PooledBufferConcurrent(t *testing.T) {
 	var wg sync.WaitGroup
 	errs := make([]error, n)
 	got := make([]user, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
@@ -168,7 +168,7 @@ func TestDefaultJSONCodec_Decode_PooledBufferConcurrent(t *testing.T) {
 		}(i)
 	}
 	wg.Wait()
-	for i := 0; i < n; i++ {
+	for i := range n {
 		assert.NoError(t, errs[i])
 		assert.Equal(t, user{ID: i, Name: strings.Repeat("n", i+1)}, got[i])
 	}
