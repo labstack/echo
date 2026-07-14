@@ -187,7 +187,7 @@ func bindMetaFor(typ reflect.Type) *bindStructMeta {
 	}
 	n := typ.NumField()
 	meta := &bindStructMeta{fields: make([]bindFieldMeta, n)}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		f := typ.Field(i)
 		meta.fields[i] = bindFieldMeta{
 			index:     i,

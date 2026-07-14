@@ -51,7 +51,7 @@ func BenchmarkServeHTTP_Param(b *testing.B) {
 // Exercises the global middleware chain (finding #1). Five pass-through middlewares.
 func BenchmarkServeHTTP_Middleware(b *testing.B) {
 	e := New()
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		e.Use(func(next HandlerFunc) HandlerFunc {
 			return func(c *Context) error { return next(c) }
 		})
