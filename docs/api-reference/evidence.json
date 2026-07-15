@@ -1,31 +1,15 @@
 {
   "summary": "Sourcey-generated API reference documentation for labstack/echo, a high-performance Go web framework",
-  "observations": {
-    "runx_version": "runx-cli 0.6.14",
-    "sourcey_version": "3.6.5",
-    "target_repo": "https://github.com/labstack/echo",
-    "target_commit": "70b31c2ca5131f4eda9c56d78294e8a0573f8645",
-    "target_license": "MIT",
-    "adapter": "godoc",
-    "sourcey_command": "sourcey godoc -m . -o godoc.json && sourcey build -o dist",
-    "packages_documented": 3,
-    "packages": [
-      "echo (main package)",
-      "echotest (testing utilities)",
-      "middleware (HTTP middleware)"
-    ],
-    "public_apis_documented": 87,
-    "page_list": [
-      "index.html (landing page)",
-      "api-reference.html (API reference index)",
-      "api-reference/package-root.html (echo package)",
-      "api-reference/pkg-echotest.html (echotest package)",
-      "api-reference/pkg-middleware.html (middleware package)"
-    ],
-    "coverage_notes": "All exported types, functions, interfaces, and methods documented. Includes Echo struct, Context interface, middleware functions, routing, and testing utilities.",
-    "sourcey_config": "sourcey.config.ts using godoc adapter with snapshot mode",
-    "deployment": "GitHub Pages at patrick6x6.github.io/echo",
-    "pr_url": "https://github.com/labstack/echo/pull/3045",
-    "public_url": "https://patrick6x6.github.io/echo/"
-  }
+  "observations": [
+    "runx-cli 0.6.14 confirmed via runx --version",
+    "Target repository: https://github.com/labstack/echo at commit 70b31c2ca5131f4eda9c56d78294e8a0573f8645, MIT licensed",
+    "Sourcey v3.6.5 used with godoc adapter in snapshot mode to generate docs from Go source",
+    "3 packages documented: echo (main), echotest (testing), middleware (HTTP middleware) with87 public APIs total",
+    "5 HTML pages generated: index, api-reference index, package-root, pkg-echotest, pkg-middleware",
+    "Sourcey command: sourcey godoc -m . -o godoc.json && sourcey build -o dist",
+    "Docs deployed to GitHub Pages at https://patrick6x6.github.io/echo/",
+    "PR submitted to upstream: https://github.com/labstack/echo/pull/3045",
+    "sourcey.config.ts uses godoc adapter with snapshot mode for reproducible builds",
+    "Coverage includes all exported types, functions, interfaces, and methods across all packages"
+  ]
 }
