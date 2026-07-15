@@ -45,33 +45,64 @@ func TestStatic_useCaseForApiAndSPAs(t *testing.T) {
 }
 
 func TestStaticHTML5PreservesMatchedHandlerNotFound(t *testing.T) {
-	e := echo.New()
-	e.Use(StaticWithConfig(StaticConfig{
-		Root:  "testdata/dist/public",
-		HTML5: true,
-	}))
-	e.GET("/api/users/:id", func(c *echo.Context) error {
-		return echo.NewHTTPError(http.StatusNotFound, "user not found")
-	})
+	var testCases = []struct {
+		name           string
+		buildEcho      func() *echo.Echo
+		whenURL        string
+		expectCode     int
+		expectJSONEq   string
+		expectContains string
+	}{
+		{
+			name: "ok, router-matched handler 404 is preserved instead of serving index",
+			buildEcho: func() *echo.Echo {
+				e := echo.New()
+				e.Use(StaticWithConfig(StaticConfig{
+					Root:  "testdata/dist/public",
+					HTML5: true,
+				}))
+				e.GET("/api/users/:id", func(c *echo.Context) error {
+					return echo.NewHTTPError(http.StatusNotFound, "user not found")
+				})
+				return e
+			},
+			whenURL:      "/api/users/42",
+			expectCode:   http.StatusNotFound,
+			expectJSONEq: `{"message":"user not found"}`,
+		},
+		{
+			name: "ok, router-level 404 for group without matched route still serves index",
+			buildEcho: func() *echo.Echo {
+				e := echo.New()
+				e.Group("/app", StaticWithConfig(StaticConfig{
+					Root:  "testdata/dist/public",
+					HTML5: true,
+				}))
+				return e
+			},
+			whenURL:        "/app/dashboard",
+			expectCode:     http.StatusOK,
+			expectContains: "<h1>Hello from index</h1>\n",
+		},
+	}
 
-	req := httptest.NewRequest(http.MethodGet, "/api/users/42", nil)
-	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := tc.buildEcho()
 
-	assert.Equal(t, http.StatusNotFound, rec.Code)
-	assert.JSONEq(t, `{"message":"user not found"}`, rec.Body.String())
+			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
 
-	group := echo.New()
-	group.Group("/app", StaticWithConfig(StaticConfig{
-		Root:  "testdata/dist/public",
-		HTML5: true,
-	}))
-	req = httptest.NewRequest(http.MethodGet, "/app/dashboard", nil)
-	rec = httptest.NewRecorder()
-	group.ServeHTTP(rec, req)
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Contains(t, rec.Body.String(), "<h1>Hello from index</h1>\n")
+			assert.Equal(t, tc.expectCode, rec.Code)
+			if tc.expectJSONEq != "" {
+				assert.JSONEq(t, tc.expectJSONEq, rec.Body.String())
+			}
+			if tc.expectContains != "" {
+				assert.Contains(t, rec.Body.String(), tc.expectContains)
+			}
+		})
+	}
 }
 
 func TestStatic(t *testing.T) {
