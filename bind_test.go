@@ -725,7 +725,7 @@ func testBindArrayOkay(t *testing.T, r io.Reader, query url.Values, ctype string
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	req.Header.Set(HeaderContentType, ctype)
-	u := []user{}
+	var u []user
 	err := c.Bind(&u)
 	if assert.NoError(t, err) {
 		assert.Equal(t, 1, len(u))
