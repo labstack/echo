@@ -485,7 +485,7 @@ func (r *DefaultRouter) Remove(method string, path string) error {
 }
 
 // AddRouteError is error returned by Router.Add containing information what actual route adding failed. Useful for
-// mass adding (i.e. Any() routes)
+// mass adding (i.e. Match() routes)
 type AddRouteError struct {
 	Err    error
 	Method string

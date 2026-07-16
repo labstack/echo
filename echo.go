@@ -578,11 +578,11 @@ func (e *Echo) RouteNotFound(path string, h HandlerFunc, m ...MiddlewareFunc) Ro
 	return e.Add(RouteNotFound, path, h, m...)
 }
 
-// Any registers a new route for all HTTP methods (supported by Echo) and path with matching handler
-// in the router with optional route-level middleware.
+// Any registers a new route for a path with matching handler in the router with optional
+// route-level middleware. Panics on error. The route matches any HTTP method in the request,
+// including methods not known to Echo, by registering a single RouteAny route.
 //
-// Note: this method only adds specific set of supported HTTP methods as handler and is not true
-// "catch-any-arbitrary-method" way of matching requests.
+// A method-specific route registered for the same path takes precedence over the Any route.
 func (e *Echo) Any(path string, handler HandlerFunc, middleware ...MiddlewareFunc) RouteInfo {
 	return e.Add(RouteAny, path, handler, middleware...)
 }

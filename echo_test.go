@@ -942,6 +942,20 @@ func TestEcho_Any(t *testing.T) {
 	assert.Equal(t, `OK from ANY`, body)
 }
 
+func TestEcho_Any_matchesArbitraryMethod(t *testing.T) {
+	e := New()
+
+	e.Any("/activate", func(c *Context) error {
+		return c.String(http.StatusTeapot, "OK from ANY")
+	})
+
+	// ARBITRARY-METHOD is not one of Echo's known HTTP methods; the RouteAny
+	// fallback must still match it.
+	status, body := request("ARBITRARY-METHOD", "/activate", e)
+	assert.Equal(t, http.StatusTeapot, status)
+	assert.Equal(t, `OK from ANY`, body)
+}
+
 func TestEcho_Any_hasLowerPriority(t *testing.T) {
 	e := New()
 
