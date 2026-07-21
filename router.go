@@ -506,6 +506,8 @@ func newAddRouteError(route Route, err error) *AddRouteError {
 
 // Add registers a new route for method and path with matching handler.
 func (r *DefaultRouter) Add(route Route) (RouteInfo, error) {
+	allowOverwritingRoute := r.allowOverwritingRoute || route.allowOverwrite
+
 	if route.Handler == nil {
 		switch route.Method {
 		case RouteNotFound:
@@ -521,7 +523,7 @@ func (r *DefaultRouter) Add(route Route) (RouteInfo, error) {
 	path := normalizePathSlash(route.Path)
 
 	h := applyMiddleware(route.Handler, route.Middlewares...)
-	if !r.allowOverwritingRoute {
+	if !allowOverwritingRoute {
 		for _, rr := range r.routes {
 			if route.Method == rr.Method && route.Path == rr.Path {
 				return RouteInfo{}, newAddRouteError(route, errors.New("adding duplicate route (same method+path) is not allowed"))

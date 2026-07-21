@@ -866,3 +866,74 @@ func TestGroup_RouteNotFoundWithMiddleware(t *testing.T) {
 		})
 	}
 }
+
+func TestGroup_UseMultipleTimes(t *testing.T) {
+	t.Run("Group created without middleware can call Use multiple times", func(t *testing.T) {
+		e := NewWithConfig(Config{
+			Router: NewRouter(RouterConfig{AllowOverwritingRoute: false}),
+		})
+
+		g1 := e.Group("/api")
+		mw1Called := false
+		g1.Use(func(next HandlerFunc) HandlerFunc {
+			mw1Called = true
+			return func(c *Context) error { return next(c) }
+		})
+
+		mw2Called := false
+		g1.Use(func(next HandlerFunc) HandlerFunc {
+			mw2Called = true
+			return func(c *Context) error { return next(c) }
+		})
+
+		g1.GET("/test", func(c *Context) error {
+			return c.String(http.StatusTeapot, "OK")
+		})
+
+		req := httptest.NewRequest(http.MethodGet, "/api/test", nil)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+
+		assert.True(t, mw1Called)
+		assert.True(t, mw2Called)
+		assert.Equal(t, http.StatusTeapot, rec.Code)
+	})
+
+	t.Run("Group created with middleware can call Use multiple times", func(t *testing.T) {
+		e := NewWithConfig(Config{
+			Router: NewRouter(RouterConfig{AllowOverwritingRoute: false}),
+		})
+
+		mw0Called := true
+		g1 := e.Group("/api", func(next HandlerFunc) HandlerFunc {
+			mw0Called = true
+			return func(c *Context) error { return next(c) }
+		})
+
+		mw1Called := false
+		g1.Use(func(next HandlerFunc) HandlerFunc {
+			mw1Called = true
+			return func(c *Context) error { return next(c) }
+		})
+
+		mw2Called := false
+		g1.Use(func(next HandlerFunc) HandlerFunc {
+			mw2Called = true
+			return func(c *Context) error { return next(c) }
+		})
+
+		g1.GET("/test", func(c *Context) error {
+			return c.String(http.StatusTeapot, "OK")
+		})
+
+		req := httptest.NewRequest(http.MethodGet, "/api/test", nil)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+
+		assert.True(t, mw0Called)
+		assert.True(t, mw1Called)
+		assert.True(t, mw2Called)
+		assert.Equal(t, http.StatusTeapot, rec.Code)
+	})
+
+}

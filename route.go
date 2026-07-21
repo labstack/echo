@@ -22,6 +22,10 @@ type Route struct {
 	// fallback to default/global handlers in certain situations.
 	Handler     HandlerFunc
 	Middlewares []MiddlewareFunc
+
+	// allowOverwrite permits this route to replace an existing route with the same method+path,
+	// overriding the router's AllowOverwritingRoute config for this specific registration.
+	allowOverwrite bool
 }
 
 // ToRouteInfo converts Route to RouteInfo

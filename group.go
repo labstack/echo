@@ -41,8 +41,12 @@ func (g *Group) Use(middleware ...MiddlewareFunc) {
 	// So we register catch all route (404 is a safe way to emulate route match) for this group and now during routing the
 	// Router would find route to match our request path and therefore guarantee the middleware(s) will get executed.
 	// Note: we use nil handler so Router would choose the default 404 handler. This may not work with custom routers.
-	g.RouteNotFound("", nil)
-	g.RouteNotFound("/*", nil)
+	if _, err := g.AddRoute(Route{Method: RouteNotFound, Path: "", allowOverwrite: true}); err != nil {
+		panic(err) // this is how `v4` handles errors. `v5` has methods to have panic-free usage
+	}
+	if _, err := g.AddRoute(Route{Method: RouteNotFound, Path: "/*", allowOverwrite: true}); err != nil {
+		panic(err) // this is how `v4` handles errors. `v5` has methods to have panic-free usage
+	}
 }
 
 // CONNECT implements `Echo#CONNECT()` for sub-routes within the Group. Panics on error.
