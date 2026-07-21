@@ -1,5 +1,23 @@
 # Changelog
 
+
+## v5.3.1 - 2026-07-21
+
+**Fixes**
+
+* fix(static): preserve matched handler 404s by @JSap0914 in https://github.com/labstack/echo/pull/3043
+* fix(group): Implicitly registered group routes should be allowed overwritten in default routes by @aldas in https://github.com/labstack/echo/pull/3049
+
+
+**Enhancements**
+
+* docs: update HTTP badge URLs to HTTPS by @KeloYuan in https://github.com/labstack/echo/pull/2968
+* docs: correct `Any` godoc to reflect true arbitrary-method matching by @hyorimitsu in https://github.com/labstack/echo/pull/3046
+* refactor: use range-over-integer loops by @zxysilent in https://github.com/labstack/echo/pull/3042
+* docs: add llms.txt and llms-full.txt for v5 documentation by @tamish560 in https://github.com/labstack/echo/pull/3041
+* Update deps to latest versions by @aldas in https://github.com/labstack/echo/pull/3050
+
+
 ## v5.3.0 - 2026-07-12
 
 **Logic changes**
