@@ -866,3 +866,36 @@ func TestGroup_RouteNotFoundWithMiddleware(t *testing.T) {
 		})
 	}
 }
+
+
+func TestGroup_UseMultipleTimesDoesNotPanic(t *testing.T) {
+	// Repro for #3047: second Use() used to re-register 404 routes and panic when
+	// AllowOverwritingRoute is false.
+	e := NewWithConfig(Config{
+		Router: NewRouter(RouterConfig{AllowOverwritingRoute: false}),
+	})
+
+	mw := func(next HandlerFunc) HandlerFunc {
+		return func(c *Context) error { return next(c) }
+	}
+
+	// Case 1: sequential Use on empty group
+	g1 := e.Group("/api")
+	assert.NotPanics(t, func() {
+		g1.Use(mw)
+		g1.Use(mw)
+	})
+
+	// Case 2: Group created with middleware, then Use again
+	g2 := e.Group("/v2", mw)
+	assert.NotPanics(t, func() {
+		g2.Use(mw)
+	})
+
+	// Case 3: nested group inherits middleware then Use
+	api := e.Group("/nested", mw)
+	res := api.Group("/resource")
+	assert.NotPanics(t, func() {
+		res.Use(mw)
+	})
+}

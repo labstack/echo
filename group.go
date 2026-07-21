@@ -29,11 +29,19 @@ type Group struct {
 // `/*` NotFound routes for itself. If this kind of behavior is not needed, then create an Echo instance with the ` noAutoRegisterRoutes `
 // flag set to true. Example `echo.NewWithConfig(echo.Config{NoGroupAutoRegister404Routes: true})`.
 func (g *Group) Use(middleware ...MiddlewareFunc) {
+	// Track whether this is the first non-empty middleware attachment so we only
+	// auto-register 404 catch-alls once. Re-registering on every Use() panics when
+	// AllowOverwritingRoute is false (#3047).
+	hadMiddleware := len(g.middleware) > 0
 	g.middleware = append(g.middleware, middleware...)
 	if len(g.middleware) == 0 {
 		return
 	}
 	if g.noAutoRegisterRoutes {
+		return
+	}
+	if hadMiddleware {
+		// 404 routes already registered by a previous Use()/Group(...middleware).
 		return
 	}
 	// group level middlewares are different from Echo `Pre` and `Use` middlewares (those are global). Group level middlewares
