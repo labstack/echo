@@ -801,20 +801,20 @@ func TestGroup_RouteNotFoundWithMiddleware(t *testing.T) {
 			expectMiddlewareCalled: true, // because RouteNotFound is added after middleware is added
 		},
 		{
-			name:                   "ok, default group 404 handler is called with middleware",
+			name:                   "ok, root RouteNotFound falls back for group auto-404 with middleware",
 			givenCustom404:         false,
 			whenURL:                "/group/test3",
-			expectBody:             "404 (global) GET /group/*",
+			expectBody:             "404 (local) GET /group/*",
 			expectCode:             http.StatusNotFound,
-			expectMiddlewareCalled: true, // because RouteNotFound is added before middleware is added
+			expectMiddlewareCalled: true, // group middleware wraps auto RouteNotFound (#2485)
 		},
 		{
-			name:                   "ok, (no slash) default group 404 handler is called with middleware",
+			name:                   "ok, (no slash) root RouteNotFound falls back for group auto-404 with middleware",
 			givenCustom404:         false,
 			whenURL:                "/group",
-			expectBody:             "404 (global) GET /group",
+			expectBody:             "404 (local) GET /group",
 			expectCode:             http.StatusNotFound,
-			expectMiddlewareCalled: true, // because RouteNotFound is added before middleware is added
+			expectMiddlewareCalled: true, // group middleware wraps auto RouteNotFound (#2485)
 		},
 	}
 	for _, tc := range testCases {
@@ -936,4 +936,30 @@ func TestGroup_UseMultipleTimes(t *testing.T) {
 		assert.Equal(t, http.StatusTeapot, rec.Code)
 	})
 
+}
+
+
+func TestGroup_RouteNotFoundFallsBackToRoot(t *testing.T) {
+	// Root catch-all must still apply for groups that auto-register 404 routes
+	// when middleware is attached (issue #2485).
+	e := New()
+	e.RouteNotFound("/*", func(c *Context) error {
+		return c.NoContent(http.StatusNotFound)
+	})
+
+	v0 := e.Group("/v0", func(next HandlerFunc) HandlerFunc {
+		return func(c *Context) error { return next(c) }
+	})
+	v0.POST("/resource", func(c *Context) error { return nil })
+
+	v1 := e.Group("/v1")
+	v1.POST("/resource", func(c *Context) error { return nil })
+
+	for _, path := range []string{"/foo", "/v0/foo", "/v1/foo"} {
+		req := httptest.NewRequest(http.MethodPost, path, nil)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+		assert.Equal(t, http.StatusNotFound, rec.Code, path)
+		assert.Equal(t, 0, rec.Body.Len(), path)
+	}
 }

@@ -522,6 +522,14 @@ func (r *DefaultRouter) Add(route Route) (RouteInfo, error) {
 	method := route.Method
 	path := normalizePathSlash(route.Path)
 
+	// Keep default/group-auto 404 handlers in sync with the root catch-all
+	// RouteNotFound. Group.Use registers nil-handler 404 routes that fill from
+	// r.notFoundHandler; without this, e.RouteNotFound("/*", h) is ignored for
+	// groups that have middleware (#2485).
+	if method == RouteNotFound && route.Handler != nil && (path == "/*" || path == "") {
+		r.notFoundHandler = route.Handler
+	}
+
 	h := applyMiddleware(route.Handler, route.Middlewares...)
 	if !allowOverwritingRoute {
 		for _, rr := range r.routes {
