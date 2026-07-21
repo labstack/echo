@@ -177,11 +177,12 @@ const (
 	// QUERY Method is a safe, idempotent request method carrying request content (a query) in its body, see rfc 10008.
 	// It is not (yet) part of the `net/http` standard library, so Echo defines it here.
 	QUERY = "QUERY"
-	// RouteNotFound is special method type for routes handling "route not found" (404) cases
+	// RouteNotFound is a special method type for routes handling "route not found" (404) cases
 	RouteNotFound = "echo_route_not_found"
-	// RouteAny is special method type that matches any HTTP method in request. Any has lower
+	// RouteAny is a special method type that matches any HTTP method in request. Any has lower
 	// priority that other methods that have been registered with Router to that path.
 	RouteAny = "echo_route_any"
+
 )
 
 // Headers
