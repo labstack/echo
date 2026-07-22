@@ -7,6 +7,7 @@ import (
 	"compress/gzip"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/labstack/echo/v5"
@@ -82,7 +83,7 @@ func (config DecompressConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				return next(c)
 			}
 
-			if c.Request().Header.Get(echo.HeaderContentEncoding) != GZIPEncoding {
+			if !isGzipContentEncoding(c.Request().Header.Get(echo.HeaderContentEncoding)) {
 				return next(c)
 			}
 
@@ -125,6 +126,13 @@ func (config DecompressConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			return next(c)
 		}
 	}, nil
+}
+
+
+// isGzipContentEncoding reports whether Content-Encoding is gzip (case-insensitive).
+// Surrounding whitespace is ignored so common proxy variations still match.
+func isGzipContentEncoding(v string) bool {
+	return strings.EqualFold(strings.TrimSpace(v), GZIPEncoding)
 }
 
 // limitedGzipReader wraps a gzip reader with size limiting to prevent zip bombs
