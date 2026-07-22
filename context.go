@@ -208,6 +208,18 @@ func isValidProto(proto string) bool {
 	return false
 }
 
+// firstValidProto returns the left-most valid scheme token from a possibly
+// comma-separated header value (e.g. "https, http" from multi-proxy hops).
+func firstValidProto(header string) string {
+	for _, part := range strings.Split(header, ",") {
+		p := strings.TrimSpace(part)
+		if isValidProto(p) {
+			return p
+		}
+	}
+	return ""
+}
+
 // Scheme returns the HTTP protocol scheme, `http` or `https`.
 func (c *Context) Scheme() string {
 	// Can't use `r.Request.URL.Scheme`
@@ -215,16 +227,16 @@ func (c *Context) Scheme() string {
 	if c.IsTLS() {
 		return "https"
 	}
-	if scheme := c.request.Header.Get(HeaderXForwardedProto); isValidProto(scheme) {
+	if scheme := firstValidProto(c.request.Header.Get(HeaderXForwardedProto)); scheme != "" {
 		return scheme
 	}
-	if scheme := c.request.Header.Get(HeaderXForwardedProtocol); isValidProto(scheme) {
+	if scheme := firstValidProto(c.request.Header.Get(HeaderXForwardedProtocol)); scheme != "" {
 		return scheme
 	}
 	if ssl := c.request.Header.Get(HeaderXForwardedSsl); ssl == "on" {
 		return "https"
 	}
-	if scheme := c.request.Header.Get(HeaderXUrlScheme); isValidProto(scheme) {
+	if scheme := firstValidProto(c.request.Header.Get(HeaderXUrlScheme)); scheme != "" {
 		return scheme
 	}
 	return "http"

@@ -1141,6 +1141,22 @@ func TestContext_Scheme(t *testing.T) {
 			expect: "HTTPS",
 		},
 		{
+			name:       "uses left-most token from comma-separated X-Forwarded-Proto",
+			givenIsTLS: false,
+			givenHeaders: http.Header{
+				HeaderXForwardedProto: []string{"https, http"},
+			},
+			expect: "https",
+		},
+		{
+			name:       "skips invalid tokens in comma-separated X-Forwarded-Proto",
+			givenIsTLS: false,
+			givenHeaders: http.Header{
+				HeaderXForwardedProto: []string{"ftp, https"},
+			},
+			expect: "https",
+		},
+		{
 			name:       "uses X-Forwarded-Proto ws",
 			givenIsTLS: false,
 			givenHeaders: http.Header{
