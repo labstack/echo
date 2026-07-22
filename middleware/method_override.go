@@ -5,7 +5,6 @@ package middleware
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/labstack/echo/v5"
 )
@@ -20,7 +19,10 @@ type MethodOverrideConfig struct {
 	Getter MethodOverrideGetter
 }
 
-// MethodOverrideGetter is a function that gets overridden method from the request
+// MethodOverrideGetter is a function that gets overridden method from the request.
+// The returned value should be a standard HTTP method name as used by net/http
+// (e.g. http.MethodDelete, "DELETE"). The middleware does not normalize case or
+// trim spaces — callers / Getter implementations should return a valid method.
 type MethodOverrideGetter func(c *echo.Context) string
 
 // DefaultMethodOverrideConfig is the default MethodOverride middleware config.
@@ -61,10 +63,9 @@ func (config MethodOverrideConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 
 			req := c.Request()
 			if req.Method == http.MethodPost {
-				m := strings.TrimSpace(config.Getter(c))
+				m := config.Getter(c)
 				if m != "" {
-					// Normalize to uppercase so routing matches http.Method* constants.
-					req.Method = strings.ToUpper(m)
+					req.Method = m
 				}
 			}
 			return next(c)
