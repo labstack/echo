@@ -12,7 +12,6 @@ import (
 	"io/fs"
 	"log/slog"
 	"mime/multipart"
-	"net"
 	"net/http"
 	"net/url"
 	"path"
@@ -252,8 +251,8 @@ func (c *Context) RealIP() string {
 	}
 	// req.RemoteAddr is the IP address of the remote end of the connection, which may be a proxy. It is populated by the
 	// http.conn.readRequest() method and uses net.Conn.RemoteAddr().String() which we trust.
-	ra, _, _ := net.SplitHostPort(c.request.RemoteAddr)
-	return ra
+	// Use extractIP so bare IPs (no host:port) still resolve, matching ExtractIPDirect.
+	return extractIP(c.request)
 }
 
 // Path returns the registered path for the handler.

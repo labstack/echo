@@ -304,6 +304,5 @@ func legacyIPExtractor(req *http.Request) string {
 		ip = strings.TrimSuffix(ip, "]")
 		return ip
 	}
-	ra, _, _ := net.SplitHostPort(req.RemoteAddr)
-	return ra
+	return extractIP(req)
 }
