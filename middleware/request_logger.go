@@ -154,7 +154,7 @@ type RequestLoggerConfig struct {
 	LogURIPath bool
 	// LogRoutePath instructs logger to extract route path part to which request was matched to (i.e. `/user/:id`)
 	LogRoutePath bool
-	// LogRequestID instructs logger to extract request ID from request `X-Request-ID` header or response if request did not have value.
+	// LogRequestID instructs logger to extract request ID from request `X-Request-Id` header or response if request did not have value.
 	LogRequestID bool
 	// LogReferer instructs logger to extract request referer values.
 	LogReferer bool
@@ -205,7 +205,7 @@ type RequestLoggerValues struct {
 	URIPath string
 	// RoutePath is route path part to which request was matched to (i.e. `/user/:id`)
 	RoutePath string
-	// RequestID is request ID from request `X-Request-ID` header or response if request did not have value.
+	// RequestID is request ID from request `X-Request-Id` header or response if request did not have value.
 	RequestID string
 	// Referer is request referer values.
 	Referer string

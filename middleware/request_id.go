@@ -24,7 +24,7 @@ type RequestIDConfig struct {
 	TargetHeader string
 }
 
-// RequestID returns a middleware that reads RequestIDConfig.TargetHeader (`X-Request-ID`) header value or when
+// RequestID returns a middleware that reads RequestIDConfig.TargetHeader (`X-Request-Id`) header value or when
 // the header value is empty, generates that value and sets request ID to response
 // as RequestIDConfig.TargetHeader (`X-Request-Id`) value.
 func RequestID() echo.MiddlewareFunc {
@@ -32,7 +32,7 @@ func RequestID() echo.MiddlewareFunc {
 }
 
 // RequestIDWithConfig returns a middleware with given valid config or panics on invalid configuration.
-// The middleware reads RequestIDConfig.TargetHeader (`X-Request-ID`) header value or when the header value is empty,
+// The middleware reads RequestIDConfig.TargetHeader (`X-Request-Id`) header value or when the header value is empty,
 // generates that value and sets request ID to response as RequestIDConfig.TargetHeader (`X-Request-Id`) value.
 func RequestIDWithConfig(config RequestIDConfig) echo.MiddlewareFunc {
 	return toMiddlewareOrPanic(config)
