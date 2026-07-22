@@ -129,10 +129,10 @@ func (config DecompressConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 }
 
 
-// isGzipContentEncoding reports whether Content-Encoding is gzip (case-insensitive).
-// Surrounding whitespace is ignored so common proxy variations still match.
+// isGzipContentEncoding reports whether Content-Encoding is gzip.
+// Content codings are case-insensitive per RFC 9110 §8.4.1.
 func isGzipContentEncoding(v string) bool {
-	return strings.EqualFold(strings.TrimSpace(v), GZIPEncoding)
+	return strings.EqualFold(v, GZIPEncoding)
 }
 
 // limitedGzipReader wraps a gzip reader with size limiting to prevent zip bombs

@@ -513,7 +513,7 @@ func TestDecompressContentEncodingCaseInsensitive(t *testing.T) {
 	gz, err := gzipString(body)
 	assert.NoError(t, err)
 
-	for _, encoding := range []string{"GZIP", "Gzip", " gzip "} {
+	for _, encoding := range []string{"GZIP", "Gzip"} {
 		t.Run(encoding, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(gz))
 			req.Header.Set(echo.HeaderContentEncoding, encoding)
