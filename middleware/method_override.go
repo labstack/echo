@@ -5,6 +5,7 @@ package middleware
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/labstack/echo/v5"
 )
@@ -60,9 +61,10 @@ func (config MethodOverrideConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 
 			req := c.Request()
 			if req.Method == http.MethodPost {
-				m := config.Getter(c)
+				m := strings.TrimSpace(config.Getter(c))
 				if m != "" {
-					req.Method = m
+					// Normalize to uppercase so routing matches http.Method* constants.
+					req.Method = strings.ToUpper(m)
 				}
 			}
 			return next(c)

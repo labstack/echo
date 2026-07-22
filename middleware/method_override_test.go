@@ -90,3 +90,19 @@ func TestMethodOverride_ignoreGet(t *testing.T) {
 
 	assert.Equal(t, http.MethodGet, req.Method)
 }
+
+func TestMethodOverride_normalizeCase(t *testing.T) {
+	e := echo.New()
+	m := MethodOverride()
+	h := m(func(c *echo.Context) error {
+		return c.String(http.StatusOK, c.Request().Method)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/", nil)
+	req.Header.Set(echo.HeaderXHTTPMethodOverride, "delete")
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	assert.NoError(t, h(c))
+	assert.Equal(t, http.MethodDelete, req.Method)
+	assert.Equal(t, http.MethodDelete, rec.Body.String())
+}
