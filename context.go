@@ -718,7 +718,14 @@ func (c *Context) Inline(file, name string) error {
 var quoteEscaper = strings.NewReplacer("\\", "\\\\", `"`, "\\\"")
 
 func (c *Context) contentDisposition(file, name, dispositionType string) error {
-	c.response.Header().Set(HeaderContentDisposition, fmt.Sprintf(`%s; filename="%s"`, dispositionType, quoteEscaper.Replace(name)))
+	// RFC 6266 / 5987: keep a quoted filename= for legacy clients and add
+	// filename* so non-ASCII and reserved characters survive download prompts.
+	c.response.Header().Set(HeaderContentDisposition, fmt.Sprintf(
+		`%s; filename="%s"; filename*=UTF-8''%s`,
+		dispositionType,
+		quoteEscaper.Replace(name),
+		url.PathEscape(name),
+	))
 	return c.File(file)
 }
 
