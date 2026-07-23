@@ -801,20 +801,27 @@ func TestGroup_RouteNotFoundWithMiddleware(t *testing.T) {
 			expectMiddlewareCalled: true, // because RouteNotFound is added after middleware is added
 		},
 		{
-			name:                   "ok, root RouteNotFound falls back for group auto-404 with middleware",
+			// #2485: a group that auto-registers 404 routes (because it has
+			// middleware) falls back to the Router's configured NotFoundHandler,
+			// NOT to a later e.RouteNotFound("/*", ...) call. The group's nil
+			// handler is resolved to r.notFoundHandler at registration time, and
+			// e.RouteNotFound only adds a tree route that the group's own catch-all
+			// shadows. To customise the group 404, configure RouterConfig.NotFoundHandler
+			// (see TestGroup_RouteNotFoundUsesRouterConfig).
+			name:                   "ok, group auto-404 uses configured NotFoundHandler, not later e.RouteNotFound",
 			givenCustom404:         false,
 			whenURL:                "/group/test3",
-			expectBody:             "404 (local) GET /group/*",
+			expectBody:             "404 (global) GET /group/*",
 			expectCode:             http.StatusNotFound,
-			expectMiddlewareCalled: true, // group middleware wraps auto RouteNotFound (#2485)
+			expectMiddlewareCalled: true, // group middleware still wraps the auto 404 route
 		},
 		{
-			name:                   "ok, (no slash) root RouteNotFound falls back for group auto-404 with middleware",
+			name:                   "ok, (no slash) group auto-404 uses configured NotFoundHandler, not later e.RouteNotFound",
 			givenCustom404:         false,
 			whenURL:                "/group",
-			expectBody:             "404 (local) GET /group",
+			expectBody:             "404 (global) GET /group",
 			expectCode:             http.StatusNotFound,
-			expectMiddlewareCalled: true, // group middleware wraps auto RouteNotFound (#2485)
+			expectMiddlewareCalled: true, // group middleware still wraps the auto 404 route
 		},
 	}
 	for _, tc := range testCases {
@@ -938,28 +945,40 @@ func TestGroup_UseMultipleTimes(t *testing.T) {
 
 }
 
-
-func TestGroup_RouteNotFoundFallsBackToRoot(t *testing.T) {
-	// Root catch-all must still apply for groups that auto-register 404 routes
-	// when middleware is attached (issue #2485).
-	e := New()
-	e.RouteNotFound("/*", func(c *Context) error {
-		return c.NoContent(http.StatusNotFound)
-	})
-
-	v0 := e.Group("/v0", func(next HandlerFunc) HandlerFunc {
-		return func(c *Context) error { return next(c) }
-	})
-	v0.POST("/resource", func(c *Context) error { return nil })
-
-	v1 := e.Group("/v1")
-	v1.POST("/resource", func(c *Context) error { return nil })
-
-	for _, path := range []string{"/foo", "/v0/foo", "/v1/foo"} {
-		req := httptest.NewRequest(http.MethodPost, path, nil)
-		rec := httptest.NewRecorder()
-		e.ServeHTTP(rec, req)
-		assert.Equal(t, http.StatusNotFound, rec.Code, path)
-		assert.Equal(t, 0, rec.Body.Len(), path)
+// TestGroup_RouteNotFoundUsesRouterConfig documents the supported way to
+// customise the 404 handler for groups that auto-register catch-all routes
+// (i.e. groups that have middleware). Per maintainer guidance on #2485/#3052,
+// adding a route via e.RouteNotFound must NOT have side effects on the Router;
+// instead configure RouterConfig.NotFoundHandler, which the group's auto 404
+// routes resolve to at registration time and which group middleware wraps.
+func TestGroup_RouteNotFoundUsesRouterConfig(t *testing.T) {
+	customNotFound := func(c *Context) error {
+		return c.String(http.StatusNotFound, "custom-404 "+c.Request().Method+" "+c.Path())
 	}
+
+	e := NewWithConfig(Config{
+		Router: NewRouter(RouterConfig{
+			NotFoundHandler: customNotFound,
+		}),
+	})
+
+	middlewareCalled := false
+	g := e.Group("/v0")
+	g.Use(func(next HandlerFunc) HandlerFunc {
+		return func(c *Context) error {
+			middlewareCalled = true
+			return next(c)
+		}
+	})
+	g.POST("/resource", func(c *Context) error { return c.NoContent(http.StatusOK) })
+
+	// Unmatched path inside the group: the group's auto-registered catch-all
+	// resolves to the configured NotFoundHandler, and group middleware wraps it.
+	req := httptest.NewRequest(http.MethodPost, "/v0/missing", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Equal(t, "custom-404 POST /v0/*", rec.Body.String())
+	assert.True(t, middlewareCalled, "group middleware must wrap the auto 404 route")
 }
