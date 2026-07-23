@@ -201,18 +201,16 @@ func (config CORSConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 
 			res.Header().Add(echo.HeaderVary, echo.HeaderOrigin)
 
-			// Preflight request is an OPTIONS request, using three HTTP request headers: Access-Control-Request-Method,
-			// Access-Control-Request-Headers, and the Origin header. See: https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request
-			// For simplicity we just consider method type and later `Origin` header.
-			preflight := req.Method == http.MethodOptions
+			// A CORS preflight request is an OPTIONS request that includes both
+			// Origin and Access-Control-Request-Method (Fetch standard / RFC 9110).
+			// Treating every OPTIONS request as preflight incorrectly short-circuits
+			// non-CORS OPTIONS handlers (see #2534).
+			preflight := isCORSPreflight(req)
 
-			// Although router adds special handler in case of OPTIONS method we avoid calling next for OPTIONS in this middleware
-			// as CORS requests do not have cookies / authentication headers by default, so we could get stuck in auth
-			// middlewares by calling next(c).
-			// But we still want to send `Allow` header as response in case of Non-CORS OPTIONS request as router default
-			// handler does.
+			// Surface router Allow for OPTIONS (preflight and non-preflight). For
+			// non-preflight OPTIONS the request continues to next(c).
 			routerAllowMethods := ""
-			if preflight {
+			if req.Method == http.MethodOptions {
 				tmpAllowMethods, ok := c.Get(echo.ContextKeyHeaderAllow).(string)
 				if ok && tmpAllowMethods != "" {
 					routerAllowMethods = tmpAllowMethods
@@ -222,10 +220,7 @@ func (config CORSConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 
 			// No Origin provided. This is (probably) not request from actual browser - proceed executing middleware chain
 			if origin == "" {
-				if preflight { // req.Method=OPTIONS
-					return c.NoContent(http.StatusNoContent)
-				}
-				return next(c) // let non-browser calls through
+				return next(c) // let non-browser / non-CORS OPTIONS through
 			}
 
 			allowedOrigin, allowed, err := allowOriginFunc(c, origin)
@@ -290,6 +285,17 @@ func (config CORSConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			return c.NoContent(http.StatusNoContent)
 		}
 	}, nil
+}
+
+// isCORSPreflight reports whether r is a CORS preflight request.
+//
+// Per the Fetch standard, a preflight is an OPTIONS request with both an Origin
+// header and an Access-Control-Request-Method header. OPTIONS alone (with or
+// without Origin) is not sufficient.
+func isCORSPreflight(r *http.Request) bool {
+	return r.Method == http.MethodOptions &&
+		r.Header.Get(echo.HeaderOrigin) != "" &&
+		r.Header.Get(echo.HeaderAccessControlRequestMethod) != ""
 }
 
 func (config CORSConfig) starAllowOriginFunc(c *echo.Context, origin string) (string, bool, error) {
