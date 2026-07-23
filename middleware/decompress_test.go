@@ -506,3 +506,29 @@ func BenchmarkDecompress_WithLimit(b *testing.B) {
 		})(c)
 	}
 }
+
+func TestDecompressContentEncodingCaseInsensitive(t *testing.T) {
+	e := echo.New()
+	body := `{"name":"echo"}`
+	gz, err := gzipString(body)
+	assert.NoError(t, err)
+
+	for _, encoding := range []string{"GZIP", "Gzip"} {
+		t.Run(encoding, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(gz))
+			req.Header.Set(echo.HeaderContentEncoding, encoding)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			h := Decompress()(func(c *echo.Context) error {
+				b, err := io.ReadAll(c.Request().Body)
+				if err != nil {
+					return err
+				}
+				return c.String(http.StatusOK, string(b))
+			})
+			assert.NoError(t, h(c))
+			assert.Equal(t, body, rec.Body.String())
+		})
+	}
+}
