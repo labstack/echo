@@ -1351,6 +1351,18 @@ func TestContext_RealIP(t *testing.T) {
 			expect:          "89.89.89.89",
 		},
 		{
+			name:            "ip from bare remote addr without port",
+			givenIPExtrator: nil,
+			whenReq:         &http.Request{RemoteAddr: "89.89.89.89"},
+			expect:          "89.89.89.89",
+		},
+		{
+			name:            "ip from bare ipv6 remote addr without port",
+			givenIPExtrator: nil,
+			whenReq:         &http.Request{RemoteAddr: "2001:db8::1"},
+			expect:          "2001:db8::1",
+		},
+		{
 			name:            "ip from ip extractor",
 			givenIPExtrator: ExtractIPFromRealIPHeader(TrustIPRange(ipv6ForRemoteAddrExternalRange)),
 			whenReq: &http.Request{
