@@ -208,6 +208,9 @@ const (
 	HeaderUpgrade             = "Upgrade"
 	HeaderVary                = "Vary"
 	HeaderWWWAuthenticate     = "WWW-Authenticate"
+	// HeaderForwarded is the standardized proxy header (RFC 7239). Prefer over X-Forwarded-* when present.
+	// See: https://datatracker.ietf.org/doc/html/rfc7239
+	HeaderForwarded           = "Forwarded"
 	HeaderXForwardedFor       = "X-Forwarded-For"
 	HeaderXForwardedProto     = "X-Forwarded-Proto"
 	HeaderXForwardedProtocol  = "X-Forwarded-Protocol"

@@ -1244,6 +1244,135 @@ func TestContext_Scheme(t *testing.T) {
 			},
 			expect: "https",
 		},
+		// RFC 7239 Forwarded header
+		{
+			name:       "uses Forwarded proto=https",
+			givenIsTLS: false,
+			givenHeaders: http.Header{
+				HeaderForwarded: []string{"proto=https"},
+			},
+			expect: "https",
+		},
+		{
+			name:       "uses Forwarded proto=http",
+			givenIsTLS: false,
+			givenHeaders: http.Header{
+				HeaderForwarded: []string{"proto=http"},
+			},
+			expect: "http",
+		},
+		{
+			name:       "uses Forwarded full element with for/proto/by",
+			givenIsTLS: false,
+			givenHeaders: http.Header{
+				HeaderForwarded: []string{"for=192.0.2.60;proto=https;by=203.0.113.43"},
+			},
+			expect: "https",
+		},
+		{
+			name:       "uses left-most proto from multi-proxy Forwarded chain",
+			givenIsTLS: false,
+			givenHeaders: http.Header{
+				// first hop client→proxy (https), second hop proxy→origin (http)
+				HeaderForwarded: []string{"for=192.0.2.43;proto=https, for=198.51.100.17;proto=http"},
+			},
+			expect: "https",
+		},
+		{
+			name:       "uses later element proto when first hop omits proto",
+			givenIsTLS: false,
+			givenHeaders: http.Header{
+				HeaderForwarded: []string{"for=192.0.2.43, for=198.51.100.17;proto=https"},
+			},
+			expect: "https",
+		},
+		{
+			name:       "Forwarded proto is case insensitive for parameter name",
+			givenIsTLS: false,
+			givenHeaders: http.Header{
+				HeaderForwarded: []string{"For=192.0.2.60;Proto=HTTPS;By=203.0.113.43"},
+			},
+			expect: "HTTPS",
+		},
+		{
+			name:       "uses quoted Forwarded proto value",
+			givenIsTLS: false,
+			givenHeaders: http.Header{
+				HeaderForwarded: []string{`for="[2001:db8:cafe::17]";proto="https"`},
+			},
+			expect: "https",
+		},
+		{
+			name:       "uses Forwarded proto=wss",
+			givenIsTLS: false,
+			givenHeaders: http.Header{
+				HeaderForwarded: []string{"proto=wss"},
+			},
+			expect: "wss",
+		},
+		{
+			name:       "inspects multiple Forwarded header fields",
+			givenIsTLS: false,
+			givenHeaders: http.Header{
+				HeaderForwarded: []string{
+					"for=192.0.2.43",
+					"for=198.51.100.17;proto=https",
+				},
+			},
+			expect: "https",
+		},
+		{
+			name:       "ignores invalid Forwarded proto and uses X-Forwarded-Proto",
+			givenIsTLS: false,
+			givenHeaders: http.Header{
+				HeaderForwarded:       []string{"for=192.0.2.60;proto=ftp;by=203.0.113.43"},
+				HeaderXForwardedProto: []string{"https"},
+			},
+			expect: "https",
+		},
+		{
+			name:       "ignores Forwarded without proto and uses X-Forwarded-Proto",
+			givenIsTLS: false,
+			givenHeaders: http.Header{
+				HeaderForwarded:       []string{"for=192.0.2.60;by=203.0.113.43"},
+				HeaderXForwardedProto: []string{"https"},
+			},
+			expect: "https",
+		},
+		{
+			name:       "Forwarded proto takes precedence over X-Forwarded-Proto",
+			givenIsTLS: false,
+			givenHeaders: http.Header{
+				HeaderForwarded:       []string{"for=192.0.2.60;proto=https"},
+				HeaderXForwardedProto: []string{"http"},
+			},
+			expect: "https",
+		},
+		{
+			name:       "TLS takes precedence over Forwarded proto",
+			givenIsTLS: true,
+			givenHeaders: http.Header{
+				HeaderForwarded: []string{"proto=http"},
+			},
+			expect: "https",
+		},
+		{
+			name:       "ignores malformed Forwarded and falls back to http",
+			givenIsTLS: false,
+			givenHeaders: http.Header{
+				HeaderForwarded: []string{"not-a-pair, ;;; =broken"},
+			},
+			expect: "http",
+		},
+		{
+			name:       "ignores empty Forwarded proto value",
+			givenIsTLS: false,
+			givenHeaders: http.Header{
+				HeaderForwarded:       []string{"proto=;for=192.0.2.60"},
+				HeaderXForwardedProto: []string{"https"},
+			},
+			expect: "https",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -1259,6 +1388,52 @@ func TestContext_Scheme(t *testing.T) {
 
 			assert.Equal(t, tc.expect, c.Scheme())
 		})
+	}
+}
+
+func TestFirstForwardedProto(t *testing.T) {
+	tests := []struct {
+		name  string
+		value string
+		want  string
+	}{
+		{name: "empty", value: "", want: ""},
+		{name: "whitespace only", value: "  \t  ", want: ""},
+		{name: "proto only", value: "proto=https", want: "https"},
+		{name: "spaces around separators", value: " for = 192.0.2.1 ; proto = https ", want: "https"},
+		{name: "quoted with escapes yields valid proto", value: `proto="ht\tps"`, want: "https"},
+		{name: "quoted invalid proto", value: `proto="ftp"`, want: ""},
+		{name: "quoted https", value: `proto="https"`, want: "https"},
+		{name: "skips unknown params", value: "secret=1;proto=https;extra=x", want: "https"},
+		{name: "comma before pair", value: ",proto=https", want: "https"},
+		{name: "ipv6 for with proto", value: `for="[2001:db8::1]:4711";proto=https`, want: "https"},
+		{name: "proto in second element only", value: "for=_hidden, for=192.0.2.1;proto=http", want: "http"},
+		{name: "invalid then valid", value: "proto=ftp, for=1.2.3.4;proto=https", want: "https"},
+		// branch coverage for parser edge paths
+		{name: "leading quoted garbage then proto", value: `"not-a-param";proto=https`, want: "https"},
+		{name: "quoted garbage with escapes then proto", value: `"a\"b";proto=wss`, want: "wss"},
+		{name: "name without equals then valid", value: "for;proto=https", want: "https"},
+		{name: "equals without name then proto", value: "=ignored;proto=http", want: "http"},
+		{name: "unclosed quote does not hang", value: `proto="https`, want: "https"},
+		{name: "backslash at end of quoted value", value: `proto="https\`, want: "https"},
+		{name: "trailing OWS after value", value: "proto=https \t;for=1.2.3.4", want: "https"},
+		{name: "only separators", value: ",,,;;;", want: ""},
+		{name: "non token garbage then proto", value: "@@@;proto=ws", want: "ws"},
+		{name: "token-like custom param", value: "x.y_z=1;proto=https", want: "https"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, firstForwardedProto(tc.value))
+		})
+	}
+}
+
+func TestIsTokenChar(t *testing.T) {
+	for _, b := range []byte("!#$%&'*+-.^_`|~09AZaz") {
+		assert.True(t, isTokenChar(b), "expected token char %q", b)
+	}
+	for _, b := range []byte(" \t,;=\"<>()[]{}\\/") {
+		assert.False(t, isTokenChar(b), "expected non-token char %q", b)
 	}
 }
 

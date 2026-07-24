@@ -207,12 +207,157 @@ func isValidProto(proto string) bool {
 	return false
 }
 
-// Scheme returns the HTTP protocol scheme, `http` or `https`.
+// isTokenChar reports whether b is a valid RFC 7230 tchar.
+func isTokenChar(b byte) bool {
+	// tchar = "!" / "#" / "$" / "%" / "&" / "'" / "*" / "+" / "-" / "." /
+	//         "^" / "_" / "`" / "|" / "~" / DIGIT / ALPHA
+	switch b {
+	case '!', '#', '$', '%', '&', '\'', '*', '+', '-', '.', '^', '_', '`', '|', '~':
+		return true
+	}
+	return (b >= '0' && b <= '9') || (b >= 'A' && b <= 'Z') || (b >= 'a' && b <= 'z')
+}
+
+// firstForwardedProto returns the first valid proto= value from a single Forwarded
+// header field value (RFC 7239). Elements are comma-separated; pairs within an
+// element are semicolon-separated. Parameter names are case-insensitive. Values
+// may be tokens or quoted-strings. The left-most valid proto is returned (first
+// proxy / closest to the client when proxies prepend).
+func firstForwardedProto(value string) string {
+	i := 0
+	n := len(value)
+	for i < n {
+		// skip OWS and empty list/pair positions
+		for i < n && (value[i] == ' ' || value[i] == '\t' || value[i] == ',' || value[i] == ';') {
+			i++
+		}
+		if i >= n {
+			break
+		}
+
+		// parameter name (token)
+		start := i
+		for i < n && isTokenChar(value[i]) {
+			i++
+		}
+		if i == start {
+			// not a token; skip to next separator to avoid infinite loop
+			for i < n && value[i] != ',' && value[i] != ';' {
+				if value[i] == '"' {
+					// skip quoted-string
+					i++
+					for i < n {
+						if value[i] == '\\' {
+							i += 2
+							continue
+						}
+						if value[i] == '"' {
+							i++
+							break
+						}
+						i++
+					}
+					continue
+				}
+				i++
+			}
+			continue
+		}
+		name := value[start:i]
+
+		// optional OWS before '='
+		for i < n && (value[i] == ' ' || value[i] == '\t') {
+			i++
+		}
+		if i >= n || value[i] != '=' {
+			// malformed pair; skip to next separator
+			for i < n && value[i] != ',' && value[i] != ';' {
+				i++
+			}
+			continue
+		}
+		i++ // '='
+
+		// optional OWS before value
+		for i < n && (value[i] == ' ' || value[i] == '\t') {
+			i++
+		}
+
+		var val string
+		if i < n && value[i] == '"' {
+			// quoted-string with optional quoted-pair escapes
+			i++ // opening "
+			var b strings.Builder
+			for i < n {
+				if value[i] == '\\' {
+					i++
+					if i < n {
+						b.WriteByte(value[i])
+						i++
+					}
+					continue
+				}
+				if value[i] == '"' {
+					i++ // closing "
+					break
+				}
+				b.WriteByte(value[i])
+				i++
+			}
+			val = b.String()
+		} else {
+			// token
+			start = i
+			for i < n && isTokenChar(value[i]) {
+				i++
+			}
+			val = value[start:i]
+		}
+
+		if strings.EqualFold(name, "proto") && isValidProto(val) {
+			return val
+		}
+
+		// optional OWS then separator handled at loop top
+		for i < n && (value[i] == ' ' || value[i] == '\t') {
+			i++
+		}
+	}
+	return ""
+}
+
+// schemeFromForwarded returns the first valid proto from Forwarded header field(s).
+// Multiple Forwarded headers are inspected in order (each may list several elements).
+func schemeFromForwarded(h http.Header) string {
+	for _, value := range h.Values(HeaderForwarded) {
+		if scheme := firstForwardedProto(value); scheme != "" {
+			return scheme
+		}
+	}
+	return ""
+}
+
+// Scheme returns the HTTP protocol scheme, `http` or `https` (also `ws`/`wss`
+// when disclosed by a proxy header).
+//
+// Resolution order:
+//  1. Direct TLS connection → "https"
+//  2. Forwarded header proto= (RFC 7239), left-most valid value
+//  3. X-Forwarded-Proto
+//  4. X-Forwarded-Protocol
+//  5. X-Forwarded-Ssl == "on" → "https"
+//  6. X-Url-Scheme
+//  7. default "http"
+//
+// Only http, https, ws, and wss are accepted from proxy headers (case-insensitive match).
+// Can't use r.URL.Scheme: see https://groups.google.com/forum/#!topic/golang-nuts/pMUkBlQBDF0
 func (c *Context) Scheme() string {
-	// Can't use `r.Request.URL.Scheme`
-	// See: https://groups.google.com/forum/#!topic/golang-nuts/pMUkBlQBDF0
 	if c.IsTLS() {
 		return "https"
+	}
+	// Prefer standardized Forwarded (RFC 7239) over the non-standard X-Forwarded-* headers.
+	if scheme := schemeFromForwarded(c.request.Header); scheme != "" {
+		return scheme
 	}
 	if scheme := c.request.Header.Get(HeaderXForwardedProto); isValidProto(scheme) {
 		return scheme
