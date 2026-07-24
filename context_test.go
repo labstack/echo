@@ -1398,6 +1398,7 @@ func TestFirstForwardedProto(t *testing.T) {
 		want  string
 	}{
 		{name: "empty", value: "", want: ""},
+		{name: "whitespace only", value: "  \t  ", want: ""},
 		{name: "proto only", value: "proto=https", want: "https"},
 		{name: "spaces around separators", value: " for = 192.0.2.1 ; proto = https ", want: "https"},
 		{name: "quoted with escapes yields valid proto", value: `proto="ht\tps"`, want: "https"},
@@ -1408,11 +1409,31 @@ func TestFirstForwardedProto(t *testing.T) {
 		{name: "ipv6 for with proto", value: `for="[2001:db8::1]:4711";proto=https`, want: "https"},
 		{name: "proto in second element only", value: "for=_hidden, for=192.0.2.1;proto=http", want: "http"},
 		{name: "invalid then valid", value: "proto=ftp, for=1.2.3.4;proto=https", want: "https"},
+		// branch coverage for parser edge paths
+		{name: "leading quoted garbage then proto", value: `"not-a-param";proto=https`, want: "https"},
+		{name: "quoted garbage with escapes then proto", value: `"a\"b";proto=wss`, want: "wss"},
+		{name: "name without equals then valid", value: "for;proto=https", want: "https"},
+		{name: "equals without name then proto", value: "=ignored;proto=http", want: "http"},
+		{name: "unclosed quote does not hang", value: `proto="https`, want: "https"},
+		{name: "backslash at end of quoted value", value: `proto="https\`, want: "https"},
+		{name: "trailing OWS after value", value: "proto=https \t;for=1.2.3.4", want: "https"},
+		{name: "only separators", value: ",,,;;;", want: ""},
+		{name: "non token garbage then proto", value: "@@@;proto=ws", want: "ws"},
+		{name: "token-like custom param", value: "x.y_z=1;proto=https", want: "https"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert.Equal(t, tc.want, firstForwardedProto(tc.value))
 		})
+	}
+}
+
+func TestIsTokenChar(t *testing.T) {
+	for _, b := range []byte("!#$%&'*+-.^_`|~09AZaz") {
+		assert.True(t, isTokenChar(b), "expected token char %q", b)
+	}
+	for _, b := range []byte(" \t,;=\"<>()[]{}\\/") {
+		assert.False(t, isTokenChar(b), "expected non-token char %q", b)
 	}
 }
 
