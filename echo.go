@@ -160,12 +160,15 @@ const (
 	MIMEApplicationForm                  = "application/x-www-form-urlencoded"
 	MIMEApplicationProtobuf              = "application/protobuf"
 	MIMEApplicationMsgpack               = "application/msgpack"
-	MIMETextHTML                         = "text/html"
-	MIMETextHTMLCharsetUTF8              = MIMETextHTML + "; " + charsetUTF8
-	MIMETextPlain                        = "text/plain"
-	MIMETextPlainCharsetUTF8             = MIMETextPlain + "; " + charsetUTF8
-	MIMEMultipartForm                    = "multipart/form-data"
-	MIMEOctetStream                      = "application/octet-stream"
+	// MIMEApplicationProblemJSON is the content type for RFC 9457 Problem Details responses.
+	// https://www.rfc-editor.org/rfc/rfc9457
+	MIMEApplicationProblemJSON = "application/problem+json"
+	MIMETextHTML               = "text/html"
+	MIMETextHTMLCharsetUTF8    = MIMETextHTML + "; " + charsetUTF8
+	MIMETextPlain              = "text/plain"
+	MIMETextPlainCharsetUTF8   = MIMETextPlain + "; " + charsetUTF8
+	MIMEMultipartForm          = "multipart/form-data"
+	MIMEOctetStream            = "application/octet-stream"
 )
 
 const (
