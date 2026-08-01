@@ -246,6 +246,24 @@ func (he *HTTPError) StatusCode() int      // Implements HTTPStatusCoder
 - Added `HTTPStatusCoder` interface and `StatusCode()` method
 - Added `Wrap(err error)` method for error wrapping
 
+**⚠️ Migration trap:** predefined errors such as `echo.ErrNotFound` and
+`echo.ErrMethodNotAllowed` (returned by the router for unmatched routes) are no
+longer `*echo.HTTPError`. They are immutable sentinels that only implement
+`HTTPStatusCoder`, so a v4-style type assertion in a custom error handler stops
+matching them and turns every 404/405 into a 500:
+
+```go
+// Broken in v5: never matches echo.ErrNotFound
+if he, ok := err.(*echo.HTTPError); ok {
+    code = he.Code
+} else {
+    code = http.StatusInternalServerError
+}
+
+// Correct: works for *HTTPError and the predefined errors
+code := echo.StatusCode(err) // 0 if err carries no status
+```
+
 ---
 
 ### 7. **HTTPErrorHandler Signature Changed**
