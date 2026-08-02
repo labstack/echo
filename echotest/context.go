@@ -95,7 +95,7 @@ func (conf ContextConfig) ToContextRecorder(t *testing.T) (*echo.Context, *httpt
 		conf.Request.Header = conf.Headers
 	}
 	if len(conf.FormValues) > 0 {
-		body := strings.NewReader(url.Values(conf.FormValues).Encode())
+		body := strings.NewReader(conf.FormValues.Encode())
 		conf.Request.Body = io.NopCloser(body)
 		conf.Request.ContentLength = int64(body.Len())
 
