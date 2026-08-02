@@ -190,18 +190,12 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 
 			res.Header().Add(echo.HeaderVary, echo.HeaderOrigin)
 
-			// Preflight request is an OPTIONS request, using three HTTP request headers: Access-Control-Request-Method,
-			// Access-Control-Request-Headers, and the Origin header. See: https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request
-			// For simplicity we just consider method type and later `Origin` header.
-			preflight := req.Method == http.MethodOptions
+			preflight := isCORSPreflight(req)
 
-			// Although router adds special handler in case of OPTIONS method we avoid calling next for OPTIONS in this middleware
-			// as CORS requests do not have cookies / authentication headers by default, so we could get stuck in auth
-			// middlewares by calling next(c).
-			// But we still want to send `Allow` header as response in case of Non-CORS OPTIONS request as router default
-			// handler does.
+			// Echo's router adds an Allow header for OPTIONS requests. Copy it before true
+			// CORS preflight requests short-circuit the handler chain.
 			routerAllowMethods := ""
-			if preflight {
+			if req.Method == http.MethodOptions {
 				tmpAllowMethods, ok := c.Get(echo.ContextKeyHeaderAllow).(string)
 				if ok && tmpAllowMethods != "" {
 					routerAllowMethods = tmpAllowMethods
@@ -211,10 +205,7 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 
 			// No Origin provided. This is (probably) not request from actual browser - proceed executing middleware chain
 			if origin == "" {
-				if !preflight {
-					return next(c)
-				}
-				return c.NoContent(http.StatusNoContent)
+				return next(c)
 			}
 
 			if config.AllowOriginFunc != nil {
@@ -304,4 +295,10 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 			return c.NoContent(http.StatusNoContent)
 		}
 	}
+}
+
+func isCORSPreflight(r *http.Request) bool {
+	return r.Method == http.MethodOptions &&
+		r.Header.Get(echo.HeaderOrigin) != "" &&
+		r.Header.Get(echo.HeaderAccessControlRequestMethod) != ""
 }

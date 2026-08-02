@@ -65,8 +65,9 @@ func TestCORS(t *testing.T) {
 			}),
 			whenMethod: http.MethodOptions,
 			whenHeaders: map[string]string{
-				echo.HeaderOrigin:      "localhost",
-				echo.HeaderContentType: echo.MIMEApplicationJSON,
+				echo.HeaderOrigin:                     "localhost",
+				echo.HeaderContentType:                echo.MIMEApplicationJSON,
+				echo.HeaderAccessControlRequestMethod: http.MethodGet,
 			},
 			expectHeaders: map[string]string{
 				echo.HeaderAccessControlAllowOrigin:      "localhost",
@@ -84,8 +85,9 @@ func TestCORS(t *testing.T) {
 			}),
 			whenMethod: http.MethodOptions,
 			whenHeaders: map[string]string{
-				echo.HeaderOrigin:      "localhost",
-				echo.HeaderContentType: echo.MIMEApplicationJSON,
+				echo.HeaderOrigin:                     "localhost",
+				echo.HeaderContentType:                echo.MIMEApplicationJSON,
+				echo.HeaderAccessControlRequestMethod: http.MethodGet,
 			},
 			expectHeaders: map[string]string{
 				echo.HeaderAccessControlMaxAge: "1",
@@ -100,8 +102,9 @@ func TestCORS(t *testing.T) {
 			}),
 			whenMethod: http.MethodOptions,
 			whenHeaders: map[string]string{
-				echo.HeaderOrigin:      "localhost",
-				echo.HeaderContentType: echo.MIMEApplicationJSON,
+				echo.HeaderOrigin:                     "localhost",
+				echo.HeaderContentType:                echo.MIMEApplicationJSON,
+				echo.HeaderAccessControlRequestMethod: http.MethodGet,
 			},
 			expectHeaders: map[string]string{
 				echo.HeaderAccessControlMaxAge: "0",
@@ -118,8 +121,9 @@ func TestCORS(t *testing.T) {
 			}),
 			whenMethod: http.MethodOptions,
 			whenHeaders: map[string]string{
-				echo.HeaderOrigin:      "localhost",
-				echo.HeaderContentType: echo.MIMEApplicationJSON,
+				echo.HeaderOrigin:                     "localhost",
+				echo.HeaderContentType:                echo.MIMEApplicationJSON,
+				echo.HeaderAccessControlRequestMethod: http.MethodGet,
 			},
 			notExpectHeaders: map[string]string{
 				echo.HeaderAccessControlAllowOrigin:      "localhost",
@@ -137,8 +141,9 @@ func TestCORS(t *testing.T) {
 			}),
 			whenMethod: http.MethodOptions,
 			whenHeaders: map[string]string{
-				echo.HeaderOrigin:      "localhost",
-				echo.HeaderContentType: echo.MIMEApplicationJSON,
+				echo.HeaderOrigin:                     "localhost",
+				echo.HeaderContentType:                echo.MIMEApplicationJSON,
+				echo.HeaderAccessControlRequestMethod: http.MethodGet,
 			},
 			expectHeaders: map[string]string{
 				echo.HeaderAccessControlAllowOrigin:      "*", // Note: browsers will ignore and complain about responses having `*`
@@ -156,8 +161,9 @@ func TestCORS(t *testing.T) {
 			}),
 			whenMethod: http.MethodOptions,
 			whenHeaders: map[string]string{
-				echo.HeaderOrigin:      "localhost",
-				echo.HeaderContentType: echo.MIMEApplicationJSON,
+				echo.HeaderOrigin:                     "localhost",
+				echo.HeaderContentType:                echo.MIMEApplicationJSON,
+				echo.HeaderAccessControlRequestMethod: http.MethodGet,
 			},
 			expectHeaders: map[string]string{
 				echo.HeaderAccessControlAllowOrigin:  "*",
@@ -178,8 +184,9 @@ func TestCORS(t *testing.T) {
 			}),
 			whenMethod: http.MethodOptions,
 			whenHeaders: map[string]string{
-				echo.HeaderOrigin:      "localhost",
-				echo.HeaderContentType: echo.MIMEApplicationJSON,
+				echo.HeaderOrigin:                     "localhost",
+				echo.HeaderContentType:                echo.MIMEApplicationJSON,
+				echo.HeaderAccessControlRequestMethod: http.MethodGet,
 			},
 			expectHeaders: map[string]string{
 				echo.HeaderAccessControlAllowOrigin:      "localhost", // This could end up as cross-origin attack
@@ -197,6 +204,7 @@ func TestCORS(t *testing.T) {
 			whenHeaders: map[string]string{
 				echo.HeaderOrigin:                      "localhost",
 				echo.HeaderContentType:                 echo.MIMEApplicationJSON,
+				echo.HeaderAccessControlRequestMethod:  http.MethodGet,
 				echo.HeaderAccessControlRequestHeaders: "Special-Request-Header",
 			},
 			expectHeaders: map[string]string{
@@ -210,8 +218,11 @@ func TestCORS(t *testing.T) {
 			givenMW: CORSWithConfig(CORSConfig{
 				AllowOrigins: []string{"http://*.example.com"},
 			}),
-			whenMethod:    http.MethodOptions,
-			whenHeaders:   map[string]string{echo.HeaderOrigin: "http://aaa.example.com"},
+			whenMethod: http.MethodOptions,
+			whenHeaders: map[string]string{
+				echo.HeaderOrigin:                     "http://aaa.example.com",
+				echo.HeaderAccessControlRequestMethod: http.MethodGet,
+			},
 			expectHeaders: map[string]string{echo.HeaderAccessControlAllowOrigin: "http://aaa.example.com"},
 		},
 		{
@@ -219,8 +230,11 @@ func TestCORS(t *testing.T) {
 			givenMW: CORSWithConfig(CORSConfig{
 				AllowOrigins: []string{"http://*.example.com"},
 			}),
-			whenMethod:    http.MethodOptions,
-			whenHeaders:   map[string]string{echo.HeaderOrigin: "http://bbb.example.com"},
+			whenMethod: http.MethodOptions,
+			whenHeaders: map[string]string{
+				echo.HeaderOrigin:                     "http://bbb.example.com",
+				echo.HeaderAccessControlRequestMethod: http.MethodGet,
+			},
 			expectHeaders: map[string]string{echo.HeaderAccessControlAllowOrigin: "http://bbb.example.com"},
 		},
 	}
@@ -265,6 +279,70 @@ func TestCORS(t *testing.T) {
 	}
 }
 
+func TestCORS_NonPreflightOPTIONSPassThrough(t *testing.T) {
+	e := echo.New()
+	cors := CORSWithConfig(CORSConfig{
+		AllowOrigins: []string{"*"},
+		AllowMethods: []string{http.MethodPut},
+	})
+
+	for _, tc := range []struct {
+		name    string
+		headers map[string]string
+	}{
+		{
+			name: "OPTIONS without Origin",
+		},
+		{
+			name: "OPTIONS with Origin but without Access-Control-Request-Method",
+			headers: map[string]string{
+				echo.HeaderOrigin: "https://example.com",
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodOptions, "/hello", nil)
+			for k, v := range tc.headers {
+				req.Header.Set(k, v)
+			}
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			called := false
+
+			h := cors(func(c echo.Context) error {
+				called = true
+				c.Response().Header().Set(echo.HeaderAllow, "GET, OPTIONS")
+				return c.NoContent(http.StatusNoContent)
+			})
+
+			assert.NoError(t, h(c))
+			assert.True(t, called)
+			assert.Equal(t, "GET, OPTIONS", rec.Header().Get(echo.HeaderAllow))
+			assert.Empty(t, rec.Header().Get(echo.HeaderAccessControlAllowMethods))
+		})
+	}
+
+	t.Run("true preflight short-circuits next", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodOptions, "/hello", nil)
+		req.Header.Set(echo.HeaderOrigin, "https://example.com")
+		req.Header.Set(echo.HeaderAccessControlRequestMethod, http.MethodPut)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		called := false
+
+		h := cors(func(c echo.Context) error {
+			called = true
+			return c.NoContent(http.StatusOK)
+		})
+
+		assert.NoError(t, h(c))
+		assert.False(t, called)
+		assert.Equal(t, http.StatusNoContent, rec.Code)
+		assert.Equal(t, "*", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
+		assert.Equal(t, "PUT", rec.Header().Get(echo.HeaderAccessControlAllowMethods))
+	})
+}
+
 func Test_allowOriginScheme(t *testing.T) {
 	tests := []struct {
 		domain, pattern string
@@ -293,11 +371,14 @@ func Test_allowOriginScheme(t *testing.T) {
 	}
 
 	e := echo.New()
+	// These OPTIONS cases exercise preflight origin matching, so each request
+	// includes Access-Control-Request-Method.
 	for _, tt := range tests {
 		req := httptest.NewRequest(http.MethodOptions, "/", nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 		req.Header.Set(echo.HeaderOrigin, tt.domain)
+		req.Header.Set(echo.HeaderAccessControlRequestMethod, http.MethodGet)
 		cors := CORSWithConfig(CORSConfig{
 			AllowOrigins: []string{tt.pattern},
 		})
@@ -384,11 +465,14 @@ func Test_allowOriginSubdomain(t *testing.T) {
 	}
 
 	e := echo.New()
+	// These OPTIONS cases exercise preflight origin matching, so each request
+	// includes Access-Control-Request-Method.
 	for _, tt := range tests {
 		req := httptest.NewRequest(http.MethodOptions, "/", nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 		req.Header.Set(echo.HeaderOrigin, tt.domain)
+		req.Header.Set(echo.HeaderAccessControlRequestMethod, http.MethodGet)
 		cors := CORSWithConfig(CORSConfig{
 			AllowOrigins: []string{tt.pattern},
 		})
@@ -411,19 +495,20 @@ func TestCORSWithConfig_AllowMethods(t *testing.T) {
 
 		whenOrigin       string
 		whenAllowMethods []string
+		whenPreflight    bool
 
 		expectAllow                     string
 		expectAccessControlAllowMethods string
 	}{
 		{
-			name:             "custom AllowMethods, preflight, no origin, sets only allow header from context key",
+			name:             "custom AllowMethods, OPTIONS no origin, sets only allow header from context key",
 			allowContextKey:  "OPTIONS, GET",
 			whenAllowMethods: []string{http.MethodGet, http.MethodHead},
 			whenOrigin:       "",
 			expectAllow:      "OPTIONS, GET",
 		},
 		{
-			name:             "default AllowMethods, preflight, no origin, no allow header in context key and in response",
+			name:             "default AllowMethods, OPTIONS no origin, no allow header in context key and in response",
 			allowContextKey:  "",
 			whenAllowMethods: nil,
 			whenOrigin:       "",
@@ -434,6 +519,7 @@ func TestCORSWithConfig_AllowMethods(t *testing.T) {
 			allowContextKey:                 "OPTIONS, GET",
 			whenAllowMethods:                []string{http.MethodGet, http.MethodHead},
 			whenOrigin:                      "http://google.com",
+			whenPreflight:                   true,
 			expectAllow:                     "OPTIONS, GET",
 			expectAccessControlAllowMethods: "GET,HEAD",
 		},
@@ -442,6 +528,7 @@ func TestCORSWithConfig_AllowMethods(t *testing.T) {
 			allowContextKey:                 "OPTIONS, GET",
 			whenAllowMethods:                nil,
 			whenOrigin:                      "http://google.com",
+			whenPreflight:                   true,
 			expectAllow:                     "OPTIONS, GET",
 			expectAccessControlAllowMethods: "OPTIONS, GET",
 		},
@@ -450,6 +537,7 @@ func TestCORSWithConfig_AllowMethods(t *testing.T) {
 			allowContextKey:                 "",
 			whenAllowMethods:                nil,
 			whenOrigin:                      "http://google.com",
+			whenPreflight:                   true,
 			expectAllow:                     "",
 			expectAccessControlAllowMethods: "GET,HEAD,PUT,PATCH,POST,DELETE",
 		},
@@ -472,6 +560,9 @@ func TestCORSWithConfig_AllowMethods(t *testing.T) {
 			c := e.NewContext(req, rec)
 
 			req.Header.Set(echo.HeaderOrigin, tc.whenOrigin)
+			if tc.whenPreflight {
+				req.Header.Set(echo.HeaderAccessControlRequestMethod, http.MethodGet)
+			}
 			if tc.allowContextKey != "" {
 				c.Set(echo.ContextKeyHeaderAllow, tc.allowContextKey)
 			}
@@ -494,6 +585,7 @@ func TestCorsHeaders(t *testing.T) {
 		expected          bool
 		expectStatus      int
 		expectAllowHeader string
+		whenPreflight     bool
 	}{
 		{
 			name:          "non-preflight request, allow any origin, missing origin header = no CORS logic done",
@@ -536,7 +628,7 @@ func TestCorsHeaders(t *testing.T) {
 			expectStatus:  http.StatusOK,
 		},
 		{
-			name:              "preflight, allow any origin, missing origin header = no CORS logic done",
+			name:              "OPTIONS no origin, allow any origin = no CORS preflight short-circuit",
 			originDomain:      "", // Request does not have Origin header
 			allowedOrigin:     "*",
 			method:            http.MethodOptions,
@@ -552,9 +644,10 @@ func TestCorsHeaders(t *testing.T) {
 			expected:          true,
 			expectStatus:      http.StatusNoContent,
 			expectAllowHeader: "OPTIONS, GET, POST",
+			whenPreflight:     true,
 		},
 		{
-			name:              "preflight, allow any origin, missing origin header = no CORS logic done",
+			name:              "OPTIONS no origin, allow specific origin = no CORS preflight short-circuit",
 			originDomain:      "", // Request does not have Origin header
 			allowedOrigin:     "http://example.com",
 			method:            http.MethodOptions,
@@ -570,6 +663,7 @@ func TestCorsHeaders(t *testing.T) {
 			expected:          false,
 			expectStatus:      http.StatusNoContent,
 			expectAllowHeader: "OPTIONS, GET, POST",
+			whenPreflight:     true,
 		},
 		{
 			name:              "preflight, allow specific origin, matching origin header = CORS logic done",
@@ -579,6 +673,7 @@ func TestCorsHeaders(t *testing.T) {
 			expected:          true,
 			expectStatus:      http.StatusNoContent,
 			expectAllowHeader: "OPTIONS, GET, POST",
+			whenPreflight:     true,
 		},
 	}
 
@@ -604,6 +699,9 @@ func TestCorsHeaders(t *testing.T) {
 
 			if tc.originDomain != "" {
 				req.Header.Set(echo.HeaderOrigin, tc.originDomain)
+			}
+			if tc.whenPreflight {
+				req.Header.Set(echo.HeaderAccessControlRequestMethod, http.MethodGet)
 			}
 
 			// we run through whole Echo handler chain to see how CORS works with Router OPTIONS handler
@@ -658,11 +756,14 @@ func Test_allowOriginFunc(t *testing.T) {
 	const origin = "http://example.com"
 
 	e := echo.New()
+	// These OPTIONS cases exercise preflight AllowOriginFunc behavior, so each
+	// request includes Access-Control-Request-Method.
 	for _, allowOriginFunc := range allowOriginFuncs {
 		req := httptest.NewRequest(http.MethodOptions, "/", nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 		req.Header.Set(echo.HeaderOrigin, origin)
+		req.Header.Set(echo.HeaderAccessControlRequestMethod, http.MethodGet)
 		cors := CORSWithConfig(CORSConfig{
 			AllowOriginFunc: allowOriginFunc,
 		})
