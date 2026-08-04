@@ -396,3 +396,62 @@ func BenchmarkGzip(b *testing.B) {
 		h(c)
 	}
 }
+
+func TestGzip_AcceptEncodingQValue(t *testing.T) {
+	// RFC 9110 §12.5.3: "gzip;q=0" means the client does not accept gzip, and a
+	// token like "supergzip"/"x-gzip" must not be mistaken for "gzip".
+	isGzipped := func(acceptEncoding string) bool {
+		h := Gzip()(func(c *echo.Context) error {
+			c.Response().Write([]byte("test")) // For Content-Type sniffing
+			return nil
+		})
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		if acceptEncoding != "" {
+			req.Header.Set(echo.HeaderAcceptEncoding, acceptEncoding)
+		}
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		assert.NoError(t, h(c))
+		return rec.Header().Get(echo.HeaderContentEncoding) == gzipScheme
+	}
+
+	tests := []struct {
+		acceptEncoding string
+		wantGzip       bool
+	}{
+		{"gzip", true},
+		{"gzip;q=1.0", true},
+		{"gzip;q=0.5", true},
+		{"deflate, gzip", true},
+		{"deflate, gzip;q=0.8", true},
+		{"*", true},
+		{"gzip;q=0", false},   // explicit rejection
+		{"gzip;q=0.0", false}, // explicit rejection
+		{"deflate, gzip;q=0", false},
+		{"identity", false},
+		{"supergzip", false}, // must not substring-match
+		{"x-gzip", false},    // distinct coding, not "gzip"
+		{"deflate", false},
+		{"", false},
+	}
+	for _, tt := range tests {
+		assert.Equalf(t, tt.wantGzip, isGzipped(tt.acceptEncoding),
+			"Accept-Encoding %q: expected gzip=%v", tt.acceptEncoding, tt.wantGzip)
+	}
+}
+
+func TestAcceptsGzip(t *testing.T) {
+	assert.True(t, acceptsGzip("gzip"))
+	assert.True(t, acceptsGzip(" GZIP "))
+	assert.True(t, acceptsGzip("br, gzip;q=0.9"))
+	assert.True(t, acceptsGzip("*"))
+	assert.True(t, acceptsGzip("*;q=0.1"))
+	assert.False(t, acceptsGzip(""))
+	assert.False(t, acceptsGzip("gzip;q=0"))
+	assert.False(t, acceptsGzip("gzip; q=0.000"))
+	assert.False(t, acceptsGzip("identity"))
+	assert.False(t, acceptsGzip("supergzip"))
+	assert.False(t, acceptsGzip("x-gzip"))
+	assert.False(t, acceptsGzip("*;q=0"))
+}
