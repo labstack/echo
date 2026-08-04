@@ -19,6 +19,7 @@ func TestCORS(t *testing.T) {
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodOptions, "/", nil) // Preflight request
 	req.Header.Set(echo.HeaderOrigin, "http://example.com")
+	req.Header.Set(echo.HeaderAccessControlRequestMethod, http.MethodGet)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
@@ -31,6 +32,79 @@ func TestCORS(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusNoContent, rec.Code)
 	assert.Equal(t, "*", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
+}
+
+// TestCORS_NonPreflightOPTIONSPassThrough locks in #2534: only true CORS
+// preflights short-circuit the middleware. OPTIONS without the preflight
+// headers must reach the next handler.
+func TestCORS_NonPreflightOPTIONSPassThrough(t *testing.T) {
+	e := echo.New()
+	mw := CORS("*")
+
+	t.Run("OPTIONS without Origin reaches next", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodOptions, "/hello", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		called := false
+		handler := mw(func(c *echo.Context) error {
+			called = true
+			return c.NoContent(http.StatusNoContent)
+		})
+		assert.NoError(t, handler(c))
+		assert.True(t, called, "expected next to run for non-preflight OPTIONS")
+		assert.Empty(t, rec.Header().Get(echo.HeaderAccessControlAllowMethods))
+	})
+
+	t.Run("OPTIONS with Origin but without Access-Control-Request-Method reaches next", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodOptions, "/hello", nil)
+		req.Header.Set(echo.HeaderOrigin, "https://example.com")
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		called := false
+		handler := mw(func(c *echo.Context) error {
+			called = true
+			return c.NoContent(http.StatusNoContent)
+		})
+		assert.NoError(t, handler(c))
+		assert.True(t, called, "expected next to run when ACR-Method is missing")
+		// Origin was allowed; simple CORS headers may be set, but not preflight Allow-Methods.
+		assert.Equal(t, "*", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
+		assert.Empty(t, rec.Header().Get(echo.HeaderAccessControlAllowMethods))
+	})
+
+	t.Run("true preflight still short-circuits next", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodOptions, "/hello", nil)
+		req.Header.Set(echo.HeaderOrigin, "https://example.com")
+		req.Header.Set(echo.HeaderAccessControlRequestMethod, http.MethodPut)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		called := false
+		handler := mw(func(c *echo.Context) error {
+			called = true
+			return c.String(http.StatusOK, "should not run")
+		})
+		assert.NoError(t, handler(c))
+		assert.False(t, called, "preflight must not call next")
+		assert.Equal(t, http.StatusNoContent, rec.Code)
+		assert.Equal(t, "*", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
+		assert.NotEmpty(t, rec.Header().Get(echo.HeaderAccessControlAllowMethods))
+	})
+}
+
+func TestIsCORSPreflight(t *testing.T) {
+	req := httptest.NewRequest(http.MethodOptions, "/", nil)
+	assert.False(t, isCORSPreflight(req))
+
+	req.Header.Set(echo.HeaderOrigin, "https://example.com")
+	assert.False(t, isCORSPreflight(req))
+
+	req.Header.Set(echo.HeaderAccessControlRequestMethod, http.MethodPut)
+	assert.True(t, isCORSPreflight(req))
+
+	req = httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set(echo.HeaderOrigin, "https://example.com")
+	req.Header.Set(echo.HeaderAccessControlRequestMethod, http.MethodPut)
+	assert.False(t, isCORSPreflight(req))
 }
 
 func TestCORSConfig(t *testing.T) {
@@ -275,6 +349,11 @@ func TestCORSConfig(t *testing.T) {
 			for k, v := range tc.whenHeaders {
 				req.Header.Set(k, v)
 			}
+			// Intentional preflight cases: OPTIONS + Origin need ACR-Method per Fetch.
+			if method == http.MethodOptions && req.Header.Get(echo.HeaderOrigin) != "" &&
+				req.Header.Get(echo.HeaderAccessControlRequestMethod) == "" {
+				req.Header.Set(echo.HeaderAccessControlRequestMethod, http.MethodGet)
+			}
 
 			err = h(c)
 
@@ -413,6 +492,10 @@ func TestCORSWithConfig_AllowMethods(t *testing.T) {
 			c := e.NewContext(req, rec)
 
 			req.Header.Set(echo.HeaderOrigin, tc.whenOrigin)
+			if tc.whenOrigin != "" {
+				// Real preflight requires Access-Control-Request-Method (#2534).
+				req.Header.Set(echo.HeaderAccessControlRequestMethod, http.MethodGet)
+			}
 			if tc.whenAllowContextKey != "" {
 				c.Set(echo.ContextKeyHeaderAllow, tc.whenAllowContextKey)
 			}
@@ -479,12 +562,13 @@ func TestCorsHeaders(t *testing.T) {
 			expectStatus:  http.StatusOK,
 		},
 		{
-			name:              "preflight, allow any origin, missing origin header = no CORS logic done",
+			// OPTIONS without Origin is not a CORS preflight; request continues to the router.
+			name:              "OPTIONS no origin, allow any origin = no CORS preflight short-circuit",
 			originDomain:      "", // Request does not have Origin header
 			allowedOrigin:     "*",
 			method:            http.MethodOptions,
 			expected:          false,
-			expectStatus:      http.StatusNoContent,
+			expectStatus:      http.StatusNoContent, // router default OPTIONS/Allow path
 			expectAllowHeader: "OPTIONS, GET, POST",
 		},
 		{
@@ -497,7 +581,7 @@ func TestCorsHeaders(t *testing.T) {
 			expectAllowHeader: "OPTIONS, GET, POST",
 		},
 		{
-			name:              "preflight, allow any origin, missing origin header = no CORS logic done",
+			name:              "OPTIONS no origin, allow specific origin = no CORS preflight short-circuit",
 			originDomain:      "", // Request does not have Origin header
 			allowedOrigin:     "http://example.com",
 			method:            http.MethodOptions,
@@ -547,6 +631,15 @@ func TestCorsHeaders(t *testing.T) {
 
 			if tc.originDomain != "" {
 				req.Header.Set(echo.HeaderOrigin, tc.originDomain)
+			}
+			// True CORS preflight requires Access-Control-Request-Method (#2534).
+			if tc.method == http.MethodOptions && tc.originDomain != "" && tc.expected {
+				req.Header.Set(echo.HeaderAccessControlRequestMethod, http.MethodGet)
+			}
+			// Disallowed origin + OPTIONS still needs ACR-Method to be classified as preflight
+			// (middleware then omits ACAO and returns 204).
+			if tc.method == http.MethodOptions && tc.originDomain != "" && !tc.expected {
+				req.Header.Set(echo.HeaderAccessControlRequestMethod, http.MethodGet)
 			}
 
 			// we run through whole Echo handler chain to see how CORS works with Router OPTIONS handler
@@ -606,6 +699,7 @@ func Test_allowOriginFunc(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 		req.Header.Set(echo.HeaderOrigin, origin)
+		req.Header.Set(echo.HeaderAccessControlRequestMethod, http.MethodGet)
 		cors, err := CORSConfig{UnsafeAllowOriginFunc: allowOriginFunc}.ToMiddleware()
 		assert.NoError(t, err)
 
