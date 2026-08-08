@@ -431,12 +431,17 @@ func TestContextAttachment(t *testing.T) {
 		{
 			name:         "ok",
 			whenName:     "walle.png",
-			expectHeader: `attachment; filename="walle.png"`,
+			expectHeader: `attachment; filename="walle.png"; filename*=UTF-8''walle.png`,
 		},
 		{
 			name:         "ok, escape quotes in malicious filename",
 			whenName:     `malicious.sh"; \"; dummy=.txt`,
-			expectHeader: `attachment; filename="malicious.sh\"; \\\"; dummy=.txt"`,
+			expectHeader: `attachment; filename="malicious.sh\"; \\\"; dummy=.txt"; filename*=UTF-8''malicious.sh%22%3B%20%5C%22%3B%20dummy=.txt`,
+		},
+		{
+			name:         "ok, non-ASCII filename uses filename*",
+			whenName:     "报告.pdf",
+			expectHeader: `attachment; filename="报告.pdf"; filename*=UTF-8''%E6%8A%A5%E5%91%8A.pdf`,
 		},
 	}
 	for _, tc := range testCases {
@@ -466,12 +471,12 @@ func TestContextInline(t *testing.T) {
 		{
 			name:         "ok",
 			whenName:     "walle.png",
-			expectHeader: `inline; filename="walle.png"`,
+			expectHeader: `inline; filename="walle.png"; filename*=UTF-8''walle.png`,
 		},
 		{
 			name:         "ok, escape quotes in malicious filename",
 			whenName:     `malicious.sh"; \"; dummy=.txt`,
-			expectHeader: `inline; filename="malicious.sh\"; \\\"; dummy=.txt"`,
+			expectHeader: `inline; filename="malicious.sh\"; \\\"; dummy=.txt"; filename*=UTF-8''malicious.sh%22%3B%20%5C%22%3B%20dummy=.txt`,
 		},
 	}
 	for _, tc := range testCases {
