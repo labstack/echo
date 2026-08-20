@@ -5,6 +5,7 @@ package middleware
 
 import (
 	"crypto/subtle"
+	"errors"
 	"net/http"
 	"slices"
 	"strings"
@@ -159,6 +160,9 @@ func (config CSRFConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 	extractors, cErr := createExtractors(config.TokenLookup, 1)
 	if cErr != nil {
 		return nil, cErr
+	}
+	if len(extractors) == 0 {
+		return nil, errors.New("echo csrf middleware could not create extractors from TokenLookup string")
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {

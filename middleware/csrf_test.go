@@ -159,6 +159,14 @@ func TestCSRF_tokenExtractors(t *testing.T) {
 			givenQueryTokens:        map[string][]string{},
 			expectToMiddlewareError: "extractor source for lookup could not be split into needed parts: q",
 		},
+		{
+			name:                    "nok, TokenLookup with only unknown source yields no extractors",
+			whenTokenLookup:         "nope:nope",
+			givenCSRFCookie:         "token",
+			givenMethod:             http.MethodPut,
+			givenQueryTokens:        map[string][]string{},
+			expectToMiddlewareError: "echo csrf middleware could not create extractors from TokenLookup string",
+		},
 	}
 
 	for _, tc := range testCases {
