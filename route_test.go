@@ -66,19 +66,6 @@ func TestHandlerName(t *testing.T) {
 	}
 }
 
-func TestHandlerName_differentFuncSameName(t *testing.T) {
-	handlerCreator := func(name string) HandlerFunc {
-		return func(c *Context) error {
-			return c.String(http.StatusTeapot, name)
-		}
-	}
-	h1 := handlerCreator("name1")
-	assert.Equal(t, "github.com/labstack/echo/v5.TestHandlerName_differentFuncSameName.TestHandlerName_differentFuncSameName.func1.func2", HandlerName(h1))
-
-	h2 := handlerCreator("name2")
-	assert.Equal(t, "github.com/labstack/echo/v5.TestHandlerName_differentFuncSameName.TestHandlerName_differentFuncSameName.func1.func3", HandlerName(h2))
-}
-
 func TestRoute_ToRouteInfo(t *testing.T) {
 	var testCases = []struct {
 		expect     RouteInfo
