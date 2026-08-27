@@ -24,6 +24,7 @@ type limitedReader struct {
 	BodyLimitConfig
 	reader io.ReadCloser
 	read   int64
+	err    error // sticky; once set, Read returns (0, err)
 }
 
 // BodyLimit returns a BodyLimit middleware.
@@ -81,12 +82,33 @@ func (config BodyLimitConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 }
 
 func (r *limitedReader) Read(b []byte) (n int, err error) {
-	n, err = r.reader.Read(b)
-	r.read += int64(n)
-	if r.read > r.LimitBytes {
-		return n, echo.ErrStatusRequestEntityTooLarge
+	if r.err != nil {
+		return 0, r.err
 	}
-	return
+	if len(b) == 0 {
+		return 0, nil
+	}
+
+	remaining := r.LimitBytes - r.read
+	if remaining < 0 {
+		remaining = 0
+	}
+	// Cap at remaining+1 so a single Read cannot both exceed the limit and
+	// complete a value. The extra byte only detects overflow and is not returned.
+	if int64(len(b))-1 > remaining {
+		b = b[:remaining+1]
+	}
+
+	n, err = r.reader.Read(b)
+	if int64(n) <= remaining {
+		r.read += int64(n)
+		return n, err
+	}
+
+	n = int(remaining)
+	r.read = r.LimitBytes
+	r.err = echo.ErrStatusRequestEntityTooLarge
+	return n, r.err
 }
 
 func (r *limitedReader) Close() error {
@@ -96,4 +118,5 @@ func (r *limitedReader) Close() error {
 func (r *limitedReader) Reset(reader io.ReadCloser) {
 	r.reader = reader
 	r.read = 0
+	r.err = nil
 }

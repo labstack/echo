@@ -5,9 +5,12 @@ package middleware
 
 import (
 	"bytes"
+	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/labstack/echo/v5"
@@ -91,6 +94,175 @@ func TestBodyLimitAfterDecompressUsesDecodedSize(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, body, rec.Body.String())
+}
+
+func TestBodyLimitOversizedReadDoesNotBypassLimit(t *testing.T) {
+	// Callers that process n>0 before treating err as fatal, as io.Reader
+	// documents, must still never receive more than LimitBytes.
+	tests := []struct {
+		name    string
+		bufSize int
+	}{
+		{name: "single oversized read", bufSize: 64},
+		{name: "one byte at a time", bufSize: 1},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			const limit int64 = 5
+			body := bytes.Repeat([]byte("x"), 10*int(limit))
+
+			e := echo.New()
+			var total int
+			var lastErr error
+			e.POST("/", func(c *echo.Context) error {
+				buf := make([]byte, tc.bufSize)
+				for {
+					n, err := c.Request().Body.Read(buf)
+					total += n
+					lastErr = err
+					if n == 0 {
+						break
+					}
+				}
+				return c.NoContent(http.StatusOK)
+			}, BodyLimit(limit))
+
+			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body))
+			req.ContentLength = -1
+			req.TransferEncoding = []string{"chunked"}
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, int(limit), total)
+			he, ok := lastErr.(echo.HTTPStatusCoder)
+			if assert.True(t, ok) {
+				assert.Equal(t, http.StatusRequestEntityTooLarge, he.StatusCode())
+			}
+		})
+	}
+}
+
+type countingReadCloser struct {
+	io.Reader
+	read  int64
+	calls int
+}
+
+func (c *countingReadCloser) Read(b []byte) (int, error) {
+	c.calls++
+	n, err := c.Reader.Read(b)
+	c.read += int64(n)
+	return n, err
+}
+
+func (c *countingReadCloser) Close() error { return nil }
+
+func TestBodyLimitDoesNotOverdrawTheSource(t *testing.T) {
+	const limit int64 = 5
+	src := &countingReadCloser{Reader: bytes.NewReader(bytes.Repeat([]byte("x"), 1<<20))}
+
+	e := echo.New()
+	var callsAtRefusal int
+	e.POST("/", func(c *echo.Context) error {
+		buf := make([]byte, 64*1024)
+		_, _ = c.Request().Body.Read(buf)
+		callsAtRefusal = src.calls
+		for i := 0; i < 5; i++ {
+			_, _ = c.Request().Body.Read(buf)
+		}
+		return c.NoContent(http.StatusOK)
+	}, BodyLimit(limit))
+
+	req := httptest.NewRequest(http.MethodPost, "/", src)
+	req.ContentLength = -1
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.LessOrEqual(t, src.read, limit+1)
+	assert.Equal(t, callsAtRefusal, src.calls)
+}
+
+func TestBodyLimitReadStaysRefused(t *testing.T) {
+	e := echo.New()
+	e.POST("/", func(c *echo.Context) error {
+		_, err := io.ReadAll(c.Request().Body)
+		he, ok := err.(echo.HTTPStatusCoder)
+		if assert.True(t, ok) {
+			assert.Equal(t, http.StatusRequestEntityTooLarge, he.StatusCode())
+		}
+
+		n, err := c.Request().Body.Read(make([]byte, 8))
+		assert.Equal(t, 0, n)
+		he, ok = err.(echo.HTTPStatusCoder)
+		if assert.True(t, ok) {
+			assert.Equal(t, http.StatusRequestEntityTooLarge, he.StatusCode())
+		}
+		return c.NoContent(http.StatusOK)
+	}, BodyLimit(2))
+
+	req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader([]byte("Hello, World!")))
+	req.ContentLength = -1
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestBodyLimitJSONDecoderDoesNotAcceptOversizedBody(t *testing.T) {
+	const limit int64 = 16
+	payload := `{"data":"` + strings.Repeat("x", 1024) + `"}`
+
+	e := echo.New()
+	var decodeErr error
+	var got string
+	e.POST("/", func(c *echo.Context) error {
+		var v struct {
+			Data string `json:"data"`
+		}
+		decodeErr = json.NewDecoder(c.Request().Body).Decode(&v)
+		got = v.Data
+		if decodeErr != nil {
+			return decodeErr
+		}
+		return c.NoContent(http.StatusOK)
+	}, BodyLimit(limit))
+
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(payload))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.ContentLength = -1
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.NotEqual(t, strings.Repeat("x", 1024), got)
+	var he echo.HTTPStatusCoder
+	if assert.True(t, errors.As(decodeErr, &he), "decode error: %v", decodeErr) {
+		assert.Equal(t, http.StatusRequestEntityTooLarge, he.StatusCode())
+	}
+	assert.Equal(t, http.StatusRequestEntityTooLarge, rec.Code)
+}
+
+func TestBodyLimitResetAfterOversizeRequest(t *testing.T) {
+	e := echo.New()
+	e.POST("/", func(c *echo.Context) error {
+		b, err := io.ReadAll(c.Request().Body)
+		if err != nil {
+			return err
+		}
+		return c.String(http.StatusOK, string(b))
+	}, BodyLimit(5))
+
+	req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(bytes.Repeat([]byte("x"), 20)))
+	req.ContentLength = -1
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusRequestEntityTooLarge, rec.Code)
+
+	req = httptest.NewRequest(http.MethodPost, "/", bytes.NewReader([]byte("hello")))
+	req.ContentLength = -1
+	rec = httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "hello", rec.Body.String())
 }
 
 func TestBodyLimitReader(t *testing.T) {
