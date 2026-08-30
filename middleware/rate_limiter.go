@@ -288,10 +288,7 @@ func (store *RateLimiterMemoryStore) setRateLimitHeaders(c *echo.Context, limite
 	header := c.Response().Header()
 	header.Set(HeaderXRateLimitLimit, strconv.Itoa(store.burst))
 
-	remaining := int(math.Floor(limiter.Tokens()))
-	if remaining < 0 {
-		remaining = 0
-	}
+	remaining := max(int(math.Floor(limiter.Tokens())), 0)
 	header.Set(HeaderXRateLimitRemaining, strconv.Itoa(remaining))
 
 	if !allowed {
