@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## About This Project
 
-Echo is a high performance, minimalist Go web framework. This is the main repository for Echo v4, which is available as a Go module at `github.com/labstack/echo/v4`.
+Echo is a high performance, minimalist Go web framework. This is the main repository for Echo v5, which is available as a Go module at `github.com/labstack/echo/v5`. v4 (`github.com/labstack/echo/v4`) is in LTS and receives security and bug fixes only until 2026-12-31. See [ROADMAP.md](./ROADMAP.md) and [SECURITY.md](./SECURITY.md) for version policy.
 
 ## Development Commands
 
