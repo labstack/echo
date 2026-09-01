@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## About This Project
 
-Echo is a high performance, minimalist Go web framework. This is the main repository for Echo v4, which is available as a Go module at `github.com/labstack/echo/v4`.
+Echo is a high performance, minimalist Go web framework. This is the main repository for Echo v5, which is available as a Go module at `github.com/labstack/echo/v5`.
 
 ## Development Commands
 
@@ -44,7 +44,7 @@ make benchmark
 - Not goroutine-safe for mutations after server start
 
 **Context (`context.go`)**
-- The `Context` interface represents HTTP request/response context
+- The `Context` struct represents HTTP request/response context
 - Provides methods for request/response handling, path parameters, data binding
 - Core abstraction for request processing
 
