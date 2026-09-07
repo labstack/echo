@@ -4,8 +4,10 @@
 package middleware
 
 import (
-	"github.com/labstack/echo/v4"
-	"github.com/stretchr/testify/assert"
+	"bytes"
+	"encoding/json"
+	"errors"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -13,7 +15,103 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/labstack/echo/v5"
+	"github.com/stretchr/testify/assert"
 )
+
+func TestRequestLoggerOK(t *testing.T) {
+	old := slog.Default()
+	t.Cleanup(func() {
+		slog.SetDefault(old)
+	})
+
+	e := echo.New()
+	e.IPExtractor = echo.LegacyIPExtractor()
+	buf := new(bytes.Buffer)
+	e.Logger = slog.New(slog.NewJSONHandler(buf, nil))
+	e.Use(RequestLogger())
+
+	e.POST("/test", func(c *echo.Context) error {
+		return c.String(http.StatusTeapot, "OK")
+	})
+
+	reader := strings.NewReader(`{"foo":"bar"}`)
+	req := httptest.NewRequest(http.MethodPost, "/test", reader)
+	req.Header.Set(echo.HeaderContentLength, strconv.Itoa(int(reader.Size())))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set(echo.HeaderXRealIP, "8.8.8.8")
+	req.Header.Set("User-Agent", "curl/7.68.0")
+
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	logAttrs := map[string]any{}
+	assert.NoError(t, json.Unmarshal(buf.Bytes(), &logAttrs))
+	logAttrs["latency"] = 123
+	logAttrs["time"] = "x"
+
+	expect := map[string]any{
+		"level":      "INFO",
+		"msg":        "REQUEST",
+		"method":     "POST",
+		"uri":        "/test",
+		"status":     float64(418),
+		"bytes_in":   "13",
+		"host":       "example.com",
+		"bytes_out":  float64(2),
+		"user_agent": "curl/7.68.0",
+		"remote_ip":  "8.8.8.8",
+		"request_id": "",
+
+		"time":    "x",
+		"latency": 123,
+	}
+	assert.Equal(t, expect, logAttrs)
+}
+
+func TestRequestLoggerError(t *testing.T) {
+	old := slog.Default()
+	t.Cleanup(func() {
+		slog.SetDefault(old)
+	})
+
+	e := echo.New()
+	buf := new(bytes.Buffer)
+	e.Logger = slog.New(slog.NewJSONHandler(buf, nil))
+	e.Use(RequestLogger())
+
+	e.GET("/test", func(c *echo.Context) error {
+		return errors.New("nope")
+	})
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	logAttrs := map[string]any{}
+	assert.NoError(t, json.Unmarshal(buf.Bytes(), &logAttrs))
+	logAttrs["latency"] = 123
+	logAttrs["time"] = "x"
+
+	expect := map[string]any{
+		"level":      "ERROR",
+		"msg":        "REQUEST_ERROR",
+		"method":     "GET",
+		"uri":        "/test",
+		"status":     float64(500),
+		"bytes_in":   "",
+		"host":       "example.com",
+		"bytes_out":  float64(36.0),
+		"user_agent": "",
+		"remote_ip":  "192.0.2.1",
+		"request_id": "",
+		"error":      "nope",
+
+		"latency": 123,
+		"time":    "x",
+	}
+	assert.Equal(t, expect, logAttrs)
+}
 
 func TestRequestLoggerWithConfig(t *testing.T) {
 	e := echo.New()
@@ -22,13 +120,13 @@ func TestRequestLoggerWithConfig(t *testing.T) {
 	e.Use(RequestLoggerWithConfig(RequestLoggerConfig{
 		LogRoutePath: true,
 		LogURI:       true,
-		LogValuesFunc: func(c echo.Context, values RequestLoggerValues) error {
+		LogValuesFunc: func(c *echo.Context, values RequestLoggerValues) error {
 			expect = values
 			return nil
 		},
 	}))
 
-	e.GET("/test", func(c echo.Context) error {
+	e.GET("/test", func(c *echo.Context) error {
 		return c.String(http.StatusTeapot, "OK")
 	})
 
@@ -54,16 +152,16 @@ func TestRequestLogger_skipper(t *testing.T) {
 
 	loggerCalled := false
 	e.Use(RequestLoggerWithConfig(RequestLoggerConfig{
-		Skipper: func(c echo.Context) bool {
+		Skipper: func(c *echo.Context) bool {
 			return true
 		},
-		LogValuesFunc: func(c echo.Context, values RequestLoggerValues) error {
+		LogValuesFunc: func(c *echo.Context, values RequestLoggerValues) error {
 			loggerCalled = true
 			return nil
 		},
 	}))
 
-	e.GET("/test", func(c echo.Context) error {
+	e.GET("/test", func(c *echo.Context) error {
 		return c.String(http.StatusTeapot, "OK")
 	})
 
@@ -81,16 +179,16 @@ func TestRequestLogger_beforeNextFunc(t *testing.T) {
 
 	var myLoggerInstance int
 	e.Use(RequestLoggerWithConfig(RequestLoggerConfig{
-		BeforeNextFunc: func(c echo.Context) {
+		BeforeNextFunc: func(c *echo.Context) {
 			c.Set("myLoggerInstance", 42)
 		},
-		LogValuesFunc: func(c echo.Context, values RequestLoggerValues) error {
+		LogValuesFunc: func(c *echo.Context, values RequestLoggerValues) error {
 			myLoggerInstance = c.Get("myLoggerInstance").(int)
 			return nil
 		},
 	}))
 
-	e.GET("/test", func(c echo.Context) error {
+	e.GET("/test", func(c *echo.Context) error {
 		return c.String(http.StatusTeapot, "OK")
 	})
 
@@ -108,15 +206,14 @@ func TestRequestLogger_logError(t *testing.T) {
 
 	var actual RequestLoggerValues
 	e.Use(RequestLoggerWithConfig(RequestLoggerConfig{
-		LogError:  true,
 		LogStatus: true,
-		LogValuesFunc: func(c echo.Context, values RequestLoggerValues) error {
+		LogValuesFunc: func(c *echo.Context, values RequestLoggerValues) error {
 			actual = values
 			return nil
 		},
 	}))
 
-	e.GET("/test", func(c echo.Context) error {
+	e.GET("/test", func(c *echo.Context) error {
 		return echo.NewHTTPError(http.StatusNotAcceptable, "nope")
 	})
 
@@ -139,23 +236,22 @@ func TestRequestLogger_HandleError(t *testing.T) {
 			return time.Unix(1631045377, 0).UTC()
 		},
 		HandleError: true,
-		LogError:    true,
 		LogStatus:   true,
-		LogValuesFunc: func(c echo.Context, values RequestLoggerValues) error {
+		LogValuesFunc: func(c *echo.Context, values RequestLoggerValues) error {
 			actual = values
 			return nil
 		},
 	}))
 
 	// to see if "HandleError" works we create custom error handler that uses its own status codes
-	e.HTTPErrorHandler = func(err error, c echo.Context) {
-		if c.Response().Committed {
+	e.HTTPErrorHandler = func(c *echo.Context, err error) {
+		if r, _ := echo.UnwrapResponse(c.Response()); r != nil && r.Committed {
 			return
 		}
 		c.JSON(http.StatusTeapot, "custom error handler")
 	}
 
-	e.GET("/test", func(c echo.Context) error {
+	e.GET("/test", func(c *echo.Context) error {
 		return echo.NewHTTPError(http.StatusForbidden, "nope")
 	})
 
@@ -179,15 +275,14 @@ func TestRequestLogger_LogValuesFuncError(t *testing.T) {
 
 	var expect RequestLoggerValues
 	e.Use(RequestLoggerWithConfig(RequestLoggerConfig{
-		LogError:  true,
 		LogStatus: true,
-		LogValuesFunc: func(c echo.Context, values RequestLoggerValues) error {
+		LogValuesFunc: func(c *echo.Context, values RequestLoggerValues) error {
 			expect = values
 			return echo.NewHTTPError(http.StatusNotAcceptable, "LogValuesFuncError")
 		},
 	}))
 
-	e.GET("/test", func(c echo.Context) error {
+	e.GET("/test", func(c *echo.Context) error {
 		return c.String(http.StatusTeapot, "OK")
 	})
 
@@ -228,13 +323,13 @@ func TestRequestLogger_ID(t *testing.T) {
 			var expect RequestLoggerValues
 			e.Use(RequestLoggerWithConfig(RequestLoggerConfig{
 				LogRequestID: true,
-				LogValuesFunc: func(c echo.Context, values RequestLoggerValues) error {
+				LogValuesFunc: func(c *echo.Context, values RequestLoggerValues) error {
 					expect = values
 					return nil
 				},
 			}))
 
-			e.GET("/test", func(c echo.Context) error {
+			e.GET("/test", func(c *echo.Context) error {
 				c.Response().Header().Set(echo.HeaderXRequestID, "321")
 				return c.String(http.StatusTeapot, "OK")
 			})
@@ -258,12 +353,12 @@ func TestRequestLogger_headerIsCaseInsensitive(t *testing.T) {
 
 	var expect RequestLoggerValues
 	mw := RequestLoggerWithConfig(RequestLoggerConfig{
-		LogValuesFunc: func(c echo.Context, values RequestLoggerValues) error {
+		LogValuesFunc: func(c *echo.Context, values RequestLoggerValues) error {
 			expect = values
 			return nil
 		},
 		LogHeaders: []string{"referer", "User-Agent"},
-	})(func(c echo.Context) error {
+	})(func(c *echo.Context) error {
 		c.Request().Header.Set(echo.HeaderXRequestID, "123")
 		c.FormValue("to force parse form")
 		return c.String(http.StatusTeapot, "OK")
@@ -288,7 +383,7 @@ func TestRequestLogger_allFields(t *testing.T) {
 	isFirstNowCall := true
 	var expect RequestLoggerValues
 	mw := RequestLoggerWithConfig(RequestLoggerConfig{
-		LogValuesFunc: func(c echo.Context, values RequestLoggerValues) error {
+		LogValuesFunc: func(c *echo.Context, values RequestLoggerValues) error {
 			expect = values
 			return nil
 		},
@@ -304,7 +399,6 @@ func TestRequestLogger_allFields(t *testing.T) {
 		LogReferer:       true,
 		LogUserAgent:     true,
 		LogStatus:        true,
-		LogError:         true,
 		LogContentLength: true,
 		LogResponseSize:  true,
 		LogHeaders:       []string{"accept-encoding", "User-Agent"},
@@ -317,7 +411,7 @@ func TestRequestLogger_allFields(t *testing.T) {
 			}
 			return time.Unix(1631045377+10, 0)
 		},
-	})(func(c echo.Context) error {
+	})(func(c *echo.Context) error {
 		c.Request().Header.Set(echo.HeaderXRequestID, "123")
 		c.FormValue("to force parse form")
 		return c.String(http.StatusTeapot, "OK")
@@ -346,7 +440,7 @@ func TestRequestLogger_allFields(t *testing.T) {
 	assert.Equal(t, time.Unix(1631045377, 0), expect.StartTime)
 	assert.Equal(t, 10*time.Second, expect.Latency)
 	assert.Equal(t, "HTTP/1.1", expect.Protocol)
-	assert.Equal(t, "8.8.8.8", expect.RemoteIP)
+	assert.Equal(t, "192.0.2.1", expect.RemoteIP)
 	assert.Equal(t, "example.com", expect.Host)
 	assert.Equal(t, http.MethodPost, expect.Method)
 	assert.Equal(t, "/test?lang=en&checked=1&checked=2", expect.URI)
@@ -372,12 +466,86 @@ func TestRequestLogger_allFields(t *testing.T) {
 	assert.Equal(t, []string{"1", "2"}, expect.FormValues["multiple"])
 }
 
+func TestTestRequestLogger(t *testing.T) {
+	var testCases = []struct {
+		name         string
+		whenStatus   int
+		whenError    error
+		expectStatus string
+		expectError  string
+	}{
+		{
+			name:         "ok",
+			whenStatus:   http.StatusTeapot,
+			expectStatus: "418",
+		},
+		{
+			name:         "error",
+			whenError:    echo.NewHTTPError(http.StatusBadGateway, "bad gw"),
+			expectStatus: "502",
+			expectError:  `"error":"code=502, message=bad gw"`,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+			buf := new(bytes.Buffer)
+			e.Logger = slog.New(slog.NewJSONHandler(buf, nil))
+
+			e.Use(RequestLogger())
+			e.POST("/test", func(c *echo.Context) error {
+				if tc.whenError != nil {
+					return tc.whenError
+				}
+				return c.String(tc.whenStatus, "OK")
+			})
+
+			f := make(url.Values)
+			f.Set("csrf", "token")
+			f.Set("multiple", "1")
+			f.Add("multiple", "2")
+			reader := strings.NewReader(f.Encode())
+			req := httptest.NewRequest(http.MethodPost, "/test?lang=en&checked=1&checked=2", reader)
+			req.Header.Set("Referer", "https://echo.labstack.com/")
+			req.Header.Set("User-Agent", "curl/7.68.0")
+			req.Header.Set(echo.HeaderContentLength, strconv.Itoa(int(reader.Size())))
+			req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationForm)
+			req.Header.Set(echo.HeaderXRealIP, "8.8.8.8")
+			req.Header.Set(echo.HeaderXRequestID, "MY_ID")
+
+			rec := httptest.NewRecorder()
+
+			e.ServeHTTP(rec, req)
+
+			rawlog := buf.Bytes()
+			if tc.expectError != "" {
+				assert.Contains(t, string(rawlog), `"level":"ERROR"`)
+				assert.Contains(t, string(rawlog), `"msg":"REQUEST_ERROR"`)
+				assert.Contains(t, string(rawlog), tc.expectError)
+			} else {
+				assert.Contains(t, string(rawlog), `"level":"INFO"`)
+				assert.Contains(t, string(rawlog), `"msg":"REQUEST"`)
+			}
+			assert.Contains(t, string(rawlog), `"status":`+tc.expectStatus)
+			assert.Contains(t, string(rawlog), `"method":"POST"`)
+			assert.Contains(t, string(rawlog), `"uri":"/test?lang=en&checked=1&checked=2"`)
+			assert.Contains(t, string(rawlog), `"latency":`) // this value varies
+			assert.Contains(t, string(rawlog), `"request_id":"MY_ID"`)
+			assert.Contains(t, string(rawlog), `"remote_ip":"192.0.2.1"`)
+			assert.Contains(t, string(rawlog), `"host":"example.com"`)
+			assert.Contains(t, string(rawlog), `"user_agent":"curl/7.68.0"`)
+			assert.Contains(t, string(rawlog), `"bytes_in":"32"`)
+			assert.Contains(t, string(rawlog), `"bytes_out":2`)
+		})
+	}
+}
+
 func BenchmarkRequestLogger_withoutMapFields(b *testing.B) {
 	e := echo.New()
 
 	mw := RequestLoggerWithConfig(RequestLoggerConfig{
 		Skipper: nil,
-		LogValuesFunc: func(c echo.Context, values RequestLoggerValues) error {
+		LogValuesFunc: func(c *echo.Context, values RequestLoggerValues) error {
 			return nil
 		},
 		LogLatency:       true,
@@ -392,10 +560,9 @@ func BenchmarkRequestLogger_withoutMapFields(b *testing.B) {
 		LogReferer:       true,
 		LogUserAgent:     true,
 		LogStatus:        true,
-		LogError:         true,
 		LogContentLength: true,
 		LogResponseSize:  true,
-	})(func(c echo.Context) error {
+	})(func(c *echo.Context) error {
 		c.Request().Header.Set(echo.HeaderXRequestID, "123")
 		return c.String(http.StatusTeapot, "OK")
 	})
@@ -418,7 +585,7 @@ func BenchmarkRequestLogger_withMapFields(b *testing.B) {
 	e := echo.New()
 
 	mw := RequestLoggerWithConfig(RequestLoggerConfig{
-		LogValuesFunc: func(c echo.Context, values RequestLoggerValues) error {
+		LogValuesFunc: func(c *echo.Context, values RequestLoggerValues) error {
 			return nil
 		},
 		LogLatency:       true,
@@ -433,13 +600,12 @@ func BenchmarkRequestLogger_withMapFields(b *testing.B) {
 		LogReferer:       true,
 		LogUserAgent:     true,
 		LogStatus:        true,
-		LogError:         true,
 		LogContentLength: true,
 		LogResponseSize:  true,
 		LogHeaders:       []string{"accept-encoding", "User-Agent"},
 		LogQueryParams:   []string{"lang", "checked"},
 		LogFormValues:    []string{"csrf", "multiple"},
-	})(func(c echo.Context) error {
+	})(func(c *echo.Context) error {
 		c.Request().Header.Set(echo.HeaderXRequestID, "123")
 		c.FormValue("to force parse form")
 		return c.String(http.StatusTeapot, "OK")

@@ -16,7 +16,7 @@ import (
 /**
 	Following functions provide handful of methods for binding to Go native types from request query or path parameters.
     * QueryParamsBinder(c) - binds query parameters (source URL)
-    * PathParamsBinder(c) - binds path parameters (source URL)
+    * PathValuesBinder(c) - binds path parameters (source URL)
     * FormFieldBinder(c) - binds form fields (source URL + body)
 
 	Example:
@@ -66,6 +66,9 @@ import (
 */
 
 // BindingError represents an error that occurred while binding request data.
+//
+// Note: JSON serialization is handled by the MarshalJSON method below, not by the
+// struct tags (which are kept for documentation). MarshalJSON emits {"field","message"}.
 type BindingError struct {
 	// Field is the field name where value binding failed
 	Field string `json:"field"`
@@ -75,21 +78,35 @@ type BindingError struct {
 }
 
 // NewBindingError creates new instance of binding error
-func NewBindingError(sourceParam string, values []string, message interface{}, internalError error) error {
+func NewBindingError(sourceParam string, values []string, message string, err error) error {
 	return &BindingError{
-		Field:  sourceParam,
-		Values: values,
-		HTTPError: &HTTPError{
-			Code:     http.StatusBadRequest,
-			Message:  message,
-			Internal: internalError,
-		},
+		Field:     sourceParam,
+		Values:    values,
+		HTTPError: &HTTPError{Code: http.StatusBadRequest, Message: message, err: err},
 	}
 }
 
 // Error returns error message
 func (be *BindingError) Error() string {
 	return fmt.Sprintf("%s, field=%s", be.HTTPError.Error(), be.Field)
+}
+
+// MarshalJSON implements json.Marshaler so that binding errors are serialized into
+// a structured response (e.g. {"field":"id","message":"..."}) rather than being
+// flattened to a generic message. DefaultHTTPErrorHandler routes errors that
+// implement json.Marshaler through their own encoding.
+func (be *BindingError) MarshalJSON() ([]byte, error) {
+	message := be.Message
+	if message == "" {
+		message = http.StatusText(be.Code)
+	}
+	return json.Marshal(struct {
+		Field   string `json:"field"`
+		Message string `json:"message"`
+	}{
+		Field:   be.Field,
+		Message: message,
+	})
 }
 
 // ValueBinder provides utility methods for binding query or path parameter to various Go built-in types
@@ -99,14 +116,14 @@ type ValueBinder struct {
 	// ValuesFunc is used to get all values for parameter from request. i.e. `/api/search?ids=1&ids=2`
 	ValuesFunc func(sourceParam string) []string
 	// ErrorFunc is used to create errors. Allows you to use your own error type, that for example marshals to your specific json response
-	ErrorFunc func(sourceParam string, values []string, message interface{}, internalError error) error
+	ErrorFunc func(sourceParam string, values []string, message string, internalError error) error
 	errors    []error
 	// failFast is flag for binding methods to return without attempting to bind when previous binding already failed
 	failFast bool
 }
 
 // QueryParamsBinder creates query parameter value binder
-func QueryParamsBinder(c Context) *ValueBinder {
+func QueryParamsBinder(c *Context) *ValueBinder {
 	return &ValueBinder{
 		failFast:  true,
 		ValueFunc: c.QueryParam,
@@ -121,8 +138,8 @@ func QueryParamsBinder(c Context) *ValueBinder {
 	}
 }
 
-// PathParamsBinder creates path parameter value binder
-func PathParamsBinder(c Context) *ValueBinder {
+// PathValuesBinder creates path parameter value binder
+func PathValuesBinder(c *Context) *ValueBinder {
 	return &ValueBinder{
 		failFast:  true,
 		ValueFunc: c.Param,
@@ -148,7 +165,7 @@ func PathParamsBinder(c Context) *ValueBinder {
 // NB: when binding forms take note that this implementation uses standard library form parsing
 // which parses form data from BOTH URL and BODY if content type is not MIMEMultipartForm
 // See https://golang.org/pkg/net/http/#Request.ParseForm
-func FormFieldBinder(c Context) *ValueBinder {
+func FormFieldBinder(c *Context) *ValueBinder {
 	vb := &ValueBinder{
 		failFast: true,
 		ValueFunc: func(sourceParam string) string {
@@ -159,7 +176,7 @@ func FormFieldBinder(c Context) *ValueBinder {
 	vb.ValuesFunc = func(sourceParam string) []string {
 		if c.Request().Form == nil {
 			// this is same as `Request().FormValue()` does internally
-			_ = c.Request().ParseMultipartForm(32 << 20)
+			_, _ = c.MultipartForm() // we want to trigger c.request.ParseMultipartForm(c.formParseMaxMemory)
 		}
 		values, ok := c.Request().Form[sourceParam]
 		if !ok {
@@ -402,17 +419,17 @@ func (b *ValueBinder) MustTextUnmarshaler(sourceParam string, dest encoding.Text
 
 // BindWithDelimiter binds parameter to destination by suitable conversion function.
 // Delimiter is used before conversion to split parameter value to separate values
-func (b *ValueBinder) BindWithDelimiter(sourceParam string, dest interface{}, delimiter string) *ValueBinder {
+func (b *ValueBinder) BindWithDelimiter(sourceParam string, dest any, delimiter string) *ValueBinder {
 	return b.bindWithDelimiter(sourceParam, dest, delimiter, false)
 }
 
 // MustBindWithDelimiter requires parameter value to exist to bind destination by suitable conversion function.
 // Delimiter is used before conversion to split parameter value to separate values
-func (b *ValueBinder) MustBindWithDelimiter(sourceParam string, dest interface{}, delimiter string) *ValueBinder {
+func (b *ValueBinder) MustBindWithDelimiter(sourceParam string, dest any, delimiter string) *ValueBinder {
 	return b.bindWithDelimiter(sourceParam, dest, delimiter, true)
 }
 
-func (b *ValueBinder) bindWithDelimiter(sourceParam string, dest interface{}, delimiter string, valueMustExist bool) *ValueBinder {
+func (b *ValueBinder) bindWithDelimiter(sourceParam string, dest any, delimiter string, valueMustExist bool) *ValueBinder {
 	if b.failFast && b.errors != nil {
 		return b
 	}
@@ -500,7 +517,7 @@ func (b *ValueBinder) MustInt(sourceParam string, dest *int) *ValueBinder {
 	return b.intValue(sourceParam, dest, 0, true)
 }
 
-func (b *ValueBinder) intValue(sourceParam string, dest interface{}, bitSize int, valueMustExist bool) *ValueBinder {
+func (b *ValueBinder) intValue(sourceParam string, dest any, bitSize int, valueMustExist bool) *ValueBinder {
 	if b.failFast && b.errors != nil {
 		return b
 	}
@@ -516,7 +533,7 @@ func (b *ValueBinder) intValue(sourceParam string, dest interface{}, bitSize int
 	return b.int(sourceParam, value, dest, bitSize)
 }
 
-func (b *ValueBinder) int(sourceParam string, value string, dest interface{}, bitSize int) *ValueBinder {
+func (b *ValueBinder) int(sourceParam string, value string, dest any, bitSize int) *ValueBinder {
 	n, err := strconv.ParseInt(value, 10, bitSize)
 	if err != nil {
 		if bitSize == 0 {
@@ -531,18 +548,18 @@ func (b *ValueBinder) int(sourceParam string, value string, dest interface{}, bi
 	case *int64:
 		*d = n
 	case *int32:
-		*d = int32(n)
+		*d = int32(n) // #nosec G115
 	case *int16:
-		*d = int16(n)
+		*d = int16(n) // #nosec G115
 	case *int8:
-		*d = int8(n)
+		*d = int8(n) // #nosec G115
 	case *int:
 		*d = int(n)
 	}
 	return b
 }
 
-func (b *ValueBinder) intsValue(sourceParam string, dest interface{}, valueMustExist bool) *ValueBinder {
+func (b *ValueBinder) intsValue(sourceParam string, dest any, valueMustExist bool) *ValueBinder {
 	if b.failFast && b.errors != nil {
 		return b
 	}
@@ -557,7 +574,7 @@ func (b *ValueBinder) intsValue(sourceParam string, dest interface{}, valueMustE
 	return b.ints(sourceParam, values, dest)
 }
 
-func (b *ValueBinder) ints(sourceParam string, values []string, dest interface{}) *ValueBinder {
+func (b *ValueBinder) ints(sourceParam string, values []string, dest any) *ValueBinder {
 	switch d := dest.(type) {
 	case *[]int64:
 		tmp := make([]int64, len(values))
@@ -728,7 +745,7 @@ func (b *ValueBinder) MustUint(sourceParam string, dest *uint) *ValueBinder {
 	return b.uintValue(sourceParam, dest, 0, true)
 }
 
-func (b *ValueBinder) uintValue(sourceParam string, dest interface{}, bitSize int, valueMustExist bool) *ValueBinder {
+func (b *ValueBinder) uintValue(sourceParam string, dest any, bitSize int, valueMustExist bool) *ValueBinder {
 	if b.failFast && b.errors != nil {
 		return b
 	}
@@ -744,7 +761,7 @@ func (b *ValueBinder) uintValue(sourceParam string, dest interface{}, bitSize in
 	return b.uint(sourceParam, value, dest, bitSize)
 }
 
-func (b *ValueBinder) uint(sourceParam string, value string, dest interface{}, bitSize int) *ValueBinder {
+func (b *ValueBinder) uint(sourceParam string, value string, dest any, bitSize int) *ValueBinder {
 	n, err := strconv.ParseUint(value, 10, bitSize)
 	if err != nil {
 		if bitSize == 0 {
@@ -759,18 +776,18 @@ func (b *ValueBinder) uint(sourceParam string, value string, dest interface{}, b
 	case *uint64:
 		*d = n
 	case *uint32:
-		*d = uint32(n)
+		*d = uint32(n) // #nosec G115
 	case *uint16:
-		*d = uint16(n)
+		*d = uint16(n) // #nosec G115
 	case *uint8: // byte is alias to uint8
-		*d = uint8(n)
+		*d = uint8(n) // #nosec G115
 	case *uint:
-		*d = uint(n)
+		*d = uint(n) // #nosec G115
 	}
 	return b
 }
 
-func (b *ValueBinder) uintsValue(sourceParam string, dest interface{}, valueMustExist bool) *ValueBinder {
+func (b *ValueBinder) uintsValue(sourceParam string, dest any, valueMustExist bool) *ValueBinder {
 	if b.failFast && b.errors != nil {
 		return b
 	}
@@ -785,7 +802,7 @@ func (b *ValueBinder) uintsValue(sourceParam string, dest interface{}, valueMust
 	return b.uints(sourceParam, values, dest)
 }
 
-func (b *ValueBinder) uints(sourceParam string, values []string, dest interface{}) *ValueBinder {
+func (b *ValueBinder) uints(sourceParam string, values []string, dest any) *ValueBinder {
 	switch d := dest.(type) {
 	case *[]uint64:
 		tmp := make([]uint64, len(values))
@@ -991,7 +1008,7 @@ func (b *ValueBinder) MustFloat32(sourceParam string, dest *float32) *ValueBinde
 	return b.floatValue(sourceParam, dest, 32, true)
 }
 
-func (b *ValueBinder) floatValue(sourceParam string, dest interface{}, bitSize int, valueMustExist bool) *ValueBinder {
+func (b *ValueBinder) floatValue(sourceParam string, dest any, bitSize int, valueMustExist bool) *ValueBinder {
 	if b.failFast && b.errors != nil {
 		return b
 	}
@@ -1007,7 +1024,7 @@ func (b *ValueBinder) floatValue(sourceParam string, dest interface{}, bitSize i
 	return b.float(sourceParam, value, dest, bitSize)
 }
 
-func (b *ValueBinder) float(sourceParam string, value string, dest interface{}, bitSize int) *ValueBinder {
+func (b *ValueBinder) float(sourceParam string, value string, dest any, bitSize int) *ValueBinder {
 	n, err := strconv.ParseFloat(value, bitSize)
 	if err != nil {
 		b.setError(b.ErrorFunc(sourceParam, []string{value}, fmt.Sprintf("failed to bind field value to float%v", bitSize), err))
@@ -1023,7 +1040,7 @@ func (b *ValueBinder) float(sourceParam string, value string, dest interface{}, 
 	return b
 }
 
-func (b *ValueBinder) floatsValue(sourceParam string, dest interface{}, valueMustExist bool) *ValueBinder {
+func (b *ValueBinder) floatsValue(sourceParam string, dest any, valueMustExist bool) *ValueBinder {
 	if b.failFast && b.errors != nil {
 		return b
 	}
@@ -1038,7 +1055,7 @@ func (b *ValueBinder) floatsValue(sourceParam string, dest interface{}, valueMus
 	return b.floats(sourceParam, values, dest)
 }
 
-func (b *ValueBinder) floats(sourceParam string, values []string, dest interface{}) *ValueBinder {
+func (b *ValueBinder) floats(sourceParam string, values []string, dest any) *ValueBinder {
 	switch d := dest.(type) {
 	case *[]float64:
 		tmp := make([]float64, len(values))
@@ -1243,7 +1260,7 @@ func (b *ValueBinder) UnixTime(sourceParam string, dest *time.Time) *ValueBinder
 	return b.unixTime(sourceParam, dest, false, time.Second)
 }
 
-// MustUnixTime requires parameter value to exist to bind to time.Duration variable (in local time corresponding
+// MustUnixTime requires parameter value to exist to bind to time.Time variable (in local time corresponding
 // to the given Unix time). Returns error when value does not exist.
 //
 // Example: 1609180603 bind to 2020-12-28T18:36:43.000000000+00:00
@@ -1264,7 +1281,7 @@ func (b *ValueBinder) UnixTimeMilli(sourceParam string, dest *time.Time) *ValueB
 	return b.unixTime(sourceParam, dest, false, time.Millisecond)
 }
 
-// MustUnixTimeMilli requires parameter value to exist to bind to time.Duration variable  (in local time corresponding
+// MustUnixTimeMilli requires parameter value to exist to bind to time.Time variable (in local time corresponding
 // to the given Unix time in millisecond precision). Returns error when value does not exist.
 //
 // Example: 1647184410140 bind to 2022-03-13T15:13:30.140000000+00:00
@@ -1288,8 +1305,8 @@ func (b *ValueBinder) UnixTimeNano(sourceParam string, dest *time.Time) *ValueBi
 	return b.unixTime(sourceParam, dest, false, time.Nanosecond)
 }
 
-// MustUnixTimeNano requires parameter value to exist to bind to time.Duration variable  (in local Time corresponding
-// to the given Unix time value in nano second precision). Returns error when value does not exist.
+// MustUnixTimeNano requires parameter value to exist to bind to time.Time variable (in local time corresponding
+// to the given Unix time value in nanosecond precision). Returns error when value does not exist.
 //
 // Example: 1609180603123456789 binds to 2020-12-28T18:36:43.123456789+00:00
 // Example:          1000000000 binds to 1970-01-01T00:00:01.000000000+00:00

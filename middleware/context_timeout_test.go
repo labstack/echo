@@ -6,6 +6,7 @@ package middleware
 import (
 	"context"
 	"errors"
+	"github.com/labstack/echo/v5"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -13,14 +14,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestContextTimeoutSkipper(t *testing.T) {
 	t.Parallel()
 	m := ContextTimeoutWithConfig(ContextTimeoutConfig{
-		Skipper: func(context echo.Context) bool {
+		Skipper: func(context *echo.Context) bool {
 			return true
 		},
 		Timeout: 10 * time.Millisecond,
@@ -32,7 +32,7 @@ func TestContextTimeoutSkipper(t *testing.T) {
 	e := echo.New()
 	c := e.NewContext(req, rec)
 
-	err := m(func(c echo.Context) error {
+	err := m(func(c *echo.Context) error {
 		if err := sleepWithContext(c.Request().Context(), time.Duration(20*time.Millisecond)); err != nil {
 			return err
 		}
@@ -65,7 +65,7 @@ func TestContextTimeoutErrorOutInHandler(t *testing.T) {
 	c := e.NewContext(req, rec)
 
 	rec.Code = 1 // we want to be sure that even 200 will not be sent
-	err := m(func(c echo.Context) error {
+	err := m(func(c *echo.Context) error {
 		// this error must not be written to the client response. Middlewares upstream of timeout middleware must be able
 		// to handle returned error and this can be done only then handler has not yet committed (written status code)
 		// the response.
@@ -91,7 +91,7 @@ func TestContextTimeoutSuccessfulRequest(t *testing.T) {
 	e := echo.New()
 	c := e.NewContext(req, rec)
 
-	err := m(func(c echo.Context) error {
+	err := m(func(c *echo.Context) error {
 		return c.JSON(http.StatusCreated, map[string]string{"data": "ok"})
 	})(c)
 
@@ -115,7 +115,7 @@ func TestContextTimeoutTestRequestClone(t *testing.T) {
 	e := echo.New()
 	c := e.NewContext(req, rec)
 
-	err := m(func(c echo.Context) error {
+	err := m(func(c *echo.Context) error {
 		// Cookie test
 		cookie, err := c.Request().Cookie("cookie")
 		if assert.NoError(t, err) {
@@ -150,23 +150,24 @@ func TestContextTimeoutWithDefaultErrorMessage(t *testing.T) {
 	e := echo.New()
 	c := e.NewContext(req, rec)
 
-	err := m(func(c echo.Context) error {
+	err := m(func(c *echo.Context) error {
 		if err := sleepWithContext(c.Request().Context(), time.Duration(80*time.Millisecond)); err != nil {
 			return err
 		}
 		return c.String(http.StatusOK, "Hello, World!")
 	})(c)
 
-	assert.IsType(t, &echo.HTTPError{}, err)
 	assert.Error(t, err)
-	assert.Equal(t, http.StatusServiceUnavailable, err.(*echo.HTTPError).Code)
-	assert.Equal(t, "Service Unavailable", err.(*echo.HTTPError).Message)
+	if assert.IsType(t, &echo.HTTPError{}, err) {
+		assert.Equal(t, http.StatusServiceUnavailable, err.(*echo.HTTPError).Code)
+		assert.Equal(t, "Service Unavailable", err.(*echo.HTTPError).Message)
+	}
 }
 
 func TestContextTimeoutCanHandleContextDeadlineOnNextHandler(t *testing.T) {
 	t.Parallel()
 
-	timeoutErrorHandler := func(err error, c echo.Context) error {
+	timeoutErrorHandler := func(c *echo.Context, err error) error {
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
 				return &echo.HTTPError{
@@ -191,7 +192,7 @@ func TestContextTimeoutCanHandleContextDeadlineOnNextHandler(t *testing.T) {
 	e := echo.New()
 	c := e.NewContext(req, rec)
 
-	err := m(func(c echo.Context) error {
+	err := m(func(c *echo.Context) error {
 		// NOTE: Very short periods are not reliable for tests due to Go routine scheduling and the unpredictable order
 		// for 1) request and 2) time goroutine. For most OS this works as expected, but MacOS seems most flaky.
 

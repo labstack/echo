@@ -1,0 +1,215 @@
+# Echo
+
+> Echo is a high performance, extensible, minimalist Go web framework built on the standard `net/http` library. Echo adds a fast radix-tree router, request binding with pluggable validator, a deep middleware ecosystem, centralized error handling, and template rendering on top of the standard library.
+
+Key facts for LLMs:
+- Import path is `github.com/labstack/echo/v5`
+- Handlers use `*echo.Context` (pointer to struct)
+- `Context` is a concrete struct, not an interface
+- Logging uses `log/slog`
+- Go 1.25+ required
+
+## Quick Reference
+
+- [Echo v5 API Changes](https://github.com/labstack/echo/blob/master/API_CHANGES_V5.md): Breaking changes reference
+- [Echo Official Docs](https://echo.labstack.com): Human-readable documentation site
+- [pkg.go.dev](https://pkg.go.dev/github.com/labstack/echo/v5): API reference on Go package discovery
+
+## Core Patterns
+
+### Server setup
+
+```go
+package main
+
+import (
+    "log/slog"
+    "net/http"
+
+    "github.com/labstack/echo/v5"
+    "github.com/labstack/echo/v5/middleware"
+)
+
+func hello(c *echo.Context) error {
+    return c.String(http.StatusOK, "Hello, World!")
+}
+
+func main() {
+    e := echo.New()
+    e.Use(middleware.RequestLogger())
+    e.Use(middleware.Recover())
+    e.GET("/", hello)
+    if err := e.Start(":8080"); err != nil {
+        slog.Error("failed to start server", "error", err)
+    }
+}
+```
+
+### Handler signature
+
+```go
+func handler(c *echo.Context) error {
+    return c.JSON(http.StatusOK, map[string]string{"hello": "world"})
+}
+```
+
+### Route registration
+
+```go
+e := echo.New()
+e.GET("/users/:id", getUser)
+e.POST("/users", createUser)
+e.PUT("/users/:id", updateUser)
+e.DELETE("/users/:id", deleteUser)
+
+// Group routes
+g := e.Group("/api/v1")
+g.GET("/posts", listPosts)
+g.POST("/posts", createPost)
+
+// Group with middleware
+admin := e.Group("/admin", middleware.BasicAuth(basicAuthValidator))
+admin.GET("/stats", getStats)
+```
+
+### Generic parameter extraction
+
+```go
+// Type-safe path params
+id, err := echo.PathParam[int](c, "id")
+name, err := echo.PathParam[string](c, "name")
+
+// Query params with defaults
+page, err := echo.QueryParamOr[int](c, "page", 1)
+tags, err := echo.QueryParams[string](c, "tags")
+
+// Form values
+val, err := echo.FormValue[string](c, "field")
+val2, err := echo.FormValueOr[string](c, "field", "default")
+
+// Supported types: bool, string, int/int8/.../int64, uint/.../uint64,
+// float32/float64, time.Time, time.Duration
+```
+
+### Request binding
+
+```go
+type User struct {
+    Name  string `json:"name"`
+    Email string `json:"email"`
+}
+
+func createUser(c *echo.Context) error {
+    u := new(User)
+    if err := c.Bind(u); err != nil {
+        return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+    }
+    if err := c.Validate(u); err != nil {
+        return err
+    }
+    return c.JSON(http.StatusCreated, u)
+}
+```
+
+### Error handling
+
+```go
+// NewHTTPError takes a string message
+err := echo.NewHTTPError(http.StatusBadRequest, "invalid input")
+
+// Custom error handler
+e.HTTPErrorHandler = func(c *echo.Context, err error) {
+    // custom error handling
+}
+
+// DefaultHTTPErrorHandler is a factory (exposeError bool)
+e.HTTPErrorHandler = echo.DefaultHTTPErrorHandler(true)
+```
+
+### Logging
+
+```go
+// Echo uses the standard library slog
+e.Logger = slog.Default()
+
+// In handlers
+c.Logger().Info("request", "path", c.Path(), "method", c.Request().Method)
+
+// Custom logger
+logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+e.Logger = logger
+```
+
+### Middleware
+
+```go
+// Built-in middleware
+e.Use(middleware.RequestLogger())
+e.Use(middleware.Recover())
+e.Use(middleware.CORS())
+e.Use(middleware.Gzip())
+e.Use(middleware.BasicAuth(func(c *echo.Context, username, password string) (bool, error) {
+    return username == "admin" && password == "secret", nil
+}))
+e.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(20)))
+
+// Route-level middleware
+e.GET("/sensitive", handler, middleware.RequestID(), middleware.Logger())
+```
+
+### Response helpers
+
+```go
+c.String(http.StatusOK, "text")
+c.JSON(http.StatusOK, data)
+c.JSONPretty(http.StatusOK, data, "  ")
+c.XML(http.StatusOK, data)
+c.Blob(http.StatusOK, "image/png", bytes)
+c.Stream(http.StatusOK, "text/event-stream", reader)
+c.File("path/to/file")
+c.FileFS("file.txt", filesystem)
+c.Attachment("path/to/file", "download.txt")
+c.Redirect(http.StatusFound, "/new-path")
+c.NoContent(http.StatusOK)
+c.HTML(http.StatusOK, "<h1>Hello</h1>")
+```
+
+### Static files
+
+```go
+e.Static("/assets", "public")
+e.StaticFS("/static", filesystem)
+e.File("/robots.txt", "robots.txt")
+e.FileFS("file.txt", filesystem)
+```
+
+### Context store (type-safe)
+
+```go
+// Set and get values on context
+c.Set("user", user)
+val, err := echo.ContextGet[*User](c, "user")
+count, err := echo.ContextGetOr[int](c, "count", 0)
+```
+
+### Graceful shutdown with StartConfig
+
+```go
+ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+defer cancel()
+
+sc := echo.StartConfig{
+    Address:        ":8080",
+    GracefulTimeout: 10 * time.Second,
+}
+if err := sc.Start(ctx, e); err != nil {
+    log.Fatal(err)
+}
+```
+
+## Optional
+
+- [Echo GitHub Discussions](https://github.com/labstack/echo/discussions): Community Q&A and proposals
+- [Echo Roadmap](https://github.com/labstack/echo/blob/master/ROADMAP.md): Future plans
+- [Echo Changelog](https://github.com/labstack/echo/blob/master/CHANGELOG.md): Release history
+- [API_CHANGES_V5.md](https://github.com/labstack/echo/blob/master/API_CHANGES_V5.md): Full v5 breaking changes reference

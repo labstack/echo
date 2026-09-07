@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,29 +17,108 @@ func TestRequestID(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	handler := func(c echo.Context) error {
+	handler := func(c *echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}
 
-	rid := RequestIDWithConfig(RequestIDConfig{})
+	rid := RequestID()
+	h := rid(handler)
+	err := h(c)
+	assert.NoError(t, err)
+	assert.Len(t, rec.Header().Get(echo.HeaderXRequestID), 32)
+}
+
+func TestMustRequestIDWithConfig_skipper(t *testing.T) {
+	e := echo.New()
+	e.GET("/", func(c *echo.Context) error {
+		return c.String(http.StatusTeapot, "test")
+	})
+
+	generatorCalled := false
+	e.Use(RequestIDWithConfig(RequestIDConfig{
+		Skipper: func(c *echo.Context) bool {
+			return true
+		},
+		Generator: func() string {
+			generatorCalled = true
+			return "customGenerator"
+		},
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	res := httptest.NewRecorder()
+	e.ServeHTTP(res, req)
+
+	assert.Equal(t, http.StatusTeapot, res.Code)
+	assert.Equal(t, "test", res.Body.String())
+
+	assert.Equal(t, res.Header().Get(echo.HeaderXRequestID), "")
+	assert.False(t, generatorCalled)
+}
+
+func TestMustRequestIDWithConfig_customGenerator(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	handler := func(c *echo.Context) error {
+		return c.String(http.StatusOK, "test")
+	}
+
+	rid := RequestIDWithConfig(RequestIDConfig{
+		Generator: func() string { return "customGenerator" },
+	})
+	h := rid(handler)
+	err := h(c)
+	assert.NoError(t, err)
+	assert.Equal(t, rec.Header().Get(echo.HeaderXRequestID), "customGenerator")
+}
+
+func TestMustRequestIDWithConfig_RequestIDHandler(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	handler := func(c *echo.Context) error {
+		return c.String(http.StatusOK, "test")
+	}
+
+	called := false
+	rid := RequestIDWithConfig(RequestIDConfig{
+		Generator: func() string { return "customGenerator" },
+		RequestIDHandler: func(c *echo.Context, s string) {
+			called = true
+		},
+	})
+	h := rid(handler)
+	err := h(c)
+	assert.NoError(t, err)
+	assert.Equal(t, rec.Header().Get(echo.HeaderXRequestID), "customGenerator")
+	assert.True(t, called)
+}
+
+func TestRequestIDWithConfig(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	handler := func(c *echo.Context) error {
+		return c.String(http.StatusOK, "test")
+	}
+
+	rid, err := RequestIDConfig{}.ToMiddleware()
+	assert.NoError(t, err)
 	h := rid(handler)
 	h(c)
 	assert.Len(t, rec.Header().Get(echo.HeaderXRequestID), 32)
 
-	// Custom generator and handler
-	customID := "customGenerator"
-	calledHandler := false
+	// Custom generator
 	rid = RequestIDWithConfig(RequestIDConfig{
-		Generator: func() string { return customID },
-		RequestIDHandler: func(_ echo.Context, id string) {
-			calledHandler = true
-			assert.Equal(t, customID, id)
-		},
+		Generator: func() string { return "customGenerator" },
 	})
 	h = rid(handler)
 	h(c)
 	assert.Equal(t, rec.Header().Get(echo.HeaderXRequestID), "customGenerator")
-	assert.True(t, calledHandler)
 }
 
 func TestRequestID_IDNotAltered(t *testing.T) {
@@ -49,7 +128,7 @@ func TestRequestID_IDNotAltered(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	handler := func(c echo.Context) error {
+	handler := func(c *echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}
 
@@ -64,7 +143,7 @@ func TestRequestIDConfigDifferentHeader(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	handler := func(c echo.Context) error {
+	handler := func(c *echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}
 
@@ -79,7 +158,7 @@ func TestRequestIDConfigDifferentHeader(t *testing.T) {
 	rid = RequestIDWithConfig(RequestIDConfig{
 		Generator:    func() string { return customID },
 		TargetHeader: echo.HeaderXCorrelationID,
-		RequestIDHandler: func(_ echo.Context, id string) {
+		RequestIDHandler: func(_ *echo.Context, id string) {
 			calledHandler = true
 			assert.Equal(t, customID, id)
 		},
