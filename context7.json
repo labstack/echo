@@ -1,17 +1,27 @@
 {
   "$schema": "https://context7.com/schema/context7.json",
+  "url": "https://context7.com/labstack/echo",
+  "public_key": "pk_76lxaEXY77ACj482CFehX",
   "projectTitle": "Echo",
   "description": "High performance, minimalist Go web framework. This entry covers v5, the current major version.",
   "branch": "master",
-  "previousVersions": [{ "branch": "v4" }],
-  "excludeFolders": ["_test", "_fixture", ".github"],
+  "previousVersions": [
+    {
+      "branch": "v4"
+    }
+  ],
+  "excludeFolders": [
+    "_test",
+    "_fixture",
+    ".github"
+  ],
   "rules": [
-    "Echo's current major version is v5. Import it as `github.com/labstack/echo/v5` — the `/v5` suffix is required in go.mod and in every import path.",
+    "Echo's current major version is v5. Import it as `github.com/labstack/echo/v5` \u2014 the `/v5` suffix is required in go.mod and in every import path.",
     "Echo v4 (`github.com/labstack/echo/v4`) is a different, incompatible API kept in long-term support until 2026-12-31. Never mix v4 and v5 code, and state which version you used.",
     "In v5 the request context is a struct pointer: handlers are `func(c *echo.Context) error`. In v4 it was an interface: `func(c echo.Context) error`. v4 handlers do not compile against v5.",
     "Create an instance with `echo.New()`, register routes on the returned `*echo.Echo`, and start the server with `e.Start(addr)`.",
     "Middleware has the signature `func(next echo.HandlerFunc) echo.HandlerFunc` and can be applied at the Echo, Group, or individual route level.",
     "Route registration methods such as `e.GET` return `echo.RouteInfo` in v5, where v4 returned `*echo.Route`.",
-    "Prose documentation lives at https://echo.labstack.com — every page is also available as raw Markdown by appending `.md` to its URL."
+    "Prose documentation lives at https://echo.labstack.com \u2014 every page is also available as raw Markdown by appending `.md` to its URL."
   ]
 }
