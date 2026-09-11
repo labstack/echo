@@ -118,6 +118,97 @@ func TestBodyLimitReader(t *testing.T) {
 	assert.Equal(t, nil, err)
 }
 
+func TestBodyLimitReader_singleOversizedRead(t *testing.T) {
+	hw := []byte("Hello, World!")
+	reader := &limitedReader{
+		BodyLimitConfig: BodyLimitConfig{LimitBytes: 2},
+		reader:          io.NopCloser(bytes.NewReader(hw)),
+	}
+
+	// a single read with a buffer much larger than the limit must deliver at
+	// most the allowed bytes and report the limit as exceeded
+	buf := make([]byte, 64)
+	n, err := reader.Read(buf)
+	assert.Equal(t, 2, n)
+	he := err.(echo.HTTPStatusCoder)
+	assert.Equal(t, http.StatusRequestEntityTooLarge, he.StatusCode())
+}
+
+func TestBodyLimitReader_noDataAfterLimitExceeded(t *testing.T) {
+	hw := bytes.Repeat([]byte("x"), 64)
+	reader := &limitedReader{
+		BodyLimitConfig: BodyLimitConfig{LimitBytes: 5},
+		reader:          io.NopCloser(bytes.NewReader(hw)),
+	}
+
+	// a caller following the io.Reader contract processes the n>0 bytes
+	// before considering the error and keeps calling Read; it must never
+	// receive more data once the limit has been exceeded
+	buf := make([]byte, 64)
+	total := 0
+	var err error
+	for {
+		var n int
+		n, err = reader.Read(buf)
+		total += n
+		if n == 0 {
+			break
+		}
+	}
+
+	assert.Equal(t, 5, total)
+	he := err.(echo.HTTPStatusCoder)
+	assert.Equal(t, http.StatusRequestEntityTooLarge, he.StatusCode())
+}
+
+func TestBodyLimitReader_exactLimitBody(t *testing.T) {
+	hw := []byte("ab")
+	reader := &limitedReader{
+		BodyLimitConfig: BodyLimitConfig{LimitBytes: 2},
+		reader:          io.NopCloser(bytes.NewReader(hw)),
+	}
+
+	// a body of exactly the limit size is not over the limit and must be
+	// readable completely
+	data, err := io.ReadAll(reader)
+	assert.NoError(t, err)
+	assert.Equal(t, "ab", string(data))
+}
+
+func TestBodyLimit_oversizedBodyWithContractCompliantReader(t *testing.T) {
+	e := echo.New()
+	const limit = 5
+	h := func(c *echo.Context) error {
+		buf := make([]byte, 64)
+		total := 0
+		for {
+			n, err := c.Request().Body.Read(buf)
+			total += n
+			if n == 0 {
+				break
+			}
+			// process the n>0 bytes before considering the error, exactly
+			// what io.Reader's documentation tells callers to do
+			_ = err
+		}
+		assert.LessOrEqual(t, total, limit)
+		return c.String(http.StatusOK, "ok")
+	}
+	mw, err := BodyLimitConfig{LimitBytes: limit}.ToMiddleware()
+	assert.NoError(t, err)
+
+	body := bytes.Repeat([]byte("x"), 10*limit)
+	req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body))
+	req.ContentLength = -1 // force the content-read path
+	req.TransferEncoding = []string{"chunked"}
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	err = mw(h)(c)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
 func TestBodyLimit_skipper(t *testing.T) {
 	e := echo.New()
 	h := func(c *echo.Context) error {
