@@ -95,8 +95,14 @@ func TestConcurrentRouter_ConcurrentReads(t *testing.T) {
 func TestConcurrentRouter_ConcurrentWrites(t *testing.T) {
 	router := NewConcurrentRouter(NewRouter(RouterConfig{}))
 
-	_, _ = router.Add(Route{Method: http.MethodGet, Path: "/initial1", Handler: handlerFunc})
-	_, _ = router.Add(Route{Method: http.MethodGet, Path: "/initial2", Handler: handlerFunc})
+	_, err := router.Add(Route{Method: http.MethodGet, Path: "/initial1", Handler: handlerFunc})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = router.Add(Route{Method: http.MethodGet, Path: "/initial2", Handler: handlerFunc})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Launch 5 goroutines, each adds 10 unique routes
 	var wg sync.WaitGroup
