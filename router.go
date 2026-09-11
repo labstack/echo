@@ -947,13 +947,17 @@ func (r *DefaultRouter) Route(c *Context) HandlerFunc {
 	}
 
 	// Router tree is implemented by longest common prefix array (LCP array) https://en.wikipedia.org/wiki/LCP_array
-	// Tree search is implemented as for loop where one loop iteration is divided into 3 separate blocks
-	// Each of these blocks checks specific kind of node (static/param/any). Order of blocks reflex their priority in routing.
+	// Tree search is driven by a small state machine where each node kind (static/param/any) is checked by its own
+	// dedicated function below. Order of functions reflects their priority in routing.
 	// Search order/priority is: static > param > any.
 	//
-	// Note: backtracking in tree is implemented by replacing/switching currentNode to previous node
-	// and hoping to (goto statement) next block by priority to check if it is the match.
-	for {
+	// Note: backtracking in tree is implemented by replacing/switching currentNode to previous node and returning
+	// the next node kind that should be checked for the (now current) node. The driving loop then dispatches to
+	// the matching function for that kind - there is no goto/jump involved.
+
+	// matchStaticNode checks if currentNode (when it is a static node) matches the remaining search path.
+	// It returns which node kind should be checked next and whether the search loop is finished.
+	matchStaticNode := func() (nextKind kind, done bool) {
 		prefixLen := 0 // Prefix length
 		lcpLen := 0    // LCP (longest common prefix) length
 
@@ -971,16 +975,13 @@ func (r *DefaultRouter) Route(c *Context) HandlerFunc {
 			// No matching prefix, let's backtrack to the first possible alternative node of the decision path
 			nk, ok := backtrackToNextNodeKind(staticKind)
 			if !ok {
-				break // No other possibilities on the decision path, handler will be whatever context is reset to.
+				return staticKind, true // No other possibilities on the decision path, handler will be whatever context is reset to.
 			} else if nk == paramKind {
-				goto Param
+				return paramKind, false
 				// NOTE: this case (backtracking from static node to previous any node) can not happen by current any matching logic. Any node is end of search currently
-				//} else if nk == anyKind {
-				//	goto Any
-			} else {
-				// Not found (this should never be possible for static node we are looking currently)
-				break
 			}
+			// Not found (this should never be possible for static node we are looking currently)
+			return staticKind, true
 		}
 
 		// The full prefix has matched, remove the prefix from the remaining search
@@ -998,11 +999,11 @@ func (r *DefaultRouter) Route(c *Context) HandlerFunc {
 				}
 				if h := currentNode.methods.find(req.Method, true, r.autoHandleHEAD); h != nil {
 					matchedRouteMethod = h
-					break
+					return staticKind, true
 				}
 			} else if currentNode.methods.notFoundHandler != nil {
 				matchedRouteMethod = currentNode.methods.notFoundHandler
-				break
+				return staticKind, true
 			}
 		}
 
@@ -1010,12 +1011,16 @@ func (r *DefaultRouter) Route(c *Context) HandlerFunc {
 		if search != "" {
 			if child := currentNode.findStaticChild(search[0]); child != nil {
 				currentNode = child
-				continue
+				return staticKind, false
 			}
 		}
 
-	Param:
-		// Param node
+		return paramKind, false
+	}
+
+	// matchParamNode checks if currentNode has a param child matching the remaining search path.
+	// It returns which node kind should be checked next and whether the search loop is finished.
+	matchParamNode := func() (nextKind kind, done bool) {
 		if child := currentNode.paramChild; search != "" && child != nil {
 			currentNode = child
 			i := 0
@@ -1033,11 +1038,16 @@ func (r *DefaultRouter) Route(c *Context) HandlerFunc {
 			paramIndex++
 			search = search[i:]
 			searchIndex = searchIndex + i
-			continue
+			return staticKind, false
 		}
 
-	Any:
-		// Any node
+		return anyKind, false
+	}
+
+	// matchAnyNode checks if currentNode has an any child matching the remaining search path and, if not,
+	// backtracks to the next possible alternative node of the decision path.
+	// It returns which node kind should be checked next and whether the search loop is finished.
+	matchAnyNode := func() (nextKind kind, done bool) {
 		if child := currentNode.anyChild; child != nil {
 			// If any node is found, use remaining path for paramValues
 			currentNode = child
@@ -1049,7 +1059,7 @@ func (r *DefaultRouter) Route(c *Context) HandlerFunc {
 
 			if rMethod := currentNode.methods.find(req.Method, true, r.autoHandleHEAD); rMethod != nil {
 				matchedRouteMethod = rMethod
-				break
+				return anyKind, true
 			}
 			// we store currentNode as best matching in case we do not find more routes matching this path+method. Needed for 405
 			if previousBestMatchNode == nil {
@@ -1057,21 +1067,36 @@ func (r *DefaultRouter) Route(c *Context) HandlerFunc {
 			}
 			if currentNode.methods.notFoundHandler != nil {
 				matchedRouteMethod = currentNode.methods.notFoundHandler
-				break
+				return anyKind, true
 			}
 		}
 
 		// Let's backtrack to the first possible alternative node of the decision path
 		nk, ok := backtrackToNextNodeKind(anyKind)
 		if !ok {
-			break // No other possibilities on the decision path
+			return anyKind, true // No other possibilities on the decision path
 		} else if nk == paramKind {
-			goto Param
+			return paramKind, false
 		} else if nk == anyKind {
-			goto Any
-		} else {
-			// Not found
-			break
+			return anyKind, false
+		}
+		return anyKind, true // Not found
+	}
+
+	nextKind := staticKind
+routeSearch:
+	for {
+		var done bool
+		switch nextKind {
+		case staticKind:
+			nextKind, done = matchStaticNode()
+		case paramKind:
+			nextKind, done = matchParamNode()
+		case anyKind:
+			nextKind, done = matchAnyNode()
+		}
+		if done {
+			break routeSearch
 		}
 	}
 
