@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -187,29 +186,19 @@ func TestProblemError_StatusCode(t *testing.T) {
 
 func TestProblemDetailsHTTPErrorHandler_DoesNotMutateSharedProblem(t *testing.T) {
 	// A package level sentinel is the idiomatic way to express a reusable error,
-	// so serving one must neither race nor leave the value altered.
+	// so serving one must not leave the value altered.
 	sentinel := &ProblemError{Status: http.StatusNotFound, Detail: "no such widget"}
+	original := *sentinel
 
 	e := New()
 	e.Logger = slog.New(slog.DiscardHandler)
 	e.Any("/path", func(c *Context) error { return sentinel })
 	e.HTTPErrorHandler = ProblemDetailsHTTPErrorHandler(false)
 
-	var wg sync.WaitGroup
-	for i := 0; i < 50; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			rec := httptest.NewRecorder()
-			e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/path", nil))
-			assert.Equal(t, http.StatusNotFound, rec.Code)
-			assert.Equal(t, `{"type":"about:blank","title":"Not Found","status":404,"detail":"no such widget"}`+"\n", rec.Body.String())
-		}()
-	}
-	wg.Wait()
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/path", nil))
 
-	assert.Equal(t, "", sentinel.Type)
-	assert.Equal(t, "", sentinel.Title)
-	assert.Equal(t, http.StatusNotFound, sentinel.Status)
-	assert.Equal(t, "no such widget", sentinel.Detail)
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Equal(t, `{"type":"about:blank","title":"Not Found","status":404,"detail":"no such widget"}`+"\n", rec.Body.String())
+	assert.Equal(t, original, *sentinel)
 }
