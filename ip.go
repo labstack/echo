@@ -247,12 +247,16 @@ func ExtractIPFromXFFHeader(options ...TrustOption) IPExtractor {
 		if len(xffs) == 0 {
 			return directIP
 		}
-		ips := append(strings.Split(strings.Join(xffs, ","), ","), directIP)
-		for i := len(ips) - 1; i >= 0; i-- {
-			ips[i] = strings.TrimSpace(ips[i])
-			ips[i] = strings.TrimPrefix(ips[i], "[")
-			ips[i] = strings.TrimSuffix(ips[i], "]")
-			ip := net.ParseIP(ips[i])
+		// Inspect the direct peer first, then scan header lines and comma-separated
+		// entries from right to left without joining or allocating a slice.
+		headerIndex := len(xffs) - 1
+		remaining := xffs[headerIndex]
+		candidate := directIP
+		for {
+			candidate = strings.TrimSpace(candidate)
+			candidate = strings.TrimPrefix(candidate, "[")
+			candidate = strings.TrimSuffix(candidate, "]")
+			ip := net.ParseIP(candidate)
 			if ip == nil {
 				// Unable to parse IP; cannot trust entire records
 				return directIP
@@ -260,9 +264,22 @@ func ExtractIPFromXFFHeader(options ...TrustOption) IPExtractor {
 			if !checker.trust(ip) {
 				return ip.String()
 			}
+			if headerIndex < 0 {
+				// Preserve the original spelling of the furthest trusted IP.
+				return strings.TrimSpace(candidate)
+			}
+
+			comma := strings.LastIndexByte(remaining, ',')
+			candidate = remaining[comma+1:]
+			if comma >= 0 {
+				remaining = remaining[:comma]
+			} else {
+				headerIndex--
+				if headerIndex >= 0 {
+					remaining = xffs[headerIndex]
+				}
+			}
 		}
-		// All of the IPs are trusted; return first element because it is furthest from server (best effort strategy).
-		return strings.TrimSpace(ips[0])
 	}
 }
 
