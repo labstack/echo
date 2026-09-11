@@ -104,23 +104,27 @@ func ProblemDetailsHTTPErrorHandler(exposeError bool) HTTPErrorHandler {
 			}
 		}
 
-		if pe.Status == 0 {
-			pe.Status = http.StatusInternalServerError
+		// The problem can be a value the application reuses, for example a package
+		// level sentinel error, so the defaults are applied to a copy. Writing them
+		// back would race between requests and would permanently alter the error.
+		problem := *pe
+		if problem.Status == 0 {
+			problem.Status = http.StatusInternalServerError
 		}
-		if pe.Type == "" {
-			pe.Type = "about:blank"
+		if problem.Type == "" {
+			problem.Type = "about:blank"
 		}
-		if pe.Title == "" {
-			pe.Title = http.StatusText(pe.Status)
+		if problem.Title == "" {
+			problem.Title = http.StatusText(problem.Status)
 		}
 
 		c.Response().Header().Set(HeaderContentType, MIMEApplicationProblemJSON)
 
 		var cErr error
 		if c.Request().Method == http.MethodHead { // Issue #608
-			cErr = c.NoContent(pe.Status)
+			cErr = c.NoContent(problem.Status)
 		} else {
-			cErr = c.JSON(pe.Status, pe)
+			cErr = c.JSON(problem.Status, &problem)
 		}
 		if cErr != nil {
 			c.Logger().Error("echo RFC 9457 error handler failed to send error to client", "error", cErr) // truly rare case. ala client already disconnected
