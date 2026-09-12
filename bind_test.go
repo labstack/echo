@@ -208,6 +208,49 @@ func TestBindJSON(t *testing.T) {
 	testBindError(t, strings.NewReader(userJSONInvalidType), MIMEApplicationJSON, &json.UnmarshalTypeError{})
 }
 
+func TestBindBodyMediaTypeCaseInsensitive(t *testing.T) {
+	body := new(bytes.Buffer)
+	mw := multipart.NewWriter(body)
+	if !assert.NoError(t, mw.SetBoundary("CaseSensitiveBoundary")) {
+		return
+	}
+	assert.NoError(t, mw.WriteField("id", "1"))
+	assert.NoError(t, mw.WriteField("name", "Jon Snow"))
+	assert.NoError(t, mw.Close())
+
+	for _, tc := range []struct {
+		contentType string
+		body        string
+	}{
+		{"Application/JSON; Charset=UTF-8", userJSON},
+		{"APPLICATION/XML", userXML},
+		{"Text/XML; charset=UTF-8", userXML},
+		{"Application/X-Www-Form-Urlencoded", userForm},
+		{"Multipart/Form-Data; boundary=CaseSensitiveBoundary", body.String()},
+	} {
+		t.Run(tc.contentType, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(tc.body))
+			req.Header.Set(HeaderContentType, tc.contentType)
+			c := New().NewContext(req, httptest.NewRecorder())
+			var target user
+
+			if assert.NoError(t, BindBody(c, &target)) {
+				assert.Equal(t, user{ID: 1, Name: "Jon Snow"}, target)
+			}
+			assert.Equal(t, tc.contentType, req.Header.Get(HeaderContentType))
+		})
+	}
+
+	t.Run("unsupported media type", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(userJSON))
+		req.Header.Set(HeaderContentType, "Application/JSON-Invalid")
+		c := New().NewContext(req, httptest.NewRecorder())
+		var target user
+
+		assert.Equal(t, &HTTPError{Code: http.StatusUnsupportedMediaType}, BindBody(c, &target))
+	})
+}
+
 func TestBindXML(t *testing.T) {
 	testBindOkay(t, strings.NewReader(userXML), nil, MIMEApplicationXML)
 	testBindOkay(t, strings.NewReader(userXML), dummyQuery, MIMEApplicationXML)

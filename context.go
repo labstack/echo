@@ -409,7 +409,8 @@ func (c *Context) FormValueOr(name, defaultValue string) string {
 
 // FormValues returns the form field values as `url.Values`.
 func (c *Context) FormValues() (url.Values, error) {
-	if strings.HasPrefix(c.request.Header.Get(HeaderContentType), MIMEMultipartForm) {
+	base, _, _ := strings.Cut(c.request.Header.Get(HeaderContentType), ";")
+	if strings.EqualFold(strings.TrimSpace(base), MIMEMultipartForm) {
 		if err := c.request.ParseMultipartForm(c.formParseMaxMemory); err != nil {
 			return nil, err
 		}
