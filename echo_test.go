@@ -82,6 +82,12 @@ func TestNewWithConfig(t *testing.T) {
 	assert.Equal(t, `Hello, World!`, rec.Body.String())
 }
 
+func TestNew(t *testing.T) {
+	e := New()
+
+	assert.IsType(t, e.IPExtractor, LegacyIPExtractor())
+}
+
 func TestNewDefaultFS(t *testing.T) {
 	tempDir := t.TempDir()
 	filename := filepath.Join(tempDir, "file.txt")
