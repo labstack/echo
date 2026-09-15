@@ -136,7 +136,7 @@ func (g *Group) Group(prefix string, middleware ...MiddlewareFunc) (sg *Group) {
 	m := make([]MiddlewareFunc, 0, len(g.middleware)+len(middleware))
 	m = append(m, g.middleware...)
 	m = append(m, middleware...)
-	sg = g.echo.Group(g.prefix+prefix, m...)
+	sg = g.echo.Group(joinRoutePath(g.prefix, prefix), m...)
 	return
 }
 

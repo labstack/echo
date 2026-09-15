@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"reflect"
 	"runtime"
+	"strings"
 )
 
 // Route contains information to adding/registering new route with the router.
@@ -43,9 +44,34 @@ func (r Route) ToRouteInfo(params []string) RouteInfo {
 	}
 }
 
+// joinRoutePath concatenates a group prefix and a route path with exactly one
+// slash between them when both sides are non-empty. Empty path is left as the
+// prefix so group catch-all registrations (Path: "") stay on the prefix itself.
+func joinRoutePath(prefix, p string) string {
+	if prefix == "" {
+		return p
+	}
+	if p == "" {
+		return prefix
+	}
+	// Static empty prefix registers path "*" so "/group"+"*" stays "/group*"
+	// (matches /groupwalle.png). Do not insert a slash in that case.
+	if strings.HasPrefix(p, "*") {
+		return prefix + p
+	}
+	switch {
+	case strings.HasSuffix(prefix, "/") && strings.HasPrefix(p, "/"):
+		return prefix + p[1:]
+	case !strings.HasSuffix(prefix, "/") && !strings.HasPrefix(p, "/"):
+		return prefix + "/" + p
+	default:
+		return prefix + p
+	}
+}
+
 // WithPrefix recreates Route with added group prefix and group middlewares it is grouped to.
 func (r Route) WithPrefix(pathPrefix string, middlewares []MiddlewareFunc) Route {
-	r.Path = pathPrefix + r.Path
+	r.Path = joinRoutePath(pathPrefix, r.Path)
 
 	if len(middlewares) > 0 {
 		m := make([]MiddlewareFunc, 0, len(middlewares)+len(r.Middlewares))

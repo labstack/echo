@@ -94,6 +94,37 @@ func TestGroup_multiLevelGroup(t *testing.T) {
 	assert.Equal(t, `OK`, body)
 }
 
+func TestGroup_routeWithoutLeadingSlash(t *testing.T) {
+	e := New()
+	g := e.Group("/v1")
+	g.GET("posts", func(c *Context) error {
+		return c.String(http.StatusOK, "posts")
+	})
+	g.GET("/comments", func(c *Context) error {
+		return c.String(http.StatusOK, "comments")
+	})
+
+	status, body := request(http.MethodGet, "/v1/posts", e)
+	assert.Equal(t, http.StatusOK, status)
+	assert.Equal(t, "posts", body)
+
+	status, body = request(http.MethodGet, "/v1/comments", e)
+	assert.Equal(t, http.StatusOK, status)
+	assert.Equal(t, "comments", body)
+
+	status, _ = request(http.MethodGet, "/v1posts", e)
+	assert.Equal(t, http.StatusNotFound, status)
+
+	api := e.Group("/api")
+	users := api.Group("users")
+	users.GET("list", func(c *Context) error {
+		return c.String(http.StatusOK, "list")
+	})
+	status, body = request(http.MethodGet, "/api/users/list", e)
+	assert.Equal(t, http.StatusOK, status)
+	assert.Equal(t, "list", body)
+}
+
 func TestGroupFile(t *testing.T) {
 	e := New()
 	g := e.Group("/group")

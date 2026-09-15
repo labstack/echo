@@ -145,6 +145,31 @@ func TestRoute_ForGroup(t *testing.T) {
 	assert.Equal(t, r.Name, "test route")
 }
 
+func TestJoinRoutePath(t *testing.T) {
+	tests := []struct {
+		prefix string
+		path   string
+		want   string
+	}{
+		{prefix: "/v1", path: "posts", want: "/v1/posts"},
+		{prefix: "/v1", path: "/posts", want: "/v1/posts"},
+		{prefix: "/v1/", path: "posts", want: "/v1/posts"},
+		{prefix: "/v1/", path: "/posts", want: "/v1/posts"},
+		{prefix: "/v1", path: "", want: "/v1"},
+		{prefix: "/v1", path: "/*", want: "/v1/*"},
+		{prefix: "/v1", path: ":id", want: "/v1/:id"},
+		{prefix: "/test", path: "*", want: "/test*"},
+		{prefix: "/group", path: "/static*", want: "/group/static*"},
+		{prefix: "", path: "/posts", want: "/posts"},
+		{prefix: "/api", path: "users", want: "/api/users"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.prefix+"+"+tt.path, func(t *testing.T) {
+			assert.Equal(t, tt.want, joinRoutePath(tt.prefix, tt.path))
+		})
+	}
+}
+
 func exampleRoutes() Routes {
 	return Routes{
 		RouteInfo{
