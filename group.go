@@ -128,6 +128,8 @@ func (g *Group) Match(methods []string, path string, handler HandlerFunc, middle
 }
 
 // Group creates a new sub-group with prefix and optional sub-group-level middleware.
+// The prefix is concatenated with the parent group's prefix without inserting a slash.
+// For example, a parent prefix of "/v1" and a sub-group prefix of "/admin" form "/v1/admin".
 //
 // Important! Group middlewares are executed in case there was no exact route match as by default Group registers
 // `/*` NotFound routes for itself. If this kind of behavior is not needed, then create an Echo instance with the ` noAutoRegisterRoutes `
