@@ -185,7 +185,6 @@ const (
 	// RouteAny is a special method type that matches any HTTP method in request. Any has lower
 	// priority that other methods that have been registered with Router to that path.
 	RouteAny = "echo_route_any"
-
 )
 
 // Headers
@@ -396,6 +395,7 @@ func New() *Echo {
 		Binder:             &DefaultBinder{},
 		JSONSerializer:     &DefaultJSONSerializer{},
 		formParseMaxMemory: defaultMemory,
+		IPExtractor:        LegacyIPExtractor(),
 	}
 
 	e.serveHTTPFunc = e.serveHTTP
