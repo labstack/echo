@@ -982,3 +982,16 @@ func TestGroup_RouteNotFoundUsesRouterConfig(t *testing.T) {
 	assert.Equal(t, "custom-404 POST /v0/*", rec.Body.String())
 	assert.True(t, middlewareCalled, "group middleware must wrap the auto 404 route")
 }
+
+func TestGroupRouteWithoutLeadingSlash(t *testing.T) {
+	e := New()
+	g := e.Group("/v1")
+
+	route := g.GET("posts", func(c *Context) error {
+		return c.NoContent(http.StatusNoContent)
+	})
+
+	assert.Equal(t, "/v1/posts", route.Path)
+	status, _ := request(http.MethodGet, "/v1/posts", e)
+	assert.Equal(t, http.StatusNoContent, status)
+}

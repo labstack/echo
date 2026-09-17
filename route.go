@@ -45,7 +45,11 @@ func (r Route) ToRouteInfo(params []string) RouteInfo {
 
 // WithPrefix recreates Route with added group prefix and group middlewares it is grouped to.
 func (r Route) WithPrefix(pathPrefix string, middlewares []MiddlewareFunc) Route {
-	r.Path = pathPrefix + r.Path
+	if pathPrefix != "" && r.Path != "" && pathPrefix[len(pathPrefix)-1] != '/' && r.Path[0] != '/' {
+		r.Path = pathPrefix + "/" + r.Path
+	} else {
+		r.Path = pathPrefix + r.Path
+	}
 
 	if len(middlewares) > 0 {
 		m := make([]MiddlewareFunc, 0, len(middlewares)+len(r.Middlewares))
