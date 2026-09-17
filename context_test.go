@@ -816,6 +816,34 @@ func TestContextFormValue(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestContextFormValuesMediaTypeCaseInsensitive(t *testing.T) {
+	body := new(bytes.Buffer)
+	mw := multipart.NewWriter(body)
+	if !assert.NoError(t, mw.SetBoundary("CaseSensitiveBoundary")) {
+		return
+	}
+	assert.NoError(t, mw.WriteField("name", "Jon Snow"))
+	assert.NoError(t, mw.Close())
+
+	for _, contentType := range []string{
+		"multipart/form-data; boundary=CaseSensitiveBoundary",
+		"Multipart/Form-Data; boundary=CaseSensitiveBoundary",
+		"MULTIPART/FORM-DATA; boundary=CaseSensitiveBoundary",
+	} {
+		t.Run(contentType, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/?query=value", bytes.NewReader(body.Bytes()))
+			req.Header.Set(HeaderContentType, contentType)
+			c := New().NewContext(req, nil)
+
+			values, err := c.FormValues()
+			if assert.NoError(t, err) {
+				assert.Equal(t, url.Values{"name": {"Jon Snow"}, "query": {"value"}}, values)
+			}
+			assert.Equal(t, contentType, req.Header.Get(HeaderContentType))
+		})
+	}
+}
+
 func TestContext_QueryParams(t *testing.T) {
 	var testCases = []struct {
 		expect   url.Values
