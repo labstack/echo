@@ -27,6 +27,7 @@ type BodyDumpConfig struct {
 	// MaxRequestBytes limits how much of the request body to dump.
 	// If the request body exceeds this limit, only the first MaxRequestBytes
 	// are dumped. The handler callback receives truncated data.
+	// The next handler still receives the full request body.
 	// Default: 5 * MB (5,242,880 bytes)
 	// Set to -1 to disable limits (not recommended in production).
 	MaxRequestBytes int64
@@ -102,15 +103,15 @@ func (config BodyDumpConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			if readErr != nil && readErr != io.EOF {
 				return readErr
 			}
-			if config.MaxRequestBytes > 0 {
-				// Drain any remaining body data to prevent connection issues
-				_, _ = io.Copy(io.Discard, c.Request().Body)
-				_ = c.Request().Body.Close()
-			}
-
 			reqBody := make([]byte, reqBuf.Len())
 			copy(reqBody, reqBuf.Bytes())
-			c.Request().Body = io.NopCloser(bytes.NewReader(reqBody))
+			c.Request().Body = struct {
+				io.Reader
+				io.Closer
+			}{
+				Reader: io.MultiReader(bytes.NewReader(reqBody), c.Request().Body),
+				Closer: c.Request().Body,
+			}
 
 			// response part
 			resBuf := bodyDumpBufferPool.Get().(*bytes.Buffer)

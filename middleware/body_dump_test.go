@@ -5,11 +5,13 @@ package middleware
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"testing/iotest"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -280,8 +282,8 @@ func TestBodyDump_RequestExceedsLimit(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int(limit), len(requestBodyDumped), "Dumped request should be truncated to limit")
 	assert.Equal(t, strings.Repeat("A", 1024), requestBodyDumped, "Dumped data should match first N bytes")
-	// Handler should receive truncated data (what was dumped)
-	assert.Equal(t, strings.Repeat("A", 1024), rec.Body.String())
+	// Dump limits must not truncate the request passed to the handler.
+	assert.Equal(t, largeData, rec.Body.String())
 }
 
 func TestBodyDump_RequestAtExactLimit(t *testing.T) {
@@ -578,4 +580,50 @@ func BenchmarkBodyDump_BufferPooling(b *testing.B) {
 		c := e.NewContext(req, rec)
 		mw(h)(c)
 	}
+}
+
+func TestBodyDump_RequestRemainder(t *testing.T) {
+	for _, readError := range []error{nil, errors.New("read failed")} {
+		t.Run(fmt.Sprint(readError), func(t *testing.T) {
+			const payload = "abcdef"
+			const limit = 3
+			reader := io.Reader(strings.NewReader(payload))
+			if readError != nil {
+				reader = io.MultiReader(reader, iotest.ErrReader(readError))
+			}
+			body := &bodyDumpTrackingReadCloser{Reader: reader}
+			req := httptest.NewRequest(http.MethodPost, "/", nil)
+			req.Body = body
+			e := echo.New()
+			c := e.NewContext(req, httptest.NewRecorder())
+			var dumped []byte
+			mw := BodyDumpWithConfig(BodyDumpConfig{
+				MaxRequestBytes: limit,
+				Handler: func(_ *echo.Context, reqBody, _ []byte, _ error) {
+					dumped = reqBody
+				},
+			})
+			err := mw(func(c *echo.Context) error {
+				assert.False(t, body.closed, "request body must remain open for the handler")
+				data, err := io.ReadAll(c.Request().Body)
+				assert.Equal(t, payload, string(data))
+				assert.Equal(t, readError, err)
+				assert.NoError(t, c.Request().Body.Close())
+				assert.True(t, body.closed, "Close must reach the original request body")
+				return nil
+			})(c)
+			assert.NoError(t, err)
+			assert.Equal(t, payload[:limit], string(dumped))
+		})
+	}
+}
+
+type bodyDumpTrackingReadCloser struct {
+	io.Reader
+	closed bool
+}
+
+func (r *bodyDumpTrackingReadCloser) Close() error {
+	r.closed = true
+	return nil
 }
