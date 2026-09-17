@@ -93,6 +93,89 @@ func TestBodyLimitAfterDecompressUsesDecodedSize(t *testing.T) {
 	assert.Equal(t, body, rec.Body.String())
 }
 
+func TestBodyLimitReaderStopsAtTheLimit(t *testing.T) {
+	const limit = 5
+	body := bytes.Repeat([]byte("x"), 10*limit)
+
+	reader := &limitedReader{
+		BodyLimitConfig: BodyLimitConfig{Skipper: DefaultSkipper, LimitBytes: limit},
+		reader:          io.NopCloser(bytes.NewReader(body)),
+	}
+
+	// io.Reader asks callers to process the n>0 bytes of a read before
+	// treating its error as fatal, so keep reading the way such a caller
+	// would. No more than the limit may be handed over however long it goes on.
+	buf := make([]byte, 64)
+	var total int
+	for range 20 {
+		n, err := reader.Read(buf)
+		total += n
+		if n == 0 && err != nil {
+			break
+		}
+	}
+
+	assert.Equal(t, limit, total)
+}
+
+// countingReader records how much was asked of the source, which is not
+// visible from what the caller receives.
+type countingReader struct {
+	io.Reader
+	read  int64
+	calls int
+}
+
+func (c *countingReader) Read(b []byte) (int, error) {
+	c.calls++
+	n, err := c.Reader.Read(b)
+	c.read += int64(n)
+	return n, err
+}
+
+func (c *countingReader) Close() error { return nil }
+
+func TestBodyLimitReaderDoesNotOverdrawTheSource(t *testing.T) {
+	const limit = 5
+	src := &countingReader{Reader: bytes.NewReader(bytes.Repeat([]byte("x"), 1<<20))}
+
+	reader := &limitedReader{
+		BodyLimitConfig: BodyLimitConfig{Skipper: DefaultSkipper, LimitBytes: limit},
+		reader:          src,
+	}
+
+	buf := make([]byte, 64*1024)
+	_, _ = reader.Read(buf)
+	callsAtRefusal := src.calls
+
+	// One byte past the limit is enough to know the body is too large; a
+	// megabyte of it should never be pulled off the wire to find that out.
+	assert.LessOrEqual(t, src.read, int64(limit+1))
+
+	// And once refused, the source must not be touched again.
+	for range 5 {
+		_, _ = reader.Read(buf)
+	}
+	assert.Equal(t, callsAtRefusal, src.calls)
+}
+
+func TestBodyLimitReaderStaysRefused(t *testing.T) {
+	reader := &limitedReader{
+		BodyLimitConfig: BodyLimitConfig{Skipper: DefaultSkipper, LimitBytes: 2},
+		reader:          io.NopCloser(bytes.NewReader([]byte("Hello, World!"))),
+	}
+
+	_, err := io.ReadAll(reader)
+	he := err.(echo.HTTPStatusCoder)
+	assert.Equal(t, http.StatusRequestEntityTooLarge, he.StatusCode())
+
+	// Reading on after the refusal must not produce more of the body.
+	n, err := reader.Read(make([]byte, 8))
+	assert.Equal(t, 0, n)
+	he = err.(echo.HTTPStatusCoder)
+	assert.Equal(t, http.StatusRequestEntityTooLarge, he.StatusCode())
+}
+
 func TestBodyLimitReader(t *testing.T) {
 	hw := []byte("Hello, World!")
 
