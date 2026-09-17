@@ -455,11 +455,17 @@ func (c *Context) Cookies() []*http.Cookie {
 // Get retrieves data from the context.
 // Method returns any(nil) when key does not exist which is different from typed nil (eg. []byte(nil)).
 func (c *Context) Get(key string) any {
+	v, _ := c.get(key)
+	return v
+}
+
+// get retrieves a context value and reports whether its key exists.
+func (c *Context) get(key string) (any, bool) {
 	// Unlock without defer to avoid the deferred-call overhead on this hot path.
 	c.lock.RLock()
-	v := c.store[key]
+	v, ok := c.store[key]
 	c.lock.RUnlock()
-	return v
+	return v, ok
 }
 
 // Set saves data in the context.
