@@ -104,6 +104,8 @@ type RouterConfig struct {
 	// the route, but the response body is suppressed in accordance with
 	// HTTP semantics. Headers (e.g., Content-Length, Content-Type) are
 	// preserved as if a GET request was made.
+	// The status written by the handler is available to route and group middleware even
+	// though sending the headers is delayed until the handler returns.
 	//
 	// Security considerations: the GET handler is fully executed for every
 	// HEAD request, including all side effects:
