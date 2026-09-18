@@ -183,3 +183,22 @@ func TestProblemError_StatusCode(t *testing.T) {
 	pe := &ProblemError{Status: http.StatusTeapot}
 	assert.Equal(t, http.StatusTeapot, pe.StatusCode())
 }
+
+func TestProblemDetailsHTTPErrorHandler_DoesNotMutateSharedProblem(t *testing.T) {
+	// A package level sentinel is the idiomatic way to express a reusable error,
+	// so serving one must not leave the value altered.
+	sentinel := &ProblemError{Status: http.StatusNotFound, Detail: "no such widget"}
+	original := *sentinel
+
+	e := New()
+	e.Logger = slog.New(slog.DiscardHandler)
+	e.Any("/path", func(c *Context) error { return sentinel })
+	e.HTTPErrorHandler = ProblemDetailsHTTPErrorHandler(false)
+
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/path", nil))
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Equal(t, `{"type":"about:blank","title":"Not Found","status":404,"detail":"no such widget"}`+"\n", rec.Body.String())
+	assert.Equal(t, original, *sentinel)
+}
