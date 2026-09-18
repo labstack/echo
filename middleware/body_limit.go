@@ -24,6 +24,7 @@ type limitedReader struct {
 	BodyLimitConfig
 	reader io.ReadCloser
 	read   int64
+	err    error
 }
 
 // BodyLimit returns a BodyLimit middleware.
@@ -81,12 +82,39 @@ func (config BodyLimitConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 }
 
 func (r *limitedReader) Read(b []byte) (n int, err error) {
-	n, err = r.reader.Read(b)
-	r.read += int64(n)
-	if r.read > r.LimitBytes {
-		return n, echo.ErrStatusRequestEntityTooLarge
+	if r.err != nil {
+		return 0, r.err
 	}
-	return
+	if len(b) == 0 {
+		return 0, nil
+	}
+	remaining := r.LimitBytes - r.read
+	if remaining < 0 {
+		remaining = 0
+	}
+	// If the caller asked for more bytes than are still allowed, cap the
+	// buffer one byte past the limit. That single extra byte is enough to
+	// tell whether the underlying reader holds more data than allowed,
+	// without ever reading more of it than necessary.
+	if int64(len(b))-1 > remaining {
+		b = b[:remaining+1]
+	}
+	n, err = r.reader.Read(b)
+
+	if int64(n) <= remaining {
+		r.read += int64(n)
+		r.err = err
+		return n, err
+	}
+
+	// The underlying reader offered more data than the limit allows. Only
+	// hand out the allowed portion and make the error sticky, so callers
+	// that process the n>0 bytes before handling the error (as io.Reader
+	// documents) cannot read any further data on subsequent calls.
+	n = int(remaining)
+	r.read = r.LimitBytes
+	r.err = echo.ErrStatusRequestEntityTooLarge
+	return n, r.err
 }
 
 func (r *limitedReader) Close() error {
@@ -96,4 +124,5 @@ func (r *limitedReader) Close() error {
 func (r *limitedReader) Reset(reader io.ReadCloser) {
 	r.reader = reader
 	r.read = 0
+	r.err = nil
 }
