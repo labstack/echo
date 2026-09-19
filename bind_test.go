@@ -1588,11 +1588,13 @@ func assertMultipartFileHeader(t *testing.T, fh *multipart.FileHeader, file test
 
 func TestTimeFormatBinding(t *testing.T) {
 	type TestStruct struct {
-		DateTimeLocal time.Time  `form:"datetime_local" format:"2006-01-02T15:04"`
-		Date          time.Time  `query:"date" format:"2006-01-02"`
-		CustomFormat  time.Time  `form:"custom" format:"01/02/2006 15:04:05"`
-		DefaultTime   time.Time  `form:"default_time"` // No format tag - should use default parsing
-		PtrTime       *time.Time `query:"ptr_time" format:"2006-01-02"`
+		DateTimeLocal        time.Time  `form:"datetime_local" format:"2006-01-02T15:04"`
+		Date                 time.Time  `query:"date" format:"2006-01-02"`
+		CustomFormat         time.Time  `form:"custom" format:"01/02/2006 15:04:05"`
+		DefaultTime          time.Time  `form:"default_time"` // No format tag - should use default parsing
+		PtrTime              *time.Time `query:"ptr_time" format:"2006-01-02"`
+		OpenAPIDateTime      time.Time  `form:"openapi_datetime" format:"date-time"`
+		OpenAPIDateTimeLocal time.Time  `form:"openapi_datetime_local" format:"date-time-local"`
 	}
 
 	testCases := []struct {
@@ -1626,6 +1628,22 @@ func TestTimeFormatBinding(t *testing.T) {
 			data:        "custom=12/25/2023 14:30:45",
 			expect: TestStruct{
 				CustomFormat: time.Date(2023, 12, 25, 14, 30, 45, 0, time.UTC),
+			},
+		},
+		{
+			name:        "ok, OpenAPI date-time format is RFC3339",
+			contentType: MIMEApplicationForm,
+			data:        "openapi_datetime=2023-12-25T14:30:45Z",
+			expect: TestStruct{
+				OpenAPIDateTime: time.Date(2023, 12, 25, 14, 30, 45, 0, time.UTC),
+			},
+		},
+		{
+			name:        "ok, OpenAPI date-time-local format is RFC3339",
+			contentType: MIMEApplicationForm,
+			data:        "openapi_datetime_local=2023-12-25T14:30:45%2B02:00",
+			expect: TestStruct{
+				OpenAPIDateTimeLocal: time.Date(2023, 12, 25, 12, 30, 45, 0, time.UTC),
 			},
 		},
 		{
@@ -1694,6 +1712,14 @@ func TestTimeFormatBinding(t *testing.T) {
 					assert.True(t, expectedPtr.Equal(*result.PtrTime),
 						"PtrTime: expected %v, got %v", expectedPtr, *result.PtrTime)
 				}
+			}
+			if !tc.expect.OpenAPIDateTime.IsZero() {
+				assert.True(t, tc.expect.OpenAPIDateTime.Equal(result.OpenAPIDateTime),
+					"OpenAPIDateTime: expected %v, got %v", tc.expect.OpenAPIDateTime, result.OpenAPIDateTime)
+			}
+			if !tc.expect.OpenAPIDateTimeLocal.IsZero() {
+				assert.True(t, tc.expect.OpenAPIDateTimeLocal.Equal(result.OpenAPIDateTimeLocal),
+					"OpenAPIDateTimeLocal: expected %v, got %v", tc.expect.OpenAPIDateTimeLocal, result.OpenAPIDateTimeLocal)
 			}
 		})
 	}

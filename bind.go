@@ -418,6 +418,18 @@ func unmarshalInputsToField(valueKind reflect.Kind, values []string, field refle
 	return true, unmarshaler.UnmarshalParams(values)
 }
 
+// timeLayoutFromFormatTag maps a `format` struct tag to a time.Parse layout.
+// OpenAPI format names (date-time, date-time-local) are RFC3339 so they do not
+// collide with swag/openapi `format` tags. Any other value is a Go reference-time layout.
+func timeLayoutFromFormatTag(formatTag string) string {
+	switch formatTag {
+	case "date-time", "date-time-local":
+		return time.RFC3339
+	default:
+		return formatTag
+	}
+}
+
 func unmarshalInputToField(valueKind reflect.Kind, val string, field reflect.Value, formatTag string) (bool, error) {
 	if valueKind == reflect.Pointer {
 		if field.IsNil() {
@@ -430,7 +442,7 @@ func unmarshalInputToField(valueKind reflect.Kind, val string, field reflect.Val
 	// Handle time.Time with custom format tag
 	if formatTag != "" {
 		if _, isTime := fieldIValue.(*time.Time); isTime {
-			t, err := time.Parse(formatTag, val)
+			t, err := time.Parse(timeLayoutFromFormatTag(formatTag), val)
 			if err != nil {
 				return true, err
 			}
