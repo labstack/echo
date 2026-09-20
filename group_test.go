@@ -94,6 +94,21 @@ func TestGroup_multiLevelGroup(t *testing.T) {
 	assert.Equal(t, `OK`, body)
 }
 
+func TestGroup_pathWithoutLeadingSlash(t *testing.T) {
+	e := New()
+	g := e.Group("/v1")
+	g.GET("posts", func(c *Context) error {
+		return c.String(http.StatusOK, "ok")
+	})
+
+	status, body := request(http.MethodGet, "/v1/posts", e)
+	assert.Equal(t, http.StatusOK, status)
+	assert.Equal(t, "ok", body)
+
+	status, _ = request(http.MethodGet, "/v1posts", e)
+	assert.Equal(t, http.StatusNotFound, status)
+}
+
 func TestGroupFile(t *testing.T) {
 	e := New()
 	g := e.Group("/group")
