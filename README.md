@@ -55,7 +55,7 @@ Click [here](https://github.com/sponsors/labstack) for more information on spons
 
 - Latest major version of Echo is `v5` as of 2026-01-18.
   - See [API_CHANGES_V5.md](./API_CHANGES_V5.md) for public API changes between `v4` and `v5`, notes on upgrading.
-- Echo `v4` is supported with **security*** updates and **bug** fixes until **2026-12-31**
+- Echo `v4` is supported with **security** updates and **bug** fixes until **2026-12-31**
 
 See [ROADMAP.md](./ROADMAP.md) for where Echo is heading and the version support policy.
 
