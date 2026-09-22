@@ -1320,6 +1320,65 @@ func TestRouterParamStaticConflict(t *testing.T) {
 	}
 }
 
+// Issue #3111
+func TestRouterParam_escapeColonAndParamConflict(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		routes      []string
+		whenURL     string
+		expectRoute string
+		expectParam map[string]string
+	}{
+		{
+			name:        "escaped colon route first, request escaped colon route",
+			routes:      []string{`/name\:verb/x`, `/name:id`},
+			whenURL:     "/name:verb/x",
+			expectRoute: `/name\:verb/x`,
+			expectParam: map[string]string{},
+		},
+		{
+			name:        "escaped colon route first, request param route",
+			routes:      []string{`/name\:verb/x`, `/name:id`},
+			whenURL:     "/name1",
+			expectRoute: "/name:id",
+			expectParam: map[string]string{"id": "1"},
+		},
+		{
+			name:        "param route first, request escaped colon route",
+			routes:      []string{`/name:id`, `/name\:verb/x`},
+			whenURL:     "/name:verb/x",
+			expectRoute: `/name\:verb/x`,
+			expectParam: map[string]string{},
+		},
+		{
+			name:        "param route first, request param route",
+			routes:      []string{`/name:id`, `/name\:verb/x`},
+			whenURL:     "/name1",
+			expectRoute: "/name:id",
+			expectParam: map[string]string{"id": "1"},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			for _, route := range tc.routes {
+				e.GET(route, handlerFunc)
+			}
+
+			c := e.NewContext(httptest.NewRequest(http.MethodGet, tc.whenURL, nil), nil)
+
+			handler := e.router.Route(c)
+
+			assert.NoError(t, handler(c))
+			assert.Equal(t, tc.expectRoute, c.Path())
+			for param, expectedValue := range tc.expectParam {
+				assert.Equal(t, expectedValue, c.pathValues.GetOr(param, "---none---"))
+			}
+			checkUnusedParamValues(t, c, tc.expectParam)
+		})
+	}
+}
+
 func TestRouterParam_escapeColon(t *testing.T) {
 	// to allow Google cloud API like route paths with colon in them
 	// i.e. https://service.name/v1/some/resource/name:customVerb <- that `:customVerb` is not path param. It is just a string

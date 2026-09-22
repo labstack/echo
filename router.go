@@ -184,6 +184,10 @@ const (
 
 	paramLabel = byte(':')
 	anyLabel   = byte('*')
+
+	// paramPlaceholder marks a path parameter while a route is inserted into the
+	// tree, so that a literal ':' from an escaped `\:` stays a static node.
+	paramPlaceholder = "\x00"
 )
 
 type routeMethod struct {
@@ -554,7 +558,7 @@ func (r *DefaultRouter) Add(route Route) (RouteInfo, error) {
 			}
 
 			paramNames = append(paramNames, path[j:i])
-			path = path[:j] + path[i:]
+			path = path[:j-1] + paramPlaceholder + path[i:]
 			i, lcpIndex = j, len(path)
 
 			if i == lcpIndex {
@@ -814,7 +818,7 @@ func (n *node) findChildWithLabel(l byte) *node {
 	if c := n.findStaticChild(l); c != nil {
 		return c
 	}
-	if l == paramLabel {
+	if l == paramPlaceholder[0] {
 		return n.paramChild
 	}
 	if l == anyLabel {
@@ -937,8 +941,8 @@ func (r *DefaultRouter) Route(c *Context) HandlerFunc {
 			searchIndex -= len(previous.prefix)
 		} else {
 			paramIndex--
-			// for param/any node.prefix value is always `:` so we can not deduce searchIndex from that and must use pValue
-			// for that index as it would also contain part of path we cut off before moving into node we are backtracking from
+			// param/any node prefixes are a single marker byte, so restore searchIndex
+			// from the value stored for that param instead
 			searchIndex -= len(pathValues[paramIndex].Value)
 			pathValues[paramIndex].Value = ""
 		}
