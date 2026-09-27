@@ -668,3 +668,130 @@ func TestStatic_DirectoryBrowsing(t *testing.T) {
 		})
 	}
 }
+
+func TestStatic_resolvesRoutedPath(t *testing.T) {
+	// GHSA-375p-5qhx-8wq4 (encoded paths) and GHSA-3pmx-cf9f-34xr (dot segments): the static middleware must resolve
+	// files from the same path that the router matched, so encoding or dot segments do not reach a different file.
+	// Note: middleware registered with e.Use runs before group middleware, so the `/admin` group guard below does not
+	// protect files served by it (see Static docs); TestStatic_routeLevelGuard covers a guardable setup.
+	fsys := fstest.MapFS{
+		"admin/secret.txt":       {Data: []byte("SECRET")},
+		"public/index.html":      {Data: []byte("public")},
+		"hello world.txt":        {Data: []byte("hello")},
+		"public/admin/other.txt": {Data: []byte("other")},
+	}
+	var testCases = []struct {
+		name         string
+		whenPath     string // set as req.URL.Path
+		whenRawPath  string // set as req.URL.RawPath
+		expectStatus int
+		expectBody   string
+	}{
+		{name: "encoded slash", whenPath: "/admin/secret.txt", whenRawPath: "/admin%2Fsecret.txt", expectStatus: http.StatusNotFound},
+		{name: "encoded slash lowercase", whenPath: "/admin/secret.txt", whenRawPath: "/admin%2fsecret.txt", expectStatus: http.StatusNotFound},
+		{name: "encoded letter", whenPath: "/admin/secret.txt", whenRawPath: "/%61dmin/secret.txt", expectStatus: http.StatusNotFound},
+		{name: "encoded dot segment", whenPath: "/public/../admin/secret.txt", whenRawPath: "/public/%2E%2E/admin/secret.txt", expectStatus: http.StatusNotFound},
+		{name: "encoded slashes and dots", whenPath: "/public/../admin/secret.txt", whenRawPath: "/public%2F..%2Fadmin%2Fsecret.txt", expectStatus: http.StatusNotFound},
+		{name: "parent dot segment", whenPath: "/public/../admin/secret.txt", expectStatus: http.StatusNotFound},
+		{name: "current dot segment", whenPath: "/./admin/secret.txt", expectStatus: http.StatusNotFound},
+		{name: "empty segment", whenPath: "//admin/secret.txt", expectStatus: http.StatusNotFound},
+		{name: "canonical escape is still served", whenPath: "/hello world.txt", expectStatus: http.StatusOK, expectBody: "hello"},
+		{name: "plain public file is still served", whenPath: "/public/index.html", expectStatus: http.StatusOK, expectBody: "public"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+			e.Use(StaticWithConfig(StaticConfig{Filesystem: fsys}))
+			admin := e.Group("/admin", func(next echo.HandlerFunc) echo.HandlerFunc {
+				return func(c *echo.Context) error {
+					return echo.ErrForbidden
+				}
+			})
+			admin.GET("/*", func(c *echo.Context) error {
+				return c.String(http.StatusOK, "admin")
+			})
+
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.URL.Path = tc.whenPath
+			req.URL.RawPath = tc.whenRawPath
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, tc.expectStatus, rec.Code)
+			assert.NotContains(t, rec.Body.String(), "SECRET")
+			if tc.expectBody != "" {
+				assert.Equal(t, tc.expectBody, rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestStatic_routeLevelGuard(t *testing.T) {
+	fsys := fstest.MapFS{
+		"admin/secret.txt": {Data: []byte("SECRET")},
+		"hello world.txt":  {Data: []byte("hello")},
+		"x/file.txt":       {Data: []byte("x")},
+	}
+	var testCases = []struct {
+		name                      string
+		givenEnablePathUnescaping bool
+		whenPath                  string // set as req.URL.Path
+		whenRawPath               string // set as req.URL.RawPath
+		expectStatus              int
+	}{
+		{name: "guarded path", whenPath: "/admin/secret.txt", expectStatus: http.StatusForbidden},
+		{name: "guarded path repeated prefix", whenPath: "/admin/admin/secret.txt", expectStatus: http.StatusForbidden},
+		{name: "encoded slash", whenPath: "/admin/secret.txt", whenRawPath: "/admin%2Fsecret.txt", expectStatus: http.StatusNotFound},
+		{name: "encoded letter", whenPath: "/admin/secret.txt", whenRawPath: "/%61dmin/secret.txt", expectStatus: http.StatusNotFound},
+		{name: "parent dot segment", whenPath: "/x/../admin/secret.txt", expectStatus: http.StatusNotFound},
+		{name: "empty segment", whenPath: "//admin/secret.txt", expectStatus: http.StatusNotFound},
+		{name: "encoded dots with unescaping", givenEnablePathUnescaping: true, whenPath: "/x/../admin/secret.txt", whenRawPath: "/x/%2e%2e/admin/secret.txt", expectStatus: http.StatusNotFound},
+		{name: "encoded dot slash with unescaping", givenEnablePathUnescaping: true, whenPath: "/./admin/secret.txt", whenRawPath: "/.%2Fadmin/secret.txt", expectStatus: http.StatusNotFound},
+		{name: "public file", whenPath: "/hello world.txt", expectStatus: http.StatusOK},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+			static := StaticWithConfig(StaticConfig{Filesystem: fsys, EnablePathUnescaping: tc.givenEnablePathUnescaping})
+			e.GET("/*", func(c *echo.Context) error {
+				return echo.ErrNotFound
+			}, static)
+			admin := e.Group("/admin", func(next echo.HandlerFunc) echo.HandlerFunc {
+				return func(c *echo.Context) error {
+					return echo.ErrForbidden
+				}
+			})
+			admin.GET("/*", func(c *echo.Context) error {
+				return c.String(http.StatusOK, "admin")
+			})
+
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.URL.Path = tc.whenPath
+			req.URL.RawPath = tc.whenRawPath
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, tc.expectStatus, rec.Code)
+			assert.NotContains(t, rec.Body.String(), "SECRET")
+		})
+	}
+}
+
+func TestStatic_HTML5WithUncleanPath(t *testing.T) {
+	// A path with an empty or dot segment is not served as a file, but HTML5 mode still serves the index for it.
+	e := echo.New()
+	e.Use(StaticWithConfig(StaticConfig{
+		Filesystem: fstest.MapFS{"index.html": {Data: []byte("spa")}},
+		HTML5:      true,
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.URL.Path = "/app//route"
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "spa", rec.Body.String())
+}

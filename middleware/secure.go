@@ -124,7 +124,6 @@ func (config SecureConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				return next(c)
 			}
 
-			req := c.Request()
 			res := c.Response()
 
 			if config.XSSProtection != "" {
@@ -136,7 +135,7 @@ func (config SecureConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			if config.XFrameOptions != "" {
 				res.Header().Set(echo.HeaderXFrameOptions, config.XFrameOptions)
 			}
-			if hstsValue != "" && (c.IsTLS() || (req.Header.Get(echo.HeaderXForwardedProto) == "https")) {
+			if hstsValue != "" && c.Scheme() == "https" {
 				res.Header().Set(echo.HeaderStrictTransportSecurity, hstsValue)
 			}
 			if config.ContentSecurityPolicy != "" {

@@ -1,6 +1,41 @@
 # Changelog
 
 
+## v5.4.0 - 2026-09-27
+
+**Security**
+
+This release fixes several security issues. Upgrading is recommended. Some fixes change behavior; read "Behavior changes to check before upgrading" below.
+
+* **Request scheme:** `Context.Scheme()` now uses the `X-Forwarded-Proto`, `X-Forwarded-Protocol`, `X-Forwarded-Ssl` and `X-Url-Scheme` headers only when the request comes directly from a loopback, link-local or private network address or a unix socket. Before this, any client could send `X-Forwarded-Proto: https` over plain HTTP and skip `HTTPSRedirect`. When `X-Forwarded-Proto` is present, only it is used (its last value), and the scheme is returned in lowercase. `Echo#SchemeExtractor` (and `Config.SchemeExtractor`) selects the strategy: `ExtractSchemeFromHeaders(...TrustOption)` (default), `ExtractSchemeDirect()` or `LegacySchemeExtractor()`. The Secure middleware now sets HSTS based on `Context.Scheme()`. The Proxy middleware always sets `X-Forwarded-Proto` from `Context.Scheme()` and removes `X-Forwarded-Ssl`, `X-Forwarded-Protocol` and `X-Url-Scheme` before forwarding. [GHSA-2ffq-g2xg-c22p](https://github.com/labstack/echo/security/advisories/GHSA-2ffq-g2xg-c22p)
+* **Proxy middleware:** always sets `X-Real-IP` from `Context.RealIP()`, so a client can no longer pass a spoofed `X-Real-IP` to the upstream. [GHSA-99jh-6h7p-pp36](https://github.com/labstack/echo/security/advisories/GHSA-99jh-6h7p-pp36)
+* **JSONP:** `Context.JSONP` and `Context.JSONPBlob` accept only a callback that is empty, a JavaScript identifier or a dot-separated path of identifiers (ASCII letters, digits, `_` and `$`). Any other callback returns a 400 Bad Request error that wraps the new `ErrInvalidJSONPCallback`, and nothing is written. JSONP responses now carry `X-Content-Type-Options: nosniff`. JSONP lets any website read the response with the user's cookies, so do not use it for data that needs authentication. [GHSA-h9g5-28mm-hx3g](https://github.com/labstack/echo/security/advisories/GHSA-h9g5-28mm-hx3g)
+* **MethodOverride:** a POST can no longer be overridden to `GET`, `HEAD`, `OPTIONS`, `TRACE` or `CONNECT`. Before this, with the `MethodFromForm` or `MethodFromQuery` getter and MethodOverride registered with `Use` before the CSRF middleware, `_method=GET` skipped the CSRF check. Register MethodOverride with `Echo#Pre`. [GHSA-r7w9-592q-9vg4](https://github.com/labstack/echo/security/advisories/GHSA-r7w9-592q-9vg4)
+* **Redirects:** the trailing slash middlewares and the static directory redirect percent-encode control characters in the redirect path. Before this, `/%09/evil.example/` redirected browsers to `evil.example`. [GHSA-v753-g4cw-jm48](https://github.com/labstack/echo/security/advisories/GHSA-v753-g4cw-jm48)
+* **Static files:** with the default settings, the Static middleware resolves files from the same form of the path that the router matched, so `/admin%2Fsecret.txt` or `/%61dmin/secret.txt` can no longer reach a file under a guarded `/admin/*` route. [GHSA-375p-5qhx-8wq4](https://github.com/labstack/echo/security/advisories/GHSA-375p-5qhx-8wq4) The Static middleware and `StaticDirectoryHandler` (used by `Echo.Static`, `Echo.StaticFS`, `Group.Static` and `Group.StaticFS`) no longer serve paths with a `.`, `..` or empty segment, such as `/assets/../admin/secret.txt`, also after path unescaping. [GHSA-3pmx-cf9f-34xr](https://github.com/labstack/echo/security/advisories/GHSA-3pmx-cf9f-34xr)
+
+**Behavior changes to check before upgrading**
+
+* **Proxies or load balancers with public IP addresses.** If a proxy connects to your app from a public (or `100.64.0.0/10`) address, its `X-Forwarded-Proto` is now ignored: `HTTPSRedirect` redirects in a loop and the Secure middleware stops sending HSTS. This affects, for example, Cloudflare, CloudFront and Azure Front Door connecting to a public origin, the GCP external HTTP(S) load balancer including GKE Ingress (`35.191.0.0/16`, `130.211.0.0/22`), and networks that use `100.64.0.0/10` (such as Alibaba Cloud SLB or EKS custom networking). Trust the proxy's address ranges:
+  ```go
+  _, gclb1, _ := net.ParseCIDR("35.191.0.0/16")
+  _, gclb2, _ := net.ParseCIDR("130.211.0.0/22")
+  e.SchemeExtractor = echo.ExtractSchemeFromHeaders(echo.TrustIPRange(gclb1), echo.TrustIPRange(gclb2))
+  ```
+  Proxies on the same host, in a private network (AWS ALB, in-cluster ingress controllers such as ingress-nginx or Traefik, most PaaS routers) or on a unix socket keep working without changes. `echo.LegacySchemeExtractor()` restores the old behavior but is not safe unless every request passes through a proxy that sets these headers. Serverless adapters or middleware that set `RemoteAddr` to the client's address also make `X-Forwarded-Proto` ignored (or, if they take it from a header, spoofable).
+* **Trusted proxies must set `X-Forwarded-Proto`.** A proxy on a trusted address that passes the client's `X-Forwarded-Proto` through (for example nginx without `proxy_set_header X-Forwarded-Proto $scheme;`) still lets the client choose the scheme. An invalid `X-Forwarded-Proto` value now results in `http` instead of falling back to the other scheme headers.
+* **Your own tests.** `httptest.NewRequest` sets `RemoteAddr` to `192.0.2.1:1234`, which is not trusted, so tests that set `X-Forwarded-Proto` now see `http`. Set `req.RemoteAddr = "10.0.0.1:1234"` or use `e.SchemeExtractor = echo.LegacySchemeExtractor()` in such tests.
+* **Proxy middleware headers.** `X-Real-IP` sent to the upstream is now always `Context.RealIP()`. In a chain like nginx → Echo Proxy → upstream, configure `Echo#IPExtractor` (for example `echo.ExtractIPFromRealIPHeader()`) to pass the client address on. `X-Forwarded-Ssl`, `X-Forwarded-Protocol` and `X-Url-Scheme` are no longer forwarded; `X-Forwarded-Proto` carries the scheme.
+* **MethodOverride.** Overriding a POST to `GET` (for example with `X-HTTP-Method-Override: GET` to send a long query in a POST body) is no longer done; such requests keep the POST method.
+* **Static files.** Paths with a double slash or dot segment (for example `/assets//app.js`) now return 404; in HTML5 mode the index is still served. The Static middleware no longer finds file names that the client sends with non-default escaping (for example `%2C`, `%40` or lowercase hex like `%c3%a9`) unless `StaticConfig.EnablePathUnescaping` is set; `Echo.Static` has behaved this way since v5.2.1. With `StaticConfig.EnablePathUnescaping` or `Config.EnablePathUnescapingStaticFiles`, encoded dots (`%2e%2e`) no longer traverse directories, but encoded slashes are still decoded, so do not combine these options with route-based access control.
+* **JSONP.** `Context.JSONP` returns an error for callbacks that are not JavaScript identifiers.
+
+**Documentation**
+
+* `IPExtractor` docs: corrected the description of the default (the direct peer address has been used since v5.1.0).
+* Static middleware: when registered with `Echo#Use` it runs before route and group middleware, so route guards do not protect the files it serves.
+
+
 ## v5.3.1 - 2026-07-21
 
 **Fixes**

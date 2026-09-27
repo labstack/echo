@@ -346,15 +346,17 @@ func (config ProxyConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				return config.ErrorHandler(c, err)
 			}
 
-			// Fix header
-			// Basically it's not good practice to unconditionally pass incoming x-real-ip header to upstream.
-			// However, for backward compatibility, legacy behavior is preserved unless you configure Echo#IPExtractor.
-			if req.Header.Get(echo.HeaderXRealIP) == "" || c.Echo().IPExtractor != nil {
-				req.Header.Set(echo.HeaderXRealIP, c.RealIP())
-			}
-			if req.Header.Get(echo.HeaderXForwardedProto) == "" {
-				req.Header.Set(echo.HeaderXForwardedProto, c.Scheme())
-			}
+			// Always overwrite X-Real-IP. Without Echo#IPExtractor, c.RealIP() is the address of the direct peer, so a
+			// client cannot spoof the IP seen by the upstream. Configure Echo#IPExtractor to trust headers set by proxies.
+			req.Header.Set(echo.HeaderXRealIP, c.RealIP())
+			// Always overwrite X-Forwarded-Proto. c.Scheme() uses an incoming X-Forwarded-Proto header only when it comes
+			// from a trusted address (see Echo#SchemeExtractor), so clients cannot spoof the scheme seen by the upstream.
+			// Remove the other scheme headers: X-Forwarded-Proto carries the scheme, and some upstreams (e.g. Rack) would
+			// otherwise trust a client-supplied X-Forwarded-Ssl.
+			req.Header.Set(echo.HeaderXForwardedProto, c.Scheme())
+			req.Header.Del(echo.HeaderXForwardedSsl)
+			req.Header.Del(echo.HeaderXForwardedProtocol)
+			req.Header.Del(echo.HeaderXUrlScheme)
 			if c.IsWebSocket() { // For HTTP, this is set by Go HTTP reverse proxy.
 				// Append, not set, to preserve the incoming chain from upstream proxies.
 				prior := req.Header[echo.HeaderXForwardedFor]
