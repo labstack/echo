@@ -32,6 +32,7 @@ func TestSecure(t *testing.T) {
 
 	// Custom
 	req.Header.Set(echo.HeaderXForwardedProto, "https")
+	req.RemoteAddr = "10.0.0.1:1234" // request from a reverse proxy in a private network (trusted by default)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	SecureWithConfig(SecureConfig{
@@ -52,6 +53,7 @@ func TestSecure(t *testing.T) {
 
 	// Custom with CSPReportOnly flag
 	req.Header.Set(echo.HeaderXForwardedProto, "https")
+	req.RemoteAddr = "10.0.0.1:1234" // request from a reverse proxy in a private network (trusted by default)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	SecureWithConfig(SecureConfig{
@@ -73,6 +75,7 @@ func TestSecure(t *testing.T) {
 
 	// Custom, with preload option enabled
 	req.Header.Set(echo.HeaderXForwardedProto, "https")
+	req.RemoteAddr = "10.0.0.1:1234" // request from a reverse proxy in a private network (trusted by default)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	SecureWithConfig(SecureConfig{
@@ -83,6 +86,7 @@ func TestSecure(t *testing.T) {
 
 	// Custom, with preload option enabled and subdomains excluded
 	req.Header.Set(echo.HeaderXForwardedProto, "https")
+	req.RemoteAddr = "10.0.0.1:1234" // request from a reverse proxy in a private network (trusted by default)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 	SecureWithConfig(SecureConfig{
@@ -91,4 +95,21 @@ func TestSecure(t *testing.T) {
 		HSTSExcludeSubdomains: true,
 	})(h)(c)
 	assert.Equal(t, "max-age=3600; preload", rec.Header().Get(echo.HeaderStrictTransportSecurity))
+}
+
+func TestSecureWithConfig_HSTSIgnoresForwardedProtoFromUntrustedClient(t *testing.T) {
+	e := echo.New()
+	h := func(c echo.Context) error {
+		return c.String(http.StatusOK, "test")
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "203.0.113.10:1234"
+	req.Header.Set(echo.HeaderXForwardedProto, "https")
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	err := SecureWithConfig(SecureConfig{HSTSMaxAge: 3600})(h)(c)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "", rec.Header().Get(echo.HeaderStrictTransportSecurity))
 }

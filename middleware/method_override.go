@@ -5,6 +5,7 @@ package middleware
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 )
@@ -32,7 +33,11 @@ var DefaultMethodOverrideConfig = MethodOverrideConfig{
 // MethodOverride  middleware checks for the overridden method from the request and
 // uses it instead of the original method.
 //
-// For security reasons, only `POST` method can be overridden.
+// For security reasons, only `POST` method can be overridden, and it cannot be overridden to `GET`, `HEAD`,
+// `OPTIONS`, `TRACE` or `CONNECT`. Otherwise a cross-site form POST could skip checks that apply only to
+// state-changing methods, such as the CSRF middleware.
+//
+// Register it with Echo#Pre so that routing uses the overridden method.
 func MethodOverride() echo.MiddlewareFunc {
 	return MethodOverrideWithConfig(DefaultMethodOverrideConfig)
 }
@@ -57,7 +62,7 @@ func MethodOverrideWithConfig(config MethodOverrideConfig) echo.MiddlewareFunc {
 			req := c.Request()
 			if req.Method == http.MethodPost {
 				m := config.Getter(c)
-				if m != "" {
+				if m != "" && !isForbiddenOverrideMethod(m) {
 					req.Method = m
 				}
 			}
@@ -88,4 +93,15 @@ func MethodFromQuery(param string) MethodOverrideGetter {
 	return func(c echo.Context) string {
 		return c.QueryParam(param)
 	}
+}
+
+// isForbiddenOverrideMethod reports whether POST must not be overridden to method m. Safe methods (and CONNECT) are
+// forbidden because middlewares such as CSRF do not check them.
+func isForbiddenOverrideMethod(m string) bool {
+	for _, forbidden := range []string{http.MethodGet, http.MethodHead, http.MethodOptions, http.MethodTrace, http.MethodConnect} {
+		if strings.EqualFold(m, forbidden) {
+			return true
+		}
+	}
+	return false
 }

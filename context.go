@@ -134,10 +134,17 @@ type Context interface {
 
 	// JSONP sends a JSONP response with status code. It uses `callback` to construct
 	// the JSONP payload.
+	//
+	// The callback must be empty, a JavaScript identifier or a dot-separated path of identifiers using only ASCII
+	// letters, digits, `_` and `$`. Otherwise nothing is written and a 400 Bad Request error wrapping
+	// ErrInvalidJSONPCallback is returned. The response has the `X-Content-Type-Options: nosniff` header.
+	//
+	// Any website can load a JSONP response with a <script> tag, including the user's cookies. Do not use JSONP for
+	// data that requires authentication; use JSON with CORS instead.
 	JSONP(code int, callback string, i any) error
 
 	// JSONPBlob sends a JSONP blob response with status code. It uses `callback`
-	// to construct the JSONP payload.
+	// to construct the JSONP payload. The callback is validated like in Context.JSONP.
 	JSONPBlob(code int, callback string, b []byte) error
 
 	// XML sends an XML response with status code.
@@ -272,38 +279,20 @@ func (c *context) IsWebSocket() bool {
 	return strings.EqualFold(upgrade, "websocket")
 }
 
-func isValidProto(proto string) bool {
-	if proto == "" {
-		return false
-	}
-	for _, p := range []string{"http", "https", "ws", "wss"} {
-		if strings.EqualFold(proto, p) {
-			return true
-		}
-	}
-	return false
-}
-
-// Scheme returns the HTTP protocol scheme, `http` or `https`.
+// Scheme returns the protocol scheme in lowercase: `http` or `https`, or `ws` or `wss` when a trusted proxy reports
+// them.
+//
+// Echo#SchemeExtractor decides how the scheme is determined. When it is not set, the forwarding headers
+// (`X-Forwarded-Proto`, `X-Forwarded-Protocol`, `X-Forwarded-Ssl` and `X-Url-Scheme`) are used only for requests
+// that come directly from a loopback, link-local or private network address or a unix socket.
+// See ExtractSchemeFromHeaders.
 func (c *context) Scheme() string {
 	// Can't use `r.Request.URL.Scheme`
 	// See: https://groups.google.com/forum/#!topic/golang-nuts/pMUkBlQBDF0
-	if c.IsTLS() {
-		return "https"
+	if c.echo != nil && c.echo.SchemeExtractor != nil {
+		return c.echo.SchemeExtractor(c.request)
 	}
-	if scheme := c.request.Header.Get(HeaderXForwardedProto); isValidProto(scheme) {
-		return scheme
-	}
-	if scheme := c.request.Header.Get(HeaderXForwardedProtocol); isValidProto(scheme) {
-		return scheme
-	}
-	if ssl := c.request.Header.Get(HeaderXForwardedSsl); ssl == "on" {
-		return "https"
-	}
-	if scheme := c.request.Header.Get(HeaderXUrlScheme); isValidProto(scheme) {
-		return scheme
-	}
-	return "http"
+	return extractScheme(c.request, defaultSchemeChecker)
 }
 
 func (c *context) RealIP() string {
@@ -493,13 +482,54 @@ func (c *context) String(code int, s string) (err error) {
 	return c.Blob(code, MIMETextPlainCharsetUTF8, []byte(s))
 }
 
+// isValidJSONPCallback reports whether callback can be used as a JSONP function name: an empty string, a JavaScript
+// identifier or a dot-separated path of identifiers (e.g. `cb`, `jQuery_123`, `ns.handlers.cb`). Only ASCII letters,
+// digits, `_` and `$` are allowed, so the callback cannot inject other JavaScript into the response.
+func isValidJSONPCallback(callback string) bool {
+	if callback == "" {
+		return true
+	}
+	atStart := true // at the start of an identifier
+	for i := 0; i < len(callback); i++ {
+		ch := callback[i]
+		switch {
+		case ch == '.':
+			if atStart {
+				return false
+			}
+			atStart = true
+		case ch == '_' || ch == '$' || ('a' <= ch && ch <= 'z') || ('A' <= ch && ch <= 'Z'):
+			atStart = false
+		case '0' <= ch && ch <= '9':
+			if atStart {
+				return false
+			}
+		default:
+			return false
+		}
+	}
+	return !atStart
+}
+
+// writeJSONPHeader validates the callback and writes the JSONP response headers.
+func (c *context) writeJSONPHeader(code int, callback string) error {
+	if !isValidJSONPCallback(callback) {
+		return ErrBadRequest.WithInternal(ErrInvalidJSONPCallback)
+	}
+	c.writeContentType(MIMEApplicationJavaScriptCharsetUTF8)
+	c.response.Header().Set(HeaderXContentTypeOptions, "nosniff")
+	c.response.WriteHeader(code)
+	return nil
+}
+
 func (c *context) jsonPBlob(code int, callback string, i any) (err error) {
 	indent := ""
 	if _, pretty := c.QueryParams()["pretty"]; c.echo.Debug || pretty {
 		indent = defaultIndent
 	}
-	c.writeContentType(MIMEApplicationJavaScriptCharsetUTF8)
-	c.response.WriteHeader(code)
+	if err = c.writeJSONPHeader(code, callback); err != nil {
+		return
+	}
 	if _, err = c.response.Write([]byte(callback + "(")); err != nil {
 		return
 	}
@@ -539,8 +569,9 @@ func (c *context) JSONP(code int, callback string, i any) (err error) {
 }
 
 func (c *context) JSONPBlob(code int, callback string, b []byte) (err error) {
-	c.writeContentType(MIMEApplicationJavaScriptCharsetUTF8)
-	c.response.WriteHeader(code)
+	if err = c.writeJSONPHeader(code, callback); err != nil {
+		return
+	}
 	if _, err = c.response.Write([]byte(callback + "(")); err != nil {
 		return
 	}

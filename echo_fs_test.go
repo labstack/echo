@@ -11,6 +11,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"testing/fstest"
 )
 
 func TestEcho_StaticFS(t *testing.T) {
@@ -159,13 +160,13 @@ func TestEcho_StaticFS(t *testing.T) {
 			expectBodyStartsWith:                 "{\"message\":\"Not Found\"}\n",
 		},
 		{
-			name:                                 "allow encoded dots in path (%2E%2E is `..`) to traverse within filesystem when path unescaping is enabled",
+			name:                                 "nok, encoded dots (%2E%2E is `..`) are rejected after unescaping (GHSA-3pmx-cf9f-34xr)",
 			givenPrefix:                          "/",
 			givenFs:                              os.DirFS("_fixture/"),
 			givenEnablePathUnescapingStaticFiles: true,
 			whenURL:                              `/folder/%2E%2E/index.html`, // `/folder/../index.html`
-			expectStatus:                         http.StatusOK,
-			expectBodyStartsWith:                 "<!doctype html>",
+			expectStatus:                         http.StatusNotFound,
+			expectBodyStartsWith:                 "{\"message\":\"Not Found\"}\n",
 		},
 	}
 
@@ -286,6 +287,82 @@ func TestEcho_StaticPanic(t *testing.T) {
 			assert.Panics(t, func() {
 				e.Static("../assets", tc.givenRoot)
 			})
+		})
+	}
+}
+
+func TestSanitizeURI(t *testing.T) {
+	var testCases = []struct {
+		whenURI string
+		expect  string
+	}{
+		{whenURI: "/path/", expect: "/path/"},
+		{whenURI: "//example.com/", expect: "/example.com/"},
+		{whenURI: "/\t/example.com/", expect: "/%09/example.com/"},
+		{whenURI: "/\t\\example.com/", expect: "/%09\\example.com/"},
+		{whenURI: "/\x7f/example.com/", expect: "/%7F/example.com/"},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.whenURI, func(t *testing.T) {
+			assert.Equal(t, tc.expect, sanitizeURI(tc.whenURI))
+		})
+	}
+}
+
+func TestEcho_StaticFS_dotAndEmptySegments(t *testing.T) {
+	// GHSA-3pmx-cf9f-34xr: paths with ".", ".." or empty segments must not reach a file under a guarded route.
+	fsys := fstest.MapFS{
+		"admin/secret.txt":  {Data: []byte("SECRET")},
+		"public/index.html": {Data: []byte("public")},
+	}
+	var testCases = []struct {
+		name         string
+		whenPath     string
+		expectStatus int
+	}{
+		{name: "guarded route", whenPath: "/admin/secret.txt", expectStatus: http.StatusForbidden},
+		{name: "parent dot segment", whenPath: "/assets/../admin/secret.txt", expectStatus: http.StatusNotFound},
+		{name: "current dot segment", whenPath: "/./admin/secret.txt", expectStatus: http.StatusNotFound},
+		{name: "nested parent dot segments", whenPath: "/a/b/../../admin/secret.txt", expectStatus: http.StatusNotFound},
+		{name: "empty segment", whenPath: "//admin/secret.txt", expectStatus: http.StatusNotFound},
+		{name: "public file is still served", whenPath: "/public/index.html", expectStatus: http.StatusOK},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			e.StaticFS("/", fsys)
+			e.GET("/admin/*", func(c Context) error {
+				return ErrForbidden
+			})
+
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.URL.Path = tc.whenPath
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, tc.expectStatus, rec.Code)
+			assert.NotContains(t, rec.Body.String(), "SECRET")
+		})
+	}
+}
+
+func TestStaticDirectoryHandler_encodedDotsWithPathUnescaping(t *testing.T) {
+	// GHSA-3pmx-cf9f-34xr: with EnablePathUnescapingStaticFiles, dot segments created by unescaping must be rejected too.
+	fsys := fstest.MapFS{"admin/secret.txt": {Data: []byte("SECRET")}, "x/file.txt": {Data: []byte("x")}}
+	for _, u := range []string{"/x/%2e%2e/admin/secret.txt", "/.%2Fadmin/secret.txt", "/x/%252e%252e/admin/secret.txt"} {
+		t.Run(u, func(t *testing.T) {
+			e := New()
+			e.EnablePathUnescapingStaticFiles = true
+			e.StaticFS("/", fsys)
+			e.GET("/admin/*", func(c Context) error {
+				return ErrForbidden
+			})
+
+			req := httptest.NewRequest(http.MethodGet, u, nil)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.NotContains(t, rec.Body.String(), "SECRET")
 		})
 	}
 }

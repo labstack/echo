@@ -271,6 +271,7 @@ func redirectTest(fn middlewareGenerator, host string, header http.Header) *http
 	}
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Host = host
+	req.RemoteAddr = "10.0.0.1:1234" // request from a reverse proxy in a private network (trusted by default)
 	if header != nil {
 		req.Header = header
 	}
@@ -280,4 +281,46 @@ func redirectTest(fn middlewareGenerator, host string, header http.Header) *http
 	fn()(next)(c)
 
 	return res
+}
+
+func TestRedirectHTTPSRedirect_forwardedProtoTrust(t *testing.T) {
+	var testCases = []struct {
+		name             string
+		whenRemoteAddr   string
+		expectLocation   string
+		expectStatusCode int
+	}{
+		{
+			name:             "redirects when X-Forwarded-Proto comes from untrusted client",
+			whenRemoteAddr:   "203.0.113.10:1234",
+			expectLocation:   "https://labstack.com/",
+			expectStatusCode: http.StatusMovedPermanently,
+		},
+		{
+			name:             "does not redirect when X-Forwarded-Proto comes from trusted proxy",
+			whenRemoteAddr:   "10.0.0.1:1234",
+			expectLocation:   "",
+			expectStatusCode: http.StatusOK,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.Host = "labstack.com"
+			req.RemoteAddr = tc.whenRemoteAddr
+			req.Header.Set(echo.HeaderXForwardedProto, "https")
+			res := httptest.NewRecorder()
+			c := e.NewContext(req, res)
+
+			err := HTTPSRedirect()(func(c echo.Context) error {
+				return c.NoContent(http.StatusOK)
+			})(c)
+
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expectStatusCode, res.Code)
+			assert.Equal(t, tc.expectLocation, res.Header().Get(echo.HeaderLocation))
+		})
+	}
 }

@@ -219,6 +219,88 @@ func TestProxyRealIPHeader(t *testing.T) {
 	}
 }
 
+func TestProxyForwardedProtoHeader(t *testing.T) {
+	received := make(chan string, 1)
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		received <- r.Header.Get(echo.HeaderXForwardedProto)
+	}))
+	defer upstream.Close()
+	url, _ := url.Parse(upstream.URL)
+	rrb := NewRoundRobinBalancer([]*ProxyTarget{{Name: "upstream", URL: url}})
+	e := echo.New()
+	e.Use(ProxyWithConfig(ProxyConfig{Balancer: rrb}))
+
+	var testCases = []struct {
+		name               string
+		whenRemoteAddr     string
+		whenForwardedProto string
+		expect             string
+	}{
+		{
+			name:           "sets scheme when header is missing",
+			whenRemoteAddr: "203.0.113.10:1234",
+			expect:         "http",
+		},
+		{
+			name:               "overwrites X-Forwarded-Proto from untrusted client",
+			whenRemoteAddr:     "203.0.113.10:1234",
+			whenForwardedProto: "https",
+			expect:             "http",
+		},
+		{
+			name:               "keeps X-Forwarded-Proto from trusted proxy",
+			whenRemoteAddr:     "10.0.0.1:1234",
+			whenForwardedProto: "https",
+			expect:             "https",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.RemoteAddr = tc.whenRemoteAddr
+			if tc.whenForwardedProto != "" {
+				req.Header.Set(echo.HeaderXForwardedProto, tc.whenForwardedProto)
+			}
+			rec := httptest.NewRecorder()
+
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, tc.expect, <-received)
+		})
+	}
+}
+
+func TestProxyRemovesOtherSchemeHeaders(t *testing.T) {
+	// Upstreams such as Rack check X-Forwarded-Ssl before X-Forwarded-Proto, so client-supplied scheme headers
+	// must not reach them. X-Forwarded-Proto (set from c.Scheme()) carries the scheme instead.
+	received := make(chan http.Header, 1)
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		received <- r.Header.Clone()
+	}))
+	defer upstream.Close()
+	url, _ := url.Parse(upstream.URL)
+	rrb := NewRoundRobinBalancer([]*ProxyTarget{{Name: "upstream", URL: url}})
+	e := echo.New()
+	e.Use(ProxyWithConfig(ProxyConfig{Balancer: rrb}))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "203.0.113.10:1234"
+	req.Header.Set(echo.HeaderXForwardedSsl, "on")
+	req.Header.Set(echo.HeaderXForwardedProtocol, "https")
+	req.Header.Set(echo.HeaderXUrlScheme, "https")
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	h := <-received
+	assert.Equal(t, "http", h.Get(echo.HeaderXForwardedProto))
+	assert.Empty(t, h.Values(echo.HeaderXForwardedSsl))
+	assert.Empty(t, h.Values(echo.HeaderXForwardedProtocol))
+	assert.Empty(t, h.Values(echo.HeaderXUrlScheme))
+}
+
 func TestProxyRewrite(t *testing.T) {
 	var testCases = []struct {
 		whenPath         string

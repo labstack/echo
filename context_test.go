@@ -219,6 +219,67 @@ func TestContextJSONWithEmptyIntent(t *testing.T) {
 	}
 }
 
+func TestContextJSONP_callbackValidation(t *testing.T) {
+	var testCases = []struct {
+		name          string
+		givenCallback string
+		expectValid   bool
+	}{
+		{name: "simple identifier", givenCallback: "callback", expectValid: true},
+		{name: "jQuery style", givenCallback: "jQuery331_1700000000000", expectValid: true},
+		{name: "dollar", givenCallback: "$", expectValid: true},
+		{name: "underscore prefix", givenCallback: "_cb", expectValid: true},
+		{name: "dotted path", givenCallback: "ns.handlers.cb", expectValid: true},
+		{name: "empty", givenCallback: "", expectValid: true},
+		{name: "function call injection", givenCallback: "alert(1)//", expectValid: false},
+		{name: "statement injection", givenCallback: "cb;alert(1)", expectValid: false},
+		{name: "html", givenCallback: "<script>", expectValid: false},
+		{name: "space", givenCallback: "a b", expectValid: false},
+		{name: "dash", givenCallback: "a-b", expectValid: false},
+		{name: "leading digit", givenCallback: "1abc", expectValid: false},
+		{name: "digit after dot", givenCallback: "a.1b", expectValid: false},
+		{name: "leading dot", givenCallback: ".cb", expectValid: false},
+		{name: "trailing dot", givenCallback: "cb.", expectValid: false},
+		{name: "double dot", givenCallback: "a..b", expectValid: false},
+		{name: "brackets", givenCallback: "a[0]", expectValid: false},
+		{name: "newline", givenCallback: "cb\nalert(1)", expectValid: false},
+		{name: "non-ASCII", givenCallback: "caf\u00e9", expectValid: false},
+	}
+
+	for _, tc := range testCases {
+		for _, method := range []string{"JSONP", "JSONPBlob"} {
+			t.Run(method+" "+tc.name, func(t *testing.T) {
+				e := New()
+				rec := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodGet, "/", nil)
+				c := e.NewContext(req, rec)
+
+				var err error
+				if method == "JSONP" {
+					err = c.JSONP(http.StatusOK, tc.givenCallback, user{ID: 1, Name: "Jon Snow"})
+				} else {
+					err = c.JSONPBlob(http.StatusOK, tc.givenCallback, []byte(userJSON))
+				}
+
+				if tc.expectValid {
+					assert.NoError(t, err)
+					assert.Equal(t, http.StatusOK, rec.Code)
+					assert.Equal(t, "nosniff", rec.Header().Get(HeaderXContentTypeOptions))
+					assert.True(t, strings.HasPrefix(rec.Body.String(), tc.givenCallback+"("))
+					return
+				}
+				assert.ErrorIs(t, err, ErrInvalidJSONPCallback)
+				var he *HTTPError
+				if assert.ErrorAs(t, err, &he) {
+					assert.Equal(t, http.StatusBadRequest, he.Code)
+				}
+				assert.Equal(t, 0, rec.Body.Len())
+				assert.Equal(t, "", rec.Header().Get(HeaderContentType))
+			})
+		}
+	}
+}
+
 func TestContextJSONP(t *testing.T) {
 	e := New()
 	rec := httptest.NewRecorder()
@@ -905,10 +966,11 @@ func TestContext_Request(t *testing.T) {
 
 func TestContext_Scheme(t *testing.T) {
 	var testCases = []struct {
-		name         string
-		givenIsTLS   bool
-		givenHeaders http.Header
-		expect       string
+		name            string
+		givenIsTLS      bool
+		givenRemoteAddr string // defaults to a trusted reverse proxy in a private network
+		givenHeaders    http.Header
+		expect          string
 	}{
 		{
 			name:         "defaults to http without TLS or headers",
@@ -952,7 +1014,7 @@ func TestContext_Scheme(t *testing.T) {
 			givenHeaders: http.Header{
 				HeaderXForwardedProto: []string{"HTTPS"},
 			},
-			expect: "HTTPS",
+			expect: "https", // lowercase, so `Scheme() == "https"` checks (HTTPSRedirect, Secure) work
 		},
 		{
 			name:       "uses X-Forwarded-Proto ws",
@@ -971,13 +1033,35 @@ func TestContext_Scheme(t *testing.T) {
 			expect: "wss",
 		},
 		{
-			name:       "ignores invalid X-Forwarded-Proto and uses X-Forwarded-Protocol",
+			name:       "invalid X-Forwarded-Proto falls back to http, not to other headers",
 			givenIsTLS: false,
 			givenHeaders: http.Header{
 				HeaderXForwardedProto:    []string{"ftp"},
 				HeaderXForwardedProtocol: []string{"https"},
 			},
-			expect: "https",
+			expect: "http",
+		},
+		{
+			name: "uses last value of comma separated X-Forwarded-Proto (added by the nearest proxy)",
+			givenHeaders: http.Header{
+				HeaderXForwardedProto: []string{"https, http"},
+			},
+			expect: "http",
+		},
+		{
+			name: "uses last X-Forwarded-Proto header line (added by the nearest proxy)",
+			givenHeaders: http.Header{
+				HeaderXForwardedProto: []string{"https", "http"},
+			},
+			expect: "http",
+		},
+		{
+			name: "X-Forwarded-Ssl can not override X-Forwarded-Proto list",
+			givenHeaders: http.Header{
+				HeaderXForwardedProto: []string{"http, http"},
+				HeaderXForwardedSsl:   []string{"on"},
+			},
+			expect: "http",
 		},
 		{
 			name:       "uses X-Forwarded-Protocol",
@@ -1058,11 +1142,70 @@ func TestContext_Scheme(t *testing.T) {
 			},
 			expect: "https",
 		},
+		{
+			name:            "ignores X-Forwarded-Proto from untrusted client",
+			givenRemoteAddr: "203.0.113.10:1234",
+			givenHeaders:    http.Header{HeaderXForwardedProto: []string{"https"}},
+			expect:          "http",
+		},
+		{
+			name:            "ignores X-Forwarded-Protocol from untrusted client",
+			givenRemoteAddr: "203.0.113.10:1234",
+			givenHeaders:    http.Header{HeaderXForwardedProtocol: []string{"https"}},
+			expect:          "http",
+		},
+		{
+			name:            "ignores X-Forwarded-Ssl from untrusted client",
+			givenRemoteAddr: "203.0.113.10:1234",
+			givenHeaders:    http.Header{HeaderXForwardedSsl: []string{"on"}},
+			expect:          "http",
+		},
+		{
+			name:            "ignores X-Url-Scheme from untrusted client",
+			givenRemoteAddr: "203.0.113.10:1234",
+			givenHeaders:    http.Header{HeaderXUrlScheme: []string{"https"}},
+			expect:          "http",
+		},
+		{
+			name:            "returns https for TLS from untrusted client",
+			givenIsTLS:      true,
+			givenRemoteAddr: "203.0.113.10:1234",
+			givenHeaders:    http.Header{HeaderXForwardedProto: []string{"http"}},
+			expect:          "https",
+		},
+		{
+			name:            "trusts X-Forwarded-Proto from loopback",
+			givenRemoteAddr: "127.0.0.1:1234",
+			givenHeaders:    http.Header{HeaderXForwardedProto: []string{"https"}},
+			expect:          "https",
+		},
+		{
+			name:            "trusts X-Forwarded-Proto from IPv6 loopback",
+			givenRemoteAddr: "[::1]:1234",
+			givenHeaders:    http.Header{HeaderXForwardedProto: []string{"https"}},
+			expect:          "https",
+		},
+		{
+			name:            "trusts X-Forwarded-Proto from unix socket peer",
+			givenRemoteAddr: "@",
+			givenHeaders:    http.Header{HeaderXForwardedProto: []string{"https"}},
+			expect:          "https",
+		},
+		{
+			name:            "ignores X-Forwarded-Proto from unparsable remote address",
+			givenRemoteAddr: "not-an-ip:1234",
+			givenHeaders:    http.Header{HeaderXForwardedProto: []string{"https"}},
+			expect:          "http",
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.RemoteAddr = "10.0.0.1:1234"
+			if tc.givenRemoteAddr != "" {
+				req.RemoteAddr = tc.givenRemoteAddr
+			}
 			if tc.givenHeaders != nil {
 				req.Header = tc.givenHeaders
 			}

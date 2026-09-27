@@ -65,12 +65,21 @@ func (e *Echo) StaticFS(pathPrefix string, filesystem fs.FS) *Route {
 func StaticDirectoryHandler(fileSystem fs.FS, disablePathUnescaping bool) HandlerFunc {
 	return func(c Context) error {
 		p := c.Param("*")
+		// The router matches the path as it was sent, but the file name is resolved with path.Clean(). A path with a
+		// ".", ".." or empty segment could therefore reach a file under a route that the router never matched, for
+		// example `/assets/../admin/private.txt` bypassing a guarded `/admin/*` route (GHSA-3pmx-cf9f-34xr).
+		if hasUncleanPath(c.Request()) || hasDotOrEmptySegment(p) {
+			return ErrNotFound
+		}
 		if !disablePathUnescaping { // when router is already unescaping we do not want to do is twice
 			tmpPath, err := url.PathUnescape(p)
 			if err != nil {
 				return fmt.Errorf("failed to unescape path variable: %w", err)
 			}
 			p = tmpPath
+			if hasDotOrEmptySegment(p) { // unescaping can create new dot segments, e.g. `%2e%2e`
+				return ErrNotFound
+			}
 		}
 
 		// fs.FS.Open() already assumes that file names are relative to FS root path and considers name with prefix `/` as invalid.
@@ -164,10 +173,67 @@ func MustSubFS(currentFs fs.FS, fsRoot string) fs.FS {
 }
 
 func sanitizeURI(uri string) string {
+	// Browsers remove tab and newline characters from URLs, so `/\t/example.com` is `//example.com` to them and a
+	// control character could hide the double slash from the check below. Percent-encode C0 control characters and
+	// DEL first; the browser then requests the same path.
+	uri = escapeControlChars(uri)
 	// double slash `\\`, `//` or even `\/` is absolute uri for browsers and by redirecting request to that uri
 	// we are vulnerable to open redirect attack. so replace all slashes from the beginning with single slash
 	if len(uri) > 1 && (uri[0] == '\\' || uri[0] == '/') && (uri[1] == '\\' || uri[1] == '/') {
 		uri = "/" + strings.TrimLeft(uri, `/\`)
 	}
 	return uri
+}
+
+// escapeControlChars percent-encodes C0 control characters and DEL in s.
+// Keep in sync with the copy in middleware/slash.go.
+func escapeControlChars(s string) string {
+	i := 0
+	for i < len(s) && s[i] >= 0x20 && s[i] != 0x7f {
+		i++
+	}
+	if i == len(s) {
+		return s
+	}
+	const hexDigits = "0123456789ABCDEF"
+	var b strings.Builder
+	b.Grow(len(s) + 8)
+	b.WriteString(s[:i])
+	for ; i < len(s); i++ {
+		if ch := s[i]; ch < 0x20 || ch == 0x7f {
+			b.WriteByte('%')
+			b.WriteByte(hexDigits[ch>>4])
+			b.WriteByte(hexDigits[ch&0x0f])
+		} else {
+			b.WriteByte(ch)
+		}
+	}
+	return b.String()
+}
+
+// hasDotOrEmptySegment reports whether URL path p has a ".", ".." or empty segment. A single leading and a single
+// trailing slash are allowed.
+// Keep in sync with the copy in middleware/static.go.
+func hasDotOrEmptySegment(p string) bool {
+	p = strings.TrimPrefix(p, "/")
+	p = strings.TrimSuffix(p, "/")
+	if p == "" {
+		return false
+	}
+	for segment := range strings.SplitSeq(p, "/") {
+		if segment == "" || segment == "." || segment == ".." {
+			return true
+		}
+	}
+	return false
+}
+
+// hasUncleanPath reports whether the request path, in the form the router matches by default (the escaped path when it
+// differs from the default encoding), has a ".", ".." or empty segment. Encoded dots such as `%2E%2E` are not
+// segments here; they only act as `..` when path unescaping for static files is enabled.
+func hasUncleanPath(req *http.Request) bool {
+	if req.URL.RawPath != "" {
+		return hasDotOrEmptySegment(req.URL.RawPath)
+	}
+	return hasDotOrEmptySegment(req.URL.Path)
 }

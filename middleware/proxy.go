@@ -349,9 +349,14 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 			if req.Header.Get(echo.HeaderXRealIP) == "" || c.Echo().IPExtractor != nil {
 				req.Header.Set(echo.HeaderXRealIP, c.RealIP())
 			}
-			if req.Header.Get(echo.HeaderXForwardedProto) == "" {
-				req.Header.Set(echo.HeaderXForwardedProto, c.Scheme())
-			}
+			// Always overwrite X-Forwarded-Proto. c.Scheme() uses an incoming X-Forwarded-Proto header only when it comes
+			// from a trusted address (see Echo#SchemeExtractor), so clients cannot spoof the scheme seen by the upstream.
+			// Remove the other scheme headers: X-Forwarded-Proto carries the scheme, and some upstreams (e.g. Rack) would
+			// otherwise trust a client-supplied X-Forwarded-Ssl.
+			req.Header.Set(echo.HeaderXForwardedProto, c.Scheme())
+			req.Header.Del(echo.HeaderXForwardedSsl)
+			req.Header.Del(echo.HeaderXForwardedProtocol)
+			req.Header.Del(echo.HeaderXUrlScheme)
 			if c.IsWebSocket() && req.Header.Get(echo.HeaderXForwardedFor) == "" { // For HTTP, it is automatically set by Go HTTP reverse proxy.
 				req.Header.Set(echo.HeaderXForwardedFor, c.RealIP())
 			}

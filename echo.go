@@ -98,7 +98,13 @@ type Echo struct {
 	Renderer         Renderer
 	Logger           Logger
 	IPExtractor      IPExtractor
-	ListenerNetwork  string
+	// SchemeExtractor defines the strategy for determining the request scheme (`http` or `https`),
+	// particularly important when behind proxies or load balancers that terminate TLS.
+	// Used by Context.Scheme and by the HTTPS redirect, Secure and Proxy middlewares.
+	// If not set, forwarding headers such as `X-Forwarded-Proto` are trusted only from loopback, link-local and
+	// private network addresses and unix sockets. See ExtractSchemeFromHeaders.
+	SchemeExtractor SchemeExtractor
+	ListenerNetwork string
 
 	// OnAddRouteHandler is called when Echo adds new route to specific host router.
 	OnAddRouteHandler func(host string, route Route, handler HandlerFunc, middleware []MiddlewareFunc)
@@ -279,7 +285,7 @@ const (
 
 const (
 	// Version of Echo
-	Version = "4.15.4"
+	Version = "4.16.0"
 	website = "https://echo.labstack.com"
 	// http://patorjk.com/software/taag/#p=display&f=Small%20Slant&t=Echo
 	banner = `
@@ -354,6 +360,10 @@ var (
 	ErrValidatorNotRegistered = errors.New("validator not registered")
 	ErrRendererNotRegistered  = errors.New("renderer not registered")
 	ErrInvalidRedirectCode    = errors.New("invalid redirect status code")
+
+	// ErrInvalidJSONPCallback is wrapped in the 400 Bad Request error that Context.JSONP and Context.JSONPBlob
+	// return when the callback is not a valid JSONP function name. See Context.JSONP.
+	ErrInvalidJSONPCallback   = errors.New("invalid JSONP callback")
 	ErrCookieNotFound         = errors.New("cookie not found")
 	ErrInvalidCertOrKeyType   = errors.New("invalid cert or key type, must be string or []byte")
 	ErrInvalidListenerNetwork = errors.New("invalid listener network")
