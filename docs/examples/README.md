@@ -1,13 +1,17 @@
 # Echo documentation examples
 
-These complete programs are the source for code displayed on the Echo website.
-The site should embed the files directly instead of maintaining copied snippets.
+These complete programs are intended to be the source for code displayed on the
+Echo website. The site should embed the files directly instead of maintaining
+copied snippets.
 They compile against the Echo checkout that contains them.
 
 Run `go test ./...` from this directory. The nested module keeps example-only
 dependencies and files out of the published Echo library module. The local
 `replace` directive is intentional: it makes an Echo pull request test its own
 source rather than a previously released version.
+
+To try the Static example, run `go run .` from `static/`, then open
+`http://localhost:1323/`. Its `public/index.html` is the file served at `/`.
 
 `go run ./cmd/config-fields -root ../.. -revision <commit>` emits deterministic
 JSON for exported middleware `*Config` fields, types, deprecation markers, and
