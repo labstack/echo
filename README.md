@@ -46,6 +46,13 @@ Help and questions: [Github Discussions](https://github.com/labstack/echo/discus
     </a>
 </div>
 <br/>
+<div>
+  <a href="https://github.com/gravitycarbon" style="display: inline-flex; align-items: center; gap: 10px">
+    <img src="https://github.com/gravitycarbon.png?size=56" height="28px" alt="Gravity Carbon logo"></img>
+  <b>Gravity Carbon</b>
+    </a>
+</div>
+<br/>
 
 Click [here](https://github.com/sponsors/labstack) for more information on sponsorship.
 
