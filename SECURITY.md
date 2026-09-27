@@ -10,6 +10,7 @@
 
 ## Reporting a Vulnerability
 
+Report vulnerabilities privately through GitHub:
 https://github.com/labstack/echo/security/advisories/new
 
-or look for maintainers email(s) in commits and email them.
+Do not open public issues, pull requests, or discussions for security problems.
