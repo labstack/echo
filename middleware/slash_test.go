@@ -65,6 +65,27 @@ func TestAddTrailingSlashWithConfig(t *testing.T) {
 			expectPath:     `/\\`,
 			expectLocation: []string{`/`},
 		},
+		// control characters that browsers strip from URLs must not hide a `//` prefix (GHSA-v753-g4cw-jm48)
+		{
+			whenURL:        "http://localhost:1323/%09/evil.example/x",
+			expectPath:     "/\t/evil.example/x",
+			expectLocation: []string{`/%09/evil.example/x/`},
+		},
+		{
+			whenURL:        "http://localhost:1323/%09%5Cevil.example/x",
+			expectPath:     "/\t\\evil.example/x",
+			expectLocation: []string{`/%09\evil.example/x/`},
+		},
+		{
+			whenURL:        "http://localhost:1323/%09//evil.example/x",
+			expectPath:     "/\t//evil.example/x",
+			expectLocation: []string{`/%09//evil.example/x/`},
+		},
+		{
+			whenURL:        "http://localhost:1323/%09%09/evil.example/x",
+			expectPath:     "/\t\t/evil.example/x",
+			expectLocation: []string{`/%09%09/evil.example/x/`},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.whenURL, func(t *testing.T) {
@@ -201,6 +222,27 @@ func TestRemoveTrailingSlashWithConfig(t *testing.T) {
 			expectPath:     `/\\/`,
 			expectLocation: []string{`/`},
 		},
+		// control characters that browsers strip from URLs must not hide a `//` prefix (GHSA-v753-g4cw-jm48)
+		{
+			whenURL:        "http://localhost:1323/%09/evil.example/x/",
+			expectPath:     "/\t/evil.example/x/",
+			expectLocation: []string{`/%09/evil.example/x`},
+		},
+		{
+			whenURL:        "http://localhost:1323/%09%5Cevil.example/x/",
+			expectPath:     "/\t\\evil.example/x/",
+			expectLocation: []string{`/%09\evil.example/x`},
+		},
+		{
+			whenURL:        "http://localhost:1323/%09//evil.example/x/",
+			expectPath:     "/\t//evil.example/x/",
+			expectLocation: []string{`/%09//evil.example/x`},
+		},
+		{
+			whenURL:        "http://localhost:1323/%09%09/evil.example/x/",
+			expectPath:     "/\t\t/evil.example/x/",
+			expectLocation: []string{`/%09%09/evil.example/x`},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.whenURL, func(t *testing.T) {
@@ -276,6 +318,29 @@ func TestRemoveTrailingSlash(t *testing.T) {
 			assert.Equal(t, tc.expectPath, req.URL.Path)
 			assert.Equal(t, []string(nil), rec.Header()[echo.HeaderLocation])
 			assert.Equal(t, http.StatusOK, rec.Code)
+		})
+	}
+}
+
+func TestSanitizeURI(t *testing.T) {
+	var testCases = []struct {
+		whenURI string
+		expect  string
+	}{
+		{whenURI: "/path", expect: "/path"},
+		{whenURI: "", expect: ""},
+		{whenURI: "//example.com", expect: "/example.com"},
+		{whenURI: `/\example.com`, expect: "/example.com"},
+		{whenURI: "/\t/example.com", expect: "/%09/example.com"},
+		{whenURI: "/\n/example.com", expect: "/%0A/example.com"},
+		{whenURI: "/\r/example.com", expect: "/%0D/example.com"},
+		{whenURI: "/\x7f/example.com", expect: "/%7F/example.com"},
+		{whenURI: "\t//example.com", expect: "%09//example.com"},
+		{whenURI: "/a\tb", expect: "/a%09b"},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.whenURI, func(t *testing.T) {
+			assert.Equal(t, tc.expect, sanitizeURI(tc.whenURI))
 		})
 	}
 }

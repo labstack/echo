@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -981,4 +982,31 @@ func TestGroup_RouteNotFoundUsesRouterConfig(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 	assert.Equal(t, "custom-404 POST /v0/*", rec.Body.String())
 	assert.True(t, middlewareCalled, "group middleware must wrap the auto 404 route")
+}
+
+func TestGroup_StaticFS_dotAndEmptySegments(t *testing.T) {
+	// GHSA-3pmx-cf9f-34xr: Group.StaticFS uses StaticDirectoryHandler, which must not serve paths with dot or empty
+	// segments that path.Clean() would resolve under a guarded route.
+	e := New()
+	g := e.Group("/g")
+	g.StaticFS("/", fstest.MapFS{"admin/secret.txt": {Data: []byte("SECRET")}, "x/file.txt": {Data: []byte("x")}})
+	g.GET("/admin/*", func(c *Context) error {
+		return ErrForbidden
+	})
+
+	for _, p := range []string{"/g/x/../admin/secret.txt", "/g/./admin/secret.txt", "/g//admin/secret.txt"} {
+		t.Run(p, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.URL.Path = p
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusNotFound, rec.Code)
+			assert.NotContains(t, rec.Body.String(), "SECRET")
+		})
+	}
+	req := httptest.NewRequest(http.MethodGet, "/g/x/file.txt", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, "x", rec.Body.String())
 }

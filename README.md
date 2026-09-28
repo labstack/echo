@@ -46,6 +46,13 @@ Help and questions: [Github Discussions](https://github.com/labstack/echo/discus
     </a>
 </div>
 <br/>
+<div>
+  <a href="https://github.com/gravitycarbon" style="display: inline-flex; align-items: center; gap: 10px">
+    <img src="https://github.com/gravitycarbon.png?size=56" height="28px" alt="Gravity Carbon logo"></img>
+  <b>Gravity Carbon</b>
+    </a>
+</div>
+<br/>
 
 Click [here](https://github.com/sponsors/labstack) for more information on sponsorship.
 
@@ -151,9 +158,9 @@ Please send a PR to add your own library here.
 
 - [Vishal Rana](https://github.com/vishr) (Author)
 - [Nitin Rana](https://github.com/nr17) (Consultant)
-- [Roland Lammel](https://github.com/lammel) (Maintainer)
-- [Martti T.](https://github.com/aldas) (Maintainer)
-- [Pablo Andres Fuente](https://github.com/pafuent) (Maintainer)
+- [Martti T.](https://github.com/aldas) (Lead Maintainer)
+- [Roland Lammel](https://github.com/lammel) (Maintainer Emeritus)
+- [Pablo Andres Fuente](https://github.com/pafuent) (Maintainer Emeritus)
 - [Contributors](https://github.com/labstack/echo/graphs/contributors)
 
 ## License

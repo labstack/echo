@@ -1,0 +1,86 @@
+{
+  "$schema": "https://fundingjson.org/schema/v1.1.0.json",
+  "version": "v1.1.0",
+  "entity": {
+    "type": "organisation",
+    "role": "owner",
+    "name": "LabStack LLC",
+    "email": "v@labstack.com",
+    "description": "LabStack LLC maintains Echo, a high performance, minimalist Go web framework, together with its middleware and documentation.",
+    "webpageUrl": {
+      "url": "https://github.com/labstack"
+    }
+  },
+  "projects": [
+    {
+      "guid": "echo",
+      "name": "Echo",
+      "description": "High performance, minimalist Go web framework. About 82,000 GitHub repositories and 47,000 Go packages depend on it, and companies including Microsoft (Azure), NVIDIA and Docker use it in production. Maintained since 2015, with v5 as the current version and v4 as a long-term support line.",
+      "webpageUrl": {
+        "url": "https://github.com/labstack/echo"
+      },
+      "repositoryUrl": {
+        "url": "https://github.com/labstack/echo"
+      },
+      "licenses": ["spdx:MIT"],
+      "tags": ["go", "golang", "web-framework", "http", "router", "middleware", "rest-api", "security"]
+    }
+  ],
+  "funding": {
+    "channels": [
+      {
+        "guid": "github-sponsors",
+        "type": "payment-provider",
+        "address": "https://github.com/sponsors/labstack",
+        "description": "Monthly or one-time sponsorship through GitHub Sponsors."
+      },
+      {
+        "guid": "bank",
+        "type": "bank",
+        "description": "Bank transfer to LabStack LLC against an invoice. Contact v@labstack.com for details."
+      }
+    ],
+    "plans": [
+      {
+        "guid": "maintenance",
+        "status": "active",
+        "name": "Maintenance",
+        "description": "Issue and pull request triage, releases for v5 and the v4 long-term support line, dependency updates and CI upkeep.",
+        "amount": 10000,
+        "currency": "USD",
+        "frequency": "yearly",
+        "channels": ["github-sponsors", "bank"]
+      },
+      {
+        "guid": "security-audit",
+        "status": "active",
+        "name": "Security audit and fuzzing",
+        "description": "An external security audit of routing, static file serving and proxy header handling, and continuous fuzzing of request parsing.",
+        "amount": 50000,
+        "currency": "USD",
+        "frequency": "one-time",
+        "channels": ["bank"]
+      },
+      {
+        "guid": "maintainer",
+        "status": "active",
+        "name": "Dedicated maintainer",
+        "description": "Funds a maintainer to keep security response times short, review contributions and maintain the v4 long-term support line.",
+        "amount": 100000,
+        "currency": "USD",
+        "frequency": "yearly",
+        "channels": ["bank"]
+      },
+      {
+        "guid": "any-amount",
+        "status": "active",
+        "name": "Sponsor any amount",
+        "description": "Support Echo with any amount through GitHub Sponsors.",
+        "amount": 0,
+        "currency": "USD",
+        "frequency": "monthly",
+        "channels": ["github-sponsors"]
+      }
+    ]
+  }
+}
