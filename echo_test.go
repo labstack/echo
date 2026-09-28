@@ -218,6 +218,15 @@ func TestEcho_StaticFS(t *testing.T) {
 			expectBodyStartsWith: "",
 		},
 		{
+			name:                 "Directory redirect preserves the query string",
+			givenPrefix:          "/folder",
+			givenFs:              os.DirFS("_fixture"),
+			whenURL:              "/folder?foo=bar&baz=1", // no trailing slash
+			expectStatus:         http.StatusMovedPermanently,
+			expectHeaderLocation: "/folder/?foo=bar&baz=1",
+			expectBodyStartsWith: "",
+		},
+		{
 			name:                 "Directory with index.html",
 			givenPrefix:          "/",
 			givenFs:              os.DirFS("_fixture"),
