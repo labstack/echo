@@ -408,7 +408,7 @@ func newNode(
 	anyChildren *node,
 	notFoundHandler *routeMethod,
 ) *node {
-	n := &node{
+	return &node{
 		kind:            t,
 		label:           pre[0],
 		prefix:          pre,
@@ -423,7 +423,6 @@ func newNode(
 		isHandler:       methods.isHandler(),
 		notFoundHandler: notFoundHandler,
 	}
-	return n
 }
 
 func (n *node) addStaticChild(c *node) {
@@ -434,12 +433,13 @@ func (n *node) addStaticChild(c *node) {
 	}
 }
 
-// pendingInlineVerbSplit returns the nearest param node, from n up to the root, whose value in paramValues ended at an
-// inline verb split and so can still be retried. searchIndex and paramIndex are the routing state at n.
-func pendingInlineVerbSplit(n *node, path string, searchIndex, paramIndex int, paramValues []string) *node {
+// hasPendingInlineVerbSplit reports whether a param node from n up to the root has a value in paramValues that ended at
+// an inline verb split and so can still be retried. searchIndex and paramIndex are the routing state at n. It does
+// not change that state, so a request that ends here keeps its param values.
+func hasPendingInlineVerbSplit(n *node, path string, searchIndex, paramIndex int, paramValues []string) bool {
 	for ; n != nil; n = n.parent {
 		if n.hasColonChild && searchIndex < len(path) && path[searchIndex] == ':' {
-			return n
+			return true
 		}
 		if n.kind == staticKind {
 			searchIndex -= len(n.prefix)
@@ -448,12 +448,16 @@ func pendingInlineVerbSplit(n *node, path string, searchIndex, paramIndex int, p
 			searchIndex -= len(paramValues[paramIndex])
 		}
 	}
-	return nil
+	return false
 }
 
 // inlineVerbSplit returns where a param value in search ends: at the first literal colon at or after from where this
 // node's inline verb child could match, otherwise at the end of the path segment. A split value is never empty. The
 // scan stops at the next slash, so trying every split of a segment in turn is linear in its length.
+//
+// A split is only chosen when the whole prefix of the inline verb child matches. Routing therefore never backtracks
+// into the param node from a prefix mismatch of that child, and the split only needs to be retried when backtracking
+// from within the child's subtree.
 func (n *node) inlineVerbSplit(search string, from int) int {
 	verbs := n.findStaticChild(':')
 	for i := from; i < len(search); i++ {
@@ -755,6 +759,7 @@ func (r *Router) Find(method, path string, c Context) {
 
 		// Let's backtrack to the first possible alternative node of the decision path
 		nk, ok := backtrackToNextNodeKind(anyKind)
+	Backtracked:
 		if !ok {
 			break // No other possibilities on the decision path
 		} else if nk == paramKind {
@@ -764,12 +769,11 @@ func (r *Router) Find(method, path string, c Context) {
 			goto Param
 		} else if nk == anyKind {
 			goto Any
-		} else if n := pendingInlineVerbSplit(currentNode, path, searchIndex, paramIndex, paramValues); n != nil {
-			// A wildcard ends the search, but a param value above it that ended at an inline verb split is still retried.
-			for currentNode != n {
-				backtrackToNextNodeKind(anyKind)
-			}
-			goto InlineVerbSplit
+		} else if hasPendingInlineVerbSplit(currentNode, path, searchIndex, paramIndex, paramValues) {
+			// A wildcard ends the search, except below a param value that ended at an inline verb split: keep
+			// backtracking, so the other routes below that split and then the next split are still tried.
+			nk, ok = backtrackToNextNodeKind(anyKind)
+			goto Backtracked
 		} else {
 			// Not found
 			break

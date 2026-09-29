@@ -266,3 +266,33 @@ func TestRouterReverseEscapedColonPlaceholder(t *testing.T) {
 	assert.Equal(t, "/r/:name:cancel", e.Reverse("verb"))
 	assert.Equal(t, "/r/foo:cancel", e.Reverse("verb", "foo"))
 }
+
+func TestRouterInlineVerbWildcardBacktracksBelowSplit(t *testing.T) {
+	// after a wildcard below a split fails, the other routes below that split are tried before the next split
+	e := New()
+	e.POST(`/r/:n\:v/a/*`, func(c Context) error { return c.String(http.StatusOK, "post") })
+	e.GET(`/r/:n\:v/:p/b`, func(c Context) error { return c.String(http.StatusOK, "verb:"+c.Param("n")+"|"+c.Param("p")) })
+	e.GET(`/r/:n/a/b`, func(c Context) error { return c.String(http.StatusOK, "generic:"+c.Param("n")) })
+	assertInlineVerbResponse(t, e, "/r/q:v/a/b", "verb:q|a")
+
+	// nested splits: the nearest pending split is retried first, then the outer one
+	e = New()
+	e.POST(`/r/:a\:x/:b\:y/*`, func(c Context) error { return c.String(http.StatusOK, "post") })
+	e.GET(`/r/:a/:b\:y/*`, func(c Context) error {
+		return c.String(http.StatusOK, c.Param("a")+"|"+c.Param("b")+"|"+c.Param("*"))
+	})
+	assertInlineVerbResponse(t, e, "/r/p:x/q:y/z", "p:x|q|z")
+
+	e = New()
+	e.POST(`/r/:a\:x/:b\:y/*`, func(c Context) error { return c.String(http.StatusOK, "post") })
+	e.GET(`/r/:a\:x/:b/*`, func(c Context) error {
+		return c.String(http.StatusOK, c.Param("a")+"|"+c.Param("b")+"|"+c.Param("*"))
+	})
+	assertInlineVerbResponse(t, e, "/r/p:x/q:y/z", "p|q:y|z")
+
+	// a RouteNotFound wildcard below a split handles the request like any other RouteNotFound route
+	e = New()
+	e.RouteNotFound(`/r/:a\:x/*`, func(c Context) error { return c.String(http.StatusOK, "not found:"+c.Param("a")) })
+	e.GET(`/r/:a/k`, func(c Context) error { return c.String(http.StatusOK, "k") })
+	assertInlineVerbResponse(t, e, "/r/p:x/k", "not found:p")
+}
