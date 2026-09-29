@@ -66,8 +66,7 @@ const (
 	paramKind
 	anyKind
 
-	paramLabel = byte(':')
-	anyLabel   = byte('*')
+	anyLabel = byte('*')
 )
 
 func (m *routeMethods) isHandler() bool {
@@ -214,7 +213,10 @@ func (r *Router) Add(method, path string, h HandlerFunc) {
 func (r *Router) insert(method, path string, h HandlerFunc) {
 	path = normalizePathSlash(path)
 	pnames := []string{} // Param names
-	ppath := path        // Pristine path
+	// Positions of parameter markers after names are removed. Literal colons
+	// remain ordinary path bytes, so no sentinel byte is reserved.
+	paramMarkers := make([]int, 0)
+	ppath := path // Pristine path
 
 	if h == nil && r.echo.Logger != nil {
 		// FIXME: in future we should return error
@@ -231,31 +233,32 @@ func (r *Router) insert(method, path string, h HandlerFunc) {
 			}
 			j := i + 1
 
-			r.insertNode(method, path[:i], staticKind, routeMethod{})
+			r.insertNode(method, path[:i], staticKind, routeMethod{}, paramMarkers)
 			for ; i < lcpIndex && path[i] != '/'; i++ {
 			}
 
 			pnames = append(pnames, path[j:i])
+			paramMarkers = append(paramMarkers, j-1)
 			path = path[:j] + path[i:]
 			i, lcpIndex = j, len(path)
 
 			if i == lcpIndex {
 				// path node is last fragment of route path. ie. `/users/:id`
-				r.insertNode(method, path[:i], paramKind, routeMethod{ppath: ppath, pnames: pnames, handler: h})
+				r.insertNode(method, path[:i], paramKind, routeMethod{ppath: ppath, pnames: pnames, handler: h}, paramMarkers)
 			} else {
-				r.insertNode(method, path[:i], paramKind, routeMethod{})
+				r.insertNode(method, path[:i], paramKind, routeMethod{}, paramMarkers)
 			}
 		} else if path[i] == '*' {
-			r.insertNode(method, path[:i], staticKind, routeMethod{})
+			r.insertNode(method, path[:i], staticKind, routeMethod{}, paramMarkers)
 			pnames = append(pnames, "*")
-			r.insertNode(method, path[:i+1], anyKind, routeMethod{ppath: ppath, pnames: pnames, handler: h})
+			r.insertNode(method, path[:i+1], anyKind, routeMethod{ppath: ppath, pnames: pnames, handler: h}, paramMarkers)
 		}
 	}
 
-	r.insertNode(method, path, staticKind, routeMethod{ppath: ppath, pnames: pnames, handler: h})
+	r.insertNode(method, path, staticKind, routeMethod{ppath: ppath, pnames: pnames, handler: h}, paramMarkers)
 }
 
-func (r *Router) insertNode(method, path string, t kind, rm routeMethod) {
+func (r *Router) insertNode(method, path string, t kind, rm routeMethod, paramMarkers []int) {
 	// Adjust max param
 	paramLen := len(rm.pnames)
 	if *r.echo.maxParam < paramLen {
@@ -267,6 +270,7 @@ func (r *Router) insertNode(method, path string, t kind, rm routeMethod) {
 		panic("echo: invalid method")
 	}
 	search := path
+	searchOffset := 0
 
 	for {
 		searchLen := len(search)
@@ -360,8 +364,16 @@ func (r *Router) insertNode(method, path string, t kind, rm routeMethod) {
 			}
 			currentNode.isLeaf = currentNode.staticChildren == nil && currentNode.paramChild == nil && currentNode.anyChild == nil
 		} else if lcpLen < searchLen {
+			searchOffset += lcpLen
 			search = search[lcpLen:]
-			c := currentNode.findChildWithLabel(search[0])
+			isParamMarker := false
+			for _, marker := range paramMarkers {
+				if marker == searchOffset {
+					isParamMarker = true
+					break
+				}
+			}
+			c := currentNode.findChildWithLabel(search[0], isParamMarker)
 			if c != nil {
 				// Go deeper
 				currentNode = c
@@ -437,12 +449,12 @@ func (n *node) findStaticChild(l byte) *node {
 	return nil
 }
 
-func (n *node) findChildWithLabel(l byte) *node {
+func (n *node) findChildWithLabel(l byte, isParamMarker bool) *node {
+	if isParamMarker {
+		return n.paramChild
+	}
 	if c := n.findStaticChild(l); c != nil {
 		return c
-	}
-	if l == paramLabel {
-		return n.paramChild
 	}
 	if l == anyLabel {
 		return n.anyChild
