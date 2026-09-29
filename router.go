@@ -452,8 +452,9 @@ func hasPendingInlineVerbSplit(n *node, path string, searchIndex, paramIndex int
 }
 
 // inlineVerbSplit returns where a param value in search ends: at the first literal colon at or after from where this
-// node's inline verb child could match, otherwise at the end of the path segment. A split value is never empty. The
-// scan stops at the next slash, so trying every split of a segment in turn is linear in its length.
+// node's inline verb child could match, otherwise at the end of the path segment (or of the path when that child is the
+// node's only child). A split value is never empty. The scan stops at the next slash, so trying every split of a
+// segment in turn is linear in its length.
 //
 // A split is only chosen when the whole prefix of the inline verb child matches. Routing therefore never backtracks
 // into the param node from a prefix mismatch of that child, and the split only needs to be retried when backtracking
@@ -463,6 +464,11 @@ func (n *node) inlineVerbSplit(search string, from int) int {
 	for i := from; i < len(search); i++ {
 		switch search[i] {
 		case '/':
+			if len(n.staticChildren) == 1 && n.paramChild == nil && n.anyChild == nil {
+				// the inline verb child is the only child: without a split the param takes the rest of the path, as a
+				// leaf param does
+				return len(search)
+			}
 			return i
 		case ':':
 			if i > 0 && verbs != nil && strings.HasPrefix(search[i:], verbs.prefix) {
