@@ -23,7 +23,7 @@ env:
 
 jobs:
   check:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: blacksmith-8vcpu-ubuntu-2404
     steps:
       - name: Checkout Code
         uses: *checkout_action

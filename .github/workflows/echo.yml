@@ -37,11 +37,11 @@ jobs:
         # Jobs run on Blacksmith runners (https://blacksmith.sh), which sponsors Echo's CI
         include:
           - os: ubuntu-latest
-            runner: blacksmith-4vcpu-ubuntu-2404
+            runner: blacksmith-8vcpu-ubuntu-2404
           - os: macos-latest
-            runner: blacksmith-6vcpu-macos-latest
+            runner: blacksmith-12vcpu-macos-latest
           - os: windows-latest
-            runner: blacksmith-4vcpu-windows-2025
+            runner: blacksmith-8vcpu-windows-2025
     name: ${{ matrix.os }} @ Go ${{ matrix.go }}
     runs-on: ${{ matrix.runner }}
     steps:
@@ -66,7 +66,7 @@ jobs:
   benchmark:
     needs: test
     name: Benchmark comparison
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: blacksmith-8vcpu-ubuntu-2404
     steps:
       - name: Checkout Code (Previous)
         uses: *checkout_action
