@@ -28,7 +28,6 @@ func TestRouterInlineVerbRoutes(t *testing.T) {
 	for _, order := range [][]string{{"cancel", "get"}, {"get", "cancel"}} {
 		e := New()
 		for _, verb := range order {
-			verb := verb
 			e.GET("/r/:name\\:"+verb, func(c *Context) error {
 				return c.String(http.StatusOK, verb+":"+c.Param("name"))
 			})
@@ -303,4 +302,41 @@ func TestRouterInlineVerbWildcardBacktracksBelowSplit(t *testing.T) {
 	e.RouteNotFound(`/r/:a\:x/*`, func(c *Context) error { return c.String(http.StatusOK, "not found:"+c.Param("a")) })
 	e.GET(`/r/:a/k`, func(c *Context) error { return c.String(http.StatusOK, "k") })
 	assertRouteResponse(t, e, "/r/p:x/k", "not found:p")
+}
+
+func TestRouterRemoveRouteSharingNode(t *testing.T) {
+	e := New()
+	e.GET("/u/:id", func(c *Context) error { return c.String(http.StatusOK, "get:"+c.Param("id")) })
+	e.POST("/u/:uid", func(c *Context) error { return c.String(http.StatusOK, "post:"+c.Param("uid")) })
+	assert.Error(t, e.Router().Remove(http.MethodGet, "/u/:uid"))
+	assertRouteResponse(t, e, "/u/1", "get:1")
+	assert.NoError(t, e.Router().Remove(http.MethodGet, "/u/:id"))
+	assert.Len(t, e.Router().Routes(), 1)
+
+	e.GET("x", func(c *Context) error { return c.NoContent(http.StatusOK) })
+	assert.NoError(t, e.Router().Remove(http.MethodGet, "x"))
+	assert.Len(t, e.Router().Routes(), 1)
+}
+
+func TestRouterInlineVerbMisc(t *testing.T) {
+	e := New()
+	e.POST(`/r/:n\:v/*`, func(c *Context) error { return c.String(http.StatusOK, "post") })
+	e.RouteNotFound(`/r/:n/*`, func(c *Context) error { return c.String(http.StatusOK, "not found:"+c.Param("n")) })
+	// the whole segment reaches the RouteNotFound route, as a static sibling would
+	assertRouteResponse(t, e, "/r/a:v/q", "not found:a:v")
+
+	// with routing on the escaped path, an encoded colon is not a verb delimiter
+	e = New()
+	e.GET(`/r/:name\:cancel`, func(c *Context) error { return c.String(http.StatusOK, "verb") })
+	e.GET(`/r/:name`, func(c *Context) error { return c.String(http.StatusOK, "generic:"+c.Param("name")) })
+	assertRouteResponse(t, e, "/r/foo%3Acancel", "generic:foo%3Acancel")
+
+	ri := RouteInfo{Path: `/r/:n\:v/*`}
+	assert.Equal(t, "/r/:n:v/*", ri.Reverse())
+	assert.Equal(t, "/r/a:v/b/c", ri.Reverse("a", "b/c"))
+
+	// a param name with ':' keeps an escaped colon as part of the name
+	ri, err := e.AddRoute(Route{Method: http.MethodGet, Path: `/s/:a:b\:v`, Handler: func(c *Context) error { return nil }})
+	assert.NoError(t, err)
+	assert.Equal(t, []string{`a:b\:v`}, ri.Parameters)
 }

@@ -404,7 +404,7 @@ func (r *DefaultRouter) Remove(method string, path string) error {
 		searchOffset += len(currentNode.prefix)
 
 		if search == "" {
-			if currentNode.originalPath == path && currentNode.isHandler {
+			if currentNode.isHandler {
 				nodeToRemove = currentNode
 			}
 			break
@@ -424,8 +424,9 @@ func (r *DefaultRouter) Remove(method string, path string) error {
 		return errors.New("could not find route to remove by given path")
 	}
 
+	// routes with different param names can share a node, so the path must be the one registered for this method
 	mh := nodeToRemove.methods.find(method, false, false)
-	if mh == nil {
+	if mh == nil || mh.Path != path {
 		return errors.New("could not find route to remove by given path and method")
 	}
 

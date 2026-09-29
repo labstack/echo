@@ -23,15 +23,16 @@ func parseRoutePath(path string) []routePathPart {
 // avoid allocating a parts slice for each URL it builds.
 func walkRoutePath(path string, emit func(routePathPart)) {
 	for i := 0; i < len(path); {
-		if path[i] == '\\' && i+1 < len(path) && path[i+1] == ':' {
+		if isEscapedColon(path, i) {
 			emit(routePathPart{kind: staticKind, value: ":"})
 			i += 2
 		} else if path[i] == ':' {
 			start := i + 1
 			i = start
+			plainName := true // an escaped colon only starts an inline verb after a name without ':' or '*'
 			for i < len(path) && path[i] != '/' {
-				if path[i] == '\\' && i+1 < len(path) && path[i+1] == ':' {
-					if isInlineVerb(path[i+2:]) {
+				if isEscapedColon(path, i) {
+					if plainName && isInlineVerb(path[i+2:]) {
 						break
 					}
 					// not an inline verb: the rest of the segment is the param name, as before inline verbs
@@ -39,6 +40,9 @@ func walkRoutePath(path string, emit func(routePathPart)) {
 						i++
 					}
 					break
+				}
+				if path[i] == ':' || path[i] == '*' {
+					plainName = false
 				}
 				i++
 			}
@@ -51,15 +55,16 @@ func walkRoutePath(path string, emit func(routePathPart)) {
 			emit(routePathPart{kind: anyKind, value: path[start:i]})
 		} else {
 			start := i
-			for i < len(path) && path[i] != ':' && path[i] != '*' {
-				if path[i] == '\\' && i+1 < len(path) && path[i+1] == ':' {
-					break
-				}
+			for i < len(path) && path[i] != ':' && path[i] != '*' && !isEscapedColon(path, i) {
 				i++
 			}
 			emit(routePathPart{kind: staticKind, value: path[start:i]})
 		}
 	}
+}
+
+func isEscapedColon(path string, i int) bool {
+	return path[i] == '\\' && i+1 < len(path) && path[i+1] == ':'
 }
 
 // isInlineVerb reports whether the route text after an escaped colon stays
