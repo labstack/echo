@@ -1379,6 +1379,47 @@ func TestRouterParam_escapeColonAndParamConflict(t *testing.T) {
 	}
 }
 
+func TestRouterParamLiteralByteConflictServeHTTP(t *testing.T) {
+	tests := []struct {
+		name, literalRoute, literalRequest string
+	}{
+		{"escaped colon", `/name\:verb/x`, "/name:verb/x"},
+		{"encoded NUL", "/name\x00verb/x", "/name%00verb/x"},
+	}
+	for _, tc := range tests {
+		for _, literalFirst := range []bool{true, false} {
+			name := tc.name + "/parameter-first"
+			routes := []string{"/name:id", tc.literalRoute}
+			if literalFirst {
+				name = tc.name + "/literal-first"
+				routes[0], routes[1] = routes[1], routes[0]
+			}
+			t.Run(name, func(t *testing.T) {
+				e := New()
+				for _, route := range routes {
+					e.GET(route, func(c *Context) error {
+						return c.String(http.StatusOK, c.RouteInfo().Path)
+					})
+				}
+				for _, request := range []struct{ path, want string }{
+					{tc.literalRequest, tc.literalRoute},
+					{"/name1", "/name:id"},
+				} {
+					t.Run(request.path, func(t *testing.T) {
+						rec := httptest.NewRecorder()
+						req := httptest.NewRequest(http.MethodGet, request.path, nil)
+						if !assert.NotPanics(t, func() { e.ServeHTTP(rec, req) }) {
+							return
+						}
+						assert.Equal(t, http.StatusOK, rec.Code)
+						assert.Equal(t, request.want, rec.Body.String())
+					})
+				}
+			})
+		}
+	}
+}
+
 func TestRouterParam_escapeColon(t *testing.T) {
 	// to allow Google cloud API like route paths with colon in them
 	// i.e. https://service.name/v1/some/resource/name:customVerb <- that `:customVerb` is not path param. It is just a string

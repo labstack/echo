@@ -184,10 +184,6 @@ const (
 
 	paramLabel = byte(':')
 	anyLabel   = byte('*')
-
-	// paramPlaceholder marks a path parameter while a route is inserted into the
-	// tree, so that a literal ':' from an escaped `\:` stays a static node.
-	paramPlaceholder = "\x00"
 )
 
 type routeMethod struct {
@@ -540,6 +536,9 @@ func (r *DefaultRouter) Add(route Route) (RouteInfo, error) {
 	}
 
 	paramNames := make([]string, 0)
+	// Positions of parameter markers after names are removed. Literal colons
+	// remain ordinary path bytes, so no sentinel byte is reserved.
+	paramMarkers := make([]int, 0)
 	originalPath := path
 	wasAdded := false
 	var ri RouteInfo
@@ -553,12 +552,13 @@ func (r *DefaultRouter) Add(route Route) (RouteInfo, error) {
 			}
 			j := i + 1
 
-			r.insert(staticKind, path[:i], method, routeMethod{RouteInfo: &RouteInfo{Method: method}})
+			r.insert(staticKind, path[:i], method, routeMethod{RouteInfo: &RouteInfo{Method: method}}, paramMarkers)
 			for ; i < lcpIndex && path[i] != '/'; i++ {
 			}
 
 			paramNames = append(paramNames, path[j:i])
-			path = path[:j-1] + paramPlaceholder + path[i:]
+			paramMarkers = append(paramMarkers, j-1)
+			path = path[:j] + path[i:]
 			i, lcpIndex = j, len(path)
 
 			if i == lcpIndex {
@@ -570,14 +570,14 @@ func (r *DefaultRouter) Add(route Route) (RouteInfo, error) {
 					orgRouteInfo:       ri,
 					wrappedHeadHandler: headH,
 				}
-				r.insert(paramKind, path[:i], method, rm)
+				r.insert(paramKind, path[:i], method, rm, paramMarkers)
 				wasAdded = true
 				break
 			} else {
-				r.insert(paramKind, path[:i], method, routeMethod{RouteInfo: &RouteInfo{Method: method}})
+				r.insert(paramKind, path[:i], method, routeMethod{RouteInfo: &RouteInfo{Method: method}}, paramMarkers)
 			}
 		} else if path[i] == anyLabel {
-			r.insert(staticKind, path[:i], method, routeMethod{RouteInfo: &RouteInfo{Method: method}})
+			r.insert(staticKind, path[:i], method, routeMethod{RouteInfo: &RouteInfo{Method: method}}, paramMarkers)
 			paramNames = append(paramNames, "*")
 			ri = route.ToRouteInfo(paramNames)
 			rm := routeMethod{
@@ -586,7 +586,7 @@ func (r *DefaultRouter) Add(route Route) (RouteInfo, error) {
 				orgRouteInfo:       ri,
 				wrappedHeadHandler: headH,
 			}
-			r.insert(anyKind, path[:i+1], method, rm)
+			r.insert(anyKind, path[:i+1], method, rm, paramMarkers)
 			wasAdded = true
 			break
 		}
@@ -600,7 +600,7 @@ func (r *DefaultRouter) Add(route Route) (RouteInfo, error) {
 			orgRouteInfo:       ri,
 			wrappedHeadHandler: headH,
 		}
-		r.insert(staticKind, path, method, rm)
+		r.insert(staticKind, path, method, rm, paramMarkers)
 	}
 
 	r.storeRouteInfo(ri)
@@ -627,12 +627,13 @@ func (r *DefaultRouter) storeRouteInfo(ri RouteInfo) {
 	r.routes = append(r.routes, ri)
 }
 
-func (r *DefaultRouter) insert(t kind, path string, method string, ri routeMethod) {
+func (r *DefaultRouter) insert(t kind, path string, method string, ri routeMethod, paramMarkers []int) {
 	if len(ri.Parameters) > r.maxPathParamsLength {
 		r.maxPathParamsLength = len(ri.Parameters)
 	}
 	currentNode := r.tree // Current node as root
 	search := path
+	searchOffset := 0
 
 	for {
 		searchLen := len(search)
@@ -721,8 +722,16 @@ func (r *DefaultRouter) insert(t kind, path string, method string, ri routeMetho
 			}
 			currentNode.refreshLeaf()
 		} else if lcpLen < searchLen {
+			searchOffset += lcpLen
 			search = search[lcpLen:]
-			c := currentNode.findChildWithLabel(search[0])
+			isParamMarker := false
+			for _, marker := range paramMarkers {
+				if marker == searchOffset {
+					isParamMarker = true
+					break
+				}
+			}
+			c := currentNode.findChildWithLabel(search[0], isParamMarker)
 			if c != nil {
 				// Go deeper
 				currentNode = c
@@ -814,12 +823,12 @@ func (n *node) findStaticChild(l byte) *node {
 	return nil
 }
 
-func (n *node) findChildWithLabel(l byte) *node {
+func (n *node) findChildWithLabel(l byte, isParamMarker bool) *node {
+	if isParamMarker {
+		return n.paramChild
+	}
 	if c := n.findStaticChild(l); c != nil {
 		return c
-	}
-	if l == paramPlaceholder[0] {
-		return n.paramChild
 	}
 	if l == anyLabel {
 		return n.anyChild
