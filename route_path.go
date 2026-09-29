@@ -12,6 +12,15 @@ type routePathPart struct {
 	value string
 }
 
+func hasInlineVerbPart(parts []routePathPart) bool {
+	for i := 1; i < len(parts); i++ {
+		if parts[i-1].kind == paramKind && parts[i].kind == staticKind && parts[i].value == ":" {
+			return true
+		}
+	}
+	return false
+}
+
 func parseRoutePath(path string) []routePathPart {
 	var parts []routePathPart
 	walkRoutePath(path, func(part routePathPart) { parts = append(parts, part) })

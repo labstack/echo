@@ -13,9 +13,10 @@ import (
 // Router is the registry of all registered routes for an `Echo` instance for
 // request matching and URL path parameter parsing.
 type Router struct {
-	tree   *node
-	routes map[string]*Route
-	echo   *Echo
+	tree          *node
+	routes        map[string]*Route
+	echo          *Echo
+	hasInlineVerb bool
 }
 
 type node struct {
@@ -215,6 +216,7 @@ func (r *Router) insert(method, path string, h HandlerFunc) {
 		r.echo.Logger.Errorf("Adding route without handler function: %v:%v", method, path)
 	}
 	parts := parseRoutePath(path)
+	r.hasInlineVerb = r.hasInlineVerb || hasInlineVerbPart(parts)
 	pnames := []string{}
 	for _, part := range parts {
 		if part.kind == paramKind {
@@ -541,15 +543,9 @@ func optionsMethodHandler(allowMethods string) func(c Context) error {
 	}
 }
 
-// Find lookup a handler registered for method and path. It also parses URL for path
-// parameters and load them into context.
-//
-// For performance:
-//
-// - Get context from `Echo#AcquireContext()`
-// - Reset it `Context#Reset()`
-// - Return it `Echo#ReleaseContext()`.
-func (r *Router) Find(method, path string, c Context) {
+// findInline handles requests that may need to retry a literal-colon split.
+// The ordinary Find path stays separate for routers without inline verbs.
+func (r *Router) findInline(method, path string, c Context) {
 	ctx := c.(*context)
 	currentNode := r.tree // Current node as root
 
