@@ -185,13 +185,15 @@ func TestBodyLimitBindRejectsOversizeBodies(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			var bindErr error
 			e := echo.New()
 			e.Use(BodyLimit("5B"))
 			e.POST("/", func(c echo.Context) error {
 				var payload struct {
 					X string `json:"x" xml:",chardata" form:"x"`
 				}
-				return c.Bind(&payload)
+				bindErr = c.Bind(&payload)
+				return bindErr
 			})
 			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(tc.body))
 			req.ContentLength = -1
@@ -199,6 +201,8 @@ func TestBodyLimitBindRejectsOversizeBodies(t *testing.T) {
 			rec := httptest.NewRecorder()
 			e.ServeHTTP(rec, req)
 			assert.Equal(t, http.StatusRequestEntityTooLarge, rec.Code, rec.Body.String())
+			// Bind itself must return the 413, not a 400 that only the error handler turns into 413.
+			assertBodyLimitError(t, bindErr)
 		})
 	}
 }
