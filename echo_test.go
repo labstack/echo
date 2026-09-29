@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type user struct {
@@ -1900,25 +1901,61 @@ func (f nonValidatingDirFS) Open(name string) (fs.File, error) {
 
 func TestEcho_StaticFS_nonValidatingCustomFSCannotEscapeRoot(t *testing.T) {
 	dir := t.TempDir()
-	assert.NoError(t, os.Mkdir(filepath.Join(dir, "public"), 0o755))
-	assert.NoError(t, os.WriteFile(filepath.Join(dir, "public", "index.txt"), []byte("public"), 0o644))
-	assert.NoError(t, os.WriteFile(filepath.Join(dir, "secret.txt"), []byte("secret"), 0o644))
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "public"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "public", "index.txt"), []byte("public"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "secret.txt"), []byte("secret"), 0o644))
 
-	e := New()
-	e.StaticFS("/", nonValidatingDirFS{root: filepath.Join(dir, "public")})
+	for _, unescape := range []bool{false, true} {
+		e := NewWithConfig(Config{EnablePathUnescapingStaticFiles: unescape})
+		e.StaticFS("/", nonValidatingDirFS{root: filepath.Join(dir, "public")})
 
-	for _, target := range []string{"/../secret.txt", "/%2e%2e/secret.txt", "/..%2fsecret.txt", "/sub/../../secret.txt"} {
-		req := httptest.NewRequest(http.MethodGet, target, nil)
+		for _, target := range []string{
+			"/../secret.txt",
+			"/%2e%2e/secret.txt",
+			"/..%2fsecret.txt",
+			"/sub/../../secret.txt",
+			"/..%5csecret.txt",
+			`/..\secret.txt`,
+		} {
+			req := httptest.NewRequest(http.MethodGet, target, nil)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusNotFound, rec.Code, "%s unescape=%v", target, unescape)
+			assert.NotContains(t, rec.Body.String(), "secret", "%s unescape=%v", target, unescape)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/index.txt", nil)
 		rec := httptest.NewRecorder()
 		e.ServeHTTP(rec, req)
-
-		assert.Equal(t, http.StatusNotFound, rec.Code, target)
-		assert.NotContains(t, rec.Body.String(), "secret", target)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, "public", rec.Body.String())
 	}
+}
 
-	req := httptest.NewRequest(http.MethodGet, "/index.txt", nil)
-	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, "public", rec.Body.String())
+func TestHasDotOrEmptySegment(t *testing.T) {
+	var testCases = []struct {
+		path   string
+		expect bool
+	}{
+		{path: "", expect: false},
+		{path: "/", expect: false},
+		{path: "/index.html", expect: false},
+		{path: "/css/app.css", expect: false},
+		{path: "/..", expect: true},
+		{path: "/a/../b", expect: true},
+		{path: "/a/./b", expect: true},
+		{path: "/a//b", expect: true},
+		{path: `/..\secret.txt`, expect: true},
+		{path: `/a\..\b`, expect: true},
+		{path: `/.\secret.txt`, expect: true},
+		{path: `/dir\file.txt`, expect: false},
+		{path: `/a\\b`, expect: false},
+		{path: "/..%2fsecret.txt", expect: false}, // still encoded, only unsafe once unescaped
+	}
+	for _, tc := range testCases {
+		t.Run(tc.path, func(t *testing.T) {
+			assert.Equal(t, tc.expect, hasDotOrEmptySegment(tc.path))
+		})
+	}
 }

@@ -1033,6 +1033,15 @@ func hasDotOrEmptySegment(p string) bool {
 		if segment == "" || segment == "." || segment == ".." {
 			return true
 		}
+		// A backslash is a literal character in fs.FS names, but a filesystem that wrongly treats it as a separator
+		// (for example one built on filepath.Join on Windows) would resolve `..\` outside its root.
+		if strings.Contains(segment, `\`) {
+			for part := range strings.SplitSeq(segment, `\`) {
+				if part == "." || part == ".." {
+					return true
+				}
+			}
+		}
 	}
 	return false
 }

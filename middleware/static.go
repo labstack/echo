@@ -246,10 +246,10 @@ func (config StaticConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			// Security: We use path.Clean() (not filepath.Clean()) because:
 			// 1. HTTP URLs always use forward slashes, regardless of server OS
 			// 2. path.Clean() provides platform-independent behavior for URL paths
-			// 3. A path with a ".." segment was rejected above as unclean, so the "./" prefix only keeps the name relative
-			//    to the filesystem root; path.Clean() does not remove a leading ".." from a relative path
+			// 3. A path with a ".." segment is unclean and is not opened (it is handled like a missing file below), so the
+			//    "./" prefix only keeps the name relative to the filesystem root; path.Clean() does not remove a leading
+			//    ".." from a relative path
 			// 4. Backslashes are treated as literal characters (not path separators), preventing traversal
-			// See static_windows.go for Go 1.20+ filepath.Clean compatibility notes
 			filePath := path.Clean("./" + p)
 
 			if config.IgnoreBase {
@@ -426,6 +426,15 @@ func hasDotOrEmptySegment(p string) bool {
 	for segment := range strings.SplitSeq(p, "/") {
 		if segment == "" || segment == "." || segment == ".." {
 			return true
+		}
+		// A backslash is a literal character in fs.FS names, but a filesystem that wrongly treats it as a separator
+		// (for example one built on filepath.Join on Windows) would resolve `..\` outside its root.
+		if strings.Contains(segment, `\`) {
+			for part := range strings.SplitSeq(segment, `\`) {
+				if part == "." || part == ".." {
+					return true
+				}
+			}
 		}
 	}
 	return false
