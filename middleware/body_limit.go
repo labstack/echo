@@ -6,8 +6,6 @@ package middleware
 import (
 	"fmt"
 	"io"
-	"net/http"
-	"sync"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/bytes"
@@ -28,6 +26,7 @@ type limitedReader struct {
 	BodyLimitConfig
 	reader io.ReadCloser
 	read   int64
+	err    error
 }
 
 // DefaultBodyLimitConfig is the default BodyLimit middleware config.
@@ -58,11 +57,10 @@ func BodyLimitWithConfig(config BodyLimitConfig) echo.MiddlewareFunc {
 	}
 
 	limit, err := bytes.Parse(config.Limit)
-	if err != nil {
+	if err != nil || limit < 0 {
 		panic(fmt.Errorf("echo: invalid body-limit=%s", config.Limit))
 	}
 	config.limit = limit
-	pool := limitedReaderPool(config)
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -78,13 +76,7 @@ func BodyLimitWithConfig(config BodyLimitConfig) echo.MiddlewareFunc {
 			}
 
 			// Based on content read
-			r, ok := pool.Get().(*limitedReader)
-			if !ok {
-				return echo.NewHTTPError(http.StatusInternalServerError, "invalid pool object")
-			}
-			r.Reset(req.Body)
-			defer pool.Put(r)
-			req.Body = r
+			req.Body = &limitedReader{BodyLimitConfig: config, reader: req.Body}
 
 			return next(c)
 		}
@@ -92,33 +84,35 @@ func BodyLimitWithConfig(config BodyLimitConfig) echo.MiddlewareFunc {
 }
 
 func (r *limitedReader) Read(b []byte) (n int, err error) {
-	if r.limit > 0 && r.read > r.limit {
-		return 0, echo.ErrStatusRequestEntityTooLarge
+	// A zero limit has historically disabled the read limit in v4.
+	if r.limit == 0 {
+		return r.reader.Read(b)
+	}
+	if r.err != nil {
+		return 0, r.err
+	}
+	if len(b) == 0 {
+		return 0, nil
 	}
 
+	remaining := r.limit - r.read
+	// Read at most one byte beyond the limit to distinguish an exact-size body
+	// from an oversized one without exposing the extra byte to the caller.
+	// Unlike http.MaxBytesReader, this reader does not signal net/http to close
+	// the connection after the limit is exceeded.
+	if int64(len(b)) > remaining {
+		b = b[:remaining+1]
+	}
 	n, err = r.reader.Read(b)
-	r.read += int64(n)
-
-	if r.limit > 0 && r.read > r.limit {
-		return n, echo.ErrStatusRequestEntityTooLarge
+	if int64(n) > remaining {
+		r.read = r.limit
+		r.err = echo.ErrStatusRequestEntityTooLarge
+		return int(remaining), r.err
 	}
-
+	r.read += int64(n)
 	return n, err
 }
 
 func (r *limitedReader) Close() error {
 	return r.reader.Close()
-}
-
-func (r *limitedReader) Reset(reader io.ReadCloser) {
-	r.reader = reader
-	r.read = 0
-}
-
-func limitedReaderPool(c BodyLimitConfig) sync.Pool {
-	return sync.Pool{
-		New: func() interface{} {
-			return &limitedReader{BodyLimitConfig: c}
-		},
-	}
 }

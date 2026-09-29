@@ -5,7 +5,11 @@ package middleware
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"io"
+	"math"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -75,12 +79,141 @@ func TestBodyLimitReader(t *testing.T) {
 	he := err.(*echo.HTTPError)
 	assert.Equal(t, http.StatusRequestEntityTooLarge, he.Code)
 
-	// reset reader and read two bytes must succeed
+	// A new request gets a fresh reader.
 	bt := make([]byte, 2)
-	reader.Reset(io.NopCloser(bytes.NewReader(hw)))
+	reader = &limitedReader{BodyLimitConfig: config, reader: io.NopCloser(bytes.NewReader(hw))}
 	n, err := reader.Read(bt)
 	assert.Equal(t, 2, n)
 	assert.Equal(t, nil, err)
+}
+
+func TestBodyLimitReaderDoesNotExposeExtraBytes(t *testing.T) {
+	for _, chunkSize := range []int{1, 64} {
+		t.Run(fmt.Sprint(chunkSize), func(t *testing.T) {
+			reader := &limitedReader{
+				BodyLimitConfig: BodyLimitConfig{limit: 5},
+				reader:          io.NopCloser(bytes.NewReader([]byte("123456789"))),
+			}
+			buf := make([]byte, chunkSize)
+			var got []byte
+			for {
+				n, err := reader.Read(buf)
+				got = append(got, buf[:n]...)
+				if err != nil {
+					assert.Equal(t, []byte("12345"), got)
+					assertBodyLimitError(t, err)
+					break
+				}
+			}
+			n, err := reader.Read(buf)
+			assert.Zero(t, n)
+			assertBodyLimitError(t, err)
+		})
+	}
+}
+
+func TestBodyLimitReaderBoundaryAndLargeLimit(t *testing.T) {
+	for _, limit := range []int64{5, math.MaxInt64} {
+		reader := &limitedReader{
+			BodyLimitConfig: BodyLimitConfig{limit: limit},
+			reader:          io.NopCloser(bytes.NewReader([]byte("12345"))),
+		}
+		got, err := io.ReadAll(reader)
+		assert.NoError(t, err)
+		assert.Equal(t, "12345", string(got))
+	}
+}
+
+func TestBodyLimitReaderKeepsOrdinaryReadErrors(t *testing.T) {
+	broken := errors.New("source failed")
+	reader := &limitedReader{
+		BodyLimitConfig: BodyLimitConfig{limit: 5},
+		reader:          io.NopCloser(&errorOnceReader{err: broken}),
+	}
+	buf := make([]byte, 2)
+	_, err := reader.Read(buf)
+	assert.ErrorIs(t, err, broken)
+	n, err := reader.Read(buf)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, n)
+	assert.Equal(t, byte('x'), buf[0])
+}
+
+type errorOnceReader struct {
+	err error
+}
+
+func (r *errorOnceReader) Read(b []byte) (int, error) {
+	if r.err != nil {
+		err := r.err
+		r.err = nil
+		return 0, err
+	}
+	return copy(b, "x"), nil
+}
+
+func TestBodyLimitReaderRemainsAttachedToRequest(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodPost, "/", bytes.NewBufferString("123456"))
+	req.ContentLength = -1
+	c := e.NewContext(req, httptest.NewRecorder())
+	err := BodyLimit("5B")(func(c echo.Context) error { return nil })(c)
+	assert.NoError(t, err)
+	got, err := io.ReadAll(req.Body)
+	assert.Equal(t, "12345", string(got))
+	assertBodyLimitError(t, err)
+}
+
+func TestBodyLimitBindRejectsOversizeBodies(t *testing.T) {
+	var multipartBody bytes.Buffer
+	writer := multipart.NewWriter(&multipartBody)
+	if err := writer.WriteField("x", "12345"); err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name, contentType string
+		body              []byte
+	}{
+		{"JSON", echo.MIMEApplicationJSON, []byte(`{"x":"12345"}`)},
+		{"XML", echo.MIMEApplicationXML, []byte(`<x>12345</x>`)},
+		{"form", echo.MIMEApplicationForm, []byte(`x=12345`)},
+		{"multipart", writer.FormDataContentType(), multipartBody.Bytes()},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var bindErr error
+			e := echo.New()
+			e.Use(BodyLimit("5B"))
+			e.POST("/", func(c echo.Context) error {
+				var payload struct {
+					X string `json:"x" xml:",chardata" form:"x"`
+				}
+				bindErr = c.Bind(&payload)
+				return bindErr
+			})
+			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(tc.body))
+			req.ContentLength = -1
+			req.Header.Set(echo.HeaderContentType, tc.contentType)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+			assert.Equal(t, http.StatusRequestEntityTooLarge, rec.Code, rec.Body.String())
+			// Bind itself must return the 413, not a 400 that only the error handler turns into 413.
+			assertBodyLimitError(t, bindErr)
+		})
+	}
+}
+
+func assertBodyLimitError(t *testing.T, err error) {
+	t.Helper()
+	var httpError *echo.HTTPError
+	if !errors.As(err, &httpError) {
+		t.Fatalf("expected HTTPError, got %v", err)
+	}
+	assert.Equal(t, http.StatusRequestEntityTooLarge, httpError.Code)
 }
 
 func TestBodyLimitWithConfig_Skipper(t *testing.T) {
@@ -169,6 +302,11 @@ func TestBodyLimit_panicOnInvalidLimit(t *testing.T) {
 		t,
 		"echo: invalid body-limit=",
 		func() { BodyLimit("") },
+	)
+	assert.PanicsWithError(
+		t,
+		"echo: invalid body-limit=-1B",
+		func() { BodyLimit("-1B") },
 	)
 }
 
