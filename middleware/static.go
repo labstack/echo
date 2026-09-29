@@ -220,6 +220,7 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 			// 3. The "/" prefix forces absolute path interpretation, removing ".." components
 			// 4. path.Clean() treats backslashes as literal characters; "."/".." parts between backslashes are rejected above
 			//    for filesystems that wrongly treat a backslash as a separator
+			// See static_windows.go for Go 1.20+ filepath.Clean compatibility notes
 			name := path.Join(config.Root, path.Clean("/"+p)) // "/"+ for security
 
 			if config.IgnoreBase {
