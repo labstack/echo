@@ -78,20 +78,16 @@ func BindBody(c *Context, target any) (err error) {
 	switch mediatype {
 	case MIMEApplicationJSON:
 		if err = c.Echo().JSONSerializer.Deserialize(c, target); err != nil {
-			var hErr *HTTPError
-			if errors.As(err, &hErr) {
-				return err
-			}
-			return ErrBadRequest.Wrap(err)
+			return wrapBindBodyError(err)
 		}
 	case MIMEApplicationXML, MIMETextXML:
 		if err = xml.NewDecoder(req.Body).Decode(target); err != nil {
-			return ErrBadRequest.Wrap(err)
+			return wrapBindBodyError(err)
 		}
 	case MIMEApplicationForm:
 		params, err := c.FormValues()
 		if err != nil {
-			return ErrBadRequest.Wrap(err)
+			return wrapBindBodyError(err)
 		}
 		if err = bindData(target, params, "form", nil); err != nil {
 			return ErrBadRequest.Wrap(err)
@@ -99,7 +95,7 @@ func BindBody(c *Context, target any) (err error) {
 	case MIMEMultipartForm:
 		params, err := c.MultipartForm()
 		if err != nil {
-			return ErrBadRequest.Wrap(err)
+			return wrapBindBodyError(err)
 		}
 		if err = bindData(target, params.Value, "form", params.File); err != nil {
 			return ErrBadRequest.Wrap(err)
@@ -108,6 +104,13 @@ func BindBody(c *Context, target any) (err error) {
 		return &HTTPError{Code: http.StatusUnsupportedMediaType}
 	}
 	return nil
+}
+
+func wrapBindBodyError(err error) error {
+	if StatusCode(err) != 0 {
+		return err
+	}
+	return ErrBadRequest.Wrap(err)
 }
 
 // BindHeaders binds HTTP headers to a bindable object
