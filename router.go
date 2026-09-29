@@ -8,6 +8,8 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"slices"
+	"strings"
 )
 
 // Router is interface for routing request contexts to registered routes.
@@ -387,40 +389,27 @@ func (r *DefaultRouter) Remove(method string, path string) error {
 		return errors.New("router has no routes to remove")
 	}
 
-	if path == "" {
-		path = "/"
-	}
-	if path[0] != '/' {
-		path = "/" + path
-	}
+	path = normalizePathSlash(path)
+	treePath, paramMarkers := routeTreePath(parseRoutePath(path))
 
 	var nodeToRemove *node
-	prefixLen := 0
+	search := treePath
+	searchOffset := 0
 	for {
-		if currentNode.originalPath == path && currentNode.isHandler {
-			nodeToRemove = currentNode
+		if !strings.HasPrefix(search, currentNode.prefix) {
 			break
 		}
-		if currentNode.kind == staticKind {
-			prefixLen = prefixLen + len(currentNode.prefix)
-		} else {
-			prefixLen = len(currentNode.originalPath)
-		}
+		search = search[len(currentNode.prefix):]
+		searchOffset += len(currentNode.prefix)
 
-		if prefixLen >= len(path) {
+		if search == "" {
+			if currentNode.originalPath == path && currentNode.isHandler {
+				nodeToRemove = currentNode
+			}
 			break
 		}
 
-		next := path[prefixLen]
-		switch next {
-		case paramLabel:
-			currentNode = currentNode.paramChild
-		case anyLabel:
-			currentNode = currentNode.anyChild
-		default:
-			currentNode = currentNode.findStaticChild(next)
-		}
-
+		currentNode = currentNode.findChildWithLabel(search[0], slices.Contains(paramMarkers, searchOffset))
 		if currentNode == nil {
 			break
 		}
@@ -434,18 +423,22 @@ func (r *DefaultRouter) Remove(method string, path string) error {
 		return errors.New("could not find route to remove by given path")
 	}
 
-	if mh := nodeToRemove.methods.find(method, false, false); mh == nil {
+	mh := nodeToRemove.methods.find(method, false, false)
+	if mh == nil {
 		return errors.New("could not find route to remove by given path and method")
 	}
-	nodeToRemove.setHandler(method, nil)
 
-	var rIndex int
+	rIndex := -1
 	for i, rr := range r.routes {
-		if rr.Method == method && rr.Path == path {
+		if rr.Method == method && rr.Path == mh.orgRouteInfo.Path {
 			rIndex = i
 			break
 		}
 	}
+	if rIndex < 0 {
+		return errors.New("could not find route to remove by given path and method")
+	}
+	nodeToRemove.setHandler(method, nil)
 	r.routes = append(r.routes[:rIndex], r.routes[rIndex+1:]...)
 
 	if !nodeToRemove.isHandler && nodeToRemove.isLeaf {
@@ -535,72 +528,49 @@ func (r *DefaultRouter) Add(route Route) (RouteInfo, error) {
 		headH = wrapHeadHandler(h)
 	}
 
-	paramNames := make([]string, 0)
-	// Positions of parameter markers after names are removed. Literal colons
-	// remain ordinary path bytes, so no sentinel byte is reserved.
-	paramMarkers := make([]int, 0)
-	originalPath := path
-	wasAdded := false
-	var ri RouteInfo
-	for i, lcpIndex := 0, len(path); i < lcpIndex; i++ {
-		if path[i] == paramLabel {
-			if i > 0 && path[i-1] == '\\' {
-				path = path[:i-1] + path[i:]
-				i--
-				lcpIndex--
-				continue
-			}
-			j := i + 1
-
-			r.insert(staticKind, path[:i], method, routeMethod{RouteInfo: &RouteInfo{Method: method}}, paramMarkers)
-			for ; i < lcpIndex && path[i] != '/'; i++ {
-			}
-
-			paramNames = append(paramNames, path[j:i])
-			paramMarkers = append(paramMarkers, j-1)
-			path = path[:j] + path[i:]
-			i, lcpIndex = j, len(path)
-
-			if i == lcpIndex {
-				// path node is last fragment of route path. ie. `/users/:id`
-				ri = route.ToRouteInfo(paramNames)
-				rm := routeMethod{
-					RouteInfo:          &RouteInfo{Method: method, Path: originalPath, Parameters: paramNames, Name: route.Name},
-					handler:            h,
-					orgRouteInfo:       ri,
-					wrappedHeadHandler: headH,
-				}
-				r.insert(paramKind, path[:i], method, rm, paramMarkers)
-				wasAdded = true
-				break
-			} else {
-				r.insert(paramKind, path[:i], method, routeMethod{RouteInfo: &RouteInfo{Method: method}}, paramMarkers)
-			}
-		} else if path[i] == anyLabel {
-			r.insert(staticKind, path[:i], method, routeMethod{RouteInfo: &RouteInfo{Method: method}}, paramMarkers)
+	parts := parseRoutePath(path)
+	var paramNames []string
+	for _, part := range parts {
+		if part.kind == paramKind {
+			paramNames = append(paramNames, part.value)
+		} else if part.kind == anyKind {
 			paramNames = append(paramNames, "*")
-			ri = route.ToRouteInfo(paramNames)
-			rm := routeMethod{
-				RouteInfo:          &RouteInfo{Method: method, Path: originalPath, Parameters: paramNames, Name: route.Name},
-				handler:            h,
-				orgRouteInfo:       ri,
-				wrappedHeadHandler: headH,
-			}
-			r.insert(anyKind, path[:i+1], method, rm, paramMarkers)
-			wasAdded = true
 			break
 		}
 	}
-
-	if !wasAdded {
-		ri = route.ToRouteInfo(paramNames)
-		rm := routeMethod{
-			RouteInfo:          &RouteInfo{Method: method, Path: originalPath, Parameters: paramNames, Name: route.Name},
-			handler:            h,
-			orgRouteInfo:       ri,
-			wrappedHeadHandler: headH,
+	ri := route.ToRouteInfo(paramNames)
+	rm := routeMethod{
+		RouteInfo:          &RouteInfo{Method: method, Path: path, Parameters: paramNames, Name: route.Name},
+		handler:            h,
+		orgRouteInfo:       ri,
+		wrappedHeadHandler: headH,
+	}
+	partial := routeMethod{RouteInfo: &RouteInfo{Method: method}}
+	var treePath string
+	var paramMarkers []int
+addParts:
+	for i, part := range parts {
+		switch part.kind {
+		case staticKind:
+			treePath += part.value
+			if i == len(parts)-1 {
+				r.insert(staticKind, treePath, method, rm, paramMarkers)
+			}
+		case paramKind:
+			r.insert(staticKind, treePath, method, partial, paramMarkers)
+			paramMarkers = append(paramMarkers, len(treePath))
+			treePath += ":"
+			if i == len(parts)-1 {
+				r.insert(paramKind, treePath, method, rm, paramMarkers)
+			} else {
+				r.insert(paramKind, treePath, method, partial, paramMarkers)
+			}
+		case anyKind:
+			r.insert(staticKind, treePath, method, partial, paramMarkers)
+			treePath += "*"
+			r.insert(anyKind, treePath, method, rm, paramMarkers)
+			break addParts
 		}
-		r.insert(staticKind, path, method, rm, paramMarkers)
 	}
 
 	r.storeRouteInfo(ri)
@@ -724,14 +694,7 @@ func (r *DefaultRouter) insert(t kind, path string, method string, ri routeMetho
 		} else if lcpLen < searchLen {
 			searchOffset += lcpLen
 			search = search[lcpLen:]
-			isParamMarker := false
-			for _, marker := range paramMarkers {
-				if marker == searchOffset {
-					isParamMarker = true
-					break
-				}
-			}
-			c := currentNode.findChildWithLabel(search[0], isParamMarker)
+			c := currentNode.findChildWithLabel(search[0], slices.Contains(paramMarkers, searchOffset))
 			if c != nil {
 				// Go deeper
 				currentNode = c
@@ -834,6 +797,23 @@ func (n *node) findChildWithLabel(l byte, isParamMarker bool) *node {
 		return n.anyChild
 	}
 	return nil
+}
+
+// canMatchStaticSuffix checks the static path following an inline parameter
+// delimiter. The route matcher uses it only when a parameter has a literal
+// colon child, so ordinary parameter routes keep their slash-based fast path.
+func (n *node) canMatchStaticSuffix(path string) bool {
+	if !strings.HasPrefix(path, n.prefix) {
+		return false
+	}
+	path = path[len(n.prefix):]
+	if path == "" {
+		return n.isHandler || n.methods.notFoundHandler != nil || n.anyChild != nil
+	}
+	if child := n.findStaticChild(path[0]); child != nil && child.canMatchStaticSuffix(path) {
+		return true
+	}
+	return n.paramChild != nil || n.anyChild != nil
 }
 
 func (n *node) setHandler(method string, r *routeMethod) {
@@ -1039,6 +1019,17 @@ func (r *DefaultRouter) Route(c *Context) HandlerFunc {
 				i = l
 			} else {
 				for ; i < l && search[i] != '/'; i++ {
+				}
+				// An escaped colon after a parameter is a static suffix within the
+				// same segment. Prefer the longest matching suffix and leave it for
+				// the normal static-node matcher.
+				if suffix := currentNode.findStaticChild(':'); suffix != nil {
+					for split := 0; split < i; split++ {
+						if search[split] == ':' && suffix.canMatchStaticSuffix(search[split:]) {
+							i = split
+							break
+						}
+					}
 				}
 			}
 
