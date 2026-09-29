@@ -30,7 +30,14 @@ func walkRoutePath(path string, emit func(routePathPart)) {
 			start := i + 1
 			i = start
 			for i < len(path) && path[i] != '/' {
-				if path[i] == '\\' && i+1 < len(path) && path[i+1] == ':' && isInlineVerb(path[i+2:]) {
+				if path[i] == '\\' && i+1 < len(path) && path[i+1] == ':' {
+					if isInlineVerb(path[i+2:]) {
+						break
+					}
+					// not an inline verb: the rest of the segment is the param name, as before inline verbs
+					for i < len(path) && path[i] != '/' {
+						i++
+					}
 					break
 				}
 				i++

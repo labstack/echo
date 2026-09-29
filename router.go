@@ -169,11 +169,12 @@ func (r *Router) Reverse(name string, params ...interface{}) string {
 				} else if n < len(params) {
 					fmt.Fprint(uri, params[n])
 					n++
-				} else if part.kind == paramKind {
-					uri.WriteByte(':')
-					uri.WriteString(part.value)
 				} else {
-					uri.WriteString(part.value)
+					// placeholder for a missing value. An escaped colon in a param name is written without its backslash.
+					if part.kind == paramKind {
+						uri.WriteByte(':')
+					}
+					uri.WriteString(strings.ReplaceAll(part.value, `\:`, ":"))
 				}
 			})
 			break
@@ -325,7 +326,6 @@ func (r *Router) insertNode(method, path string, t kind, rm routeMethod, paramMa
 			currentNode.label = currentNode.prefix[0]
 			currentNode.prefix = currentNode.prefix[:lcpLen]
 			currentNode.staticChildren = nil
-			currentNode.hasColonChild = false
 			currentNode.originalPath = ""
 			currentNode.methods = new(routeMethods)
 			currentNode.paramsCount = 0
@@ -423,20 +423,32 @@ func newNode(
 		isHandler:       methods.isHandler(),
 		notFoundHandler: notFoundHandler,
 	}
-	for _, child := range sc {
-		if t == paramKind && child.label == ':' {
-			n.hasColonChild = true
-			break
-		}
-	}
 	return n
 }
 
 func (n *node) addStaticChild(c *node) {
 	n.staticChildren = append(n.staticChildren, c)
+	// param nodes are never split (their prefix is a single byte), so this is where their inline verb child is set
 	if n.kind == paramKind && c.label == ':' {
 		n.hasColonChild = true
 	}
+}
+
+// pendingInlineVerbSplit returns the nearest param node, from n up to the root, whose value in paramValues ended at an
+// inline verb split and so can still be retried. searchIndex and paramIndex are the routing state at n.
+func pendingInlineVerbSplit(n *node, path string, searchIndex, paramIndex int, paramValues []string) *node {
+	for ; n != nil; n = n.parent {
+		if n.hasColonChild && searchIndex < len(path) && path[searchIndex] == ':' {
+			return n
+		}
+		if n.kind == staticKind {
+			searchIndex -= len(n.prefix)
+		} else {
+			paramIndex--
+			searchIndex -= len(paramValues[paramIndex])
+		}
+	}
+	return nil
 }
 
 // inlineVerbSplit returns where a param value in search ends: at the first literal colon at or after from where this
@@ -741,28 +753,37 @@ func (r *Router) Find(method, path string, c Context) {
 			}
 		}
 
-		// A param value that ended at an inline verb split is a decision point of the param node itself. Retry the
-		// node with the next split, and finally with the whole path segment, before backtracking to its parent.
-		if currentNode.hasColonChild && search != "" && search[0] == ':' {
-			start := searchIndex - len(paramValues[paramIndex-1])
-			searchIndex = start + currentNode.inlineVerbSplit(path[start:], len(paramValues[paramIndex-1])+1)
-			paramValues[paramIndex-1] = path[start:searchIndex]
-			search = path[searchIndex:]
-			continue
-		}
-
 		// Let's backtrack to the first possible alternative node of the decision path
 		nk, ok := backtrackToNextNodeKind(anyKind)
 		if !ok {
 			break // No other possibilities on the decision path
 		} else if nk == paramKind {
+			if currentNode.hasColonChild && search != "" && search[0] == ':' {
+				goto InlineVerbSplit
+			}
 			goto Param
 		} else if nk == anyKind {
 			goto Any
+		} else if n := pendingInlineVerbSplit(currentNode, path, searchIndex, paramIndex, paramValues); n != nil {
+			// A wildcard ends the search, but a param value above it that ended at an inline verb split is still retried.
+			for currentNode != n {
+				backtrackToNextNodeKind(anyKind)
+			}
+			goto InlineVerbSplit
 		} else {
 			// Not found
 			break
 		}
+
+	InlineVerbSplit:
+		// A param value that ended at an inline verb split is a decision point of the param node itself. When its
+		// inline verb child fails, retry the node with the next split, and finally with the whole path segment,
+		// before backtracking to its parent.
+		start := searchIndex - len(paramValues[paramIndex-1])
+		searchIndex = start + currentNode.inlineVerbSplit(path[start:], len(paramValues[paramIndex-1])+1)
+		paramValues[paramIndex-1] = path[start:searchIndex]
+		search = path[searchIndex:]
+		continue
 	}
 
 	if currentNode == nil && previousBestMatchNode == nil {

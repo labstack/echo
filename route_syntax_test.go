@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -129,6 +130,19 @@ func TestRouterInlineVerbMustEndPathSegment(t *testing.T) {
 	e.GET(`/s/:name\:x*`, func(c Context) error { return c.String(http.StatusOK, strings.Join(c.ParamNames(), ",")) })
 	assertInlineVerbResponse(t, e, "/r/foo", `name\:x:id`)
 	assertInlineVerbResponse(t, e, "/s/foo", `name\:x*`)
+	// the first escaped colon decides, so a later one that is followed only by static text does not start a verb
+	e.GET(`/t/:a\:x:y\:z`, func(c Context) error { return c.String(http.StatusOK, strings.Join(c.ParamNames(), ",")) }).Name = "legacy"
+	assertInlineVerbResponse(t, e, "/t/q:z", `a\:x:y\:z`)
+	assert.Equal(t, "/t/:a:x:y:z", e.Reverse("legacy"))
+}
+
+func TestRouterInlineVerbBeforeWholeSegment(t *testing.T) {
+	// a matching inline verb split is tried before the whole segment, also when a wildcard follows the verb
+	e := New()
+	e.GET(`/r/:name\:x/*`, func(c Context) error { return c.String(http.StatusOK, "verb:"+c.Param("name")+"|"+c.Param("*")) })
+	e.GET(`/r/:id/info`, func(c Context) error { return c.String(http.StatusOK, "info:"+c.Param("id")) })
+	assertInlineVerbResponse(t, e, "/r/a:x/info", "verb:a|info")
+	assertInlineVerbResponse(t, e, "/r/a:y/info", "info:a:y")
 }
 
 func TestRouterInlineVerbLeafParamAfterVerb(t *testing.T) {
@@ -161,6 +175,11 @@ func TestRouterInlineVerbManyColons(t *testing.T) {
 	e.GET(`/r/:name\:c`, func(c Context) error { return c.String(http.StatusOK, "c:"+c.Param("name")) })
 	e.GET(`/r/:name\:x/:a\:y/z`, func(c Context) error { return c.String(http.StatusOK, "nested") })
 	colons := strings.Repeat(":", 1<<16)
+	start := time.Now()
+	defer func() {
+		// linear routing takes milliseconds here; trying splits quadratically would take minutes
+		assert.Less(t, time.Since(start), 10*time.Second)
+	}()
 
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/r/a"+colons+"b", nil))
@@ -205,4 +224,45 @@ func TestRouterInlineVerbMethodNotAllowedWithoutFallback(t *testing.T) {
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/r/foo:cancel", nil))
 	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
+}
+
+func TestRouterInlineVerbRetriedAfterWildcard(t *testing.T) {
+	// a wildcard ends the search, but the split above it is still retried with the next split and the whole segment
+	e := New()
+	e.POST(`/r/:n\:v/*`, func(c Context) error { return c.String(http.StatusOK, "post") })
+	e.GET(`/r/:n/*`, func(c Context) error { return c.String(http.StatusOK, "get:"+c.Param("n")+"|"+c.Param("*")) })
+	assertInlineVerbResponse(t, e, "/r/a:v/q", "get:a:v|q")
+
+	e = New()
+	e.POST(`/r/:n\:a\:b/*`, func(c Context) error { return c.String(http.StatusOK, "post") })
+	e.GET(`/r/:n\:b/x`, func(c Context) error { return c.String(http.StatusOK, "get:"+c.Param("n")) })
+	assertInlineVerbResponse(t, e, "/r/q:a:b/x", "get:q:a")
+
+	e = New()
+	e.POST(`/r/:n\:v/*`, func(c Context) error { return c.String(http.StatusOK, "post") })
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/r/a:v/q", nil))
+	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
+}
+
+func TestRouterInlineVerbChangesEscapedColonAfterParam(t *testing.T) {
+	// Before inline verbs, `/:name\:cancel` was a single param named `name\:cancel` that matched any segment.
+	e := New()
+	e.GET(`/r/:name\:cancel`, func(c Context) error {
+		return c.String(http.StatusOK, strings.Join(c.ParamNames(), ",")+"="+c.Param("name"))
+	})
+	assertInlineVerbResponse(t, e, "/r/foo:cancel", "name=foo")
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/r/foo", nil))
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+func TestRouterReverseEscapedColonPlaceholder(t *testing.T) {
+	e := New()
+	e.GET(`/r/:n\:x:id`, func(c Context) error { return nil }).Name = "legacy"
+	e.GET(`/r/:name\:cancel`, func(c Context) error { return nil }).Name = "verb"
+	assert.Equal(t, "/r/:n:x:id", e.Reverse("legacy"))
+	assert.Equal(t, "/r/foo", e.Reverse("legacy", "foo"))
+	assert.Equal(t, "/r/:name:cancel", e.Reverse("verb"))
+	assert.Equal(t, "/r/foo:cancel", e.Reverse("verb", "foo"))
 }
