@@ -40,6 +40,13 @@ Help and questions: [Github Discussions](https://github.com/labstack/echo/discus
 ## Sponsors
 
 <div>
+  <a href="https://blacksmith.sh" style="display: inline-flex; align-items: center; gap: 10px">
+    <img src="https://github.com/useblacksmith.png?size=56" height="28px" alt="Blacksmith logo"></img>
+  <b>Blacksmith – faster, drop-in GitHub Actions runners</b>
+    </a>
+</div>
+<br/>
+<div>
   <a href="https://encore.dev" style="display: inline-flex; align-items: center; gap: 10px">
     <img src="https://user-images.githubusercontent.com/78424526/214602214-52e0483a-b5fc-4d4c-b03e-0b7b23e012df.svg" height="28px" alt="encore icon"></img>
   <b>Encore – the platform for building Go-based cloud backends</b>
