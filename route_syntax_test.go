@@ -28,7 +28,6 @@ func TestRouterInlineVerbRoutes(t *testing.T) {
 	for _, order := range [][]string{{"cancel", "get"}, {"get", "cancel"}} {
 		e := New()
 		for _, verb := range order {
-			verb := verb
 			e.GET("/r/:name\\:"+verb, func(c Context) error {
 				return c.String(http.StatusOK, verb+":"+c.Param("name"))
 			})
@@ -295,4 +294,18 @@ func TestRouterInlineVerbWildcardBacktracksBelowSplit(t *testing.T) {
 	e.RouteNotFound(`/r/:a\:x/*`, func(c Context) error { return c.String(http.StatusOK, "not found:"+c.Param("a")) })
 	e.GET(`/r/:a/k`, func(c Context) error { return c.String(http.StatusOK, "k") })
 	assertInlineVerbResponse(t, e, "/r/p:x/k", "not found:p")
+}
+
+func TestRouterInlineVerbMisc(t *testing.T) {
+	e := New()
+	e.POST(`/r/:n\:v/*`, func(c Context) error { return c.String(http.StatusOK, "post") }).Name = "verb"
+	e.RouteNotFound(`/r/:n/*`, func(c Context) error { return c.String(http.StatusOK, "not found:"+c.Param("n")) })
+	// the whole segment reaches the RouteNotFound route, as a static sibling would
+	assertInlineVerbResponse(t, e, "/r/a:v/q", "not found:a:v")
+	assert.Equal(t, "/r/:n:v/*", e.Reverse("verb"))
+	assert.Equal(t, "/r/a:v/b/c", e.Reverse("verb", "a", "b/c"))
+
+	// a param name with ':' keeps an escaped colon as part of the name
+	e.GET(`/s/:a:b\:v`, func(c Context) error { return c.String(http.StatusOK, strings.Join(c.ParamNames(), ",")) })
+	assertInlineVerbResponse(t, e, "/s/x", `a:b\:v`)
 }
