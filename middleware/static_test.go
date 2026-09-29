@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"testing"
 	"testing/fstest"
 
@@ -794,4 +795,44 @@ func TestStatic_HTML5WithUncleanPath(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "spa", rec.Body.String())
+}
+
+// nonValidatingFS is a custom fs.FS that does not enforce fs.ValidPath, so a name with ".." escapes its root. Echo must
+// never pass such a name to a user supplied filesystem.
+type nonValidatingFS struct{ root string }
+
+func (f nonValidatingFS) Open(name string) (fs.File, error) {
+	return os.Open(filepath.Join(f.root, name))
+}
+
+func TestStatic_nonValidatingCustomFSCannotEscapeRoot(t *testing.T) {
+	dir := t.TempDir()
+	assert.NoError(t, os.Mkdir(filepath.Join(dir, "public"), 0o755))
+	assert.NoError(t, os.WriteFile(filepath.Join(dir, "public", "index.txt"), []byte("public"), 0o644))
+	assert.NoError(t, os.WriteFile(filepath.Join(dir, "secret.txt"), []byte("secret"), 0o644))
+
+	for _, target := range []string{"/../secret.txt", "/%2e%2e/secret.txt", "/sub/../../secret.txt"} {
+		for _, unescape := range []bool{false, true} {
+			e := echo.New()
+			e.Use(StaticWithConfig(StaticConfig{
+				Filesystem:           nonValidatingFS{root: filepath.Join(dir, "public")},
+				EnablePathUnescaping: unescape,
+			}))
+
+			req := httptest.NewRequest(http.MethodGet, target, nil)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusNotFound, rec.Code, "%s unescape=%v", target, unescape)
+			assert.NotContains(t, rec.Body.String(), "secret", "%s unescape=%v", target, unescape)
+		}
+	}
+
+	e := echo.New()
+	e.Use(StaticWithConfig(StaticConfig{Filesystem: nonValidatingFS{root: filepath.Join(dir, "public")}}))
+	req := httptest.NewRequest(http.MethodGet, "/index.txt", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "public", rec.Body.String())
 }
