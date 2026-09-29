@@ -72,6 +72,7 @@ type DefaultRouter struct {
 	unescapePathParamValues  bool
 	useEscapedPathForRouting bool
 	autoHandleHEAD           bool
+	hasInlineVerb            bool
 }
 
 // RouterConfig is configuration options for (default) router
@@ -477,6 +478,15 @@ func (r *DefaultRouter) Remove(method string, path string) error {
 			current = parent
 		}
 	}
+	if r.hasInlineVerb {
+		r.hasInlineVerb = false
+		for _, route := range r.routes {
+			if hasInlineVerbPart(parseRoutePath(route.Path)) {
+				r.hasInlineVerb = true
+				break
+			}
+		}
+	}
 
 	return nil
 }
@@ -533,6 +543,7 @@ func (r *DefaultRouter) Add(route Route) (RouteInfo, error) {
 	}
 
 	parts := parseRoutePath(path)
+	r.hasInlineVerb = r.hasInlineVerb || hasInlineVerbPart(parts)
 	var paramNames []string
 	for _, part := range parts {
 		if part.kind == paramKind {
@@ -863,15 +874,10 @@ var optionsMethodHandler = func(c *Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-// Route looks up a handler registered for method and path. It also parses URL for path parameters and loads them
-// into context.
-//
-// For performance:
-//
-// - Get context from `Echo#AcquireContext()`
-// - Reset it `Context#Reset()`
-// - Return it `Echo#ReleaseContext()`.
-func (r *DefaultRouter) Route(c *Context) HandlerFunc {
+// routeInline handles requests that may need to retry a literal-colon split.
+// The ordinary Route path stays separate so routers without inline verbs keep
+// their existing matching cost.
+func (r *DefaultRouter) routeInline(c *Context) HandlerFunc {
 	pathValues := c.PathValues()
 	if cap(pathValues) < r.maxPathParamsLength {
 		pathValues = make(PathValues, 0, r.maxPathParamsLength)
