@@ -6,19 +6,11 @@ package echo
 import "strings"
 
 // routePathPart is one parsed piece of a route pattern. A backslash before a
-// colon makes the colon static, including when it follows a parameter name.
+// colon makes the colon static. After a parameter name it starts an inline verb
+// (`/:name\:cancel`) when the rest of that path segment is static.
 type routePathPart struct {
 	kind  kind
 	value string
-}
-
-func hasInlineVerbPart(parts []routePathPart) bool {
-	for i := 1; i < len(parts); i++ {
-		if parts[i-1].kind == paramKind && parts[i].kind == staticKind && parts[i].value == ":" {
-			return true
-		}
-	}
-	return false
 }
 
 func parseRoutePath(path string) []routePathPart {
@@ -38,7 +30,7 @@ func walkRoutePath(path string, emit func(routePathPart)) {
 			start := i + 1
 			i = start
 			for i < len(path) && path[i] != '/' {
-				if path[i] == '\\' && i+1 < len(path) && path[i+1] == ':' {
+				if path[i] == '\\' && i+1 < len(path) && path[i+1] == ':' && isInlineVerb(path[i+2:]) {
 					break
 				}
 				i++
@@ -61,6 +53,24 @@ func walkRoutePath(path string, emit func(routePathPart)) {
 			emit(routePathPart{kind: staticKind, value: path[start:i]})
 		}
 	}
+}
+
+// isInlineVerb reports whether the route text after an escaped colon stays
+// static up to the end of its path segment. Only then can the router find where
+// the parameter value ends by trying the colons in the requested segment. Other
+// escaped colons keep the older meaning and remain part of the parameter name.
+func isInlineVerb(rest string) bool {
+	for i := 0; i < len(rest) && rest[i] != '/'; i++ {
+		switch rest[i] {
+		case '*':
+			return false
+		case ':':
+			if i == 0 || rest[i-1] != '\\' {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func routeTreePath(parts []routePathPart) (string, []int) {

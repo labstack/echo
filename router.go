@@ -8,15 +8,15 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"strings"
 )
 
 // Router is the registry of all registered routes for an `Echo` instance for
 // request matching and URL path parameter parsing.
 type Router struct {
-	tree          *node
-	routes        map[string]*Route
-	echo          *Echo
-	hasInlineVerb bool
+	tree   *node
+	routes map[string]*Route
+	echo   *Echo
 }
 
 type node struct {
@@ -216,7 +216,6 @@ func (r *Router) insert(method, path string, h HandlerFunc) {
 		r.echo.Logger.Errorf("Adding route without handler function: %v:%v", method, path)
 	}
 	parts := parseRoutePath(path)
-	r.hasInlineVerb = r.hasInlineVerb || hasInlineVerbPart(parts)
 	pnames := []string{}
 	for _, part := range parts {
 		if part.kind == paramKind {
@@ -425,7 +424,7 @@ func newNode(
 		notFoundHandler: notFoundHandler,
 	}
 	for _, child := range sc {
-		if child.label == ':' {
+		if t == paramKind && child.label == ':' {
 			n.hasColonChild = true
 			break
 		}
@@ -435,9 +434,27 @@ func newNode(
 
 func (n *node) addStaticChild(c *node) {
 	n.staticChildren = append(n.staticChildren, c)
-	if c.label == ':' {
+	if n.kind == paramKind && c.label == ':' {
 		n.hasColonChild = true
 	}
+}
+
+// inlineVerbSplit returns where a param value in search ends: at the first literal colon at or after from where this
+// node's inline verb child could match, otherwise at the end of the path segment. A split value is never empty. The
+// scan stops at the next slash, so trying every split of a segment in turn is linear in its length.
+func (n *node) inlineVerbSplit(search string, from int) int {
+	verbs := n.findStaticChild(':')
+	for i := from; i < len(search); i++ {
+		switch search[i] {
+		case '/':
+			return i
+		case ':':
+			if i > 0 && verbs != nil && strings.HasPrefix(search[i:], verbs.prefix) {
+				return i
+			}
+		}
+	}
+	return len(search)
 }
 
 func (n *node) findStaticChild(l byte) *node {
@@ -543,9 +560,15 @@ func optionsMethodHandler(allowMethods string) func(c Context) error {
 	}
 }
 
-// findInline handles requests that may need to retry a literal-colon split.
-// The ordinary Find path stays separate for routers without inline verbs.
-func (r *Router) findInline(method, path string, c Context) {
+// Find lookup a handler registered for method and path. It also parses URL for path
+// parameters and load them into context.
+//
+// For performance:
+//
+// - Get context from `Echo#AcquireContext()`
+// - Reset it `Context#Reset()`
+// - Return it `Echo#ReleaseContext()`.
+func (r *Router) Find(method, path string, c Context) {
 	ctx := c.(*context)
 	currentNode := r.tree // Current node as root
 
@@ -596,12 +619,6 @@ func (r *Router) findInline(method, path string, c Context) {
 		return
 	}
 
-	var splitPlan []int
-	var splitOptions []int
-	var splitUsed bool
-	var fallbackNode *node
-	var fallbackValues []string
-
 	// Router tree is implemented by longest common prefix array (LCP array) https://en.wikipedia.org/wiki/LCP_array
 	// Tree search is implemented as for loop where one loop iteration is divided into 3 separate blocks
 	// Each of these blocks checks specific kind of node (static/param/any). Order of blocks reflex their priority in routing.
@@ -609,9 +626,6 @@ func (r *Router) findInline(method, path string, c Context) {
 	//
 	// Note: backtracking in tree is implemented by replacing/switching currentNode to previous node
 	// and hoping to (goto statement) next block by priority to check if it is the match.
-searchRoute:
-	splitOptions = splitOptions[:0]
-	splitUsed = false
 	for {
 		prefixLen := 0 // Prefix length
 		lcpLen := 0    // LCP (longest common prefix) length
@@ -682,40 +696,16 @@ searchRoute:
 			currentNode = child
 			i := 0
 			l := len(search)
-			if currentNode.isLeaf && !splitUsed {
+			if currentNode.isLeaf {
 				// when param node does not have any children (path param is last piece of route path) then param node should
 				// act similarly to any node - consider all remaining search as match
 				i = l
-			} else {
-				for ; i < l && search[i] != '/'; i++ {
-				}
-				// Try each literal-colon split, then the whole segment if the
-				// split route cannot handle the request.
-				if currentNode.hasColonChild {
-					choice := 0
-					if len(splitPlan) > len(splitOptions) {
-						choice = splitPlan[len(splitOptions)]
-					}
-					count, chosen := 0, -1
-					for split := 1; split < i; split++ {
-						if search[split] == ':' {
-							if count == choice {
-								chosen = split
-							}
-							count++
-						}
-					}
-					if count > 0 {
-						if len(splitPlan) == len(splitOptions) {
-							splitPlan = append(splitPlan, 0)
-						}
-						splitOptions = append(splitOptions, count+1)
-						if chosen >= 0 {
-							i = chosen
-							splitUsed = true
-						}
-					}
-				}
+			} else if currentNode.hasColonChild {
+				// an inline verb (`/:name\:verb`) can end the param value at a literal colon. Start with the first
+				// possible split, the param node is retried with the next one before backtracking (see below).
+				i = currentNode.inlineVerbSplit(search, 0)
+			} else if i = strings.IndexByte(search, '/'); i < 0 {
+				i = l
 			}
 
 			paramValues[paramIndex] = search[:i]
@@ -751,6 +741,16 @@ searchRoute:
 			}
 		}
 
+		// A param value that ended at an inline verb split is a decision point of the param node itself. Retry the
+		// node with the next split, and finally with the whole path segment, before backtracking to its parent.
+		if currentNode.hasColonChild && search != "" && search[0] == ':' {
+			start := searchIndex - len(paramValues[paramIndex-1])
+			searchIndex = start + currentNode.inlineVerbSplit(path[start:], len(paramValues[paramIndex-1])+1)
+			paramValues[paramIndex-1] = path[start:searchIndex]
+			search = path[searchIndex:]
+			continue
+		}
+
 		// Let's backtrack to the first possible alternative node of the decision path
 		nk, ok := backtrackToNextNodeKind(anyKind)
 		if !ok {
@@ -763,28 +763,6 @@ searchRoute:
 			// Not found
 			break
 		}
-	}
-	if matchedRouteMethod == nil && len(splitOptions) > 0 {
-		if fallbackNode == nil && previousBestMatchNode != nil {
-			fallbackNode = previousBestMatchNode
-			fallbackValues = append(fallbackValues, paramValues[:fallbackNode.paramsCount]...)
-		}
-		for i := len(splitOptions) - 1; i >= 0; i-- {
-			if splitPlan[i]+1 < splitOptions[i] {
-				splitPlan[i]++
-				splitPlan = splitPlan[:i+1]
-				currentNode = r.tree
-				previousBestMatchNode = nil
-				search, searchIndex, paramIndex = path, 0, 0
-				clear(paramValues)
-				goto searchRoute
-			}
-		}
-	}
-	if matchedRouteMethod == nil && fallbackNode != nil {
-		currentNode = fallbackNode
-		previousBestMatchNode = fallbackNode
-		copy(paramValues, fallbackValues)
 	}
 
 	if currentNode == nil && previousBestMatchNode == nil {
