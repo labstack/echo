@@ -333,3 +333,23 @@ func TestRouterInlineVerbPendingAboveParam(t *testing.T) {
 	e.GET(`/r/:a/:b/q`, func(c Context) error { return c.String(http.StatusOK, "get:"+c.Param("a")+"|"+c.Param("b")) })
 	assertInlineVerbResponse(t, e, "/r/x:v/y/q", "get:x:v|y")
 }
+
+func TestRouterInlineVerbKeepsLeafParamFallbacks(t *testing.T) {
+	e := New()
+	e.GET("/files/:path", func(c Context) error { return c.String(http.StatusOK, "get:"+c.Param("path")) })
+	e.POST(`/files/:name\:upload`, func(c Context) error { return c.String(http.StatusOK, "upload") })
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodPut, "/files/a/b", nil))
+	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
+	assert.Equal(t, "OPTIONS, GET", rec.Header().Get(HeaderAllow))
+
+	e = New()
+	e.RouteNotFound("/files/:path", func(c Context) error { return c.String(http.StatusOK, "not found:"+c.Param("path")) })
+	e.POST(`/files/:name\:upload`, func(c Context) error { return c.String(http.StatusOK, "upload") })
+	assertInlineVerbResponse(t, e, "/files/a/b", "not found:a/b")
+
+	e = New()
+	e.POST(`/files/:name\:upload`, func(c Context) error { return c.String(http.StatusOK, "upload") })
+	e.GET("/files/*", func(c Context) error { return c.String(http.StatusOK, "any:"+c.Param("*")) })
+	assertInlineVerbResponse(t, e, "/files/a/b", "any:a/b")
+}
