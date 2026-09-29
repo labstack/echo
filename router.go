@@ -7,7 +7,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
-	"strings"
+	"slices"
 )
 
 // Router is the registry of all registered routes for an `Echo` instance for
@@ -34,7 +34,8 @@ type node struct {
 	// isLeaf indicates that node does not have child routes
 	isLeaf bool
 	// isHandler indicates that node has at least one handler registered to it
-	isHandler bool
+	isHandler     bool
+	hasColonChild bool
 }
 
 type kind uint8
@@ -161,11 +162,11 @@ func (r *Router) Reverse(name string, params ...interface{}) string {
 	for _, route := range r.routes {
 		if route.Name == name {
 			n := 0
-			for _, part := range parseRoutePath(route.Path) {
+			walkRoutePath(route.Path, func(part routePathPart) {
 				if part.kind == staticKind {
 					uri.WriteString(part.value)
 				} else if n < len(params) {
-					uri.WriteString(fmt.Sprintf("%v", params[n]))
+					fmt.Fprint(uri, params[n])
 					n++
 				} else if part.kind == paramKind {
 					uri.WriteByte(':')
@@ -173,7 +174,7 @@ func (r *Router) Reverse(name string, params ...interface{}) string {
 				} else {
 					uri.WriteString(part.value)
 				}
-			}
+			})
 			break
 		}
 	}
@@ -214,7 +215,7 @@ func (r *Router) insert(method, path string, h HandlerFunc) {
 		r.echo.Logger.Errorf("Adding route without handler function: %v:%v", method, path)
 	}
 	parts := parseRoutePath(path)
-	var pnames []string
+	pnames := []string{}
 	for _, part := range parts {
 		if part.kind == paramKind {
 			pnames = append(pnames, part.value)
@@ -224,28 +225,27 @@ func (r *Router) insert(method, path string, h HandlerFunc) {
 		}
 	}
 	rm := routeMethod{ppath: path, pnames: pnames, handler: h}
-	var treePath string
-	var paramMarkers []int
+	treePath, paramMarkers := routeTreePath(parts)
+	pathEnd := 0
 	for i, part := range parts {
 		switch part.kind {
 		case staticKind:
-			treePath += part.value
+			pathEnd += len(part.value)
 			if i == len(parts)-1 {
-				r.insertNode(method, treePath, staticKind, rm, paramMarkers)
+				r.insertNode(method, treePath[:pathEnd], staticKind, rm, paramMarkers)
 			}
 		case paramKind:
-			r.insertNode(method, treePath, staticKind, routeMethod{}, paramMarkers)
-			paramMarkers = append(paramMarkers, len(treePath))
-			treePath += ":"
+			r.insertNode(method, treePath[:pathEnd], staticKind, routeMethod{}, paramMarkers)
+			pathEnd++
 			if i == len(parts)-1 {
-				r.insertNode(method, treePath, paramKind, rm, paramMarkers)
+				r.insertNode(method, treePath[:pathEnd], paramKind, rm, paramMarkers)
 			} else {
-				r.insertNode(method, treePath, paramKind, routeMethod{}, paramMarkers)
+				r.insertNode(method, treePath[:pathEnd], paramKind, routeMethod{}, paramMarkers)
 			}
 		case anyKind:
-			r.insertNode(method, treePath, staticKind, routeMethod{}, paramMarkers)
-			treePath += "*"
-			r.insertNode(method, treePath, anyKind, rm, paramMarkers)
+			r.insertNode(method, treePath[:pathEnd], staticKind, routeMethod{}, paramMarkers)
+			pathEnd++
+			r.insertNode(method, treePath[:pathEnd], anyKind, rm, paramMarkers)
 			return
 		}
 	}
@@ -324,6 +324,7 @@ func (r *Router) insertNode(method, path string, t kind, rm routeMethod, paramMa
 			currentNode.label = currentNode.prefix[0]
 			currentNode.prefix = currentNode.prefix[:lcpLen]
 			currentNode.staticChildren = nil
+			currentNode.hasColonChild = false
 			currentNode.originalPath = ""
 			currentNode.methods = new(routeMethods)
 			currentNode.paramsCount = 0
@@ -359,13 +360,7 @@ func (r *Router) insertNode(method, path string, t kind, rm routeMethod, paramMa
 		} else if lcpLen < searchLen {
 			searchOffset += lcpLen
 			search = search[lcpLen:]
-			isParamMarker := false
-			for _, marker := range paramMarkers {
-				if marker == searchOffset {
-					isParamMarker = true
-					break
-				}
-			}
+			isParamMarker := slices.Contains(paramMarkers, searchOffset)
 			c := currentNode.findChildWithLabel(search[0], isParamMarker)
 			if c != nil {
 				// Go deeper
@@ -412,7 +407,7 @@ func newNode(
 	anyChildren *node,
 	notFoundHandler *routeMethod,
 ) *node {
-	return &node{
+	n := &node{
 		kind:            t,
 		label:           pre[0],
 		prefix:          pre,
@@ -427,10 +422,20 @@ func newNode(
 		isHandler:       methods.isHandler(),
 		notFoundHandler: notFoundHandler,
 	}
+	for _, child := range sc {
+		if child.label == ':' {
+			n.hasColonChild = true
+			break
+		}
+	}
+	return n
 }
 
 func (n *node) addStaticChild(c *node) {
 	n.staticChildren = append(n.staticChildren, c)
+	if c.label == ':' {
+		n.hasColonChild = true
+	}
 }
 
 func (n *node) findStaticChild(l byte) *node {
@@ -453,22 +458,6 @@ func (n *node) findChildWithLabel(l byte, isParamMarker bool) *node {
 		return n.anyChild
 	}
 	return nil
-}
-
-// canMatchStaticSuffix checks the static path following an inline parameter
-// delimiter. Ordinary parameter routes keep their slash-based fast path.
-func (n *node) canMatchStaticSuffix(path string) bool {
-	if !strings.HasPrefix(path, n.prefix) {
-		return false
-	}
-	path = path[len(n.prefix):]
-	if path == "" {
-		return n.isHandler || n.notFoundHandler != nil || n.anyChild != nil
-	}
-	if child := n.findStaticChild(path[0]); child != nil && child.canMatchStaticSuffix(path) {
-		return true
-	}
-	return n.paramChild != nil || n.anyChild != nil
 }
 
 func (n *node) addMethod(method string, h *routeMethod) {
@@ -611,6 +600,12 @@ func (r *Router) Find(method, path string, c Context) {
 		return
 	}
 
+	var splitPlan []int
+	var splitOptions []int
+	var splitUsed bool
+	var fallbackNode *node
+	var fallbackValues []string
+
 	// Router tree is implemented by longest common prefix array (LCP array) https://en.wikipedia.org/wiki/LCP_array
 	// Tree search is implemented as for loop where one loop iteration is divided into 3 separate blocks
 	// Each of these blocks checks specific kind of node (static/param/any). Order of blocks reflex their priority in routing.
@@ -618,6 +613,9 @@ func (r *Router) Find(method, path string, c Context) {
 	//
 	// Note: backtracking in tree is implemented by replacing/switching currentNode to previous node
 	// and hoping to (goto statement) next block by priority to check if it is the match.
+searchRoute:
+	splitOptions = splitOptions[:0]
+	splitUsed = false
 	for {
 		prefixLen := 0 // Prefix length
 		lcpLen := 0    // LCP (longest common prefix) length
@@ -639,7 +637,7 @@ func (r *Router) Find(method, path string, c Context) {
 			// No matching prefix, let's backtrack to the first possible alternative node of the decision path
 			nk, ok := backtrackToNextNodeKind(staticKind)
 			if !ok {
-				return // No other possibilities on the decision path, handler will be whatever context is reset to.
+				break // No other possibilities on the decision path.
 			} else if nk == paramKind {
 				goto Param
 				// NOTE: this case (backtracking from static node to previous any node) can not happen by current any matching logic. Any node is end of search currently
@@ -688,18 +686,37 @@ func (r *Router) Find(method, path string, c Context) {
 			currentNode = child
 			i := 0
 			l := len(search)
-			if currentNode.isLeaf {
+			if currentNode.isLeaf && !splitUsed {
 				// when param node does not have any children (path param is last piece of route path) then param node should
 				// act similarly to any node - consider all remaining search as match
 				i = l
 			} else {
 				for ; i < l && search[i] != '/'; i++ {
 				}
-				if suffix := currentNode.findStaticChild(':'); suffix != nil {
-					for split := 0; split < i; split++ {
-						if search[split] == ':' && suffix.canMatchStaticSuffix(search[split:]) {
-							i = split
-							break
+				// Try each literal-colon split, then the whole segment if the
+				// split route cannot handle the request.
+				if currentNode.hasColonChild {
+					choice := 0
+					if len(splitPlan) > len(splitOptions) {
+						choice = splitPlan[len(splitOptions)]
+					}
+					count, chosen := 0, -1
+					for split := 1; split < i; split++ {
+						if search[split] == ':' {
+							if count == choice {
+								chosen = split
+							}
+							count++
+						}
+					}
+					if count > 0 {
+						if len(splitPlan) == len(splitOptions) {
+							splitPlan = append(splitPlan, 0)
+						}
+						splitOptions = append(splitOptions, count+1)
+						if chosen >= 0 {
+							i = chosen
+							splitUsed = true
 						}
 					}
 				}
@@ -750,6 +767,28 @@ func (r *Router) Find(method, path string, c Context) {
 			// Not found
 			break
 		}
+	}
+	if matchedRouteMethod == nil && len(splitOptions) > 0 {
+		if fallbackNode == nil && previousBestMatchNode != nil {
+			fallbackNode = previousBestMatchNode
+			fallbackValues = append(fallbackValues, paramValues[:fallbackNode.paramsCount]...)
+		}
+		for i := len(splitOptions) - 1; i >= 0; i-- {
+			if splitPlan[i]+1 < splitOptions[i] {
+				splitPlan[i]++
+				splitPlan = splitPlan[:i+1]
+				currentNode = r.tree
+				previousBestMatchNode = nil
+				search, searchIndex, paramIndex = path, 0, 0
+				clear(paramValues)
+				goto searchRoute
+			}
+		}
+	}
+	if matchedRouteMethod == nil && fallbackNode != nil {
+		currentNode = fallbackNode
+		previousBestMatchNode = fallbackNode
+		copy(paramValues, fallbackValues)
 	}
 
 	if currentNode == nil && previousBestMatchNode == nil {

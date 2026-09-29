@@ -84,3 +84,64 @@ func TestRouterReverseInlineVerb(t *testing.T) {
 	assert.Equal(t, "/r/foo:cancel", e.Reverse("inline-verb", "foo"))
 	assert.Equal(t, "/r/:name:cancel", e.Reverse("inline-verb"))
 }
+
+func TestRouterInlineVerbBacktracksToGenericRoute(t *testing.T) {
+	e := New()
+	e.GET(`/r/:name\:v:id/end`, func(c Context) error { return c.String(http.StatusOK, "verb") })
+	e.GET(`/r/:name/other`, func(c Context) error { return c.String(http.StatusOK, c.Param("name")) })
+	assertInlineVerbResponse(t, e, "/r/a:vq/other", "a:vq")
+}
+
+func TestRouterInlineVerbMethodFallback(t *testing.T) {
+	e := New()
+	e.GET(`/r/:name\:cancel`, func(c Context) error { return c.String(http.StatusOK, "verb") })
+	e.POST(`/r/:name`, func(c Context) error { return c.String(http.StatusOK, c.Param("name")) })
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/r/foo:cancel", nil))
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "foo:cancel", rec.Body.String())
+}
+
+func TestRouterInlineVerbRequiresNonemptyParameter(t *testing.T) {
+	e := New()
+	e.GET(`/r/:name\:cancel`, func(c Context) error { return c.String(http.StatusOK, c.Param("name")) })
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/r/:cancel", nil))
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+func TestRouterInlineVerbKeepsStaticSiblingPriority(t *testing.T) {
+	e := New()
+	e.GET(`/r/:name\:x:id`, func(c Context) error { return c.String(http.StatusOK, "verb") })
+	e.GET(`/r/:name/q`, func(c Context) error { return c.String(http.StatusOK, "static:"+c.Param("name")) })
+	assertInlineVerbResponse(t, e, "/r/a:x/q", "static:a:x")
+}
+
+func TestRouterStaticParamNamesRemainEmptySlice(t *testing.T) {
+	e := New()
+	e.GET("/static", func(c Context) error {
+		assert.NotNil(t, c.ParamNames())
+		assert.Empty(t, c.ParamNames())
+		return c.NoContent(http.StatusOK)
+	})
+	assertInlineVerbResponse(t, e, "/static", "")
+}
+
+func TestRouterInlineVerbEncodedColonUsesGenericRoute(t *testing.T) {
+	e := New()
+	e.GET(`/r/:name\:cancel`, func(c Context) error {
+		return c.String(http.StatusOK, "verb")
+	})
+	e.GET(`/r/:name`, func(c Context) error {
+		return c.String(http.StatusOK, "generic:"+c.Param("name"))
+	})
+	assertInlineVerbResponse(t, e, "/r/foo%3Acancel", "generic:foo%3Acancel")
+}
+
+func TestRouterInlineVerbMethodNotAllowedWithoutFallback(t *testing.T) {
+	e := New()
+	e.POST(`/r/:name\:cancel`, func(c Context) error { return c.NoContent(http.StatusOK) })
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/r/foo:cancel", nil))
+	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
+}
