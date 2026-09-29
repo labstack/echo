@@ -33,6 +33,7 @@ jobs:
         with:
           go-version: ${{ env.LATEST_GO_VERSION }}
           check-latest: true
+          cache: false # Blacksmith Go build cache replaces the Actions cache
 
       - name: Run golint
         run: |

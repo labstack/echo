@@ -52,6 +52,7 @@ jobs:
         uses: *setup_go_action
         with:
           go-version: ${{ matrix.go }}
+          cache: false # Blacksmith Go build cache replaces the Actions cache
 
       - name: Run Tests
         run: go test -race --coverprofile=coverage.coverprofile --covermode=atomic ./...
@@ -83,6 +84,7 @@ jobs:
         uses: *setup_go_action
         with:
           go-version: ${{ env.LATEST_GO_VERSION }}
+          cache: false # Blacksmith Go build cache replaces the Actions cache
 
       - name: Install Dependencies
         run: go install golang.org/x/perf/cmd/benchstat@latest
