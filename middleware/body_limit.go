@@ -4,9 +4,8 @@
 package middleware
 
 import (
+	"errors"
 	"io"
-	"net/http"
-	"sync"
 
 	"github.com/labstack/echo/v5"
 )
@@ -20,6 +19,9 @@ type BodyLimitConfig struct {
 	LimitBytes int64
 }
 
+// limitedReader returns Echo's status-coded 413 error. Unlike
+// http.MaxBytesReader, it does not tell net/http to close the connection
+// after an over-limit read.
 type limitedReader struct {
 	BodyLimitConfig
 	reader io.ReadCloser
@@ -46,13 +48,11 @@ func BodyLimitWithConfig(config BodyLimitConfig) echo.MiddlewareFunc {
 
 // ToMiddleware converts BodyLimitConfig to middleware or returns an error for invalid configuration
 func (config BodyLimitConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
+	if config.LimitBytes < 0 {
+		return nil, errors.New("body limit must be non-negative")
+	}
 	if config.Skipper == nil {
 		config.Skipper = DefaultSkipper
-	}
-	pool := sync.Pool{
-		New: func() any {
-			return &limitedReader{BodyLimitConfig: config}
-		},
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -67,14 +67,9 @@ func (config BodyLimitConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				return echo.ErrStatusRequestEntityTooLarge
 			}
 
-			// Based on content read
-			r, ok := pool.Get().(*limitedReader)
-			if !ok {
-				return echo.NewHTTPError(http.StatusInternalServerError, "invalid pool object")
-			}
-			r.Reset(req.Body)
-			defer pool.Put(r)
-			req.Body = r
+			// Keep the wrapper attached to the request for its entire lifetime.
+			// Outer middleware may still use req.Body after next returns.
+			req.Body = &limitedReader{BodyLimitConfig: config, reader: req.Body}
 
 			return next(c)
 		}
@@ -89,9 +84,6 @@ func (r *limitedReader) Read(b []byte) (n int, err error) {
 		return 0, nil
 	}
 	remaining := r.LimitBytes - r.read
-	if remaining < 0 {
-		remaining = 0
-	}
 	// If the caller asked for more bytes than are still allowed, cap the
 	// buffer one byte past the limit. That single extra byte is enough to
 	// tell whether the underlying reader holds more data than allowed,
@@ -118,10 +110,4 @@ func (r *limitedReader) Read(b []byte) (n int, err error) {
 
 func (r *limitedReader) Close() error {
 	return r.reader.Close()
-}
-
-func (r *limitedReader) Reset(reader io.ReadCloser) {
-	r.reader = reader
-	r.read = 0
-	r.err = nil
 }
