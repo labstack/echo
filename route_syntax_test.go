@@ -340,3 +340,27 @@ func TestRouterInlineVerbMisc(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, []string{`a:b\:v`}, ri.Parameters)
 }
+
+func TestRouterInlineVerbKeepsLeafParam(t *testing.T) {
+	// a param with only an inline verb child still takes the rest of the path when no split matches
+	e := New()
+	e.GET("/files/:path", func(c *Context) error { return c.String(http.StatusOK, "get:"+c.Param("path")) })
+	e.POST(`/files/:name\:upload`, func(c *Context) error { return c.String(http.StatusOK, "upload:"+c.Param("name")) })
+	assertRouteResponse(t, e, "/files/a/b", "get:a/b")
+	assertRouteResponse(t, e, "/files/a:upload/b", "get:a:upload/b")
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/files/a:upload", nil))
+	assert.Equal(t, "upload:a", rec.Body.String())
+
+	// with another child the param stops at the slash, as before
+	e.GET("/files/:path/meta", func(c *Context) error { return c.String(http.StatusOK, "meta:"+c.Param("path")) })
+	assertRouteResponse(t, e, "/files/a/meta", "meta:a")
+}
+
+func TestRouterInlineVerbPendingAboveParam(t *testing.T) {
+	// the pending split is found above a param without a split
+	e := New()
+	e.POST(`/r/:a\:v/:b/*`, func(c *Context) error { return c.String(http.StatusOK, "post") })
+	e.GET(`/r/:a/:b/q`, func(c *Context) error { return c.String(http.StatusOK, "get:"+c.Param("a")+"|"+c.Param("b")) })
+	assertRouteResponse(t, e, "/r/x:v/y/q", "get:x:v|y")
+}
