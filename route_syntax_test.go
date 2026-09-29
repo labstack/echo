@@ -6,6 +6,7 @@ package echo
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -116,9 +117,10 @@ func TestRouteInfoReverseInlineVerb(t *testing.T) {
 
 func TestRouterInlineVerbBacktracksToGenericRoute(t *testing.T) {
 	e := New()
-	e.GET(`/r/:name\:ab:p/z`, func(c *Context) error { return c.String(http.StatusOK, "verb") })
+	e.GET(`/r/:name\:ab/:p/z`, func(c *Context) error { return c.String(http.StatusOK, "verb") })
 	e.GET(`/r/:id/info`, func(c *Context) error { return c.String(http.StatusOK, c.Param("id")) })
 	assertRouteResponse(t, e, "/r/q:abc/info", "q:abc")
+	assertRouteResponse(t, e, "/r/q:ab/info", "q:ab")
 
 	e = New()
 	e.GET(`/r/:name\:y/:p/z`, func(c *Context) error { return c.String(http.StatusOK, "verb") })
@@ -141,11 +143,71 @@ func TestRouterInlineVerbRequiresNonemptyParameter(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 }
 
-func TestRouterInlineVerbKeepsStaticSiblingPriority(t *testing.T) {
+func TestRouterInlineVerbAndStaticSibling(t *testing.T) {
 	e := New()
-	e.GET(`/r/:name\:x:id`, func(c *Context) error { return c.String(http.StatusOK, "verb") })
+	e.GET(`/r/:name\:x/:id`, func(c *Context) error { return c.String(http.StatusOK, "verb:"+c.Param("name")+":"+c.Param("id")) })
 	e.GET(`/r/:name/q`, func(c *Context) error { return c.String(http.StatusOK, "static:"+c.Param("name")) })
-	assertRouteResponse(t, e, "/r/a:x/q", "static:a:x")
+	assertRouteResponse(t, e, "/r/a:x/q", "verb:a:q")
+	assertRouteResponse(t, e, "/r/a:y/q", "static:a:y")
+}
+
+func TestRouterInlineVerbMustEndPathSegment(t *testing.T) {
+	// An escaped colon that is followed by a param or wildcard in the same segment keeps its older meaning: it is part
+	// of the param name. Trying every colon in a request segment for such routes could not be bounded.
+	e := New()
+	ri, err := e.AddRoute(Route{Method: http.MethodGet, Path: `/r/:name\:x:id`, Handler: func(c *Context) error { return nil }})
+	assert.NoError(t, err)
+	assert.Equal(t, []string{`name\:x:id`}, ri.Parameters)
+	ri, err = e.AddRoute(Route{Method: http.MethodGet, Path: `/s/:name\:x*`, Handler: func(c *Context) error { return nil }})
+	assert.NoError(t, err)
+	assert.Equal(t, []string{`name\:x*`}, ri.Parameters)
+}
+
+func TestRouterInlineVerbLeafParamAfterVerb(t *testing.T) {
+	e := New()
+	e.GET(`/r/:name\:x/:rest`, func(c *Context) error { return c.String(http.StatusOK, c.Param("name")+"|"+c.Param("rest")) })
+	assertRouteResponse(t, e, "/r/a:x/b/c", "a|b/c")
+}
+
+func TestRouterInlineVerbWithGroupMiddlewareAndCatchAll(t *testing.T) {
+	e := New()
+	g := e.Group("/r", func(next HandlerFunc) HandlerFunc { return next })
+	g.GET("/:name", func(c *Context) error { return c.String(http.StatusOK, "generic:"+c.Param("name")) })
+	g.GET(`/:name\:cancel`, func(c *Context) error { return c.String(http.StatusOK, "cancel:"+c.Param("name")) })
+	assertRouteResponse(t, e, "/r/foo:other", "generic:foo:other")
+	assertRouteResponse(t, e, "/r/foo:cancel", "cancel:foo")
+
+	e = New()
+	e.GET("/r/:name", func(c *Context) error { return c.String(http.StatusOK, "generic:"+c.Param("name")) })
+	e.GET(`/r/:name\:cancel`, func(c *Context) error { return c.String(http.StatusOK, "cancel:"+c.Param("name")) })
+	e.GET("/*", func(c *Context) error { return c.String(http.StatusOK, "any") })
+	assertRouteResponse(t, e, "/r/foo:other", "generic:foo:other")
+	assertRouteResponse(t, e, "/r/foo:cancel", "cancel:foo")
+}
+
+func TestRouterInlineVerbManyColons(t *testing.T) {
+	// Every colon in the segment is a possible split. Each is tried at most once, so a long run of colons is routed
+	// in linear time.
+	e := New()
+	e.GET(`/r/:name\:cancel`, func(c *Context) error { return c.String(http.StatusOK, "cancel:"+c.Param("name")) })
+	e.GET(`/r/:name\:c`, func(c *Context) error { return c.String(http.StatusOK, "c:"+c.Param("name")) })
+	e.GET(`/r/:name\:x/:a\:y/z`, func(c *Context) error { return c.String(http.StatusOK, "nested") })
+	colons := strings.Repeat(":", 1<<16)
+
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/r/a"+colons+"b", nil))
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+
+	rec = httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/r/a"+colons+"x/b"+colons+"y/nope", nil))
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+
+	// every ":c" enters the shared ":c" verb node before failing, so each split is retried
+	rec = httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/r/a"+strings.Repeat(":c", 1<<15)+"b", nil))
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+
+	assertRouteResponse(t, e, "/r/a"+colons+"cancel", "cancel:a"+colons[1:])
 }
 
 func TestRouterInlineVerbMethodNotAllowedWithoutFallback(t *testing.T) {
