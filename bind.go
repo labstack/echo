@@ -95,6 +95,10 @@ func (b *DefaultBinder) BindBody(c Context, i interface{}) (err error) {
 		}
 	case MIMEApplicationXML, MIMETextXML:
 		if err = xml.NewDecoder(req.Body).Decode(i); err != nil {
+			var httpError *HTTPError
+			if errors.As(err, &httpError) {
+				return httpError
+			}
 			if ute, ok := err.(*xml.UnsupportedTypeError); ok {
 				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Unsupported type error: type=%v, error=%v", ute.Type, ute.Error())).SetInternal(err)
 			} else if se, ok := err.(*xml.SyntaxError); ok {
@@ -105,6 +109,10 @@ func (b *DefaultBinder) BindBody(c Context, i interface{}) (err error) {
 	case MIMEApplicationForm:
 		params, err := c.FormParams()
 		if err != nil {
+			var httpError *HTTPError
+			if errors.As(err, &httpError) {
+				return httpError
+			}
 			return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
 		}
 		if err = b.bindData(i, params, "form", nil); err != nil {
@@ -113,6 +121,10 @@ func (b *DefaultBinder) BindBody(c Context, i interface{}) (err error) {
 	case MIMEMultipartForm:
 		params, err := c.MultipartForm()
 		if err != nil {
+			var httpError *HTTPError
+			if errors.As(err, &httpError) {
+				return httpError
+			}
 			return NewHTTPError(http.StatusBadRequest, err.Error()).SetInternal(err)
 		}
 		if err = b.bindData(i, params.Value, "form", params.File); err != nil {
