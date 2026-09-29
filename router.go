@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 // Router is the registry of all registered routes for an `Echo` instance for
@@ -157,24 +158,20 @@ func (r *Router) Routes() []*Route {
 // Reverse generates a URL from route name and provided parameters.
 func (r *Router) Reverse(name string, params ...interface{}) string {
 	uri := new(bytes.Buffer)
-	ln := len(params)
-	n := 0
 	for _, route := range r.routes {
 		if route.Name == name {
-			for i, l := 0, len(route.Path); i < l; i++ {
-				hasBackslash := route.Path[i] == '\\'
-				if hasBackslash && i+1 < l && route.Path[i+1] == ':' {
-					i++ // backslash before colon escapes that colon. in that case skip backslash
-				}
-				if n < ln && (route.Path[i] == '*' || (!hasBackslash && route.Path[i] == ':')) {
-					// in case of `*` wildcard or `:` (unescaped colon) param we replace everything till next slash or end of path
-					for ; i < l && route.Path[i] != '/'; i++ {
-					}
+			n := 0
+			for _, part := range parseRoutePath(route.Path) {
+				if part.kind == staticKind {
+					uri.WriteString(part.value)
+				} else if n < len(params) {
 					uri.WriteString(fmt.Sprintf("%v", params[n]))
 					n++
-				}
-				if i < l {
-					uri.WriteByte(route.Path[i])
+				} else if part.kind == paramKind {
+					uri.WriteByte(':')
+					uri.WriteString(part.value)
+				} else {
+					uri.WriteString(part.value)
 				}
 			}
 			break
@@ -212,50 +209,46 @@ func (r *Router) Add(method, path string, h HandlerFunc) {
 
 func (r *Router) insert(method, path string, h HandlerFunc) {
 	path = normalizePathSlash(path)
-	pnames := []string{} // Param names
-	// Positions of parameter markers after names are removed. Literal colons
-	// remain ordinary path bytes, so no sentinel byte is reserved.
-	paramMarkers := make([]int, 0)
-	ppath := path // Pristine path
-
 	if h == nil && r.echo.Logger != nil {
 		// FIXME: in future we should return error
 		r.echo.Logger.Errorf("Adding route without handler function: %v:%v", method, path)
 	}
-
-	for i, lcpIndex := 0, len(path); i < lcpIndex; i++ {
-		if path[i] == ':' {
-			if i > 0 && path[i-1] == '\\' {
-				path = path[:i-1] + path[i:]
-				i--
-				lcpIndex--
-				continue
-			}
-			j := i + 1
-
-			r.insertNode(method, path[:i], staticKind, routeMethod{}, paramMarkers)
-			for ; i < lcpIndex && path[i] != '/'; i++ {
-			}
-
-			pnames = append(pnames, path[j:i])
-			paramMarkers = append(paramMarkers, j-1)
-			path = path[:j] + path[i:]
-			i, lcpIndex = j, len(path)
-
-			if i == lcpIndex {
-				// path node is last fragment of route path. ie. `/users/:id`
-				r.insertNode(method, path[:i], paramKind, routeMethod{ppath: ppath, pnames: pnames, handler: h}, paramMarkers)
-			} else {
-				r.insertNode(method, path[:i], paramKind, routeMethod{}, paramMarkers)
-			}
-		} else if path[i] == '*' {
-			r.insertNode(method, path[:i], staticKind, routeMethod{}, paramMarkers)
+	parts := parseRoutePath(path)
+	var pnames []string
+	for _, part := range parts {
+		if part.kind == paramKind {
+			pnames = append(pnames, part.value)
+		} else if part.kind == anyKind {
 			pnames = append(pnames, "*")
-			r.insertNode(method, path[:i+1], anyKind, routeMethod{ppath: ppath, pnames: pnames, handler: h}, paramMarkers)
+			break
 		}
 	}
-
-	r.insertNode(method, path, staticKind, routeMethod{ppath: ppath, pnames: pnames, handler: h}, paramMarkers)
+	rm := routeMethod{ppath: path, pnames: pnames, handler: h}
+	var treePath string
+	var paramMarkers []int
+	for i, part := range parts {
+		switch part.kind {
+		case staticKind:
+			treePath += part.value
+			if i == len(parts)-1 {
+				r.insertNode(method, treePath, staticKind, rm, paramMarkers)
+			}
+		case paramKind:
+			r.insertNode(method, treePath, staticKind, routeMethod{}, paramMarkers)
+			paramMarkers = append(paramMarkers, len(treePath))
+			treePath += ":"
+			if i == len(parts)-1 {
+				r.insertNode(method, treePath, paramKind, rm, paramMarkers)
+			} else {
+				r.insertNode(method, treePath, paramKind, routeMethod{}, paramMarkers)
+			}
+		case anyKind:
+			r.insertNode(method, treePath, staticKind, routeMethod{}, paramMarkers)
+			treePath += "*"
+			r.insertNode(method, treePath, anyKind, rm, paramMarkers)
+			return
+		}
+	}
 }
 
 func (r *Router) insertNode(method, path string, t kind, rm routeMethod, paramMarkers []int) {
@@ -460,6 +453,22 @@ func (n *node) findChildWithLabel(l byte, isParamMarker bool) *node {
 		return n.anyChild
 	}
 	return nil
+}
+
+// canMatchStaticSuffix checks the static path following an inline parameter
+// delimiter. Ordinary parameter routes keep their slash-based fast path.
+func (n *node) canMatchStaticSuffix(path string) bool {
+	if !strings.HasPrefix(path, n.prefix) {
+		return false
+	}
+	path = path[len(n.prefix):]
+	if path == "" {
+		return n.isHandler || n.notFoundHandler != nil || n.anyChild != nil
+	}
+	if child := n.findStaticChild(path[0]); child != nil && child.canMatchStaticSuffix(path) {
+		return true
+	}
+	return n.paramChild != nil || n.anyChild != nil
 }
 
 func (n *node) addMethod(method string, h *routeMethod) {
@@ -685,6 +694,14 @@ func (r *Router) Find(method, path string, c Context) {
 				i = l
 			} else {
 				for ; i < l && search[i] != '/'; i++ {
+				}
+				if suffix := currentNode.findStaticChild(':'); suffix != nil {
+					for split := 0; split < i; split++ {
+						if search[split] == ':' && suffix.canMatchStaticSuffix(search[split:]) {
+							i = split
+							break
+						}
+					}
 				}
 			}
 
