@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"reflect"
 	"runtime"
+	"strings"
 )
 
 // Route contains information to adding/registering new route with the router.
@@ -91,15 +92,16 @@ func (r RouteInfo) Reverse(pathValues ...any) string {
 				fmt.Fprint(uri, pathValues[nextValue])
 				nextValue++
 			} else {
+				// placeholder for a missing value. An escaped colon in a param name is written without its backslash.
 				uri.WriteByte(paramLabel)
-				uri.WriteString(part.value)
+				uri.WriteString(strings.ReplaceAll(part.value, `\:`, ":"))
 			}
 		case anyKind:
 			if nextValue < len(pathValues) {
 				fmt.Fprint(uri, pathValues[nextValue])
 				nextValue++
 			} else {
-				uri.WriteString(part.value)
+				uri.WriteString(strings.ReplaceAll(part.value, `\:`, ":"))
 			}
 		}
 	})

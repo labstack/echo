@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -161,6 +162,57 @@ func TestRouterInlineVerbMustEndPathSegment(t *testing.T) {
 	ri, err = e.AddRoute(Route{Method: http.MethodGet, Path: `/s/:name\:x*`, Handler: func(c *Context) error { return nil }})
 	assert.NoError(t, err)
 	assert.Equal(t, []string{`name\:x*`}, ri.Parameters)
+	// the first escaped colon decides, so a later one that is followed only by static text does not start a verb
+	ri, err = e.AddRoute(Route{Method: http.MethodGet, Path: `/t/:a\:x:y\:z`, Handler: func(c *Context) error { return nil }})
+	assert.NoError(t, err)
+	assert.Equal(t, []string{`a\:x:y\:z`}, ri.Parameters)
+	assert.Equal(t, "/t/:a:x:y:z", ri.Reverse())
+}
+
+func TestRouterInlineVerbBeforeWholeSegment(t *testing.T) {
+	// a matching inline verb split is tried before the whole segment, also when a wildcard follows the verb
+	e := New()
+	e.GET(`/r/:name\:x/*`, func(c *Context) error { return c.String(http.StatusOK, "verb:"+c.Param("name")+"|"+c.Param("*")) })
+	e.GET(`/r/:id/info`, func(c *Context) error { return c.String(http.StatusOK, "info:"+c.Param("id")) })
+	assertRouteResponse(t, e, "/r/a:x/info", "verb:a|info")
+	assertRouteResponse(t, e, "/r/a:y/info", "info:a:y")
+}
+
+func TestRouterInlineVerbRetriedAfterWildcard(t *testing.T) {
+	// a wildcard ends the search, but the split above it is still retried with the next split and the whole segment
+	e := New()
+	e.POST(`/r/:n\:v/*`, func(c *Context) error { return c.String(http.StatusOK, "post") })
+	e.GET(`/r/:n/*`, func(c *Context) error { return c.String(http.StatusOK, "get:"+c.Param("n")+"|"+c.Param("*")) })
+	assertRouteResponse(t, e, "/r/a:v/q", "get:a:v|q")
+
+	e = New()
+	e.POST(`/r/:n\:a\:b/*`, func(c *Context) error { return c.String(http.StatusOK, "post") })
+	e.GET(`/r/:n\:b/x`, func(c *Context) error { return c.String(http.StatusOK, "get:"+c.Param("n")) })
+	assertRouteResponse(t, e, "/r/q:a:b/x", "get:q:a")
+
+	e = New()
+	e.POST(`/r/:n\:v/*`, func(c *Context) error { return c.String(http.StatusOK, "post") })
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/r/a:v/q", nil))
+	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
+}
+
+func TestRouterRemoveInlineVerbsSharingPrefix(t *testing.T) {
+	e := New()
+	h := func(c *Context) error { return c.String(http.StatusOK, c.Path()+"|"+c.Param("n")) }
+	e.GET(`/r/:n\:cancel`, h)
+	e.GET(`/r/:n\:close`, h)
+	e.GET(`/r/:n/x`, h)
+	assert.NoError(t, e.Router().Remove(http.MethodGet, `/r/:n\:cancel`))
+	assertRouteResponse(t, e, "/r/a:close", `/r/:n\:close|a`)
+	assertRouteResponse(t, e, "/r/a:b/x", "/r/:n/x|a:b")
+	assert.NoError(t, e.Router().Remove(http.MethodGet, `/r/:n\:close`))
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/r/a:close", nil))
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	e.GET(`/r/:n\:close`, h)
+	assertRouteResponse(t, e, "/r/a:close", `/r/:n\:close|a`)
+	assertRouteResponse(t, e, "/r/a:b/x", "/r/:n/x|a:b")
 }
 
 func TestRouterInlineVerbLeafParamAfterVerb(t *testing.T) {
@@ -193,6 +245,11 @@ func TestRouterInlineVerbManyColons(t *testing.T) {
 	e.GET(`/r/:name\:c`, func(c *Context) error { return c.String(http.StatusOK, "c:"+c.Param("name")) })
 	e.GET(`/r/:name\:x/:a\:y/z`, func(c *Context) error { return c.String(http.StatusOK, "nested") })
 	colons := strings.Repeat(":", 1<<16)
+	start := time.Now()
+	defer func() {
+		// linear routing takes milliseconds here; trying splits quadratically would take minutes
+		assert.Less(t, time.Since(start), 10*time.Second)
+	}()
 
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/r/a"+colons+"b", nil))

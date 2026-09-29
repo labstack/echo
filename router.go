@@ -663,7 +663,6 @@ func (r *DefaultRouter) insert(t kind, path string, method string, ri routeMetho
 			currentNode.label = currentNode.prefix[0]
 			currentNode.prefix = currentNode.prefix[:lcpLen]
 			currentNode.staticChildren = nil
-			currentNode.hasColonChild = false
 			currentNode.scLabels = nil
 			currentNode.methods = new(routeMethods)
 			currentNode.originalPath = ""
@@ -743,14 +742,10 @@ func newNode(
 	anyChildren *node,
 ) *node {
 	var scLabels []byte
-	var hasColonChild bool
 	if len(sc) > 0 {
 		scLabels = make([]byte, len(sc))
 		for i, c := range sc {
 			scLabels[i] = c.label
-			if t == paramKind && c.label == ':' {
-				hasColonChild = true
-			}
 		}
 	}
 	return &node{
@@ -759,7 +754,6 @@ func newNode(
 		prefix:         pre,
 		parent:         p,
 		staticChildren: sc,
-		hasColonChild:  hasColonChild,
 		scLabels:       scLabels,
 		originalPath:   ppath,
 		paramsCount:    paramsCount,
@@ -784,9 +778,27 @@ func (n *node) refreshLeaf() {
 func (n *node) addStaticChild(c *node) {
 	n.staticChildren = append(n.staticChildren, c)
 	n.scLabels = append(n.scLabels, c.label)
+	// param nodes are never split (their prefix is a single byte), so this is where their inline verb child is set
 	if n.kind == paramKind && c.label == ':' {
 		n.hasColonChild = true
 	}
+}
+
+// pendingInlineVerbSplit returns the nearest param node, from n up to the root, whose value in pathValues ended at an
+// inline verb split and so can still be retried. searchIndex and paramIndex are the routing state at n.
+func pendingInlineVerbSplit(n *node, path string, searchIndex, paramIndex int, pathValues PathValues) *node {
+	for ; n != nil; n = n.parent {
+		if n.hasColonChild && searchIndex < len(path) && path[searchIndex] == ':' {
+			return n
+		}
+		if n.kind == staticKind {
+			searchIndex -= len(n.prefix)
+		} else {
+			paramIndex--
+			searchIndex -= len(pathValues[paramIndex].Value)
+		}
+	}
+	return nil
 }
 
 // inlineVerbSplit returns where a param value in search ends: at the first literal colon at or after from where this
@@ -1070,29 +1082,38 @@ func (r *DefaultRouter) Route(c *Context) HandlerFunc {
 			}
 		}
 
-		// A param value that ended at an inline verb split is a decision point of the param node itself. Retry the
-		// node with the next split, and finally with the whole path segment, before backtracking to its parent.
-		if currentNode.hasColonChild && search != "" && search[0] == ':' {
-			pv := &pathValues[paramIndex-1]
-			start := searchIndex - len(pv.Value)
-			searchIndex = start + currentNode.inlineVerbSplit(path[start:], len(pv.Value)+1)
-			pv.Value = path[start:searchIndex]
-			search = path[searchIndex:]
-			continue
-		}
-
 		// Let's backtrack to the first possible alternative node of the decision path
 		nk, ok := backtrackToNextNodeKind(anyKind)
 		if !ok {
 			break // No other possibilities on the decision path
 		} else if nk == paramKind {
+			if currentNode.hasColonChild && search != "" && search[0] == ':' {
+				goto InlineVerbSplit
+			}
 			goto Param
 		} else if nk == anyKind {
 			goto Any
+		} else if n := pendingInlineVerbSplit(currentNode, path, searchIndex, paramIndex, pathValues); n != nil {
+			// A wildcard ends the search, but a param value above it that ended at an inline verb split is still retried.
+			for currentNode != n {
+				backtrackToNextNodeKind(anyKind)
+			}
+			goto InlineVerbSplit
 		} else {
 			// Not found
 			break
 		}
+
+	InlineVerbSplit:
+		// A param value that ended at an inline verb split is a decision point of the param node itself. When its
+		// inline verb child fails, retry the node with the next split, and finally with the whole path segment,
+		// before backtracking to its parent.
+		pv := &pathValues[paramIndex-1]
+		start := searchIndex - len(pv.Value)
+		searchIndex = start + currentNode.inlineVerbSplit(path[start:], len(pv.Value)+1)
+		pv.Value = path[start:searchIndex]
+		search = path[searchIndex:]
+		continue
 	}
 
 	if currentNode == nil && previousBestMatchNode == nil {
