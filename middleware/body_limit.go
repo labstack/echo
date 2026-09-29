@@ -103,7 +103,6 @@ func (r *limitedReader) Read(b []byte) (n int, err error) {
 
 	if int64(n) <= remaining {
 		r.read += int64(n)
-		r.err = err
 		return n, err
 	}
 

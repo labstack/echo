@@ -6,6 +6,7 @@ package middleware
 import (
 	"bytes"
 	"io"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -173,6 +174,46 @@ func TestBodyLimitReader_exactLimitBody(t *testing.T) {
 	data, err := io.ReadAll(reader)
 	assert.NoError(t, err)
 	assert.Equal(t, "ab", string(data))
+}
+
+func TestBodyLimitReader_maxInt64Limit(t *testing.T) {
+	reader := &limitedReader{
+		BodyLimitConfig: BodyLimitConfig{LimitBytes: math.MaxInt64},
+		reader:          io.NopCloser(bytes.NewReader([]byte("ok"))),
+	}
+
+	data, err := io.ReadAll(reader)
+	assert.NoError(t, err)
+	assert.Equal(t, "ok", string(data))
+}
+
+type bodyLimitIntermittentReader struct{ calls int }
+
+func (r *bodyLimitIntermittentReader) Read(b []byte) (int, error) {
+	r.calls++
+	if r.calls == 1 {
+		return 0, io.ErrUnexpectedEOF
+	}
+	return copy(b, "x"), nil
+}
+
+func (r *bodyLimitIntermittentReader) Close() error { return nil }
+
+func TestBodyLimitReader_sourceErrorIsNotSticky(t *testing.T) {
+	reader := &limitedReader{
+		BodyLimitConfig: BodyLimitConfig{LimitBytes: 5},
+		reader:          &bodyLimitIntermittentReader{},
+	}
+	b := make([]byte, 1)
+
+	n, err := reader.Read(b)
+	assert.Zero(t, n)
+	assert.ErrorIs(t, err, io.ErrUnexpectedEOF)
+
+	n, err = reader.Read(b)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, n)
+	assert.Equal(t, byte('x'), b[0])
 }
 
 func TestBodyLimit_oversizedBodyWithContractCompliantReader(t *testing.T) {
