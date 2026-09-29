@@ -1,0 +1,4 @@
+self-hosted-runner:
+  # Blacksmith runners (https://blacksmith.sh)
+  labels:
+    - blacksmith-4vcpu-ubuntu-2404

@@ -35,7 +35,8 @@ jobs:
         # we derive from the last four major releases promise.
         go: ["1.25", "1.26", "1.27"]
     name: ${{ matrix.os }} @ Go ${{ matrix.go }}
-    runs-on: ${{ matrix.os }}
+    # Linux jobs run on Blacksmith runners (https://blacksmith.sh), which sponsors Echo's CI; macOS and Windows stay on GitHub-hosted runners
+    runs-on: ${{ matrix.os == 'ubuntu-latest' && 'blacksmith-4vcpu-ubuntu-2404' || matrix.os }}
     steps:
       - name: Checkout Code
         uses: *checkout_action
@@ -58,7 +59,7 @@ jobs:
   benchmark:
     needs: test
     name: Benchmark comparison
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Checkout Code (Previous)
         uses: *checkout_action
