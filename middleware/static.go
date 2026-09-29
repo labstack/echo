@@ -219,7 +219,6 @@ func StaticWithConfig(config StaticConfig) echo.MiddlewareFunc {
 			// 2. path.Clean() provides platform-independent behavior for URL paths
 			// 3. The "/" prefix forces absolute path interpretation, removing ".." components
 			// 4. Backslashes are treated as literal characters (not path separators), preventing traversal
-			// See static_windows.go for Go 1.20+ filepath.Clean compatibility notes
 			name := path.Join(config.Root, path.Clean("/"+p)) // "/"+ for security
 
 			if config.IgnoreBase {
@@ -332,6 +331,15 @@ func hasDotOrEmptySegment(p string) bool {
 	for segment := range strings.SplitSeq(p, "/") {
 		if segment == "" || segment == "." || segment == ".." {
 			return true
+		}
+		// A backslash is a literal character in fs.FS names, but a filesystem that wrongly treats it as a separator
+		// (for example one built on filepath.Join on Windows) would resolve `..\` outside its root.
+		if strings.Contains(segment, `\`) {
+			for part := range strings.SplitSeq(segment, `\`) {
+				if part == "." || part == ".." {
+					return true
+				}
+			}
 		}
 	}
 	return false
