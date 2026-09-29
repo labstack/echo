@@ -81,9 +81,30 @@ func (config BodyLimitConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 }
 
 func (r *limitedReader) Read(b []byte) (n int, err error) {
+	// Once the limit is known to be exceeded, stay refused. io.Reader's
+	// contract invites callers to process the n>0 bytes of a failed read and
+	// carry on, so a reader that keeps serving data after the first refusal
+	// hands out the whole body to anyone following that advice.
+	if r.read > r.LimitBytes {
+		return 0, echo.ErrStatusRequestEntityTooLarge
+	}
+
+	// Never read further than one byte past the limit: that byte is what
+	// proves the body is too large, and anything beyond it is data the caller
+	// asked for but is not allowed to have.
+	if max := r.LimitBytes - r.read + 1; int64(len(b)) > max {
+		b = b[:max]
+	}
+
 	n, err = r.reader.Read(b)
 	r.read += int64(n)
 	if r.read > r.LimitBytes {
+		// Hand back only what fits. The byte past the limit was read to prove
+		// the body is too large, not to be delivered, and a caller that
+		// processes n>0 before the error must not receive it.
+		if over := int(r.read - r.LimitBytes); over <= n {
+			n -= over
+		}
 		return n, echo.ErrStatusRequestEntityTooLarge
 	}
 	return
