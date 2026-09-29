@@ -113,3 +113,45 @@ func TestRouteInfoReverseInlineVerb(t *testing.T) {
 	assert.Equal(t, "/r/foo:cancel", ri.Reverse("foo"))
 	assert.Equal(t, "/r/:name:cancel", ri.Reverse())
 }
+
+func TestRouterInlineVerbBacktracksToGenericRoute(t *testing.T) {
+	e := New()
+	e.GET(`/r/:name\:ab:p/z`, func(c *Context) error { return c.String(http.StatusOK, "verb") })
+	e.GET(`/r/:id/info`, func(c *Context) error { return c.String(http.StatusOK, c.Param("id")) })
+	assertRouteResponse(t, e, "/r/q:abc/info", "q:abc")
+
+	e = New()
+	e.GET(`/r/:name\:y/:p/z`, func(c *Context) error { return c.String(http.StatusOK, "verb") })
+	e.GET(`/r/:id/info`, func(c *Context) error { return c.String(http.StatusOK, c.Param("id")) })
+	assertRouteResponse(t, e, "/r/q:y/info", "q:y")
+}
+
+func TestRouterInlineVerbMethodFallback(t *testing.T) {
+	e := New()
+	e.GET(`/r/:id`, func(c *Context) error { return c.String(http.StatusOK, c.Param("id")) })
+	e.POST(`/r/:name\:cancel`, func(c *Context) error { return c.String(http.StatusOK, "verb") })
+	assertRouteResponse(t, e, "/r/foo:cancel", "foo:cancel")
+}
+
+func TestRouterInlineVerbRequiresNonemptyParameter(t *testing.T) {
+	e := New()
+	e.GET(`/r/:name\:cancel`, func(c *Context) error { return c.String(http.StatusOK, c.Param("name")) })
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/r/:cancel", nil))
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+func TestRouterInlineVerbKeepsStaticSiblingPriority(t *testing.T) {
+	e := New()
+	e.GET(`/r/:name\:x:id`, func(c *Context) error { return c.String(http.StatusOK, "verb") })
+	e.GET(`/r/:name/q`, func(c *Context) error { return c.String(http.StatusOK, "static:"+c.Param("name")) })
+	assertRouteResponse(t, e, "/r/a:x/q", "static:a:x")
+}
+
+func TestRouterInlineVerbMethodNotAllowedWithoutFallback(t *testing.T) {
+	e := New()
+	e.POST(`/r/:name\:cancel`, func(c *Context) error { return c.NoContent(http.StatusOK) })
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/r/foo:cancel", nil))
+	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
+}

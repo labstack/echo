@@ -82,7 +82,7 @@ func (r RouteInfo) Clone() RouteInfo {
 func (r RouteInfo) Reverse(pathValues ...any) string {
 	uri := new(bytes.Buffer)
 	nextValue := 0
-	for _, part := range parseRoutePath(r.Path) {
+	walkRoutePath(r.Path, func(part routePathPart) {
 		switch part.kind {
 		case staticKind:
 			uri.WriteString(part.value)
@@ -102,7 +102,7 @@ func (r RouteInfo) Reverse(pathValues ...any) string {
 				uri.WriteString(part.value)
 			}
 		}
-	}
+	})
 	return uri.String()
 }
 
