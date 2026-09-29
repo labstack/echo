@@ -1020,8 +1020,8 @@ func escapeControlChars(s string) string {
 	return b.String()
 }
 
-// hasDotOrEmptySegment reports whether URL path p has a ".", ".." or empty segment. A single leading and a single
-// trailing slash are allowed.
+// hasDotOrEmptySegment reports whether URL path p has a ".", ".." or empty segment, or a segment with a "." or ".."
+// part between backslashes (e.g. `..\x`). A single leading and a single trailing slash are allowed.
 // Keep in sync with the copy in middleware/static.go.
 func hasDotOrEmptySegment(p string) bool {
 	p = strings.TrimPrefix(p, "/")

@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -803,7 +804,8 @@ func TestStatic_HTML5WithUncleanPath(t *testing.T) {
 type nonValidatingFS struct{ root string }
 
 func (f nonValidatingFS) Open(name string) (fs.File, error) {
-	return os.Open(filepath.Join(f.root, name))
+	// treat a backslash as a separator on every OS, like filepath.Join does on Windows
+	return os.Open(filepath.Join(f.root, filepath.FromSlash(strings.ReplaceAll(name, `\`, "/"))))
 }
 
 func TestStatic_nonValidatingCustomFSCannotEscapeRoot(t *testing.T) {
@@ -818,6 +820,8 @@ func TestStatic_nonValidatingCustomFSCannotEscapeRoot(t *testing.T) {
 		"/..%2fsecret.txt",
 		"/sub/../../secret.txt",
 		"/..%5csecret.txt",
+		"/..%5Csecret.txt",
+		"/a%5C..%5C..%5Csecret.txt",
 		`/..\secret.txt`,
 	}
 	for _, group := range []string{"", "/static"} {
@@ -867,7 +871,11 @@ func TestHasDotOrEmptySegment(t *testing.T) {
 		{path: `/..\secret.txt`, expect: true},
 		{path: `/a\..\b`, expect: true},
 		{path: `/.\secret.txt`, expect: true},
+		{path: `/\..`, expect: true},
+		{path: `/..\`, expect: true},
 		{path: `/dir\file.txt`, expect: false},
+		{path: "/...", expect: false},
+		{path: "/..foo", expect: false},
 		{path: `/a\\b`, expect: false},
 		{path: "/..%2fsecret.txt", expect: false}, // still encoded, only unsafe once unescaped
 	}

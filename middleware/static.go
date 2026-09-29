@@ -249,7 +249,8 @@ func (config StaticConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			// 3. A path with a ".." segment is unclean and is not opened (it is handled like a missing file below), so the
 			//    "./" prefix only keeps the name relative to the filesystem root; path.Clean() does not remove a leading
 			//    ".." from a relative path
-			// 4. Backslashes are treated as literal characters (not path separators), preventing traversal
+			// 4. path.Clean() treats backslashes as literal characters; "."/".." parts between backslashes are rejected above
+			//    for filesystems that wrongly treat a backslash as a separator
 			filePath := path.Clean("./" + p)
 
 			if config.IgnoreBase {
@@ -414,8 +415,8 @@ func format(b int64) string {
 	return fmt.Sprintf("%.2f%s", value, multiple)
 }
 
-// hasDotOrEmptySegment reports whether URL path p has a ".", ".." or empty segment. A single leading and a single
-// trailing slash are allowed.
+// hasDotOrEmptySegment reports whether URL path p has a ".", ".." or empty segment, or a segment with a "." or ".."
+// part between backslashes (e.g. `..\x`). A single leading and a single trailing slash are allowed.
 // Keep in sync with the copy in echo.go.
 func hasDotOrEmptySegment(p string) bool {
 	p = strings.TrimPrefix(p, "/")
