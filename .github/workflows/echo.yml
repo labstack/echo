@@ -34,9 +34,16 @@ jobs:
         # As we depend on `golang.org/x/` libraries which only support the last 2 Go releases, we could have situations when
         # we derive from the last four major releases promise.
         go: ["1.25", "1.26", "1.27"]
+        # Jobs run on Blacksmith runners (https://blacksmith.sh), which sponsors Echo's CI
+        include:
+          - os: ubuntu-latest
+            runner: blacksmith-4vcpu-ubuntu-2404
+          - os: macos-latest
+            runner: blacksmith-6vcpu-macos-latest
+          - os: windows-latest
+            runner: blacksmith-4vcpu-windows-2025
     name: ${{ matrix.os }} @ Go ${{ matrix.go }}
-    # Linux jobs run on Blacksmith runners (https://blacksmith.sh), which sponsors Echo's CI; macOS and Windows stay on GitHub-hosted runners
-    runs-on: ${{ matrix.os == 'ubuntu-latest' && 'blacksmith-4vcpu-ubuntu-2404' || matrix.os }}
+    runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout Code
         uses: *checkout_action
