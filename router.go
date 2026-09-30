@@ -7,6 +7,8 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"slices"
+	"strings"
 )
 
 // Router is the registry of all registered routes for an `Echo` instance for
@@ -33,7 +35,8 @@ type node struct {
 	// isLeaf indicates that node does not have child routes
 	isLeaf bool
 	// isHandler indicates that node has at least one handler registered to it
-	isHandler bool
+	isHandler     bool
+	hasColonChild bool
 }
 
 type kind uint8
@@ -66,8 +69,7 @@ const (
 	paramKind
 	anyKind
 
-	paramLabel = byte(':')
-	anyLabel   = byte('*')
+	anyLabel = byte('*')
 )
 
 func (m *routeMethods) isHandler() bool {
@@ -158,26 +160,23 @@ func (r *Router) Routes() []*Route {
 // Reverse generates a URL from route name and provided parameters.
 func (r *Router) Reverse(name string, params ...interface{}) string {
 	uri := new(bytes.Buffer)
-	ln := len(params)
-	n := 0
 	for _, route := range r.routes {
 		if route.Name == name {
-			for i, l := 0, len(route.Path); i < l; i++ {
-				hasBackslash := route.Path[i] == '\\'
-				if hasBackslash && i+1 < l && route.Path[i+1] == ':' {
-					i++ // backslash before colon escapes that colon. in that case skip backslash
-				}
-				if n < ln && (route.Path[i] == '*' || (!hasBackslash && route.Path[i] == ':')) {
-					// in case of `*` wildcard or `:` (unescaped colon) param we replace everything till next slash or end of path
-					for ; i < l && route.Path[i] != '/'; i++ {
-					}
-					uri.WriteString(fmt.Sprintf("%v", params[n]))
+			n := 0
+			walkRoutePath(route.Path, func(part routePathPart) {
+				if part.kind == staticKind {
+					uri.WriteString(part.value)
+				} else if n < len(params) {
+					fmt.Fprint(uri, params[n])
 					n++
+				} else {
+					// placeholder for a missing value. An escaped colon in a param name is written without its backslash.
+					if part.kind == paramKind {
+						uri.WriteByte(':')
+					}
+					uri.WriteString(strings.ReplaceAll(part.value, `\:`, ":"))
 				}
-				if i < l {
-					uri.WriteByte(route.Path[i])
-				}
-			}
+			})
 			break
 		}
 	}
@@ -213,49 +212,48 @@ func (r *Router) Add(method, path string, h HandlerFunc) {
 
 func (r *Router) insert(method, path string, h HandlerFunc) {
 	path = normalizePathSlash(path)
-	pnames := []string{} // Param names
-	ppath := path        // Pristine path
-
 	if h == nil && r.echo.Logger != nil {
 		// FIXME: in future we should return error
 		r.echo.Logger.Errorf("Adding route without handler function: %v:%v", method, path)
 	}
-
-	for i, lcpIndex := 0, len(path); i < lcpIndex; i++ {
-		if path[i] == ':' {
-			if i > 0 && path[i-1] == '\\' {
-				path = path[:i-1] + path[i:]
-				i--
-				lcpIndex--
-				continue
-			}
-			j := i + 1
-
-			r.insertNode(method, path[:i], staticKind, routeMethod{})
-			for ; i < lcpIndex && path[i] != '/'; i++ {
-			}
-
-			pnames = append(pnames, path[j:i])
-			path = path[:j] + path[i:]
-			i, lcpIndex = j, len(path)
-
-			if i == lcpIndex {
-				// path node is last fragment of route path. ie. `/users/:id`
-				r.insertNode(method, path[:i], paramKind, routeMethod{ppath: ppath, pnames: pnames, handler: h})
-			} else {
-				r.insertNode(method, path[:i], paramKind, routeMethod{})
-			}
-		} else if path[i] == '*' {
-			r.insertNode(method, path[:i], staticKind, routeMethod{})
+	parts := parseRoutePath(path)
+	pnames := []string{}
+	for _, part := range parts {
+		if part.kind == paramKind {
+			pnames = append(pnames, part.value)
+		} else if part.kind == anyKind {
 			pnames = append(pnames, "*")
-			r.insertNode(method, path[:i+1], anyKind, routeMethod{ppath: ppath, pnames: pnames, handler: h})
+			break
 		}
 	}
-
-	r.insertNode(method, path, staticKind, routeMethod{ppath: ppath, pnames: pnames, handler: h})
+	rm := routeMethod{ppath: path, pnames: pnames, handler: h}
+	treePath, paramMarkers := routeTreePath(parts)
+	pathEnd := 0
+	for i, part := range parts {
+		switch part.kind {
+		case staticKind:
+			pathEnd += len(part.value)
+			if i == len(parts)-1 {
+				r.insertNode(method, treePath[:pathEnd], staticKind, rm, paramMarkers)
+			}
+		case paramKind:
+			r.insertNode(method, treePath[:pathEnd], staticKind, routeMethod{}, paramMarkers)
+			pathEnd++
+			if i == len(parts)-1 {
+				r.insertNode(method, treePath[:pathEnd], paramKind, rm, paramMarkers)
+			} else {
+				r.insertNode(method, treePath[:pathEnd], paramKind, routeMethod{}, paramMarkers)
+			}
+		case anyKind:
+			r.insertNode(method, treePath[:pathEnd], staticKind, routeMethod{}, paramMarkers)
+			pathEnd++
+			r.insertNode(method, treePath[:pathEnd], anyKind, rm, paramMarkers)
+			return
+		}
+	}
 }
 
-func (r *Router) insertNode(method, path string, t kind, rm routeMethod) {
+func (r *Router) insertNode(method, path string, t kind, rm routeMethod, paramMarkers []int) {
 	// Adjust max param
 	paramLen := len(rm.pnames)
 	if *r.echo.maxParam < paramLen {
@@ -267,6 +265,7 @@ func (r *Router) insertNode(method, path string, t kind, rm routeMethod) {
 		panic("echo: invalid method")
 	}
 	search := path
+	searchOffset := 0
 
 	for {
 		searchLen := len(search)
@@ -360,8 +359,10 @@ func (r *Router) insertNode(method, path string, t kind, rm routeMethod) {
 			}
 			currentNode.isLeaf = currentNode.staticChildren == nil && currentNode.paramChild == nil && currentNode.anyChild == nil
 		} else if lcpLen < searchLen {
+			searchOffset += lcpLen
 			search = search[lcpLen:]
-			c := currentNode.findChildWithLabel(search[0])
+			isParamMarker := slices.Contains(paramMarkers, searchOffset)
+			c := currentNode.findChildWithLabel(search[0], isParamMarker)
 			if c != nil {
 				// Go deeper
 				currentNode = c
@@ -426,6 +427,56 @@ func newNode(
 
 func (n *node) addStaticChild(c *node) {
 	n.staticChildren = append(n.staticChildren, c)
+	// param nodes are never split (their prefix is a single byte), so this is where their inline verb child is set
+	if n.kind == paramKind && c.label == ':' {
+		n.hasColonChild = true
+	}
+}
+
+// hasPendingInlineVerbSplit reports whether a param node from n up to the root has a value in paramValues that ended at
+// an inline verb split and so can still be retried. searchIndex and paramIndex are the routing state at n. It does
+// not change that state, so a request that ends here keeps its param values.
+func hasPendingInlineVerbSplit(n *node, path string, searchIndex, paramIndex int, paramValues []string) bool {
+	for ; n != nil; n = n.parent {
+		if n.hasColonChild && searchIndex < len(path) && path[searchIndex] == ':' {
+			return true
+		}
+		if n.kind == staticKind {
+			searchIndex -= len(n.prefix)
+		} else {
+			paramIndex--
+			searchIndex -= len(paramValues[paramIndex])
+		}
+	}
+	return false
+}
+
+// inlineVerbSplit returns where a param value in search ends: at the first literal colon at or after from where this
+// node's inline verb child could match, otherwise at the end of the path segment (or of the path when that child is the
+// node's only child). A split value is never empty. The scan stops at the next slash, so trying every split of a
+// segment in turn is linear in its length.
+//
+// A split is only chosen when the whole prefix of the inline verb child matches. Routing therefore never backtracks
+// into the param node from a prefix mismatch of that child, and the split only needs to be retried when backtracking
+// from within the child's subtree.
+func (n *node) inlineVerbSplit(search string, from int) int {
+	verbs := n.findStaticChild(':')
+	for i := from; i < len(search); i++ {
+		switch search[i] {
+		case '/':
+			if len(n.staticChildren) == 1 {
+				// the inline verb child is the only child (a param node never has a param or any child): without a
+				// split the param takes the rest of the path, as a leaf param does
+				return len(search)
+			}
+			return i
+		case ':':
+			if i > 0 && verbs != nil && strings.HasPrefix(search[i:], verbs.prefix) {
+				return i
+			}
+		}
+	}
+	return len(search)
 }
 
 func (n *node) findStaticChild(l byte) *node {
@@ -437,12 +488,12 @@ func (n *node) findStaticChild(l byte) *node {
 	return nil
 }
 
-func (n *node) findChildWithLabel(l byte) *node {
+func (n *node) findChildWithLabel(l byte, isParamMarker bool) *node {
+	if isParamMarker {
+		return n.paramChild
+	}
 	if c := n.findStaticChild(l); c != nil {
 		return c
-	}
-	if l == paramLabel {
-		return n.paramChild
 	}
 	if l == anyLabel {
 		return n.anyChild
@@ -618,7 +669,7 @@ func (r *Router) Find(method, path string, c Context) {
 			// No matching prefix, let's backtrack to the first possible alternative node of the decision path
 			nk, ok := backtrackToNextNodeKind(staticKind)
 			if !ok {
-				return // No other possibilities on the decision path, handler will be whatever context is reset to.
+				break // No other possibilities on the decision path.
 			} else if nk == paramKind {
 				goto Param
 				// NOTE: this case (backtracking from static node to previous any node) can not happen by current any matching logic. Any node is end of search currently
@@ -671,9 +722,12 @@ func (r *Router) Find(method, path string, c Context) {
 				// when param node does not have any children (path param is last piece of route path) then param node should
 				// act similarly to any node - consider all remaining search as match
 				i = l
-			} else {
-				for ; i < l && search[i] != '/'; i++ {
-				}
+			} else if currentNode.hasColonChild {
+				// an inline verb (`/:name\:verb`) can end the param value at a literal colon. Start with the first
+				// possible split, the param node is retried with the next one before backtracking (see below).
+				i = currentNode.inlineVerbSplit(search, 0)
+			} else if i = strings.IndexByte(search, '/'); i < 0 {
+				i = l
 			}
 
 			paramValues[paramIndex] = search[:i]
@@ -711,16 +765,35 @@ func (r *Router) Find(method, path string, c Context) {
 
 		// Let's backtrack to the first possible alternative node of the decision path
 		nk, ok := backtrackToNextNodeKind(anyKind)
+	Backtracked:
 		if !ok {
 			break // No other possibilities on the decision path
 		} else if nk == paramKind {
+			if currentNode.hasColonChild && search != "" && search[0] == ':' {
+				goto InlineVerbSplit
+			}
 			goto Param
 		} else if nk == anyKind {
 			goto Any
+		} else if hasPendingInlineVerbSplit(currentNode, path, searchIndex, paramIndex, paramValues) {
+			// A wildcard ends the search, except below a param value that ended at an inline verb split: keep
+			// backtracking, so the other routes below that split and then the next split are still tried.
+			nk, ok = backtrackToNextNodeKind(anyKind)
+			goto Backtracked
 		} else {
 			// Not found
 			break
 		}
+
+	InlineVerbSplit:
+		// A param value that ended at an inline verb split is a decision point of the param node itself. When its
+		// inline verb child fails, retry the node with the next split, and finally with the whole path segment,
+		// before backtracking to its parent.
+		start := searchIndex - len(paramValues[paramIndex-1])
+		searchIndex = start + currentNode.inlineVerbSplit(path[start:], len(paramValues[paramIndex-1])+1)
+		paramValues[paramIndex-1] = path[start:searchIndex]
+		search = path[searchIndex:]
+		continue
 	}
 
 	if currentNode == nil && previousBestMatchNode == nil {
