@@ -8,6 +8,8 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"slices"
+	"strings"
 )
 
 // Router is interface for routing request contexts to registered routes.
@@ -167,12 +169,13 @@ type node struct {
 	// scLabels holds the first byte (label) of each staticChildren entry in the
 	// same order. Scanning this contiguous byte slice during routing is more
 	// cache-friendly than dereferencing each *node to read its label.
-	scLabels    []byte
-	paramsCount int
-	kind        kind
-	label       byte
-	isLeaf      bool
-	isHandler   bool
+	scLabels      []byte
+	paramsCount   int
+	kind          kind
+	label         byte
+	isLeaf        bool
+	isHandler     bool
+	hasColonChild bool
 }
 
 type kind uint8
@@ -387,40 +390,27 @@ func (r *DefaultRouter) Remove(method string, path string) error {
 		return errors.New("router has no routes to remove")
 	}
 
-	if path == "" {
-		path = "/"
-	}
-	if path[0] != '/' {
-		path = "/" + path
-	}
+	path = normalizePathSlash(path)
+	treePath, paramMarkers := routeTreePath(parseRoutePath(path))
 
 	var nodeToRemove *node
-	prefixLen := 0
+	search := treePath
+	searchOffset := 0
 	for {
-		if currentNode.originalPath == path && currentNode.isHandler {
-			nodeToRemove = currentNode
+		if !strings.HasPrefix(search, currentNode.prefix) {
 			break
 		}
-		if currentNode.kind == staticKind {
-			prefixLen = prefixLen + len(currentNode.prefix)
-		} else {
-			prefixLen = len(currentNode.originalPath)
-		}
+		search = search[len(currentNode.prefix):]
+		searchOffset += len(currentNode.prefix)
 
-		if prefixLen >= len(path) {
+		if search == "" {
+			if currentNode.isHandler {
+				nodeToRemove = currentNode
+			}
 			break
 		}
 
-		next := path[prefixLen]
-		switch next {
-		case paramLabel:
-			currentNode = currentNode.paramChild
-		case anyLabel:
-			currentNode = currentNode.anyChild
-		default:
-			currentNode = currentNode.findStaticChild(next)
-		}
-
+		currentNode = currentNode.findChildWithLabel(search[0], slices.Contains(paramMarkers, searchOffset))
 		if currentNode == nil {
 			break
 		}
@@ -434,18 +424,23 @@ func (r *DefaultRouter) Remove(method string, path string) error {
 		return errors.New("could not find route to remove by given path")
 	}
 
-	if mh := nodeToRemove.methods.find(method, false, false); mh == nil {
+	// routes with different param names can share a node, so the path must be the one registered for this method
+	mh := nodeToRemove.methods.find(method, false, false)
+	if mh == nil || mh.Path != path {
 		return errors.New("could not find route to remove by given path and method")
 	}
-	nodeToRemove.setHandler(method, nil)
 
-	var rIndex int
+	rIndex := -1
 	for i, rr := range r.routes {
-		if rr.Method == method && rr.Path == path {
+		if rr.Method == method && rr.Path == mh.orgRouteInfo.Path {
 			rIndex = i
 			break
 		}
 	}
+	if rIndex < 0 {
+		return errors.New("could not find route to remove by given path and method")
+	}
+	nodeToRemove.setHandler(method, nil)
 	r.routes = append(r.routes[:rIndex], r.routes[rIndex+1:]...)
 
 	if !nodeToRemove.isHandler && nodeToRemove.isLeaf {
@@ -467,6 +462,9 @@ func (r *DefaultRouter) Remove(method string, path string) error {
 				}
 				parent.staticChildren = append(parent.staticChildren[:index], parent.staticChildren[index+1:]...)
 				parent.scLabels = append(parent.scLabels[:index], parent.scLabels[index+1:]...)
+				if current.label == ':' {
+					parent.hasColonChild = false
+				}
 			case paramKind:
 				parent.paramChild = nil
 			case anyKind:
@@ -535,72 +533,48 @@ func (r *DefaultRouter) Add(route Route) (RouteInfo, error) {
 		headH = wrapHeadHandler(h)
 	}
 
-	paramNames := make([]string, 0)
-	// Positions of parameter markers after names are removed. Literal colons
-	// remain ordinary path bytes, so no sentinel byte is reserved.
-	paramMarkers := make([]int, 0)
-	originalPath := path
-	wasAdded := false
-	var ri RouteInfo
-	for i, lcpIndex := 0, len(path); i < lcpIndex; i++ {
-		if path[i] == paramLabel {
-			if i > 0 && path[i-1] == '\\' {
-				path = path[:i-1] + path[i:]
-				i--
-				lcpIndex--
-				continue
-			}
-			j := i + 1
-
-			r.insert(staticKind, path[:i], method, routeMethod{RouteInfo: &RouteInfo{Method: method}}, paramMarkers)
-			for ; i < lcpIndex && path[i] != '/'; i++ {
-			}
-
-			paramNames = append(paramNames, path[j:i])
-			paramMarkers = append(paramMarkers, j-1)
-			path = path[:j] + path[i:]
-			i, lcpIndex = j, len(path)
-
-			if i == lcpIndex {
-				// path node is last fragment of route path. ie. `/users/:id`
-				ri = route.ToRouteInfo(paramNames)
-				rm := routeMethod{
-					RouteInfo:          &RouteInfo{Method: method, Path: originalPath, Parameters: paramNames, Name: route.Name},
-					handler:            h,
-					orgRouteInfo:       ri,
-					wrappedHeadHandler: headH,
-				}
-				r.insert(paramKind, path[:i], method, rm, paramMarkers)
-				wasAdded = true
-				break
-			} else {
-				r.insert(paramKind, path[:i], method, routeMethod{RouteInfo: &RouteInfo{Method: method}}, paramMarkers)
-			}
-		} else if path[i] == anyLabel {
-			r.insert(staticKind, path[:i], method, routeMethod{RouteInfo: &RouteInfo{Method: method}}, paramMarkers)
+	parts := parseRoutePath(path)
+	var paramNames []string
+	for _, part := range parts {
+		if part.kind == paramKind {
+			paramNames = append(paramNames, part.value)
+		} else if part.kind == anyKind {
 			paramNames = append(paramNames, "*")
-			ri = route.ToRouteInfo(paramNames)
-			rm := routeMethod{
-				RouteInfo:          &RouteInfo{Method: method, Path: originalPath, Parameters: paramNames, Name: route.Name},
-				handler:            h,
-				orgRouteInfo:       ri,
-				wrappedHeadHandler: headH,
-			}
-			r.insert(anyKind, path[:i+1], method, rm, paramMarkers)
-			wasAdded = true
 			break
 		}
 	}
-
-	if !wasAdded {
-		ri = route.ToRouteInfo(paramNames)
-		rm := routeMethod{
-			RouteInfo:          &RouteInfo{Method: method, Path: originalPath, Parameters: paramNames, Name: route.Name},
-			handler:            h,
-			orgRouteInfo:       ri,
-			wrappedHeadHandler: headH,
+	ri := route.ToRouteInfo(paramNames)
+	rm := routeMethod{
+		RouteInfo:          &RouteInfo{Method: method, Path: path, Parameters: paramNames, Name: route.Name},
+		handler:            h,
+		orgRouteInfo:       ri,
+		wrappedHeadHandler: headH,
+	}
+	partial := routeMethod{RouteInfo: &RouteInfo{Method: method}}
+	treePath, paramMarkers := routeTreePath(parts)
+	pathEnd := 0
+addParts:
+	for i, part := range parts {
+		switch part.kind {
+		case staticKind:
+			pathEnd += len(part.value)
+			if i == len(parts)-1 {
+				r.insert(staticKind, treePath[:pathEnd], method, rm, paramMarkers)
+			}
+		case paramKind:
+			r.insert(staticKind, treePath[:pathEnd], method, partial, paramMarkers)
+			pathEnd++
+			if i == len(parts)-1 {
+				r.insert(paramKind, treePath[:pathEnd], method, rm, paramMarkers)
+			} else {
+				r.insert(paramKind, treePath[:pathEnd], method, partial, paramMarkers)
+			}
+		case anyKind:
+			r.insert(staticKind, treePath[:pathEnd], method, partial, paramMarkers)
+			pathEnd++
+			r.insert(anyKind, treePath[:pathEnd], method, rm, paramMarkers)
+			break addParts
 		}
-		r.insert(staticKind, path, method, rm, paramMarkers)
 	}
 
 	r.storeRouteInfo(ri)
@@ -724,14 +698,7 @@ func (r *DefaultRouter) insert(t kind, path string, method string, ri routeMetho
 		} else if lcpLen < searchLen {
 			searchOffset += lcpLen
 			search = search[lcpLen:]
-			isParamMarker := false
-			for _, marker := range paramMarkers {
-				if marker == searchOffset {
-					isParamMarker = true
-					break
-				}
-			}
-			c := currentNode.findChildWithLabel(search[0], isParamMarker)
+			c := currentNode.findChildWithLabel(search[0], slices.Contains(paramMarkers, searchOffset))
 			if c != nil {
 				// Go deeper
 				currentNode = c
@@ -812,6 +779,56 @@ func (n *node) refreshLeaf() {
 func (n *node) addStaticChild(c *node) {
 	n.staticChildren = append(n.staticChildren, c)
 	n.scLabels = append(n.scLabels, c.label)
+	// param nodes are never split (their prefix is a single byte), so this is where their inline verb child is set
+	if n.kind == paramKind && c.label == ':' {
+		n.hasColonChild = true
+	}
+}
+
+// hasPendingInlineVerbSplit reports whether a param node from n up to the root has a value in pathValues that ended at
+// an inline verb split and so can still be retried. searchIndex and paramIndex are the routing state at n. It does
+// not change that state, so a request that ends here keeps its param values.
+func hasPendingInlineVerbSplit(n *node, path string, searchIndex, paramIndex int, pathValues PathValues) bool {
+	for ; n != nil; n = n.parent {
+		if n.hasColonChild && searchIndex < len(path) && path[searchIndex] == ':' {
+			return true
+		}
+		if n.kind == staticKind {
+			searchIndex -= len(n.prefix)
+		} else {
+			paramIndex--
+			searchIndex -= len(pathValues[paramIndex].Value)
+		}
+	}
+	return false
+}
+
+// inlineVerbSplit returns where a param value in search ends: at the first literal colon at or after from where this
+// node's inline verb child could match, otherwise at the end of the path segment (or of the path when that child is the
+// node's only child). A split value is never empty. The scan stops at the next slash, so trying every split of a
+// segment in turn is linear in its length.
+//
+// A split is only chosen when the whole prefix of the inline verb child matches. Routing therefore never backtracks
+// into the param node from a prefix mismatch of that child, and the split only needs to be retried when backtracking
+// from within the child's subtree.
+func (n *node) inlineVerbSplit(search string, from int) int {
+	verbs := n.findStaticChild(':')
+	for i := from; i < len(search); i++ {
+		switch search[i] {
+		case '/':
+			if len(n.staticChildren) == 1 {
+				// the inline verb child is the only child (a param node never has a param or any child): without a
+				// split the param takes the rest of the path, as a leaf param does
+				return len(search)
+			}
+			return i
+		case ':':
+			if i > 0 && verbs != nil && strings.HasPrefix(search[i:], verbs.prefix) {
+				return i
+			}
+		}
+	}
+	return len(search)
 }
 
 func (n *node) findStaticChild(l byte) *node {
@@ -1037,9 +1054,12 @@ func (r *DefaultRouter) Route(c *Context) HandlerFunc {
 				// when param node does not have any children (path param is last piece of route path) then param node should
 				// act similarly to any node - consider all remaining search as match
 				i = l
-			} else {
-				for ; i < l && search[i] != '/'; i++ {
-				}
+			} else if currentNode.hasColonChild {
+				// an inline verb (`/:name\:verb`) can end the param value at a literal colon. Start with the first
+				// possible split, the param node is retried with the next one before backtracking (see below).
+				i = currentNode.inlineVerbSplit(search, 0)
+			} else if i = strings.IndexByte(search, '/'); i < 0 {
+				i = l
 			}
 
 			pathValues[paramIndex].Value = search[:i]
@@ -1076,16 +1096,36 @@ func (r *DefaultRouter) Route(c *Context) HandlerFunc {
 
 		// Let's backtrack to the first possible alternative node of the decision path
 		nk, ok := backtrackToNextNodeKind(anyKind)
+	Backtracked:
 		if !ok {
 			break // No other possibilities on the decision path
 		} else if nk == paramKind {
+			if currentNode.hasColonChild && search != "" && search[0] == ':' {
+				goto InlineVerbSplit
+			}
 			goto Param
 		} else if nk == anyKind {
 			goto Any
+		} else if hasPendingInlineVerbSplit(currentNode, path, searchIndex, paramIndex, pathValues) {
+			// A wildcard ends the search, except below a param value that ended at an inline verb split: keep
+			// backtracking, so the other routes below that split and then the next split are still tried.
+			nk, ok = backtrackToNextNodeKind(anyKind)
+			goto Backtracked
 		} else {
 			// Not found
 			break
 		}
+
+	InlineVerbSplit:
+		// A param value that ended at an inline verb split is a decision point of the param node itself. When its
+		// inline verb child fails, retry the node with the next split, and finally with the whole path segment,
+		// before backtracking to its parent.
+		pv := &pathValues[paramIndex-1]
+		start := searchIndex - len(pv.Value)
+		searchIndex = start + currentNode.inlineVerbSplit(path[start:], len(pv.Value)+1)
+		pv.Value = path[start:searchIndex]
+		search = path[searchIndex:]
+		continue
 	}
 
 	if currentNode == nil && previousBestMatchNode == nil {
