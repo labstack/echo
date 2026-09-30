@@ -816,9 +816,9 @@ func (n *node) inlineVerbSplit(search string, from int) int {
 	for i := from; i < len(search); i++ {
 		switch search[i] {
 		case '/':
-			if len(n.staticChildren) == 1 && n.paramChild == nil && n.anyChild == nil {
-				// the inline verb child is the only child: without a split the param takes the rest of the path, as a
-				// leaf param does
+			if len(n.staticChildren) == 1 {
+				// the inline verb child is the only child (a param node never has a param or any child): without a
+				// split the param takes the rest of the path, as a leaf param does
 				return len(search)
 			}
 			return i
