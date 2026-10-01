@@ -1,4 +1,5 @@
 name: CI
+# Runner benchmark variant: GitHub-hosted only. Not for merging.
 
 on:
   push:
