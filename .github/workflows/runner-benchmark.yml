@@ -57,8 +57,6 @@ jobs:
           out="$RUNNER_TEMP/result"
           mkdir -p "$out"
 
-          # A fresh build cache on every runner, so cached builds don't skew the timings.
-          export GOCACHE="$RUNNER_TEMP/gocache"
           go mod download
 
           ms() { date +%s%3N; }
@@ -70,15 +68,23 @@ jobs:
             echo "${name}_ms=$(( $(ms) - start ))" >> "$timings"
           }
 
-          measure build go build ./...
-          measure vet go vet ./...
-          measure test_race go test -race -count=1 ./... > /dev/null
+          # Cold: no build cache at all, so the timings compare CPUs. Blacksmith sets
+          # GOCACHEPROG for its transparent Go build cache, which would bypass GOCACHE.
+          cold() { env -u GOCACHEPROG GOCACHE="$RUNNER_TEMP/gocache-cold" "$@"; }
+          measure build_cold cold go build ./...
+          measure vet_cold cold go vet ./...
+          measure test_race_cold cold go test -race -count=1 ./... > /dev/null
           # Fixed iteration counts, so faster CPUs finish sooner instead of running more iterations.
-          measure bench go test -run='^$' -bench=. -benchtime=2000x -count=1 ./... > "$out/bench.txt"
+          measure bench cold go test -run='^$' -bench=. -benchtime=2000x -count=2 ./... > "$out/bench.txt"
+
+          # Default: each runner's out-of-the-box setup (GitHub: empty cache; Blacksmith: transparent cache).
+          measure build_default go build ./...
+          measure test_race_default go test -race -count=1 ./... > /dev/null
 
           {
             echo "runner=$RUNNER_LABEL"
             echo "attempt=$ATTEMPT"
+            echo "gocacheprog=${GOCACHEPROG:+yes}"
             echo "nproc=$(nproc)"
             echo "cpu=$(lscpu | sed -n 's/^Model name:[[:space:]]*//p' | head -1)"
             echo "mem_gb=$(free -g | awk '/^Mem:/ {print $2}')"
@@ -150,11 +156,17 @@ jobs:
           def med(values):
               return statistics.median(values) if values else None
 
-          metrics = [("build_ms", "Cold `go build ./...`"), ("vet_ms", "`go vet ./...`"),
-                     ("test_race_ms", "`go test -race ./...`"), ("bench_ms", "Benchmarks (2000 iterations each)")]
+          metrics = [("build_cold_ms", "Cold `go build ./...`"), ("vet_cold_ms", "Cold `go vet ./...`"),
+                     ("test_race_cold_ms", "Cold `go test -race ./...`"),
+                     ("bench_ms", "Benchmarks, cold (2000 iterations, 2 runs)"),
+                     ("build_default_ms", "Default setup: `go build ./...`"),
+                     ("test_race_default_ms", "Default setup: `go test -race ./...`")]
 
           print("## Runner benchmark\n")
-          print("Medians of %s runs per runner, same commit, cold build cache.\n" % max(len(v) for v in by_runner.values()))
+          print("Medians of %s runs per runner on the same commit. **Cold** rows run with no build cache "
+                "(compares CPUs). **Default setup** rows use each runner as it comes "
+                "(GitHub: empty cache; Blacksmith: its transparent Go build cache).\n"
+                % max(len(v) for v in by_runner.values()))
           print("| | " + " | ".join(order) + " |")
           print("|---|" + "---|" * len(order))
           for key, label in metrics:
@@ -184,10 +196,14 @@ jobs:
                       f.write(open(p).read())
           EOF
 
+          # Drop the GOMAXPROCS suffix and CPU line so benchstat compares the runners in one table.
+          for f in merged/*.txt; do
+            sed -E -e 's/^(Benchmark[^[:space:]]*)-[0-9]+([[:space:]])/\1\2/' -e 's/^cpu:.*/cpu: (normalized)/' "$f" > "${f%.txt}.norm"
+          done
           "$(go env GOPATH)/bin/benchstat" \
-            ubuntu-latest=merged/ubuntu-latest.txt \
-            blacksmith-4vcpu=merged/blacksmith-4vcpu-ubuntu-2404.txt \
-            blacksmith-8vcpu=merged/blacksmith-8vcpu-ubuntu-2404.txt > merged/benchstat.txt || true
+            ubuntu-latest=merged/ubuntu-latest.norm \
+            blacksmith-4vcpu=merged/blacksmith-4vcpu-ubuntu-2404.norm \
+            blacksmith-8vcpu=merged/blacksmith-8vcpu-ubuntu-2404.norm > merged/benchstat.txt || true
           {
             echo "### benchstat geomean (sec/op across runners; full output in the report artifact)"
             echo '```'
