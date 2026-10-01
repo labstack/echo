@@ -1,0 +1,6 @@
+self-hosted-runner:
+  # Blacksmith runners (https://blacksmith.sh)
+  labels:
+    - blacksmith-8vcpu-ubuntu-2404
+    - blacksmith-12vcpu-macos-latest
+    - blacksmith-8vcpu-windows-2025

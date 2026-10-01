@@ -34,8 +34,16 @@ jobs:
         # As we depend on `golang.org/x/` libraries which only support the last 2 Go releases, we could have situations when
         # we derive from the last four major releases promise.
         go: ["1.25", "1.26", "1.27"]
+        # Jobs run on Blacksmith runners (https://blacksmith.sh), which sponsors Echo's CI
+        include:
+          - os: ubuntu-latest
+            runner: blacksmith-8vcpu-ubuntu-2404
+          - os: macos-latest
+            runner: blacksmith-12vcpu-macos-latest
+          - os: windows-latest
+            runner: blacksmith-8vcpu-windows-2025
     name: ${{ matrix.os }} @ Go ${{ matrix.go }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout Code
         uses: *checkout_action
@@ -44,6 +52,7 @@ jobs:
         uses: *setup_go_action
         with:
           go-version: ${{ matrix.go }}
+          cache: false # Blacksmith Go build cache replaces the Actions cache
 
       - name: Run Tests
         run: go test -race --coverprofile=coverage.coverprofile --covermode=atomic ./...
@@ -58,7 +67,7 @@ jobs:
   benchmark:
     needs: test
     name: Benchmark comparison
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-8vcpu-ubuntu-2404
     steps:
       - name: Checkout Code (Previous)
         uses: *checkout_action
@@ -75,6 +84,7 @@ jobs:
         uses: *setup_go_action
         with:
           go-version: ${{ env.LATEST_GO_VERSION }}
+          cache: false # Blacksmith Go build cache replaces the Actions cache
 
       - name: Install Dependencies
         run: go install golang.org/x/perf/cmd/benchstat@latest

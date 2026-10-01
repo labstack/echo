@@ -23,7 +23,7 @@ env:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-8vcpu-ubuntu-2404
     steps:
       - name: Checkout Code
         uses: *checkout_action
@@ -33,6 +33,7 @@ jobs:
         with:
           go-version: ${{ env.LATEST_GO_VERSION }}
           check-latest: true
+          cache: false # Blacksmith Go build cache replaces the Actions cache
 
       - name: Run golint
         run: |
