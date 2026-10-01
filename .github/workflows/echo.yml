@@ -58,8 +58,7 @@ jobs:
       # setup-go's built-in cache is keyed on go.sum only, so its entry is never refreshed and
       # soon holds little of the current build. Restore the latest cache saved for this job
       # instead, and save a new one after runs other than pull requests, which only restore.
-      - &find_go_cache
-        name: Find Go Cache
+      - name: Find Go Cache
         id: go-cache
         shell: bash
         run: |
@@ -69,8 +68,7 @@ jobs:
             echo "key=go-${{ runner.os }}-${{ runner.arch }}-$(go env GOVERSION)-${{ github.job }}"
           } >> "$GITHUB_OUTPUT"
 
-      - &restore_go_cache
-        name: Restore Go Cache
+      - name: Restore Go Cache
         id: go-cache-restore
         uses: *cache_restore_action
         with:
@@ -83,8 +81,7 @@ jobs:
       - name: Run Tests
         run: go test -race --coverprofile=coverage.coverprofile --covermode=atomic ./...
 
-      - &save_go_cache
-        name: Save Go Cache
+      - name: Save Go Cache
         if: github.event_name != 'pull_request' && steps.go-cache-restore.outputs.cache-hit != 'true'
         uses: *cache_save_action
         with:
@@ -125,10 +122,6 @@ jobs:
           go-version: ${{ env.LATEST_GO_VERSION }}
           cache: false
 
-      - *find_go_cache
-
-      - *restore_go_cache
-
       - name: Install Dependencies
         run: go install golang.org/x/perf/cmd/benchstat@latest
 
@@ -148,4 +141,3 @@ jobs:
         run: |
           benchstat previous/benchmark.txt new/benchmark.txt
 
-      - *save_go_cache
