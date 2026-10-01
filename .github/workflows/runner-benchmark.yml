@@ -27,7 +27,28 @@ env:
   DOWNLOAD_ARTIFACT_ACTION: &download_artifact_action actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
 
 jobs:
+  # Fills the Actions cache that actions/setup-go restores on GitHub-hosted runners,
+  # so the "default setup" timings reflect GitHub's recommended (cached) setup.
+  warm-github-cache:
+    name: Warm GitHub cache
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: *checkout_action
+
+      - name: Set up Go
+        uses: *setup_go_action
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Build and Test
+        run: |
+          go build ./...
+          go test -race -count=1 ./... > /dev/null
+
   measure:
+    needs: warm-github-cache
     strategy:
       fail-fast: false
       matrix:
@@ -35,6 +56,15 @@ jobs:
         # blacksmith-8vcpu is the tier Echo's regular CI uses.
         runner: [ubuntu-latest, blacksmith-4vcpu-ubuntu-2404, blacksmith-8vcpu-ubuntu-2404]
         attempt: [1, 2, 3, 4, 5]
+        # Each runner's recommended setup: GitHub restores the Actions cache through setup-go;
+        # Blacksmith's Go build cache replaces it (docs.blacksmith.sh/blacksmith-caching/go-build-caching).
+        include:
+          - runner: ubuntu-latest
+            setup_go_cache: true
+          - runner: blacksmith-4vcpu-ubuntu-2404
+            setup_go_cache: false
+          - runner: blacksmith-8vcpu-ubuntu-2404
+            setup_go_cache: false
     name: ${{ matrix.runner }} (${{ matrix.attempt }})
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
@@ -46,7 +76,7 @@ jobs:
         uses: *setup_go_action
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache: false # every runner starts cold
+          cache: ${{ matrix.setup_go_cache }}
 
       - name: Measure
         env:
@@ -77,7 +107,8 @@ jobs:
           # Fixed iteration counts, so faster CPUs finish sooner instead of running more iterations.
           measure bench cold go test -run='^$' -bench=. -benchtime=2000x -count=2 ./... > "$out/bench.txt"
 
-          # Default: each runner's out-of-the-box setup (GitHub: empty cache; Blacksmith: transparent cache).
+          # Default: each runner's recommended setup (GitHub: Actions cache restored by setup-go;
+          # Blacksmith: its transparent Go build cache).
           measure build_default go build ./...
           measure test_race_default go test -race -count=1 ./... > /dev/null
 
@@ -125,7 +156,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh api --paginate "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs?per_page=100" \
-            --jq '.jobs[] | select(.name != "Report") | [.name, .created_at, .started_at] | @tsv' > queue.tsv
+            --jq '.jobs[] | select(.name != "Report") | [.name, .created_at, .started_at,
+              ([.steps[]? | select(.name == "Set up Go")][0] // {} | .started_at // ""),
+              ([.steps[]? | select(.name == "Set up Go")][0] // {} | .completed_at // "")] | @tsv' > queue.tsv
 
       - name: Summarize
         run: |
@@ -145,13 +178,16 @@ jobs:
           order = ["ubuntu-latest", "blacksmith-4vcpu-ubuntu-2404", "blacksmith-8vcpu-ubuntu-2404"]
           by_runner = {r: [x for x in runs if x.get("runner") == r] for r in order}
 
+          t = lambda s: datetime.fromisoformat(s.replace("Z", "+00:00"))
           queue = {r: [] for r in order}
+          setup_go = {r: [] for r in order}
           for line in open("queue.tsv"):
-              name, created, started = line.rstrip("\n").split("\t")
+              name, created, started, setup_start, setup_end = line.rstrip("\n").split("\t")
               runner = name.split(" (")[0]
               if runner in queue and started:
-                  t = lambda s: datetime.fromisoformat(s.replace("Z", "+00:00"))
                   queue[runner].append((t(started) - t(created)).total_seconds())
+              if runner in setup_go and setup_start and setup_end:
+                  setup_go[runner].append((t(setup_end) - t(setup_start)).total_seconds())
 
           def med(values):
               return statistics.median(values) if values else None
@@ -164,8 +200,9 @@ jobs:
 
           print("## Runner benchmark\n")
           print("Medians of %s runs per runner on the same commit. **Cold** rows run with no build cache "
-                "(compares CPUs). **Default setup** rows use each runner as it comes "
-                "(GitHub: empty cache; Blacksmith: its transparent Go build cache).\n"
+                "(compares CPUs). **Default setup** rows use each runner's recommended setup "
+                "(GitHub: Actions cache restored by `setup-go`, timed in the Set up Go row; "
+                "Blacksmith: its transparent Go build cache).\n"
                 % max(len(v) for v in by_runner.values()))
           print("| | " + " | ".join(order) + " |")
           print("|---|" + "---|" * len(order))
@@ -181,6 +218,8 @@ jobs:
                   else:
                       cells.append("%.1f s" % (m / 1000))
               print("| %s | %s |" % (label, " | ".join(cells)))
+          print("| Set up Go step (GitHub: includes cache restore) | %s |" % " | ".join(
+              "%.0f s" % med(setup_go[r]) if setup_go[r] else "n/a" for r in order))
           print("| Queue time (wait for runner) | %s |" % " | ".join(
               "%.0f s" % med(queue[r]) if queue[r] else "n/a" for r in order))
           print("| vCPUs / RAM | %s |" % " | ".join(
