@@ -12,6 +12,11 @@ on:
 permissions:
   contents: read # to fetch code (actions/checkout)
 
+# Cancel superseded runs of the same pull request; runs on master always finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   LATEST_GO_VERSION: "1.27"
 
