@@ -1,4 +1,5 @@
 name: CI
+# Runner benchmark variant: Linux on Blacksmith. Not for merging.
 
 on:
   push:
@@ -44,7 +45,7 @@ jobs:
         # we derive from the last four major releases promise.
         go: ["1.25", "1.26", "1.27"]
     name: ${{ matrix.os }} @ Go ${{ matrix.go }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.os == 'ubuntu-latest' && 'blacksmith-8vcpu-ubuntu-2404' || matrix.os }}
     steps:
       - name: Checkout Code
         uses: *checkout_action
@@ -103,7 +104,7 @@ jobs:
     if: github.event_name == 'pull_request'
     needs: test
     name: Benchmark comparison
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-8vcpu-ubuntu-2404
     steps:
       - name: Checkout Code (Previous)
         uses: *checkout_action
