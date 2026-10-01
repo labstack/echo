@@ -1,0 +1,284 @@
+name: Runner Benchmark
+
+# Compares CI runner performance on identical work. Not part of regular CI:
+# run it manually, or push to the ci/runner-benchmark branch.
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - ci/runner-benchmark
+
+permissions:
+  contents: read # to fetch code (actions/checkout)
+
+env:
+  GO_VERSION: "1.27"
+
+  # https://github.com/actions/checkout/commit/df4cb1c069e1874edd31b4311f1884172cec0e10
+  CHECKOUT_ACTION: &checkout_action actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+  # https://github.com/actions/setup-go/commit/924ae3a1cded613372ab5595356fb5720e22ba16
+  SETUP_GO_ACTION: &setup_go_action actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+
+  # https://github.com/actions/cache/commit/55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+  CACHE_SAVE_ACTION: &cache_save_action actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+  CACHE_RESTORE_ACTION: &cache_restore_action actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+
+  # Paths and key of the Go cache the warm-up job saves for GitHub-hosted runners.
+  GO_CACHE_PATHS: |
+    ~/.cache/go-build
+    ~/go/pkg/mod
+  GO_CACHE_KEY: runner-benchmark-go-${{ github.run_id }}-${{ github.run_attempt }}
+
+  # https://github.com/actions/upload-artifact/commit/043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+  UPLOAD_ARTIFACT_ACTION: &upload_artifact_action actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+
+  # https://github.com/actions/download-artifact/commit/3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+  DOWNLOAD_ARTIFACT_ACTION: &download_artifact_action actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+
+jobs:
+  # Saves a Go build and module cache for this commit, so the "default setup" timings give
+  # GitHub-hosted runners a fully warm Actions cache. setup-go's own cache is keyed on go.sum
+  # only: it restores whatever entry already exists for that key (often stale) and then skips
+  # saving, so it can't be relied on to hold this commit's build.
+  warm-github-cache:
+    name: Warm GitHub cache
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: *checkout_action
+
+      - name: Set up Go
+        uses: *setup_go_action
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+
+      - name: Build and Test
+        run: |
+          go build ./...
+          go test -race -count=1 ./... > /dev/null
+
+      - name: Save Go Cache
+        uses: *cache_save_action
+        with:
+          path: ${{ env.GO_CACHE_PATHS }}
+          key: ${{ env.GO_CACHE_KEY }}
+
+  measure:
+    needs: warm-github-cache
+    strategy:
+      fail-fast: false
+      matrix:
+        # ubuntu-latest and blacksmith-4vcpu both have 4 vCPUs (like for like);
+        # blacksmith-8vcpu is the tier Echo's regular CI uses.
+        runner: [ubuntu-latest, blacksmith-4vcpu-ubuntu-2404, blacksmith-8vcpu-ubuntu-2404]
+        attempt: [1, 2, 3, 4, 5]
+        # Each runner's recommended setup: GitHub restores the Actions cache; Blacksmith's
+        # Go build cache replaces it (docs.blacksmith.sh/blacksmith-caching/go-build-caching).
+        include:
+          - runner: ubuntu-latest
+            github_cache: true
+    name: ${{ matrix.runner }} (${{ matrix.attempt }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - name: Checkout Code
+        uses: *checkout_action
+
+      - name: Set up Go
+        uses: *setup_go_action
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+
+      - name: Restore Go Cache
+        if: matrix.github_cache
+        uses: *cache_restore_action
+        with:
+          path: ${{ env.GO_CACHE_PATHS }}
+          key: ${{ env.GO_CACHE_KEY }}
+          fail-on-cache-miss: true
+
+      - name: Measure
+        env:
+          RUNNER_LABEL: ${{ matrix.runner }}
+          ATTEMPT: ${{ matrix.attempt }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/result"
+          mkdir -p "$out"
+
+          go mod download
+
+          ms() { date +%s%3N; }
+          timings="$out/timings.txt"
+          measure() {
+            local name=$1; shift
+            local start; start=$(ms)
+            "$@"
+            echo "${name}_ms=$(( $(ms) - start ))" >> "$timings"
+          }
+
+          # Cold: no build cache at all, so the timings compare CPUs. Blacksmith sets
+          # GOCACHEPROG for its transparent Go build cache, which would bypass GOCACHE.
+          cold() { env -u GOCACHEPROG GOCACHE="$RUNNER_TEMP/gocache-cold" "$@"; }
+          measure build_cold cold go build ./...
+          measure vet_cold cold go vet ./...
+          measure test_race_cold cold go test -race -count=1 ./... > /dev/null
+          # Fixed iteration counts, so faster CPUs finish sooner instead of running more iterations.
+          measure bench cold go test -run='^$' -bench=. -benchtime=2000x -count=2 ./... > "$out/bench.txt"
+
+          # Default: each runner's recommended setup (GitHub: the Actions cache restored above;
+          # Blacksmith: its transparent Go build cache).
+          measure build_default go build ./...
+          measure test_race_default go test -race -count=1 ./... > /dev/null
+
+          {
+            echo "runner=$RUNNER_LABEL"
+            echo "attempt=$ATTEMPT"
+            echo "gocacheprog=${GOCACHEPROG:+yes}"
+            echo "nproc=$(nproc)"
+            echo "cpu=$(lscpu | sed -n 's/^Model name:[[:space:]]*//p' | head -1)"
+            echo "mem_gb=$(free -g | awk '/^Mem:/ {print $2}')"
+          } >> "$timings"
+          cat "$timings"
+
+      - name: Upload Result
+        uses: *upload_artifact_action
+        with:
+          name: result-${{ matrix.runner }}-${{ matrix.attempt }}
+          path: ${{ runner.temp }}/result
+
+  report:
+    needs: measure
+    if: always()
+    name: Report
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read # to read job queue times
+    steps:
+      - name: Download Results
+        uses: *download_artifact_action
+        with:
+          pattern: result-*
+          path: results
+
+      - name: Set up Go
+        uses: *setup_go_action
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+
+      - name: Install benchstat
+        run: go install golang.org/x/perf/cmd/benchstat@latest
+
+      - name: Fetch Queue Times
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --paginate "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs?per_page=100" \
+            --jq '.jobs[] | select(.name != "Report") | [.name, .created_at, .started_at,
+              ([.steps[]? | select(.name == "Set up Go")][0] // {} | .started_at // ""),
+              ([.steps[]? | select(.name == "Set up Go" or .name == "Restore Go Cache") | .completed_at // ""] | max // "")] | @tsv' > queue.tsv
+
+      - name: Summarize
+        run: |
+          python3 - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import glob, os, statistics
+          from datetime import datetime
+
+          def parse(path):
+              d = {}
+              for line in open(path):
+                  if "=" in line:
+                      k, v = line.rstrip("\n").split("=", 1)
+                      d[k] = v
+              return d
+
+          runs = [parse(p) for p in glob.glob("results/*/timings.txt")]
+          order = ["ubuntu-latest", "blacksmith-4vcpu-ubuntu-2404", "blacksmith-8vcpu-ubuntu-2404"]
+          by_runner = {r: [x for x in runs if x.get("runner") == r] for r in order}
+
+          t = lambda s: datetime.fromisoformat(s.replace("Z", "+00:00"))
+          queue = {r: [] for r in order}
+          setup_go = {r: [] for r in order}
+          for line in open("queue.tsv"):
+              name, created, started, setup_start, setup_end = line.rstrip("\n").split("\t")
+              runner = name.split(" (")[0]
+              if runner in queue and started:
+                  queue[runner].append((t(started) - t(created)).total_seconds())
+              if runner in setup_go and setup_start and setup_end:
+                  setup_go[runner].append((t(setup_end) - t(setup_start)).total_seconds())
+
+          def med(values):
+              return statistics.median(values) if values else None
+
+          metrics = [("build_cold_ms", "Cold `go build ./...`"), ("vet_cold_ms", "Cold `go vet ./...`"),
+                     ("test_race_cold_ms", "Cold `go test -race ./...`"),
+                     ("bench_ms", "Benchmarks, cold (2000 iterations, 2 runs)"),
+                     ("build_default_ms", "Default setup: `go build ./...`"),
+                     ("test_race_default_ms", "Default setup: `go test -race ./...`")]
+
+          print("## Runner benchmark\n")
+          print("Medians of %s runs per runner on the same commit. **Cold** rows run with no build cache "
+                "(compares CPUs). **Default setup** rows use each runner's recommended setup "
+                "(GitHub: a warm Actions cache for this commit, restore timed in the Set up Go row; "
+                "Blacksmith: its transparent Go build cache).\n"
+                % max(len(v) for v in by_runner.values()))
+          print("| | " + " | ".join(order) + " |")
+          print("|---|" + "---|" * len(order))
+          for key, label in metrics:
+              cells = []
+              base = med([int(x[key]) for x in by_runner[order[0]] if key in x])
+              for r in order:
+                  m = med([int(x[key]) for x in by_runner[r] if key in x])
+                  if m is None:
+                      cells.append("n/a")
+                  elif base and r != order[0]:
+                      cells.append("%.1f s (%.2fx)" % (m / 1000, base / m))
+                  else:
+                      cells.append("%.1f s" % (m / 1000))
+              print("| %s | %s |" % (label, " | ".join(cells)))
+          print("| Set up Go (GitHub: includes Actions cache restore) | %s |" % " | ".join(
+              "%.0f s" % med(setup_go[r]) if setup_go[r] else "n/a" for r in order))
+          print("| Queue time (wait for runner) | %s |" % " | ".join(
+              "%.0f s" % med(queue[r]) if queue[r] else "n/a" for r in order))
+          print("| vCPUs / RAM | %s |" % " | ".join(
+              ("%s / %s GB" % (by_runner[r][0].get("nproc"), by_runner[r][0].get("mem_gb"))) if by_runner[r] else "n/a"
+              for r in order))
+          def cpus(r):
+              counts = {}
+              for x in by_runner[r]:
+                  counts[x.get("cpu", "?")] = counts.get(x.get("cpu", "?"), 0) + 1
+              return ", ".join("%s (%d)" % (c, n) for c, n in sorted(counts.items(), key=lambda kv: -kv[1])) or "n/a"
+          print("| CPU (runs) | %s |" % " | ".join(cpus(r) for r in order))
+          print("\nSpeedup is relative to ubuntu-latest (higher is faster).\n")
+
+          os.makedirs("merged", exist_ok=True)
+          for r in order:
+              with open("merged/%s.txt" % r, "w") as f:
+                  for p in sorted(glob.glob("results/result-%s-*/bench.txt" % r)):
+                      f.write(open(p).read())
+          EOF
+
+          # Drop the GOMAXPROCS suffix and CPU line so benchstat compares the runners in one table.
+          for f in merged/*.txt; do
+            sed -E -e 's/^(Benchmark[^[:space:]]*)-[0-9]+([[:space:]])/\1\2/' -e 's/^cpu:.*/cpu: (normalized)/' "$f" > "${f%.txt}.norm"
+          done
+          "$(go env GOPATH)/bin/benchstat" \
+            ubuntu-latest=merged/ubuntu-latest.norm \
+            blacksmith-4vcpu=merged/blacksmith-4vcpu-ubuntu-2404.norm \
+            blacksmith-8vcpu=merged/blacksmith-8vcpu-ubuntu-2404.norm > merged/benchstat.txt || true
+          {
+            echo "### benchstat geomean (sec/op across runners; full output in the report artifact)"
+            echo '```'
+            grep -E 'sec/op|geomean' merged/benchstat.txt || echo "benchstat produced no comparison"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Report
+        uses: *upload_artifact_action
+        with:
+          name: runner-benchmark-report
+          path: merged
