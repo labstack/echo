@@ -1,4 +1,4 @@
-name: Run Tests
+name: CI
 
 on:
   push:
@@ -45,7 +45,7 @@ jobs:
         with:
           go-version: ${{ matrix.go }}
 
-      - name: Run Tests
+      - name: CI
         run: go test -race --coverprofile=coverage.coverprofile --covermode=atomic ./...
 
       - name: Upload coverage to Codecov
