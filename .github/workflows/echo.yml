@@ -12,6 +12,11 @@ on:
 permissions:
   contents: read # to fetch code (actions/checkout)
 
+# Cancel superseded runs of the same pull request; runs on master always finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   LATEST_GO_VERSION: "1.27"
 
@@ -96,6 +101,9 @@ jobs:
           fail_ci_if_error: false
 
   benchmark:
+    # Compares the pull request against its base branch. github.base_ref is only set for
+    # pull_request events, so on other events both checkouts would be the same commit.
+    if: github.event_name == 'pull_request'
     needs: test
     name: Benchmark comparison
     runs-on: ubuntu-latest
@@ -124,15 +132,17 @@ jobs:
       - name: Install Dependencies
         run: go install golang.org/x/perf/cmd/benchstat@latest
 
+      # -benchtime=100ms instead of the default 1s keeps the job to a few minutes. The
+      # comparison is advisory: it reports differences but never fails the build.
       - name: Run Benchmark (Previous)
         run: |
           cd previous
-          go test -run="-" -bench=".*" -count=8 ./... > benchmark.txt
+          go test -run="-" -bench=".*" -benchtime=100ms -count=8 ./... > benchmark.txt
 
       - name: Run Benchmark (New)
         run: |
           cd new
-          go test -run="-" -bench=".*" -count=8 ./... > benchmark.txt
+          go test -run="-" -bench=".*" -benchtime=100ms -count=8 ./... > benchmark.txt
 
       - name: Run Benchstat
         run: |
