@@ -320,6 +320,52 @@ func TestDecompress_AtExactLimit(t *testing.T) {
 	assert.Equal(t, exactBody, rec.Body.String())
 }
 
+func TestDecompress_ReadAfterExactLimit(t *testing.T) {
+	e := echo.New()
+	body := strings.Repeat("B", 1024)
+	gz, err := gzipString(body)
+	assert.NoError(t, err)
+	req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(gz))
+	req.Header.Set(echo.HeaderContentEncoding, GZIPEncoding)
+	c := e.NewContext(req, httptest.NewRecorder())
+	h := DecompressWithConfig(DecompressConfig{MaxDecompressedSize: 1024})
+
+	err = h(func(c *echo.Context) error {
+		buf := make([]byte, 1024)
+		n, readErr := io.ReadFull(c.Request().Body, buf)
+		assert.NoError(t, readErr)
+		assert.Equal(t, body, string(buf[:n]))
+		n, readErr = c.Request().Body.Read(nil)
+		assert.Zero(t, n)
+		assert.NoError(t, readErr)
+		n, readErr = c.Request().Body.Read(buf)
+		assert.Zero(t, n)
+		assert.ErrorIs(t, readErr, io.EOF)
+		return nil
+	})(c)
+	assert.NoError(t, err)
+}
+
+func TestLimitedGzipReader_ExceededLimitStaysExceeded(t *testing.T) {
+	gz, err := gzipString("AB")
+	assert.NoError(t, err)
+	reader, err := gzip.NewReader(bytes.NewReader(gz))
+	assert.NoError(t, err)
+	defer reader.Close()
+	r := &limitedGzipReader{Reader: reader, remaining: 1, limit: 1}
+	buf := make([]byte, 1)
+	n, err := io.ReadFull(r, buf)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, n)
+	assert.Equal(t, "A", string(buf))
+
+	for i := 0; i < 2; i++ {
+		n, err = r.Read(buf)
+		assert.Zero(t, n)
+		assert.ErrorIs(t, err, echo.ErrStatusRequestEntityTooLarge)
+	}
+}
+
 func TestDecompress_ZipBomb(t *testing.T) {
 	e := echo.New()
 	// Create highly compressed data that expands to 2MB
