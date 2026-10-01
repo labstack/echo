@@ -20,6 +20,16 @@ env:
   # https://github.com/actions/setup-go/commit/924ae3a1cded613372ab5595356fb5720e22ba16
   SETUP_GO_ACTION: &setup_go_action actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
 
+  # https://github.com/actions/cache/commit/55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+  CACHE_SAVE_ACTION: &cache_save_action actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+  CACHE_RESTORE_ACTION: &cache_restore_action actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+
+  # Paths and key of the Go cache the warm-up job saves for GitHub-hosted runners.
+  GO_CACHE_PATHS: |
+    ~/.cache/go-build
+    ~/go/pkg/mod
+  GO_CACHE_KEY: runner-benchmark-go-${{ github.run_id }}-${{ github.run_attempt }}
+
   # https://github.com/actions/upload-artifact/commit/043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
   UPLOAD_ARTIFACT_ACTION: &upload_artifact_action actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
 
@@ -27,8 +37,10 @@ env:
   DOWNLOAD_ARTIFACT_ACTION: &download_artifact_action actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
 
 jobs:
-  # Fills the Actions cache that actions/setup-go restores on GitHub-hosted runners,
-  # so the "default setup" timings reflect GitHub's recommended (cached) setup.
+  # Saves a Go build and module cache for this commit, so the "default setup" timings give
+  # GitHub-hosted runners a fully warm Actions cache. setup-go's own cache is keyed on go.sum
+  # only: it restores whatever entry already exists for that key (often stale) and then skips
+  # saving, so it can't be relied on to hold this commit's build.
   warm-github-cache:
     name: Warm GitHub cache
     runs-on: ubuntu-latest
@@ -40,12 +52,18 @@ jobs:
         uses: *setup_go_action
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache: true
+          cache: false
 
       - name: Build and Test
         run: |
           go build ./...
           go test -race -count=1 ./... > /dev/null
+
+      - name: Save Go Cache
+        uses: *cache_save_action
+        with:
+          path: ${{ env.GO_CACHE_PATHS }}
+          key: ${{ env.GO_CACHE_KEY }}
 
   measure:
     needs: warm-github-cache
@@ -56,15 +74,11 @@ jobs:
         # blacksmith-8vcpu is the tier Echo's regular CI uses.
         runner: [ubuntu-latest, blacksmith-4vcpu-ubuntu-2404, blacksmith-8vcpu-ubuntu-2404]
         attempt: [1, 2, 3, 4, 5]
-        # Each runner's recommended setup: GitHub restores the Actions cache through setup-go;
-        # Blacksmith's Go build cache replaces it (docs.blacksmith.sh/blacksmith-caching/go-build-caching).
+        # Each runner's recommended setup: GitHub restores the Actions cache; Blacksmith's
+        # Go build cache replaces it (docs.blacksmith.sh/blacksmith-caching/go-build-caching).
         include:
           - runner: ubuntu-latest
-            setup_go_cache: true
-          - runner: blacksmith-4vcpu-ubuntu-2404
-            setup_go_cache: false
-          - runner: blacksmith-8vcpu-ubuntu-2404
-            setup_go_cache: false
+            github_cache: true
     name: ${{ matrix.runner }} (${{ matrix.attempt }})
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
@@ -76,7 +90,15 @@ jobs:
         uses: *setup_go_action
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache: ${{ matrix.setup_go_cache }}
+          cache: false
+
+      - name: Restore Go Cache
+        if: matrix.github_cache
+        uses: *cache_restore_action
+        with:
+          path: ${{ env.GO_CACHE_PATHS }}
+          key: ${{ env.GO_CACHE_KEY }}
+          fail-on-cache-miss: true
 
       - name: Measure
         env:
@@ -107,7 +129,7 @@ jobs:
           # Fixed iteration counts, so faster CPUs finish sooner instead of running more iterations.
           measure bench cold go test -run='^$' -bench=. -benchtime=2000x -count=2 ./... > "$out/bench.txt"
 
-          # Default: each runner's recommended setup (GitHub: Actions cache restored by setup-go;
+          # Default: each runner's recommended setup (GitHub: the Actions cache restored above;
           # Blacksmith: its transparent Go build cache).
           measure build_default go build ./...
           measure test_race_default go test -race -count=1 ./... > /dev/null
@@ -158,7 +180,7 @@ jobs:
           gh api --paginate "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs?per_page=100" \
             --jq '.jobs[] | select(.name != "Report") | [.name, .created_at, .started_at,
               ([.steps[]? | select(.name == "Set up Go")][0] // {} | .started_at // ""),
-              ([.steps[]? | select(.name == "Set up Go")][0] // {} | .completed_at // "")] | @tsv' > queue.tsv
+              ([.steps[]? | select(.name == "Set up Go" or .name == "Restore Go Cache") | .completed_at // ""] | max // "")] | @tsv' > queue.tsv
 
       - name: Summarize
         run: |
@@ -201,7 +223,7 @@ jobs:
           print("## Runner benchmark\n")
           print("Medians of %s runs per runner on the same commit. **Cold** rows run with no build cache "
                 "(compares CPUs). **Default setup** rows use each runner's recommended setup "
-                "(GitHub: Actions cache restored by `setup-go`, timed in the Set up Go row; "
+                "(GitHub: a warm Actions cache for this commit, restore timed in the Set up Go row; "
                 "Blacksmith: its transparent Go build cache).\n"
                 % max(len(v) for v in by_runner.values()))
           print("| | " + " | ".join(order) + " |")
@@ -218,14 +240,19 @@ jobs:
                   else:
                       cells.append("%.1f s" % (m / 1000))
               print("| %s | %s |" % (label, " | ".join(cells)))
-          print("| Set up Go step (GitHub: includes cache restore) | %s |" % " | ".join(
+          print("| Set up Go (GitHub: includes Actions cache restore) | %s |" % " | ".join(
               "%.0f s" % med(setup_go[r]) if setup_go[r] else "n/a" for r in order))
           print("| Queue time (wait for runner) | %s |" % " | ".join(
               "%.0f s" % med(queue[r]) if queue[r] else "n/a" for r in order))
           print("| vCPUs / RAM | %s |" % " | ".join(
               ("%s / %s GB" % (by_runner[r][0].get("nproc"), by_runner[r][0].get("mem_gb"))) if by_runner[r] else "n/a"
               for r in order))
-          print("| CPU | %s |" % " | ".join(by_runner[r][0].get("cpu", "?") if by_runner[r] else "n/a" for r in order))
+          def cpus(r):
+              counts = {}
+              for x in by_runner[r]:
+                  counts[x.get("cpu", "?")] = counts.get(x.get("cpu", "?"), 0) + 1
+              return ", ".join("%s (%d)" % (c, n) for c, n in sorted(counts.items(), key=lambda kv: -kv[1])) or "n/a"
+          print("| CPU (runs) | %s |" % " | ".join(cpus(r) for r in order))
           print("\nSpeedup is relative to ubuntu-latest (higher is faster).\n")
 
           os.makedirs("merged", exist_ok=True)
