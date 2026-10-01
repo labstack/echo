@@ -12,6 +12,11 @@ on:
 permissions:
   contents: read # to fetch code (actions/checkout)
 
+# Cancel superseded runs of the same pull request; runs on master always finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   LATEST_GO_VERSION: "1.27"
 
@@ -20,6 +25,10 @@ env:
 
   # https://github.com/actions/setup-go/commit/924ae3a1cded613372ab5595356fb5720e22ba16
   SETUP_GO_ACTION: &setup_go_action actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+
+  # https://github.com/actions/cache/commit/55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+  CACHE_RESTORE_ACTION: &cache_restore_action actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+  CACHE_SAVE_ACTION: &cache_save_action actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
 
 jobs:
   check:
@@ -33,6 +42,30 @@ jobs:
         with:
           go-version: ${{ env.LATEST_GO_VERSION }}
           check-latest: true
+          cache: false
+
+      # setup-go's built-in cache is keyed on go.sum only, so its entry is never refreshed and
+      # soon holds little of the current build. Restore the latest cache saved for this job
+      # instead, and save a new one after runs other than pull requests, which only restore.
+      - name: Find Go Cache
+        id: go-cache
+        shell: bash
+        run: |
+          {
+            echo "build=$(go env GOCACHE)"
+            echo "mod=$(go env GOMODCACHE)"
+            echo "key=go-${{ runner.os }}-${{ runner.arch }}-$(go env GOVERSION)-${{ github.job }}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Restore Go Cache
+        id: go-cache-restore
+        uses: *cache_restore_action
+        with:
+          path: |
+            ${{ steps.go-cache.outputs.build }}
+            ${{ steps.go-cache.outputs.mod }}
+          key: ${{ steps.go-cache.outputs.key }}-${{ github.sha }}
+          restore-keys: ${{ steps.go-cache.outputs.key }}-
 
       - name: Run golint
         run: |
@@ -49,3 +82,12 @@ jobs:
           go version
           go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./...
+
+      - name: Save Go Cache
+        if: github.event_name != 'pull_request' && steps.go-cache-restore.outputs.cache-hit != 'true'
+        uses: *cache_save_action
+        with:
+          path: |
+            ${{ steps.go-cache.outputs.build }}
+            ${{ steps.go-cache.outputs.mod }}
+          key: ${{ steps.go-cache.outputs.key }}-${{ github.sha }}
