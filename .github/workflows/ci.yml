@@ -45,7 +45,7 @@ jobs:
         with:
           go-version: ${{ matrix.go }}
 
-      - name: CI
+      - name: Run Tests
         run: go test -race --coverprofile=coverage.coverprofile --covermode=atomic ./...
 
       - name: Upload coverage to Codecov
