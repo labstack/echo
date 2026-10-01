@@ -56,6 +56,7 @@ type gzipResponseWriter struct {
 }
 
 // Gzip returns a middleware which compresses HTTP response using gzip compression scheme.
+// Informational responses are sent immediately without compression.
 func Gzip() echo.MiddlewareFunc {
 	return GzipWithConfig(GzipConfig{})
 }
@@ -145,6 +146,12 @@ func (config GzipConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 }
 
 func (w *gzipResponseWriter) WriteHeader(code int) {
+	if code >= 100 && code < 200 && code != http.StatusSwitchingProtocols {
+		if !w.wroteHeader && !w.wroteBody {
+			w.ResponseWriter.WriteHeader(code)
+		}
+		return
+	}
 	w.Header().Del(echo.HeaderContentLength) // Issue #444
 
 	w.wroteHeader = true

@@ -19,7 +19,7 @@ import (
 type Response struct {
 	http.ResponseWriter
 	logger *slog.Logger
-	// beforeFuncs are functions that are called just before the response (status) is written. Happens only once, during WriteHeader call.
+	// beforeFuncs are functions that are called just before the final response (status) is written. Happens only once, during WriteHeader call.
 	beforeFuncs []func()
 	// afterFuncs are functions that are called just after the response is written. During every `Write` method call.
 	afterFuncs []func()
@@ -33,7 +33,7 @@ func NewResponse(w http.ResponseWriter, logger *slog.Logger) (r *Response) {
 	return &Response{ResponseWriter: w, logger: logger}
 }
 
-// Before registers a function which is called just before the response (status) is written.
+// Before registers a function which is called just before the final response (status) is written.
 func (r *Response) Before(fn func()) {
 	r.beforeFuncs = append(r.beforeFuncs, fn)
 }
@@ -46,10 +46,16 @@ func (r *Response) After(fn func()) {
 // WriteHeader sends an HTTP response header with status code. If WriteHeader is
 // not called explicitly, the first call to Write will trigger an implicit
 // WriteHeader(http.StatusOK). Thus explicit calls to WriteHeader are mainly
-// used to send error codes.
+// used to send error codes or informational responses.
+// Informational responses (100-199, except 101 Switching Protocols) are sent
+// immediately without changing Status or Committed or calling Before functions.
 func (r *Response) WriteHeader(code int) {
 	if r.Committed {
 		r.logger.Error("echo: response already written to client")
+		return
+	}
+	if code >= 100 && code < 200 && code != http.StatusSwitchingProtocols {
+		r.ResponseWriter.WriteHeader(code)
 		return
 	}
 	r.Status = code
@@ -141,6 +147,10 @@ type delayedStatusWriter struct {
 }
 
 func (w *delayedStatusWriter) WriteHeader(statusCode int) {
+	if statusCode >= 100 && statusCode < 200 && statusCode != http.StatusSwitchingProtocols {
+		w.ResponseWriter.WriteHeader(statusCode)
+		return
+	}
 	// in case something else writes status code explicitly before us we need mark response committed
 	w.committed = true
 	w.ResponseWriter.WriteHeader(statusCode)
@@ -175,10 +185,10 @@ func (w *delayedStatusWriter) Unwrap() http.ResponseWriter {
 // headResponseWriter captures the response that a GET handler would produce for a
 // rewritten HEAD request, suppresses the body, and preserves response metadata.
 //
-// The writer buffers status until the downstream handler returns, so it
+// The writer buffers the final status until the downstream handler returns, so it
 // can compute a Content-Length value from the number of body bytes that would have
 // been written by the GET handler. If the handler already sets Content-Length
-// explicitly, that value is preserved.
+// explicitly, that value is preserved. Informational responses are forwarded immediately.
 //
 // Flush is intentionally a no-op because emitting headers early would prevent
 // finalizing Content-Length after the handler completes.
@@ -195,6 +205,10 @@ func (w *headResponseWriter) Header() http.Header {
 
 func (w *headResponseWriter) WriteHeader(code int) {
 	if w.wroteStatus {
+		return
+	}
+	if code >= 100 && code < 200 && code != http.StatusSwitchingProtocols {
+		w.rw.WriteHeader(code)
 		return
 	}
 	w.wroteStatus = true
