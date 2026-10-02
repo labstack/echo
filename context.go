@@ -5,6 +5,7 @@ package echo
 
 import (
 	"bytes"
+	stdContext "context"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -460,11 +461,26 @@ func (c *Context) Bind(i any) error {
 	return c.echo.Binder.Bind(c, i)
 }
 
+type validatorCtx interface {
+	ValidateCtx(ctx stdContext.Context, i any) error
+}
+
 // Validate validates provided `i`. It is usually called after `Context#Bind()`.
 // Validator must be registered using `Echo#Validator`.
+// If the registered Validator also implements ValidateCtx(context.Context, any) error,
+// that method is called instead of Validate, with the current request's context.
+// The validator must still implement Validate to satisfy the Validator interface.
+// If there is no request, context.Background() is used.
 func (c *Context) Validate(i any) error {
 	if c.echo.Validator == nil {
 		return ErrValidatorNotRegistered
+	}
+	if v, ok := c.echo.Validator.(validatorCtx); ok {
+		ctx := stdContext.Background()
+		if req := c.Request(); req != nil {
+			ctx = req.Context()
+		}
+		return v.ValidateCtx(ctx, i)
 	}
 	return c.echo.Validator.Validate(i)
 }
