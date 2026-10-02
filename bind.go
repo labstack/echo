@@ -23,6 +23,10 @@ type Binder interface {
 }
 
 // DefaultBinder is the default implementation of the Binder interface.
+// For path, query, header, and form binding, time.Time fields may use a format tag:
+// "date-time" uses the standard RFC3339 decoding, "date-time-local" accepts
+// "2006-01-02T15:04:05" with optional fractional seconds and assigns UTC, and other
+// values specify Go time layouts. JSON and XML decoding do not use this tag.
 type DefaultBinder struct{}
 
 // BindUnmarshaler is the interface used to wrap the UnmarshalParam method.
@@ -430,10 +434,16 @@ func unmarshalInputToField(valueKind reflect.Kind, val string, field reflect.Val
 	}
 
 	fieldIValue := field.Addr().Interface()
-	// Handle time.Time with custom format tag
-	if formatTag != "" {
+	// date-time uses the same TextUnmarshaler as an untagged time.Time.
+	if formatTag != "" && formatTag != "date-time" {
 		if _, isTime := fieldIValue.(*time.Time); isTime {
-			t, err := time.Parse(formatTag, val)
+			layout := formatTag
+			if formatTag == "date-time-local" {
+				// OpenAPI local date-times have no timezone. time.Parse assigns UTC,
+				// as it does for custom layouts without timezone information.
+				layout = "2006-01-02T15:04:05"
+			}
+			t, err := time.Parse(layout, val)
 			if err != nil {
 				return true, err
 			}
