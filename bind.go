@@ -433,7 +433,12 @@ func unmarshalInputToField(valueKind reflect.Kind, val string, field reflect.Val
 	// Handle time.Time with custom format tag
 	if formatTag != "" {
 		if _, isTime := fieldIValue.(*time.Time); isTime {
-			t, err := time.Parse(formatTag, val)
+			layout := formatTag
+			switch formatTag {
+			case "date-time", "date-time-local":
+				layout = time.RFC3339
+			}
+			t, err := time.Parse(layout, val)
 			if err != nil {
 				return true, err
 			}

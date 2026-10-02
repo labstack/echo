@@ -1698,3 +1698,26 @@ func TestTimeFormatBinding(t *testing.T) {
 		})
 	}
 }
+
+func TestOpenAPIFormatTimeBinding(t *testing.T) {
+	type TestStruct struct {
+		DateTime      time.Time  `query:"date_time" format:"date-time"`
+		DateTimeLocal *time.Time `query:"date_time_local" format:"date-time-local"`
+	}
+
+	e := New()
+	req := httptest.NewRequest(http.MethodGet, "/?date_time=2023-12-25T14:30:00Z&date_time_local=2023-12-25T14:30:00Z", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	var result TestStruct
+	err := c.Bind(&result)
+
+	expected := time.Date(2023, 12, 25, 14, 30, 0, 0, time.UTC)
+	if assert.NoError(t, err) {
+		assert.True(t, expected.Equal(result.DateTime))
+		if assert.NotNil(t, result.DateTimeLocal) {
+			assert.True(t, expected.Equal(*result.DateTimeLocal))
+		}
+	}
+}
