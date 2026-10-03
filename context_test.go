@@ -1374,6 +1374,22 @@ func TestContext_RealIP(t *testing.T) {
 			},
 			"89.89.89.89",
 		},
+		{
+			&context{
+				request: &http.Request{
+					RemoteAddr: "89.89.89.89",
+				},
+			},
+			"89.89.89.89",
+		},
+		{
+			&context{
+				request: &http.Request{
+					RemoteAddr: "2001:db8::1",
+				},
+			},
+			"2001:db8::1",
+		},
 	}
 
 	for _, tt := range tests {
