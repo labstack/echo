@@ -413,6 +413,24 @@ func (c *Context) FormFile(name string) (*multipart.FileHeader, error) {
 	return fh, nil
 }
 
+// FormFiles returns the multipart form files for the provided name.
+//
+// It is the plural counterpart of FormFile and is meant for form fields that carry more than one file, such as
+// `<input type="file" multiple>` or JavaScript FormData appending several files under the same field name.
+// FormFile only returns the first file for such fields, FormFiles returns all of them in the order they were sent.
+//
+// Returns http.ErrMissingFile when no files exist under the given name, matching FormFile behavior.
+func (c *Context) FormFiles(name string) ([]*multipart.FileHeader, error) {
+	if err := c.request.ParseMultipartForm(c.formParseMaxMemory); err != nil {
+		return nil, err
+	}
+	files := c.request.MultipartForm.File[name]
+	if len(files) == 0 {
+		return nil, http.ErrMissingFile
+	}
+	return files, nil
+}
+
 // MultipartForm returns the multipart form.
 func (c *Context) MultipartForm() (*multipart.Form, error) {
 	err := c.request.ParseMultipartForm(c.formParseMaxMemory)

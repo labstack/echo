@@ -1018,6 +1018,90 @@ func TestContextFormFile(t *testing.T) {
 	}
 }
 
+func TestContextFormFiles(t *testing.T) {
+	e := New()
+	buf := new(bytes.Buffer)
+	mw := multipart.NewWriter(buf)
+
+	// a non-file field and multiple files under the same field name, sent in the order they were written to the form
+	if err := mw.WriteField("name", "Jon Snow"); err != nil {
+		t.Fatal(err)
+	}
+	for _, filename := range []string{"a.txt", "b.txt", "c.txt"} {
+		w, err := mw.CreateFormFile("files", filename)
+		if assert.NoError(t, err) {
+			_, _ = w.Write([]byte(filename))
+		}
+	}
+	if err := mw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/", buf)
+	req.Header.Set(HeaderContentType, mw.FormDataContentType())
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	files, err := c.FormFiles("files")
+	if assert.NoError(t, err) && assert.Len(t, files, 3) {
+		assert.Equal(t, "a.txt", files[0].Filename)
+		assert.Equal(t, "b.txt", files[1].Filename)
+		assert.Equal(t, "c.txt", files[2].Filename)
+	}
+}
+
+func TestContextFormFiles_singleFile(t *testing.T) {
+	e := New()
+	buf := new(bytes.Buffer)
+	mw := multipart.NewWriter(buf)
+	w, err := mw.CreateFormFile("files", "a.txt")
+	if assert.NoError(t, err) {
+		_, _ = w.Write([]byte("a"))
+	}
+	if assert.NoError(t, mw.Close()) {
+		req := httptest.NewRequest(http.MethodPost, "/", buf)
+		req.Header.Set(HeaderContentType, mw.FormDataContentType())
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		files, err := c.FormFiles("files")
+		if assert.NoError(t, err) && assert.Len(t, files, 1) {
+			assert.Equal(t, "a.txt", files[0].Filename)
+		}
+	}
+}
+
+func TestContextFormFiles_missing(t *testing.T) {
+	e := New()
+	buf := new(bytes.Buffer)
+	mw := multipart.NewWriter(buf)
+	w, err := mw.CreateFormFile("files", "a.txt")
+	if assert.NoError(t, err) {
+		_, _ = w.Write([]byte("a"))
+	}
+	if assert.NoError(t, mw.Close()) {
+		req := httptest.NewRequest(http.MethodPost, "/", buf)
+		req.Header.Set(HeaderContentType, mw.FormDataContentType())
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		files, err := c.FormFiles("other")
+		assert.Nil(t, files)
+		assert.ErrorIs(t, err, http.ErrMissingFile)
+	}
+}
+
+func TestContextFormFiles_nonMultipart(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("name=value"))
+	req.Header.Set(HeaderContentType, MIMEApplicationForm)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	files, err := c.FormFiles("files")
+	assert.Nil(t, files)
+	assert.ErrorIs(t, err, http.ErrNotMultipart)
+}
+
 func TestContextMultipartForm(t *testing.T) {
 	e := New()
 	buf := new(bytes.Buffer)
