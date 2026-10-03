@@ -279,6 +279,16 @@ func TestCSRFWithConfig(t *testing.T) {
 			expectErr:       `code=403, message=invalid csrf token`,
 		},
 		{
+			name: "nok, POST empty cookie token + empty client token is blocked",
+			whenHeaders: map[string]string{
+				echo.HeaderCookie:     "_csrf=",
+				echo.HeaderXCSRFToken: "",
+			},
+			whenMethod:      http.MethodPost,
+			expectEmptyBody: true,
+			expectErr:       `code=403, message=invalid csrf token`,
+		},
+		{
 			name: "nok, invalid trusted origin in Config",
 			givenConfig: &CSRFConfig{
 				TrustedOrigins: []string{"http://example.com", "invalid"},
