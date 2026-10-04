@@ -12,9 +12,10 @@ import (
 // routes that share a common middleware or functionality that should be separate
 // from the parent echo instance while still inheriting from it.
 type Group struct {
-	echo       *Echo
-	prefix     string
-	middleware []MiddlewareFunc
+	echo           *Echo
+	prefix         string
+	middleware     []MiddlewareFunc
+	notFoundRoutes map[string]groupNotFoundRoute
 
 	// noAutoRegisterRoutes is a flag that indicates whether Group should NOT register 404 routes automatically
 	// when there are middlewares registered with the group.
@@ -23,11 +24,17 @@ type Group struct {
 	noAutoRegisterRoutes bool
 }
 
+type groupNotFoundRoute struct {
+	route Route
+	path  string
+}
+
 // Use implements `Echo#Use()` for sub-routes within the Group.
 //
 // Important! Group middlewares are executed in case there was no exact route match as by default Group registers
 // `/*` NotFound routes for itself. If this kind of behavior is not needed, then create an Echo instance with the ` noAutoRegisterRoutes `
 // flag set to true. Example `echo.NewWithConfig(echo.Config{NoGroupAutoRegister404Routes: true})`.
+// Explicit catch-all RouteNotFound handlers and their route-level middleware are preserved when Use is called again.
 func (g *Group) Use(middleware ...MiddlewareFunc) {
 	g.middleware = append(g.middleware, middleware...)
 	if len(g.middleware) == 0 {
@@ -41,11 +48,19 @@ func (g *Group) Use(middleware ...MiddlewareFunc) {
 	// So we register catch all route (404 is a safe way to emulate route match) for this group and now during routing the
 	// Router would find route to match our request path and therefore guarantee the middleware(s) will get executed.
 	// Note: we use nil handler so Router would choose the default 404 handler. This may not work with custom routers.
-	if _, err := g.AddRoute(Route{Method: RouteNotFound, Path: "", allowOverwrite: true}); err != nil {
-		panic(err) // this is how `v4` handles errors. `v5` has methods to have panic-free usage
-	}
-	if _, err := g.AddRoute(Route{Method: RouteNotFound, Path: "/*", allowOverwrite: true}); err != nil {
-		panic(err) // this is how `v4` handles errors. `v5` has methods to have panic-free usage
+	for _, path := range []string{"", "/*"} {
+		route := Route{Method: RouteNotFound, Path: path, allowOverwrite: true}
+		if existing, ok := g.notFoundRoutes[path]; ok {
+			if _, err := g.echo.Router().Routes().FindByMethodPath(RouteNotFound, existing.path); err == nil {
+				route = existing.route
+				route.allowOverwrite = true
+			} else {
+				delete(g.notFoundRoutes, path)
+			}
+		}
+		if _, err := g.AddRoute(route); err != nil {
+			panic(err) // this is how `v4` handles errors. `v5` has methods to have panic-free usage
+		}
 	}
 }
 
@@ -208,5 +223,13 @@ func (g *Group) AddRoute(route Route) (RouteInfo, error) {
 	// multiple routes, which would lead to later add() calls overwriting the
 	// middleware from earlier calls.
 	groupRoute := route.WithPrefix(g.prefix, append([]MiddlewareFunc{}, g.middleware...))
-	return g.echo.add(groupRoute)
+	ri, err := g.echo.add(groupRoute)
+	if err == nil && route.Method == RouteNotFound && route.Handler != nil && (route.Path == "" || route.Path == "/*") {
+		if g.notFoundRoutes == nil {
+			g.notFoundRoutes = make(map[string]groupNotFoundRoute)
+		}
+		route.Middlewares = append([]MiddlewareFunc(nil), route.Middlewares...)
+		g.notFoundRoutes[route.Path] = groupNotFoundRoute{route: route, path: ri.Path}
+	}
+	return ri, err
 }
