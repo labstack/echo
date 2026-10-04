@@ -61,6 +61,7 @@ func BindQueryParams(c *Context, target any) error {
 }
 
 // BindBody binds request body contents to bindable object
+// The Content-Type media type is matched case-insensitively.
 // NB: then binding forms take note that this implementation uses standard library form parsing
 // which parses form data from BOTH URL and BODY if content type is not MIMEMultipartForm
 // See non-MIMEMultipartForm: https://golang.org/pkg/net/http/#Request.ParseForm
@@ -71,9 +72,9 @@ func BindBody(c *Context, target any) (err error) {
 		return
 	}
 
-	// mediatype is found like `mime.ParseMediaType()` does it
+	// Like mime.ParseMediaType, normalize the media type without changing its parameters.
 	base, _, _ := strings.Cut(req.Header.Get(HeaderContentType), ";")
-	mediatype := strings.TrimSpace(base)
+	mediatype := strings.ToLower(strings.TrimSpace(base))
 
 	switch mediatype {
 	case MIMEApplicationJSON:
