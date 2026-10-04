@@ -467,14 +467,18 @@ type validatorCtx interface {
 
 // Validate validates provided `i`. It is usually called after `Context#Bind()`.
 // Validator must be registered using `Echo#Validator`.
-// If the registered Validator also implements ValidateCtx(context.Context, any) error,
-// that method is called instead of Validate, with the current request's context.
-// The validator must still implement Validate to satisfy the Validator interface.
-// If there is no request, context.Background() is used.
 func (c *Context) Validate(i any) error {
 	if c.echo.Validator == nil {
 		return ErrValidatorNotRegistered
 	}
+	return c.echo.Validator.Validate(i)
+}
+
+// ValidateCtx validates i using the current request's context when the registered
+// Validator implements ValidateCtx(context.Context, any) error. Otherwise it calls Validate.
+// The validator must still implement Validate to satisfy the Validator interface.
+// If there is no request, context.Background() is used.
+func (c *Context) ValidateCtx(i any) error {
 	if v, ok := c.echo.Validator.(validatorCtx); ok {
 		ctx := stdContext.Background()
 		if req := c.Request(); req != nil {
@@ -482,7 +486,7 @@ func (c *Context) Validate(i any) error {
 		}
 		return v.ValidateCtx(ctx, i)
 	}
-	return c.echo.Validator.Validate(i)
+	return c.Validate(i)
 }
 
 // Render renders a template with data and sends a text/html response with status
