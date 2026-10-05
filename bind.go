@@ -26,8 +26,8 @@ type Binder interface {
 // For path, query, header, and form binding, time.Time and *time.Time fields (not slices)
 // may use a format tag: "date-time" uses the standard RFC3339 decoding, "date-time-local"
 // accepts "2006-01-02T15:04:05" with optional fractional seconds, "date" accepts
-// "2006-01-02", and other values specify Go time layouts. Values without timezone
-// information are parsed as UTC. JSON and XML decoding do not use this tag.
+// "2006-01-02", and other values specify Go time layouts. "date", "date-time-local", and
+// layouts without a timezone give UTC times. JSON and XML decoding do not use this tag.
 // HTML datetime-local inputs omit seconds by default, so bind them with a Go layout
 // such as "2006-01-02T15:04" instead of "date-time-local".
 type DefaultBinder struct{}
