@@ -1684,3 +1684,146 @@ func TestTimeFormatBinding(t *testing.T) {
 		})
 	}
 }
+
+func TestOpenAPIFormatTimeBinding(t *testing.T) {
+	type TestStruct struct {
+		DateTime         time.Time  `param:"date_time" query:"date_time" header:"date_time" form:"date_time" format:"date-time"`
+		DateTimePtr      *time.Time `param:"date_time_ptr" query:"date_time_ptr" header:"date_time_ptr" form:"date_time_ptr" format:"date-time"`
+		DateTimeLocal    time.Time  `param:"date_time_local" query:"date_time_local" header:"date_time_local" form:"date_time_local" format:"date-time-local"`
+		DateTimeLocalPtr *time.Time `param:"date_time_local_ptr" query:"date_time_local_ptr" header:"date_time_local_ptr" form:"date_time_local_ptr" format:"date-time-local"`
+	}
+
+	utc := time.Date(2023, 12, 25, 14, 30, 45, 0, time.UTC)
+	testCases := []struct {
+		name, field, value string
+		want               time.Time
+		wantError          bool
+	}{
+		{name: "date-time UTC", field: "date_time", value: "2023-12-25T14:30:45Z", want: utc},
+		{name: "date-time offset and fraction", field: "date_time", value: "2023-12-25T14:30:45.123456789+02:00", want: time.Date(2023, 12, 25, 14, 30, 45, 123456789, time.FixedZone("", 2*60*60))},
+		{name: "date-time requires timezone", field: "date_time", value: "2023-12-25T14:30:45", wantError: true},
+		{name: "date-time invalid date", field: "date_time", value: "2023-02-30T14:30:45Z", wantError: true},
+		{name: "local date-time", field: "date_time_local", value: "2023-12-25T14:30:45", want: utc},
+		{name: "local date-time fraction", field: "date_time_local", value: "2023-12-25T14:30:45.123456789", want: utc.Add(123456789 * time.Nanosecond)},
+		{name: "local date-time rejects UTC suffix", field: "date_time_local", value: "2023-12-25T14:30:45Z", wantError: true},
+		{name: "local date-time rejects offset", field: "date_time_local", value: "2023-12-25T14:30:45+02:00", wantError: true},
+		{name: "local date-time requires seconds", field: "date_time_local", value: "2023-12-25T14:30", wantError: true},
+		{name: "local date-time invalid date", field: "date_time_local", value: "2023-02-30T14:30:45", wantError: true},
+	}
+	for _, source := range []string{"param", "query", "header", "form", "multipart"} {
+		for _, tc := range testCases {
+			for _, pointer := range []bool{false, true} {
+				t.Run(fmt.Sprintf("%s/%s/pointer=%t", source, tc.name, pointer), func(t *testing.T) {
+					field := tc.field
+					if pointer {
+						field += "_ptr"
+					}
+					req := httptest.NewRequest(http.MethodGet, "/", nil)
+					switch source {
+					case "query":
+						req.URL.RawQuery = url.Values{field: {tc.value}}.Encode()
+					case "header":
+						req.Header.Set(field, tc.value)
+					case "form":
+						req = httptest.NewRequest(http.MethodPost, "/", strings.NewReader(url.Values{field: {tc.value}}.Encode()))
+						req.Header.Set(HeaderContentType, MIMEApplicationForm)
+					case "multipart":
+						var body bytes.Buffer
+						writer := multipart.NewWriter(&body)
+						if !assert.NoError(t, writer.WriteField(field, tc.value)) || !assert.NoError(t, writer.Close()) {
+							return
+						}
+						req = httptest.NewRequest(http.MethodPost, "/", &body)
+						req.Header.Set(HeaderContentType, writer.FormDataContentType())
+					}
+					c := New().NewContext(req, httptest.NewRecorder())
+					c.SetParamNames(field)
+					c.SetParamValues(tc.value)
+					b := new(DefaultBinder)
+					var result TestStruct
+					var err error
+					switch source {
+					case "param":
+						err = b.BindPathParams(c, &result)
+					case "query":
+						err = b.BindQueryParams(c, &result)
+					case "header":
+						err = b.BindHeaders(c, &result)
+					default:
+						err = b.BindBody(c, &result)
+					}
+					if tc.wantError {
+						var he *HTTPError
+						if assert.ErrorAs(t, err, &he) {
+							assert.Equal(t, http.StatusBadRequest, he.Code)
+						}
+						return
+					}
+					if !assert.NoError(t, err) {
+						return
+					}
+					actual, actualPtr := result.DateTime, result.DateTimePtr
+					if tc.field == "date_time_local" {
+						actual, actualPtr = result.DateTimeLocal, result.DateTimeLocalPtr
+					}
+					if pointer {
+						if !assert.NotNil(t, actualPtr) {
+							return
+						}
+						actual = *actualPtr
+					}
+					assert.True(t, tc.want.Equal(actual), "expected %v, got %v", tc.want, actual)
+					_, wantOffset := tc.want.Zone()
+					_, actualOffset := actual.Zone()
+					assert.Equal(t, wantOffset, actualOffset)
+					if tc.field == "date_time_local" {
+						assert.Same(t, time.UTC, actual.Location())
+					}
+				})
+			}
+		}
+	}
+}
+
+func TestOpenAPIFormatTimeBindingJSON(t *testing.T) {
+	for _, tc := range []struct {
+		name, value string
+		wantError   bool
+	}{
+		{name: "RFC3339 decoding ignores format tag", value: "2023-12-25T14:30:45Z"},
+		{name: "local format tag does not enable timezone-free JSON", value: "2023-12-25T14:30:45", wantError: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var result struct {
+				Time *time.Time `json:"time" format:"date-time-local"`
+			}
+			req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(fmt.Sprintf(`{"time":%q}`, tc.value)))
+			req.Header.Set(HeaderContentType, MIMEApplicationJSON)
+			err := New().NewContext(req, httptest.NewRecorder()).Bind(&result)
+			if tc.wantError {
+				var he *HTTPError
+				if assert.ErrorAs(t, err, &he) {
+					assert.Equal(t, http.StatusBadRequest, he.Code)
+				}
+				return
+			}
+			if assert.NoError(t, err) && assert.NotNil(t, result.Time) {
+				assert.True(t, time.Date(2023, 12, 25, 14, 30, 45, 0, time.UTC).Equal(*result.Time))
+			}
+		})
+	}
+}
+
+func TestOpenAPIFormatTimeBindingCustomTypes(t *testing.T) {
+	var result struct {
+		Time Timestamp `query:"time" format:"date-time-local"`
+		Text string    `query:"text" format:"date-time-local"`
+	}
+	value := "2023-12-25T14:30:45Z"
+	req := httptest.NewRequest(http.MethodGet, "/?"+url.Values{"time": {value}, "text": {value}}.Encode(), nil)
+	err := New().NewContext(req, httptest.NewRecorder()).Bind(&result)
+	if assert.NoError(t, err) {
+		assert.True(t, time.Date(2023, 12, 25, 14, 30, 45, 0, time.UTC).Equal(time.Time(result.Time)))
+		assert.Equal(t, value, result.Text)
+	}
+}
