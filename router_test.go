@@ -3164,7 +3164,7 @@ func TestDefaultRouter_RemoveCustomMethod(t *testing.T) {
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, httptest.NewRequest("PURGE", "/cache", nil))
 	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
-	assert.Equal(t, "GET, OPTIONS", rec.Header().Get(HeaderAllow))
+	assert.Equal(t, "OPTIONS, GET", rec.Header().Get(HeaderAllow))
 
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, httptest.NewRequest("PURGE", "/purge-only", nil))
