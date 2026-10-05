@@ -183,14 +183,13 @@ func (g *Group) File(path, file string, middleware ...MiddlewareFunc) RouteInfo 
 
 // RouteNotFound implements `Echo#RouteNotFound()` for sub-routes within the Group.
 //
-// Important! Each `Use` call that leaves the group with middlewares, including the calls `Echo#Group()` and
-// `Group#Group()` make when the new group has middlewares, (re)registers catch-all NotFound routes for the group
-// prefix and prefix + `/*`. These replace NotFound handlers registered earlier for the same paths by any group or by
-// Echo, unless `Config.NoGroupAutoRegister404Routes` is set. Register custom ones after the last such call for that
-// prefix. Doing so panics if the Router does not allow overwriting routes (`echo.New()` allows it); then use the
-// router-wide `RouterConfig.NotFoundHandler`, or set the Echo-wide `Config.NoGroupAutoRegister404Routes`, under
-// which no group registers these routes and group middlewares run for unmatched paths only where you register both
-// paths yourself after the last `Use`.
+// Important! When the group has middlewares, each `Use` call (re)registers catch-all NotFound routes for the group
+// prefix and prefix + `/*` with the group middlewares, unless `Config.NoGroupAutoRegister404Routes` is set. For a
+// given path the last registered NotFound route wins, and it runs only the group middlewares it was registered with:
+// these catch-all routes replace handlers registered earlier for those paths (by any group or by Echo), and a
+// handler registered later replaces them. Register custom ones on this group after its last `Use` to keep its
+// middlewares. On a Router that does not allow overwriting routes this panics; use the router-wide
+// `RouterConfig.NotFoundHandler` there, or set `Config.NoGroupAutoRegister404Routes` and register your own.
 //
 // Example: `g.RouteNotFound("/*", func(c *echo.Context) error { return c.NoContent(http.StatusNotFound) })`
 func (g *Group) RouteNotFound(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo {
