@@ -1839,3 +1839,37 @@ func TestOpenAPIFormatTimeBindingCustomTypes(t *testing.T) {
 		assert.Equal(t, value, result.Text)
 	}
 }
+
+func TestOpenAPIFormatTimeBindingEdgeCases(t *testing.T) {
+	type TestStruct struct {
+		DateTime      time.Time   `query:"date_time" format:"date-time"`
+		DateTimeLocal time.Time   `query:"date_time_local" format:"date-time-local"`
+		Date          time.Time   `query:"full_date" format:"date"`
+		Slice         []time.Time `query:"slice" format:"date-time-local"`
+	}
+	testCases := []struct {
+		name, query string
+		wantError   bool
+	}{
+		{name: "nok, literal date-time name is not a value", query: "date_time=date-time", wantError: true},
+		{name: "nok, literal date-time-local name is not a value", query: "date_time_local=date-time-local", wantError: true},
+		{name: "nok, literal date name is not a value", query: "full_date=date", wantError: true},
+		{name: "ok, slices ignore the format tag", query: "slice=2023-12-25T14%3A30%3A45Z"},
+		{name: "nok, slices ignore the format tag", query: "slice=2023-12-25T14%3A30%3A45", wantError: true},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/?"+tc.query, nil)
+			c := New().NewContext(req, httptest.NewRecorder())
+			var result TestStruct
+			err := BindQueryParams(c, &result)
+			if tc.wantError {
+				assert.Error(t, err)
+				return
+			}
+			if assert.NoError(t, err) && assert.Len(t, result.Slice, 1) {
+				assert.True(t, time.Date(2023, 12, 25, 14, 30, 45, 0, time.UTC).Equal(result.Slice[0]))
+			}
+		})
+	}
+}
