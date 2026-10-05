@@ -183,9 +183,9 @@ func (g *Group) File(path, file string, middleware ...MiddlewareFunc) RouteInfo 
 
 // RouteNotFound implements `Echo#RouteNotFound()` for sub-routes within the Group.
 //
-// Important! When the group has middlewares, `Use` (re)registers catch-all `""` and `/*` NotFound routes for the
-// group, replacing handlers registered for those paths before it. Register them after `Use` or pass the
-// middlewares to `Group()`.
+// Important! When the group has middlewares, every `Use` call (re)registers catch-all `""` and `/*` NotFound routes
+// for the group, replacing handlers registered for those paths before it (unless `NoGroupAutoRegister404Routes` is
+// set). Register custom handlers for those paths after the last `Use` call.
 //
 // Example: `g.RouteNotFound("/*", func(c *echo.Context) error { return c.NoContent(http.StatusNotFound) })`
 func (g *Group) RouteNotFound(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo {
