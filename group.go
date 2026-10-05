@@ -191,8 +191,8 @@ func (g *Group) File(path, file string, middleware ...MiddlewareFunc) RouteInfo 
 // those paths (by any group or by Echo), and a handler registered later replaces them. Register custom ones on this
 // group after the last such call for its prefix to keep its middlewares. On a Router that does not allow overwriting
 // routes this panics; use the router-wide `RouterConfig.NotFoundHandler` there, or set
-// `Config.NoGroupAutoRegister404Routes` and register your own for every group whose middlewares should run for
-// unmatched paths.
+// `Config.NoGroupAutoRegister404Routes` and register both paths yourself on the group whose middlewares should run
+// for them.
 //
 // Example: `g.RouteNotFound("/*", func(c *echo.Context) error { return c.NoContent(http.StatusNotFound) })`
 func (g *Group) RouteNotFound(path string, h HandlerFunc, m ...MiddlewareFunc) RouteInfo {
