@@ -16,7 +16,7 @@ import (
 //
 // Contract between Echo/Context instance and the router:
 //   - all routes should be added through methods on echo.Echo instance.
-//     Reason: Echo instance uses RouteInfo.Params() length to allocate slice for paths parameters (see `Echo.contextPathParamAllocSize`),
+//     Reason: Echo instance uses RouteInfo.Parameters length to allocate slice for paths parameters (see `Echo.contextPathParamAllocSize`),
 //     so Contexts are created with enough capacity.
 //   - Router.Route must handle a Context whose PathValues capacity is smaller than the maximum path parameter count
 //     of its routes (for example, when a route was added after the Context was created, or not through echo.Echo).
