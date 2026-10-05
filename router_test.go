@@ -2930,3 +2930,18 @@ func BenchmarkRouterGooglePlusAPIMisses(b *testing.B) {
 func BenchmarkRouterParamsAndAnyAPI(b *testing.B) {
 	benchmarkRouterRoutes(b, paramAndAnyAPI, paramAndAnyAPIToFind)
 }
+
+func TestRouterFindWithContextCreatedBeforeParamRouteAdded(t *testing.T) {
+	e := New()
+	// the context is created while no route has path params, so it has no room for param values
+	c := e.NewContext(nil, nil).(*context)
+
+	r := e.router
+	r.Add(http.MethodGet, "/users/:id/files/*", handlerFunc)
+
+	r.Find(http.MethodGet, "/users/1/files/a.txt", c)
+
+	assert.Equal(t, "/users/:id/files/*", c.Path())
+	assert.Equal(t, "1", c.Param("id"))
+	assert.Equal(t, "a.txt", c.Param("*"))
+}
