@@ -1577,7 +1577,7 @@ func TestTimeFormatBinding(t *testing.T) {
 		DateTimeLocal time.Time  `form:"datetime_local" format:"2006-01-02T15:04"`
 		Date          time.Time  `query:"date" format:"2006-01-02"`
 		CustomFormat  time.Time  `form:"custom" format:"01/02/2006 15:04:05"`
-		DefaultTime   time.Time  `form:"default_time"`                      // No format tag - should use default parsing
+		DefaultTime   time.Time  `form:"default_time"` // No format tag - should use default parsing
 		PtrTime       *time.Time `query:"ptr_time" format:"2006-01-02"`
 	}
 
@@ -1623,7 +1623,7 @@ func TestTimeFormatBinding(t *testing.T) {
 		{
 			name:        "nok, wrong format should fail",
 			contentType: MIMEApplicationForm,
-			data:        "datetime_local=2023-12-25",  // Missing time part
+			data:        "datetime_local=2023-12-25", // Missing time part
 			expectError: true,
 		},
 	}

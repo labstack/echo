@@ -26,6 +26,8 @@ type Binder interface {
 // "date-time" uses the standard RFC3339 decoding, "date-time-local" accepts
 // "2006-01-02T15:04:05" with optional fractional seconds and assigns UTC, and other
 // values specify Go time layouts. JSON and XML decoding do not use this tag.
+// HTML datetime-local inputs omit seconds by default, so bind them with a Go layout
+// such as "2006-01-02T15:04" instead of "date-time-local".
 type DefaultBinder struct{}
 
 // BindUnmarshaler is the interface used to wrap the UnmarshalParam method.
@@ -46,10 +48,11 @@ type bindMultipleUnmarshaler interface {
 // BindPathParams binds path params to bindable object
 //
 // Time format support: time.Time fields can use `format` tags to specify custom parsing layouts.
-// Example: `param:"created" format:"2006-01-02T15:04"` for datetime-local format
+// Example: `param:"created" format:"2006-01-02T15:04"` for HTML datetime-local input
 // Example: `param:"date" format:"2006-01-02"` for date format
 // Uses Go's standard time format reference time: Mon Jan 2 15:04:05 MST 2006
-// Works with form data, query parameters, and path parameters (not JSON body)
+// OpenAPI format names "date-time" and "date-time-local" are also supported (see DefaultBinder)
+// Works with form data, query parameters, headers, and path parameters (not JSON body)
 // Falls back to default time.Time parsing if no format tag is specified
 func (b *DefaultBinder) BindPathParams(c Context, i interface{}) error {
 	names := c.ParamNames()
