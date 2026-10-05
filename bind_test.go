@@ -1691,6 +1691,8 @@ func TestOpenAPIFormatTimeBinding(t *testing.T) {
 		DateTimePtr      *time.Time `param:"date_time_ptr" query:"date_time_ptr" header:"date_time_ptr" form:"date_time_ptr" format:"date-time"`
 		DateTimeLocal    time.Time  `param:"date_time_local" query:"date_time_local" header:"date_time_local" form:"date_time_local" format:"date-time-local"`
 		DateTimeLocalPtr *time.Time `param:"date_time_local_ptr" query:"date_time_local_ptr" header:"date_time_local_ptr" form:"date_time_local_ptr" format:"date-time-local"`
+		Date             time.Time  `param:"full_date" query:"full_date" header:"full_date" form:"full_date" format:"date"`
+		DatePtr          *time.Time `param:"full_date_ptr" query:"full_date_ptr" header:"full_date_ptr" form:"full_date_ptr" format:"date"`
 	}
 
 	utc := time.Date(2023, 12, 25, 14, 30, 45, 0, time.UTC)
@@ -1699,16 +1701,19 @@ func TestOpenAPIFormatTimeBinding(t *testing.T) {
 		want               time.Time
 		wantError          bool
 	}{
-		{name: "date-time UTC", field: "date_time", value: "2023-12-25T14:30:45Z", want: utc},
-		{name: "date-time offset and fraction", field: "date_time", value: "2023-12-25T14:30:45.123456789+02:00", want: time.Date(2023, 12, 25, 14, 30, 45, 123456789, time.FixedZone("", 2*60*60))},
-		{name: "date-time requires timezone", field: "date_time", value: "2023-12-25T14:30:45", wantError: true},
-		{name: "date-time invalid date", field: "date_time", value: "2023-02-30T14:30:45Z", wantError: true},
-		{name: "local date-time", field: "date_time_local", value: "2023-12-25T14:30:45", want: utc},
-		{name: "local date-time fraction", field: "date_time_local", value: "2023-12-25T14:30:45.123456789", want: utc.Add(123456789 * time.Nanosecond)},
-		{name: "local date-time rejects UTC suffix", field: "date_time_local", value: "2023-12-25T14:30:45Z", wantError: true},
-		{name: "local date-time rejects offset", field: "date_time_local", value: "2023-12-25T14:30:45+02:00", wantError: true},
-		{name: "local date-time requires seconds", field: "date_time_local", value: "2023-12-25T14:30", wantError: true},
-		{name: "local date-time invalid date", field: "date_time_local", value: "2023-02-30T14:30:45", wantError: true},
+		{name: "ok, date-time UTC", field: "date_time", value: "2023-12-25T14:30:45Z", want: utc},
+		{name: "ok, date-time offset and fraction", field: "date_time", value: "2023-12-25T14:30:45.123456789+02:00", want: time.Date(2023, 12, 25, 14, 30, 45, 123456789, time.FixedZone("", 2*60*60))},
+		{name: "nok, date-time requires timezone", field: "date_time", value: "2023-12-25T14:30:45", wantError: true},
+		{name: "nok, date-time invalid date", field: "date_time", value: "2023-02-30T14:30:45Z", wantError: true},
+		{name: "ok, local date-time", field: "date_time_local", value: "2023-12-25T14:30:45", want: utc},
+		{name: "ok, local date-time fraction", field: "date_time_local", value: "2023-12-25T14:30:45.123456789", want: utc.Add(123456789 * time.Nanosecond)},
+		{name: "nok, local date-time rejects UTC suffix", field: "date_time_local", value: "2023-12-25T14:30:45Z", wantError: true},
+		{name: "nok, local date-time rejects offset", field: "date_time_local", value: "2023-12-25T14:30:45+02:00", wantError: true},
+		{name: "nok, local date-time requires seconds", field: "date_time_local", value: "2023-12-25T14:30", wantError: true},
+		{name: "nok, local date-time invalid date", field: "date_time_local", value: "2023-02-30T14:30:45", wantError: true},
+		{name: "ok, date", field: "full_date", value: "2023-12-25", want: time.Date(2023, 12, 25, 0, 0, 0, 0, time.UTC)},
+		{name: "nok, date rejects time", field: "full_date", value: "2023-12-25T14:30:45Z", wantError: true},
+		{name: "nok, date invalid date", field: "full_date", value: "2023-02-30", wantError: true},
 	}
 	for _, source := range []string{"param", "query", "header", "form", "multipart"} {
 		for _, tc := range testCases {
@@ -1763,8 +1768,11 @@ func TestOpenAPIFormatTimeBinding(t *testing.T) {
 						return
 					}
 					actual, actualPtr := result.DateTime, result.DateTimePtr
-					if tc.field == "date_time_local" {
+					switch tc.field {
+					case "date_time_local":
 						actual, actualPtr = result.DateTimeLocal, result.DateTimeLocalPtr
+					case "full_date":
+						actual, actualPtr = result.Date, result.DatePtr
 					}
 					if pointer {
 						if !assert.NotNil(t, actualPtr) {
@@ -1776,7 +1784,7 @@ func TestOpenAPIFormatTimeBinding(t *testing.T) {
 					_, wantOffset := tc.want.Zone()
 					_, actualOffset := actual.Zone()
 					assert.Equal(t, wantOffset, actualOffset)
-					if tc.field == "date_time_local" {
+					if tc.field != "date_time" {
 						assert.Same(t, time.UTC, actual.Location())
 					}
 				})
@@ -1790,8 +1798,8 @@ func TestOpenAPIFormatTimeBindingJSON(t *testing.T) {
 		name, value string
 		wantError   bool
 	}{
-		{name: "RFC3339 decoding ignores format tag", value: "2023-12-25T14:30:45Z"},
-		{name: "local format tag does not enable timezone-free JSON", value: "2023-12-25T14:30:45", wantError: true},
+		{name: "ok, RFC3339 decoding ignores format tag", value: "2023-12-25T14:30:45Z"},
+		{name: "nok, local format tag does not enable timezone-free JSON", value: "2023-12-25T14:30:45", wantError: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var result struct {

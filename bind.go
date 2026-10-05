@@ -22,10 +22,11 @@ type Binder interface {
 }
 
 // DefaultBinder is the default implementation of the Binder interface.
-// For path, query, header, and form binding, time.Time fields may use a format tag:
-// "date-time" uses the standard RFC3339 decoding, "date-time-local" accepts
-// "2006-01-02T15:04:05" with optional fractional seconds and assigns UTC, and other
-// values specify Go time layouts. JSON and XML decoding do not use this tag.
+// For path, query, header, and form binding, time.Time and *time.Time fields (not slices)
+// may use a format tag: "date-time" uses the standard RFC3339 decoding, "date-time-local"
+// accepts "2006-01-02T15:04:05" with optional fractional seconds, "date" accepts
+// "2006-01-02", and other values specify Go time layouts. Values without timezone
+// information are parsed as UTC. JSON and XML decoding do not use this tag.
 // HTML datetime-local inputs omit seconds by default, so bind them with a Go layout
 // such as "2006-01-02T15:04" instead of "date-time-local".
 type DefaultBinder struct{}
@@ -51,7 +52,7 @@ type bindMultipleUnmarshaler interface {
 // Example: `param:"created" format:"2006-01-02T15:04"` for HTML datetime-local input
 // Example: `param:"date" format:"2006-01-02"` for date format
 // Uses Go's standard time format reference time: Mon Jan 2 15:04:05 MST 2006
-// OpenAPI format names "date-time" and "date-time-local" are also supported (see DefaultBinder)
+// OpenAPI format names "date-time", "date-time-local" and "date" are also supported (see DefaultBinder)
 // Works with form data, query parameters, headers, and path parameters (not JSON body)
 // Falls back to default time.Time parsing if no format tag is specified
 func (b *DefaultBinder) BindPathParams(c Context, i interface{}) error {
@@ -397,10 +398,13 @@ func unmarshalInputToField(valueKind reflect.Kind, val string, field reflect.Val
 	// date-time uses the same TextUnmarshaler as an untagged time.Time.
 	if formatTag != "" && formatTag != "date-time" {
 		if _, isTime := fieldIValue.(*time.Time); isTime {
+			// OpenAPI dates and local date-times have no timezone. time.Parse assigns UTC,
+			// as it does for custom layouts without timezone information.
 			layout := formatTag
-			if formatTag == "date-time-local" {
-				// OpenAPI local date-times have no timezone. time.Parse assigns UTC,
-				// as it does for custom layouts without timezone information.
+			switch formatTag {
+			case "date":
+				layout = "2006-01-02"
+			case "date-time-local":
 				layout = "2006-01-02T15:04:05"
 			}
 			t, err := time.Parse(layout, val)
