@@ -1577,7 +1577,7 @@ func TestTimeFormatBinding(t *testing.T) {
 		DateTimeLocal time.Time  `form:"datetime_local" format:"2006-01-02T15:04"`
 		Date          time.Time  `query:"date" format:"2006-01-02"`
 		CustomFormat  time.Time  `form:"custom" format:"01/02/2006 15:04:05"`
-		DefaultTime   time.Time  `form:"default_time"`                      // No format tag - should use default parsing
+		DefaultTime   time.Time  `form:"default_time"` // No format tag - should use default parsing
 		PtrTime       *time.Time `query:"ptr_time" format:"2006-01-02"`
 	}
 
@@ -1623,7 +1623,7 @@ func TestTimeFormatBinding(t *testing.T) {
 		{
 			name:        "nok, wrong format should fail",
 			contentType: MIMEApplicationForm,
-			data:        "datetime_local=2023-12-25",  // Missing time part
+			data:        "datetime_local=2023-12-25", // Missing time part
 			expectError: true,
 		},
 	}
@@ -1680,6 +1680,191 @@ func TestTimeFormatBinding(t *testing.T) {
 					assert.True(t, expectedPtr.Equal(*result.PtrTime),
 						"PtrTime: expected %v, got %v", expectedPtr, *result.PtrTime)
 				}
+			}
+		})
+	}
+}
+
+func TestOpenAPIFormatTimeBinding(t *testing.T) {
+	type TestStruct struct {
+		DateTime         time.Time  `param:"date_time" query:"date_time" header:"date_time" form:"date_time" format:"date-time"`
+		DateTimePtr      *time.Time `param:"date_time_ptr" query:"date_time_ptr" header:"date_time_ptr" form:"date_time_ptr" format:"date-time"`
+		DateTimeLocal    time.Time  `param:"date_time_local" query:"date_time_local" header:"date_time_local" form:"date_time_local" format:"date-time-local"`
+		DateTimeLocalPtr *time.Time `param:"date_time_local_ptr" query:"date_time_local_ptr" header:"date_time_local_ptr" form:"date_time_local_ptr" format:"date-time-local"`
+		Date             time.Time  `param:"full_date" query:"full_date" header:"full_date" form:"full_date" format:"date"`
+		DatePtr          *time.Time `param:"full_date_ptr" query:"full_date_ptr" header:"full_date_ptr" form:"full_date_ptr" format:"date"`
+	}
+
+	utc := time.Date(2023, 12, 25, 14, 30, 45, 0, time.UTC)
+	testCases := []struct {
+		name, field, value string
+		want               time.Time
+		wantError          bool
+	}{
+		{name: "ok, date-time UTC", field: "date_time", value: "2023-12-25T14:30:45Z", want: utc},
+		{name: "ok, date-time offset and fraction", field: "date_time", value: "2023-12-25T14:30:45.123456789+02:00", want: time.Date(2023, 12, 25, 14, 30, 45, 123456789, time.FixedZone("", 2*60*60))},
+		{name: "nok, date-time requires timezone", field: "date_time", value: "2023-12-25T14:30:45", wantError: true},
+		{name: "nok, date-time invalid date", field: "date_time", value: "2023-02-30T14:30:45Z", wantError: true},
+		{name: "ok, local date-time", field: "date_time_local", value: "2023-12-25T14:30:45", want: utc},
+		{name: "ok, local date-time fraction", field: "date_time_local", value: "2023-12-25T14:30:45.123456789", want: utc.Add(123456789 * time.Nanosecond)},
+		{name: "nok, local date-time rejects UTC suffix", field: "date_time_local", value: "2023-12-25T14:30:45Z", wantError: true},
+		{name: "nok, local date-time rejects offset", field: "date_time_local", value: "2023-12-25T14:30:45+02:00", wantError: true},
+		{name: "nok, local date-time requires seconds", field: "date_time_local", value: "2023-12-25T14:30", wantError: true},
+		{name: "nok, local date-time invalid date", field: "date_time_local", value: "2023-02-30T14:30:45", wantError: true},
+		{name: "ok, date", field: "full_date", value: "2023-12-25", want: time.Date(2023, 12, 25, 0, 0, 0, 0, time.UTC)},
+		{name: "nok, date rejects time", field: "full_date", value: "2023-12-25T14:30:45Z", wantError: true},
+		{name: "nok, date invalid date", field: "full_date", value: "2023-02-30", wantError: true},
+	}
+	for _, source := range []string{"param", "query", "header", "form", "multipart"} {
+		for _, tc := range testCases {
+			for _, pointer := range []bool{false, true} {
+				t.Run(fmt.Sprintf("%s/%s/pointer=%t", source, tc.name, pointer), func(t *testing.T) {
+					field := tc.field
+					if pointer {
+						field += "_ptr"
+					}
+					req := httptest.NewRequest(http.MethodGet, "/", nil)
+					switch source {
+					case "query":
+						req.URL.RawQuery = url.Values{field: {tc.value}}.Encode()
+					case "header":
+						req.Header.Set(field, tc.value)
+					case "form":
+						req = httptest.NewRequest(http.MethodPost, "/", strings.NewReader(url.Values{field: {tc.value}}.Encode()))
+						req.Header.Set(HeaderContentType, MIMEApplicationForm)
+					case "multipart":
+						var body bytes.Buffer
+						writer := multipart.NewWriter(&body)
+						if !assert.NoError(t, writer.WriteField(field, tc.value)) || !assert.NoError(t, writer.Close()) {
+							return
+						}
+						req = httptest.NewRequest(http.MethodPost, "/", &body)
+						req.Header.Set(HeaderContentType, writer.FormDataContentType())
+					}
+					c := New().NewContext(req, httptest.NewRecorder())
+					c.SetParamNames(field)
+					c.SetParamValues(tc.value)
+					b := new(DefaultBinder)
+					var result TestStruct
+					var err error
+					switch source {
+					case "param":
+						err = b.BindPathParams(c, &result)
+					case "query":
+						err = b.BindQueryParams(c, &result)
+					case "header":
+						err = b.BindHeaders(c, &result)
+					default:
+						err = b.BindBody(c, &result)
+					}
+					if tc.wantError {
+						var he *HTTPError
+						if assert.ErrorAs(t, err, &he) {
+							assert.Equal(t, http.StatusBadRequest, he.Code)
+						}
+						return
+					}
+					if !assert.NoError(t, err) {
+						return
+					}
+					actual, actualPtr := result.DateTime, result.DateTimePtr
+					switch tc.field {
+					case "date_time_local":
+						actual, actualPtr = result.DateTimeLocal, result.DateTimeLocalPtr
+					case "full_date":
+						actual, actualPtr = result.Date, result.DatePtr
+					}
+					if pointer {
+						if !assert.NotNil(t, actualPtr) {
+							return
+						}
+						actual = *actualPtr
+					}
+					assert.True(t, tc.want.Equal(actual), "expected %v, got %v", tc.want, actual)
+					_, wantOffset := tc.want.Zone()
+					_, actualOffset := actual.Zone()
+					assert.Equal(t, wantOffset, actualOffset)
+					if tc.field != "date_time" {
+						assert.Same(t, time.UTC, actual.Location())
+					}
+				})
+			}
+		}
+	}
+}
+
+func TestOpenAPIFormatTimeBindingJSON(t *testing.T) {
+	for _, tc := range []struct {
+		name, value string
+		wantError   bool
+	}{
+		{name: "ok, RFC3339 decoding ignores format tag", value: "2023-12-25T14:30:45Z"},
+		{name: "nok, local format tag does not enable timezone-free JSON", value: "2023-12-25T14:30:45", wantError: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var result struct {
+				Time *time.Time `json:"time" format:"date-time-local"`
+			}
+			req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(fmt.Sprintf(`{"time":%q}`, tc.value)))
+			req.Header.Set(HeaderContentType, MIMEApplicationJSON)
+			err := New().NewContext(req, httptest.NewRecorder()).Bind(&result)
+			if tc.wantError {
+				var he *HTTPError
+				if assert.ErrorAs(t, err, &he) {
+					assert.Equal(t, http.StatusBadRequest, he.Code)
+				}
+				return
+			}
+			if assert.NoError(t, err) && assert.NotNil(t, result.Time) {
+				assert.True(t, time.Date(2023, 12, 25, 14, 30, 45, 0, time.UTC).Equal(*result.Time))
+			}
+		})
+	}
+}
+
+func TestOpenAPIFormatTimeBindingCustomTypes(t *testing.T) {
+	var result struct {
+		Time Timestamp `query:"time" format:"date-time-local"`
+		Text string    `query:"text" format:"date-time-local"`
+	}
+	value := "2023-12-25T14:30:45Z"
+	req := httptest.NewRequest(http.MethodGet, "/?"+url.Values{"time": {value}, "text": {value}}.Encode(), nil)
+	err := New().NewContext(req, httptest.NewRecorder()).Bind(&result)
+	if assert.NoError(t, err) {
+		assert.True(t, time.Date(2023, 12, 25, 14, 30, 45, 0, time.UTC).Equal(time.Time(result.Time)))
+		assert.Equal(t, value, result.Text)
+	}
+}
+
+func TestOpenAPIFormatTimeBindingEdgeCases(t *testing.T) {
+	type TestStruct struct {
+		DateTime      time.Time   `query:"date_time" format:"date-time"`
+		DateTimeLocal time.Time   `query:"date_time_local" format:"date-time-local"`
+		Date          time.Time   `query:"full_date" format:"date"`
+		Slice         []time.Time `query:"slice" format:"date-time-local"`
+	}
+	testCases := []struct {
+		name, query string
+		wantError   bool
+	}{
+		{name: "nok, literal date-time name is not a value", query: "date_time=date-time", wantError: true},
+		{name: "nok, literal date-time-local name is not a value", query: "date_time_local=date-time-local", wantError: true},
+		{name: "nok, literal date name is not a value", query: "full_date=date", wantError: true},
+		{name: "ok, slices ignore the format tag", query: "slice=2023-12-25T14%3A30%3A45Z"},
+		{name: "nok, slices ignore the format tag", query: "slice=2023-12-25T14%3A30%3A45", wantError: true},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/?"+tc.query, nil)
+			c := New().NewContext(req, httptest.NewRecorder())
+			var result TestStruct
+			err := new(DefaultBinder).BindQueryParams(c, &result)
+			if tc.wantError {
+				assert.Error(t, err)
+				return
+			}
+			if assert.NoError(t, err) && assert.Len(t, result.Slice, 1) {
+				assert.True(t, time.Date(2023, 12, 25, 14, 30, 45, 0, time.UTC).Equal(result.Slice[0]))
 			}
 		})
 	}

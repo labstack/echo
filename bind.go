@@ -22,6 +22,13 @@ type Binder interface {
 }
 
 // DefaultBinder is the default implementation of the Binder interface.
+// For path, query, header, and form binding, time.Time and *time.Time fields (not slices)
+// may use a format tag: "date-time" uses the standard RFC3339 decoding, "date-time-local"
+// accepts "2006-01-02T15:04:05" with optional fractional seconds, "date" accepts
+// "2006-01-02", and other values specify Go time layouts. "date", "date-time-local", and
+// layouts without a timezone give UTC times. JSON and XML decoding do not use this tag.
+// HTML datetime-local inputs omit seconds by default, so bind them with a Go layout
+// such as "2006-01-02T15:04" instead of "date-time-local".
 type DefaultBinder struct{}
 
 // BindUnmarshaler is the interface used to wrap the UnmarshalParam method.
@@ -42,10 +49,11 @@ type bindMultipleUnmarshaler interface {
 // BindPathParams binds path params to bindable object
 //
 // Time format support: time.Time fields can use `format` tags to specify custom parsing layouts.
-// Example: `param:"created" format:"2006-01-02T15:04"` for datetime-local format
+// Example: `form:"created" format:"2006-01-02T15:04"` for HTML datetime-local input
 // Example: `param:"date" format:"2006-01-02"` for date format
 // Uses Go's standard time format reference time: Mon Jan 2 15:04:05 MST 2006
-// Works with form data, query parameters, and path parameters (not JSON body)
+// OpenAPI format names "date-time", "date-time-local" and "date" are also supported (see DefaultBinder)
+// Works with form data, query parameters, headers, and path parameters (not JSON body)
 // Falls back to default time.Time parsing if no format tag is specified
 func (b *DefaultBinder) BindPathParams(c Context, i interface{}) error {
 	names := c.ParamNames()
@@ -387,10 +395,19 @@ func unmarshalInputToField(valueKind reflect.Kind, val string, field reflect.Val
 
 	fieldIValue := field.Addr().Interface()
 
-	// Handle time.Time with custom format tag
-	if formatTag != "" {
+	// date-time uses the same TextUnmarshaler as an untagged time.Time.
+	if formatTag != "" && formatTag != "date-time" {
 		if _, isTime := fieldIValue.(*time.Time); isTime {
-			t, err := time.Parse(formatTag, val)
+			// OpenAPI dates and local date-times have no timezone. time.Parse assigns UTC,
+			// as it does for custom layouts without timezone information.
+			layout := formatTag
+			switch formatTag {
+			case "date":
+				layout = "2006-01-02"
+			case "date-time-local":
+				layout = "2006-01-02T15:04:05"
+			}
+			t, err := time.Parse(layout, val)
 			if err != nil {
 				return true, err
 			}
