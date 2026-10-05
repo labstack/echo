@@ -265,6 +265,10 @@ func (m *routeMethods) set(method string, r *routeMethod) {
 }
 
 func (m *routeMethods) find(method string, fallbackToAny bool, autoHandleHEAD bool) *routeMethod {
+	// GET is by far the most common method, so return its handler before the switch.
+	if method == http.MethodGet && m.get != nil {
+		return m.get
+	}
 	var r *routeMethod
 	switch method {
 	case http.MethodConnect:
