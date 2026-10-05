@@ -49,7 +49,7 @@ type bindMultipleUnmarshaler interface {
 // BindPathParams binds path params to bindable object
 //
 // Time format support: time.Time fields can use `format` tags to specify custom parsing layouts.
-// Example: `param:"created" format:"2006-01-02T15:04"` for HTML datetime-local input
+// Example: `form:"created" format:"2006-01-02T15:04"` for HTML datetime-local input
 // Example: `param:"date" format:"2006-01-02"` for date format
 // Uses Go's standard time format reference time: Mon Jan 2 15:04:05 MST 2006
 // OpenAPI format names "date-time", "date-time-local" and "date" are also supported (see DefaultBinder)
