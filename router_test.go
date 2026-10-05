@@ -3757,3 +3757,53 @@ func BenchmarkRouterGooglePlusAPIMisses(b *testing.B) {
 func BenchmarkRouterParamsAndAnyAPI(b *testing.B) {
 	benchmarkRouterRoutes(b, paramAndAnyAPI, paramAndAnyAPIToFind)
 }
+
+func TestDefaultRouter_RouteWithContextCreatedBeforeParamRouteAdded(t *testing.T) {
+	var testCases = []struct {
+		name             string
+		whenURL          string
+		expectRoute      string
+		expectPathValues PathValues
+	}{
+		{
+			name:             "ok, param and any route",
+			whenURL:          "/users/1/files/a.txt",
+			expectRoute:      "/users/:id/files/*",
+			expectPathValues: PathValues{{Name: "id", Value: "1"}, {Name: "*", Value: "a.txt"}},
+		},
+		{
+			name:             "ok, static route",
+			whenURL:          "/static",
+			expectRoute:      "/static",
+			expectPathValues: PathValues{},
+		},
+		{
+			name:             "ok, route not found",
+			whenURL:          "/missing",
+			expectRoute:      "",
+			expectPathValues: PathValues{},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			// the context is created while no route has path params, so its PathValues have no capacity
+			c := e.NewContext(httptest.NewRequest(http.MethodGet, tc.whenURL, nil), httptest.NewRecorder())
+
+			r := NewRouter(RouterConfig{})
+			_, err := r.Add(Route{Method: http.MethodGet, Path: "/users/:id/files/*", Handler: handlerFunc})
+			assert.NoError(t, err)
+			_, err = r.Add(Route{Method: http.MethodGet, Path: "/a/:b/:c/:d", Handler: handlerFunc})
+			assert.NoError(t, err)
+			_, err = r.Add(Route{Method: http.MethodGet, Path: "/static", Handler: handlerFunc})
+			assert.NoError(t, err)
+
+			r.Route(c)
+
+			assert.Equal(t, tc.expectRoute, c.Path())
+			assert.Equal(t, tc.expectPathValues, c.PathValues())
+			// the context keeps the grown capacity, so later requests do not grow it again
+			assert.Equal(t, 3, cap(c.PathValues()))
+		})
+	}
+}
