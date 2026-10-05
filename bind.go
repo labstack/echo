@@ -27,6 +27,8 @@ type Binder interface {
 // "date-time" uses the standard RFC3339 decoding, "date-time-local" accepts
 // "2006-01-02T15:04:05" with optional fractional seconds and assigns UTC, and other
 // values specify Go time layouts. JSON and XML decoding do not use this tag.
+// HTML datetime-local inputs omit seconds by default, so bind them with a Go layout
+// such as "2006-01-02T15:04" instead of "date-time-local".
 type DefaultBinder struct{}
 
 // BindUnmarshaler is the interface used to wrap the UnmarshalParam method.
