@@ -258,7 +258,7 @@ func (m *routeMethods) set(method string, r *routeMethod) {
 		if m.anyOther == nil {
 			m.anyOther = make(map[string]*routeMethod)
 		}
-		if r.handler == nil {
+		if r == nil || r.handler == nil { // Router.Remove passes nil
 			delete(m.anyOther, method)
 		} else {
 			m.anyOther[method] = r

@@ -3196,6 +3196,31 @@ func TestDefaultRouter_Remove(t *testing.T) {
 	}
 }
 
+func TestDefaultRouter_RemoveCustomMethod(t *testing.T) {
+	e := New()
+	e.Add("PURGE", "/cache", handlerFunc)
+	e.GET("/cache", handlerFunc)
+	e.Add("PURGE", "/purge-only", handlerFunc)
+
+	assert.NoError(t, e.Router().Remove("PURGE", "/cache"))
+	assert.NoError(t, e.Router().Remove("PURGE", "/purge-only"))
+
+	_, err := e.Router().Routes().FindByMethodPath("PURGE", "/cache")
+	assert.Error(t, err)
+	_, err = e.Router().Routes().FindByMethodPath(http.MethodGet, "/cache")
+	assert.NoError(t, err)
+
+	// the path keeps its GET route, so the removed custom method gets 405
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest("PURGE", "/cache", nil))
+	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
+	assert.Equal(t, "OPTIONS, GET", rec.Header().Get(HeaderAllow))
+
+	rec = httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest("PURGE", "/purge-only", nil))
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
 func TestDefaultRouter_AddWithoutHandler(t *testing.T) {
 	router := NewRouter(RouterConfig{})
 
