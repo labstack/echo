@@ -582,6 +582,16 @@ func optionsMethodHandler(allowMethods string) func(c Context) error {
 	}
 }
 
+// growParamValues replaces the context's pvalues when the context was created (and pooled) before a route with more
+// path params was added, so Find can set values by index. Values already set during this Find are kept and the
+// context keeps the new slice for later requests.
+func (r *Router) growParamValues(ctx *context, paramValues []string) []string {
+	grown := make([]string, *r.echo.maxParam)
+	copy(grown, paramValues)
+	ctx.pvalues = grown
+	return grown
+}
+
 // Find lookup a handler registered for method and path. It also parses URL for path
 // parameters and load them into context.
 //
@@ -730,6 +740,9 @@ func (r *Router) Find(method, path string, c Context) {
 				i = l
 			}
 
+			if paramIndex >= len(paramValues) {
+				paramValues = r.growParamValues(ctx, paramValues)
+			}
 			paramValues[paramIndex] = search[:i]
 			paramIndex++
 			search = search[i:]
@@ -742,6 +755,9 @@ func (r *Router) Find(method, path string, c Context) {
 		if child := currentNode.anyChild; child != nil {
 			// If any node is found, use remaining path for paramValues
 			currentNode = child
+			if currentNode.paramsCount > len(paramValues) {
+				paramValues = r.growParamValues(ctx, paramValues)
+			}
 			paramValues[currentNode.paramsCount-1] = search
 
 			// update indexes/search in case we need to backtrack when no handler match is found

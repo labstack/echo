@@ -1860,3 +1860,20 @@ func BenchmarkEchoGitHubAPIMisses(b *testing.B) {
 func BenchmarkEchoParseAPI(b *testing.B) {
 	benchmarkEchoRoutes(b, parseAPI)
 }
+
+func TestEchoAddParamRouteAfterServing(t *testing.T) {
+	e := New()
+	e.GET("/static", func(c Context) error { return c.String(http.StatusOK, "static") })
+
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/static", nil))
+	assert.Equal(t, "static", rec.Body.String())
+
+	// the pooled context from the first request has param values sized for routes without params
+	e.GET("/users/:id", func(c Context) error { return c.String(http.StatusOK, c.Param("id")) })
+
+	rec = httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/users/42", nil))
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "42", rec.Body.String())
+}

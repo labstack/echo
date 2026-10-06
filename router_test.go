@@ -2930,3 +2930,43 @@ func BenchmarkRouterGooglePlusAPIMisses(b *testing.B) {
 func BenchmarkRouterParamsAndAnyAPI(b *testing.B) {
 	benchmarkRouterRoutes(b, paramAndAnyAPI, paramAndAnyAPIToFind)
 }
+
+func TestRouterFindWithContextCreatedBeforeParamRouteAdded(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		whenURL     string
+		expectRoute string
+		expectParam map[string]string
+	}{
+		{
+			name:        "ok, param route grows the context",
+			whenURL:     "/users/1/files/a.txt",
+			expectRoute: "/users/:id/files/*",
+			expectParam: map[string]string{"id": "1", "*": "a.txt"},
+		},
+		{
+			name:        "ok, any route grows the context",
+			whenURL:     "/static/css/a.css",
+			expectRoute: "/static/*",
+			expectParam: map[string]string{"*": "css/a.css"},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			// the context is created while no route has path params, so it has no room for param values
+			c := e.NewContext(nil, nil).(*context)
+
+			r := e.router
+			r.Add(http.MethodGet, "/users/:id/files/*", handlerFunc)
+			r.Add(http.MethodGet, "/static/*", handlerFunc)
+
+			r.Find(http.MethodGet, tc.whenURL, c)
+
+			assert.Equal(t, tc.expectRoute, c.Path())
+			for name, value := range tc.expectParam {
+				assert.Equal(t, value, c.Param(name))
+			}
+		})
+	}
+}
