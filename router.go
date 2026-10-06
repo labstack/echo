@@ -15,8 +15,11 @@ import (
 // Router is interface for routing request contexts to registered routes.
 //
 // Contract between Echo/Context instance and the router:
-//   - all routes must be added through methods on echo.Echo instance.
-//     Reason: Echo instance uses RouteInfo.Params() length to allocate slice for paths parameters (see `Echo.contextPathParamAllocSize`).
+//   - all routes should be added through methods on echo.Echo instance.
+//     Reason: Echo instance uses RouteInfo.Parameters length to allocate slice for paths parameters (see `Echo.contextPathParamAllocSize`),
+//     so Contexts are created with enough capacity.
+//   - Router.Route must handle a Context whose PathValues capacity is smaller than the maximum path parameter count
+//     of its routes (for example, when a route was added after the Context was created, or not through echo.Echo).
 //   - Router must populate Context during Router.Route call with:
 //   - Context.InitializeRoute (IMPORTANT! to reduce allocations use same slice that c.PathValues() returns)
 //   - Optionally can set additional information to Context with Context.Set
@@ -916,7 +919,11 @@ var optionsMethodHandler = func(c *Context) error {
 func (r *DefaultRouter) Route(c *Context) HandlerFunc {
 	pathValues := c.PathValues()
 	if cap(pathValues) < r.maxPathParamsLength {
-		pathValues = make(PathValues, 0, r.maxPathParamsLength)
+		// The Context has less capacity than this router's routes need, for example because it was created before a
+		// route with more params was added. Grow its PathValues at full length so values can be set by index below. The
+		// Context keeps the new slice, so later requests do not grow it again unless a route with more params is added.
+		*c.pathValues = make(PathValues, r.maxPathParamsLength)
+		pathValues = *c.pathValues
 	} else {
 		pathValues = pathValues[0:cap(pathValues)] // resize slice to maximum capacity so we can index set values
 	}

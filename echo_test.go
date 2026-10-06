@@ -1966,3 +1966,33 @@ func TestHasDotOrEmptySegment(t *testing.T) {
 		})
 	}
 }
+
+func TestEcho_AddParamRouteAfterServing(t *testing.T) {
+	var testCases = []struct {
+		name   string
+		router Router
+	}{
+		{name: "ok, default router", router: NewRouter(RouterConfig{})},
+		{name: "ok, concurrent router", router: NewConcurrentRouter(NewRouter(RouterConfig{}))},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := NewWithConfig(Config{Router: tc.router})
+			e.GET("/static", func(c *Context) error { return c.String(http.StatusOK, "static") })
+
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/static", nil))
+			assert.Equal(t, "static", rec.Body.String())
+
+			// the pooled context from the first request has no PathValues capacity for this route. sync.Pool may hand
+			// out a new context instead (often under -race); TestDefaultRouter_RouteWithContextCreatedBeforeParamRouteAdded
+			// covers the stale context deterministically.
+			e.GET("/users/:id", func(c *Context) error { return c.String(http.StatusOK, c.Param("id")) })
+
+			rec = httptest.NewRecorder()
+			e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/users/42", nil))
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, "42", rec.Body.String())
+		})
+	}
+}
