@@ -1649,6 +1649,30 @@ func TestContext_FileFS(t *testing.T) {
 	}
 }
 
+var errFileStat = fmt.Errorf("stat failed")
+
+type statErrorFS struct{}
+
+func (statErrorFS) Open(string) (fs.File, error) {
+	return statErrorFile{}, nil
+}
+
+type statErrorFile struct{}
+
+func (statErrorFile) Stat() (fs.FileInfo, error) { return nil, errFileStat }
+func (statErrorFile) Read([]byte) (int, error)   { return 0, io.EOF }
+func (statErrorFile) Close() error               { return nil }
+
+func TestContext_FileFSReturnsStatError(t *testing.T) {
+	e := New()
+	c := e.NewContext(
+		httptest.NewRequest(http.MethodGet, "/file", nil),
+		httptest.NewRecorder(),
+	)
+
+	assert.ErrorIs(t, c.FileFS("file", statErrorFS{}), errFileStat)
+}
+
 func TestLogger(t *testing.T) {
 	e := New()
 	c := e.NewContext(nil, nil)
