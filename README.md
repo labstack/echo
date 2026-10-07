@@ -37,6 +37,27 @@ Help and questions: [Github Discussions](https://github.com/labstack/echo/discus
 - Automatic TLS via Let’s Encrypt
 - HTTP/2 support
 
+## Used by
+
+Echo runs in production across the Go ecosystem, including:
+
+| Project | What runs on Echo |
+| --- | --- |
+| [Bluesky indigo](https://github.com/bluesky-social/indigo) | AT Protocol Relay and network services |
+| [Temporal UI](https://github.com/temporalio/ui) | Temporal Web UI server |
+| [NVIDIA Cloud Functions](https://github.com/NVIDIA/nvcf) | LLM API gateway |
+| [Azure Container Networking](https://github.com/Azure/azure-container-networking) | Container Networking Service REST API |
+| [osbuild-composer](https://github.com/osbuild/osbuild-composer) | Red Hat Image Builder cloud API |
+| [Docker Agent](https://github.com/docker/docker-agent) | Agent API, chat and A2A servers |
+| [YugabyteDB](https://github.com/yugabyte/yugabyte-db) | yugabyted UI API server |
+| [PostHog](https://github.com/PostHog/posthog) | Livestream service |
+| [Bytebase](https://github.com/bytebase/bytebase) | Backend server and API |
+| [Hatchet](https://github.com/hatchet-dev/hatchet) | API server |
+| [CasaOS](https://github.com/IceWhaleTech/CasaOS) | API server |
+| [Hanko](https://github.com/teamhanko/hanko) | Authentication backend |
+
+See [ADOPTERS.md](./ADOPTERS.md) for the full list. Using Echo in an open source project? [Add it](./ADOPTERS.md#add-your-project).
+
 ## Sponsors
 
 <div>
