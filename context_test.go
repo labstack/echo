@@ -5,9 +5,11 @@ package echo
 
 import (
 	"bytes"
+	stdContext "context"
 	"crypto/tls"
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -1119,10 +1121,109 @@ func TestContext_Validate(t *testing.T) {
 	e := New()
 	c := e.NewContext(nil, nil)
 
-	assert.Error(t, c.Validate(struct{}{}))
+	assert.ErrorIs(t, c.Validate(struct{}{}), ErrValidatorNotRegistered)
+	assert.ErrorIs(t, c.ValidateCtx(struct{}{}), ErrValidatorNotRegistered)
 
 	e.Validator = &validator{}
 	assert.NoError(t, c.Validate(struct{}{}))
+	assert.NoError(t, c.ValidateCtx(struct{}{}))
+}
+
+type validationFunc func(any) error
+
+func (v validationFunc) Validate(i any) error { return v(i) }
+
+type contextValidator struct {
+	validationFunc
+	validateCtx func(stdContext.Context, any) error
+}
+
+func (v contextValidator) ValidateCtx(ctx stdContext.Context, i any) error {
+	return v.validateCtx(ctx, i)
+}
+
+func TestContext_Validate_legacyError(t *testing.T) {
+	e := New()
+	c := e.NewContext(nil, nil)
+	payload := &struct{ Name string }{Name: "Jon Snow"}
+	wantErr := errors.New("validation failed")
+	e.Validator = validationFunc(func(i any) error {
+		assert.Same(t, payload, i)
+		return wantErr
+	})
+	assert.Same(t, wantErr, c.Validate(payload))
+	assert.Same(t, wantErr, c.ValidateCtx(payload))
+}
+
+type validationWrapper struct {
+	contextValidator
+	err error
+}
+
+func (v validationWrapper) Validate(any) error { return v.err }
+
+func TestContext_Validate_wrapper(t *testing.T) {
+	e := New()
+	c := e.NewContext(nil, nil)
+	wantErr := errors.New("wrapper validation failed")
+	e.Validator = validationWrapper{
+		contextValidator: contextValidator{
+			validateCtx: func(stdContext.Context, any) error {
+				t.Fatal("Validate must not call an embedded ValidateCtx method")
+				return nil
+			},
+		},
+		err: wantErr,
+	}
+	assert.Same(t, wantErr, c.Validate(struct{}{}))
+}
+
+func TestContext_ValidateCtx_withContext(t *testing.T) {
+	ctx, cancel := stdContext.WithCancel(stdContext.Background())
+	defer cancel()
+	e := New()
+	c := e.NewContext(nil, nil)
+	c.SetRequest(httptest.NewRequest(http.MethodGet, "/", nil).WithContext(ctx))
+	payload := &struct{ Name string }{Name: "Jon Snow"}
+	wantErr := errors.New("validation failed")
+	calls := 0
+	e.Validator = contextValidator{
+		validationFunc: func(any) error {
+			t.Fatal("Validate must not be called when ValidateCtx is implemented")
+			return nil
+		},
+		validateCtx: func(got stdContext.Context, i any) error {
+			calls++
+			assert.Same(t, ctx, got)
+			assert.Same(t, payload, i)
+			return wantErr
+		},
+	}
+
+	assert.Same(t, wantErr, c.ValidateCtx(payload))
+	assert.Equal(t, 1, calls)
+
+	cancel()
+	assert.Same(t, wantErr, c.ValidateCtx(payload))
+	assert.Equal(t, 2, calls)
+}
+
+func TestContext_ValidateCtx_withoutRequest(t *testing.T) {
+	e := New()
+	c := e.NewContext(nil, nil)
+	var gotCtx stdContext.Context
+	e.Validator = contextValidator{
+		validateCtx: func(ctx stdContext.Context, i any) error {
+			gotCtx = ctx
+			return nil
+		},
+	}
+
+	assert.NoError(t, c.ValidateCtx(struct{}{}))
+	if assert.NotNil(t, gotCtx) {
+		assert.NoError(t, gotCtx.Err())
+		assert.Nil(t, gotCtx.Done())
+	}
 }
 
 func TestContext_QueryString(t *testing.T) {
