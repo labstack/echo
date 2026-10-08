@@ -70,6 +70,10 @@ func (config AddTrailingSlashConfig) ToMiddleware() (echo.MiddlewareFunc, error)
 				// Forward
 				req.RequestURI = uri
 				url.Path = path
+				if url.RawPath != "" {
+					// the router matches RawPath when it is set, so it must get the slash too
+					url.RawPath += "/"
+				}
 			}
 			return next(c)
 		}
@@ -135,6 +139,10 @@ func (config RemoveTrailingSlashConfig) ToMiddleware() (echo.MiddlewareFunc, err
 				// Forward
 				req.RequestURI = uri
 				url.Path = path
+				if url.RawPath != "" {
+					// the router matches RawPath when it is set, so it must lose the slash too
+					url.RawPath = strings.TrimSuffix(url.RawPath, "/")
+				}
 			}
 			return next(c)
 		}
