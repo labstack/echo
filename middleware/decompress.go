@@ -7,6 +7,7 @@ import (
 	"compress/gzip"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/labstack/echo/v4"
@@ -66,7 +67,8 @@ func DecompressWithConfig(config DecompressConfig) echo.MiddlewareFunc {
 				return next(c)
 			}
 
-			if c.Request().Header.Get(echo.HeaderContentEncoding) != GZIPEncoding {
+			// content codings are case-insensitive (RFC 9110 section 8.4.1)
+			if !strings.EqualFold(c.Request().Header.Get(echo.HeaderContentEncoding), GZIPEncoding) {
 				return next(c)
 			}
 
