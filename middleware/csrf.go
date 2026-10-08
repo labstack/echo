@@ -256,6 +256,9 @@ func (config CSRFConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 }
 
 func validateCSRFToken(token, clientToken string) bool {
+	if token == "" || clientToken == "" {
+		return false
+	}
 	return subtle.ConstantTimeCompare([]byte(token), []byte(clientToken)) == 1
 }
 
