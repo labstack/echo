@@ -1010,3 +1010,146 @@ func TestGroup_StaticFS_dotAndEmptySegments(t *testing.T) {
 	e.ServeHTTP(rec, req)
 	assert.Equal(t, "x", rec.Body.String())
 }
+
+func TestGroup_normalizeGroupPrefix(t *testing.T) {
+	testCases := []struct {
+		input    string
+		expected string
+	}{
+		{input: "", expected: ""},
+		{input: "/", expected: "/"},
+		{input: "api", expected: "/api"},
+		{input: "/api", expected: "/api"},
+		{input: "api/", expected: "/api/"},
+		{input: "/api/", expected: "/api/"},
+		{input: "v1/users", expected: "/v1/users"},
+		{input: "/v1/users", expected: "/v1/users"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.input, func(t *testing.T) {
+			assert.Equal(t, tc.expected, normalizeGroupPrefix(tc.input))
+		})
+	}
+}
+
+func TestGroup_PrefixSlashVariations(t *testing.T) {
+	testCases := []struct {
+		name         string
+		groupPrefix  string
+		routePath    string
+		requestPath  string
+		expectedPath string
+	}{
+		{
+			name:         "without leading slash and without trailing slash",
+			groupPrefix:  "api",
+			routePath:    "/users",
+			requestPath:  "/api/users",
+			expectedPath: "/api/users",
+		},
+		{
+			name:         "with leading slash and without trailing slash",
+			groupPrefix:  "/api",
+			routePath:    "/users",
+			requestPath:  "/api/users",
+			expectedPath: "/api/users",
+		},
+		{
+			name:         "without leading slash and with trailing slash",
+			groupPrefix:  "api/",
+			routePath:    "users",
+			requestPath:  "/api/users",
+			expectedPath: "/api/users",
+		},
+		{
+			name:         "with leading slash and with trailing slash",
+			groupPrefix:  "/api/",
+			routePath:    "users",
+			requestPath:  "/api/users",
+			expectedPath: "/api/users",
+		},
+		{
+			name:         "empty prefix",
+			groupPrefix:  "",
+			routePath:    "/users",
+			requestPath:  "/users",
+			expectedPath: "/users",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			g := e.Group(tc.groupPrefix)
+			g.GET(tc.routePath, func(c *Context) error {
+				return c.String(http.StatusOK, "matched")
+			})
+
+			req := httptest.NewRequest(http.MethodGet, tc.requestPath, nil)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, "matched", rec.Body.String())
+
+			routes := e.Router().Routes()
+			assert.Len(t, routes, 1)
+			assert.Equal(t, tc.expectedPath, routes[0].Path)
+		})
+	}
+}
+
+func TestGroup_NestedGroupPrefixNormalization(t *testing.T) {
+	e := New()
+	api := e.Group("api")
+	v1 := api.Group("/v1")
+	v1.GET("/items", func(c *Context) error {
+		return c.String(http.StatusOK, "items")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/items", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "items", rec.Body.String())
+
+	routes := e.Router().Routes()
+	assert.Len(t, routes, 1)
+	assert.Equal(t, "/api/v1/items", routes[0].Path)
+}
+
+func TestGroup_MiddlewareWithPrefixNormalization(t *testing.T) {
+	e := New()
+	middlewareRan := false
+	mw := func(next HandlerFunc) HandlerFunc {
+		return func(c *Context) error {
+			middlewareRan = true
+			return next(c)
+		}
+	}
+
+	g := e.Group("api", mw)
+	g.GET("/test", func(c *Context) error {
+		return c.String(http.StatusOK, "ok")
+	})
+
+	// Test registered route executes middleware
+	req := httptest.NewRequest(http.MethodGet, "/api/test", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "ok", rec.Body.String())
+	assert.True(t, middlewareRan)
+
+	// Test auto-registered 404 route inside group executes middleware
+	middlewareRan = false
+	reqNotFound := httptest.NewRequest(http.MethodGet, "/api/nonexistent", nil)
+	recNotFound := httptest.NewRecorder()
+	e.ServeHTTP(recNotFound, reqNotFound)
+
+	assert.Equal(t, http.StatusNotFound, recNotFound.Code)
+	assert.True(t, middlewareRan)
+}
