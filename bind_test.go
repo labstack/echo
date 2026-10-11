@@ -1873,3 +1873,33 @@ func TestOpenAPIFormatTimeBindingEdgeCases(t *testing.T) {
 		})
 	}
 }
+
+func TestBindHeadersEmptyValues(t *testing.T) {
+	// Regression test for https://github.com/labstack/echo/issues/3169
+	// BindHeaders must not panic when a header value is a nil or empty []string.
+	for _, values := range [][]string{nil, {}} {
+		t.Run(fmt.Sprintf("values=%v", values), func(t *testing.T) {
+			e := New()
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.Header["X-Empty"] = values
+			c := e.NewContext(req, httptest.NewRecorder())
+
+			var dst struct {
+				Value string `header:"X-Empty"`
+			}
+			if err := BindHeaders(c, &dst); err != nil {
+				t.Errorf("BindHeaders: %v", err)
+			}
+
+			var m map[string]string
+			if err := BindHeaders(c, &m); err != nil {
+				t.Errorf("BindHeaders(map[string]string): %v", err)
+			}
+
+			var anyMap map[string]any
+			if err := BindHeaders(c, &anyMap); err != nil {
+				t.Errorf("BindHeaders(map[string]any): %v", err)
+			}
+		})
+	}
+}
