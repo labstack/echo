@@ -315,3 +315,33 @@ func TestEchoRewriteReplacementEscaping(t *testing.T) {
 		})
 	}
 }
+
+func TestEchoRewriteTwoDigitCaptures(t *testing.T) {
+	e := echo.New()
+
+	e.Pre(RewriteWithConfig(RewriteConfig{
+		Rules: map[string]string{
+			"^/t/*/*/*/*/*/*/*/*/*/*/*": "/r/$11/$10/$1",
+		},
+		RegexRules: map[*regexp.Regexp]string{
+			regexp.MustCompile("^/x/(.)(.)(.)(.)(.)(.)(.)(.)(.)(.)(.)$"): "/v/$11/$10/$1",
+		},
+	}))
+
+	testCases := []struct {
+		requestPath string
+		expectPath  string
+	}{
+		{"/t/a/b/c/d/e/f/g/h/i/j/k", "/r/k/j/a"},
+		{"/x/abcdefghijk", "/v/k/j/a"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.requestPath, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tc.requestPath, nil)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+			assert.Equal(t, tc.expectPath, req.URL.EscapedPath())
+		})
+	}
+}
