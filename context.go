@@ -474,10 +474,16 @@ func (c *Context) Validate(i any) error {
 	return c.echo.Validator.Validate(i)
 }
 
-// ValidateCtx validates i using the current request's context when the registered
-// Validator implements ValidateCtx(context.Context, any) error. Otherwise it calls Validate.
+// ValidateCtx validates i using the current request's context. If the registered
+// Validator implements ValidateCtx(context.Context, any) error, that method is
+// called instead of Validate. Otherwise, Validate is called.
+//
 // The validator must still implement Validate to satisfy the Validator interface.
-// If there is no request, context.Background() is used.
+// Wrappers that embed a context-aware validator must implement ValidateCtx if they
+// need to preserve checks performed by their own Validate method.
+//
+// If there is no request, context.Background() is used. Cancellation and deadlines
+// are passed to the validator; the validator is responsible for honoring them.
 func (c *Context) ValidateCtx(i any) error {
 	if v, ok := c.echo.Validator.(validatorCtx); ok {
 		ctx := stdContext.Background()

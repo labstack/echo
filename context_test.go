@@ -1208,6 +1208,34 @@ func TestContext_ValidateCtx_withContext(t *testing.T) {
 	assert.Equal(t, 2, calls)
 }
 
+func TestContext_ValidateCtx_requestReplacement(t *testing.T) {
+	firstCtx, cancelFirst := stdContext.WithCancel(stdContext.Background())
+	defer cancelFirst()
+	secondCtx, cancelSecond := stdContext.WithCancel(stdContext.Background())
+	defer cancelSecond()
+
+	e := New()
+	c := e.NewContext(httptest.NewRequest(http.MethodGet, "/", nil).WithContext(firstCtx), nil)
+	var gotCtx stdContext.Context
+	e.Validator = contextValidator{
+		validationFunc: func(any) error {
+			t.Fatal("Validate must not be called when ValidateCtx is implemented")
+			return nil
+		},
+		validateCtx: func(ctx stdContext.Context, _ any) error {
+			gotCtx = ctx
+			return nil
+		},
+	}
+
+	assert.NoError(t, c.ValidateCtx(struct{}{}))
+	assert.Same(t, firstCtx, gotCtx)
+
+	c.SetRequest(c.Request().WithContext(secondCtx))
+	assert.NoError(t, c.ValidateCtx(struct{}{}))
+	assert.Same(t, secondCtx, gotCtx)
+}
+
 func TestContext_ValidateCtx_withoutRequest(t *testing.T) {
 	e := New()
 	c := e.NewContext(nil, nil)
