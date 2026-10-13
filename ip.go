@@ -93,6 +93,20 @@ e.IPExtractor = echo.ExtractIPFromXFFHeader(
 
 - Ref: https://godoc.org/github.com/labstack/echo#TrustOption
 
+If your outermost proxy strips incoming `X-Forwarded-For` headers and is the
+sole writer of the chain (as in some Azure Front Door setups), the client
+address is the leftmost entry instead of the first untrusted entry from the
+right: use `XFFLeftmost()` to scan from the left.
+
+```go
+e.IPExtractor = echo.ExtractIPFromXFFHeader(
+	echo.XFFLeftmost(),
+)
+```
+
+Do not use `XFFLeftmost()` otherwise — the leftmost entry is
+client-controlled and can be spoofed.
+
 ## Case 3. With proxies using `X-Real-IP` header
 
 `X-Real-IP` is another HTTP header to relay clients' IP addresses, but it carries only one address unlike XFF.
@@ -138,6 +152,7 @@ type ipChecker struct {
 	trustLoopback    bool
 	trustLinkLocal   bool
 	trustPrivateNet  bool
+	xffLeftmost      bool
 }
 
 // TrustOption is config for which IP address to trust
@@ -168,6 +183,25 @@ func TrustPrivateNet(v bool) TrustOption {
 func TrustIPRange(ipRange *net.IPNet) TrustOption {
 	return func(c *ipChecker) {
 		c.trustExtraRanges = append(c.trustExtraRanges, ipRange)
+	}
+}
+
+// XFFLeftmost configures ExtractIPFromXFFHeader to return the first untrusted IP
+// reading from the left of the X-Forwarded-For chain instead of the default
+// first untrusted IP reading from the right.
+//
+// Use this only when the outermost proxy in front of your application strips
+// incoming X-Forwarded-For headers and is the sole writer of the chain, as in
+// some Azure Front Door setups: the leftmost entry is then the client address
+// recorded by your own edge proxy. Otherwise the leftmost entry is
+// client-controlled and can be spoofed — a client can prepend arbitrary
+// addresses to the header before it reaches your infrastructure.
+//
+// This option has no effect on ExtractIPFromRealIPHeader or
+// ExtractSchemeFromHeaders.
+func XFFLeftmost() TrustOption {
+	return func(c *ipChecker) {
+		c.xffLeftmost = true
 	}
 }
 
@@ -248,7 +282,13 @@ func ExtractIPFromXFFHeader(options ...TrustOption) IPExtractor {
 			return directIP
 		}
 		ips := append(strings.Split(strings.Join(xffs, ","), ","), directIP)
-		for i := len(ips) - 1; i >= 0; i-- {
+		// Scan order: from the right (nearest the server, the default) or
+		// from the left (furthest from the server) with XFFLeftmost.
+		start, end, step := len(ips)-1, -1, -1
+		if checker.xffLeftmost {
+			start, end, step = 0, len(ips), 1
+		}
+		for i := start; i != end; i += step {
 			ips[i] = strings.TrimSpace(ips[i])
 			ips[i] = strings.TrimPrefix(ips[i], "[")
 			ips[i] = strings.TrimSuffix(ips[i], "]")
