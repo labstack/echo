@@ -384,15 +384,21 @@ func TestWrapHeadHandler_HandlerPanic_OriginalWriterRestored(t *testing.T) {
 	assert.Equal(t, original, c.Response()) // defer must have run
 }
 
-func TestHeadResponseWriter_WriteHeader_SetsCommittedOnUnderlying(t *testing.T) {
+func TestHeadResponseWriter_WriteHeader_SetsStatusAndCommittedOnUnderlying(t *testing.T) {
 	e := New()
 	rec := httptest.NewRecorder()
 	underlying := NewResponse(rec, e.Logger)
 	w := &headResponseWriter{rw: underlying}
 
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusAccepted)
 
 	assert.True(t, underlying.Committed)
+	assert.Equal(t, http.StatusAccepted, underlying.Status)
+	assert.False(t, rec.Flushed)
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	w.WriteHeader(http.StatusBadRequest)
+	assert.Equal(t, http.StatusAccepted, underlying.Status)
 }
 
 func TestWrapHeadHandler_RouteLevelMiddlewareSeesTrueCommitted(t *testing.T) {

@@ -70,6 +70,50 @@ func TestRequestLoggerOK(t *testing.T) {
 	assert.Equal(t, expect, logAttrs)
 }
 
+func TestRequestLoggerAutoHandleHEADStatus(t *testing.T) {
+	for _, scope := range []string{"global", "group", "route"} {
+		for _, method := range []string{http.MethodGet, http.MethodHead} {
+			t.Run(scope+"/"+method, func(t *testing.T) {
+				e := echo.NewWithConfig(echo.Config{
+					Router: echo.NewRouter(echo.RouterConfig{AutoHandleHEAD: true}),
+				})
+				var loggedStatus int
+				logger := RequestLoggerWithConfig(RequestLoggerConfig{
+					LogStatus: true,
+					LogValuesFunc: func(c *echo.Context, values RequestLoggerValues) error {
+						loggedStatus = values.Status
+						return nil
+					},
+				})
+				handler := func(c *echo.Context) error {
+					return c.String(http.StatusNotFound, "missing")
+				}
+				switch scope {
+				case "global":
+					e.Use(logger)
+					e.GET("/test", handler)
+				case "group":
+					e.Group("", logger).GET("/test", handler)
+				case "route":
+					e.GET("/test", handler, logger)
+				}
+
+				rec := httptest.NewRecorder()
+				e.ServeHTTP(rec, httptest.NewRequest(method, "/test", nil))
+
+				assert.Equal(t, http.StatusNotFound, rec.Code)
+				assert.Equal(t, http.StatusNotFound, loggedStatus)
+				if method == http.MethodHead {
+					assert.Empty(t, rec.Body.String())
+					assert.Equal(t, "7", rec.Header().Get(echo.HeaderContentLength))
+				} else {
+					assert.Equal(t, "missing", rec.Body.String())
+				}
+			})
+		}
+	}
+}
+
 func TestRequestLoggerError(t *testing.T) {
 	old := slog.Default()
 	t.Cleanup(func() {
