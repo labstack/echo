@@ -4,11 +4,13 @@
 package middleware
 
 import (
+	"bytes"
 	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/labstack/echo/v5"
@@ -578,4 +580,52 @@ func BenchmarkBodyDump_BufferPooling(b *testing.B) {
 		c := e.NewContext(req, rec)
 		mw(h)(c)
 	}
+}
+
+func TestBodyDump_RestoreResponse(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	origResponse := c.Response()
+
+	mw, err := BodyDumpConfig{
+		Handler: func(c *echo.Context, reqBody, resBody []byte, err error) {},
+	}.ToMiddleware()
+	assert.NoError(t, err)
+
+	var innerResponse http.ResponseWriter
+	h := func(c *echo.Context) error {
+		innerResponse = c.Response()
+		return c.String(http.StatusOK, "ok")
+	}
+
+	err = mw(h)(c)
+	assert.NoError(t, err)
+	assert.NotEqual(t, origResponse, innerResponse)
+	assert.Equal(t, origResponse, c.Response())
+}
+
+func TestBodyDump_ErrorHandlerRace(t *testing.T) {
+	e := echo.New()
+	e.HTTPErrorHandler = func(c *echo.Context, err error) {
+		_ = c.JSON(http.StatusOK, map[string]any{"error": err.Error()})
+	}
+	e.Pre(BodyDump(func(c *echo.Context, reqBody, rspBody []byte, err error) {}))
+	e.POST("/err", func(c *echo.Context) error {
+		return echo.NewHTTPError(http.StatusBadRequest, "boom")
+	})
+
+	var wg sync.WaitGroup
+	for i := 0; i < 16; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < 200; j++ {
+				req := httptest.NewRequest(http.MethodPost, "/err", bytes.NewReader(make([]byte, 256)))
+				e.ServeHTTP(httptest.NewRecorder(), req)
+			}
+		}()
+	}
+	wg.Wait()
 }
