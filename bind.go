@@ -241,6 +241,10 @@ func bindData(destination any, data map[string][]string, tag string, dataFiles m
 			val.Set(reflect.MakeMap(typ))
 		}
 		for k, v := range data {
+			if len(v) == 0 {
+				// No value to bind; indexing v[0] below would panic.
+				continue
+			}
 			if isElemString {
 				val.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v[0]))
 			} else if isElemInterface {
@@ -320,6 +324,14 @@ func bindData(destination any, data map[string][]string, tag string, dataFiles m
 		}
 
 		if !exists {
+			continue
+		}
+
+		// A header (or query param) whose value slice is empty is treated the
+		// same as an absent key: there is no value to bind, and the scalar
+		// paths below index inputValue[0]. Without this the bind panics with
+		// "index out of range [0] with length 0".
+		if len(inputValue) == 0 {
 			continue
 		}
 
