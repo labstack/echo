@@ -127,11 +127,13 @@ func (config BodyDumpConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			} else {
 				respWriter = io.MultiWriter(c.Response(), resBuf)
 			}
+			origResponse := c.Response()
 			writer := &bodyDumpResponseWriter{
 				Writer:         respWriter,
-				ResponseWriter: c.Response(),
+				ResponseWriter: origResponse,
 			}
 			c.SetResponse(writer)
+			defer c.SetResponse(origResponse)
 
 			err := next(c)
 
