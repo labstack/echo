@@ -21,6 +21,54 @@ const (
 	gzipScheme = "gzip"
 )
 
+// acceptsGzip reports whether the given Accept-Encoding header value indicates
+// that the client accepts the gzip coding.
+//
+// It parses the header according to RFC 9110 §12.5.3 instead of doing a naive
+// substring match. This avoids two classes of bugs:
+//   - "gzip;q=0" explicitly means the client does NOT want gzip, yet a substring
+//     match would still enable compression.
+//   - tokens such as "x-gzip" or "supergzip" would substring-match "gzip" even
+//     though they are distinct codings.
+//
+// A "*" coding with a non-zero q-value is also treated as accepting gzip.
+func acceptsGzip(acceptEncoding string) bool {
+	if acceptEncoding == "" {
+		return false
+	}
+	for _, part := range strings.Split(acceptEncoding, ",") {
+		coding, qvalue := parseCoding(part)
+		if coding != gzipScheme && coding != "*" {
+			continue
+		}
+		if qvalue == "0" || qvalue == "0.0" || qvalue == "0.00" || qvalue == "0.000" {
+			// q=0 means "not acceptable"; an explicit gzip rejection wins.
+			if coding == gzipScheme {
+				return false
+			}
+			continue
+		}
+		return true
+	}
+	return false
+}
+
+// parseCoding splits a single Accept-Encoding element into its coding name
+// (lower-cased) and its q-value parameter (empty string when absent).
+func parseCoding(part string) (coding, qvalue string) {
+	coding = part
+	if idx := strings.IndexByte(part, ';'); idx >= 0 {
+		coding = part[:idx]
+		for _, param := range strings.Split(part[idx+1:], ";") {
+			param = strings.TrimSpace(param)
+			if k, v, ok := strings.Cut(param, "="); ok && strings.EqualFold(strings.TrimSpace(k), "q") {
+				qvalue = strings.TrimSpace(v)
+			}
+		}
+	}
+	return strings.ToLower(strings.TrimSpace(coding)), qvalue
+}
+
 // GzipConfig defines the config for Gzip middleware.
 type GzipConfig struct {
 	// Skipper defines a function to skip middleware.
@@ -91,7 +139,7 @@ func (config GzipConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 
 			res := c.Response()
 			res.Header().Add(echo.HeaderVary, echo.HeaderAcceptEncoding)
-			if strings.Contains(c.Request().Header.Get(echo.HeaderAcceptEncoding), gzipScheme) {
+			if acceptsGzip(c.Request().Header.Get(echo.HeaderAcceptEncoding)) {
 				i := pool.Get()
 				w, ok := i.(*gzip.Writer)
 				if !ok {
