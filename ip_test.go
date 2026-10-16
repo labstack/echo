@@ -688,6 +688,26 @@ func TestExtractIPFromXFFHeader(t *testing.T) {
 			expectIP: "fe80::3",
 		},
 		{
+			name: "request from link-local proxy with IPv6 zone in remote addr, extract IP from XFF header",
+			whenRequest: http.Request{
+				Header: http.Header{
+					HeaderXForwardedFor: []string{"203.0.113.5"},
+				},
+				RemoteAddr: "[fe80::1%eth0]:8080",
+			},
+			expectIP: "203.0.113.5",
+		},
+		{
+			name: "request trusts all IPs in XFF header with IPv6 zones, extract IP from furthest in XFF chain",
+			whenRequest: http.Request{
+				Header: http.Header{
+					HeaderXForwardedFor: []string{"[fe80::2%eth0], [fe80::1%eth0]"},
+				},
+				RemoteAddr: "[fe80::1%eth0]:8080",
+			},
+			expectIP: "fe80::2%eth0",
+		},
+		{
 			name: "request is from external IP has valid + UNTRUSTED external XFF header, extract IP from remote addr",
 			whenRequest: http.Request{
 				Header: http.Header{
