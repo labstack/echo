@@ -219,6 +219,14 @@ func extractIP(req *http.Request) string {
 	return host
 }
 
+// stripIPv6Zone removes an IPv6 zone, e.g. "fe80::1%eth0", which net.ParseIP rejects.
+func stripIPv6Zone(host string) string {
+	if i := strings.IndexByte(host, '%'); i != -1 {
+		return host[:i]
+	}
+	return host
+}
+
 // ExtractIPFromRealIPHeader extracts IP address using `x-real-ip` header.
 // Use this if you put proxy which uses this header.
 func ExtractIPFromRealIPHeader(options ...TrustOption) IPExtractor {
@@ -252,7 +260,7 @@ func ExtractIPFromXFFHeader(options ...TrustOption) IPExtractor {
 			ips[i] = strings.TrimSpace(ips[i])
 			ips[i] = strings.TrimPrefix(ips[i], "[")
 			ips[i] = strings.TrimSuffix(ips[i], "]")
-			ip := net.ParseIP(ips[i])
+			ip := net.ParseIP(stripIPv6Zone(ips[i]))
 			if ip == nil {
 				// Unable to parse IP; cannot trust entire records
 				return directIP
