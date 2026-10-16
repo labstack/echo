@@ -306,6 +306,54 @@ func TestBindHeaderParamBadType(t *testing.T) {
 	}
 }
 
+func TestBindHeadersEmptyValues(t *testing.T) {
+	for _, values := range [][]string{nil, {}} {
+		e := New()
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header["X-Empty"] = values
+		c := e.NewContext(req, httptest.NewRecorder())
+
+		var dst struct {
+			Value string `header:"X-Empty"`
+		}
+		assert.NotPanics(t, func() {
+			assert.NoError(t, BindHeaders(c, &dst))
+		})
+		assert.Equal(t, "", dst.Value)
+
+		var sliceDst struct {
+			Values []string `header:"X-Empty"`
+		}
+		assert.NotPanics(t, func() {
+			assert.NoError(t, BindHeaders(c, &sliceDst))
+		})
+		assert.Empty(t, sliceDst.Values)
+
+		var stringMap map[string]string
+		assert.NotPanics(t, func() {
+			assert.NoError(t, BindHeaders(c, &stringMap))
+		})
+		assert.NotContains(t, stringMap, "X-Empty")
+
+		var anyMap map[string]any
+		assert.NotPanics(t, func() {
+			assert.NoError(t, BindHeaders(c, &anyMap))
+		})
+		assert.NotContains(t, anyMap, "X-Empty")
+	}
+
+	// controls: normal value and single empty string still bind
+	e := New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("X-Empty", "value")
+	c := e.NewContext(req, httptest.NewRecorder())
+	var dst struct {
+		Value string `header:"X-Empty"`
+	}
+	assert.NoError(t, BindHeaders(c, &dst))
+	assert.Equal(t, "value", dst.Value)
+}
+
 func TestBindUnmarshalParam(t *testing.T) {
 	e := New()
 	req := httptest.NewRequest(http.MethodGet, "/?ts=2016-12-06T19:09:05Z&sa=one,two,three&ta=2016-12-06T19:09:05Z&ta=2016-12-06T19:09:05Z&ST=baz", nil)
