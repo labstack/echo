@@ -6,6 +6,7 @@ package echo
 import (
 	"net"
 	"net/http"
+	"net/netip"
 	"strings"
 )
 
@@ -219,12 +220,17 @@ func extractIP(req *http.Request) string {
 	return host
 }
 
-// stripIPv6Zone removes an IPv6 zone, e.g. "fe80::1%eth0", which net.ParseIP rejects.
+// stripIPv6Zone removes the zone from a scoped IPv6 address, e.g. "fe80::1%eth0", which net.ParseIP rejects.
+// Anything else, including an IPv4 address with a "%" suffix, is returned unchanged so that parsing still fails.
 func stripIPv6Zone(host string) string {
-	if i := strings.IndexByte(host, '%'); i != -1 {
-		return host[:i]
+	if strings.IndexByte(host, '%') == -1 {
+		return host
 	}
-	return host
+	addr, err := netip.ParseAddr(host)
+	if err != nil || addr.Zone() == "" {
+		return host
+	}
+	return addr.WithZone("").String()
 }
 
 // ExtractIPFromRealIPHeader extracts IP address using `x-real-ip` header.
@@ -272,6 +278,10 @@ func ExtractIPFromXFFHeader(options ...TrustOption) IPExtractor {
 				return directIP
 			}
 			if !checker.trust(ip) {
+				if i == len(ips)-1 {
+					// Untrusted direct peer; return it as-is, as when there is no XFF header
+					return directIP
+				}
 				return ip.String()
 			}
 		}
