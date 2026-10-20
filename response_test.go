@@ -92,6 +92,60 @@ func TestResponse_Flush(t *testing.T) {
 	assert.True(t, rec.Flushed)
 }
 
+func TestResponse_FlushBeforeWrite(t *testing.T) {
+	for _, status := range []int{0, http.StatusAccepted} {
+		t.Run(fmt.Sprint(status), func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			res := NewResponse(rec, New().Logger)
+			res.Status = status
+			beforeCalls := 0
+			res.Before(func() {
+				beforeCalls++
+				res.Header().Set("X-Before", "called")
+			})
+
+			res.Flush()
+			wantStatus := status
+			if wantStatus == 0 {
+				wantStatus = http.StatusOK
+			}
+			assert.Equal(t, wantStatus, rec.Code)
+			assert.Equal(t, wantStatus, res.Status)
+			assert.True(t, res.Committed)
+			assert.True(t, rec.Flushed)
+			assert.Equal(t, "called", rec.Result().Header.Get("X-Before"))
+
+			res.Flush()
+			_, err := res.Write([]byte("streamed"))
+			assert.NoError(t, err)
+			assert.Equal(t, 1, beforeCalls)
+			assert.Equal(t, "streamed", rec.Body.String())
+		})
+	}
+}
+
+func TestDelayedStatusWriter_FlushBeforeWrite(t *testing.T) {
+	for _, status := range []int{0, http.StatusCreated} {
+		t.Run(fmt.Sprint(status), func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			w := &delayedStatusWriter{ResponseWriter: rec, status: status}
+			w.Flush()
+
+			wantStatus := status
+			if wantStatus == 0 {
+				wantStatus = http.StatusOK
+			}
+			assert.Equal(t, wantStatus, rec.Code)
+			assert.True(t, w.committed)
+			assert.True(t, rec.Flushed)
+
+			_, err := w.Write([]byte("streamed"))
+			assert.NoError(t, err)
+			assert.Equal(t, wantStatus, rec.Code)
+		})
+	}
+}
+
 type testResponseWriter struct {
 }
 

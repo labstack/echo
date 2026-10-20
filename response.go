@@ -80,6 +80,12 @@ func (r *Response) Write(b []byte) (n int, err error) {
 // buffered data to the client.
 // See [http.Flusher](https://golang.org/pkg/net/http/#Flusher)
 func (r *Response) Flush() {
+	if !r.Committed {
+		if r.Status == 0 {
+			r.Status = http.StatusOK
+		}
+		r.WriteHeader(r.Status)
+	}
 	err := http.NewResponseController(r.ResponseWriter).Flush()
 	if err != nil && errors.Is(err, http.ErrNotSupported) {
 		panic(fmt.Errorf("echo: response writer %T does not support flushing (http.Flusher interface)", r.ResponseWriter))
@@ -158,6 +164,12 @@ func (w *delayedStatusWriter) Write(data []byte) (int, error) {
 }
 
 func (w *delayedStatusWriter) Flush() {
+	if !w.committed {
+		if w.status == 0 {
+			w.status = http.StatusOK
+		}
+		w.WriteHeader(w.status)
+	}
 	err := http.NewResponseController(w.ResponseWriter).Flush()
 	if err != nil && errors.Is(err, http.ErrNotSupported) {
 		panic(errors.New("response writer flushing is not supported"))
