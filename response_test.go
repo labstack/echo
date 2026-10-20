@@ -124,6 +124,109 @@ func TestResponse_FlushBeforeWrite(t *testing.T) {
 	}
 }
 
+func TestResponse_FlushDuringBefore(t *testing.T) {
+	for _, trigger := range []string{"Flush", "Write", "WriteHeader"} {
+		t.Run(trigger, func(t *testing.T) {
+			rec := &flushCountingResponseWriter{ResponseRecorder: httptest.NewRecorder()}
+			res := NewResponse(rec, New().Logger)
+			res.Status = http.StatusAccepted
+			var beforeCalls [2]int
+			afterCalls := 0
+			res.Before(func() {
+				beforeCalls[0]++
+				if beforeCalls[0] > 1 {
+					t.Fatal("Before callback reentered")
+				}
+				res.Flush()
+				res.Flush()
+				assert.False(t, res.Committed)
+				assert.False(t, rec.Flushed)
+				res.Status = http.StatusCreated
+				res.Header().Set("X-First", "after flush")
+			})
+			res.Before(func() {
+				beforeCalls[1]++
+				res.Flush()
+				assert.False(t, rec.Flushed)
+				res.Status = http.StatusNonAuthoritativeInfo
+				res.Header().Set("X-Second", "after flush")
+			})
+			res.After(func() { afterCalls++ })
+
+			switch trigger {
+			case "Flush":
+				res.Flush()
+			case "Write":
+				_, err := res.Write([]byte("body"))
+				assert.NoError(t, err)
+			case "WriteHeader":
+				res.WriteHeader(http.StatusAccepted)
+			}
+
+			assert.Equal(t, [2]int{1, 1}, beforeCalls)
+			assert.True(t, res.Committed)
+			assert.Equal(t, http.StatusNonAuthoritativeInfo, res.Status)
+			assert.Equal(t, res.Status, rec.Code)
+			assert.Equal(t, 1, rec.flushes)
+			assert.Equal(t, "after flush", rec.Result().Header.Get("X-First"))
+			assert.Equal(t, "after flush", rec.Result().Header.Get("X-Second"))
+			if trigger == "Write" {
+				assert.Equal(t, "body", rec.Body.String())
+				assert.Equal(t, 1, afterCalls)
+			} else {
+				assert.Equal(t, 0, afterCalls)
+			}
+
+			res.Flush()
+			assert.Equal(t, 2, rec.flushes)
+			assert.Equal(t, [2]int{1, 1}, beforeCalls)
+		})
+	}
+}
+
+func TestResponse_FlushDuringBeforePanic(t *testing.T) {
+	rec := &flushCountingResponseWriter{ResponseRecorder: httptest.NewRecorder()}
+	res := NewResponse(rec, New().Logger)
+	firstCall := true
+	res.Before(func() {
+		if firstCall {
+			firstCall = false
+			res.Flush()
+			panic("before failed")
+		}
+	})
+
+	assert.PanicsWithValue(t, "before failed", func() {
+		res.WriteHeader(http.StatusAccepted)
+	})
+	assert.False(t, res.Committed)
+	assert.False(t, rec.Flushed)
+
+	res.WriteHeader(http.StatusInternalServerError)
+	assert.True(t, res.Committed)
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Equal(t, 0, rec.flushes)
+	res.Flush()
+	assert.Equal(t, 1, rec.flushes)
+
+	next := &flushCountingResponseWriter{ResponseRecorder: httptest.NewRecorder()}
+	res.reset(next)
+	res.Flush()
+	assert.True(t, res.Committed)
+	assert.Equal(t, http.StatusOK, next.Code)
+	assert.Equal(t, 1, next.flushes)
+}
+
+type flushCountingResponseWriter struct {
+	*httptest.ResponseRecorder
+	flushes int
+}
+
+func (w *flushCountingResponseWriter) Flush() {
+	w.flushes++
+	w.ResponseRecorder.Flush()
+}
+
 func TestDelayedStatusWriter_FlushBeforeWrite(t *testing.T) {
 	for _, status := range []int{0, http.StatusCreated} {
 		t.Run(fmt.Sprint(status), func(t *testing.T) {

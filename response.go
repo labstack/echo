@@ -22,10 +22,12 @@ type Response struct {
 	// beforeFuncs are functions that are called just before the response (status) is written. Happens only once, during WriteHeader call.
 	beforeFuncs []func()
 	// afterFuncs are functions that are called just after the response is written. During every `Write` method call.
-	afterFuncs []func()
-	Status     int
-	Size       int64
-	Committed  bool
+	afterFuncs    []func()
+	writingHeader bool
+	flushPending  bool
+	Status        int
+	Size          int64
+	Committed     bool
 }
 
 // NewResponse creates a new instance of Response.
@@ -53,11 +55,24 @@ func (r *Response) WriteHeader(code int) {
 		return
 	}
 	r.Status = code
+	r.writingHeader = true
+	defer func() {
+		r.writingHeader = false
+		if !r.Committed {
+			// A failed Before callback or header write must not leave a deferred flush.
+			r.flushPending = false
+		}
+	}()
 	for _, fn := range r.beforeFuncs {
 		fn()
 	}
 	r.ResponseWriter.WriteHeader(r.Status)
 	r.Committed = true
+	r.writingHeader = false
+	if r.flushPending {
+		r.flushPending = false
+		r.Flush()
+	}
 }
 
 // Write writes the data to the connection as part of an HTTP reply.
@@ -78,13 +93,21 @@ func (r *Response) Write(b []byte) (n int, err error) {
 
 // Flush implements the http.Flusher interface to allow an HTTP handler to flush
 // buffered data to the client.
+// Calls from Before callbacks are deferred until all callbacks have completed
+// and the final response headers have been committed.
 // See [http.Flusher](https://golang.org/pkg/net/http/#Flusher)
 func (r *Response) Flush() {
+	if r.writingHeader {
+		r.flushPending = true
+		return
+	}
 	if !r.Committed {
+		r.flushPending = true
 		if r.Status == 0 {
 			r.Status = http.StatusOK
 		}
 		r.WriteHeader(r.Status)
+		return
 	}
 	err := http.NewResponseController(r.ResponseWriter).Flush()
 	if err != nil && errors.Is(err, http.ErrNotSupported) {
@@ -120,6 +143,8 @@ func (r *Response) reset(w http.ResponseWriter) {
 	r.Size = 0
 	r.Status = http.StatusOK
 	r.Committed = false
+	r.writingHeader = false
+	r.flushPending = false
 }
 
 // UnwrapResponse unwraps given ResponseWriter to return contexts original Echo Response. rw has to implement
