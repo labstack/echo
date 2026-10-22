@@ -50,6 +50,7 @@ jobs:
           fail_ci_if_error: false
 
   benchmark:
+    if: github.event_name == 'pull_request'
     needs: test
     name: Benchmark comparison
     runs-on: ubuntu-latest
@@ -76,12 +77,12 @@ jobs:
       - name: Run Benchmark (Previous)
         run: |
           cd previous
-          go test -run="-" -bench=".*" -count=8 ./... > benchmark.txt
+          go test -run="-" -bench=".*" -benchtime=100ms -count=8 ./... > benchmark.txt
 
       - name: Run Benchmark (New)
         run: |
           cd new
-          go test -run="-" -bench=".*" -count=8 ./... > benchmark.txt
+          go test -run="-" -bench=".*" -benchtime=100ms -count=8 ./... > benchmark.txt
 
       - name: Run Benchstat
         run: |
