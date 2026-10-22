@@ -118,6 +118,27 @@ func TestBasicAuth(t *testing.T) {
 	}
 }
 
+func TestBasicAuthRejectsInvalidSchemeBoundary(t *testing.T) {
+	e := echo.New()
+	validatorCalled := false
+	e.Use(BasicAuth(func(user, password string, c echo.Context) (bool, error) {
+		validatorCalled = true
+		return user == "joe" && password == "secret", nil
+	}))
+	e.GET("/", func(c echo.Context) error {
+		return c.NoContent(http.StatusNoContent)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set(echo.HeaderAuthorization, "BasicX"+base64.StdEncoding.EncodeToString([]byte("joe:secret")))
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	assert.Equal(t, basic+` realm="Restricted"`, rec.Header().Get(echo.HeaderWWWAuthenticate))
+	assert.False(t, validatorCalled)
+}
+
 func TestBasicAuthRealm(t *testing.T) {
 	e := echo.New()
 	mockValidator := func(u, p string, c echo.Context) (bool, error) {
