@@ -22,6 +22,14 @@ type BodyDumpConfig struct {
 	// Handler receives request and response payload.
 	// Required.
 	Handler BodyDumpHandler
+
+	// MaxRequestBytes limits captured request bytes, without truncating the body
+	// delivered to the next handler. Defaults to 5 MiB; -1 disables the limit.
+	MaxRequestBytes int64
+
+	// MaxResponseBytes limits captured response bytes, without truncating the
+	// response delivered to the client. Defaults to 5 MiB; -1 disables the limit.
+	MaxResponseBytes int64
 }
 
 // BodyDumpHandler receives the request and response payload.
@@ -57,6 +65,12 @@ func BodyDumpWithConfig(config BodyDumpConfig) echo.MiddlewareFunc {
 	if config.Skipper == nil {
 		config.Skipper = DefaultBodyDumpConfig.Skipper
 	}
+	if config.MaxRequestBytes == 0 {
+		config.MaxRequestBytes = 5 * 1024 * 1024
+	}
+	if config.MaxResponseBytes == 0 {
+		config.MaxResponseBytes = 5 * 1024 * 1024
+	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) (err error) {
@@ -67,17 +81,30 @@ func BodyDumpWithConfig(config BodyDumpConfig) echo.MiddlewareFunc {
 			// Request
 			reqBody := []byte{}
 			if c.Request().Body != nil {
+				originalBody := c.Request().Body
+				var reader io.Reader = originalBody
+				if config.MaxRequestBytes > 0 {
+					reader = io.LimitReader(reader, config.MaxRequestBytes)
+				}
 				var readErr error
-				reqBody, readErr = io.ReadAll(c.Request().Body)
+				reqBody, readErr = io.ReadAll(reader)
 				if readErr != nil {
 					return readErr
 				}
+				c.Request().Body = struct {
+					io.Reader
+					io.Closer
+				}{Reader: io.MultiReader(bytes.NewReader(reqBody), originalBody), Closer: originalBody}
+			} else {
+				c.Request().Body = http.NoBody
 			}
-			c.Request().Body = io.NopCloser(bytes.NewBuffer(reqBody)) // Reset
 
 			// Response
 			resBody := new(bytes.Buffer)
-			mw := io.MultiWriter(c.Response().Writer, resBody)
+			var mw io.Writer = io.MultiWriter(c.Response().Writer, resBody)
+			if config.MaxResponseBytes > 0 {
+				mw = &bodyDumpLimitedWriter{writer: c.Response().Writer, buffer: resBody, remaining: config.MaxResponseBytes}
+			}
 			writer := &bodyDumpResponseWriter{Writer: mw, ResponseWriter: c.Response().Writer}
 			c.Response().Writer = writer
 
@@ -91,6 +118,22 @@ func BodyDumpWithConfig(config BodyDumpConfig) echo.MiddlewareFunc {
 			return
 		}
 	}
+}
+
+type bodyDumpLimitedWriter struct {
+	writer    io.Writer
+	buffer    *bytes.Buffer
+	remaining int64
+}
+
+func (w *bodyDumpLimitedWriter) Write(p []byte) (int, error) {
+	n, err := w.writer.Write(p)
+	if w.remaining > 0 {
+		captured := min(int64(n), w.remaining)
+		_, _ = w.buffer.Write(p[:captured])
+		w.remaining -= captured
+	}
+	return n, err
 }
 
 func (w *bodyDumpResponseWriter) WriteHeader(code int) {

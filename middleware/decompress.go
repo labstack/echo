@@ -19,6 +19,10 @@ type DecompressConfig struct {
 
 	// GzipDecompressPool defines an interface to provide the sync.Pool used to create/store Gzip readers
 	GzipDecompressPool Decompressor
+
+	// MaxDecompressedSize limits the decompressed body in bytes. Reading beyond
+	// the limit returns HTTP 413. Defaults to 100 MiB; -1 disables the limit.
+	MaxDecompressedSize int64
 }
 
 // GZIPEncoding content-encoding header if set to "gzip", decompress body contents.
@@ -57,6 +61,9 @@ func DecompressWithConfig(config DecompressConfig) echo.MiddlewareFunc {
 	if config.GzipDecompressPool == nil {
 		config.GzipDecompressPool = DefaultDecompressConfig.GzipDecompressPool
 	}
+	if config.MaxDecompressedSize == 0 {
+		config.MaxDecompressedSize = 100 * 1024 * 1024
+	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		pool := config.GzipDecompressPool.gzipDecompressPool()
@@ -90,9 +97,43 @@ func DecompressWithConfig(config DecompressConfig) echo.MiddlewareFunc {
 			// only Close gzip reader if it was set to a proper gzip source otherwise it will panic on close.
 			defer gr.Close()
 
-			c.Request().Body = gr
+			if config.MaxDecompressedSize > 0 {
+				c.Request().Body = &limitedGzipReader{Reader: gr, remaining: config.MaxDecompressedSize}
+			} else {
+				c.Request().Body = gr
+			}
+			c.Request().ContentLength = -1
 
 			return next(c)
 		}
 	}
+}
+
+type limitedGzipReader struct {
+	*gzip.Reader
+	remaining int64
+}
+
+func (r *limitedGzipReader) Read(p []byte) (int, error) {
+	if len(p) == 0 {
+		return 0, nil
+	}
+	if r.remaining < 0 {
+		return 0, echo.ErrStatusRequestEntityTooLarge
+	}
+	if r.remaining == 0 {
+		var probe [1]byte
+		n, err := r.Reader.Read(probe[:])
+		if n > 0 {
+			r.remaining = -1
+			return 0, echo.ErrStatusRequestEntityTooLarge
+		}
+		return 0, err
+	}
+	if int64(len(p)) > r.remaining {
+		p = p[:r.remaining]
+	}
+	n, err := r.Reader.Read(p)
+	r.remaining -= int64(n)
+	return n, err
 }

@@ -1195,6 +1195,7 @@ func TestEcho_StartH2CServer(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			e := New()
 			e.Debug = true
+			//lint:ignore SA1019 Exercise the supported v4 StartH2CServer API.
 			h2s := &http2.Server{}
 
 			errChan := make(chan error)

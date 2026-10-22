@@ -4,8 +4,8 @@
 package middleware
 
 import (
+	"bufio"
 	"context"
-	"crypto/tls"
 	"fmt"
 	"io"
 	"math/rand"
@@ -20,8 +20,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 )
-
-// TODO: Handle TLS proxy
 
 // ProxyConfig defines the config for Proxy middleware.
 type ProxyConfig struct {
@@ -131,63 +129,6 @@ var DefaultProxyConfig = ProxyConfig{
 	ContextKey: "target",
 }
 
-func proxyRaw(t *ProxyTarget, c echo.Context, config ProxyConfig) http.Handler {
-	var dialFunc func(ctx context.Context, network, addr string) (net.Conn, error)
-	if transport, ok := config.Transport.(*http.Transport); ok {
-		if transport.TLSClientConfig != nil {
-			d := tls.Dialer{
-				Config: transport.TLSClientConfig,
-			}
-			dialFunc = d.DialContext
-		}
-	}
-	if dialFunc == nil {
-		var d net.Dialer
-		dialFunc = d.DialContext
-	}
-
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		in, _, err := c.Response().Hijack()
-		if err != nil {
-			c.Set("_error", fmt.Errorf("proxy raw, hijack error=%w, url=%s", err, t.URL))
-			return
-		}
-		defer in.Close()
-		out, err := dialFunc(c.Request().Context(), "tcp", t.URL.Host)
-		if err != nil {
-			c.Set("_error", echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("proxy raw, dial error=%v, url=%s", err, t.URL)))
-			return
-		}
-		defer out.Close()
-
-		// Write header
-		err = r.Write(out)
-		if err != nil {
-			c.Set("_error", echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("proxy raw, request header copy error=%v, url=%s", err, t.URL)))
-			return
-		}
-
-		errCh := make(chan error, 2)
-		cp := func(dst io.Writer, src io.Reader) {
-			_, copyErr := io.Copy(dst, src)
-			errCh <- copyErr
-		}
-
-		go cp(out, in)
-		go cp(in, out)
-
-		// Wait for BOTH goroutines to complete
-		err1 := <-errCh
-		err2 := <-errCh
-
-		if err1 != nil && err1 != io.EOF {
-			c.Set("_error", fmt.Errorf("proxy raw, copy body error=%w, url=%s", err1, t.URL))
-		} else if err2 != nil && err2 != io.EOF {
-			c.Set("_error", fmt.Errorf("proxy raw, copy body error=%w, url=%s", err2, t.URL))
-		}
-	})
-}
-
 // NewRandomBalancer returns a random proxy balancer.
 func NewRandomBalancer(targets []*ProxyTarget) ProxyBalancer {
 	b := randomBalancer{}
@@ -291,6 +232,8 @@ func (b *roundRobinBalancer) Next(c echo.Context) *ProxyTarget {
 // Proxy returns a Proxy middleware.
 //
 // Proxy middleware forwards the request to upstream server using a configured load balancing technique.
+// The unvalidated Forwarded header is removed. Configure Echo#IPExtractor to
+// validate proxy-supplied client identities before trusting X-Real-IP upstream.
 func Proxy(balancer ProxyBalancer) echo.MiddlewareFunc {
 	c := DefaultProxyConfig
 	c.Balancer = balancer
@@ -357,9 +300,8 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 			req.Header.Del(echo.HeaderXForwardedSsl)
 			req.Header.Del(echo.HeaderXForwardedProtocol)
 			req.Header.Del(echo.HeaderXUrlScheme)
-			if c.IsWebSocket() && req.Header.Get(echo.HeaderXForwardedFor) == "" { // For HTTP, it is automatically set by Go HTTP reverse proxy.
-				req.Header.Set(echo.HeaderXForwardedFor, c.RealIP())
-			}
+			// Do not forward an unvalidated parallel source of client identity and scheme.
+			req.Header.Del("Forwarded")
 
 			retries := config.RetryCount
 			for {
@@ -387,13 +329,8 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 				// that Balancer may have replaced with c.SetRequest.
 				req = c.Request()
 
-				// Proxy
-				switch {
-				case c.IsWebSocket():
-					proxyRaw(tgt, c, config).ServeHTTP(res, req)
-				default: // even SSE requests
-					proxyHTTP(tgt, c, config).ServeHTTP(res, req)
-				}
+				// ReverseProxy validates upgrades and closes both sides when a tunnel ends.
+				proxyHTTP(tgt, c, config).ServeHTTP(res, req)
 
 				err, hasError := c.Get("_error").(error)
 				if !hasError {
@@ -419,7 +356,17 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 const StatusCodeContextCanceled = 499
 
 func proxyHTTP(tgt *ProxyTarget, c echo.Context, config ProxyConfig) http.Handler {
-	proxy := httputil.NewSingleHostReverseProxy(tgt.URL)
+	// The HTTP transport also handles WebSocket upgrades. Normalize WebSocket
+	// target schemes on a copy so shared balancer targets remain unchanged.
+	targetURL := *tgt.URL
+	switch targetURL.Scheme {
+	case "ws":
+		targetURL.Scheme = "http"
+	case "wss":
+		targetURL.Scheme = "https"
+	}
+	proxy := httputil.NewSingleHostReverseProxy(&targetURL)
+	isWebSocket := c.IsWebSocket()
 	proxy.ErrorHandler = func(resp http.ResponseWriter, req *http.Request, err error) {
 		desc := tgt.URL.String()
 		if tgt.Name != "" {
@@ -441,6 +388,44 @@ func proxyHTTP(tgt *ProxyTarget, c echo.Context, config ProxyConfig) http.Handle
 		}
 	}
 	proxy.Transport = config.Transport
-	proxy.ModifyResponse = config.ModifyResponse
-	return proxy
+	proxy.ModifyResponse = func(response *http.Response) error {
+		if config.ModifyResponse != nil {
+			if err := config.ModifyResponse(response); err != nil {
+				return err
+			}
+		}
+		if isWebSocket && response.StatusCode == http.StatusSwitchingProtocols {
+			if body, ok := response.Body.(io.ReadWriteCloser); ok {
+				// Hide backend CloseWrite after the user's hook, so a client EOF
+				// closes the tunnel even when the upstream ignores half-close.
+				response.Body = struct{ io.ReadWriteCloser }{body}
+			}
+		}
+		return nil
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if isWebSocket {
+			w = proxyUpgradeResponseWriter{w}
+		}
+		proxy.ServeHTTP(w, r)
+	})
+}
+
+type proxyUpgradeResponseWriter struct {
+	http.ResponseWriter
+}
+
+func (w proxyUpgradeResponseWriter) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
+}
+
+func (w proxyUpgradeResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	conn, rw, err := http.NewResponseController(w.ResponseWriter).Hijack()
+	if err != nil {
+		return nil, nil, err
+	}
+	// WebSocket does not support TCP half-close. Hide CloseWrite so ReverseProxy
+	// closes both connections when either direction reaches EOF, rather than
+	// waiting indefinitely for an idle peer to close its other half.
+	return struct{ net.Conn }{conn}, rw, nil
 }
