@@ -78,7 +78,7 @@ func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 			auth := c.Request().Header.Get(echo.HeaderAuthorization)
 			l := len(basic)
 
-			if len(auth) > l+1 && strings.EqualFold(auth[:l], basic) {
+			if len(auth) > l+1 && auth[l] == ' ' && strings.EqualFold(auth[:l], basic) {
 				// Invalid base64 shouldn't be treated as error
 				// instead should be treated as invalid client input
 				b, err := base64.StdEncoding.DecodeString(auth[l+1:])
