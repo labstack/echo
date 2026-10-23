@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
-	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -315,8 +314,7 @@ func (c *context) RealIP() string {
 		ip = strings.TrimSuffix(ip, "]")
 		return ip
 	}
-	ra, _, _ := net.SplitHostPort(c.request.RemoteAddr)
-	return ra
+	return extractIP(c.request)
 }
 
 func (c *context) Path() string {
