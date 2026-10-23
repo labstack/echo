@@ -90,10 +90,7 @@ func isTrustedPeer(remoteAddr string, checker *ipChecker) bool {
 	if err != nil {
 		host = remoteAddr
 	}
-	if i := strings.IndexByte(host, '%'); i != -1 { // IPv6 zone, e.g. "fe80::1%eth0"
-		host = host[:i]
-	}
-	ip := net.ParseIP(host)
+	ip := net.ParseIP(stripIPv6Zone(host))
 	return ip != nil && checker.trust(ip)
 }
 
