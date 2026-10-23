@@ -145,6 +145,27 @@ func TestRoute_ForGroup(t *testing.T) {
 	assert.Equal(t, r.Name, "test route")
 }
 
+func TestJoinPathPrefix(t *testing.T) {
+	tests := []struct {
+		prefix string
+		path   string
+		want   string
+	}{
+		{prefix: "/v1", path: "/posts", want: "/v1/posts"},
+		{prefix: "/v1", path: "posts", want: "/v1/posts"},
+		{prefix: "/v1/", path: "posts", want: "/v1/posts"},
+		{prefix: "/v1/", path: "/posts", want: "/v1//posts"},
+		{prefix: "/users", path: "/test", want: "/users/test"},
+		{prefix: "/users", path: ":id", want: "/users/:id"},
+		{prefix: "/test", path: "*", want: "/test*"},
+		{prefix: "", path: "posts", want: "posts"},
+		{prefix: "/v1", path: "", want: "/v1"},
+	}
+	for _, tt := range tests {
+		assert.Equal(t, tt.want, joinPathPrefix(tt.prefix, tt.path), "prefix=%q path=%q", tt.prefix, tt.path)
+	}
+}
+
 func exampleRoutes() Routes {
 	return Routes{
 		RouteInfo{
