@@ -24,11 +24,11 @@ func captureTokens(pattern *regexp.Regexp, input string) *strings.Replacer {
 		return nil
 	}
 	values := groups[0][1:]
-	replace := make([]string, 2*len(values))
-	for i, v := range values {
-		j := 2 * i
-		replace[j] = "$" + strconv.Itoa(i+1)
-		replace[j+1] = v
+	// strings.Replacer tries old strings in argument order, so list the highest
+	// index first. Otherwise "$1" matches the start of "$10".
+	replace := make([]string, 0, 2*len(values))
+	for i := len(values); i > 0; i-- {
+		replace = append(replace, "$"+strconv.Itoa(i), values[i-1])
 	}
 	return strings.NewReplacer(replace...)
 }
