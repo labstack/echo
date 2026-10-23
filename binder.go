@@ -575,6 +575,7 @@ func (b *ValueBinder) intsValue(sourceParam string, dest any, valueMustExist boo
 }
 
 func (b *ValueBinder) ints(sourceParam string, values []string, dest any) *ValueBinder {
+	errorsBefore := len(b.errors)
 	switch d := dest.(type) {
 	case *[]int64:
 		tmp := make([]int64, len(values))
@@ -584,7 +585,7 @@ func (b *ValueBinder) ints(sourceParam string, values []string, dest any) *Value
 				return b
 			}
 		}
-		if b.errors == nil {
+		if len(b.errors) == errorsBefore {
 			*d = tmp
 		}
 	case *[]int32:
@@ -595,7 +596,7 @@ func (b *ValueBinder) ints(sourceParam string, values []string, dest any) *Value
 				return b
 			}
 		}
-		if b.errors == nil {
+		if len(b.errors) == errorsBefore {
 			*d = tmp
 		}
 	case *[]int16:
@@ -606,7 +607,7 @@ func (b *ValueBinder) ints(sourceParam string, values []string, dest any) *Value
 				return b
 			}
 		}
-		if b.errors == nil {
+		if len(b.errors) == errorsBefore {
 			*d = tmp
 		}
 	case *[]int8:
@@ -617,7 +618,7 @@ func (b *ValueBinder) ints(sourceParam string, values []string, dest any) *Value
 				return b
 			}
 		}
-		if b.errors == nil {
+		if len(b.errors) == errorsBefore {
 			*d = tmp
 		}
 	case *[]int:
@@ -628,7 +629,7 @@ func (b *ValueBinder) ints(sourceParam string, values []string, dest any) *Value
 				return b
 			}
 		}
-		if b.errors == nil {
+		if len(b.errors) == errorsBefore {
 			*d = tmp
 		}
 	}
@@ -803,6 +804,7 @@ func (b *ValueBinder) uintsValue(sourceParam string, dest any, valueMustExist bo
 }
 
 func (b *ValueBinder) uints(sourceParam string, values []string, dest any) *ValueBinder {
+	errorsBefore := len(b.errors)
 	switch d := dest.(type) {
 	case *[]uint64:
 		tmp := make([]uint64, len(values))
@@ -812,7 +814,7 @@ func (b *ValueBinder) uints(sourceParam string, values []string, dest any) *Valu
 				return b
 			}
 		}
-		if b.errors == nil {
+		if len(b.errors) == errorsBefore {
 			*d = tmp
 		}
 	case *[]uint32:
@@ -823,7 +825,7 @@ func (b *ValueBinder) uints(sourceParam string, values []string, dest any) *Valu
 				return b
 			}
 		}
-		if b.errors == nil {
+		if len(b.errors) == errorsBefore {
 			*d = tmp
 		}
 	case *[]uint16:
@@ -834,7 +836,7 @@ func (b *ValueBinder) uints(sourceParam string, values []string, dest any) *Valu
 				return b
 			}
 		}
-		if b.errors == nil {
+		if len(b.errors) == errorsBefore {
 			*d = tmp
 		}
 	case *[]uint8: // byte is alias to uint8
@@ -845,7 +847,7 @@ func (b *ValueBinder) uints(sourceParam string, values []string, dest any) *Valu
 				return b
 			}
 		}
-		if b.errors == nil {
+		if len(b.errors) == errorsBefore {
 			*d = tmp
 		}
 	case *[]uint:
@@ -856,7 +858,7 @@ func (b *ValueBinder) uints(sourceParam string, values []string, dest any) *Valu
 				return b
 			}
 		}
-		if b.errors == nil {
+		if len(b.errors) == errorsBefore {
 			*d = tmp
 		}
 	}
@@ -965,6 +967,7 @@ func (b *ValueBinder) boolsValue(sourceParam string, dest *[]bool, valueMustExis
 }
 
 func (b *ValueBinder) bools(sourceParam string, values []string, dest *[]bool) *ValueBinder {
+	errorsBefore := len(b.errors)
 	tmp := make([]bool, len(values))
 	for i, v := range values {
 		b.bool(sourceParam, v, &tmp[i])
@@ -972,7 +975,7 @@ func (b *ValueBinder) bools(sourceParam string, values []string, dest *[]bool) *
 			return b
 		}
 	}
-	if b.errors == nil {
+	if len(b.errors) == errorsBefore {
 		*dest = tmp
 	}
 	return b
@@ -1056,6 +1059,7 @@ func (b *ValueBinder) floatsValue(sourceParam string, dest any, valueMustExist b
 }
 
 func (b *ValueBinder) floats(sourceParam string, values []string, dest any) *ValueBinder {
+	errorsBefore := len(b.errors)
 	switch d := dest.(type) {
 	case *[]float64:
 		tmp := make([]float64, len(values))
@@ -1065,7 +1069,7 @@ func (b *ValueBinder) floats(sourceParam string, values []string, dest any) *Val
 				return b
 			}
 		}
-		if b.errors == nil {
+		if len(b.errors) == errorsBefore {
 			*d = tmp
 		}
 	case *[]float32:
@@ -1076,7 +1080,7 @@ func (b *ValueBinder) floats(sourceParam string, values []string, dest any) *Val
 				return b
 			}
 		}
-		if b.errors == nil {
+		if len(b.errors) == errorsBefore {
 			*d = tmp
 		}
 	}
@@ -1157,6 +1161,7 @@ func (b *ValueBinder) times(sourceParam string, dest *[]time.Time, layout string
 		return b
 	}
 
+	errorsBefore := len(b.errors)
 	tmp := make([]time.Time, len(values))
 	for i, v := range values {
 		t, err := time.Parse(layout, v)
@@ -1169,7 +1174,7 @@ func (b *ValueBinder) times(sourceParam string, dest *[]time.Time, layout string
 		}
 		tmp[i] = t
 	}
-	if b.errors == nil {
+	if len(b.errors) == errorsBefore {
 		*dest = tmp
 	}
 	return b
@@ -1232,6 +1237,7 @@ func (b *ValueBinder) durationsValue(sourceParam string, dest *[]time.Duration, 
 }
 
 func (b *ValueBinder) durations(sourceParam string, values []string, dest *[]time.Duration) *ValueBinder {
+	errorsBefore := len(b.errors)
 	tmp := make([]time.Duration, len(values))
 	for i, v := range values {
 		t, err := time.ParseDuration(v)
@@ -1244,7 +1250,7 @@ func (b *ValueBinder) durations(sourceParam string, values []string, dest *[]tim
 		}
 		tmp[i] = t
 	}
-	if b.errors == nil {
+	if len(b.errors) == errorsBefore {
 		*dest = tmp
 	}
 	return b
