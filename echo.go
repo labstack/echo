@@ -696,7 +696,15 @@ func StaticDirectoryHandler(fileSystem fs.FS, disablePathUnescaping bool) Handle
 		// If the request is for a directory and does not end with "/" redirect to path which ends with "/"
 		p = c.Request().URL.Path
 		if fi.IsDir() && len(p) > 0 && p[len(p)-1] != '/' {
-			return c.Redirect(http.StatusMovedPermanently, sanitizeURI(p+"/"))
+			uri := p + "/"
+			// Keep the query string on the redirect target, as the query is still part of what the client asked
+			// for. `net/http.localRedirect` (used by `http.FileServer`) does the same, and dropping it here turns
+			// e.g. `GET /folder?v=2` into a permanent redirect to `/folder/`, which clients cache and then serve
+			// the wrong (or no) variant for.
+			if q := c.Request().URL.RawQuery; q != "" {
+				uri += "?" + q
+			}
+			return c.Redirect(http.StatusMovedPermanently, sanitizeURI(uri))
 		}
 		return fsFile(c, name, fileSystem)
 	}
