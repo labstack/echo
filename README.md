@@ -70,7 +70,7 @@ Building multi-tenant APIs? [Echo Pro](https://echo.labstack.com/pro) is a separ
 ### Supported versions
 
 - `v5` is the current major version, released on 2026-01-18. See [API_CHANGES_V5.md](./API_CHANGES_V5.md) for the API changes from `v4` and upgrade notes.
-- `v4` receives security updates and bug fixes until 2026-12-31.
+- `v4` receives bug fixes until 2026-12-31 and security fixes until 2027-12-31, on its latest release. See [SECURITY.md](./SECURITY.md).
 
 See [ROADMAP.md](./ROADMAP.md) for where Echo is heading and the version support policy.
 
@@ -80,7 +80,7 @@ See [ROADMAP.md](./ROADMAP.md) for where Echo is heading and the version support
 go get github.com/labstack/echo/v5
 ```
 
-Echo supports the three most recent Go [releases](https://go.dev/doc/devel/release) and may work with older ones.
+Echo v5 supports the three most recent Go [releases](https://go.dev/doc/devel/release) and may work with older ones. Echo v4 requires Go 1.26 or later.
 
 ### Example
 
