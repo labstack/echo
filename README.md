@@ -63,6 +63,8 @@ See [ADOPTERS.md](./ADOPTERS.md) for the full list. Using Echo in an open source
 
 Echo is independent and community funded. If your company depends on Echo, please consider [sponsoring it](https://github.com/sponsors/labstack).
 
+Building multi-tenant APIs? [Echo Pro](https://echo.labstack.com/pro) is a separate commercial library (API keys, tenant isolation, quotas, signed webhooks) whose subscriptions fund Echo's maintenance. Echo itself stays MIT.
+
 ## Getting started
 
 ### Supported versions
