@@ -15,7 +15,7 @@
     {
       "guid": "echo",
       "name": "Echo",
-      "description": "High performance, minimalist Go web framework. About 82,000 GitHub repositories and 47,000 Go packages depend on it, and companies including Microsoft (Azure), NVIDIA and Docker use it in production. Maintained since 2015, with v5 as the current version and v4 as a long-term support line.",
+      "description": "High performance, minimalist Go web framework. About 82,000 GitHub repositories and 47,000 Go packages depend on it, and companies including Microsoft (Azure), NVIDIA and Docker use it in production. Maintained since 2015, with v5 as the current version and v4 in maintenance.",
       "webpageUrl": {
         "url": "https://github.com/labstack/echo"
       },
@@ -45,7 +45,7 @@
         "guid": "maintenance",
         "status": "active",
         "name": "Maintenance",
-        "description": "Issue and pull request triage, releases for v5 and the v4 long-term support line, dependency updates and CI upkeep.",
+        "description": "Issue and pull request triage, releases for v5 and the v4 maintenance line, dependency updates and CI upkeep.",
         "amount": 10000,
         "currency": "USD",
         "frequency": "yearly",
@@ -65,7 +65,7 @@
         "guid": "maintainer",
         "status": "active",
         "name": "Dedicated maintainer",
-        "description": "Funds a maintainer to keep security response times short, review contributions and maintain the v4 long-term support line.",
+        "description": "Funds a maintainer to keep security response times short, review contributions and maintain the v4 line.",
         "amount": 100000,
         "currency": "USD",
         "frequency": "yearly",
