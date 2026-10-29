@@ -61,9 +61,11 @@ Click [here](https://github.com/sponsors/labstack) for more information on spons
 // go get github.com/labstack/echo/{version}
 go get github.com/labstack/echo/v4
 ```
-Echo v4.16.1 requires Go 1.26 or later so it can use patched `golang.org/x/` dependencies. Use a supported, patched Go toolchain when building applications.
+Echo v4.16.1 and later require Go 1.26 or later to use patched `golang.org/x/` dependencies. Use a supported, patched Go toolchain when building applications.
 
-### Security defaults in v4.16.1
+Echo v4 receives bug fixes until 2026-12-31 and free security fixes until 2027-12-31, on its latest release. New projects should use [v5](https://github.com/labstack/echo). See [SECURITY.md](https://github.com/labstack/echo/blob/master/SECURITY.md) for the full policy.
+
+### Security defaults since v4.16.1
 
 `BodyDump` captures at most 5 MiB of the request and 5 MiB of the response by default. The application and client still receive the complete bodies. Configure `BodyDumpConfig.MaxRequestBytes` and `MaxResponseBytes` to change the capture limits; `-1` disables a limit.
 
