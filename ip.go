@@ -6,6 +6,7 @@ package echo
 import (
 	"net"
 	"net/http"
+	"net/netip"
 	"strings"
 )
 
@@ -219,6 +220,20 @@ func extractIP(req *http.Request) string {
 	return host
 }
 
+// stripIPv6Zone removes the zone from a scoped IPv6 address, e.g. "fe80::1%eth0", which net.ParseIP rejects.
+// Anything else, including an IPv4 address with a "%" suffix, is returned unchanged so that parsing still fails.
+func stripIPv6Zone(host string) string {
+	zoneIndex := strings.IndexByte(host, '%')
+	if zoneIndex == -1 {
+		return host
+	}
+	addr, err := netip.ParseAddr(host)
+	if err != nil || addr.Zone() == "" {
+		return host
+	}
+	return host[:zoneIndex]
+}
+
 // ExtractIPFromRealIPHeader extracts IP address using `x-real-ip` header.
 // Use this if you put proxy which uses this header.
 func ExtractIPFromRealIPHeader(options ...TrustOption) IPExtractor {
@@ -258,12 +273,16 @@ func ExtractIPFromXFFHeader(options ...TrustOption) IPExtractor {
 			ips[i] = strings.TrimSpace(ips[i])
 			ips[i] = strings.TrimPrefix(ips[i], "[")
 			ips[i] = strings.TrimSuffix(ips[i], "]")
-			ip := net.ParseIP(ips[i])
+			ip := net.ParseIP(stripIPv6Zone(ips[i]))
 			if ip == nil {
 				// Unable to parse IP; cannot trust entire records
 				return directIP
 			}
 			if !checker.trust(ip) {
+				if i == len(ips)-1 {
+					// Untrusted direct peer; return it as-is, as when there is no XFF header
+					return directIP
+				}
 				return ip.String()
 			}
 		}
