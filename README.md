@@ -1,8 +1,8 @@
 <p align="center">
   <a href="https://echo.labstack.com">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset=".github/assets/echo-logo-dark.svg">
-      <img alt="Echo" src=".github/assets/echo-logo-light.svg" height="72">
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/labstack/echo/master/.github/assets/echo-logo-dark.svg">
+      <img alt="Echo" src="https://raw.githubusercontent.com/labstack/echo/master/.github/assets/echo-logo-light.svg" height="72">
     </picture>
   </a>
 </p>
@@ -38,20 +38,11 @@ Echo is built on Go's standard `net/http` and interoperates with it through `ech
 
 ### How a request flows
 
-```mermaid
-flowchart LR
-    req([HTTP request]) --> pre[Pre middleware]
-    pre --> router[Router]
-    router --> mw[Global, group and route middleware]
-    mw --> handler[Handler]
-    handler --> res([Response])
-    pre -. error .-> eh[HTTPErrorHandler]
-    mw -. error .-> eh
-    handler -. error .-> eh
-    eh --> res
-```
-
-`e.Pre` middleware runs before routing, so it can rewrite the path or method. Everything registered with `e.Use`, a group or a route runs after the router has matched. Any error returned by middleware or the handler goes to one `HTTPErrorHandler`.
+1. **Pre middleware** (`e.Pre`) runs before routing, so it can rewrite the path or method.
+2. The **router** matches the route.
+3. **Middleware** registered with `e.Use`, a group or a route runs.
+4. The **handler** writes the response.
+5. Any error returned by middleware or the handler goes to one `HTTPErrorHandler`.
 
 ### Features
 
@@ -108,8 +99,7 @@ Echo is independent and community funded. If your company depends on Echo, pleas
 - `v5` is the current major version, released on 2026-01-18. See [API_CHANGES_V5.md](./API_CHANGES_V5.md) for the API changes from `v4` and upgrade notes.
 - `v4` receives bug fixes until 2026-12-31 and security fixes until 2027-12-31, on its latest release. See [SECURITY.md](./SECURITY.md).
 
-> [!NOTE]
-> Echo v4 is in maintenance and gets no new features. Start new projects on v5, and plan v4 upgrades with [API_CHANGES_V5.md](./API_CHANGES_V5.md).
+> **Note:** Echo v4 is in maintenance and gets no new features. Start new projects on v5, and plan v4 upgrades with [API_CHANGES_V5.md](./API_CHANGES_V5.md).
 
 See [ROADMAP.md](./ROADMAP.md) for where Echo is heading and the version support policy.
 
@@ -207,8 +197,7 @@ To add your library, send a pull request.
 
 ## Security
 
-> [!IMPORTANT]
-> Report vulnerabilities privately through [GitHub Security Advisories](https://github.com/labstack/echo/security/advisories/new), not in public issues. See [SECURITY.md](./SECURITY.md) for supported versions.
+> **Important:** Report vulnerabilities privately through [GitHub Security Advisories](https://github.com/labstack/echo/security/advisories/new), not in public issues. See [SECURITY.md](./SECURITY.md) for supported versions.
 
 ## Credits
 
