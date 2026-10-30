@@ -15,6 +15,19 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestGroup_Prefix(t *testing.T) {
+	e := New()
+	parent := e.Group("/v1")
+	child := parent.Group("/users")
+
+	assert.Equal(t, "/v1", parent.Prefix())
+	assert.Equal(t, "/v1/users", child.Prefix())
+	assert.Equal(t, "", e.Group("").Prefix())
+	assert.Equal(t, "/v1", parent.Group("").Prefix())
+	assert.Equal(t, "/v1users", parent.Group("users").Prefix())
+	assert.Equal(t, "/v1/", parent.Group("/").Prefix())
+}
+
 func TestGroup_withoutRouteWillExecuteMiddleware(t *testing.T) {
 	e := New()
 
