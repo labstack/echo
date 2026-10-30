@@ -223,14 +223,15 @@ func extractIP(req *http.Request) string {
 // stripIPv6Zone removes the zone from a scoped IPv6 address, e.g. "fe80::1%eth0", which net.ParseIP rejects.
 // Anything else, including an IPv4 address with a "%" suffix, is returned unchanged so that parsing still fails.
 func stripIPv6Zone(host string) string {
-	if strings.IndexByte(host, '%') == -1 {
+	zoneIndex := strings.IndexByte(host, '%')
+	if zoneIndex == -1 {
 		return host
 	}
 	addr, err := netip.ParseAddr(host)
 	if err != nil || addr.Zone() == "" {
 		return host
 	}
-	return addr.WithZone("").String()
+	return host[:zoneIndex]
 }
 
 // ExtractIPFromRealIPHeader extracts IP address using `x-real-ip` header.
