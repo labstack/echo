@@ -45,7 +45,8 @@ flowchart LR
     router --> mw[Global, group and route middleware]
     mw --> handler[Handler]
     handler --> res([Response])
-    mw -. error .-> eh[HTTPErrorHandler]
+    pre -. error .-> eh[HTTPErrorHandler]
+    mw -. error .-> eh
     handler -. error .-> eh
     eh --> res
 ```
