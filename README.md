@@ -14,7 +14,8 @@ This branch holds Echo v4, the maintenance line. Echo v5 is the current release;
 - [v4 API reference](https://pkg.go.dev/github.com/labstack/echo/v4)
 - [Upgrade from v4 to v5](https://github.com/labstack/echo/blob/master/API_CHANGES_V5.md)
 - [Website](https://echo.labstack.com) (documents v5)
-- Questions: [GitHub Discussions](https://github.com/labstack/echo/discussions)
+- Community help: [GitHub Discussions](https://github.com/labstack/echo/discussions)
+- Commercial support: [Echo Support](https://echo.labstack.com/pro#support)
 
 ### Support
 
