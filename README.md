@@ -65,6 +65,27 @@ Echo v4.16.1 and later require Go 1.26 or later to use patched `golang.org/x/` d
 
 Echo v4 receives bug fixes until 2026-12-31 and free security fixes until 2027-12-31, on its latest release. New projects should use [v5](https://github.com/labstack/echo). See [SECURITY.md](https://github.com/labstack/echo/blob/master/SECURITY.md) for the full policy.
 
+### Client IP security migration (next release)
+
+The next v4 security release also changes client IP defaults: without `Echo#IPExtractor`, `Context.RealIP()` uses the connection peer and ignores `X-Forwarded-For` and `X-Real-IP`. Proxy middleware always replaces upstream `X-Real-IP` with this result. This fixes CVE-2026-118651 and CVE-2026-118653.
+
+**Migration for applications behind proxies:** configure `Echo#IPExtractor` before starting the server. Otherwise, clients behind the same proxy share its IP address for rate limiting, access controls, and logging. Use `echo.ExtractIPDirect()` when there is no proxy. For XFF-based proxies, disable the broad default trust ranges and trust only your proxy addresses:
+
+```go
+_, proxyRange, err := net.ParseCIDR("10.0.0.10/32") // replace with your proxy's address or CIDR
+if err != nil {
+  log.Fatal(err)
+}
+e.IPExtractor = echo.ExtractIPFromXFFHeader(
+  echo.TrustLoopback(false),
+  echo.TrustLinkLocal(false),
+  echo.TrustPrivateNet(false),
+  echo.TrustIPRange(proxyRange),
+)
+```
+
+If your proxy uses `X-Real-IP`, use `echo.ExtractIPFromRealIPHeader` with the same trust options. Configure the outermost proxy to replace client-supplied identity headers. Explicitly configured extractors and custom rate-limit identifiers retain their behavior.
+
 ### Security defaults since v4.16.1
 
 `BodyDump` captures at most 5 MiB of the request and 5 MiB of the response by default. The application and client still receive the complete bodies. Configure `BodyDumpConfig.MaxRequestBytes` and `MaxResponseBytes` to change the capture limits; `-1` disables a limit.

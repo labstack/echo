@@ -197,7 +197,7 @@ func TestProxyRealIPHeader(t *testing.T) {
 	}{
 		{false, false, remoteAddrIP},
 		{false, true, extractedRealIP},
-		{true, false, realIPHeaderIP},
+		{true, false, remoteAddrIP},
 		{true, true, extractedRealIP},
 	}
 

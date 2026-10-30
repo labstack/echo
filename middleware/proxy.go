@@ -232,8 +232,9 @@ func (b *roundRobinBalancer) Next(c echo.Context) *ProxyTarget {
 // Proxy returns a Proxy middleware.
 //
 // Proxy middleware forwards the request to upstream server using a configured load balancing technique.
-// The unvalidated Forwarded header is removed. Configure Echo#IPExtractor to
-// validate proxy-supplied client identities before trusting X-Real-IP upstream.
+// The unvalidated Forwarded header is removed. X-Real-IP is overwritten with
+// Context.RealIP(), which uses the connection peer unless Echo#IPExtractor is configured.
+// Configure a trusted proxy extractor when Echo is behind a proxy.
 func Proxy(balancer ProxyBalancer) echo.MiddlewareFunc {
 	c := DefaultProxyConfig
 	c.Balancer = balancer
@@ -287,11 +288,9 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 			}
 
 			// Fix header
-			// Basically it's not good practice to unconditionally pass incoming x-real-ip header to upstream.
-			// However, for backward compatibility, legacy behavior is preserved unless you configure Echo#IPExtractor.
-			if req.Header.Get(echo.HeaderXRealIP) == "" || c.Echo().IPExtractor != nil {
-				req.Header.Set(echo.HeaderXRealIP, c.RealIP())
-			}
+			// Derive the upstream identity from the configured extractor or the connection peer.
+			clientIP := c.RealIP()
+			req.Header.Set(echo.HeaderXRealIP, clientIP)
 			// Always overwrite X-Forwarded-Proto. c.Scheme() uses an incoming X-Forwarded-Proto header only when it comes
 			// from a trusted address (see Echo#SchemeExtractor), so clients cannot spoof the scheme seen by the upstream.
 			// Remove the other scheme headers: X-Forwarded-Proto carries the scheme, and some upstreams (e.g. Rack) would
@@ -330,7 +329,7 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 				req = c.Request()
 
 				// ReverseProxy validates upgrades and closes both sides when a tunnel ends.
-				proxyHTTP(tgt, c, config).ServeHTTP(res, req)
+				proxyHTTP(tgt, c, config, clientIP).ServeHTTP(res, req)
 
 				err, hasError := c.Get("_error").(error)
 				if !hasError {
@@ -355,7 +354,7 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 // 499 too instead of the more problematic 5xx, which does not allow to detect this situation
 const StatusCodeContextCanceled = 499
 
-func proxyHTTP(tgt *ProxyTarget, c echo.Context, config ProxyConfig) http.Handler {
+func proxyHTTP(tgt *ProxyTarget, c echo.Context, config ProxyConfig, clientIP string) http.Handler {
 	// The HTTP transport also handles WebSocket upgrades. Normalize WebSocket
 	// target schemes on a copy so shared balancer targets remain unchanged.
 	targetURL := *tgt.URL
@@ -387,7 +386,14 @@ func proxyHTTP(tgt *ProxyTarget, c echo.Context, config ProxyConfig) http.Handle
 			c.Set("_error", httpError)
 		}
 	}
-	proxy.Transport = config.Transport
+	transport := config.Transport
+	if transport == nil {
+		transport = http.DefaultTransport
+	}
+	// ReverseProxy removes headers named by Connection after its Director runs.
+	// Restore the derived identity at the transport boundary so a client cannot
+	// suppress it with Connection: X-Real-IP, including on WebSocket upgrades.
+	proxy.Transport = proxyClientIPTransport{transport: transport, clientIP: clientIP}
 	proxy.ModifyResponse = func(response *http.Response) error {
 		if config.ModifyResponse != nil {
 			if err := config.ModifyResponse(response); err != nil {
@@ -409,6 +415,17 @@ func proxyHTTP(tgt *ProxyTarget, c echo.Context, config ProxyConfig) http.Handle
 		}
 		proxy.ServeHTTP(w, r)
 	})
+}
+
+type proxyClientIPTransport struct {
+	transport http.RoundTripper
+	clientIP  string
+}
+
+func (t proxyClientIPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req = req.Clone(req.Context())
+	req.Header.Set(echo.HeaderXRealIP, t.clientIP)
+	return t.transport.RoundTrip(req)
 }
 
 type proxyUpgradeResponseWriter struct {

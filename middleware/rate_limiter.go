@@ -42,7 +42,9 @@ var ErrRateLimitExceeded = echo.NewHTTPError(http.StatusTooManyRequests, "rate l
 // ErrExtractorError denotes an error raised when extractor function is unsuccessful
 var ErrExtractorError = echo.NewHTTPError(http.StatusForbidden, "error while extracting identifier")
 
-// DefaultRateLimiterConfig defines default values for RateLimiterConfig
+// DefaultRateLimiterConfig defines default values for RateLimiterConfig.
+// The default identifier uses Context.RealIP(). Configure Echo#IPExtractor for
+// trusted proxies to keep clients behind a proxy in separate rate-limit buckets.
 var DefaultRateLimiterConfig = RateLimiterConfig{
 	Skipper: DefaultSkipper,
 	IdentifierExtractor: func(ctx echo.Context) (string, error) {

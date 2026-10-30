@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
-	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -40,9 +39,10 @@ type Context interface {
 	// Scheme returns the HTTP protocol scheme, `http` or `https`.
 	Scheme() string
 
-	// RealIP returns the client's network address based on `X-Forwarded-For`
-	// or `X-Real-IP` request header.
-	// The behavior can be configured using `Echo#IPExtractor`.
+	// RealIP returns the client IP from Echo#IPExtractor, or the connection peer
+	// when no extractor is configured. Forwarding headers are ignored by default.
+	// Applications behind proxies must configure an extractor that trusts only
+	// their own proxies to recover individual client addresses.
 	RealIP() string
 
 	// Path returns the registered path for the handler.
@@ -299,24 +299,8 @@ func (c *context) RealIP() string {
 	if c.echo != nil && c.echo.IPExtractor != nil {
 		return c.echo.IPExtractor(c.request)
 	}
-	// Fall back to legacy behavior
-	if ip := c.request.Header.Get(HeaderXForwardedFor); ip != "" {
-		i := strings.IndexAny(ip, ",")
-		if i > 0 {
-			xffip := strings.TrimSpace(ip[:i])
-			xffip = strings.TrimPrefix(xffip, "[")
-			xffip = strings.TrimSuffix(xffip, "]")
-			return xffip
-		}
-		return ip
-	}
-	if ip := c.request.Header.Get(HeaderXRealIP); ip != "" {
-		ip = strings.TrimPrefix(ip, "[")
-		ip = strings.TrimSuffix(ip, "]")
-		return ip
-	}
-	ra, _, _ := net.SplitHostPort(c.request.RemoteAddr)
-	return ra
+	// Forwarding headers are client-controlled unless a trusted proxy extractor is configured.
+	return extractIP(c.request)
 }
 
 func (c *context) Path() string {

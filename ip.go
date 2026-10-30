@@ -24,7 +24,8 @@ To retrieve IP address reliably/securely, you must let your application be aware
 In Echo, this can be done by configuring `Echo#IPExtractor` appropriately.
 This guides show you why and how.
 
-> Note: if you don't set `Echo#IPExtractor` explicitly, Echo fallback to legacy behavior, which is not a good choice.
+> Note: if you don't set `Echo#IPExtractor` explicitly, Echo uses the connection peer and ignores forwarding headers.
+> Applications behind proxies must configure a trusted proxy extractor to recover individual client addresses.
 
 Let's start from two questions to know the right direction:
 
@@ -114,10 +115,10 @@ To control this behavior, use [`TrustOption`](https://godoc.org/github.com/labst
 
 ## About default behavior
 
-In default behavior, Echo sees all of first XFF header, X-Real-IP header and IP from network layer.
-
-As you might already notice, after reading this article, this is not good.
-Sole reason this is default is just backward compatibility.
+By default, Echo uses the connection peer from req.RemoteAddr and ignores X-Forwarded-For and X-Real-IP.
+This prevents clients from choosing their own identity for rate limiting, access control, or proxy forwarding.
+Behind a proxy, all clients share that proxy's address unless Echo#IPExtractor is configured.
+Configure a header extractor with trust options limited to your own proxies before relying on individual client IPs.
 
 ## Private IP ranges
 
