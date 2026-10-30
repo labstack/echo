@@ -755,6 +755,104 @@ func TestExtractIPFromXFFHeader(t *testing.T) {
 	}
 }
 
+func TestExtractIPFromXFFHeaderLeftmost(t *testing.T) {
+	var testCases = []struct {
+		whenRequest       http.Request
+		name              string
+		expectIP          string
+		givenTrustOptions []TrustOption
+	}{
+		{
+			name: "leftmost picks client over Front Door egress proxy (issue #2803)",
+			whenRequest: http.Request{
+				Header: http.Header{
+					HeaderXForwardedFor: []string{"203.0.113.195, 203.0.113.199"},
+				},
+				RemoteAddr: "10.0.0.5:8080",
+			},
+			expectIP: "203.0.113.195",
+		},
+		{
+			name: "leftmost skips trusted entries on the left",
+			whenRequest: http.Request{
+				Header: http.Header{
+					HeaderXForwardedFor: []string{"10.0.0.9, 203.0.113.195, 203.0.113.199"},
+				},
+				RemoteAddr: "10.0.0.5:8080",
+			},
+			expectIP: "203.0.113.195",
+		},
+		{
+			name: "all entries trusted, falls back to leftmost entry like the default scan",
+			whenRequest: http.Request{
+				Header: http.Header{
+					HeaderXForwardedFor: []string{"10.0.0.9, 10.0.0.10"},
+				},
+				RemoteAddr: "10.0.0.5:8080",
+			},
+			expectIP: "10.0.0.9",
+		},
+		{
+			name: "invalid entry, extract IP from remote addr",
+			whenRequest: http.Request{
+				Header: http.Header{
+					HeaderXForwardedFor: []string{"not-an-ip, 203.0.113.195"},
+				},
+				RemoteAddr: "10.0.0.5:8080",
+			},
+			expectIP: "10.0.0.5",
+		},
+		{
+			name: "request has no XFF header, extracts IP from request remote addr",
+			whenRequest: http.Request{
+				RemoteAddr: "203.0.113.1:8080",
+			},
+			expectIP: "203.0.113.1",
+		},
+		{
+			name: "multiple XFF header values are joined, leftmost wins",
+			whenRequest: http.Request{
+				Header: http.Header{
+					HeaderXForwardedFor: []string{"203.0.113.195", "203.0.113.199"},
+				},
+				RemoteAddr: "10.0.0.5:8080",
+			},
+			expectIP: "203.0.113.195",
+		},
+		{
+			name: "IPv6 entries with brackets, leftmost wins",
+			whenRequest: http.Request{
+				Header: http.Header{
+					HeaderXForwardedFor: []string{"[2001:db8::1], [2001:db8::2]"},
+				},
+				RemoteAddr: "[fd00::1]:8080",
+			},
+			expectIP: "2001:db8::1",
+		},
+		{
+			name: "trust options still apply: trusted leftmost entry is skipped",
+			givenTrustOptions: []TrustOption{
+				TrustIPRange(mustParseCIDR("203.0.113.195/32")),
+			},
+			whenRequest: http.Request{
+				Header: http.Header{
+					HeaderXForwardedFor: []string{"203.0.113.195, 203.0.113.199"},
+				},
+				RemoteAddr: "10.0.0.5:8080",
+			},
+			expectIP: "203.0.113.199",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			options := append([]TrustOption{XFFLeftmost()}, tc.givenTrustOptions...)
+			extractedIP := ExtractIPFromXFFHeader(options...)(&tc.whenRequest)
+			assert.Equal(t, tc.expectIP, extractedIP)
+		})
+	}
+}
+
 func TestLegacyIPExtractor(t *testing.T) {
 	var testCases = []struct {
 		name          string
