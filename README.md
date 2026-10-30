@@ -72,6 +72,8 @@ Building multi-tenant APIs? [Echo Pro](https://echo.labstack.com/pro) is a separ
 - `v5` is the current major version, released on 2026-01-18. See [API_CHANGES_V5.md](./API_CHANGES_V5.md) for the API changes from `v4` and upgrade notes.
 - `v4` receives bug fixes until 2026-12-31 and security fixes until 2027-12-31, on its latest release. See [SECURITY.md](./SECURITY.md).
 
+Need a named contact for a v4 or v5 application? See [Echo Support](https://echo.labstack.com/pro#support), a paid annual plan from LabStack.
+
 See [ROADMAP.md](./ROADMAP.md) for where Echo is heading and the version support policy.
 
 ### Installation
