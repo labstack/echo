@@ -1,8 +1,8 @@
 <p align="center">
   <a href="https://echo.labstack.com">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset=".github/assets/echo-logo-dark.svg">
-      <img alt="Echo" src=".github/assets/echo-logo-light.svg" height="72">
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/labstack/echo/master/.github/assets/echo-logo-dark.svg">
+      <img alt="Echo" src="https://raw.githubusercontent.com/labstack/echo/master/.github/assets/echo-logo-light.svg" height="72">
     </picture>
   </a>
 </p>
@@ -42,8 +42,7 @@ Echo v4 requires Go 1.26 or later (since v4.16.1), to use patched `golang.org/x/
 
 ### Client IP security migration since v4.16.3
 
-> [!IMPORTANT]
-> Behind a proxy, set `Echo#IPExtractor` before you upgrade to v4.16.3. Otherwise all clients behind the proxy share one IP address for rate limiting, access controls and logging.
+> **Important:** Behind a proxy, set `Echo#IPExtractor` before you upgrade to v4.16.3. Otherwise all clients behind the proxy share one IP address for rate limiting, access controls and logging.
 
 Echo v4.16.3 changes client IP defaults. Without `Echo#IPExtractor`, `Context.RealIP()` uses the connection peer and ignores `X-Forwarded-For` and `X-Real-IP`. Proxy middleware always replaces upstream `X-Real-IP` with this result. This fixes [CVE-2026-118651](https://github.com/labstack/echo/security/advisories/GHSA-99jh-6h7p-pp36) and [CVE-2026-118653](https://github.com/labstack/echo/security/advisories/GHSA-246p-cpwv-v3jq). Applications that already set `Echo#IPExtractor` keep their behavior. A custom rate-limit identifier that does not call `RealIP()` is also unaffected.
 
