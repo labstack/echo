@@ -3046,6 +3046,47 @@ func TestDefaultRouter_Remove(t *testing.T) {
 	}
 }
 
+// Remove resolves the route node first and only then looks the route up in the route list. The list
+// stores the path exactly as it was registered, while Remove normalizes the path it is given, so the
+// lookup can legitimately match nothing. When that happens the route list must be left untouched:
+// an unset index is 0, which used to silently drop the first route of the list.
+func TestDefaultRouter_Remove_NoMatchDoesNotDeleteFirstRoute(t *testing.T) {
+	var testCases = []struct {
+		name       string
+		whenPath   string
+		givenPaths []string
+	}{
+		{
+			name:       "nok, path registered without leading slash is not found in route list",
+			givenPaths: []string{"/users", "things"},
+			whenPath:   "/things",
+		},
+		{
+			name:       "nok, root path registered as empty string is not found in route list",
+			givenPaths: []string{"/users", ""},
+			whenPath:   "/",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			for _, p := range tc.givenPaths {
+				e.GET(p, handlerFunc)
+			}
+
+			err := e.Router().Remove(http.MethodGet, tc.whenPath)
+			assert.NoError(t, err)
+
+			var paths []string
+			for _, ri := range e.Router().Routes() {
+				paths = append(paths, ri.Path)
+			}
+			assert.Contains(t, paths, "/users", "removing %v from route list deleted an unrelated route", tc.whenPath)
+		})
+	}
+}
+
 func TestDefaultRouter_AddWithoutHandler(t *testing.T) {
 	router := NewRouter(RouterConfig{})
 
