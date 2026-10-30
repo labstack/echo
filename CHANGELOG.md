@@ -1,5 +1,23 @@
 # Changelog
 
+## v4.16.3 - 2026-10-29
+
+**Security**
+
+* **Client IP defaults:** when `Echo#IPExtractor` is unset, `Context.RealIP()` now uses the connection peer and ignores `X-Forwarded-For` and `X-Real-IP`. This prevents clients from selecting their own default rate-limit bucket. Fixes [CVE-2026-118653](https://github.com/labstack/echo/security/advisories/GHSA-246p-cpwv-v3jq).
+* **Proxy identity:** Proxy middleware always replaces upstream `X-Real-IP` with the derived client identity, including after `Connection`-nominated header removal and on WebSocket upgrades. The identity is derived once and preserved across retries. Fixes [CVE-2026-118651](https://github.com/labstack/echo/security/advisories/GHSA-99jh-6h7p-pp36).
+
+**Migration required for applications behind proxies**
+
+Configure `Echo#IPExtractor` to trust only your deployment's proxies before upgrading. Otherwise, clients behind one proxy share its address for rate limiting, access controls, logging, and proxy forwarding. See the [README migration example](README.md#client-ip-security-migration-since-v4163) for explicit XFF trust ranges; use the same trust options with `ExtractIPFromRealIPHeader` for proxies that set `X-Real-IP`. Configure the outermost proxy to replace client-supplied identity headers. Explicit extractors and custom rate-limit identifiers retain their behavior.
+
+**Other changes**
+
+* The direct-peer fallback now accepts bare IPv4 and IPv6 addresses without a port.
+* Document v4 bug-fix and security-fix support dates (#3194).
+
+Implementation: [#3197](https://github.com/labstack/echo/pull/3197). No dependency or minimum Go-version changes; Go 1.26 or later remains required.
+
 ## v4.16.0 - 2026-09-27
 
 **Security**
