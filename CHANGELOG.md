@@ -1,5 +1,14 @@
 # Changelog
 
+## v5.4.4 - 2026-10-29
+
+**Proxy identity hardening**
+
+* Preserve the derived upstream `X-Real-IP` after hop-by-hop header stripping. A client can no longer remove that header with `Connection: X-Real-IP`, including duplicate or mixed-case nominations and WebSocket upgrades.
+* Capture the client identity once and preserve it across retries and balancer request replacement. Default and custom transports and extractors remain supported.
+* Add permanent regressions for HTTP forwarding, raw WebSocket upgrades, header nominations, and stateful extraction during request-swapping retries. Implementation: [#3200](https://github.com/labstack/echo/pull/3200).
+
+v5 already uses the connection peer by default. This release adds proxy header protection and does not change client-IP configuration or the affected ranges of the earlier default-IP CVEs. A missing identity header can affect an upstream that falls back to an untrusted source; no new client-IP migration, public API, dependency, or minimum Go-version change is introduced.
 
 ## v5.4.0 - 2026-09-27
 
