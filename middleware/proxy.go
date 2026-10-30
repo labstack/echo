@@ -290,7 +290,8 @@ func (config ProxyConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 
 			// Always overwrite X-Real-IP. Without Echo#IPExtractor, c.RealIP() is the address of the direct peer, so a
 			// client cannot spoof the IP seen by the upstream. Configure Echo#IPExtractor to trust headers set by proxies.
-			req.Header.Set(echo.HeaderXRealIP, c.RealIP())
+			clientIP := c.RealIP()
+			req.Header.Set(echo.HeaderXRealIP, clientIP)
 			// Always overwrite X-Forwarded-Proto. c.Scheme() uses an incoming X-Forwarded-Proto header only when it comes
 			// from a trusted address (see Echo#SchemeExtractor), so clients cannot spoof the scheme seen by the upstream.
 			// Remove the other scheme headers: X-Forwarded-Proto carries the scheme, and some upstreams (e.g. Rack) would
@@ -326,7 +327,7 @@ func (config ProxyConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				req = c.Request()
 
 				// ReverseProxy validates upgrades and closes both sides when a tunnel ends.
-				proxyHTTP(c, tgt, config).ServeHTTP(res, req)
+				proxyHTTP(c, tgt, config, clientIP).ServeHTTP(res, req)
 
 				err, hasError := c.Get("_error").(error)
 				if !hasError {
@@ -351,7 +352,7 @@ func (config ProxyConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 // 499 too instead of the more problematic 5xx, which does not allow to detect this situation
 const StatusCodeContextCanceled = 499
 
-func proxyHTTP(c *echo.Context, tgt *ProxyTarget, config ProxyConfig) http.Handler {
+func proxyHTTP(c *echo.Context, tgt *ProxyTarget, config ProxyConfig, clientIP string) http.Handler {
 	// The HTTP transport also handles WebSocket upgrades. Normalize WebSocket
 	// target schemes on a copy so shared balancer targets remain unchanged.
 	targetURL := *tgt.URL
@@ -385,7 +386,14 @@ func proxyHTTP(c *echo.Context, tgt *ProxyTarget, config ProxyConfig) http.Handl
 			c.Set("_error", httpError)
 		}
 	}
-	proxy.Transport = config.Transport
+	transport := config.Transport
+	if transport == nil {
+		transport = http.DefaultTransport
+	}
+	// ReverseProxy removes headers named by Connection after its Director runs.
+	// Restore the derived identity at the transport boundary so a client cannot
+	// suppress it with Connection: X-Real-IP, including on WebSocket upgrades.
+	proxy.Transport = proxyClientIPTransport{transport: transport, clientIP: clientIP}
 	proxy.ModifyResponse = func(response *http.Response) error {
 		if config.ModifyResponse != nil {
 			if err := config.ModifyResponse(response); err != nil {
@@ -407,6 +415,17 @@ func proxyHTTP(c *echo.Context, tgt *ProxyTarget, config ProxyConfig) http.Handl
 		}
 		proxy.ServeHTTP(w, r)
 	})
+}
+
+type proxyClientIPTransport struct {
+	transport http.RoundTripper
+	clientIP  string
+}
+
+func (t proxyClientIPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req = req.Clone(req.Context())
+	req.Header.Set(echo.HeaderXRealIP, t.clientIP)
+	return t.transport.RoundTrip(req)
 }
 
 type proxyUpgradeResponseWriter struct {
