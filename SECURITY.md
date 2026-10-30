@@ -19,11 +19,16 @@ patch releases of the latest v4 version; older 4.x releases
 do not get backports. Echo v4 requires Go 1.26 or later; build with a Go release
 that the Go team still supports.
 
-Some fixes need configuration as well as an upgrade. The
+Client IP defaults in the
 [proxy](https://github.com/labstack/echo/security/advisories/GHSA-99jh-6h7p-pp36)
 and [rate limiter](https://github.com/labstack/echo/security/advisories/GHSA-246p-cpwv-v3jq)
-advisories require setting `Echo#IPExtractor` in v4: `echo.ExtractIPDirect()` when
-there is no proxy, or a header extractor that trusts only your own proxies.
+advisories are fixed in v4.16.3. Upgrade older v4 releases to the latest v4 release.
+Without `Echo#IPExtractor`, v4.16.3 and v5 use the connection peer and ignore
+forwarded client IP headers. Applications behind proxies must configure a header
+extractor that trusts only their own proxies; otherwise, clients behind one proxy
+share its address for rate limiting, access controls, and logging. See the
+[v4 migration example](https://github.com/labstack/echo/blob/v4.16.3/README.md#client-ip-security-migration-since-v4163).
+Before v4.16.3, configuring an appropriate `Echo#IPExtractor` remains the workaround.
 
 Paid [Echo Support](https://echo.labstack.com/pro#support) buys maintainer time.
 It does not buy earlier or private fixes.
