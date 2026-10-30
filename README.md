@@ -13,24 +13,32 @@
 
 High performance, extensible, minimalist Go web framework.
 
-Echo is built on Go's standard `net/http` and interoperates with it through `echo.WrapHandler` and `echo.WrapMiddleware`. It adds the parts the standard library leaves to you: a fast radix-tree router, request binding with pluggable validation, a deep middleware ecosystem, and centralized error handling. Echo is actively maintained, and `v5` is the current release line.
+Echo is built on Go's standard `net/http` and interoperates with it through `echo.WrapHandler` and `echo.WrapMiddleware`. It adds the parts the standard library leaves to you: a fast radix-tree router, request binding with pluggable validation, official and third-party middleware, and centralized error handling. Echo is actively maintained, and `v5` is the current release line.
 
 - [Website](https://echo.labstack.com)
 - [Quick start](https://echo.labstack.com/guide/quickstart/)
 - [Middleware](https://echo.labstack.com/middleware/)
 - [API reference](https://pkg.go.dev/github.com/labstack/echo/v5)
-- Help and questions: [GitHub Discussions](https://github.com/labstack/echo/discussions)
+- [Echo Pro](https://echo.labstack.com/pro): commercial add-on packages for multi-tenant APIs
+- Community help: [GitHub Discussions](https://github.com/labstack/echo/discussions)
+- Commercial support: [Echo Support](https://echo.labstack.com/pro#support)
 
 ### Features
 
-- Fast radix-tree [router](https://echo.labstack.com/guide/routing/) that prioritizes routes smartly
+- Radix-tree [router](https://echo.labstack.com/guide/routing/) with static, parameter and wildcard routes; static routes match first
 - Route groups, with middleware at the root, group or route level
 - [Data binding](https://echo.labstack.com/guide/binding/) for JSON, XML, form, query and path parameters, with pluggable validation
 - Helpers for JSON, XML, HTML, file, stream and other responses
 - Centralized [error handling](https://echo.labstack.com/guide/error-handling/)
 - Structured request logging with `log/slog`
 - [Template rendering](https://echo.labstack.com/guide/templates/) with any template engine
-- TLS, [HTTP/2](https://echo.labstack.com/cookbook/http2/), [automatic TLS](https://echo.labstack.com/cookbook/auto-tls/) with Let's Encrypt, and [graceful shutdown](https://echo.labstack.com/cookbook/graceful-shutdown/)
+- TLS, [HTTP/2](https://echo.labstack.com/cookbook/http2/), [Let's Encrypt certificates](https://echo.labstack.com/cookbook/auto-tls/) through `autocert`, and [graceful shutdown](https://echo.labstack.com/cookbook/graceful-shutdown/)
+
+## Echo Pro and support
+
+[Echo Pro](https://echo.labstack.com/pro) is a separate commercial library from LabStack for Echo v5: API key and JWT authentication, tenant isolation, quotas with usage metering, audit records, signed webhooks and an admin console. Echo itself stays MIT, and Pro subscriptions fund its maintenance.
+
+[Echo Support](https://echo.labstack.com/pro#support) is a paid annual plan for v4 and v5 applications, with a named contact and email support.
 
 ## Used by
 
@@ -63,8 +71,6 @@ See [ADOPTERS.md](./ADOPTERS.md) for the full list. Using Echo in an open source
 
 Echo is independent and community funded. If your company depends on Echo, please consider [sponsoring it](https://github.com/sponsors/labstack).
 
-Building multi-tenant APIs? [Echo Pro](https://echo.labstack.com/pro) is a separate commercial library (API keys, tenant isolation, quotas, signed webhooks) whose subscriptions fund Echo's maintenance. Echo itself stays MIT.
-
 ## Getting started
 
 ### Supported versions
@@ -96,23 +102,18 @@ import (
 )
 
 func main() {
-	// Echo instance
 	e := echo.New()
 
-	// Middleware
 	e.Use(middleware.RequestLogger()) // log requests with log/slog
 	e.Use(middleware.Recover())       // recover from panics and return an error
 
-	// Routes
 	e.GET("/", hello)
 
-	// Start server
 	if err := e.Start(":8080"); err != nil {
 		slog.Error("failed to start server", "error", err)
 	}
 }
 
-// Handler
 func hello(c *echo.Context) error {
 	return c.String(http.StatusOK, "Hello, World!")
 }
@@ -152,13 +153,9 @@ To add your library, send a pull request.
 
 ## Contributing
 
-Use issues for everything.
-
 - For a small change, send a pull request.
 - For a bigger change, open an issue to discuss it first.
 - A pull request should include tests, documentation and, where it helps, an example.
-
-You can also contribute by reporting issues, suggesting features and improving the documentation.
 
 ## Security
 
