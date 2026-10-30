@@ -162,11 +162,11 @@ Report security issues privately as [SECURITY.md](https://github.com/labstack/ec
 
 ## Credits
 
-- [Vishal Rana](https://github.com/vishr) (Author)
+- [Vishal Rana](https://github.com/vishr) (Author and Maintainer)
 - [Nitin Rana](https://github.com/nr17) (Consultant)
-- [Roland Lammel](https://github.com/lammel) (Maintainer)
-- [Martti T.](https://github.com/aldas) (Maintainer)
-- [Pablo Andres Fuente](https://github.com/pafuent) (Maintainer)
+- [Martti T.](https://github.com/aldas) (Maintainer Emeritus)
+- [Roland Lammel](https://github.com/lammel) (Maintainer Emeritus)
+- [Pablo Andres Fuente](https://github.com/pafuent) (Maintainer Emeritus)
 - [Contributors](https://github.com/labstack/echo/graphs/contributors)
 
 ## License
