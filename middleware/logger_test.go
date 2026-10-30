@@ -63,18 +63,18 @@ func TestLoggerDefaultMW(t *testing.T) {
 			expect:    `{"time":"2020-04-28T01:26:40Z","id":"","remote_ip":"192.0.2.1","host":"example.com","method":"GET","uri":"/","user_agent":"","status":500,"error":"error\nwith\nnewlines\tand\ttabs","latency":1,"latency_human":"1µs","bytes_in":0,"bytes_out":36}` + "\n",
 		},
 		{
-			name:           "ok, remote_ip from X-Real-Ip header",
+			name:           "ok, remote_ip ignores X-Real-Ip header",
 			whenHeader:     map[string]string{echo.HeaderXRealIP: "127.0.0.1"},
 			whenStatusCode: http.StatusOK,
 			whenResponse:   "test",
-			expect:         `{"time":"2020-04-28T01:26:40Z","id":"","remote_ip":"127.0.0.1","host":"example.com","method":"GET","uri":"/","user_agent":"","status":200,"error":"","latency":1,"latency_human":"1µs","bytes_in":0,"bytes_out":4}` + "\n",
+			expect:         `{"time":"2020-04-28T01:26:40Z","id":"","remote_ip":"192.0.2.1","host":"example.com","method":"GET","uri":"/","user_agent":"","status":200,"error":"","latency":1,"latency_human":"1µs","bytes_in":0,"bytes_out":4}` + "\n",
 		},
 		{
-			name:           "ok, remote_ip from X-Forwarded-For header",
+			name:           "ok, remote_ip ignores X-Forwarded-For header",
 			whenHeader:     map[string]string{echo.HeaderXForwardedFor: "127.0.0.1"},
 			whenStatusCode: http.StatusOK,
 			whenResponse:   "test",
-			expect:         `{"time":"2020-04-28T01:26:40Z","id":"","remote_ip":"127.0.0.1","host":"example.com","method":"GET","uri":"/","user_agent":"","status":200,"error":"","latency":1,"latency_human":"1µs","bytes_in":0,"bytes_out":4}` + "\n",
+			expect:         `{"time":"2020-04-28T01:26:40Z","id":"","remote_ip":"192.0.2.1","host":"example.com","method":"GET","uri":"/","user_agent":"","status":200,"error":"","latency":1,"latency_human":"1µs","bytes_in":0,"bytes_out":4}` + "\n",
 		},
 	}
 
@@ -129,6 +129,7 @@ func TestLoggerWithLoggerConfig(t *testing.T) {
 	var testCases = []struct {
 		name           string
 		givenConfig    LoggerConfig
+		ipExtractor    echo.IPExtractor
 		whenURI        string
 		whenMethod     string
 		whenHost       string
@@ -172,6 +173,7 @@ func TestLoggerWithLoggerConfig(t *testing.T) {
 		{
 			name:        "ok, json string escape: remote_ip",
 			givenConfig: LoggerConfig{Format: `{"remote_ip":"${remote_ip}"}`},
+			ipExtractor: func(r *http.Request) string { return r.Header.Get(echo.HeaderXForwardedFor) },
 			whenHeader:  map[string]string{echo.HeaderXForwardedFor: `\"127.0.0.1\"`},
 			expect:      `{"remote_ip":"\\\"127.0.0.1\\\""}`,
 		},
@@ -291,6 +293,7 @@ func TestLoggerWithLoggerConfig(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			e := echo.New()
+			e.IPExtractor = tc.ipExtractor
 
 			req := httptest.NewRequest(http.MethodGet, cmp.Or(tc.whenURI, "/"), nil)
 			if tc.whenFormValues != nil {
@@ -396,7 +399,8 @@ func TestLoggerTemplate(t *testing.T) {
 		"secret-form":                          false,
 		"hexvalue":                             false,
 		"GET":                                  true,
-		"127.0.0.1":                            true,
+		"127.0.0.1":                            false,
+		"192.0.2.1":                            true,
 		"\"path\":\"/users/1\"":                true,
 		"\"route\":\"/users/:id\"":             true,
 		"\"uri\":\"/\"":                        true,

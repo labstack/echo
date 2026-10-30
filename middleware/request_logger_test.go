@@ -61,7 +61,7 @@ func TestRequestLoggerOK(t *testing.T) {
 		"host":       "example.com",
 		"bytes_out":  float64(2),
 		"user_agent": "curl/7.68.0",
-		"remote_ip":  "8.8.8.8",
+		"remote_ip":  "192.0.2.1",
 		"request_id": "",
 
 		"time":    "x",
@@ -445,7 +445,7 @@ func TestRequestLogger_allFields(t *testing.T) {
 	assert.Equal(t, time.Unix(1631045377, 0), expect.StartTime)
 	assert.Equal(t, 10*time.Second, expect.Latency)
 	assert.Equal(t, "HTTP/1.1", expect.Protocol)
-	assert.Equal(t, "8.8.8.8", expect.RemoteIP)
+	assert.Equal(t, "192.0.2.1", expect.RemoteIP)
 	assert.Equal(t, "example.com", expect.Host)
 	assert.Equal(t, http.MethodPost, expect.Method)
 	assert.Equal(t, "/test?lang=en&checked=1&checked=2", expect.URI)

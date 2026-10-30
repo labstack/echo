@@ -1293,90 +1293,16 @@ func TestContext_Logger(t *testing.T) {
 }
 
 func TestContext_RealIP(t *testing.T) {
-	tests := []struct {
-		c Context
-		s string
-	}{
-		{
-			&context{
-				request: &http.Request{
-					Header: http.Header{HeaderXForwardedFor: []string{"127.0.0.1, 127.0.1.1, "}},
-				},
-			},
-			"127.0.0.1",
-		},
-		{
-			&context{
-				request: &http.Request{
-					Header: http.Header{HeaderXForwardedFor: []string{"127.0.0.1,127.0.1.1"}},
-				},
-			},
-			"127.0.0.1",
-		},
-		{
-			&context{
-				request: &http.Request{
-					Header: http.Header{HeaderXForwardedFor: []string{"127.0.0.1"}},
-				},
-			},
-			"127.0.0.1",
-		},
-		{
-			&context{
-				request: &http.Request{
-					Header: http.Header{HeaderXForwardedFor: []string{"[2001:db8:85a3:8d3:1319:8a2e:370:7348], 2001:db8::1, "}},
-				},
-			},
-			"2001:db8:85a3:8d3:1319:8a2e:370:7348",
-		},
-		{
-			&context{
-				request: &http.Request{
-					Header: http.Header{HeaderXForwardedFor: []string{"[2001:db8:85a3:8d3:1319:8a2e:370:7348],[2001:db8::1]"}},
-				},
-			},
-			"2001:db8:85a3:8d3:1319:8a2e:370:7348",
-		},
-		{
-			&context{
-				request: &http.Request{
-					Header: http.Header{HeaderXForwardedFor: []string{"2001:db8:85a3:8d3:1319:8a2e:370:7348"}},
-				},
-			},
-			"2001:db8:85a3:8d3:1319:8a2e:370:7348",
-		},
-		{
-			&context{
-				request: &http.Request{
-					Header: http.Header{
-						"X-Real-Ip": []string{"192.168.0.1"},
-					},
-				},
-			},
-			"192.168.0.1",
-		},
-		{
-			&context{
-				request: &http.Request{
-					Header: http.Header{
-						"X-Real-Ip": []string{"[2001:db8::1]"},
-					},
-				},
-			},
-			"2001:db8::1",
-		},
-
-		{
-			&context{
-				request: &http.Request{
-					RemoteAddr: "89.89.89.89:1654",
-				},
-			},
-			"89.89.89.89",
-		},
-	}
-
-	for _, tt := range tests {
-		assert.Equal(t, tt.s, tt.c.RealIP())
+	for _, header := range []http.Header{
+		{HeaderXForwardedFor: {"127.0.0.1, 127.0.1.1, "}},
+		{HeaderXForwardedFor: {"127.0.0.1,127.0.1.1"}},
+		{HeaderXForwardedFor: {"127.0.0.1"}},
+		{HeaderXForwardedFor: {"[2001:db8::1], 2001:db8::2"}},
+		{HeaderXRealIP: {"192.168.0.1"}},
+		{HeaderXRealIP: {"[2001:db8::1]"}},
+		{},
+	} {
+		c := &context{request: &http.Request{Header: header, RemoteAddr: "89.89.89.89:1654"}}
+		assert.Equal(t, "89.89.89.89", c.RealIP())
 	}
 }

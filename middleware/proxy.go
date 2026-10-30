@@ -232,8 +232,9 @@ func (b *roundRobinBalancer) Next(c echo.Context) *ProxyTarget {
 // Proxy returns a Proxy middleware.
 //
 // Proxy middleware forwards the request to upstream server using a configured load balancing technique.
-// The unvalidated Forwarded header is removed. Configure Echo#IPExtractor to
-// validate proxy-supplied client identities before trusting X-Real-IP upstream.
+// The unvalidated Forwarded header is removed. X-Real-IP is overwritten with
+// Context.RealIP(), which uses the connection peer unless Echo#IPExtractor is configured.
+// Configure a trusted proxy extractor when Echo is behind a proxy.
 func Proxy(balancer ProxyBalancer) echo.MiddlewareFunc {
 	c := DefaultProxyConfig
 	c.Balancer = balancer
@@ -287,11 +288,8 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 			}
 
 			// Fix header
-			// Basically it's not good practice to unconditionally pass incoming x-real-ip header to upstream.
-			// However, for backward compatibility, legacy behavior is preserved unless you configure Echo#IPExtractor.
-			if req.Header.Get(echo.HeaderXRealIP) == "" || c.Echo().IPExtractor != nil {
-				req.Header.Set(echo.HeaderXRealIP, c.RealIP())
-			}
+			// Derive the upstream identity from the configured extractor or the connection peer.
+			req.Header.Set(echo.HeaderXRealIP, c.RealIP())
 			// Always overwrite X-Forwarded-Proto. c.Scheme() uses an incoming X-Forwarded-Proto header only when it comes
 			// from a trusted address (see Echo#SchemeExtractor), so clients cannot spoof the scheme seen by the upstream.
 			// Remove the other scheme headers: X-Forwarded-Proto carries the scheme, and some upstreams (e.g. Rack) would
