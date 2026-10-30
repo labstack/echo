@@ -1,21 +1,34 @@
-[![Go Reference](https://pkg.go.dev/badge/github.com/labstack/echo/v4.svg)](https://pkg.go.dev/github.com/labstack/echo/v4)
-[![CI](https://img.shields.io/github/actions/workflow/status/labstack/echo/echo.yml?branch=v4&style=flat-square&label=ci)](https://github.com/labstack/echo/actions/workflows/echo.yml?query=branch%3Av4)
-[![Codecov](https://img.shields.io/codecov/c/github/labstack/echo/v4.svg?style=flat-square)](https://codecov.io/gh/labstack/echo/tree/v4)
-[![Discussions](https://img.shields.io/badge/community-discussions-00afd1.svg?style=flat-square)](https://github.com/labstack/echo/discussions)
-[![X](https://img.shields.io/badge/x-@labstack-000000.svg?style=flat-square)](https://x.com/labstack)
-[![License](https://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://github.com/labstack/echo/blob/v4/LICENSE)
+<p align="center">
+  <a href="https://echo.labstack.com">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset=".github/assets/echo-logo-dark.svg">
+      <img alt="Echo" src=".github/assets/echo-logo-light.svg" height="72">
+    </picture>
+  </a>
+</p>
 
-## Echo v4
+<p align="center"><strong>High performance, extensible, minimalist Go web framework.</strong><br>Echo v4 maintenance line</p>
 
-High performance, extensible, minimalist Go web framework.
+<p align="center">
+  <a href="https://pkg.go.dev/github.com/labstack/echo/v4"><img alt="Go Reference" src="https://pkg.go.dev/badge/github.com/labstack/echo/v4.svg"></a>
+  <a href="https://github.com/labstack/echo/actions/workflows/echo.yml?query=branch%3Av4"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/labstack/echo/echo.yml?branch=v4&style=flat-square&label=ci"></a>
+  <a href="https://codecov.io/gh/labstack/echo/tree/v4"><img alt="Codecov" src="https://img.shields.io/codecov/c/github/labstack/echo/v4.svg?style=flat-square"></a>
+  <a href="https://github.com/labstack/echo/discussions"><img alt="Discussions" src="https://img.shields.io/badge/community-discussions-00afd1.svg?style=flat-square"></a>
+  <a href="https://x.com/labstack"><img alt="X" src="https://img.shields.io/badge/x-@labstack-000000.svg?style=flat-square"></a>
+  <a href="https://github.com/labstack/echo/blob/v4/LICENSE"><img alt="License" src="https://img.shields.io/badge/license-mit-blue.svg?style=flat-square"></a>
+</p>
+
+<p align="center">
+  <a href="https://pkg.go.dev/github.com/labstack/echo/v4">v4 API reference</a> ·
+  <a href="https://github.com/labstack/echo/blob/master/API_CHANGES_V5.md">Upgrade to v5</a> ·
+  <a href="https://echo.labstack.com">Website (v5)</a> ·
+  <a href="https://github.com/labstack/echo/discussions">Discussions</a> ·
+  <a href="https://echo.labstack.com/pro#support">Commercial support</a>
+</p>
+
+## About
 
 This branch holds Echo v4, the maintenance line. Echo v5 is the current release; start new projects on [v5](https://github.com/labstack/echo).
-
-- [v4 API reference](https://pkg.go.dev/github.com/labstack/echo/v4)
-- [Upgrade from v4 to v5](https://github.com/labstack/echo/blob/master/API_CHANGES_V5.md)
-- [Website](https://echo.labstack.com) (documents v5)
-- Community help: [GitHub Discussions](https://github.com/labstack/echo/discussions)
-- Commercial support: [Echo Support](https://echo.labstack.com/pro#support)
 
 ### Support
 
@@ -28,6 +41,9 @@ Echo v4 requires Go 1.26 or later (since v4.16.1), to use patched `golang.org/x/
 ## Upgrade notes
 
 ### Client IP security migration since v4.16.3
+
+> [!IMPORTANT]
+> Behind a proxy, set `Echo#IPExtractor` before you upgrade to v4.16.3. Otherwise all clients behind the proxy share one IP address for rate limiting, access controls and logging.
 
 Echo v4.16.3 changes client IP defaults. Without `Echo#IPExtractor`, `Context.RealIP()` uses the connection peer and ignores `X-Forwarded-For` and `X-Real-IP`. Proxy middleware always replaces upstream `X-Real-IP` with this result. This fixes [CVE-2026-118651](https://github.com/labstack/echo/security/advisories/GHSA-99jh-6h7p-pp36) and [CVE-2026-118653](https://github.com/labstack/echo/security/advisories/GHSA-246p-cpwv-v3jq). Applications that already set `Echo#IPExtractor` keep their behavior. A custom rate-limit identifier that does not call `RealIP()` is also unaffected.
 
@@ -125,6 +141,14 @@ func hello(c echo.Context) error {
 }
 ```
 
+Run it and send a request:
+
+```console
+$ go run .
+$ curl http://localhost:8080/
+Hello, World!
+```
+
 ## Official middleware
 
 The Echo team maintains these repositories.
@@ -136,6 +160,9 @@ The Echo team maintains these repositories.
 | [github.com/labstack/echo-otel](https://github.com/labstack/echo-otel/tree/v4) | [OpenTelemetry](https://opentelemetry.io/) tracing and metrics middleware (`github.com/labstack/echo-otel/v4`) |
 
 ## Third-party middleware
+
+<details>
+<summary>Third-party middleware list</summary>
 
 The Echo team does not review or maintain these projects. Check their quality and security, and that each one supports v4, before you use them.
 
@@ -149,6 +176,8 @@ The Echo team does not review or maintain these projects. Check their quality an
 | [github.com/darkweak/souin/plugins/echo](https://github.com/darkweak/souin/tree/master/plugins/echo) | HTTP cache based on [Souin](https://github.com/darkweak/souin), with distributed and local storage backends |
 | [github.com/mikestefanello/pagoda](https://github.com/mikestefanello/pagoda) | Full-stack web starter kit built with Echo |
 | [github.com/go-woo/protoc-gen-echo](https://github.com/go-woo/protoc-gen-echo) | Generates Echo server code from Protocol Buffers |
+
+</details>
 
 To add your library, send a pull request.
 
