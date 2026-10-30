@@ -49,6 +49,10 @@ func TestClientIPSecurity(t *testing.T) {
 				r.Header.Set(echo.HeaderXForwardedFor, tc.xff[i])
 				r.Header.Set(echo.HeaderXRealIP, tc.realIP[i])
 				r.Header.Add(echo.HeaderXRealIP, "203.0.113.99")
+				if i == 1 {
+					r.Header.Add(echo.HeaderConnection, "keep-alive, x-ReAl-Ip")
+					r.Header.Add(echo.HeaderConnection, "X-Real-IP")
+				}
 				return r
 			}
 			t.Run("rate limit", func(t *testing.T) {
@@ -100,4 +104,31 @@ func TestClientIPTrustedProxySeparatesClients(t *testing.T) {
 		e.ServeHTTP(rec, req)
 		assert.Equal(t, http.StatusOK, rec.Code)
 	}
+}
+
+func TestProxyClientIPSurvivesConnectionHeader(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, []string{"198.51.100.10"}, r.Header.Values(echo.HeaderXRealIP))
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer upstream.Close()
+	target, err := url.Parse(upstream.URL)
+	assert.NoError(t, err)
+	e := echo.New()
+	calls := 0
+	e.IPExtractor = func(r *http.Request) string {
+		calls++
+		return echo.ExtractIPDirect()(r)
+	}
+	e.Use(Proxy(NewRoundRobinBalancer([]*ProxyTarget{{URL: target}})))
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "198.51.100.10:1234"
+	req.Header.Set(echo.HeaderXRealIP, "203.0.113.1")
+	req.Header.Set(echo.HeaderXForwardedFor, "203.0.113.2")
+	req.Header.Add(echo.HeaderConnection, "keep-alive, x-ReAl-Ip")
+	req.Header.Add(echo.HeaderConnection, "X-Real-IP")
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, 1, calls)
 }
