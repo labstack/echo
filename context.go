@@ -39,9 +39,10 @@ type Context interface {
 	// Scheme returns the HTTP protocol scheme, `http` or `https`.
 	Scheme() string
 
-	// RealIP returns the client's network address based on `X-Forwarded-For`
-	// or `X-Real-IP` request header.
-	// The behavior can be configured using `Echo#IPExtractor`.
+	// RealIP returns the client IP from Echo#IPExtractor, or the connection peer
+	// when no extractor is configured. Forwarding headers are ignored by default.
+	// Applications behind proxies must configure an extractor that trusts only
+	// their own proxies to recover individual client addresses.
 	RealIP() string
 
 	// Path returns the registered path for the handler.
