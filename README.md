@@ -1,27 +1,56 @@
-[![Latest release](https://img.shields.io/github/v/release/labstack/echo?style=flat-square&label=release&color=00afd1)](https://github.com/labstack/echo/releases)
-[![Last commit](https://img.shields.io/github/last-commit/labstack/echo/master?style=flat-square)](https://github.com/labstack/echo/commits/master)
-[![Go Reference](https://pkg.go.dev/badge/github.com/labstack/echo/v5.svg)](https://pkg.go.dev/github.com/labstack/echo/v5)
-[![CI](https://img.shields.io/github/actions/workflow/status/labstack/echo/ci.yml?style=flat-square&label=ci)](https://github.com/labstack/echo/actions/workflows/ci.yml)
-[![Codecov](https://img.shields.io/codecov/c/github/labstack/echo.svg?style=flat-square)](https://codecov.io/gh/labstack/echo)
-[![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/labstack/echo?style=flat-square&label=openssf%20scorecard)](https://scorecard.dev/viewer/?uri=github.com/labstack/echo)
-[![Sponsors](https://img.shields.io/github/sponsors/labstack?style=flat-square&color=db61a2)](https://github.com/sponsors/labstack)
-[![Discussions](https://img.shields.io/badge/community-discussions-00afd1.svg?style=flat-square)](https://github.com/labstack/echo/discussions)
-[![X](https://img.shields.io/badge/x-@labstack-000000.svg?style=flat-square)](https://x.com/labstack)
-[![License](https://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://github.com/labstack/echo/blob/master/LICENSE)
+<p align="center">
+  <a href="https://echo.labstack.com">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset=".github/assets/echo-logo-dark.svg">
+      <img alt="Echo" src=".github/assets/echo-logo-light.svg" height="72">
+    </picture>
+  </a>
+</p>
 
-## Echo
+<p align="center"><strong>High performance, extensible, minimalist Go web framework.</strong></p>
 
-High performance, extensible, minimalist Go web framework.
+<p align="center">
+  <a href="https://github.com/labstack/echo/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/labstack/echo?style=flat-square&label=release&color=00afd1"></a>
+  <a href="https://github.com/labstack/echo/commits/master"><img alt="Last commit" src="https://img.shields.io/github/last-commit/labstack/echo/master?style=flat-square"></a>
+  <a href="https://pkg.go.dev/github.com/labstack/echo/v5"><img alt="Go Reference" src="https://pkg.go.dev/badge/github.com/labstack/echo/v5.svg"></a>
+  <a href="https://github.com/labstack/echo/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/labstack/echo/ci.yml?style=flat-square&label=ci"></a>
+  <a href="https://codecov.io/gh/labstack/echo"><img alt="Codecov" src="https://img.shields.io/codecov/c/github/labstack/echo.svg?style=flat-square"></a>
+  <a href="https://scorecard.dev/viewer/?uri=github.com/labstack/echo"><img alt="OpenSSF Scorecard" src="https://img.shields.io/ossf-scorecard/github.com/labstack/echo?style=flat-square&label=openssf%20scorecard"></a>
+  <a href="https://github.com/sponsors/labstack"><img alt="Sponsors" src="https://img.shields.io/github/sponsors/labstack?style=flat-square&color=db61a2"></a>
+  <a href="https://github.com/labstack/echo/discussions"><img alt="Discussions" src="https://img.shields.io/badge/community-discussions-00afd1.svg?style=flat-square"></a>
+  <a href="https://x.com/labstack"><img alt="X" src="https://img.shields.io/badge/x-@labstack-000000.svg?style=flat-square"></a>
+  <a href="https://github.com/labstack/echo/blob/master/LICENSE"><img alt="License" src="https://img.shields.io/badge/license-mit-blue.svg?style=flat-square"></a>
+</p>
+
+<p align="center">
+  <a href="https://echo.labstack.com">Website</a> ·
+  <a href="https://echo.labstack.com/guide/quickstart/">Quick start</a> ·
+  <a href="https://echo.labstack.com/middleware/">Middleware</a> ·
+  <a href="https://pkg.go.dev/github.com/labstack/echo/v5">API reference</a> ·
+  <a href="https://github.com/labstack/echo/discussions">Discussions</a> ·
+  <a href="https://echo.labstack.com/pro">Echo Pro</a> ·
+  <a href="https://echo.labstack.com/pro#support">Commercial support</a>
+</p>
+
+## About
 
 Echo is built on Go's standard `net/http` and interoperates with it through `echo.WrapHandler` and `echo.WrapMiddleware`. It adds the parts the standard library leaves to you: a fast radix-tree router, request binding with pluggable validation, official and third-party middleware, and centralized error handling. Echo is actively maintained, and `v5` is the current release line.
 
-- [Website](https://echo.labstack.com)
-- [Quick start](https://echo.labstack.com/guide/quickstart/)
-- [Middleware](https://echo.labstack.com/middleware/)
-- [API reference](https://pkg.go.dev/github.com/labstack/echo/v5)
-- [Echo Pro](https://echo.labstack.com/pro): commercial add-on packages for multi-tenant APIs
-- Community help: [GitHub Discussions](https://github.com/labstack/echo/discussions)
-- Commercial support: [Echo Support](https://echo.labstack.com/pro#support)
+### How a request flows
+
+```mermaid
+flowchart LR
+    req([HTTP request]) --> pre[Pre middleware]
+    pre --> router[Router]
+    router --> mw[Global, group and route middleware]
+    mw --> handler[Handler]
+    handler --> res([Response])
+    mw -. error .-> eh[HTTPErrorHandler]
+    handler -. error .-> eh
+    eh --> res
+```
+
+`e.Pre` middleware runs before routing, so it can rewrite the path or method. Everything registered with `e.Use`, a group or a route runs after the router has matched. Any error returned by middleware or the handler goes to one `HTTPErrorHandler`.
 
 ### Features
 
@@ -78,6 +107,9 @@ Echo is independent and community funded. If your company depends on Echo, pleas
 - `v5` is the current major version, released on 2026-01-18. See [API_CHANGES_V5.md](./API_CHANGES_V5.md) for the API changes from `v4` and upgrade notes.
 - `v4` receives bug fixes until 2026-12-31 and security fixes until 2027-12-31, on its latest release. See [SECURITY.md](./SECURITY.md).
 
+> [!NOTE]
+> Echo v4 is in maintenance and gets no new features. Start new projects on v5, and plan v4 upgrades with [API_CHANGES_V5.md](./API_CHANGES_V5.md).
+
 See [ROADMAP.md](./ROADMAP.md) for where Echo is heading and the version support policy.
 
 ### Installation
@@ -119,6 +151,16 @@ func hello(c *echo.Context) error {
 }
 ```
 
+Run it and send a request:
+
+```console
+$ go run .
+$ curl http://localhost:8080/
+Hello, World!
+```
+
+`e.Start` shuts the server down gracefully on <kbd>Ctrl</kbd>+<kbd>C</kbd>.
+
 More in the [guide](https://echo.labstack.com/guide/quickstart/) and the [cookbook](https://echo.labstack.com/cookbook/hello-world/).
 
 ## Middleware
@@ -136,6 +178,9 @@ Maintained by the Echo team.
 
 ### Third-party
 
+<details>
+<summary>Third-party middleware list</summary>
+
 These projects are maintained by their authors, not the Echo team. Review them before use, and check which Echo version (`v4` or `v5`) each supports.
 
 | Repository | Description |
@@ -149,6 +194,8 @@ These projects are maintained by their authors, not the Echo team. Review them b
 | [mikestefanello/pagoda](https://github.com/mikestefanello/pagoda) | Full-stack web development starter kit built on Echo |
 | [go-woo/protoc-gen-echo](https://github.com/go-woo/protoc-gen-echo) | Generates Echo server code from Protocol Buffers |
 
+</details>
+
 To add your library, send a pull request.
 
 ## Contributing
@@ -159,7 +206,8 @@ To add your library, send a pull request.
 
 ## Security
 
-Report vulnerabilities privately through [GitHub Security Advisories](https://github.com/labstack/echo/security/advisories/new), not in public issues. See [SECURITY.md](./SECURITY.md) for supported versions.
+> [!IMPORTANT]
+> Report vulnerabilities privately through [GitHub Security Advisories](https://github.com/labstack/echo/security/advisories/new), not in public issues. See [SECURITY.md](./SECURITY.md) for supported versions.
 
 ## Credits
 
