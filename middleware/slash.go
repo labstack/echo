@@ -6,7 +6,6 @@ package middleware
 import (
 	"errors"
 	"net/http"
-	neturl "net/url"
 	"strings"
 
 	"github.com/labstack/echo/v5"
@@ -55,28 +54,25 @@ func (config AddTrailingSlashConfig) ToMiddleware() (echo.MiddlewareFunc, error)
 			req := c.Request()
 			url := req.URL
 			path := url.Path
-			// Redirects must be built from the escaped path. url.Path is decoded, so
-			// an escaped slash inside a parameter (%2F) would be promoted to a real
-			// separator and the redirect would no longer match the original route.
-			escapedPath := url.EscapedPath()
 			qs := c.QueryString()
 			if !strings.HasSuffix(path, "/") {
 				path += "/"
-				escapedPath += "/"
-				uri := escapedPath
-				if qs != "" {
-					uri += "?" + qs
-				}
 
 				// Redirect
+				// Build the location from the escaped path: url.Path is decoded, so an
+				// escaped slash inside a parameter (%2F) would otherwise be promoted to
+				// a real separator and the redirect would match a different route.
 				if config.RedirectCode != 0 {
-					return c.Redirect(config.RedirectCode, sanitizeURI(uri))
+					return c.Redirect(config.RedirectCode, sanitizeURI(withQuery(url.EscapedPath()+"/", qs)))
 				}
 
 				// Forward
+				uri := path
+				if qs != "" {
+					uri += "?" + qs
+				}
 				req.RequestURI = uri
 				url.Path = path
-				url.RawPath = escapedPath
 			}
 			return next(c)
 		}
@@ -125,39 +121,38 @@ func (config RemoveTrailingSlashConfig) ToMiddleware() (echo.MiddlewareFunc, err
 			req := c.Request()
 			url := req.URL
 			path := url.Path
-			// Same reason as AddTrailingSlash: work on the escaped path so %2F and
-			// friends keep their meaning instead of turning into real separators.
-			escapedPath := url.EscapedPath()
 			qs := c.QueryString()
 			l := len(path) - 1
 			if l > 0 && strings.HasSuffix(path, "/") {
 				path = path[:l]
-				if strings.HasSuffix(escapedPath, "/") {
-					escapedPath = escapedPath[:len(escapedPath)-1]
-				} else {
-					// The trailing slash came from an escaped %2F rather than a real
-					// separator, so there is nothing encoded to strip. Re-derive the
-					// escaped form so Path and RawPath stay consistent.
-					escapedPath = (&neturl.URL{Path: path}).EscapedPath()
-				}
-				uri := escapedPath
-				if qs != "" {
-					uri += "?" + qs
-				}
 
 				// Redirect
+				// Same as AddTrailingSlash: keep the escaped form so an encoded segment
+				// survives the redirect instead of turning into a separator.
 				if config.RedirectCode != 0 {
-					return c.Redirect(config.RedirectCode, sanitizeURI(uri))
+					escaped := strings.TrimSuffix(url.EscapedPath(), "/")
+					return c.Redirect(config.RedirectCode, sanitizeURI(withQuery(escaped, qs)))
 				}
 
 				// Forward
+				uri := path
+				if qs != "" {
+					uri += "?" + qs
+				}
 				req.RequestURI = uri
 				url.Path = path
-				url.RawPath = escapedPath
 			}
 			return next(c)
 		}
 	}, nil
+}
+
+// withQuery appends the raw query string, when there is one, to a redirect path.
+func withQuery(path, qs string) string {
+	if qs == "" {
+		return path
+	}
+	return path + "?" + qs
 }
 
 func sanitizeURI(uri string) string {
