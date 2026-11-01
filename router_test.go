@@ -3048,23 +3048,30 @@ func TestDefaultRouter_Remove(t *testing.T) {
 
 // Remove resolves the route node first and only then looks the route up in the route list. The list
 // stores the path exactly as it was registered, while Remove normalizes the path it is given, so the
-// lookup can legitimately match nothing. When that happens the route list must be left untouched:
-// an unset index is 0, which used to silently drop the first route of the list.
-func TestDefaultRouter_Remove_NoMatchDoesNotDeleteFirstRoute(t *testing.T) {
+// lookup by normalized path can legitimately match nothing. The list entry must then be found through
+// its raw path - a successful removal has to be reflected in Routes() - instead of falling through to
+// the unset index 0, which used to silently drop the first route of the list.
+func TestDefaultRouter_Remove_NoMatchInRouteList(t *testing.T) {
 	var testCases = []struct {
 		name       string
 		whenPath   string
 		givenPaths []string
+		removed    string
+		kept       string
 	}{
 		{
-			name:       "nok, path registered without leading slash is not found in route list",
+			name:       "ok, path registered without leading slash is removed by its raw path",
 			givenPaths: []string{"/users", "things"},
 			whenPath:   "/things",
+			removed:    "things",
+			kept:       "/users",
 		},
 		{
-			name:       "nok, root path registered as empty string is not found in route list",
+			name:       "ok, root path registered as empty string is removed by its raw path",
 			givenPaths: []string{"/users", ""},
 			whenPath:   "/",
+			removed:    "",
+			kept:       "/users",
 		},
 	}
 
@@ -3082,7 +3089,13 @@ func TestDefaultRouter_Remove_NoMatchDoesNotDeleteFirstRoute(t *testing.T) {
 			for _, ri := range e.Router().Routes() {
 				paths = append(paths, ri.Path)
 			}
-			assert.Contains(t, paths, "/users", "removing %v from route list deleted an unrelated route", tc.whenPath)
+			assert.NotContains(t, paths, tc.removed, "removing %v left its route list entry %q behind", tc.whenPath, tc.removed)
+			assert.Contains(t, paths, tc.kept, "removing %v from route list deleted an unrelated route", tc.whenPath)
+
+			req := httptest.NewRequest(http.MethodGet, tc.whenPath, nil)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+			assert.Equal(t, http.StatusNotFound, rec.Code, "removed route %v is still routable", tc.whenPath)
 		})
 	}
 }

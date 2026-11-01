@@ -447,6 +447,16 @@ func (r *DefaultRouter) Remove(method string, path string) error {
 		}
 	}
 	if rIndex < 0 {
+		// The route list stores the path as it was registered, while the route node is looked up with a
+		// normalized path. Fall back to normalizing the stored paths so the removal is reflected in Routes().
+		for i, rr := range r.routes {
+			if rr.Method == method && normalizePathSlash(rr.Path) == path {
+				rIndex = i
+				break
+			}
+		}
+	}
+	if rIndex < 0 {
 		return nil
 	}
 	r.routes = append(r.routes[:rIndex], r.routes[rIndex+1:]...)
