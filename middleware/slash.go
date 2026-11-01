@@ -57,17 +57,20 @@ func (config AddTrailingSlashConfig) ToMiddleware() (echo.MiddlewareFunc, error)
 			qs := c.QueryString()
 			if !strings.HasSuffix(path, "/") {
 				path += "/"
+
+				// Redirect
+				// Build the location from the escaped path: url.Path is decoded, so an
+				// escaped slash inside a parameter (%2F) would otherwise be promoted to
+				// a real separator and the redirect would match a different route.
+				if config.RedirectCode != 0 {
+					return c.Redirect(config.RedirectCode, sanitizeURI(withQuery(url.EscapedPath()+"/", qs)))
+				}
+
+				// Forward
 				uri := path
 				if qs != "" {
 					uri += "?" + qs
 				}
-
-				// Redirect
-				if config.RedirectCode != 0 {
-					return c.Redirect(config.RedirectCode, sanitizeURI(uri))
-				}
-
-				// Forward
 				req.RequestURI = uri
 				url.Path = path
 			}
@@ -122,17 +125,20 @@ func (config RemoveTrailingSlashConfig) ToMiddleware() (echo.MiddlewareFunc, err
 			l := len(path) - 1
 			if l > 0 && strings.HasSuffix(path, "/") {
 				path = path[:l]
+
+				// Redirect
+				// Same as AddTrailingSlash: keep the escaped form so an encoded segment
+				// survives the redirect instead of turning into a separator.
+				if config.RedirectCode != 0 {
+					escaped := strings.TrimSuffix(url.EscapedPath(), "/")
+					return c.Redirect(config.RedirectCode, sanitizeURI(withQuery(escaped, qs)))
+				}
+
+				// Forward
 				uri := path
 				if qs != "" {
 					uri += "?" + qs
 				}
-
-				// Redirect
-				if config.RedirectCode != 0 {
-					return c.Redirect(config.RedirectCode, sanitizeURI(uri))
-				}
-
-				// Forward
 				req.RequestURI = uri
 				url.Path = path
 			}
@@ -141,15 +147,37 @@ func (config RemoveTrailingSlashConfig) ToMiddleware() (echo.MiddlewareFunc, err
 	}, nil
 }
 
+// withQuery appends the raw query string, when there is one, to a redirect path.
+func withQuery(path, qs string) string {
+	if qs == "" {
+		return path
+	}
+	return path + "?" + qs
+}
+
 func sanitizeURI(uri string) string {
 	// Browsers remove tab and newline characters from URLs, so `/\t/example.com` is `//example.com` to them and a
 	// control character could hide the double slash from the check below. Percent-encode C0 control characters and
 	// DEL first; the browser then requests the same path.
 	uri = escapeControlChars(uri)
 	// double slash `\\`, `//` or even `\/` is absolute uri for browsers and by redirecting request to that uri
-	// we are vulnerable to open redirect attack. so replace all slashes from the beginning with single slash
-	if len(uri) > 1 && (uri[0] == '\\' || uri[0] == '/') && (uri[1] == '\\' || uri[1] == '/') {
-		uri = "/" + strings.TrimLeft(uri, `/\`)
+	// we are vulnerable to open redirect attack. so replace all slashes from the beginning with single slash.
+	// The location is now built from the escaped path, so a leading %2F or %5C is a slash as well.
+	n, end := 0, 0
+loop:
+	for end < len(uri) {
+		switch {
+		case uri[end] == '/' || uri[end] == '\\':
+			end++
+		case len(uri)-end >= 3 && (strings.EqualFold(uri[end:end+3], "%2F") || strings.EqualFold(uri[end:end+3], "%5C")):
+			end += 3
+		default:
+			break loop
+		}
+		n++
+	}
+	if n > 1 {
+		uri = "/" + uri[end:]
 	}
 	return uri
 }
