@@ -6,6 +6,7 @@ package middleware
 import (
 	"errors"
 	"net/http"
+	neturl "net/url"
 	"strings"
 
 	"github.com/labstack/echo/v5"
@@ -54,10 +55,15 @@ func (config AddTrailingSlashConfig) ToMiddleware() (echo.MiddlewareFunc, error)
 			req := c.Request()
 			url := req.URL
 			path := url.Path
+			// Redirects must be built from the escaped path. url.Path is decoded, so
+			// an escaped slash inside a parameter (%2F) would be promoted to a real
+			// separator and the redirect would no longer match the original route.
+			escapedPath := url.EscapedPath()
 			qs := c.QueryString()
 			if !strings.HasSuffix(path, "/") {
 				path += "/"
-				uri := path
+				escapedPath += "/"
+				uri := escapedPath
 				if qs != "" {
 					uri += "?" + qs
 				}
@@ -70,6 +76,7 @@ func (config AddTrailingSlashConfig) ToMiddleware() (echo.MiddlewareFunc, error)
 				// Forward
 				req.RequestURI = uri
 				url.Path = path
+				url.RawPath = escapedPath
 			}
 			return next(c)
 		}
@@ -118,11 +125,22 @@ func (config RemoveTrailingSlashConfig) ToMiddleware() (echo.MiddlewareFunc, err
 			req := c.Request()
 			url := req.URL
 			path := url.Path
+			// Same reason as AddTrailingSlash: work on the escaped path so %2F and
+			// friends keep their meaning instead of turning into real separators.
+			escapedPath := url.EscapedPath()
 			qs := c.QueryString()
 			l := len(path) - 1
 			if l > 0 && strings.HasSuffix(path, "/") {
 				path = path[:l]
-				uri := path
+				if strings.HasSuffix(escapedPath, "/") {
+					escapedPath = escapedPath[:len(escapedPath)-1]
+				} else {
+					// The trailing slash came from an escaped %2F rather than a real
+					// separator, so there is nothing encoded to strip. Re-derive the
+					// escaped form so Path and RawPath stay consistent.
+					escapedPath = (&neturl.URL{Path: path}).EscapedPath()
+				}
+				uri := escapedPath
 				if qs != "" {
 					uri += "?" + qs
 				}
@@ -135,6 +153,7 @@ func (config RemoveTrailingSlashConfig) ToMiddleware() (echo.MiddlewareFunc, err
 				// Forward
 				req.RequestURI = uri
 				url.Path = path
+				url.RawPath = escapedPath
 			}
 			return next(c)
 		}
@@ -147,9 +166,23 @@ func sanitizeURI(uri string) string {
 	// DEL first; the browser then requests the same path.
 	uri = escapeControlChars(uri)
 	// double slash `\\`, `//` or even `\/` is absolute uri for browsers and by redirecting request to that uri
-	// we are vulnerable to open redirect attack. so replace all slashes from the beginning with single slash
-	if len(uri) > 1 && (uri[0] == '\\' || uri[0] == '/') && (uri[1] == '\\' || uri[1] == '/') {
-		uri = "/" + strings.TrimLeft(uri, `/\`)
+	// we are vulnerable to open redirect attack. so replace all slashes from the beginning with single slash.
+	// The location is now built from the escaped path, so a leading %2F or %5C is a slash as well.
+	n, end := 0, 0
+loop:
+	for end < len(uri) {
+		switch {
+		case uri[end] == '/' || uri[end] == '\\':
+			end++
+		case len(uri)-end >= 3 && (strings.EqualFold(uri[end:end+3], "%2F") || strings.EqualFold(uri[end:end+3], "%5C")):
+			end += 3
+		default:
+			break loop
+		}
+		n++
+	}
+	if n > 1 {
+		uri = "/" + uri[end:]
 	}
 	return uri
 }

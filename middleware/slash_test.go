@@ -33,6 +33,28 @@ func TestAddTrailingSlashWithConfig(t *testing.T) {
 			expectLocation: []string{`/add-slash/?key=value`},
 		},
 		{
+			// An escaped slash inside a path parameter is data, not a separator.
+			// The redirect must keep %2F or following it matches a different route.
+			whenURL:        "/files/a%2Fb",
+			whenMethod:     http.MethodGet,
+			expectPath:     "/files/a/b",
+			expectLocation: []string{`/files/a%2Fb/`},
+		},
+		{
+			// %3F must not be promoted into a query string by the redirect.
+			whenURL:        "/files/a%3Fb",
+			whenMethod:     http.MethodGet,
+			expectPath:     "/files/a?b",
+			expectLocation: []string{`/files/a%3Fb/`},
+		},
+		{
+			// %20 must stay encoded; a raw space is not a valid Location.
+			whenURL:        "/files/a%20b",
+			whenMethod:     http.MethodGet,
+			expectPath:     "/files/a b",
+			expectLocation: []string{`/files/a%20b/`},
+		},
+		{
 			whenURL:        "/",
 			whenMethod:     http.MethodConnect,
 			expectPath:     "/",
@@ -74,7 +96,7 @@ func TestAddTrailingSlashWithConfig(t *testing.T) {
 		{
 			whenURL:        "http://localhost:1323/%09%5Cevil.example/x",
 			expectPath:     "/\t\\evil.example/x",
-			expectLocation: []string{`/%09\evil.example/x/`},
+			expectLocation: []string{`/%09%5Cevil.example/x/`},
 		},
 		{
 			whenURL:        "http://localhost:1323/%09//evil.example/x",
@@ -183,6 +205,20 @@ func TestRemoveTrailingSlashWithConfig(t *testing.T) {
 			expectLocation: []string{`/remove-slash?key=value`},
 		},
 		{
+			// The escaped slash is part of the parameter value, so removing the
+			// trailing slash must not decode it into a real separator.
+			whenURL:        "/files/a%2Fb/",
+			whenMethod:     http.MethodGet,
+			expectPath:     "/files/a/b/",
+			expectLocation: []string{`/files/a%2Fb`},
+		},
+		{
+			whenURL:        "/files/a%3Fb/",
+			whenMethod:     http.MethodGet,
+			expectPath:     "/files/a?b/",
+			expectLocation: []string{`/files/a%3Fb`},
+		},
+		{
 			whenURL:        "/",
 			whenMethod:     http.MethodConnect,
 			expectPath:     "/",
@@ -231,7 +267,7 @@ func TestRemoveTrailingSlashWithConfig(t *testing.T) {
 		{
 			whenURL:        "http://localhost:1323/%09%5Cevil.example/x/",
 			expectPath:     "/\t\\evil.example/x/",
-			expectLocation: []string{`/%09\evil.example/x`},
+			expectLocation: []string{`/%09%5Cevil.example/x`},
 		},
 		{
 			whenURL:        "http://localhost:1323/%09//evil.example/x/",
@@ -343,4 +379,53 @@ func TestSanitizeURI(t *testing.T) {
 			assert.Equal(t, tc.expect, sanitizeURI(tc.whenURI))
 		})
 	}
+}
+
+// End-to-end: the redirect issued by AddTrailingSlash must be followable and land
+// on the same route, rather than turning an escaped slash into a real separator.
+func TestAddTrailingSlashRedirectIsFollowable(t *testing.T) {
+	e := echo.New()
+	e.Pre(AddTrailingSlashWithConfig(AddTrailingSlashConfig{RedirectCode: http.StatusMovedPermanently}))
+	e.GET("/files/:id/", func(c *echo.Context) error {
+		return c.String(http.StatusOK, "id="+c.Param("id"))
+	})
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/files/a%2Fb", nil)
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusMovedPermanently, rec.Code)
+	loc := rec.Header().Get(echo.HeaderLocation)
+	assert.Equal(t, "/files/a%2Fb/", loc)
+
+	// follow it
+	rec2 := httptest.NewRecorder()
+	req2 := httptest.NewRequest(http.MethodGet, loc, nil)
+	e.ServeHTTP(rec2, req2)
+
+	assert.Equal(t, http.StatusOK, rec2.Code)
+	assert.Equal(t, "id=a%2Fb", rec2.Body.String())
+}
+
+func TestRemoveTrailingSlashRedirectIsFollowable(t *testing.T) {
+	e := echo.New()
+	e.Pre(RemoveTrailingSlashWithConfig(RemoveTrailingSlashConfig{RedirectCode: http.StatusMovedPermanently}))
+	e.GET("/files/:id", func(c *echo.Context) error {
+		return c.String(http.StatusOK, "id="+c.Param("id"))
+	})
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/files/a%2Fb/", nil)
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusMovedPermanently, rec.Code)
+	loc := rec.Header().Get(echo.HeaderLocation)
+	assert.Equal(t, "/files/a%2Fb", loc)
+
+	rec2 := httptest.NewRecorder()
+	req2 := httptest.NewRequest(http.MethodGet, loc, nil)
+	e.ServeHTTP(rec2, req2)
+
+	assert.Equal(t, http.StatusOK, rec2.Code)
+	assert.Equal(t, "id=a%2Fb", rec2.Body.String())
 }
