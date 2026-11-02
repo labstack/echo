@@ -165,6 +165,48 @@ func TestGzip_Empty(t *testing.T) {
 	}
 }
 
+func TestGzip_FlushWithoutWrite(t *testing.T) {
+	for _, tt := range []struct {
+		name      string
+		minLength int
+		flushes   int
+	}{
+		{name: "default", flushes: 1},
+		{name: "minimum length", minLength: 1024, flushes: 1},
+		{name: "repeated flush", minLength: 1024, flushes: 2},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			e := echo.New()
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			h := GzipWithConfig(GzipConfig{MinLength: tt.minLength})(func(c *echo.Context) error {
+				controller := http.NewResponseController(c.Response())
+				for i := 0; i < tt.flushes; i++ {
+					if err := controller.Flush(); err != nil {
+						return err
+					}
+				}
+				return nil
+			})
+			if !assert.NoError(t, h(c)) {
+				return
+			}
+			assert.True(t, rec.Flushed)
+			assert.Equal(t, gzipScheme, rec.Result().Header.Get(echo.HeaderContentEncoding))
+			reader, err := gzip.NewReader(rec.Body)
+			if !assert.NoError(t, err) {
+				return
+			}
+			body, err := io.ReadAll(reader)
+			assert.NoError(t, err)
+			assert.Empty(t, body)
+			assert.NoError(t, reader.Close())
+		})
+	}
+}
+
 func TestGzip_ErrorReturned(t *testing.T) {
 	e := echo.New()
 	e.Use(Gzip())
