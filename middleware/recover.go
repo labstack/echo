@@ -4,6 +4,7 @@
 package middleware
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"runtime"
@@ -51,6 +52,9 @@ func RecoverWithConfig(config RecoverConfig) echo.MiddlewareFunc {
 
 // ToMiddleware converts RecoverConfig to middleware or returns an error for invalid configuration
 func (config RecoverConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
+	if config.StackSize < 0 {
+		return nil, errors.New("stack size must not be negative")
+	}
 	// Defaults
 	if config.Skipper == nil {
 		config.Skipper = DefaultRecoverConfig.Skipper

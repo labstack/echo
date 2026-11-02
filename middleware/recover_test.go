@@ -148,3 +148,10 @@ func TestRecoverWithConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestRecover_NegativeStackSize(t *testing.T) {
+	middleware, err := (RecoverConfig{StackSize: -1}).ToMiddleware()
+	assert.Error(t, err)
+	assert.Nil(t, middleware)
+	assert.Panics(t, func() { RecoverWithConfig(RecoverConfig{StackSize: -1}) })
+}
