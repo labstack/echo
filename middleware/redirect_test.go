@@ -83,6 +83,12 @@ func TestRedirectHTTPSWWWRedirect(t *testing.T) {
 			expectLocation:   "",
 			expectStatusCode: http.StatusOK,
 		},
+		{
+			whenHost:         "WWW.labstack.com",
+			whenHeader:       map[string][]string{echo.HeaderXForwardedProto: {"https"}},
+			expectLocation:   "",
+			expectStatusCode: http.StatusOK,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -119,6 +125,12 @@ func TestRedirectHTTPSNonWWWRedirect(t *testing.T) {
 		},
 		{
 			whenHost:         "www.labstack.com",
+			whenHeader:       map[string][]string{echo.HeaderXForwardedProto: {"https"}},
+			expectLocation:   "https://labstack.com/",
+			expectStatusCode: http.StatusMovedPermanently,
+		},
+		{
+			whenHost:         "WWW.labstack.com",
 			whenHeader:       map[string][]string{echo.HeaderXForwardedProto: {"https"}},
 			expectLocation:   "https://labstack.com/",
 			expectStatusCode: http.StatusMovedPermanently,
@@ -174,6 +186,11 @@ func TestRedirectWWWRedirect(t *testing.T) {
 			expectLocation:   "",
 			expectStatusCode: http.StatusOK,
 		},
+		{
+			whenHost:         "WWW.labstack.com",
+			expectLocation:   "",
+			expectStatusCode: http.StatusOK,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -207,6 +224,11 @@ func TestRedirectNonWWWRedirect(t *testing.T) {
 			whenHost:         "www.a.com",
 			whenHeader:       map[string][]string{echo.HeaderXForwardedProto: {"https"}},
 			expectLocation:   "https://a.com/",
+			expectStatusCode: http.StatusMovedPermanently,
+		},
+		{
+			whenHost:         "WWW.labstack.com",
+			expectLocation:   "http://labstack.com/",
 			expectStatusCode: http.StatusMovedPermanently,
 		},
 		{

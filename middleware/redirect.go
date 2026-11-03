@@ -153,8 +153,8 @@ var redirectHTTPS = func(scheme, host, uri string) (bool, string) {
 
 var redirectHTTPSWWW = func(scheme, host, uri string) (bool, string) {
 	// Redirect if not HTTPS OR missing www prefix (needs either fix)
-	if scheme != "https" || !strings.HasPrefix(host, www) {
-		host = strings.TrimPrefix(host, www) // Remove www if present to avoid duplication
+	if scheme != "https" || !hasWWWPrefix(host) {
+		host = trimWWWPrefix(host) // Remove www if present to avoid duplication
 		return true, "https://www." + host + uri
 	}
 	return false, ""
@@ -162,23 +162,34 @@ var redirectHTTPSWWW = func(scheme, host, uri string) (bool, string) {
 
 var redirectNonHTTPSWWW = func(scheme, host, uri string) (ok bool, url string) {
 	// Redirect if not HTTPS OR has www prefix (needs either fix)
-	if scheme != "https" || strings.HasPrefix(host, www) {
-		host = strings.TrimPrefix(host, www)
+	if scheme != "https" || hasWWWPrefix(host) {
+		host = trimWWWPrefix(host)
 		return true, "https://" + host + uri
 	}
 	return false, ""
 }
 
 var redirectWWW = func(scheme, host, uri string) (bool, string) {
-	if !strings.HasPrefix(host, www) {
+	if !hasWWWPrefix(host) {
 		return true, scheme + "://www." + host + uri
 	}
 	return false, ""
 }
 
 var redirectNonWWW = func(scheme, host, uri string) (bool, string) {
-	if strings.HasPrefix(host, www) {
+	if hasWWWPrefix(host) {
 		return true, scheme + "://" + host[4:] + uri
 	}
 	return false, ""
+}
+
+func hasWWWPrefix(host string) bool {
+	return len(host) >= len(www) && strings.EqualFold(host[:len(www)], www)
+}
+
+func trimWWWPrefix(host string) string {
+	if hasWWWPrefix(host) {
+		return host[len(www):]
+	}
+	return host
 }
