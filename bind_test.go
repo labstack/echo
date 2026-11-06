@@ -290,6 +290,39 @@ func TestBindHeaderParam(t *testing.T) {
 	}
 }
 
+func TestBindHeadersEmptyValueSlice(t *testing.T) {
+	e := New()
+	for _, values := range [][]string{nil, {}} {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header["X-Empty"] = values
+		req.Header.Set("Name", "Jon Doe")
+		c := e.NewContext(req, httptest.NewRecorder())
+
+		dst := struct {
+			Value string `header:"X-Empty"`
+			Name  string `header:"Name"`
+		}{}
+		err := BindHeaders(c, &dst)
+		if assert.NoError(t, err) {
+			assert.Equal(t, "", dst.Value)
+			assert.Equal(t, "Jon Doe", dst.Name)
+		}
+
+		strMap := map[string]string{}
+		err = BindHeaders(c, &strMap)
+		if assert.NoError(t, err) {
+			assert.Equal(t, "", strMap["X-Empty"])
+			assert.Equal(t, "Jon Doe", strMap["Name"])
+		}
+
+		anyMap := map[string]any{}
+		err = BindHeaders(c, &anyMap)
+		if assert.NoError(t, err) {
+			assert.Equal(t, "", anyMap["X-Empty"])
+		}
+	}
+}
+
 func TestBindHeaderParamBadType(t *testing.T) {
 	e := New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)

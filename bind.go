@@ -241,12 +241,15 @@ func bindData(destination any, data map[string][]string, tag string, dataFiles m
 			val.Set(reflect.MakeMap(typ))
 		}
 		for k, v := range data {
-			if isElemString {
-				val.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v[0]))
-			} else if isElemInterface {
-				// To maintain backward compatibility, we always bind to the first string value
-				// and not the slice of strings when dealing with map[string]any{}
-				val.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v[0]))
+			if isElemString || isElemInterface {
+				// To maintain backward compatibility, map[string]any binds the first
+				// string, not the slice. An empty value slice is a blank string.
+				// Indexing it would panic, and net/http treats that slice as empty.
+				value := ""
+				if len(v) > 0 {
+					value = v[0]
+				}
+				val.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(value))
 			} else {
 				val.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v))
 			}
@@ -331,6 +334,12 @@ func bindData(destination any, data map[string][]string, tag string, dataFiles m
 			if err != nil {
 				return fmt.Errorf("%s: %w", inputFieldName, err)
 			}
+			continue
+		}
+
+		// A present key with no values is a blank header or parameter.
+		// net/http Header.Get returns "" for that slice. Do not index it.
+		if len(inputValue) == 0 {
 			continue
 		}
 
