@@ -241,6 +241,9 @@ func bindData(destination any, data map[string][]string, tag string, dataFiles m
 			val.Set(reflect.MakeMap(typ))
 		}
 		for k, v := range data {
+			if len(v) == 0 {
+				continue
+			}
 			if isElemString {
 				val.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v[0]))
 			} else if isElemInterface {
@@ -320,6 +323,10 @@ func bindData(destination any, data map[string][]string, tag string, dataFiles m
 		}
 
 		if !exists {
+			continue
+		}
+
+		if len(inputValue) == 0 {
 			continue
 		}
 
