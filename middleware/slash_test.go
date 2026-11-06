@@ -162,6 +162,24 @@ func TestAddTrailingSlash(t *testing.T) {
 	}
 }
 
+func TestAddTrailingSlash_escapedPathIsRouted(t *testing.T) {
+	e := echo.New()
+	e.Pre(AddTrailingSlash())
+	e.GET("/users/:email/", func(c *echo.Context) error {
+		return c.String(http.StatusOK, c.Param("email"))
+	})
+
+	// `%40` is how encodeURIComponent writes `@`, so req.URL.RawPath is set
+	req := httptest.NewRequest(http.MethodGet, "/users/jane%40example.com", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "jane%40example.com", rec.Body.String())
+	assert.Equal(t, "/users/jane@example.com/", req.URL.Path)
+	assert.Equal(t, "/users/jane%40example.com/", req.URL.RawPath)
+}
+
 func TestRemoveTrailingSlashWithConfig(t *testing.T) {
 	var testCases = []struct {
 		whenURL        string
@@ -320,6 +338,24 @@ func TestRemoveTrailingSlash(t *testing.T) {
 			assert.Equal(t, http.StatusOK, rec.Code)
 		})
 	}
+}
+
+func TestRemoveTrailingSlash_escapedPathIsRouted(t *testing.T) {
+	e := echo.New()
+	e.Pre(RemoveTrailingSlash())
+	e.GET("/users/:email", func(c *echo.Context) error {
+		return c.String(http.StatusOK, c.Param("email"))
+	})
+
+	// `%40` is how encodeURIComponent writes `@`, so req.URL.RawPath is set
+	req := httptest.NewRequest(http.MethodGet, "/users/jane%40example.com/", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "jane%40example.com", rec.Body.String())
+	assert.Equal(t, "/users/jane@example.com", req.URL.Path)
+	assert.Equal(t, "/users/jane%40example.com", req.URL.RawPath)
 }
 
 func TestSanitizeURI(t *testing.T) {
