@@ -241,14 +241,15 @@ func bindData(destination any, data map[string][]string, tag string, dataFiles m
 			val.Set(reflect.MakeMap(typ))
 		}
 		for k, v := range data {
+			key := reflect.ValueOf(k).Convert(typ.Key())
 			if isElemString {
-				val.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v[0]))
+				val.SetMapIndex(key, reflect.ValueOf(v[0]).Convert(typ.Elem()))
 			} else if isElemInterface {
 				// To maintain backward compatibility, we always bind to the first string value
 				// and not the slice of strings when dealing with map[string]any{}
-				val.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v[0]))
+				val.SetMapIndex(key, reflect.ValueOf(v[0]))
 			} else {
-				val.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v))
+				val.SetMapIndex(key, reflect.ValueOf(v))
 			}
 		}
 		return nil
