@@ -113,7 +113,7 @@ func BindBody(c *Context, target any) (err error) {
 
 func bindBodyMediaType(req *http.Request) string {
 	base, _, _ := strings.Cut(req.Header.Get(HeaderContentType), ";")
-	return strings.TrimSpace(base)
+	return strings.ToLower(strings.TrimSpace(base))
 }
 
 func wrapBindBodyError(err error) error {
