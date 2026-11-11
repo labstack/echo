@@ -83,6 +83,7 @@ type Echo struct {
 	Validator        Validator
 	JSONSerializer   JSONSerializer
 	IPExtractor      IPExtractor
+	SchemeExtractor  SchemeExtractor
 	OnAddRoute       func(route Route) error
 	HTTPErrorHandler HTTPErrorHandler
 	Logger           *slog.Logger
@@ -304,8 +305,15 @@ type Config struct {
 	// IPExtractor defines the strategy for extracting the real client IP address
 	// from requests, particularly important when behind proxies or load balancers.
 	// Used for rate limiting, access control, and logging.
-	// If not set, falls back to checking X-Forwarded-For and X-Real-IP headers.
+	// If not set, the address of the direct peer (http.Request.RemoteAddr) is used.
 	IPExtractor IPExtractor
+
+	// SchemeExtractor defines the strategy for determining the request scheme (`http` or `https`),
+	// particularly important when behind proxies or load balancers that terminate TLS.
+	// Used by Context.Scheme and by the HTTPS redirect, Secure and Proxy middlewares.
+	// If not set, forwarding headers such as `X-Forwarded-Proto` are trusted only from loopback, link-local and
+	// private network addresses and unix sockets. See ExtractSchemeFromHeaders.
+	SchemeExtractor SchemeExtractor
 
 	// FormParseMaxMemory is default value for memory limit that is used
 	// when parsing multipart forms (See (*http.Request).ParseMultipartForm)
@@ -375,6 +383,9 @@ func NewWithConfig(config Config) *Echo {
 	}
 	if config.IPExtractor != nil {
 		e.IPExtractor = config.IPExtractor
+	}
+	if config.SchemeExtractor != nil {
+		e.SchemeExtractor = config.SchemeExtractor
 	}
 	if config.FormParseMaxMemory > 0 {
 		e.formParseMaxMemory = config.FormParseMaxMemory
@@ -654,12 +665,21 @@ func (e *Echo) StaticFS(pathPrefix string, filesystem fs.FS, middleware ...Middl
 func StaticDirectoryHandler(fileSystem fs.FS, disablePathUnescaping bool) HandlerFunc {
 	return func(c *Context) error {
 		p := c.Param("*")
+		// The router matches the path as it was sent, but the file name is resolved with path.Clean(). A path with a
+		// ".", ".." or empty segment could therefore reach a file under a route that the router never matched, for
+		// example `/assets/../admin/private.txt` bypassing a guarded `/admin/*` route (GHSA-3pmx-cf9f-34xr).
+		if hasUncleanPath(c.Request()) || hasUncleanWildcardPath(p, c.Path()) {
+			return ErrNotFound
+		}
 		if !disablePathUnescaping { // when router is already unescaping we do not want to do is twice
 			tmpPath, err := url.PathUnescape(p)
 			if err != nil {
 				return fmt.Errorf("failed to unescape path variable: %w", err)
 			}
 			p = tmpPath
+			if hasUncleanWildcardPath(p, c.Path()) { // unescaping can create dot or empty segments
+				return ErrNotFound
+			}
 		}
 
 		// fs.FS.Open() already assumes that file names are relative to FS root path and considers name with prefix `/`
@@ -754,6 +774,12 @@ func (e *Echo) Add(method, path string, handler HandlerFunc, middleware ...Middl
 }
 
 // Group creates a new router group with prefix and optional group-level middleware.
+// The prefix is concatenated with each route path without inserting a slash.
+// For example:
+//
+//	g := e.Group("/v1")
+//	g.GET("/posts", handler) // Registers /v1/posts.
+//	g.GET("posts", handler)  // Registers /v1posts.
 func (e *Echo) Group(prefix string, m ...MiddlewareFunc) (g *Group) {
 	g = &Group{
 		prefix:               prefix,
@@ -956,10 +982,86 @@ func MustSubFS(currentFs fs.FS, fsRoot string) fs.FS {
 }
 
 func sanitizeURI(uri string) string {
+	// Browsers remove tab and newline characters from URLs, so `/\t/example.com` is `//example.com` to them and a
+	// control character could hide the double slash from the check below. Percent-encode C0 control characters and
+	// DEL first; the browser then requests the same path.
+	uri = escapeControlChars(uri)
 	// double slash `\\`, `//` or even `\/` is absolute uri for browsers and by redirecting request to that uri
 	// we are vulnerable to open redirect attack. so replace all slashes from the beginning with single slash
 	if len(uri) > 1 && (uri[0] == '\\' || uri[0] == '/') && (uri[1] == '\\' || uri[1] == '/') {
 		uri = "/" + strings.TrimLeft(uri, `/\`)
 	}
 	return uri
+}
+
+// escapeControlChars percent-encodes C0 control characters and DEL in s.
+// Keep in sync with the copy in middleware/slash.go.
+func escapeControlChars(s string) string {
+	i := 0
+	for i < len(s) && s[i] >= 0x20 && s[i] != 0x7f {
+		i++
+	}
+	if i == len(s) {
+		return s
+	}
+	const hexDigits = "0123456789ABCDEF"
+	var b strings.Builder
+	b.Grow(len(s) + 8)
+	b.WriteString(s[:i])
+	for ; i < len(s); i++ {
+		if ch := s[i]; ch < 0x20 || ch == 0x7f {
+			b.WriteByte('%')
+			b.WriteByte(hexDigits[ch>>4])
+			b.WriteByte(hexDigits[ch&0x0f])
+		} else {
+			b.WriteByte(ch)
+		}
+	}
+	return b.String()
+}
+
+// hasDotOrEmptySegment reports whether URL path p has a ".", ".." or empty segment, or a segment with a "." or ".."
+// part between backslashes (e.g. `..\x`). A single leading and a single trailing slash are allowed.
+// Keep in sync with the copy in middleware/static.go.
+func hasDotOrEmptySegment(p string) bool {
+	if strings.HasPrefix(p, "//") {
+		return true
+	}
+	p = strings.TrimPrefix(p, "/")
+	p = strings.TrimSuffix(p, "/")
+	if p == "" {
+		return false
+	}
+	for segment := range strings.SplitSeq(p, "/") {
+		if segment == "" || segment == "." || segment == ".." {
+			return true
+		}
+		// A backslash is a literal character in fs.FS names, but a filesystem that wrongly treats it as a separator
+		// (for example one built on filepath.Join on Windows) would resolve `..\` outside its root.
+		if strings.Contains(segment, `\`) {
+			for part := range strings.SplitSeq(segment, `\`) {
+				if part == "." || part == ".." {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// hasUncleanPath checks both request path representations for ".", ".." or empty segments.
+// Router configuration and parameter unescaping can select either representation. Validating only RawPath would
+// miss an empty segment in URL.Path, allowing filesystem cleanup to resolve a path the router never matched.
+func hasUncleanPath(req *http.Request) bool {
+	if hasDotOrEmptySegment(req.URL.Path) {
+		return true
+	}
+	return req.URL.RawPath != "" && hasDotOrEmptySegment(req.URL.RawPath)
+}
+
+// hasUncleanWildcardPath accounts for the slash already consumed by a route ending in /*.
+// A leading slash in that wildcard is an empty segment, while a prefix such as /assets* may legitimately capture /file.
+// Keep in sync with the copy in middleware/static.go.
+func hasUncleanWildcardPath(p, routePath string) bool {
+	return (strings.HasSuffix(routePath, "/*") && strings.HasPrefix(p, "/")) || hasDotOrEmptySegment(p)
 }

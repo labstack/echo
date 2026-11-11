@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"reflect"
 	"runtime"
+	"strings"
 )
 
 // Route contains information to adding/registering new route with the router.
@@ -81,24 +82,29 @@ func (r RouteInfo) Clone() RouteInfo {
 // Reverse reverses route to URL string by replacing path parameters with given params values.
 func (r RouteInfo) Reverse(pathValues ...any) string {
 	uri := new(bytes.Buffer)
-	ln := len(pathValues)
-	n := 0
-	for i, l := 0, len(r.Path); i < l; i++ {
-		hasBackslash := r.Path[i] == '\\'
-		if hasBackslash && i+1 < l && r.Path[i+1] == ':' {
-			i++ // backslash before colon escapes that colon. in that case skip backslash
-		}
-		if n < ln && (r.Path[i] == anyLabel || (!hasBackslash && r.Path[i] == paramLabel)) {
-			// in case of `*` wildcard or `:` (unescaped colon) param we replace everything till next slash or end of path
-			for ; i < l && r.Path[i] != '/'; i++ {
+	nextValue := 0
+	walkRoutePath(r.Path, func(part routePathPart) {
+		switch part.kind {
+		case staticKind:
+			uri.WriteString(part.value)
+		case paramKind:
+			if nextValue < len(pathValues) {
+				fmt.Fprint(uri, pathValues[nextValue])
+				nextValue++
+			} else {
+				// placeholder for a missing value. An escaped colon in a param name is written without its backslash.
+				uri.WriteByte(paramLabel)
+				uri.WriteString(strings.ReplaceAll(part.value, `\:`, ":"))
 			}
-			fmt.Fprintf(uri, "%v", pathValues[n])
-			n++
+		case anyKind:
+			if nextValue < len(pathValues) {
+				fmt.Fprint(uri, pathValues[nextValue])
+				nextValue++
+			} else {
+				uri.WriteString(strings.ReplaceAll(part.value, `\:`, ":"))
+			}
 		}
-		if i < l {
-			uri.WriteByte(r.Path[i])
-		}
-	}
+	})
 	return uri.String()
 }
 

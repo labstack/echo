@@ -4,12 +4,16 @@
 package middleware
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
+	"testing/iotest"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -280,8 +284,8 @@ func TestBodyDump_RequestExceedsLimit(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int(limit), len(requestBodyDumped), "Dumped request should be truncated to limit")
 	assert.Equal(t, strings.Repeat("A", 1024), requestBodyDumped, "Dumped data should match first N bytes")
-	// Handler should receive truncated data (what was dumped)
-	assert.Equal(t, strings.Repeat("A", 1024), rec.Body.String())
+	// Dump limits must not truncate the request passed to the handler.
+	assert.Equal(t, largeData, rec.Body.String())
 }
 
 func TestBodyDump_RequestAtExactLimit(t *testing.T) {
@@ -578,4 +582,98 @@ func BenchmarkBodyDump_BufferPooling(b *testing.B) {
 		c := e.NewContext(req, rec)
 		mw(h)(c)
 	}
+}
+
+func TestBodyDump_RequestRemainder(t *testing.T) {
+	for _, readError := range []error{nil, errors.New("read failed")} {
+		t.Run(fmt.Sprint(readError), func(t *testing.T) {
+			const payload = "abcdef"
+			const limit = 3
+			reader := io.Reader(strings.NewReader(payload))
+			if readError != nil {
+				reader = io.MultiReader(reader, iotest.ErrReader(readError))
+			}
+			body := &bodyDumpTrackingReadCloser{Reader: reader}
+			req := httptest.NewRequest(http.MethodPost, "/", nil)
+			req.Body = body
+			e := echo.New()
+			c := e.NewContext(req, httptest.NewRecorder())
+			var dumped []byte
+			mw := BodyDumpWithConfig(BodyDumpConfig{
+				MaxRequestBytes: limit,
+				Handler: func(_ *echo.Context, reqBody, _ []byte, _ error) {
+					dumped = reqBody
+				},
+			})
+			err := mw(func(c *echo.Context) error {
+				assert.False(t, body.closed, "request body must remain open for the handler")
+				data, err := io.ReadAll(c.Request().Body)
+				assert.Equal(t, payload, string(data))
+				assert.Equal(t, readError, err)
+				assert.NoError(t, c.Request().Body.Close())
+				assert.True(t, body.closed, "Close must reach the original request body")
+				return nil
+			})(c)
+			assert.NoError(t, err)
+			assert.Equal(t, payload[:limit], string(dumped))
+		})
+	}
+}
+
+type bodyDumpTrackingReadCloser struct {
+	io.Reader
+	closed bool
+}
+
+func (r *bodyDumpTrackingReadCloser) Close() error {
+	r.closed = true
+	return nil
+}
+
+func TestBodyDump_RestoreResponse(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	origResponse := c.Response()
+
+	mw, err := BodyDumpConfig{
+		Handler: func(c *echo.Context, reqBody, resBody []byte, err error) {},
+	}.ToMiddleware()
+	assert.NoError(t, err)
+
+	var innerResponse http.ResponseWriter
+	h := func(c *echo.Context) error {
+		innerResponse = c.Response()
+		return c.String(http.StatusOK, "ok")
+	}
+
+	err = mw(h)(c)
+	assert.NoError(t, err)
+	assert.NotEqual(t, origResponse, innerResponse)
+	assert.Equal(t, origResponse, c.Response())
+}
+
+func TestBodyDump_ErrorHandlerRace(t *testing.T) {
+	e := echo.New()
+	e.HTTPErrorHandler = func(c *echo.Context, err error) {
+		_ = c.JSON(http.StatusOK, map[string]any{"error": err.Error()})
+	}
+	e.Pre(BodyDump(func(c *echo.Context, reqBody, rspBody []byte, err error) {}))
+	e.POST("/err", func(c *echo.Context) error {
+		return echo.NewHTTPError(http.StatusBadRequest, "boom")
+	})
+
+	var wg sync.WaitGroup
+	for i := 0; i < 16; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < 200; j++ {
+				req := httptest.NewRequest(http.MethodPost, "/err", bytes.NewReader(make([]byte, 256)))
+				e.ServeHTTP(httptest.NewRecorder(), req)
+			}
+		}()
+	}
+	wg.Wait()
 }

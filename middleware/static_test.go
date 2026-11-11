@@ -8,11 +8,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"testing/fstest"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestStatic_useCaseForApiAndSPAs(t *testing.T) {
@@ -665,6 +668,220 @@ func TestStatic_DirectoryBrowsing(t *testing.T) {
 			for _, notContains := range tc.expectNotContains {
 				assert.NotContains(t, responseBody, notContains, "body should NOT contain: "+notContains)
 			}
+		})
+	}
+}
+
+func TestStatic_resolvesRoutedPath(t *testing.T) {
+	// GHSA-375p-5qhx-8wq4 (encoded paths) and GHSA-3pmx-cf9f-34xr (dot segments): the static middleware must resolve
+	// files from the same path that the router matched, so encoding or dot segments do not reach a different file.
+	// Note: middleware registered with e.Use runs before group middleware, so the `/admin` group guard below does not
+	// protect files served by it (see Static docs); TestStatic_routeLevelGuard covers a guardable setup.
+	fsys := fstest.MapFS{
+		"admin/secret.txt":       {Data: []byte("SECRET")},
+		"public/index.html":      {Data: []byte("public")},
+		"hello world.txt":        {Data: []byte("hello")},
+		"public/admin/other.txt": {Data: []byte("other")},
+	}
+	var testCases = []struct {
+		name         string
+		whenPath     string // set as req.URL.Path
+		whenRawPath  string // set as req.URL.RawPath
+		expectStatus int
+		expectBody   string
+	}{
+		{name: "encoded slash", whenPath: "/admin/secret.txt", whenRawPath: "/admin%2Fsecret.txt", expectStatus: http.StatusNotFound},
+		{name: "encoded slash lowercase", whenPath: "/admin/secret.txt", whenRawPath: "/admin%2fsecret.txt", expectStatus: http.StatusNotFound},
+		{name: "encoded letter", whenPath: "/admin/secret.txt", whenRawPath: "/%61dmin/secret.txt", expectStatus: http.StatusNotFound},
+		{name: "encoded dot segment", whenPath: "/public/../admin/secret.txt", whenRawPath: "/public/%2E%2E/admin/secret.txt", expectStatus: http.StatusNotFound},
+		{name: "encoded slashes and dots", whenPath: "/public/../admin/secret.txt", whenRawPath: "/public%2F..%2Fadmin%2Fsecret.txt", expectStatus: http.StatusNotFound},
+		{name: "parent dot segment", whenPath: "/public/../admin/secret.txt", expectStatus: http.StatusNotFound},
+		{name: "current dot segment", whenPath: "/./admin/secret.txt", expectStatus: http.StatusNotFound},
+		{name: "empty segment", whenPath: "//admin/secret.txt", expectStatus: http.StatusNotFound},
+		{name: "canonical escape is still served", whenPath: "/hello world.txt", expectStatus: http.StatusOK, expectBody: "hello"},
+		{name: "plain public file is still served", whenPath: "/public/index.html", expectStatus: http.StatusOK, expectBody: "public"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+			e.Use(StaticWithConfig(StaticConfig{Filesystem: fsys}))
+			admin := e.Group("/admin", func(next echo.HandlerFunc) echo.HandlerFunc {
+				return func(c *echo.Context) error {
+					return echo.ErrForbidden
+				}
+			})
+			admin.GET("/*", func(c *echo.Context) error {
+				return c.String(http.StatusOK, "admin")
+			})
+
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.URL.Path = tc.whenPath
+			req.URL.RawPath = tc.whenRawPath
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, tc.expectStatus, rec.Code)
+			assert.NotContains(t, rec.Body.String(), "SECRET")
+			if tc.expectBody != "" {
+				assert.Equal(t, tc.expectBody, rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestStatic_routeLevelGuard(t *testing.T) {
+	fsys := fstest.MapFS{
+		"admin/secret.txt": {Data: []byte("SECRET")},
+		"hello world.txt":  {Data: []byte("hello")},
+		"x/file.txt":       {Data: []byte("x")},
+	}
+	var testCases = []struct {
+		name                      string
+		givenEnablePathUnescaping bool
+		whenPath                  string // set as req.URL.Path
+		whenRawPath               string // set as req.URL.RawPath
+		expectStatus              int
+	}{
+		{name: "guarded path", whenPath: "/admin/secret.txt", expectStatus: http.StatusForbidden},
+		{name: "guarded path repeated prefix", whenPath: "/admin/admin/secret.txt", expectStatus: http.StatusForbidden},
+		{name: "encoded slash", whenPath: "/admin/secret.txt", whenRawPath: "/admin%2Fsecret.txt", expectStatus: http.StatusNotFound},
+		{name: "encoded letter", whenPath: "/admin/secret.txt", whenRawPath: "/%61dmin/secret.txt", expectStatus: http.StatusNotFound},
+		{name: "parent dot segment", whenPath: "/x/../admin/secret.txt", expectStatus: http.StatusNotFound},
+		{name: "empty segment", whenPath: "//admin/secret.txt", expectStatus: http.StatusNotFound},
+		{name: "encoded dots with unescaping", givenEnablePathUnescaping: true, whenPath: "/x/../admin/secret.txt", whenRawPath: "/x/%2e%2e/admin/secret.txt", expectStatus: http.StatusNotFound},
+		{name: "encoded dot slash with unescaping", givenEnablePathUnescaping: true, whenPath: "/./admin/secret.txt", whenRawPath: "/.%2Fadmin/secret.txt", expectStatus: http.StatusNotFound},
+		{name: "public file", whenPath: "/hello world.txt", expectStatus: http.StatusOK},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+			static := StaticWithConfig(StaticConfig{Filesystem: fsys, EnablePathUnescaping: tc.givenEnablePathUnescaping})
+			e.GET("/*", func(c *echo.Context) error {
+				return echo.ErrNotFound
+			}, static)
+			admin := e.Group("/admin", func(next echo.HandlerFunc) echo.HandlerFunc {
+				return func(c *echo.Context) error {
+					return echo.ErrForbidden
+				}
+			})
+			admin.GET("/*", func(c *echo.Context) error {
+				return c.String(http.StatusOK, "admin")
+			})
+
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.URL.Path = tc.whenPath
+			req.URL.RawPath = tc.whenRawPath
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, tc.expectStatus, rec.Code)
+			assert.NotContains(t, rec.Body.String(), "SECRET")
+		})
+	}
+}
+
+func TestStatic_HTML5WithUncleanPath(t *testing.T) {
+	// A path with an empty or dot segment is not served as a file, but HTML5 mode still serves the index for it.
+	e := echo.New()
+	e.Use(StaticWithConfig(StaticConfig{
+		Filesystem: fstest.MapFS{"index.html": {Data: []byte("spa")}},
+		HTML5:      true,
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.URL.Path = "/app//route"
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "spa", rec.Body.String())
+}
+
+// nonValidatingFS is a custom fs.FS that does not enforce fs.ValidPath, so a name with ".." escapes its root. Echo must
+// never pass such a name to a user supplied filesystem.
+type nonValidatingFS struct{ root string }
+
+func (f nonValidatingFS) Open(name string) (fs.File, error) {
+	// treat a backslash as a separator on every OS, like filepath.Join does on Windows
+	return os.Open(filepath.Join(f.root, filepath.FromSlash(strings.ReplaceAll(name, `\`, "/"))))
+}
+
+func TestStatic_nonValidatingCustomFSCannotEscapeRoot(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "public"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "public", "index.txt"), []byte("public"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "secret.txt"), []byte("secret"), 0o644))
+
+	targets := []string{
+		"/../secret.txt",
+		"/%2e%2e/secret.txt",
+		"/..%2fsecret.txt",
+		"/sub/../../secret.txt",
+		"/..%5csecret.txt",
+		"/..%5Csecret.txt",
+		"/a%5C..%5C..%5Csecret.txt",
+		`/..\secret.txt`,
+	}
+	for _, group := range []string{"", "/static"} {
+		for _, unescape := range []bool{false, true} {
+			e := echo.New()
+			mw := StaticWithConfig(StaticConfig{
+				Filesystem:           nonValidatingFS{root: filepath.Join(dir, "public")},
+				EnablePathUnescaping: unescape,
+			})
+			if group == "" {
+				e.Use(mw)
+			} else {
+				e.Group(group, mw)
+			}
+
+			for _, target := range targets {
+				req := httptest.NewRequest(http.MethodGet, group+target, nil)
+				rec := httptest.NewRecorder()
+				e.ServeHTTP(rec, req)
+
+				assert.Equal(t, http.StatusNotFound, rec.Code, "%s unescape=%v", group+target, unescape)
+				assert.NotContains(t, rec.Body.String(), "secret", "%s unescape=%v", group+target, unescape)
+			}
+
+			req := httptest.NewRequest(http.MethodGet, group+"/index.txt", nil)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+			assert.Equal(t, http.StatusOK, rec.Code, "group=%q unescape=%v", group, unescape)
+			assert.Equal(t, "public", rec.Body.String())
+		}
+	}
+}
+
+func TestHasDotOrEmptySegment(t *testing.T) {
+	var testCases = []struct {
+		path   string
+		expect bool
+	}{
+		{path: "", expect: false},
+		{path: "/", expect: false},
+		{path: "/index.html", expect: false},
+		{path: "/css/app.css", expect: false},
+		{path: "/..", expect: true},
+		{path: "/a/../b", expect: true},
+		{path: "/a/./b", expect: true},
+		{path: "/a//b", expect: true},
+		{path: `/..\secret.txt`, expect: true},
+		{path: `/a\..\b`, expect: true},
+		{path: `/.\secret.txt`, expect: true},
+		{path: `/\..`, expect: true},
+		{path: `/..\`, expect: true},
+		{path: `/dir\file.txt`, expect: false},
+		{path: "/...", expect: false},
+		{path: "/..foo", expect: false},
+		{path: `/a\\b`, expect: false},
+		{path: "/..%2fsecret.txt", expect: false}, // still encoded, only unsafe once unescaped
+	}
+	for _, tc := range testCases {
+		t.Run(tc.path, func(t *testing.T) {
+			assert.Equal(t, tc.expect, hasDotOrEmptySegment(tc.path))
 		})
 	}
 }

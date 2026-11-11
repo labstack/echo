@@ -57,13 +57,14 @@ type StaticConfig struct {
 	// Note: previously the zero value (false) enabled unescaping, which was the unsafe default.
 	DisablePathUnescaping bool
 
-	// EnablePathUnescaping enables path parameter (param: *) unescaping.
-	// Default false (safe): encoded slashes (%2f) in the wildcard param are NOT decoded,
-	// preventing ACL bypass where /admin%2fprivate.txt bypasses a /admin/* route guard by
-	// not matching that route but having its wildcard param decoded to admin/private.txt.
-	// Set to true only when serving files whose names contain URL-encoded characters
-	// (e.g. "hello world.txt" via /hello%20world.txt) and you are not relying on
-	// route-based ACL guards to restrict access.
+	// EnablePathUnescaping enables unescaping of the request path (or of the wildcard param `*` when the middleware is
+	// used on a wildcard route) before the file is looked up.
+	// Default false (safe): the path is used in the same form as the router matched it, so encoded characters such as
+	// encoded slashes (%2f) are NOT decoded, preventing ACL bypass where /admin%2fprivate.txt bypasses a /admin/* route
+	// guard by not matching that route but being decoded to admin/private.txt. As a consequence, file names that the
+	// client sends with non-default escaping (e.g. `%2C`, `%40` or lowercase hex like `%c3%a9`) are not found.
+	// Set to true only when serving files whose names need such unescaping and you are not relying on route-based
+	// ACL guards to restrict access. Paths with ".", ".." or empty segments are never served, also after unescaping.
 	//
 	// Enabling echo.RouterConfig.UseEscapedPathForMatching makes this field irrelevant and can lead to security issues when
 	// using different Routes to exclude some of the files from being served.
@@ -162,6 +163,10 @@ var DefaultStaticConfig = StaticConfig{
 }
 
 // Static returns a Static middleware to serves static content from the provided root directory.
+//
+// Security: when registered with Echo#Use, the middleware runs before route and group middleware, so guards on routes
+// or groups (for example authentication on an `/admin` group) do not protect the files it serves. Keep files that
+// need protection outside the root directory, or serve them with Echo#Static / Group#Static behind the guard.
 func Static(root string) echo.MiddlewareFunc {
 	c := DefaultStaticConfig
 	c.Root = root
@@ -216,22 +221,36 @@ func (config StaticConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				return next(c)
 			}
 
-			p := c.Request().URL.Path
+			req := c.Request()
+			// Resolve the file from the same form of the path that the router matched: the escaped path when it
+			// differs from the default encoding. Using the decoded path would let `/admin%2Fsecret.txt` reach a file
+			// under a guarded `/admin/*` route (GHSA-375p-5qhx-8wq4).
+			p := req.URL.Path
+			if req.URL.RawPath != "" {
+				p = req.URL.RawPath
+			}
+			// A path with a ".", ".." or empty segment is resolved by path.Clean() to a different file than the path
+			// the router matched, so it is not served as a file (GHSA-3pmx-cf9f-34xr).
+			unclean := hasUncleanPath(req)
 			if strings.HasSuffix(c.Path(), "*") { // When serving from a group, e.g. `/static*`.
 				p = c.Param("*")
+				unclean = unclean || hasUncleanWildcardPath(p, c.Path())
 			}
-			if config.EnablePathUnescaping {
+			if !unclean && config.EnablePathUnescaping {
 				p, err = url.PathUnescape(p)
 				if err != nil {
 					return err
 				}
+				unclean = hasUncleanWildcardPath(p, c.Path()) // unescaping can create dot or empty segments
 			}
 			// Security: We use path.Clean() (not filepath.Clean()) because:
 			// 1. HTTP URLs always use forward slashes, regardless of server OS
 			// 2. path.Clean() provides platform-independent behavior for URL paths
-			// 3. The "/" prefix forces absolute path interpretation, removing ".." components
-			// 4. Backslashes are treated as literal characters (not path separators), preventing traversal
-			// See static_windows.go for Go 1.20+ filepath.Clean compatibility notes
+			// 3. A path with a ".." segment is unclean and is not opened (it is handled like a missing file below), so the
+			//    "./" prefix only keeps the name relative to the filesystem root; path.Clean() does not remove a leading
+			//    ".." from a relative path
+			// 4. path.Clean() treats backslashes as literal characters; "."/".." parts between backslashes are rejected above
+			//    for filesystems that wrongly treat a backslash as a separator
 			filePath := path.Clean("./" + p)
 
 			if config.IgnoreBase {
@@ -256,7 +275,12 @@ func (config StaticConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				}
 			}
 
-			file, err := currentFS.Open(filePath)
+			var file fs.File
+			if unclean {
+				err = fs.ErrNotExist // handle like a missing file, so HTML5 mode can still serve the index
+			} else {
+				file, err = currentFS.Open(filePath)
+			}
 			if err != nil {
 				if !isIgnorableOpenFileError(err) {
 					return err
@@ -389,4 +413,50 @@ func format(b int64) string {
 	}
 
 	return fmt.Sprintf("%.2f%s", value, multiple)
+}
+
+// hasDotOrEmptySegment reports whether URL path p has a ".", ".." or empty segment, or a segment with a "." or ".."
+// part between backslashes (e.g. `..\x`). A single leading and a single trailing slash are allowed.
+// Keep in sync with the copy in echo.go.
+func hasDotOrEmptySegment(p string) bool {
+	if strings.HasPrefix(p, "//") {
+		return true
+	}
+	p = strings.TrimPrefix(p, "/")
+	p = strings.TrimSuffix(p, "/")
+	if p == "" {
+		return false
+	}
+	for segment := range strings.SplitSeq(p, "/") {
+		if segment == "" || segment == "." || segment == ".." {
+			return true
+		}
+		// A backslash is a literal character in fs.FS names, but a filesystem that wrongly treats it as a separator
+		// (for example one built on filepath.Join on Windows) would resolve `..\` outside its root.
+		if strings.Contains(segment, `\`) {
+			for part := range strings.SplitSeq(segment, `\`) {
+				if part == "." || part == ".." {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// hasUncleanPath checks both request path representations for ".", ".." or empty segments.
+// Router configuration and parameter unescaping can select either representation. Validating only RawPath would
+// miss an empty segment in URL.Path, allowing filesystem cleanup to resolve a path the router never matched.
+func hasUncleanPath(req *http.Request) bool {
+	if hasDotOrEmptySegment(req.URL.Path) {
+		return true
+	}
+	return req.URL.RawPath != "" && hasDotOrEmptySegment(req.URL.RawPath)
+}
+
+// hasUncleanWildcardPath accounts for the slash already consumed by a route ending in /*.
+// A leading slash in that wildcard is an empty segment, while a prefix such as /assets* may legitimately capture /file.
+// Keep in sync with the copy in echo.go.
+func hasUncleanWildcardPath(p, routePath string) bool {
+	return (strings.HasSuffix(routePath, "/*") && strings.HasPrefix(p, "/")) || hasDotOrEmptySegment(p)
 }

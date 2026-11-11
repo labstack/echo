@@ -24,7 +24,8 @@ To retrieve IP address reliably/securely, you must let your application be aware
 In Echo, this can be done by configuring `Echo#IPExtractor` appropriately.
 This guides show you why and how.
 
-> Note: if you don't set `Echo#IPExtractor` explicitly, Echo fallback to legacy behavior, which is not a good choice.
+> Note: if you don't set `Echo#IPExtractor` explicitly, Echo uses the IP address of the direct peer
+> (`http.Request.RemoteAddr`), which is the proxy's address when the application is behind a proxy.
 
 Let's start from two questions to know the right direction:
 
@@ -114,10 +115,9 @@ To control this behavior, use [`TrustOption`](https://godoc.org/github.com/labst
 
 ## About default behavior
 
-In default behavior, Echo sees all of first XFF header, X-Real-IP header and IP from network layer.
-
-As you might already notice, after reading this article, this is not good.
-Sole reason this is default is just backward compatibility.
+By default (without `Echo#IPExtractor`), Echo uses only the IP address from the network layer (`http.Request.RemoteAddr`).
+The previous default, which also trusted the first XFF header and the X-Real-IP header, is available as `LegacyIPExtractor`,
+but it is not safe unless every request passes through a proxy that sets these headers.
 
 ## Private IP ranges
 
@@ -224,15 +224,21 @@ func extractIP(req *http.Request) string {
 func ExtractIPFromRealIPHeader(options ...TrustOption) IPExtractor {
 	checker := newIPChecker(options)
 	return func(req *http.Request) string {
+		directIP := extractIP(req)
+		peerIP := net.ParseIP(directIP)
+		if peerIP == nil || !checker.trust(peerIP) {
+			return directIP
+		}
+
 		realIP := req.Header.Get(HeaderXRealIP)
 		if realIP != "" {
 			realIP = strings.TrimPrefix(realIP, "[")
 			realIP = strings.TrimSuffix(realIP, "]")
-			if ip := net.ParseIP(realIP); ip != nil && checker.trust(ip) {
+			if ip := net.ParseIP(realIP); ip != nil {
 				return realIP
 			}
 		}
-		return extractIP(req)
+		return directIP
 	}
 }
 

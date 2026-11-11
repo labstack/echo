@@ -57,6 +57,21 @@ func TestBasicAuth(t *testing.T) {
 			},
 		},
 		{
+			name:         "nok, missing space after scheme",
+			givenConfig:  defaultConfig,
+			whenAuth:     []string{"BasicX" + base64.StdEncoding.EncodeToString([]byte("joe:secret"))},
+			expectHeader: basic + ` realm="Restricted"`,
+			expectErr:    "Unauthorized",
+		},
+		{
+			name:        "ok, unrelated scheme does not consume check limit",
+			givenConfig: defaultConfig,
+			whenAuth: []string{
+				"BasicX" + base64.StdEncoding.EncodeToString([]byte("joe:invalid_password")),
+				basic + " " + base64.StdEncoding.EncodeToString([]byte("joe:secret")),
+			},
+		},
+		{
 			name:        "nok, multiple, valid out of limit",
 			givenConfig: BasicAuthConfig{Validator: validatorFunc, AllowedCheckLimit: 1},
 			whenAuth: []string{

@@ -590,6 +590,46 @@ func TestExtractIPFromRealIPHeader(t *testing.T) {
 			},
 			expectIP: "2001:db8::113:199",
 		},
+		{
+			name: "request is from untrusted external IP attempting to spoof loopback in X-Real-Ip, extract IP from remote addr",
+			whenRequest: http.Request{
+				Header: http.Header{
+					HeaderXRealIP: []string{"127.0.0.1"},
+				},
+				RemoteAddr: "203.0.113.1:8080",
+			},
+			expectIP: "203.0.113.1",
+		},
+		{
+			name: "request is from untrusted external IP attempting to spoof private network in X-Real-Ip, extract IP from remote addr",
+			whenRequest: http.Request{
+				Header: http.Header{
+					HeaderXRealIP: []string{"10.240.0.1"},
+				},
+				RemoteAddr: "203.0.113.1:8080",
+			},
+			expectIP: "203.0.113.1",
+		},
+		{
+			name: "request is from trusted proxy forwarding legitimate public IP in X-Real-Ip, extract IP from X-Real-Ip header",
+			whenRequest: http.Request{
+				Header: http.Header{
+					HeaderXRealIP: []string{"203.0.113.199"},
+				},
+				RemoteAddr: "127.0.0.1:8080",
+			},
+			expectIP: "203.0.113.199",
+		},
+		{
+			name: "request is from trusted private network proxy forwarding legitimate public IP in X-Real-Ip, extract IP from X-Real-Ip header",
+			whenRequest: http.Request{
+				Header: http.Header{
+					HeaderXRealIP: []string{"198.51.100.22"},
+				},
+				RemoteAddr: "10.0.0.1:8080",
+			},
+			expectIP: "198.51.100.22",
+		},
 	}
 
 	for _, tc := range testCases {

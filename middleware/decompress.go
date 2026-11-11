@@ -128,7 +128,6 @@ func (config DecompressConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 	}, nil
 }
 
-
 // isGzipContentEncoding reports whether Content-Encoding is gzip.
 // Content codings are case-insensitive per RFC 9110 §8.4.1.
 func isGzipContentEncoding(v string) bool {
@@ -143,9 +142,21 @@ type limitedGzipReader struct {
 }
 
 func (r *limitedGzipReader) Read(p []byte) (n int, err error) {
-	if r.remaining <= 0 {
-		// Limit exceeded - return 413 error
+	if len(p) == 0 {
+		return 0, nil
+	}
+	if r.remaining < 0 {
 		return 0, echo.ErrStatusRequestEntityTooLarge
+	}
+	if r.remaining == 0 {
+		// Reaching the limit is valid if there is no more decompressed data.
+		var probe [1]byte
+		n, err = r.Reader.Read(probe[:])
+		if n > 0 {
+			r.remaining = -1
+			return 0, echo.ErrStatusRequestEntityTooLarge
+		}
+		return 0, err
 	}
 
 	// Limit the read to remaining bytes

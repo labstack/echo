@@ -4,8 +4,8 @@
 package middleware
 
 import (
+	"bufio"
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -22,8 +22,6 @@ import (
 
 	"github.com/labstack/echo/v5"
 )
-
-// TODO: Handle TLS proxy
 
 // ProxyConfig defines the config for Proxy middleware.
 type ProxyConfig struct {
@@ -125,64 +123,6 @@ type roundRobinBalancer struct {
 var DefaultProxyConfig = ProxyConfig{
 	Skipper:    DefaultSkipper,
 	ContextKey: "target",
-}
-
-func proxyRaw(c *echo.Context, t *ProxyTarget, config ProxyConfig) http.Handler {
-	var dialFunc func(ctx context.Context, network, addr string) (net.Conn, error)
-	if transport, ok := config.Transport.(*http.Transport); ok {
-		if transport.TLSClientConfig != nil {
-			d := tls.Dialer{
-				Config: transport.TLSClientConfig,
-			}
-			dialFunc = d.DialContext
-		}
-	}
-	if dialFunc == nil {
-		var d net.Dialer
-		dialFunc = d.DialContext
-	}
-
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		in, _, err := http.NewResponseController(w).Hijack()
-		if err != nil {
-			c.Set("_error", fmt.Errorf("proxy raw, hijack error=%w, url=%s", err, t.URL))
-			return
-		}
-		defer in.Close()
-
-		out, err := dialFunc(c.Request().Context(), "tcp", t.URL.Host)
-		if err != nil {
-			c.Set("_error", echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("proxy raw, dial error=%v, url=%s", err, t.URL)))
-			return
-		}
-		defer out.Close()
-
-		// Write header
-		err = r.Write(out)
-		if err != nil {
-			c.Set("_error", echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("proxy raw, request header copy error=%v, url=%s", err, t.URL)))
-			return
-		}
-
-		errCh := make(chan error, 2)
-		cp := func(dst io.Writer, src io.Reader) {
-			_, copyErr := io.Copy(dst, src)
-			errCh <- copyErr
-		}
-
-		go cp(out, in)
-		go cp(in, out)
-
-		// Wait for BOTH goroutines to complete
-		err1 := <-errCh
-		err2 := <-errCh
-
-		if err1 != nil && err1 != io.EOF {
-			c.Set("_error", fmt.Errorf("proxy raw, copy body error=%w, url=%s", err1, t.URL))
-		} else if err2 != nil && err2 != io.EOF {
-			c.Set("_error", fmt.Errorf("proxy raw, copy body error=%w, url=%s", err2, t.URL))
-		}
-	})
 }
 
 // NewRandomBalancer returns a random proxy balancer.
@@ -289,6 +229,8 @@ func (b *roundRobinBalancer) Next(c *echo.Context) (*ProxyTarget, error) {
 // Proxy returns a Proxy middleware.
 //
 // Proxy middleware forwards the request to upstream server using a configured load balancing technique.
+// The unvalidated Forwarded header is removed; use the sanitized X-Real-IP and
+// X-Forwarded-Proto headers, with Echo's extractors configured for trusted proxies.
 func Proxy(balancer ProxyBalancer) echo.MiddlewareFunc {
 	c := DefaultProxyConfig
 	c.Balancer = balancer
@@ -346,24 +288,20 @@ func (config ProxyConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				return config.ErrorHandler(c, err)
 			}
 
-			// Fix header
-			// Basically it's not good practice to unconditionally pass incoming x-real-ip header to upstream.
-			// However, for backward compatibility, legacy behavior is preserved unless you configure Echo#IPExtractor.
-			if req.Header.Get(echo.HeaderXRealIP) == "" || c.Echo().IPExtractor != nil {
-				req.Header.Set(echo.HeaderXRealIP, c.RealIP())
-			}
-			if req.Header.Get(echo.HeaderXForwardedProto) == "" {
-				req.Header.Set(echo.HeaderXForwardedProto, c.Scheme())
-			}
-			if c.IsWebSocket() { // For HTTP, this is set by Go HTTP reverse proxy.
-				// Append, not set, to preserve the incoming chain from upstream proxies.
-				prior := req.Header[echo.HeaderXForwardedFor]
-				if len(prior) > 0 {
-					req.Header.Set(echo.HeaderXForwardedFor, strings.Join(prior, ", ")+", "+c.RealIP())
-				} else {
-					req.Header.Set(echo.HeaderXForwardedFor, c.RealIP())
-				}
-			}
+			// Always overwrite X-Real-IP. Without Echo#IPExtractor, c.RealIP() is the address of the direct peer, so a
+			// client cannot spoof the IP seen by the upstream. Configure Echo#IPExtractor to trust headers set by proxies.
+			clientIP := c.RealIP()
+			req.Header.Set(echo.HeaderXRealIP, clientIP)
+			// Always overwrite X-Forwarded-Proto. c.Scheme() uses an incoming X-Forwarded-Proto header only when it comes
+			// from a trusted address (see Echo#SchemeExtractor), so clients cannot spoof the scheme seen by the upstream.
+			// Remove the other scheme headers: X-Forwarded-Proto carries the scheme, and some upstreams (e.g. Rack) would
+			// otherwise trust a client-supplied X-Forwarded-Ssl.
+			req.Header.Set(echo.HeaderXForwardedProto, c.Scheme())
+			req.Header.Del(echo.HeaderXForwardedSsl)
+			req.Header.Del(echo.HeaderXForwardedProtocol)
+			req.Header.Del(echo.HeaderXUrlScheme)
+			// Do not forward an unvalidated parallel source of client identity and scheme.
+			req.Header.Del("Forwarded")
 
 			retries := config.RetryCount
 			for {
@@ -388,13 +326,8 @@ func (config ProxyConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				// that Balancer may have replaced with c.SetRequest.
 				req = c.Request()
 
-				// Proxy
-				switch {
-				case c.IsWebSocket():
-					proxyRaw(c, tgt, config).ServeHTTP(res, req)
-				default: // even SSE requests
-					proxyHTTP(c, tgt, config).ServeHTTP(res, req)
-				}
+				// ReverseProxy validates upgrades and closes both sides when a tunnel ends.
+				proxyHTTP(c, tgt, config, clientIP).ServeHTTP(res, req)
 
 				err, hasError := c.Get("_error").(error)
 				if !hasError {
@@ -419,8 +352,18 @@ func (config ProxyConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 // 499 too instead of the more problematic 5xx, which does not allow to detect this situation
 const StatusCodeContextCanceled = 499
 
-func proxyHTTP(c *echo.Context, tgt *ProxyTarget, config ProxyConfig) http.Handler {
-	proxy := httputil.NewSingleHostReverseProxy(tgt.URL)
+func proxyHTTP(c *echo.Context, tgt *ProxyTarget, config ProxyConfig, clientIP string) http.Handler {
+	// The HTTP transport also handles WebSocket upgrades. Normalize WebSocket
+	// target schemes on a copy so shared balancer targets remain unchanged.
+	targetURL := *tgt.URL
+	switch targetURL.Scheme {
+	case "ws":
+		targetURL.Scheme = "http"
+	case "wss":
+		targetURL.Scheme = "https"
+	}
+	proxy := httputil.NewSingleHostReverseProxy(&targetURL)
+	isWebSocket := c.IsWebSocket()
 	proxy.ErrorHandler = func(resp http.ResponseWriter, req *http.Request, err error) {
 		desc := tgt.URL.String()
 		if tgt.Name != "" {
@@ -443,7 +386,63 @@ func proxyHTTP(c *echo.Context, tgt *ProxyTarget, config ProxyConfig) http.Handl
 			c.Set("_error", httpError)
 		}
 	}
-	proxy.Transport = config.Transport
-	proxy.ModifyResponse = config.ModifyResponse
-	return proxy
+	transport := config.Transport
+	if transport == nil {
+		transport = http.DefaultTransport
+	}
+	// ReverseProxy removes headers named by Connection after its Director runs.
+	// Restore the derived identity at the transport boundary so a client cannot
+	// suppress it with Connection: X-Real-IP, including on WebSocket upgrades.
+	proxy.Transport = proxyClientIPTransport{transport: transport, clientIP: clientIP}
+	proxy.ModifyResponse = func(response *http.Response) error {
+		if config.ModifyResponse != nil {
+			if err := config.ModifyResponse(response); err != nil {
+				return err
+			}
+		}
+		if isWebSocket && response.StatusCode == http.StatusSwitchingProtocols {
+			if body, ok := response.Body.(io.ReadWriteCloser); ok {
+				// Hide backend CloseWrite after the user's hook, so a client EOF
+				// closes the tunnel even when the upstream ignores half-close.
+				response.Body = struct{ io.ReadWriteCloser }{body}
+			}
+		}
+		return nil
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if isWebSocket {
+			w = proxyUpgradeResponseWriter{w}
+		}
+		proxy.ServeHTTP(w, r)
+	})
+}
+
+type proxyClientIPTransport struct {
+	transport http.RoundTripper
+	clientIP  string
+}
+
+func (t proxyClientIPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req = req.Clone(req.Context())
+	req.Header.Set(echo.HeaderXRealIP, t.clientIP)
+	return t.transport.RoundTrip(req)
+}
+
+type proxyUpgradeResponseWriter struct {
+	http.ResponseWriter
+}
+
+func (w proxyUpgradeResponseWriter) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
+}
+
+func (w proxyUpgradeResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	conn, rw, err := http.NewResponseController(w.ResponseWriter).Hijack()
+	if err != nil {
+		return nil, nil, err
+	}
+	// WebSocket does not support TCP half-close. Hide CloseWrite so ReverseProxy
+	// closes both connections when either direction reaches EOF, rather than
+	// waiting indefinitely for an idle peer to close its other half.
+	return struct{ net.Conn }{conn}, rw, nil
 }

@@ -1,4 +1,4 @@
-name: Run Tests
+name: CI
 
 on:
   push:
@@ -12,6 +12,11 @@ on:
 permissions:
   contents: read # to fetch code (actions/checkout)
 
+# Cancel superseded runs of the same pull request; runs on master always finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   LATEST_GO_VERSION: "1.27"
 
@@ -20,6 +25,10 @@ env:
 
   # https://github.com/actions/setup-go/commit/924ae3a1cded613372ab5595356fb5720e22ba16
   SETUP_GO_ACTION: &setup_go_action actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+
+  # https://github.com/actions/cache/commit/55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+  CACHE_RESTORE_ACTION: &cache_restore_action actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+  CACHE_SAVE_ACTION: &cache_save_action actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
 
   # https://github.com/codecov/codecov-action/commit/fb8b3582c8e4def4969c97caa2f19720cb33a72f
   CODECOV_ACTION: &codecov_action codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7
@@ -44,9 +53,42 @@ jobs:
         uses: *setup_go_action
         with:
           go-version: ${{ matrix.go }}
+          cache: false
+
+      # setup-go's built-in cache is keyed on go.sum only, so its entry is never refreshed and
+      # soon holds little of the current build. Restore the latest cache saved for this job
+      # instead, and save a new one after runs other than pull requests, which only restore.
+      - name: Find Go Cache
+        id: go-cache
+        shell: bash
+        run: |
+          {
+            echo "build=$(go env GOCACHE)"
+            echo "mod=$(go env GOMODCACHE)"
+            echo "key=go-${{ runner.os }}-${{ runner.arch }}-$(go env GOVERSION)-${{ github.job }}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Restore Go Cache
+        id: go-cache-restore
+        uses: *cache_restore_action
+        with:
+          path: |
+            ${{ steps.go-cache.outputs.build }}
+            ${{ steps.go-cache.outputs.mod }}
+          key: ${{ steps.go-cache.outputs.key }}-${{ github.sha }}
+          restore-keys: ${{ steps.go-cache.outputs.key }}-
 
       - name: Run Tests
         run: go test -race --coverprofile=coverage.coverprofile --covermode=atomic ./...
+
+      - name: Save Go Cache
+        if: github.event_name != 'pull_request' && steps.go-cache-restore.outputs.cache-hit != 'true'
+        uses: *cache_save_action
+        with:
+          path: |
+            ${{ steps.go-cache.outputs.build }}
+            ${{ steps.go-cache.outputs.mod }}
+          key: ${{ steps.go-cache.outputs.key }}-${{ github.sha }}
 
       - name: Upload coverage to Codecov
         if: success() && matrix.go == env.LATEST_GO_VERSION && matrix.os == 'ubuntu-latest'
@@ -56,6 +98,9 @@ jobs:
           fail_ci_if_error: false
 
   benchmark:
+    # Compares the pull request against its base branch. github.base_ref is only set for
+    # pull_request events, so on other events both checkouts would be the same commit.
+    if: github.event_name == 'pull_request'
     needs: test
     name: Benchmark comparison
     runs-on: ubuntu-latest
@@ -75,20 +120,24 @@ jobs:
         uses: *setup_go_action
         with:
           go-version: ${{ env.LATEST_GO_VERSION }}
+          cache: false
 
       - name: Install Dependencies
         run: go install golang.org/x/perf/cmd/benchstat@latest
 
+      # -benchtime=100ms instead of the default 1s keeps the job to a few minutes. The
+      # comparison is advisory: it reports differences but never fails the build.
       - name: Run Benchmark (Previous)
         run: |
           cd previous
-          go test -run="-" -bench=".*" -count=8 ./... > benchmark.txt
+          go test -run="-" -bench=".*" -benchtime=100ms -count=8 ./... > benchmark.txt
 
       - name: Run Benchmark (New)
         run: |
           cd new
-          go test -run="-" -bench=".*" -count=8 ./... > benchmark.txt
+          go test -run="-" -bench=".*" -benchtime=100ms -count=8 ./... > benchmark.txt
 
       - name: Run Benchstat
         run: |
           benchstat previous/benchmark.txt new/benchmark.txt
+

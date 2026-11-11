@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type user struct {
@@ -267,13 +268,13 @@ func TestEcho_StaticFS(t *testing.T) {
 			expectBodyStartsWith:                 "{\"message\":\"Not Found\"}\n",
 		},
 		{
-			name:                                 "allow encoded dots in path (%2E%2E is `..`) to traverse within filesystem",
+			name:                                 "nok, encoded dots (%2E%2E is `..`) are rejected after unescaping (GHSA-3pmx-cf9f-34xr)",
 			givenPrefix:                          "/",
 			givenFs:                              os.DirFS("_fixture/"),
 			givenEnablePathUnescapingStaticFiles: true,
 			whenURL:                              `/dist/public/%2E%2E/private.txt`, // `/dist/public/../private.txt`
-			expectStatus:                         http.StatusOK,
-			expectBodyStartsWith:                 "private file",
+			expectStatus:                         http.StatusNotFound,
+			expectBodyStartsWith:                 "{\"message\":\"Not Found\"}\n",
 		},
 		{
 			name:                                 "ok, file with space in name is served when path unescaping is enabled",
@@ -301,25 +302,33 @@ func TestEcho_StaticFS(t *testing.T) {
 			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
 		},
 		{
-			name:                                 "possible open redirect vulnerability when unescaping path variables in static handler",
+			name:                                 "no open redirect when unescaping path variables in static handler",
 			givenPrefix:                          "/",
 			givenFs:                              os.DirFS("_fixture/"),
 			givenEnablePathUnescapingStaticFiles: true,
-			// `//open.redirect.hackercom/..` resolves to directory but does not end with `/` so redirect is done but this
-			// redirect can not be to path starting with `//` or `\\` (open redirect)
+			// `//open.redirect.hackercom/..` has empty and `..` segments after unescaping, so it is not served (and not
+			// redirected to a location starting with `//`)
 			whenURL:              "/%2fopen.redirect.hackercom%2f..",
-			expectStatus:         http.StatusMovedPermanently,
-			expectHeaderLocation: "/open.redirect.hackercom/../", // location starting with `//open` would be very bad
-			expectBodyStartsWith: "",
+			expectStatus:         http.StatusNotFound,
+			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
 		},
 		{
-			name:                                 "possible open redirect vulnerability when not unescaping path variables in static handler",
+			name:                                 "reject an encoded filename alias whose decoded path has empty and dot segments",
 			givenPrefix:                          "/",
 			givenFs:                              dotsInFilenameFS,
 			givenEnablePathUnescapingStaticFiles: false,
 			whenURL:                              "/%2f..",
-			expectStatus:                         http.StatusOK,
+			expectStatus:                         http.StatusNotFound,
 			expectHeaderLocation:                 "",
+			expectBodyStartsWith:                 "{\"message\":\"Not Found\"}\n",
+		},
+		{
+			name:                                 "serve a percent-containing filename when the percent sign is correctly escaped",
+			givenPrefix:                          "/",
+			givenFs:                              dotsInFilenameFS,
+			givenEnablePathUnescapingStaticFiles: false,
+			whenURL:                              "/%252f..",
+			expectStatus:                         http.StatusOK,
 			expectBodyStartsWith:                 "This filename is escaped to `/..` in URL.Path",
 		},
 	}
@@ -424,14 +433,33 @@ func TestStaticDirectoryHandlerAndRouterInconsistentEscaping(t *testing.T) {
 			expectStatus:                         http.StatusOK,
 		},
 		{
-			name:                                 "nok, escaped filename, resolves to from forbidden path is not routed to guarded route and includes guarded file",
+			name:                                 "ok, dot segments are rejected even when router uses escaped path (GHSA-3pmx-cf9f-34xr)",
 			givenEnablePathUnescapingStaticFiles: false,
 			givenRouterUnescapePathParamValues:   false,
-			// Router uses escaped path (req.URL.RawPath) for matching, but that file resolves to `admin/private.txt` after path.Clean()
+			// With UseEscapedPathForMatching the router matches req.URL.Path. The file would resolve to
+			// `admin/private.txt` after path.Clean(), so paths with dot segments are not served.
 			givenRouterUseEscapedPathForMatching: true,
 			whenURL:                              "/assets/../admin%2fprivate.txt",
-			expectBody:                           "public/admin/private.txt - private file",
-			expectStatus:                         http.StatusOK,
+			expectBody:                           `{"message":"Not Found"}`,
+			expectStatus:                         http.StatusNotFound,
+		},
+		{
+			name:         "ok, parent dot segment is rejected",
+			whenURL:      "/assets/../admin/private.txt",
+			expectBody:   `{"message":"Not Found"}`,
+			expectStatus: http.StatusNotFound,
+		},
+		{
+			name:         "ok, current dot segment is rejected",
+			whenURL:      "/./admin/private.txt",
+			expectBody:   `{"message":"Not Found"}`,
+			expectStatus: http.StatusNotFound,
+		},
+		{
+			name:         "ok, nested parent dot segments are rejected",
+			whenURL:      "/a/b/../../admin/private.txt",
+			expectBody:   `{"message":"Not Found"}`,
+			expectStatus: http.StatusNotFound,
 		},
 	}
 	for _, tc := range testCases {
@@ -1800,4 +1828,180 @@ func BenchmarkEchoGitHubAPIMisses(b *testing.B) {
 
 func BenchmarkEchoParseAPI(b *testing.B) {
 	benchmarkEchoRoutes(b, parseAPI)
+}
+
+func TestSanitizeURI(t *testing.T) {
+	var testCases = []struct {
+		whenURI string
+		expect  string
+	}{
+		{whenURI: "/path/", expect: "/path/"},
+		{whenURI: "//example.com/", expect: "/example.com/"},
+		{whenURI: "/\t/example.com/", expect: "/%09/example.com/"},
+		{whenURI: "/\t\\example.com/", expect: "/%09\\example.com/"},
+		{whenURI: "/\x7f/example.com/", expect: "/%7F/example.com/"},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.whenURI, func(t *testing.T) {
+			assert.Equal(t, tc.expect, sanitizeURI(tc.whenURI))
+		})
+	}
+}
+
+func TestEcho_StaticDirectoryRedirect_controlCharacters(t *testing.T) {
+	// GHSA-v753-g4cw-jm48: a tab before `/` must not turn the directory redirect into `//host`.
+	e := New()
+	e.StaticFS("/", fstest.MapFS{"\t/evil.example/x.txt": {Data: []byte("x")}})
+
+	req := httptest.NewRequest(http.MethodGet, "/%09/evil.example", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	location := rec.Header().Get(HeaderLocation)
+	assert.Equal(t, http.StatusMovedPermanently, rec.Code)
+	assert.False(t, strings.ContainsAny(location, "\t\r\n"), "Location must not contain raw control characters: %q", location)
+	assert.Equal(t, "/%09/evil.example/", location)
+}
+
+func TestStaticDirectoryHandler_emptySegmentIsRejected(t *testing.T) {
+	// GHSA-3pmx-cf9f-34xr: `//admin/private.txt` must not bypass the guarded `/admin/*` route.
+	e := NewWithConfig(Config{Filesystem: os.DirFS("./_fixture/dist")})
+	e.Static("/", "public")
+	e.GET("/admin/*", func(c *Context) error {
+		return ErrForbidden
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.URL.Path = "//admin/private.txt" // httptest.NewRequest would parse `//admin` as a host
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.NotContains(t, rec.Body.String(), "private file")
+}
+
+func TestStaticDirectoryHandler_encodedDotsWithPathUnescaping(t *testing.T) {
+	// GHSA-3pmx-cf9f-34xr: with EnablePathUnescapingStaticFiles, dot segments created by unescaping must be rejected too.
+	fsys := fstest.MapFS{"admin/secret.txt": {Data: []byte("SECRET")}, "x/file.txt": {Data: []byte("x")}}
+	for _, u := range []string{"/x/%2e%2e/admin/secret.txt", "/.%2Fadmin/secret.txt", "/x/%252e%252e/admin/secret.txt"} {
+		t.Run(u, func(t *testing.T) {
+			e := NewWithConfig(Config{EnablePathUnescapingStaticFiles: true})
+			e.StaticFS("/", fsys)
+			e.GET("/admin/*", func(c *Context) error {
+				return ErrForbidden
+			})
+
+			req := httptest.NewRequest(http.MethodGet, u, nil)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.NotContains(t, rec.Body.String(), "SECRET")
+		})
+	}
+}
+
+// nonValidatingDirFS is a custom fs.FS that does not enforce fs.ValidPath, so a name with ".." escapes its root. Echo
+// must never pass such a name to a user supplied filesystem.
+type nonValidatingDirFS struct{ root string }
+
+func (f nonValidatingDirFS) Open(name string) (fs.File, error) {
+	// treat a backslash as a separator on every OS, like filepath.Join does on Windows
+	return os.Open(filepath.Join(f.root, filepath.FromSlash(strings.ReplaceAll(name, `\`, "/"))))
+}
+
+func TestEcho_StaticFS_nonValidatingCustomFSCannotEscapeRoot(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "public"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "public", "index.txt"), []byte("public"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "secret.txt"), []byte("secret"), 0o644))
+
+	for _, unescape := range []bool{false, true} {
+		e := NewWithConfig(Config{EnablePathUnescapingStaticFiles: unescape})
+		e.StaticFS("/", nonValidatingDirFS{root: filepath.Join(dir, "public")})
+
+		for _, target := range []string{
+			"/../secret.txt",
+			"/%2e%2e/secret.txt",
+			"/..%2fsecret.txt",
+			"/sub/../../secret.txt",
+			"/..%5csecret.txt",
+			"/..%5Csecret.txt",
+			"/a%5C..%5C..%5Csecret.txt",
+			`/..\secret.txt`,
+		} {
+			req := httptest.NewRequest(http.MethodGet, target, nil)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusNotFound, rec.Code, "%s unescape=%v", target, unescape)
+			assert.NotContains(t, rec.Body.String(), "secret", "%s unescape=%v", target, unescape)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/index.txt", nil)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, "public", rec.Body.String())
+	}
+}
+
+func TestHasDotOrEmptySegment(t *testing.T) {
+	var testCases = []struct {
+		path   string
+		expect bool
+	}{
+		{path: "", expect: false},
+		{path: "/", expect: false},
+		{path: "/index.html", expect: false},
+		{path: "/css/app.css", expect: false},
+		{path: "/..", expect: true},
+		{path: "/a/../b", expect: true},
+		{path: "/a/./b", expect: true},
+		{path: "/a//b", expect: true},
+		{path: `/..\secret.txt`, expect: true},
+		{path: `/a\..\b`, expect: true},
+		{path: `/.\secret.txt`, expect: true},
+		{path: `/\..`, expect: true},
+		{path: `/..\`, expect: true},
+		{path: `/dir\file.txt`, expect: false},
+		{path: "/...", expect: false},
+		{path: "/..foo", expect: false},
+		{path: `/a\\b`, expect: false},
+		{path: "/..%2fsecret.txt", expect: false}, // still encoded, only unsafe once unescaped
+	}
+	for _, tc := range testCases {
+		t.Run(tc.path, func(t *testing.T) {
+			assert.Equal(t, tc.expect, hasDotOrEmptySegment(tc.path))
+		})
+	}
+}
+
+func TestEcho_AddParamRouteAfterServing(t *testing.T) {
+	var testCases = []struct {
+		name   string
+		router Router
+	}{
+		{name: "ok, default router", router: NewRouter(RouterConfig{})},
+		{name: "ok, concurrent router", router: NewConcurrentRouter(NewRouter(RouterConfig{}))},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := NewWithConfig(Config{Router: tc.router})
+			e.GET("/static", func(c *Context) error { return c.String(http.StatusOK, "static") })
+
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/static", nil))
+			assert.Equal(t, "static", rec.Body.String())
+
+			// the pooled context from the first request has no PathValues capacity for this route. sync.Pool may hand
+			// out a new context instead (often under -race); TestDefaultRouter_RouteWithContextCreatedBeforeParamRouteAdded
+			// covers the stale context deterministically.
+			e.GET("/users/:id", func(c *Context) error { return c.String(http.StatusOK, c.Param("id")) })
+
+			rec = httptest.NewRecorder()
+			e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/users/42", nil))
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, "42", rec.Body.String())
+		})
+	}
 }

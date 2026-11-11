@@ -54,6 +54,9 @@ func (d DefaultJSONSerializer) Deserialize(c *Context, target any) error {
 		}
 	}()
 	if _, err := buf.ReadFrom(c.Request().Body); err != nil {
+		if StatusCode(err) != 0 {
+			return err
+		}
 		return ErrBadRequest.Wrap(err)
 	}
 	if err := json.Unmarshal(buf.Bytes(), target); err != nil {

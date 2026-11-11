@@ -1,6 +1,6 @@
 # Echo Roadmap
 
-> **DRAFT** — this is a starting point for maintainers to edit, not a commitment.
+> **DRAFT** — roadmap priorities are provisional; the published version and security support dates are commitments.
 > Dates and priorities are owned by the Echo team. Open a discussion to propose changes.
 
 This document exists so the community can see where Echo is heading. Echo is
@@ -12,11 +12,11 @@ lines — see [README](./README.md) badges for the latest version and most recen
 | Line | Status | Support |
 |------|--------|---------|
 | `v5` | **Current** (since 2026-01-18) | New features, fixes, and improvements. |
-| `v4` | Maintenance / LTS | **Security and bug fixes until 2026-12-31.** No new features. |
+| `v4` | Maintenance | **Bug fixes until 2026-12-31; security fixes until 2027-12-31** on the latest v4 release. No new features. See [SECURITY.md](./SECURITY.md). |
 
 Upgrading from v4? See [API_CHANGES_V5.md](./API_CHANGES_V5.md).
 
-Echo supports the **latest four Go major releases** and may work with older versions.
+Echo v5 supports the **three most recent Go releases** and may work with older versions. Echo v4 requires Go 1.26 or later. The version and security support dates in [SECURITY.md](./SECURITY.md) are a commitment; the rest of this roadmap is a draft.
 
 ## Now (in progress)
 
@@ -47,4 +47,4 @@ commitment — each still needs design agreement before implementation:
 - **Discuss before large PRs** — open a [Discussion](https://github.com/labstack/echo/discussions)
   or issue so we can agree on the design first.
 - 👍 reactions on issues help us gauge demand.
-- See [README → Contribute](./README.md#contribute) for contribution guidelines.
+- See [README → Contributing](./README.md#contributing) for contribution guidelines.

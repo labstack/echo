@@ -30,10 +30,15 @@ var (
 	ErrValidatorNotRegistered = errors.New("validator not registered")
 	ErrRendererNotRegistered  = errors.New("renderer not registered")
 	ErrInvalidRedirectCode    = errors.New("invalid redirect status code")
+
 	ErrCookieNotFound         = errors.New("cookie not found")
 	ErrInvalidCertOrKeyType   = errors.New("invalid cert or key type, must be string or []byte")
 	ErrInvalidListenerNetwork = errors.New("invalid listener network")
 )
+
+// ErrInvalidJSONPCallback is wrapped in the 400 Bad Request error that Context.JSONP and Context.JSONPBlob return when
+// the callback is not a valid JSONP function name. See Context.JSONP.
+var ErrInvalidJSONPCallback = errors.New("invalid JSONP callback")
 
 // HTTPStatusCoder is an interface that errors can implement to produce status code for HTTP response
 type HTTPStatusCoder interface {

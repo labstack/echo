@@ -1320,6 +1320,106 @@ func TestRouterParamStaticConflict(t *testing.T) {
 	}
 }
 
+// Issue #3111
+func TestRouterParam_escapeColonAndParamConflict(t *testing.T) {
+	var testCases = []struct {
+		name        string
+		routes      []string
+		whenURL     string
+		expectRoute string
+		expectParam map[string]string
+	}{
+		{
+			name:        "escaped colon route first, request escaped colon route",
+			routes:      []string{`/name\:verb/x`, `/name:id`},
+			whenURL:     "/name:verb/x",
+			expectRoute: `/name\:verb/x`,
+			expectParam: map[string]string{},
+		},
+		{
+			name:        "escaped colon route first, request param route",
+			routes:      []string{`/name\:verb/x`, `/name:id`},
+			whenURL:     "/name1",
+			expectRoute: "/name:id",
+			expectParam: map[string]string{"id": "1"},
+		},
+		{
+			name:        "param route first, request escaped colon route",
+			routes:      []string{`/name:id`, `/name\:verb/x`},
+			whenURL:     "/name:verb/x",
+			expectRoute: `/name\:verb/x`,
+			expectParam: map[string]string{},
+		},
+		{
+			name:        "param route first, request param route",
+			routes:      []string{`/name:id`, `/name\:verb/x`},
+			whenURL:     "/name1",
+			expectRoute: "/name:id",
+			expectParam: map[string]string{"id": "1"},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			for _, route := range tc.routes {
+				e.GET(route, handlerFunc)
+			}
+
+			c := e.NewContext(httptest.NewRequest(http.MethodGet, tc.whenURL, nil), nil)
+
+			handler := e.router.Route(c)
+
+			assert.NoError(t, handler(c))
+			assert.Equal(t, tc.expectRoute, c.Path())
+			for param, expectedValue := range tc.expectParam {
+				assert.Equal(t, expectedValue, c.pathValues.GetOr(param, "---none---"))
+			}
+			checkUnusedParamValues(t, c, tc.expectParam)
+		})
+	}
+}
+
+func TestRouterParamLiteralByteConflictServeHTTP(t *testing.T) {
+	tests := []struct {
+		name, literalRoute, literalRequest string
+	}{
+		{"escaped colon", `/name\:verb/x`, "/name:verb/x"},
+		{"encoded NUL", "/name\x00verb/x", "/name%00verb/x"},
+	}
+	for _, tc := range tests {
+		for _, literalFirst := range []bool{true, false} {
+			name := tc.name + "/parameter-first"
+			routes := []string{"/name:id", tc.literalRoute}
+			if literalFirst {
+				name = tc.name + "/literal-first"
+				routes[0], routes[1] = routes[1], routes[0]
+			}
+			t.Run(name, func(t *testing.T) {
+				e := New()
+				for _, route := range routes {
+					e.GET(route, func(c *Context) error {
+						return c.String(http.StatusOK, c.RouteInfo().Path)
+					})
+				}
+				for _, request := range []struct{ path, want string }{
+					{tc.literalRequest, tc.literalRoute},
+					{"/name1", "/name:id"},
+				} {
+					t.Run(request.path, func(t *testing.T) {
+						rec := httptest.NewRecorder()
+						req := httptest.NewRequest(http.MethodGet, request.path, nil)
+						if !assert.NotPanics(t, func() { e.ServeHTTP(rec, req) }) {
+							return
+						}
+						assert.Equal(t, http.StatusOK, rec.Code)
+						assert.Equal(t, request.want, rec.Body.String())
+					})
+				}
+			})
+		}
+	}
+}
+
 func TestRouterParam_escapeColon(t *testing.T) {
 	// to allow Google cloud API like route paths with colon in them
 	// i.e. https://service.name/v1/some/resource/name:customVerb <- that `:customVerb` is not path param. It is just a string
@@ -2517,6 +2617,56 @@ func TestRouterParam1466(t *testing.T) {
 	}
 }
 
+func TestDefaultRouter_RouteWithContextCreatedBeforeParamRouteAdded(t *testing.T) {
+	var testCases = []struct {
+		name             string
+		whenURL          string
+		expectRoute      string
+		expectPathValues PathValues
+	}{
+		{
+			name:             "ok, param and any route",
+			whenURL:          "/users/1/files/a.txt",
+			expectRoute:      "/users/:id/files/*",
+			expectPathValues: PathValues{{Name: "id", Value: "1"}, {Name: "*", Value: "a.txt"}},
+		},
+		{
+			name:             "ok, static route",
+			whenURL:          "/static",
+			expectRoute:      "/static",
+			expectPathValues: PathValues{},
+		},
+		{
+			name:             "ok, route not found",
+			whenURL:          "/missing",
+			expectRoute:      "",
+			expectPathValues: PathValues{},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			// the context is created while no route has path params, so its PathValues have no capacity
+			c := e.NewContext(httptest.NewRequest(http.MethodGet, tc.whenURL, nil), httptest.NewRecorder())
+
+			r := NewRouter(RouterConfig{})
+			_, err := r.Add(Route{Method: http.MethodGet, Path: "/users/:id/files/*", Handler: handlerFunc})
+			assert.NoError(t, err)
+			_, err = r.Add(Route{Method: http.MethodGet, Path: "/a/:b/:c/:d", Handler: handlerFunc})
+			assert.NoError(t, err)
+			_, err = r.Add(Route{Method: http.MethodGet, Path: "/static", Handler: handlerFunc})
+			assert.NoError(t, err)
+
+			r.Route(c)
+
+			assert.Equal(t, tc.expectRoute, c.Path())
+			assert.Equal(t, tc.expectPathValues, c.PathValues())
+			// the context keeps the grown capacity, so later requests do not grow it again
+			assert.Equal(t, 3, cap(c.PathValues()))
+		})
+	}
+}
+
 func TestPathValuesSizeOverMultipleRequests(t *testing.T) {
 	e := New()
 	e.GET("/test/:id/:action", handlerFunc) // max params is 2
@@ -3044,6 +3194,31 @@ func TestDefaultRouter_Remove(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDefaultRouter_RemoveCustomMethod(t *testing.T) {
+	e := New()
+	e.Add("PURGE", "/cache", handlerFunc)
+	e.GET("/cache", handlerFunc)
+	e.Add("PURGE", "/purge-only", handlerFunc)
+
+	assert.NoError(t, e.Router().Remove("PURGE", "/cache"))
+	assert.NoError(t, e.Router().Remove("PURGE", "/purge-only"))
+
+	_, err := e.Router().Routes().FindByMethodPath("PURGE", "/cache")
+	assert.Error(t, err)
+	_, err = e.Router().Routes().FindByMethodPath(http.MethodGet, "/cache")
+	assert.NoError(t, err)
+
+	// the path keeps its GET route, so the removed custom method gets 405
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest("PURGE", "/cache", nil))
+	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
+	assert.Equal(t, "OPTIONS, GET", rec.Header().Get(HeaderAllow))
+
+	rec = httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest("PURGE", "/purge-only", nil))
+	assert.Equal(t, http.StatusNotFound, rec.Code)
 }
 
 func TestDefaultRouter_AddWithoutHandler(t *testing.T) {

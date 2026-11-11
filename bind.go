@@ -23,6 +23,13 @@ type Binder interface {
 }
 
 // DefaultBinder is the default implementation of the Binder interface.
+// For path, query, header, and form binding, time.Time and *time.Time fields (not slices)
+// may use a format tag: "date-time" uses the standard RFC3339 decoding, "date-time-local"
+// accepts "2006-01-02T15:04:05" with optional fractional seconds, "date" accepts
+// "2006-01-02", and other values specify Go time layouts. "date", "date-time-local", and
+// layouts without a timezone give UTC times. JSON and XML decoding do not use this tag.
+// HTML datetime-local inputs omit seconds by default, so bind them with a Go layout
+// such as "2006-01-02T15:04" instead of "date-time-local".
 type DefaultBinder struct{}
 
 // BindUnmarshaler is the interface used to wrap the UnmarshalParam method.
@@ -78,20 +85,16 @@ func BindBody(c *Context, target any) (err error) {
 	switch mediatype {
 	case MIMEApplicationJSON:
 		if err = c.Echo().JSONSerializer.Deserialize(c, target); err != nil {
-			var hErr *HTTPError
-			if errors.As(err, &hErr) {
-				return err
-			}
-			return ErrBadRequest.Wrap(err)
+			return wrapBindBodyError(err)
 		}
 	case MIMEApplicationXML, MIMETextXML:
 		if err = xml.NewDecoder(req.Body).Decode(target); err != nil {
-			return ErrBadRequest.Wrap(err)
+			return wrapBindBodyError(err)
 		}
 	case MIMEApplicationForm:
 		params, err := c.FormValues()
 		if err != nil {
-			return ErrBadRequest.Wrap(err)
+			return wrapBindBodyError(err)
 		}
 		if err = bindData(target, params, "form", nil); err != nil {
 			return ErrBadRequest.Wrap(err)
@@ -99,7 +102,7 @@ func BindBody(c *Context, target any) (err error) {
 	case MIMEMultipartForm:
 		params, err := c.MultipartForm()
 		if err != nil {
-			return ErrBadRequest.Wrap(err)
+			return wrapBindBodyError(err)
 		}
 		if err = bindData(target, params.Value, "form", params.File); err != nil {
 			return ErrBadRequest.Wrap(err)
@@ -108,6 +111,13 @@ func BindBody(c *Context, target any) (err error) {
 		return &HTTPError{Code: http.StatusUnsupportedMediaType}
 	}
 	return nil
+}
+
+func wrapBindBodyError(err error) error {
+	if StatusCode(err) != 0 {
+		return err
+	}
+	return ErrBadRequest.Wrap(err)
 }
 
 // BindHeaders binds HTTP headers to a bindable object
@@ -427,10 +437,19 @@ func unmarshalInputToField(valueKind reflect.Kind, val string, field reflect.Val
 	}
 
 	fieldIValue := field.Addr().Interface()
-	// Handle time.Time with custom format tag
-	if formatTag != "" {
+	// date-time uses the same TextUnmarshaler as an untagged time.Time.
+	if formatTag != "" && formatTag != "date-time" {
 		if _, isTime := fieldIValue.(*time.Time); isTime {
-			t, err := time.Parse(formatTag, val)
+			// OpenAPI dates and local date-times have no timezone. time.Parse assigns UTC,
+			// as it does for custom layouts without timezone information.
+			layout := formatTag
+			switch formatTag {
+			case "date":
+				layout = "2006-01-02"
+			case "date-time-local":
+				layout = "2006-01-02T15:04:05"
+			}
+			t, err := time.Parse(layout, val)
 			if err != nil {
 				return true, err
 			}
