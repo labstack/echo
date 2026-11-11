@@ -542,6 +542,26 @@ func TestDefaultBinder_bindDataToMap(t *testing.T) {
 	})
 }
 
+func TestBindDataToMapWithNamedStringKey(t *testing.T) {
+	type key string
+	data := map[string][]string{"name": {"first", "second"}}
+	t.Run("string values", func(t *testing.T) {
+		var dest map[key]string
+		assert.NoError(t, bindData(&dest, data, "query", nil))
+		assert.Equal(t, map[key]string{"name": "first"}, dest)
+	})
+	t.Run("slice values", func(t *testing.T) {
+		var dest map[key][]string
+		assert.NoError(t, bindData(&dest, data, "query", nil))
+		assert.Equal(t, map[key][]string{"name": {"first", "second"}}, dest)
+	})
+	t.Run("interface values", func(t *testing.T) {
+		var dest map[key]any
+		assert.NoError(t, bindData(&dest, data, "query", nil))
+		assert.Equal(t, map[key]any{"name": "first"}, dest)
+	})
+}
+
 func TestBindbindData(t *testing.T) {
 	ts := new(bindTestStruct)
 	err := bindData(ts, values, "form", nil)
