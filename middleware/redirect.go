@@ -134,14 +134,53 @@ func (config RedirectConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			}
 
 			req, scheme := c.Request(), c.Scheme()
+			switch scheme {
+			case "ws":
+				scheme = "http"
+			case "wss":
+				scheme = "https"
+			}
 			host := req.Host
-			if ok, url := config.redirect(scheme, host, req.RequestURI); ok {
+			if !isValidRedirectHost(host) {
+				return next(c)
+			}
+			uri := req.RequestURI
+			if uri == "" || uri[0] != '/' {
+				uri = req.URL.RequestURI()
+			}
+			uri = sanitizeURI(uri)
+			if ok, url := config.redirect(scheme, host, uri); ok {
 				return c.Redirect(config.Code, url)
 			}
 
 			return next(c)
 		}
 	}, nil
+}
+
+func hasWWWPrefix(host string) bool {
+	return len(host) >= len(www) && strings.EqualFold(host[:len(www)], www)
+}
+
+func stripWWWPrefix(host string) string {
+	if hasWWWPrefix(host) {
+		return host[len(www):]
+	}
+	return host
+}
+
+func isValidRedirectHost(host string) bool {
+	host = stripWWWPrefix(host)
+	if host == "" || host[0] == ':' || host[0] == '.' {
+		return false
+	}
+	for i := 0; i < len(host); i++ {
+		ch := host[i]
+		if ch <= 0x20 || ch >= 0x7f || strings.IndexByte(`/\@?#`, ch) != -1 {
+			return false
+		}
+	}
+	return true
 }
 
 var redirectHTTPS = func(scheme, host, uri string) (bool, string) {
@@ -153,8 +192,8 @@ var redirectHTTPS = func(scheme, host, uri string) (bool, string) {
 
 var redirectHTTPSWWW = func(scheme, host, uri string) (bool, string) {
 	// Redirect if not HTTPS OR missing www prefix (needs either fix)
-	if scheme != "https" || !strings.HasPrefix(host, www) {
-		host = strings.TrimPrefix(host, www) // Remove www if present to avoid duplication
+	if scheme != "https" || !hasWWWPrefix(host) {
+		host = stripWWWPrefix(host) // Remove www if present to avoid duplication
 		return true, "https://www." + host + uri
 	}
 	return false, ""
@@ -162,23 +201,23 @@ var redirectHTTPSWWW = func(scheme, host, uri string) (bool, string) {
 
 var redirectNonHTTPSWWW = func(scheme, host, uri string) (ok bool, url string) {
 	// Redirect if not HTTPS OR has www prefix (needs either fix)
-	if scheme != "https" || strings.HasPrefix(host, www) {
-		host = strings.TrimPrefix(host, www)
+	if scheme != "https" || hasWWWPrefix(host) {
+		host = stripWWWPrefix(host)
 		return true, "https://" + host + uri
 	}
 	return false, ""
 }
 
 var redirectWWW = func(scheme, host, uri string) (bool, string) {
-	if !strings.HasPrefix(host, www) {
+	if !hasWWWPrefix(host) {
 		return true, scheme + "://www." + host + uri
 	}
 	return false, ""
 }
 
 var redirectNonWWW = func(scheme, host, uri string) (bool, string) {
-	if strings.HasPrefix(host, www) {
-		return true, scheme + "://" + host[4:] + uri
+	if hasWWWPrefix(host) {
+		return true, scheme + "://" + host[len(www):] + uri
 	}
 	return false, ""
 }

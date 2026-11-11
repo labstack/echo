@@ -336,3 +336,114 @@ func TestRedirectHTTPSRedirect_forwardedProtoTrust(t *testing.T) {
 		})
 	}
 }
+
+func TestRedirectSecurityHardening(t *testing.T) {
+	var testCases = []struct {
+		name             string
+		middleware       middlewareGenerator
+		whenHost         string
+		whenRequestURI   string
+		whenHeader       http.Header
+		expectLocation   string
+		expectStatusCode int
+	}{
+		{
+			name:             "NonWWWRedirect ignores bare www. host to prevent https:///attacker.com open redirect",
+			middleware:       NonWWWRedirect,
+			whenHost:         "www.",
+			whenRequestURI:   "/attacker.com/login",
+			expectLocation:   "",
+			expectStatusCode: http.StatusOK,
+		},
+		{
+			name:             "HTTPSNonWWWRedirect ignores bare www. host to prevent https:///attacker.com open redirect",
+			middleware:       HTTPSNonWWWRedirect,
+			whenHost:         "www.",
+			whenRequestURI:   "/attacker.com/login",
+			expectLocation:   "",
+			expectStatusCode: http.StatusOK,
+		},
+		{
+			name:             "HTTPSRedirect ignores empty host",
+			middleware:       HTTPSRedirect,
+			whenHost:         "",
+			whenRequestURI:   "/attacker.com",
+			expectLocation:   "",
+			expectStatusCode: http.StatusOK,
+		},
+		{
+			name:             "HTTPSRedirect ignores host with authority or path delimiters",
+			middleware:       HTTPSRedirect,
+			whenHost:         "attacker.com@labstack.com",
+			whenRequestURI:   "/",
+			expectLocation:   "",
+			expectStatusCode: http.StatusOK,
+		},
+		{
+			name:             "NonWWWRedirect handles uppercase WWW. prefix",
+			middleware:       NonWWWRedirect,
+			whenHost:         "WWW.labstack.com",
+			whenRequestURI:   "/docs",
+			expectLocation:   "http://labstack.com/docs",
+			expectStatusCode: http.StatusMovedPermanently,
+		},
+		{
+			name:             "HTTPSWWWRedirect does not duplicate uppercase WWW. prefix",
+			middleware:       HTTPSWWWRedirect,
+			whenHost:         "WWW.labstack.com",
+			whenRequestURI:   "/docs",
+			expectLocation:   "https://www.labstack.com/docs",
+			expectStatusCode: http.StatusMovedPermanently,
+		},
+		{
+			name:             "HTTPSRedirect sanitizes double-slash and control chars in RequestURI",
+			middleware:       HTTPSRedirect,
+			whenHost:         "labstack.com",
+			whenRequestURI:   "//attacker.com/phish",
+			expectLocation:   "https://labstack.com/attacker.com/phish",
+			expectStatusCode: http.StatusMovedPermanently,
+		},
+		{
+			name:             "WWWRedirect normalizes ws scheme from X-Forwarded-Proto to http",
+			middleware:       WWWRedirect,
+			whenHost:         "labstack.com",
+			whenRequestURI:   "/ws",
+			whenHeader:       http.Header{echo.HeaderXForwardedProto: {"ws"}},
+			expectLocation:   "http://www.labstack.com/ws",
+			expectStatusCode: http.StatusMovedPermanently,
+		},
+		{
+			name:             "HTTPSRedirect treats wss scheme from X-Forwarded-Proto as https",
+			middleware:       HTTPSRedirect,
+			whenHost:         "labstack.com",
+			whenRequestURI:   "/ws",
+			whenHeader:       http.Header{echo.HeaderXForwardedProto: {"wss"}},
+			expectLocation:   "",
+			expectStatusCode: http.StatusOK,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.Host = tc.whenHost
+			req.RequestURI = tc.whenRequestURI
+			req.RemoteAddr = "10.0.0.1:1234"
+			if tc.whenHeader != nil {
+				req.Header = tc.whenHeader
+			}
+			res := httptest.NewRecorder()
+			c := e.NewContext(req, res)
+
+			err := tc.middleware()(func(c *echo.Context) error {
+				return c.NoContent(http.StatusOK)
+			})(c)
+
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expectStatusCode, res.Code)
+			assert.Equal(t, tc.expectLocation, res.Header().Get(echo.HeaderLocation))
+		})
+	}
+}
+
