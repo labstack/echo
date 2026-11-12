@@ -54,10 +54,12 @@ func (config AddTrailingSlashConfig) ToMiddleware() (echo.MiddlewareFunc, error)
 			req := c.Request()
 			url := req.URL
 			path := url.Path
+			rawPath := url.EscapedPath()
 			qs := c.QueryString()
-			if !strings.HasSuffix(path, "/") {
+			if !strings.HasSuffix(rawPath, "/") {
 				path += "/"
-				uri := path
+				rawPath += "/"
+				uri := rawPath
 				if qs != "" {
 					uri += "?" + qs
 				}
@@ -70,6 +72,9 @@ func (config AddTrailingSlashConfig) ToMiddleware() (echo.MiddlewareFunc, error)
 				// Forward
 				req.RequestURI = uri
 				url.Path = path
+				if url.RawPath != "" {
+					url.RawPath = rawPath
+				}
 			}
 			return next(c)
 		}
@@ -118,11 +123,12 @@ func (config RemoveTrailingSlashConfig) ToMiddleware() (echo.MiddlewareFunc, err
 			req := c.Request()
 			url := req.URL
 			path := url.Path
+			rawPath := url.EscapedPath()
 			qs := c.QueryString()
-			l := len(path) - 1
-			if l > 0 && strings.HasSuffix(path, "/") {
-				path = path[:l]
-				uri := path
+			if len(rawPath) > 1 && strings.HasSuffix(rawPath, "/") {
+				path = path[:len(path)-1]
+				rawPath = rawPath[:len(rawPath)-1]
+				uri := rawPath
 				if qs != "" {
 					uri += "?" + qs
 				}
@@ -135,6 +141,9 @@ func (config RemoveTrailingSlashConfig) ToMiddleware() (echo.MiddlewareFunc, err
 				// Forward
 				req.RequestURI = uri
 				url.Path = path
+				if url.RawPath != "" {
+					url.RawPath = rawPath
+				}
 			}
 			return next(c)
 		}

@@ -134,6 +134,9 @@ func (config RedirectConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			}
 
 			req, scheme := c.Request(), c.Scheme()
+			if req.URL.Path == "*" {
+				return next(c)
+			}
 			switch scheme {
 			case "ws":
 				scheme = "http"
@@ -141,19 +144,20 @@ func (config RedirectConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				scheme = "https"
 			}
 			host := req.Host
-			if !isValidRedirectHost(host) {
+			ok, target := config.redirect(scheme, host, "")
+			if !ok {
 				return next(c)
+			}
+			if !isValidRedirectHost(host) {
+				return echo.ErrBadRequest
 			}
 			uri := req.RequestURI
 			if uri == "" || uri[0] != '/' {
 				uri = req.URL.RequestURI()
 			}
-			uri = sanitizeURI(uri)
-			if ok, url := config.redirect(scheme, host, uri); ok {
-				return c.Redirect(config.Code, url)
-			}
-
-			return next(c)
+			// The host already anchors this absolute URL, so preserve leading path
+			// slashes. Only control characters need escaping here.
+			return c.Redirect(config.Code, target+escapeControlChars(uri))
 		}
 	}, nil
 }
@@ -169,14 +173,18 @@ func stripWWWPrefix(host string) string {
 	return host
 }
 
+// isValidRedirectHost checks the authority before it is used in a Location.
+// Check the stripped host too, as removing a bare www. would leave no hostname.
 func isValidRedirectHost(host string) bool {
 	host = stripWWWPrefix(host)
 	if host == "" || host[0] == ':' || host[0] == '.' {
 		return false
 	}
+	// Reject control characters, authority/path delimiters, and percent escapes,
+	// since a browser could interpret them as authority delimiters in Location.
 	for i := 0; i < len(host); i++ {
 		ch := host[i]
-		if ch <= 0x20 || ch >= 0x7f || strings.IndexByte(`/\@?#`, ch) != -1 {
+		if ch <= 0x20 || ch >= 0x7f || strings.IndexByte(`/\@?#%`, ch) != -1 {
 			return false
 		}
 	}
