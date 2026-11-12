@@ -60,10 +60,11 @@ type CORSConfig struct {
 	// response header.  This header specified the list of methods allowed when
 	// accessing the resource.  This is used in response to a preflight request.
 	//
-	// Optional. Default value DefaultCORSConfig.AllowMethods.
+	// Optional.
 	// If `allowMethods` is left empty, this middleware will fill for preflight
 	// request `Access-Control-Allow-Methods` header value
-	// from `Allow` header that echo.Router set into context.
+	// from `Allow` header that echo.Router set into context, or with
+	// GET, HEAD, PUT, PATCH, POST, DELETE when the router set none.
 	//
 	// See also: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Methods
 	AllowMethods []string
@@ -72,7 +73,8 @@ type CORSConfig struct {
 	// response header.  This header is used in response to a preflight request to
 	// indicate which HTTP headers can be used when making the actual request.
 	//
-	// Optional. Defaults to empty list. No domains allowed for CORS.
+	// Optional. Defaults to empty list. If empty, the preflight response
+	// reflects the request's Access-Control-Request-Headers header value.
 	//
 	// See also: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Headers
 	AllowHeaders []string
