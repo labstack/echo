@@ -1929,5 +1929,13 @@ func TestBindHeadersEmptyValuesCustomUnmarshaler(t *testing.T) {
 		assert.NoError(t, BindHeaders(New().NewContext(req, httptest.NewRecorder()), &dst))
 		assert.True(t, dst.Value.called)
 		assert.Equal(t, values, dst.Value.values)
+		var pointer struct {
+			Value *headerValuesUnmarshaler `header:"X-Value"`
+		}
+		assert.NoError(t, BindHeaders(New().NewContext(req, httptest.NewRecorder()), &pointer))
+		if assert.NotNil(t, pointer.Value) {
+			assert.True(t, pointer.Value.called)
+			assert.Equal(t, values, pointer.Value.values)
+		}
 	}
 }

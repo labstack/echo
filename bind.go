@@ -330,11 +330,11 @@ func bindData(destination any, data map[string][]string, tag string, dataFiles m
 		if len(inputValue) == 0 {
 			// Preserve custom multi-value unmarshalling, but otherwise treat
 			// entries without values as absent (without allocating pointers).
-			_, multiple := structField.Addr().Interface().(bindMultipleUnmarshaler)
-			if structFieldKind == reflect.Pointer {
-				_, multiple = structField.Interface().(bindMultipleUnmarshaler)
+			value := structField
+			if structFieldKind != reflect.Pointer {
+				value = structField.Addr()
 			}
-			if !multiple {
+			if _, multiple := value.Interface().(bindMultipleUnmarshaler); !multiple {
 				continue
 			}
 		}
