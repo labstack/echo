@@ -15,11 +15,24 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// Rate limit response headers set by stores that implement RateLimiterStoreContext.
+// Rate limit response headers set when supported by the store.
 const (
 	HeaderXRateLimitLimit     = "X-RateLimit-Limit"
 	HeaderXRateLimitRemaining = "X-RateLimit-Remaining"
+	HeaderXRateLimitReset     = "X-RateLimit-Reset"
 )
+
+// RateLimitMetadataContextKey is the default context key for storing RateLimitMetadata in *echo.Context.
+const RateLimitMetadataContextKey = "rate_limit_metadata"
+
+// RateLimitMetadata contains rate limiting metadata for a visitor.
+type RateLimitMetadata struct {
+	Limit      int           // Limit is the maximum number of requests allowed (burst/limit).
+	Remaining  int           // Remaining is the number of requests remaining in the current window.
+	Reset      time.Duration // Reset is the duration until the rate limit resets to full capacity.
+	ResetTime  time.Time     // ResetTime is the time when the rate limit resets to full capacity.
+	RetryAfter time.Duration // RetryAfter is the duration until the next request is allowed (zero when allowed).
+}
 
 // RateLimiterStore is the interface to be implemented by custom stores.
 type RateLimiterStore interface {
@@ -34,6 +47,14 @@ type RateLimiterStoreContext interface {
 	AllowContext(c *echo.Context, identifier string) (bool, error)
 }
 
+// RateLimiterStoreWithDetails is an optional interface a RateLimiterStore may implement.
+// When the configured store implements it, the rate limiter calls AllowWithDetails
+// instead of Allow, and sets the standard rate limit headers (X-RateLimit-Limit,
+// X-RateLimit-Remaining, X-RateLimit-Reset, and Retry-After) on the response.
+type RateLimiterStoreWithDetails interface {
+	AllowWithDetails(identifier string) (bool, RateLimitMetadata, error)
+}
+
 // RateLimiterConfig defines the configuration for the rate limiter
 type RateLimiterConfig struct {
 	Skipper    Skipper
@@ -46,6 +67,9 @@ type RateLimiterConfig struct {
 	ErrorHandler func(c *echo.Context, err error) error
 	// DenyHandler provides a handler to be called when RateLimiter denies access
 	DenyHandler func(c *echo.Context, identifier string, err error) error
+	// ContextKey defines the key used to store RateLimitMetadata in *echo.Context.
+	// Optional. If not set, metadata is not stored in context.
+	ContextKey string
 }
 
 // Extractor is used to extract data from *echo.Context
@@ -153,7 +177,14 @@ func (config RateLimiterConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 
 			var allow bool
 			var allowErr error
-			if sc, ok := config.Store.(RateLimiterStoreContext); ok {
+			if sd, ok := config.Store.(RateLimiterStoreWithDetails); ok {
+				var meta RateLimitMetadata
+				allow, meta, allowErr = sd.AllowWithDetails(identifier)
+				setRateLimitHeaders(c, meta, allow)
+				if config.ContextKey != "" {
+					c.Set(config.ContextKey, meta)
+				}
+			} else if sc, ok := config.Store.(RateLimiterStoreContext); ok {
 				allow, allowErr = sc.AllowContext(c, identifier)
 			} else {
 				allow, allowErr = config.Store.Allow(identifier)
@@ -254,19 +285,25 @@ var DefaultRateLimiterMemoryStoreConfig = RateLimiterMemoryStoreConfig{
 
 // Allow implements RateLimiterStore.Allow
 func (store *RateLimiterMemoryStore) Allow(identifier string) (bool, error) {
-	_, allowed := store.allow(identifier)
-	return allowed, nil
+	allowed, _, err := store.allowWithDetails(identifier)
+	return allowed, err
 }
 
 // AllowContext implements RateLimiterStoreContext: it makes the allow/deny decision
 // and sets the X-RateLimit-* (and Retry-After when denied) response headers.
 func (store *RateLimiterMemoryStore) AllowContext(c *echo.Context, identifier string) (bool, error) {
-	limiter, allowed := store.allow(identifier)
-	store.setRateLimitHeaders(c, limiter, allowed)
-	return allowed, nil
+	allowed, meta, err := store.allowWithDetails(identifier)
+	setRateLimitHeaders(c, meta, allowed)
+	return allowed, err
 }
 
-func (store *RateLimiterMemoryStore) allow(identifier string) (*rate.Limiter, bool) {
+// AllowWithDetails implements RateLimiterStoreWithDetails: it makes the allow/deny decision
+// and returns rate limit metadata (limit, remaining, reset, and retry-after).
+func (store *RateLimiterMemoryStore) AllowWithDetails(identifier string) (bool, RateLimitMetadata, error) {
+	return store.allowWithDetails(identifier)
+}
+
+func (store *RateLimiterMemoryStore) allowWithDetails(identifier string) (bool, RateLimitMetadata, error) {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
@@ -281,22 +318,71 @@ func (store *RateLimiterMemoryStore) allow(identifier string) (*rate.Limiter, bo
 	if now.Sub(store.lastCleanup) > store.expiresIn {
 		store.cleanupStaleVisitors(now)
 	}
-	return limiter.Limiter, limiter.AllowN(now, 1)
-}
 
-func (store *RateLimiterMemoryStore) setRateLimitHeaders(c *echo.Context, limiter *rate.Limiter, allowed bool) {
-	header := c.Response().Header()
-	header.Set(HeaderXRateLimitLimit, strconv.Itoa(store.burst))
+	allowed := limiter.AllowN(now, 1)
 
 	remaining := max(int(math.Floor(limiter.Tokens())), 0)
-	header.Set(HeaderXRateLimitRemaining, strconv.Itoa(remaining))
+
+	var retryAfter time.Duration
+	if !allowed {
+		reservation := limiter.ReserveN(now, 1)
+		if reservation.OK() {
+			if delay := reservation.DelayFrom(now); delay > 0 {
+				retryAfter = delay
+			}
+			reservation.CancelAt(now)
+		}
+	}
+
+	var resetDuration time.Duration
+	if store.rate > 0 {
+		tokens := limiter.Tokens()
+		if tokens < 0 {
+			tokens = 0
+		}
+		if tokens > float64(store.burst) {
+			tokens = float64(store.burst)
+		}
+		missing := float64(store.burst) - tokens
+		if missing > 0 {
+			resetDuration = time.Duration((missing / store.rate) * float64(time.Second))
+		}
+	}
+
+	resetTime := now.Add(resetDuration)
+
+	meta := RateLimitMetadata{
+		Limit:      store.burst,
+		Remaining:  remaining,
+		Reset:      resetDuration,
+		ResetTime:  resetTime,
+		RetryAfter: retryAfter,
+	}
+
+	return allowed, meta, nil
+}
+
+func setRateLimitHeaders(c *echo.Context, meta RateLimitMetadata, allowed bool) {
+	header := c.Response().Header()
+	header.Set(HeaderXRateLimitLimit, strconv.Itoa(meta.Limit))
+	header.Set(HeaderXRateLimitRemaining, strconv.Itoa(meta.Remaining))
+
+	resetTime := meta.ResetTime
+	if resetTime.IsZero() {
+		if meta.Reset > 0 {
+			resetTime = time.Now().Add(meta.Reset)
+		} else {
+			resetTime = time.Now()
+		}
+	}
+	header.Set(HeaderXRateLimitReset, strconv.FormatInt(resetTime.Unix(), 10))
 
 	if !allowed {
-		reservation := limiter.ReserveN(store.timeNow(), 1)
-		if delay := reservation.Delay(); delay > 0 {
-			header.Set(echo.HeaderRetryAfter, strconv.Itoa(int(math.Ceil(delay.Seconds()))))
+		delaySec := int(math.Ceil(meta.RetryAfter.Seconds()))
+		if delaySec <= 0 {
+			delaySec = 1
 		}
-		reservation.Cancel()
+		header.Set(echo.HeaderRetryAfter, strconv.Itoa(delaySec))
 	}
 }
 
