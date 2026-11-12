@@ -184,6 +184,7 @@ These projects are maintained by their authors, not the Echo team. Review them b
 | [darkweak/souin](https://github.com/darkweak/souin/tree/master/plugins/echo) | HTTP cache middleware based on [Souin](https://github.com/darkweak/souin), with distributed storage support |
 | [mikestefanello/pagoda](https://github.com/mikestefanello/pagoda) | Full-stack web development starter kit built on Echo |
 | [go-woo/protoc-gen-echo](https://github.com/go-woo/protoc-gen-echo) | Generates Echo server code from Protocol Buffers |
+| [Guard-Core/echo-guard](https://github.com/Guard-Core/echo-guard) | API security middleware (Echo v4): IP filtering, rate limiting with automatic bans, attack pattern detection and security headers |
 
 </details>
 
