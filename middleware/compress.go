@@ -181,6 +181,7 @@ func (w *gzipResponseWriter) Write(b []byte) (int, error) {
 }
 
 func (w *gzipResponseWriter) Flush() {
+	w.wroteBody = true
 	if !w.minLengthExceeded {
 		// Enforce compression because we will not know how much more data will come
 		w.minLengthExceeded = true
