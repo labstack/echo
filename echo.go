@@ -775,12 +775,14 @@ func (e *Echo) Add(method, path string, handler HandlerFunc, middleware ...Middl
 
 // Group creates a new router group with prefix and optional group-level middleware.
 // The prefix is concatenated with each route path without inserting a slash.
+// If prefix is not empty and does not start with a leading slash, a leading slash is added.
 // For example:
 //
 //	g := e.Group("/v1")
 //	g.GET("/posts", handler) // Registers /v1/posts.
 //	g.GET("posts", handler)  // Registers /v1posts.
 func (e *Echo) Group(prefix string, m ...MiddlewareFunc) (g *Group) {
+	prefix = normalizeGroupPrefix(prefix)
 	g = &Group{
 		prefix:               prefix,
 		echo:                 e,
