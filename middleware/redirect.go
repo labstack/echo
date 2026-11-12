@@ -64,7 +64,7 @@ func HTTPSWWWRedirect() echo.MiddlewareFunc {
 // See `HTTPSWWWRedirect()`.
 func HTTPSWWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 	return redirect(config, func(scheme, host, uri string) (bool, string) {
-		if scheme != "https" && !strings.HasPrefix(host, www) {
+		if scheme != "https" && !hasWWWPrefix(host) {
 			return true, "https://www." + host + uri
 		}
 		return false, ""
@@ -84,7 +84,7 @@ func HTTPSNonWWWRedirect() echo.MiddlewareFunc {
 func HTTPSNonWWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 	return redirect(config, func(scheme, host, uri string) (ok bool, url string) {
 		if scheme != "https" {
-			host = strings.TrimPrefix(host, www)
+			host = stripWWWPrefix(host)
 			return true, "https://" + host + uri
 		}
 		return false, ""
@@ -103,7 +103,7 @@ func WWWRedirect() echo.MiddlewareFunc {
 // See `WWWRedirect()`.
 func WWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 	return redirect(config, func(scheme, host, uri string) (bool, string) {
-		if !strings.HasPrefix(host, www) {
+		if !hasWWWPrefix(host) {
 			return true, scheme + "://www." + host + uri
 		}
 		return false, ""
@@ -122,8 +122,8 @@ func NonWWWRedirect() echo.MiddlewareFunc {
 // See `NonWWWRedirect()`.
 func NonWWWRedirectWithConfig(config RedirectConfig) echo.MiddlewareFunc {
 	return redirect(config, func(scheme, host, uri string) (bool, string) {
-		if strings.HasPrefix(host, www) {
-			return true, scheme + "://" + host[4:] + uri
+		if hasWWWPrefix(host) {
+			return true, scheme + "://" + host[len(www):] + uri
 		}
 		return false, ""
 	})
@@ -144,12 +144,53 @@ func redirect(config RedirectConfig, cb redirectLogic) echo.MiddlewareFunc {
 			}
 
 			req, scheme := c.Request(), c.Scheme()
-			host := req.Host
-			if ok, url := cb(scheme, host, req.RequestURI); ok {
-				return c.Redirect(config.Code, url)
+			if req.URL.Path == "*" {
+				return next(c)
 			}
-
-			return next(c)
+			switch scheme {
+			case "ws":
+				scheme = "http"
+			case "wss":
+				scheme = "https"
+			}
+			host := req.Host
+			ok, target := cb(scheme, host, "")
+			if !ok {
+				return next(c)
+			}
+			if !isValidRedirectHost(host) {
+				return echo.ErrBadRequest
+			}
+			uri := req.RequestURI
+			if uri == "" || uri[0] != '/' {
+				uri = req.URL.RequestURI()
+			}
+			// The host already anchors this absolute URL, so preserve leading path
+			// slashes. Only control characters need escaping here.
+			return c.Redirect(config.Code, target+escapeControlChars(uri))
 		}
 	}
+}
+
+func hasWWWPrefix(host string) bool {
+	return len(host) >= len(www) && strings.EqualFold(host[:len(www)], www)
+}
+
+func stripWWWPrefix(host string) string {
+	if hasWWWPrefix(host) {
+		return host[len(www):]
+	}
+	return host
+}
+
+// isValidRedirectHost checks the authority before it is used in a Location.
+// Check the stripped host too, as removing a bare www. would leave no hostname.
+func isValidRedirectHost(host string) bool {
+	host = stripWWWPrefix(host)
+	if host == "" || host[0] == ':' || host[0] == '.' {
+		return false
+	}
+	// net/http validates Host syntax. Reject percent escapes too, since a
+	// browser could interpret them as authority delimiters in Location.
+	return !strings.Contains(host, "%")
 }
