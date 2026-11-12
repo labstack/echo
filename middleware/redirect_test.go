@@ -336,3 +336,103 @@ func TestRedirectHTTPSRedirect_forwardedProtoTrust(t *testing.T) {
 		})
 	}
 }
+
+func TestRedirectMalformedHost(t *testing.T) {
+	for _, host := range []string{"", "www.", "www.:80", "WWW.", "attacker.com@example.com", "example.com/path", "example.com\\path", "example.com?x", "example.com#x", "example.com\t", "example.com%2fpath"} {
+		for _, mw := range []struct {
+			name string
+			make func() echo.MiddlewareFunc
+		}{{"https", HTTPSRedirect}, {"https-www", HTTPSWWWRedirect}, {"https-non-www", HTTPSNonWWWRedirect}, {"www", WWWRedirect}, {"non-www", NonWWWRedirect}} {
+			t.Run(mw.name+"/"+host, func(t *testing.T) {
+				e := echo.New()
+				e.Pre(mw.make())
+				e.GET("/*", func(c *echo.Context) error { return c.NoContent(http.StatusOK) })
+				req := httptest.NewRequest(http.MethodGet, "/attacker.com/login", nil)
+				req.Host = host
+				rec := httptest.NewRecorder()
+				e.ServeHTTP(rec, req)
+				assert.Empty(t, rec.Header().Get(echo.HeaderLocation))
+				assert.Equal(t, http.StatusOK, rec.Code)
+			})
+		}
+	}
+}
+
+func TestRedirectBareWWWHostOverHTTP(t *testing.T) {
+	e := echo.New()
+	e.Pre(HTTPSNonWWWRedirect())
+	e.GET("/*", func(c *echo.Context) error { return c.NoContent(http.StatusOK) })
+	server := httptest.NewServer(e)
+	defer server.Close()
+	req, err := http.NewRequest(http.MethodGet, server.URL+"/attacker.com/login", nil)
+	if !assert.NoError(t, err) {
+		return
+	}
+	req.Host = "www."
+	client := server.Client()
+	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	resp, err := client.Do(req)
+	if !assert.NoError(t, err) {
+		return
+	}
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Empty(t, resp.Header.Get(echo.HeaderLocation))
+}
+
+func TestRedirectRequestTarget(t *testing.T) {
+	for _, tc := range []struct{ uri, want string }{
+		{"", "https://example.com/files/a%2Fb?x=1"},
+		{"http://example.com/files/a%2Fb?x=1", "https://example.com/files/a%2Fb?x=1"},
+		{"//attacker.com/x", "https://example.com//attacker.com/x"},
+		{"/x\t/y", "https://example.com/x%09/y"},
+	} {
+		t.Run(tc.uri, func(t *testing.T) {
+			e := echo.New()
+			req := httptest.NewRequest(http.MethodGet, "http://example.com/files/a%2Fb?x=1", nil)
+			req.RequestURI = tc.uri
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			assert.NoError(t, HTTPSRedirect()(func(*echo.Context) error { return nil })(c))
+			assert.Equal(t, tc.want, rec.Header().Get(echo.HeaderLocation))
+		})
+	}
+}
+
+func TestRedirectValidAuthority(t *testing.T) {
+	for _, host := range []string{"example.com", "example.com:8080", "[::1]", "[::1]:8080"} {
+		t.Run(host, func(t *testing.T) {
+			e := echo.New()
+			req := httptest.NewRequest(http.MethodGet, "/docs", nil)
+			req.Host = host
+			rec := httptest.NewRecorder()
+			assert.NoError(t, HTTPSRedirect()(func(*echo.Context) error { return nil })(e.NewContext(req, rec)))
+			assert.Equal(t, "https://"+host+"/docs", rec.Header().Get(echo.HeaderLocation))
+		})
+	}
+}
+
+func TestRedirectWWWCaseAndWebSocketScheme(t *testing.T) {
+	for _, tc := range []struct {
+		name, host, proto, want string
+		make                    func() echo.MiddlewareFunc
+	}{
+		{"strip uppercase", "WWW.example.com", "http", "http://example.com/docs", NonWWWRedirect},
+		{"avoid duplicate", "WWW.example.com", "http", "https://www.example.com/docs", HTTPSWWWRedirect},
+		{"already www", "WWW.example.com", "https", "", WWWRedirect},
+		{"ws", "example.com", "ws", "http://www.example.com/docs", WWWRedirect},
+		{"wss", "www.example.com", "wss", "https://example.com/docs", NonWWWRedirect},
+		{"already secure", "example.com", "wss", "", HTTPSRedirect},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+			req := httptest.NewRequest(http.MethodGet, "/docs", nil)
+			req.Host = tc.host
+			req.RemoteAddr = "127.0.0.1:1234"
+			req.Header.Set(echo.HeaderXForwardedProto, tc.proto)
+			rec := httptest.NewRecorder()
+			assert.NoError(t, tc.make()(func(*echo.Context) error { return nil })(e.NewContext(req, rec)))
+			assert.Equal(t, tc.want, rec.Header().Get(echo.HeaderLocation))
+		})
+	}
+}
