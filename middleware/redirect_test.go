@@ -341,7 +341,16 @@ func TestRedirectMalformedHost(t *testing.T) {
 	for _, tc := range []struct {
 		host   string
 		hasWWW bool
-	}{{"", false}, {"www.", true}, {"www.:80", true}, {"WWW.", true}, {":80", false}, {".example.com", false}, {"example.com%2fpath", false}} {
+	}{
+		{"", false},
+		{"www.", true},
+		{"www.:80", true},
+		{"WWW.", true},
+		{":80", false},
+		{".example.com", false},
+		{"example.com%2fpath", false},
+		{"attacker.com@labstack.com", false},
+	} {
 		for _, mw := range []struct {
 			name   string
 			make   func() echo.MiddlewareFunc

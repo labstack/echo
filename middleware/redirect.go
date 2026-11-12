@@ -180,9 +180,15 @@ func isValidRedirectHost(host string) bool {
 	if host == "" || host[0] == ':' || host[0] == '.' {
 		return false
 	}
-	// net/http validates Host syntax. Reject percent escapes too, since a
-	// browser could interpret them as authority delimiters in Location.
-	return !strings.Contains(host, "%")
+	// Reject control characters, authority/path delimiters, and percent escapes,
+	// since a browser could interpret them as authority delimiters in Location.
+	for i := 0; i < len(host); i++ {
+		ch := host[i]
+		if ch <= 0x20 || ch >= 0x7f || strings.IndexByte(`/\@?#%`, ch) != -1 {
+			return false
+		}
+	}
+	return true
 }
 
 var redirectHTTPS = func(scheme, host, uri string) (bool, string) {
