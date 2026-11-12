@@ -225,7 +225,8 @@ func ExtractIPFromRealIPHeader(options ...TrustOption) IPExtractor {
 	checker := newIPChecker(options)
 	return func(req *http.Request) string {
 		directIP := extractIP(req)
-		peerIP := net.ParseIP(directIP)
+		peerHost, _, _ := strings.Cut(directIP, "%")
+		peerIP := net.ParseIP(peerHost)
 		if peerIP == nil || !checker.trust(peerIP) {
 			return directIP
 		}
@@ -258,12 +259,20 @@ func ExtractIPFromXFFHeader(options ...TrustOption) IPExtractor {
 			ips[i] = strings.TrimSpace(ips[i])
 			ips[i] = strings.TrimPrefix(ips[i], "[")
 			ips[i] = strings.TrimSuffix(ips[i], "]")
-			ip := net.ParseIP(ips[i])
+			ipHost := ips[i]
+			if i == len(ips)-1 {
+				// Zones belong to the local peer address, not forwarded headers.
+				ipHost, _, _ = strings.Cut(ipHost, "%")
+			}
+			ip := net.ParseIP(ipHost)
 			if ip == nil {
 				// Unable to parse IP; cannot trust entire records
 				return directIP
 			}
 			if !checker.trust(ip) {
+				if i == len(ips)-1 && strings.Contains(directIP, "%") {
+					return directIP
+				}
 				return ip.String()
 			}
 		}
