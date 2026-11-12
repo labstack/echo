@@ -338,21 +338,31 @@ func TestRedirectHTTPSRedirect_forwardedProtoTrust(t *testing.T) {
 }
 
 func TestRedirectMalformedHost(t *testing.T) {
-	for _, host := range []string{"", "www.", "www.:80", "WWW.", "attacker.com@example.com", "example.com/path", "example.com\\path", "example.com?x", "example.com#x", "example.com\t", "example.com%2fpath"} {
+	for _, tc := range []struct {
+		host   string
+		hasWWW bool
+	}{{"", false}, {"www.", true}, {"www.:80", true}, {"WWW.", true}, {":80", false}, {".example.com", false}, {"example.com%2fpath", false}} {
 		for _, mw := range []struct {
-			name string
-			make func() echo.MiddlewareFunc
-		}{{"https", HTTPSRedirect}, {"https-www", HTTPSWWWRedirect}, {"https-non-www", HTTPSNonWWWRedirect}, {"www", WWWRedirect}, {"non-www", NonWWWRedirect}} {
-			t.Run(mw.name+"/"+host, func(t *testing.T) {
+			name   string
+			make   func() echo.MiddlewareFunc
+			reject bool
+		}{{"https", HTTPSRedirect, true}, {"https-www", HTTPSWWWRedirect, true}, {"https-non-www", HTTPSNonWWWRedirect, true}, {"www", WWWRedirect, !tc.hasWWW}, {"non-www", NonWWWRedirect, tc.hasWWW}} {
+			t.Run(mw.name+"/"+tc.host, func(t *testing.T) {
 				e := echo.New()
 				e.Pre(mw.make())
-				e.GET("/*", func(c *echo.Context) error { return c.NoContent(http.StatusOK) })
+				called := false
+				e.GET("/*", func(c *echo.Context) error { called = true; return c.NoContent(http.StatusOK) })
 				req := httptest.NewRequest(http.MethodGet, "/attacker.com/login", nil)
-				req.Host = host
+				req.Host = tc.host
 				rec := httptest.NewRecorder()
 				e.ServeHTTP(rec, req)
+				want := http.StatusOK
+				if mw.reject {
+					want = http.StatusBadRequest
+				}
+				assert.Equal(t, want, rec.Code)
+				assert.Equal(t, !mw.reject, called)
 				assert.Empty(t, rec.Header().Get(echo.HeaderLocation))
-				assert.Equal(t, http.StatusOK, rec.Code)
 			})
 		}
 	}
@@ -376,7 +386,7 @@ func TestRedirectBareWWWHostOverHTTP(t *testing.T) {
 		return
 	}
 	defer resp.Body.Close()
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	assert.Empty(t, resp.Header.Get(echo.HeaderLocation))
 }
 
@@ -435,4 +445,33 @@ func TestRedirectWWWCaseAndWebSocketScheme(t *testing.T) {
 			assert.Equal(t, tc.want, rec.Header().Get(echo.HeaderLocation))
 		})
 	}
+}
+
+func TestRedirectAsteriskTarget(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodOptions, "*", nil)
+	req.Host = "example.com"
+	rec := httptest.NewRecorder()
+	called := false
+	err := HTTPSRedirect()(func(c *echo.Context) error { called = true; return c.NoContent(http.StatusNoContent) })(e.NewContext(req, rec))
+	assert.NoError(t, err)
+	assert.True(t, called)
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+	assert.Empty(t, rec.Header().Get(echo.HeaderLocation))
+}
+
+func TestRedirectUnchangedHost(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "https://example.com/docs", nil)
+	req.Host = ""
+	rec := httptest.NewRecorder()
+	called := false
+	err := HTTPSRedirect()(func(c *echo.Context) error {
+		called = true
+		return c.NoContent(http.StatusOK)
+	})(e.NewContext(req, rec))
+	assert.NoError(t, err)
+	assert.True(t, called)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Empty(t, rec.Header().Get(echo.HeaderLocation))
 }

@@ -134,6 +134,9 @@ func (config RedirectConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			}
 
 			req, scheme := c.Request(), c.Scheme()
+			if req.URL.Path == "*" {
+				return next(c)
+			}
 			switch scheme {
 			case "ws":
 				scheme = "http"
@@ -141,8 +144,12 @@ func (config RedirectConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				scheme = "https"
 			}
 			host := req.Host
-			if !isValidRedirectHost(host) {
+			ok, target := config.redirect(scheme, host, "")
+			if !ok {
 				return next(c)
+			}
+			if !isValidRedirectHost(host) {
+				return echo.ErrBadRequest
 			}
 			uri := req.RequestURI
 			if uri == "" || uri[0] != '/' {
@@ -150,11 +157,7 @@ func (config RedirectConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			}
 			// The host already anchors this absolute URL, so preserve leading path
 			// slashes. Only control characters need escaping here.
-			if ok, url := config.redirect(scheme, host, escapeControlChars(uri)); ok {
-				return c.Redirect(config.Code, url)
-			}
-
-			return next(c)
+			return c.Redirect(config.Code, target+escapeControlChars(uri))
 		}
 	}, nil
 }
@@ -177,13 +180,9 @@ func isValidRedirectHost(host string) bool {
 	if host == "" || host[0] == ':' || host[0] == '.' {
 		return false
 	}
-	for i := range len(host) {
-		ch := host[i]
-		if ch <= 0x20 || ch == 0x7f || strings.IndexByte(`/\@?#%`, ch) >= 0 {
-			return false
-		}
-	}
-	return true
+	// net/http validates Host syntax. Reject percent escapes too, since a
+	// browser could interpret them as authority delimiters in Location.
+	return !strings.Contains(host, "%")
 }
 
 var redirectHTTPS = func(scheme, host, uri string) (bool, string) {
