@@ -211,10 +211,18 @@ func ExtractIPDirect() IPExtractor {
 func extractIP(req *http.Request) string {
 	host, _, err := net.SplitHostPort(req.RemoteAddr)
 	if err != nil {
-		if net.ParseIP(req.RemoteAddr) != nil {
-			return req.RemoteAddr
-		}
+		host = req.RemoteAddr
+	}
+	host = stripIPv6Zone(host)
+	if err != nil && net.ParseIP(host) == nil {
 		return ""
+	}
+	return host
+}
+
+func stripIPv6Zone(host string) string {
+	if strings.Contains(host, ":") {
+		host, _, _ = strings.Cut(host, "%")
 	}
 	return host
 }
@@ -225,8 +233,7 @@ func ExtractIPFromRealIPHeader(options ...TrustOption) IPExtractor {
 	checker := newIPChecker(options)
 	return func(req *http.Request) string {
 		directIP := extractIP(req)
-		peerHost, _, _ := strings.Cut(directIP, "%")
-		peerIP := net.ParseIP(peerHost)
+		peerIP := net.ParseIP(directIP)
 		if peerIP == nil || !checker.trust(peerIP) {
 			return directIP
 		}
@@ -259,20 +266,12 @@ func ExtractIPFromXFFHeader(options ...TrustOption) IPExtractor {
 			ips[i] = strings.TrimSpace(ips[i])
 			ips[i] = strings.TrimPrefix(ips[i], "[")
 			ips[i] = strings.TrimSuffix(ips[i], "]")
-			ipHost := ips[i]
-			if i == len(ips)-1 {
-				// Zones belong to the local peer address, not forwarded headers.
-				ipHost, _, _ = strings.Cut(ipHost, "%")
-			}
-			ip := net.ParseIP(ipHost)
+			ip := net.ParseIP(ips[i])
 			if ip == nil {
 				// Unable to parse IP; cannot trust entire records
 				return directIP
 			}
 			if !checker.trust(ip) {
-				if i == len(ips)-1 && strings.Contains(directIP, "%") {
-					return directIP
-				}
 				return ip.String()
 			}
 		}

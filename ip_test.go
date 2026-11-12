@@ -843,7 +843,7 @@ func TestProxyIPWithZonedPeer(t *testing.T) {
 				req := httptest.NewRequest(http.MethodGet, "/", nil)
 				req.RemoteAddr = "[fe80::1%eth0]:8080"
 				req.Header.Set(tc.header, "203.0.113.5")
-				want := "fe80::1%eth0"
+				want := "fe80::1"
 				if trusted {
 					want = "203.0.113.5"
 				}
@@ -854,12 +854,28 @@ func TestProxyIPWithZonedPeer(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			req.RemoteAddr = "[fe80::1%eth0]:8080"
 			req.Header.Set(tc.header, "fe80::2%eth0")
-			assert.Equal(t, "fe80::1%eth0", tc.extract()(req))
+			assert.Equal(t, "fe80::1", tc.extract()(req))
 		})
 		t.Run(tc.name+"/no header", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			req.RemoteAddr = "[fe80::1%eth0]:8080"
-			assert.Equal(t, "fe80::1%eth0", tc.extract()(req))
+			assert.Equal(t, "fe80::1", tc.extract()(req))
+		})
+	}
+}
+
+func TestExtractIPZonedPeerWithoutPort(t *testing.T) {
+	for _, remote := range []string{"fe80::1%eth0", "[fe80::1%eth0]:8080"} {
+		t.Run(remote, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.RemoteAddr = remote
+			assert.Equal(t, "fe80::1", ExtractIPDirect()(req))
+			req.Header.Set(HeaderXForwardedFor, "203.0.113.5, 10.0.0.1")
+			req.Header.Set(HeaderXRealIP, "203.0.113.5")
+			assert.Equal(t, "203.0.113.5", ExtractIPFromXFFHeader()(req))
+			assert.Equal(t, "203.0.113.5", ExtractIPFromRealIPHeader()(req))
+			assert.Equal(t, "fe80::1", ExtractIPFromXFFHeader(TrustLinkLocal(false))(req))
+			assert.Equal(t, "fe80::1", ExtractIPFromRealIPHeader(TrustLinkLocal(false))(req))
 		})
 	}
 }
