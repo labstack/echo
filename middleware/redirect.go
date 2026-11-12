@@ -6,6 +6,7 @@ package middleware
 import (
 	"errors"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/labstack/echo/v5"
@@ -133,10 +134,18 @@ func (config RedirectConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				return next(c)
 			}
 
-			req, scheme := c.Request(), c.Scheme()
+			req, scheme := c.Request(), normalizeRedirectScheme(c.Scheme())
 			host := req.Host
-			if ok, url := config.redirect(scheme, host, req.RequestURI); ok {
-				return c.Redirect(config.Code, url)
+			uri := req.RequestURI
+			if uri == "" || (uri[0] != '/' && uri[0] != '*') {
+				uri = req.URL.RequestURI()
+			}
+			uri = sanitizeURI(uri)
+			if ok, target := config.redirect(scheme, host, uri); ok {
+				if err := validateRedirectURL(target); err != nil {
+					return err
+				}
+				return c.Redirect(config.Code, target)
 			}
 
 			return next(c)
@@ -153,8 +162,8 @@ var redirectHTTPS = func(scheme, host, uri string) (bool, string) {
 
 var redirectHTTPSWWW = func(scheme, host, uri string) (bool, string) {
 	// Redirect if not HTTPS OR missing www prefix (needs either fix)
-	if scheme != "https" || !strings.HasPrefix(host, www) {
-		host = strings.TrimPrefix(host, www) // Remove www if present to avoid duplication
+	if scheme != "https" || !hasWWWPrefix(host) {
+		host = stripWWWPrefix(host) // Remove www if present to avoid duplication
 		return true, "https://www." + host + uri
 	}
 	return false, ""
@@ -162,23 +171,67 @@ var redirectHTTPSWWW = func(scheme, host, uri string) (bool, string) {
 
 var redirectNonHTTPSWWW = func(scheme, host, uri string) (ok bool, url string) {
 	// Redirect if not HTTPS OR has www prefix (needs either fix)
-	if scheme != "https" || strings.HasPrefix(host, www) {
-		host = strings.TrimPrefix(host, www)
+	if scheme != "https" || hasWWWPrefix(host) {
+		host = stripWWWPrefix(host)
 		return true, "https://" + host + uri
 	}
 	return false, ""
 }
 
 var redirectWWW = func(scheme, host, uri string) (bool, string) {
-	if !strings.HasPrefix(host, www) {
+	if !hasWWWPrefix(host) {
 		return true, scheme + "://www." + host + uri
 	}
 	return false, ""
 }
 
 var redirectNonWWW = func(scheme, host, uri string) (bool, string) {
-	if strings.HasPrefix(host, www) {
-		return true, scheme + "://" + host[4:] + uri
+	if hasWWWPrefix(host) {
+		return true, scheme + "://" + stripWWWPrefix(host) + uri
 	}
 	return false, ""
+}
+
+func hasWWWPrefix(host string) bool {
+	return len(host) >= 4 && strings.EqualFold(host[:4], www)
+}
+
+func stripWWWPrefix(host string) string {
+	if hasWWWPrefix(host) {
+		return host[4:]
+	}
+	return host
+}
+
+func normalizeRedirectScheme(scheme string) string {
+	switch scheme {
+	case "ws":
+		return "http"
+	case "wss":
+		return "https"
+	default:
+		return scheme
+	}
+}
+
+func validateRedirectURL(raw string) error {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid redirect target")
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid redirect target")
+	}
+	if u.Host == "" || u.User != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid redirect target")
+	}
+	if strings.ContainsAny(u.Host, "/\\@?#") || u.Host[0] == '.' || u.Host[0] == ':' {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid redirect target")
+	}
+	for i := 0; i < len(u.Host); i++ {
+		if u.Host[i] < 0x20 || u.Host[i] == 0x7f {
+			return echo.NewHTTPError(http.StatusBadRequest, "invalid redirect target")
+		}
+	}
+	return nil
 }
