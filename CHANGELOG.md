@@ -4,7 +4,7 @@
 
 **Security**
 
-* **Redirect middleware:** `HTTPSRedirect`, `HTTPSWWWRedirect`, `HTTPSNonWWWRedirect`, `WWWRedirect` and `NonWWWRedirect` now return `400 Bad Request` for a host that is empty, starts with `:` or `.`, contains `%`, or is empty after removing `www.`. Before this change, such hosts could produce an open redirect. The middleware no longer redirects `OPTIONS *` requests, maps `ws` and `wss` to `http` and `https` in redirect targets, and matches the `www.` prefix case-insensitively. Fixes [#3217](https://github.com/labstack/echo/issues/3217) in [#3220](https://github.com/labstack/echo/pull/3220).
+* **Redirect middleware:** `HTTPSRedirect`, `HTTPSWWWRedirect`, `HTTPSNonWWWRedirect`, `WWWRedirect` and `NonWWWRedirect` now return `400 Bad Request` for a host that is empty, starts with `:` or `.`, contains `%`, or is empty after removing `www.`. Before this change, such hosts could produce an open redirect. The middleware no longer redirects `OPTIONS *` requests, maps `ws` and `wss` to `http` and `https` in redirect targets, and matches the `www.` prefix case-insensitively. Fixes [GHSA-3f6j-cw5h-qw9c](https://github.com/labstack/echo/security/advisories/GHSA-3f6j-cw5h-qw9c) ([#3217](https://github.com/labstack/echo/issues/3217)) in [#3220](https://github.com/labstack/echo/pull/3220).
 
 **Fixes**
 
