@@ -74,7 +74,7 @@ func TestAddTrailingSlashWithConfig(t *testing.T) {
 		{
 			whenURL:        "http://localhost:1323/%09%5Cevil.example/x",
 			expectPath:     "/\t\\evil.example/x",
-			expectLocation: []string{`/%09\evil.example/x/`},
+			expectLocation: []string{`/%09%5Cevil.example/x/`},
 		},
 		{
 			whenURL:        "http://localhost:1323/%09//evil.example/x",
@@ -231,7 +231,7 @@ func TestRemoveTrailingSlashWithConfig(t *testing.T) {
 		{
 			whenURL:        "http://localhost:1323/%09%5Cevil.example/x/",
 			expectPath:     "/\t\\evil.example/x/",
-			expectLocation: []string{`/%09\evil.example/x`},
+			expectLocation: []string{`/%09%5Cevil.example/x`},
 		},
 		{
 			whenURL:        "http://localhost:1323/%09//evil.example/x/",
@@ -341,6 +341,79 @@ func TestSanitizeURI(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.whenURI, func(t *testing.T) {
 			assert.Equal(t, tc.expect, sanitizeURI(tc.whenURI))
+		})
+	}
+}
+
+func TestTrailingSlashRedirectEscapedPath(t *testing.T) {
+	for _, tc := range []struct{ path, add, remove string }{
+		{"/files/a%2Fb", "/files/a%2Fb/", "/files/a%2Fb"},
+		{"/files/a%3Fb?x=1", "/files/a%3Fb/?x=1", "/files/a%3Fb?x=1"},
+		{"/files/a%20b", "/files/a%20b/", "/files/a%20b"},
+		{"/files/a%23b", "/files/a%23b/", "/files/a%23b"},
+		{"/%5Cexample.com", "/example.com/", "/example.com"},
+		{"/%2f%2Fexample.com", "/example.com/", "/example.com"},
+	} {
+		for _, remove := range []bool{false, true} {
+			name := "add"
+			target, want := tc.path, tc.add
+			mw := AddTrailingSlashWithConfig(AddTrailingSlashConfig{RedirectCode: http.StatusMovedPermanently})
+			if remove {
+				name = "remove"
+				target, want = tc.add, tc.remove
+				// Keep the original escaping when constructing the remove request.
+				req := httptest.NewRequest(http.MethodGet, tc.path, nil)
+				target = req.URL.EscapedPath() + "/"
+				if req.URL.RawQuery != "" {
+					target += "?" + req.URL.RawQuery
+				}
+				mw = RemoveTrailingSlashWithConfig(RemoveTrailingSlashConfig{RedirectCode: http.StatusMovedPermanently})
+			}
+			t.Run(name+tc.path, func(t *testing.T) {
+				e := echo.New()
+				rec := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodGet, target, nil)
+				assert.NoError(t, mw(func(*echo.Context) error { return nil })(e.NewContext(req, rec)))
+				assert.Equal(t, want, rec.Header().Get(echo.HeaderLocation))
+			})
+		}
+	}
+}
+
+func TestRemoveTrailingSlashRedirectEncodedSuffix(t *testing.T) {
+	for _, target := range []string{"/files/a%2Fb%2f", "/files/a%2Fb%2F"} {
+		t.Run(target, func(t *testing.T) {
+			e := echo.New()
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, target+"?x=1", nil)
+			mw := RemoveTrailingSlashWithConfig(RemoveTrailingSlashConfig{RedirectCode: http.StatusMovedPermanently})
+			assert.NoError(t, mw(func(*echo.Context) error { return nil })(e.NewContext(req, rec)))
+			assert.Equal(t, "/files/a%2Fb?x=1", rec.Header().Get(echo.HeaderLocation))
+		})
+	}
+}
+
+func TestTrailingSlashRedirectPreservesRoute(t *testing.T) {
+	for _, remove := range []bool{false, true} {
+		name, target, route := "add", "/files/a%2Fb", "/files/:id/"
+		mw := AddTrailingSlashWithConfig(AddTrailingSlashConfig{RedirectCode: http.StatusMovedPermanently})
+		if remove {
+			name, target, route = "remove", "/files/a%2Fb/", "/files/:id"
+			mw = RemoveTrailingSlashWithConfig(RemoveTrailingSlashConfig{RedirectCode: http.StatusMovedPermanently})
+		}
+		t.Run(name, func(t *testing.T) {
+			e := echo.New()
+			e.Pre(mw)
+			e.GET(route, func(c *echo.Context) error { return c.String(http.StatusOK, c.Param("id")) })
+			first := httptest.NewRecorder()
+			e.ServeHTTP(first, httptest.NewRequest(http.MethodGet, target, nil))
+			if !assert.Equal(t, http.StatusMovedPermanently, first.Code) {
+				return
+			}
+			second := httptest.NewRecorder()
+			e.ServeHTTP(second, httptest.NewRequest(http.MethodGet, first.Header().Get(echo.HeaderLocation), nil))
+			assert.Equal(t, http.StatusOK, second.Code)
+			assert.Equal(t, "a%2Fb", second.Body.String())
 		})
 	}
 }
