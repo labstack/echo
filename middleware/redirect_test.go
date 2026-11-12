@@ -6,6 +6,7 @@ package middleware
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/labstack/echo/v5"
@@ -335,4 +336,74 @@ func TestRedirectHTTPSRedirect_forwardedProtoTrust(t *testing.T) {
 			assert.Equal(t, tc.expectLocation, res.Header().Get(echo.HeaderLocation))
 		})
 	}
+}
+
+func TestRedirectRejectsOpenRedirect(t *testing.T) {
+	e := echo.New()
+	e.Pre(HTTPSNonWWWRedirect())
+	e.GET("/*", func(c *echo.Context) error {
+		return c.String(http.StatusOK, "OK")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/attacker.com/login", nil)
+	req.Host = "www."
+	req.RemoteAddr = "10.0.0.1:1234"
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	loc := rec.Header().Get(echo.HeaderLocation)
+	assert.False(t, strings.Contains(loc, "///"))
+	assert.NotEqual(t, "https:///attacker.com/login", loc)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestRedirectStripsWWWPrefixCaseInsensitively(t *testing.T) {
+	res := redirectTest(HTTPSWWWRedirect, "WWW.labstack.com", map[string][]string{echo.HeaderXForwardedProto: {"https"}})
+	assert.Equal(t, http.StatusOK, res.Code)
+	assert.Equal(t, "", res.Header().Get(echo.HeaderLocation))
+
+	res = redirectTest(NonWWWRedirect, "WWW.labstack.com", nil)
+	assert.Equal(t, http.StatusMovedPermanently, res.Code)
+	assert.Equal(t, "http://labstack.com/", res.Header().Get(echo.HeaderLocation))
+}
+
+func TestRedirectNormalizesWebSocketScheme(t *testing.T) {
+	res := redirectTest(WWWRedirect, "labstack.com", map[string][]string{echo.HeaderXForwardedProto: {"ws"}})
+	assert.Equal(t, http.StatusMovedPermanently, res.Code)
+	assert.Equal(t, "http://www.labstack.com/", res.Header().Get(echo.HeaderLocation))
+}
+
+func TestRedirectRejectsHostWithDelimiters(t *testing.T) {
+	e := echo.New()
+	e.Pre(HTTPSRedirect())
+	e.GET("/*", func(c *echo.Context) error {
+		return c.String(http.StatusOK, "OK")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Host = "attacker.com@labstack.com"
+	req.RemoteAddr = "10.0.0.1:1234"
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Equal(t, "", rec.Header().Get(echo.HeaderLocation))
+}
+
+func TestRedirectSanitizesAbsoluteFormRequestURI(t *testing.T) {
+	e := echo.New()
+	e.Pre(HTTPSRedirect())
+	e.GET("/*", func(c *echo.Context) error {
+		return c.String(http.StatusOK, "OK")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "http://labstack.com/path", nil)
+	req.Host = "labstack.com"
+	req.RequestURI = "http://labstack.com/path"
+	req.RemoteAddr = "10.0.0.1:1234"
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusMovedPermanently, rec.Code)
+	assert.Equal(t, "https://labstack.com/path", rec.Header().Get(echo.HeaderLocation))
 }
