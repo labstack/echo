@@ -1,5 +1,23 @@
 # Changelog
 
+## v5.4.5 - 2026-11-12
+
+**Security**
+
+* **Redirect middleware:** `HTTPSRedirect`, `HTTPSWWWRedirect`, `HTTPSNonWWWRedirect`, `WWWRedirect` and `NonWWWRedirect` now return `400 Bad Request` for a host that is empty, starts with `:` or `.`, contains `%`, or is empty after removing `www.`. Before this change, such hosts could produce an open redirect. The middleware no longer redirects `OPTIONS *` requests, maps `ws` and `wss` to `http` and `https` in redirect targets, and matches the `www.` prefix case-insensitively. Fixes [#3217](https://github.com/labstack/echo/issues/3217) in [#3220](https://github.com/labstack/echo/pull/3220).
+
+**Fixes**
+
+* **Trailing slash middleware:** `AddTrailingSlash` and `RemoveTrailingSlash` keep escaped path segments such as `%2F` in redirect and forward targets, so the request still matches its original route. Fixes [#3206](https://github.com/labstack/echo/issues/3206) in [#3221](https://github.com/labstack/echo/pull/3221).
+* **IPv6 zones:** `ExtractIPFromXFFHeader` and `ExtractIPFromRealIPHeader` trust zoned link-local proxy peers such as `[fe80::1%eth0]:8080`, with or without a port. Fixes [#3179](https://github.com/labstack/echo/issues/3179) in [#3222](https://github.com/labstack/echo/pull/3222).
+* **Header binding:** `BindHeaders` no longer panics on nil or empty header value slices. Fixes [#3169](https://github.com/labstack/echo/issues/3169) in [#3223](https://github.com/labstack/echo/pull/3223).
+
+**Behavior change**
+
+`Context.RealIP()` and `ExtractIPDirect()` now return a zoned link-local peer without its zone: `fe80::1`, not `fe80::1%eth0`. Update logs, allowlists or rate-limit keys that store the zoned form.
+
+No public API, dependency or minimum Go-version changes.
+
 ## v5.4.4 - 2026-10-29
 
 **Proxy identity hardening**
