@@ -6,6 +6,7 @@ package echo
 import (
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -717,6 +718,58 @@ func TestExtractIPFromXFFHeader(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			extractedIP := ExtractIPFromXFFHeader(tc.givenTrustOptions...)(&tc.whenRequest)
 			assert.Equal(t, tc.expectIP, extractedIP)
+		})
+	}
+}
+
+func TestProxyIPWithZonedPeer(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		extract func(...TrustOption) IPExtractor
+		header  string
+	}{{"xff", ExtractIPFromXFFHeader, HeaderXForwardedFor}, {"real-ip", ExtractIPFromRealIPHeader, HeaderXRealIP}} {
+		for _, trusted := range []bool{true, false} {
+			name := tc.name + "/untrusted"
+			if trusted {
+				name = tc.name + "/trusted"
+			}
+			t.Run(name, func(t *testing.T) {
+				req := httptest.NewRequest(http.MethodGet, "/", nil)
+				req.RemoteAddr = "[fe80::1%eth0]:8080"
+				req.Header.Set(tc.header, "203.0.113.5")
+				want := "fe80::1"
+				if trusted {
+					want = "203.0.113.5"
+				}
+				assert.Equal(t, want, tc.extract(TrustLinkLocal(trusted))(req))
+			})
+		}
+		t.Run(tc.name+"/forwarded zone rejected", func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.RemoteAddr = "[fe80::1%eth0]:8080"
+			req.Header.Set(tc.header, "fe80::2%eth0")
+			assert.Equal(t, "fe80::1", tc.extract()(req))
+		})
+		t.Run(tc.name+"/no header", func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.RemoteAddr = "[fe80::1%eth0]:8080"
+			assert.Equal(t, "fe80::1", tc.extract()(req))
+		})
+	}
+}
+
+func TestExtractIPZonedPeerWithoutPort(t *testing.T) {
+	for _, remote := range []string{"fe80::1%eth0", "[fe80::1%eth0]:8080"} {
+		t.Run(remote, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.RemoteAddr = remote
+			assert.Equal(t, "fe80::1", ExtractIPDirect()(req))
+			req.Header.Set(HeaderXForwardedFor, "203.0.113.5, 10.0.0.1")
+			req.Header.Set(HeaderXRealIP, "203.0.113.5")
+			assert.Equal(t, "203.0.113.5", ExtractIPFromXFFHeader()(req))
+			assert.Equal(t, "203.0.113.5", ExtractIPFromRealIPHeader()(req))
+			assert.Equal(t, "fe80::1", ExtractIPFromXFFHeader(TrustLinkLocal(false))(req))
+			assert.Equal(t, "fe80::1", ExtractIPFromRealIPHeader(TrustLinkLocal(false))(req))
 		})
 	}
 }

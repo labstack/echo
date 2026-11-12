@@ -212,10 +212,18 @@ func ExtractIPDirect() IPExtractor {
 func extractIP(req *http.Request) string {
 	host, _, err := net.SplitHostPort(req.RemoteAddr)
 	if err != nil {
-		if net.ParseIP(req.RemoteAddr) != nil {
-			return req.RemoteAddr
-		}
+		host = req.RemoteAddr
+	}
+	host = stripIPv6Zone(host)
+	if err != nil && net.ParseIP(host) == nil {
 		return ""
+	}
+	return host
+}
+
+func stripIPv6Zone(host string) string {
+	if strings.Contains(host, ":") {
+		host, _, _ = strings.Cut(host, "%")
 	}
 	return host
 }
