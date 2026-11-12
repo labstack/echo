@@ -216,12 +216,19 @@ func bindMetaFor(typ reflect.Type) *bindStructMeta {
 
 // bindData will bind data ONLY fields in destination struct that have EXPLICIT tag
 func bindData(destination any, data map[string][]string, tag string, dataFiles map[string][]*multipart.FileHeader) error {
-	if destination == nil || (len(data) == 0 && len(dataFiles) == 0) {
+	if destination == nil {
 		return nil
 	}
 	hasFiles := len(dataFiles) > 0
-	typ := reflect.TypeOf(destination).Elem()
-	val := reflect.ValueOf(destination).Elem()
+	rv := reflect.ValueOf(destination)
+	if rv.Kind() != reflect.Pointer || rv.IsNil() {
+		return errors.New("binding destination must be a non-nil pointer")
+	}
+	if len(data) == 0 && len(dataFiles) == 0 {
+		return nil
+	}
+	typ := rv.Type().Elem()
+	val := rv.Elem()
 
 	// Support binding to limited Map destinations:
 	// - map[string][]string,
