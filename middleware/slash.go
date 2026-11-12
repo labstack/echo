@@ -54,26 +54,27 @@ func (config AddTrailingSlashConfig) ToMiddleware() (echo.MiddlewareFunc, error)
 			req := c.Request()
 			url := req.URL
 			path := url.Path
+			rawPath := url.EscapedPath()
 			qs := c.QueryString()
-			if !strings.HasSuffix(path, "/") {
+			if !strings.HasSuffix(rawPath, "/") {
 				path += "/"
-				uri := path
+				rawPath += "/"
+				uri := rawPath
 				if qs != "" {
 					uri += "?" + qs
 				}
 
 				// Redirect
 				if config.RedirectCode != 0 {
-					uri = url.EscapedPath() + "/"
-					if qs != "" {
-						uri += "?" + qs
-					}
 					return c.Redirect(config.RedirectCode, sanitizeURI(uri))
 				}
 
 				// Forward
 				req.RequestURI = uri
 				url.Path = path
+				if url.RawPath != "" {
+					url.RawPath = rawPath
+				}
 			}
 			return next(c)
 		}
@@ -122,33 +123,27 @@ func (config RemoveTrailingSlashConfig) ToMiddleware() (echo.MiddlewareFunc, err
 			req := c.Request()
 			url := req.URL
 			path := url.Path
+			rawPath := url.EscapedPath()
 			qs := c.QueryString()
-			l := len(path) - 1
-			if l > 0 && strings.HasSuffix(path, "/") {
-				path = path[:l]
-				uri := path
+			if len(rawPath) > 1 && strings.HasSuffix(rawPath, "/") {
+				path = path[:len(path)-1]
+				rawPath = rawPath[:len(rawPath)-1]
+				uri := rawPath
 				if qs != "" {
 					uri += "?" + qs
 				}
 
 				// Redirect
 				if config.RedirectCode != 0 {
-					escaped := url.EscapedPath()
-					if strings.HasSuffix(escaped, "/") {
-						uri = escaped[:len(escaped)-1]
-					} else {
-						// The trailing slash itself can be percent-encoded.
-						uri = escaped[:len(escaped)-3]
-					}
-					if qs != "" {
-						uri += "?" + qs
-					}
 					return c.Redirect(config.RedirectCode, sanitizeURI(uri))
 				}
 
 				// Forward
 				req.RequestURI = uri
 				url.Path = path
+				if url.RawPath != "" {
+					url.RawPath = rawPath
+				}
 			}
 			return next(c)
 		}
@@ -162,19 +157,8 @@ func sanitizeURI(uri string) string {
 	uri = escapeControlChars(uri)
 	// double slash `\\`, `//` or even `\/` is absolute uri for browsers and by redirecting request to that uri
 	// we are vulnerable to open redirect attack. so replace all slashes from the beginning with single slash
-	n, end := 0, 0
-	for end < len(uri) {
-		if uri[end] == '/' || uri[end] == '\\' {
-			end++
-		} else if len(uri)-end >= 3 && (strings.EqualFold(uri[end:end+3], "%2f") || strings.EqualFold(uri[end:end+3], "%5c")) {
-			end += 3
-		} else {
-			break
-		}
-		n++
-	}
-	if n > 1 {
-		uri = "/" + uri[end:]
+	if len(uri) > 1 && (uri[0] == '\\' || uri[0] == '/') && (uri[1] == '\\' || uri[1] == '/') {
+		uri = "/" + strings.TrimLeft(uri, `/\`)
 	}
 	return uri
 }
