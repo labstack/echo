@@ -1151,6 +1151,66 @@ func TestDefaultBinder_BindBody(t *testing.T) {
 	}
 }
 
+func TestDefaultBinder_BindBody_MediaTypeIsCaseInsensitive(t *testing.T) {
+	// media type and subtype are case-insensitive, see https://www.rfc-editor.org/rfc/rfc9110.html#section-8.3.1
+	type Node struct {
+		ID int `json:"id" xml:"id" form:"id"`
+	}
+
+	var testCases = []struct {
+		name             string
+		givenContentType string
+		givenContent     string
+	}{
+		{
+			name:             "JSON",
+			givenContentType: "Application/JSON",
+			givenContent:     `{"id": 1}`,
+		},
+		{
+			name:             "JSON with charset",
+			givenContentType: "APPLICATION/JSON; charset=UTF-8",
+			givenContent:     `{"id": 1}`,
+		},
+		{
+			name:             "application XML",
+			givenContentType: "Application/XML",
+			givenContent:     `<node><id>1</id></node>`,
+		},
+		{
+			name:             "text XML",
+			givenContentType: "Text/XML; charset=utf-8",
+			givenContent:     `<node><id>1</id></node>`,
+		},
+		{
+			name:             "form",
+			givenContentType: "Application/X-WWW-Form-Urlencoded",
+			givenContent:     `id=1`,
+		},
+		{
+			name:             "multipart form",
+			givenContentType: "Multipart/Form-Data; boundary=xxx",
+			givenContent:     "--xxx\r\nContent-Disposition: form-data; name=\"id\"\r\n\r\n1\r\n--xxx--\r\n",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New()
+			req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(tc.givenContent))
+			req.Header.Set(HeaderContentType, tc.givenContentType)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			target := &Node{}
+			err := BindBody(c, target)
+
+			assert.NoError(t, err)
+			assert.Equal(t, &Node{ID: 1}, target)
+		})
+	}
+}
+
 func testBindURL(queryString string, target any) error {
 	e := New()
 	req := httptest.NewRequest(http.MethodGet, queryString, nil)
