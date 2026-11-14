@@ -49,7 +49,7 @@ type KeyAuthConfig struct {
 	// function. ErrorHandler is executed with last missing (ErrExtractionValueMissing) or an invalid key.
 	// It may be used to define a custom error.
 	//
-	// Note: when error handler swallows the error (returns nil) middleware continues handler chain execution towards handler.
+	// Note: when ErrorHandler returns nil, the handler chain continues only if ContinueOnIgnoredError is true.
 	// This is useful in cases when portion of your site/api is publicly accessible and has extra features for authorized users
 	// In that case you can use ErrorHandler to set default public auth value to request and continue with handler chain.
 	ErrorHandler KeyAuthErrorHandler
@@ -118,7 +118,7 @@ var DefaultKeyAuthConfig = KeyAuthConfig{
 //
 // For valid key it calls the next handler.
 // For invalid key, it sends "401 - Unauthorized" response.
-// For missing key, it sends "400 - Bad Request" response.
+// For missing key, it sends "401 - Unauthorized" response.
 func KeyAuth(fn KeyAuthValidator) echo.MiddlewareFunc {
 	c := DefaultKeyAuthConfig
 	c.Validator = fn
@@ -129,7 +129,7 @@ func KeyAuth(fn KeyAuthValidator) echo.MiddlewareFunc {
 //
 // For first valid key it calls the next handler.
 // For invalid key, it sends "401 - Unauthorized" response.
-// For missing key, it sends "400 - Bad Request" response.
+// For missing key, it sends "401 - Unauthorized" response.
 func KeyAuthWithConfig(config KeyAuthConfig) echo.MiddlewareFunc {
 	return toMiddlewareOrPanic(config)
 }
