@@ -80,6 +80,7 @@ type StaticConfig struct {
 	EnablePathUnescaping bool
 
 	// DirectoryListTemplate is template to list directory contents
+	// File entries expose Name, URL, Dir and Size; URL is the escaped relative link.
 	// Optional. Default to `directoryListHTMLTemplate` constant below.
 	DirectoryListTemplate string
 }
@@ -144,9 +145,9 @@ const directoryListHTMLTemplate = `
 		<li>
 		{{ if .Dir }}
 			{{ $name := print .Name "/" }}
-			<a class="dir" href="{{ $name }}">{{ $name }}</a>
+			<a class="dir" href="{{ .URL }}">{{ $name }}</a>
 			{{ else }}
-			<a class="file" href="{{ .Name }}">{{ .Name }}</a>
+			<a class="file" href="{{ .URL }}">{{ .Name }}</a>
 			<span>{{ .Size }}</span>
 		{{ end }}
 		</li>
@@ -371,11 +372,16 @@ func listDir(t *template.Template, pathInFs string, filesystem fs.FS, res http.R
 			size = info.Size()
 		}
 
+		link := &url.URL{Path: f.Name()}
+		if f.IsDir() {
+			link.Path += "/"
+		}
 		data.Files = append(data.Files, struct {
 			Name string
+			URL  string
 			Dir  bool
 			Size string
-		}{f.Name(), f.IsDir(), format(size)})
+		}{f.Name(), link.String(), f.IsDir(), format(size)})
 	}
 
 	return t.Execute(res, data)
