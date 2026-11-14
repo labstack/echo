@@ -15,7 +15,7 @@ type loadBytesOpts func([]byte) []byte
 // TrimNewlineEnd instructs LoadBytes to remove `\n` from the end of loaded file.
 func TrimNewlineEnd(bytes []byte) []byte {
 	bLen := len(bytes)
-	if bLen > 1 && bytes[bLen-1] == '\n' {
+	if bLen > 0 && bytes[bLen-1] == '\n' {
 		bytes = bytes[:bLen-1]
 	}
 	return bytes

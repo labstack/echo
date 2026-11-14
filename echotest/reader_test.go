@@ -19,3 +19,7 @@ func TestLoadBytesOK_TrimNewlineEnd(t *testing.T) {
 	data := LoadBytes(t, "testdata/test.json", TrimNewlineEnd)
 	assert.Equal(t, []byte(testJSONContent), data)
 }
+
+func TestTrimNewlineEnd(t *testing.T) {
+	assert.Empty(t, TrimNewlineEnd([]byte("\n")))
+}
