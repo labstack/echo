@@ -104,7 +104,10 @@ func (config DecompressConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				if err == io.EOF { //ignore if body is empty
 					return next(c)
 				}
-				return err
+				if echo.StatusCode(err) != 0 {
+					return err
+				}
+				return echo.ErrBadRequest.Wrap(err)
 			}
 
 			// only Close gzip reader if it was set to a proper gzip source otherwise it will panic on close.
