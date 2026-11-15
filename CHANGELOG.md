@@ -1,5 +1,17 @@
 # Changelog
 
+## v5.4.6 - 2026-11-14
+
+**Security**
+
+* **Proxy middleware:** a client could remove `X-Forwarded-Proto` from the upstream request by naming it in the `Connection` header, on plain HTTP requests and WebSocket upgrades. The proxy now sets `X-Forwarded-Proto` again after Go removes hop-by-hop headers, as it already does for `X-Real-IP`. Fixes [GHSA-h6x5-phvw-c55c](https://github.com/labstack/echo/security/advisories/GHSA-h6x5-phvw-c55c). Reported by zachary-satterly.
+
+**Behavior change**
+
+A custom balancer that replaces the request and sets its own `X-Forwarded-Proto` no longer reaches the upstream with that value; the proxy uses the scheme of the original request. A custom `ProxyConfig.Transport` can still set the header.
+
+No public API, dependency or minimum Go-version changes.
+
 ## v5.4.5 - 2026-11-12
 
 **Security**
