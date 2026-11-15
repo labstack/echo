@@ -295,7 +295,8 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 			// from a trusted address (see Echo#SchemeExtractor), so clients cannot spoof the scheme seen by the upstream.
 			// Remove the other scheme headers: X-Forwarded-Proto carries the scheme, and some upstreams (e.g. Rack) would
 			// otherwise trust a client-supplied X-Forwarded-Ssl.
-			req.Header.Set(echo.HeaderXForwardedProto, c.Scheme())
+			scheme := c.Scheme()
+			req.Header.Set(echo.HeaderXForwardedProto, scheme)
 			req.Header.Del(echo.HeaderXForwardedSsl)
 			req.Header.Del(echo.HeaderXForwardedProtocol)
 			req.Header.Del(echo.HeaderXUrlScheme)
@@ -329,7 +330,7 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 				req = c.Request()
 
 				// ReverseProxy validates upgrades and closes both sides when a tunnel ends.
-				proxyHTTP(tgt, c, config, clientIP).ServeHTTP(res, req)
+				proxyHTTP(tgt, c, config, clientIP, scheme).ServeHTTP(res, req)
 
 				err, hasError := c.Get("_error").(error)
 				if !hasError {
@@ -354,7 +355,7 @@ func ProxyWithConfig(config ProxyConfig) echo.MiddlewareFunc {
 // 499 too instead of the more problematic 5xx, which does not allow to detect this situation
 const StatusCodeContextCanceled = 499
 
-func proxyHTTP(tgt *ProxyTarget, c echo.Context, config ProxyConfig, clientIP string) http.Handler {
+func proxyHTTP(tgt *ProxyTarget, c echo.Context, config ProxyConfig, clientIP, scheme string) http.Handler {
 	// The HTTP transport also handles WebSocket upgrades. Normalize WebSocket
 	// target schemes on a copy so shared balancer targets remain unchanged.
 	targetURL := *tgt.URL
@@ -391,9 +392,10 @@ func proxyHTTP(tgt *ProxyTarget, c echo.Context, config ProxyConfig, clientIP st
 		transport = http.DefaultTransport
 	}
 	// ReverseProxy removes headers named by Connection after its Director runs.
-	// Restore the derived identity at the transport boundary so a client cannot
-	// suppress it with Connection: X-Real-IP, including on WebSocket upgrades.
-	proxy.Transport = proxyClientIPTransport{transport: transport, clientIP: clientIP}
+	// Restore the derived identity and scheme at the transport boundary so a
+	// client cannot suppress them with Connection: X-Real-IP or
+	// Connection: X-Forwarded-Proto, including on WebSocket upgrades.
+	proxy.Transport = proxyClientIPTransport{transport: transport, clientIP: clientIP, scheme: scheme}
 	proxy.ModifyResponse = func(response *http.Response) error {
 		if config.ModifyResponse != nil {
 			if err := config.ModifyResponse(response); err != nil {
@@ -420,11 +422,13 @@ func proxyHTTP(tgt *ProxyTarget, c echo.Context, config ProxyConfig, clientIP st
 type proxyClientIPTransport struct {
 	transport http.RoundTripper
 	clientIP  string
+	scheme    string
 }
 
 func (t proxyClientIPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req = req.Clone(req.Context())
 	req.Header.Set(echo.HeaderXRealIP, t.clientIP)
+	req.Header.Set(echo.HeaderXForwardedProto, t.scheme)
 	return t.transport.RoundTrip(req)
 }
 
