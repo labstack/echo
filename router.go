@@ -93,13 +93,14 @@ type RouterConfig struct {
 	// and path will return an error.
 	AllowOverwritingRoute bool
 
-	// UnescapePathParamValues forces router to unescape path parameter values before setting them in context.
+	// UnescapePathParamValues unescapes parameter values extracted from URL.RawPath before setting them in context.
+	// Values extracted from the already-decoded URL.Path are not unescaped again.
 	UnescapePathParamValues bool
 
-	// UseEscapedPathForMatching forces router to use an escaped path (req.URL.RawPath instead of req.URL.Path) for matching.
-	// Difference between URL.RawPath and URL.Path is:
-	//  * URL.Path is where request path is stored. Value is stored in decoded form: /%47%6f%2f becomes /Go/.
-	//  * URL.RawPath is an optional field which only gets set if the default encoding is different from Path.
+	// UseEscapedPathForMatching controls which request path is used for matching.
+	// Despite its historical name, true selects the decoded req.URL.Path.
+	// The default (false) prefers req.URL.RawPath when present and otherwise uses req.URL.Path.
+	// URL.RawPath is optional and is set only when the original escaping differs from the default encoding of URL.Path.
 	UseEscapedPathForMatching bool
 
 	// AutoHandleHEAD enables automatic handling of HTTP HEAD requests by
@@ -930,7 +931,8 @@ func (r *DefaultRouter) Route(c *Context) HandlerFunc {
 
 	req := c.Request()
 	path := req.URL.Path
-	if !r.useEscapedPathForRouting && req.URL.RawPath != "" {
+	useRawPath := !r.useEscapedPathForRouting && req.URL.RawPath != ""
+	if useRawPath {
 		// Difference between URL.RawPath and URL.Path is:
 		//  * URL.Path is where request path is stored. Value is stored in decoded form: /%47%6f%2f becomes /Go/.
 		//  * URL.RawPath is an optional field which only gets set if the default encoding is different from Path.
@@ -1185,7 +1187,7 @@ func (r *DefaultRouter) Route(c *Context) HandlerFunc {
 		}
 	}
 
-	if r.unescapePathParamValues {
+	if r.unescapePathParamValues && useRawPath {
 		// See issue #1531, #1258 - there are cases when path parameter need to be unescaped
 		for i, p := range pathValues {
 			tmpVal, err := url.PathUnescape(p.Value)

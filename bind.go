@@ -241,6 +241,11 @@ func bindData(destination any, data map[string][]string, tag string, dataFiles m
 			val.Set(reflect.MakeMap(typ))
 		}
 		for k, v := range data {
+			// A scalar destination needs a value. Slice destinations can retain
+			// empty slices, which is their existing binding behavior.
+			if len(v) == 0 && !isElemSliceOfStrings {
+				continue
+			}
 			if isElemString {
 				val.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v[0]))
 			} else if isElemInterface {
@@ -321,6 +326,17 @@ func bindData(destination any, data map[string][]string, tag string, dataFiles m
 
 		if !exists {
 			continue
+		}
+		if len(inputValue) == 0 {
+			// Preserve custom multi-value unmarshalling, but otherwise treat
+			// entries without values as absent (without allocating pointers).
+			value := structField
+			if structFieldKind != reflect.Pointer {
+				value = structField.Addr()
+			}
+			if _, multiple := value.Interface().(bindMultipleUnmarshaler); !multiple {
+				continue
+			}
 		}
 
 		// NOTE: algorithm here is not particularly sophisticated. It probably does not work with absurd types like `**[]*int`

@@ -1,5 +1,44 @@
 # Changelog
 
+## v5.4.6 - 2026-11-14
+
+**Security**
+
+* **Proxy middleware:** a client could remove `X-Forwarded-Proto` from the upstream request by naming it in the `Connection` header, on plain HTTP requests and WebSocket upgrades. The proxy now sets `X-Forwarded-Proto` again after Go removes hop-by-hop headers, as it already does for `X-Real-IP`. Fixes [GHSA-h6x5-phvw-c55c](https://github.com/labstack/echo/security/advisories/GHSA-h6x5-phvw-c55c). Reported by zachary-satterly.
+
+**Behavior change**
+
+A custom balancer that replaces the request and sets its own `X-Forwarded-Proto` no longer reaches the upstream with that value; the proxy uses the scheme of the original request. A custom `ProxyConfig.Transport` can still set the header.
+
+No public API, dependency or minimum Go-version changes.
+
+## v5.4.5 - 2026-11-12
+
+**Security**
+
+* **Redirect middleware:** `HTTPSRedirect`, `HTTPSWWWRedirect`, `HTTPSNonWWWRedirect`, `WWWRedirect` and `NonWWWRedirect` now return `400 Bad Request` instead of redirecting when the host is empty, starts with `:` or `.`, contains `%`, or is empty after removing `www.`. Before this change, such hosts could produce an open redirect. The middleware no longer redirects `OPTIONS *` requests, maps `ws` and `wss` to `http` and `https` in redirect targets, and matches the `www.` prefix case-insensitively. Fixes [GHSA-3f6j-cw5h-qw9c](https://github.com/labstack/echo/security/advisories/GHSA-3f6j-cw5h-qw9c) ([#3217](https://github.com/labstack/echo/issues/3217)) in [#3220](https://github.com/labstack/echo/pull/3220).
+
+**Fixes**
+
+* **Trailing slash middleware:** `AddTrailingSlash` and `RemoveTrailingSlash` keep escaped path segments such as `%2F` in redirect and forward targets, so the request still matches its original route. Fixes [#3206](https://github.com/labstack/echo/issues/3206) in [#3221](https://github.com/labstack/echo/pull/3221).
+* **IPv6 zones:** `ExtractIPFromXFFHeader` and `ExtractIPFromRealIPHeader` trust zoned link-local proxy peers such as `[fe80::1%eth0]:8080`, with or without a port. Fixes [#3179](https://github.com/labstack/echo/issues/3179) in [#3222](https://github.com/labstack/echo/pull/3222).
+* **Header binding:** `BindHeaders` no longer panics on nil or empty header value slices. Fixes [#3169](https://github.com/labstack/echo/issues/3169) in [#3223](https://github.com/labstack/echo/pull/3223).
+
+**Behavior change**
+
+`Context.RealIP()` and `ExtractIPDirect()` now return a zoned link-local peer without its zone: `fe80::1`, not `fe80::1%eth0`. Update logs, allowlists or rate-limit keys that store the zoned form.
+
+No public API, dependency or minimum Go-version changes.
+
+## v5.4.4 - 2026-10-29
+
+**Proxy identity hardening**
+
+* Preserve the derived upstream `X-Real-IP` after hop-by-hop header stripping. A client can no longer remove that header with `Connection: X-Real-IP`, including duplicate or mixed-case nominations and WebSocket upgrades.
+* Capture the client identity once and preserve it across retries and balancer request replacement. Default and custom transports and extractors remain supported.
+* Add permanent regressions for HTTP forwarding, raw WebSocket upgrades, header nominations, and stateful extraction during request-swapping retries. Implementation: [#3200](https://github.com/labstack/echo/pull/3200).
+
+v5 already uses the connection peer by default. This release adds proxy header protection and does not change client-IP configuration or the affected ranges of the earlier default-IP CVEs. A missing identity header can affect an upstream that falls back to an untrusted source; no new client-IP migration, public API, dependency, or minimum Go-version change is introduced.
 
 ## v5.4.0 - 2026-09-27
 

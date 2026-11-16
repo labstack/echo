@@ -668,7 +668,7 @@ func StaticDirectoryHandler(fileSystem fs.FS, disablePathUnescaping bool) Handle
 		// The router matches the path as it was sent, but the file name is resolved with path.Clean(). A path with a
 		// ".", ".." or empty segment could therefore reach a file under a route that the router never matched, for
 		// example `/assets/../admin/private.txt` bypassing a guarded `/admin/*` route (GHSA-3pmx-cf9f-34xr).
-		if hasUncleanPath(c.Request()) || hasDotOrEmptySegment(p) {
+		if hasUncleanPath(c.Request()) || hasUncleanWildcardPath(p, c.Path()) {
 			return ErrNotFound
 		}
 		if !disablePathUnescaping { // when router is already unescaping we do not want to do is twice
@@ -677,7 +677,7 @@ func StaticDirectoryHandler(fileSystem fs.FS, disablePathUnescaping bool) Handle
 				return fmt.Errorf("failed to unescape path variable: %w", err)
 			}
 			p = tmpPath
-			if hasDotOrEmptySegment(p) { // unescaping can create new dot segments, e.g. `%2e%2e`
+			if hasUncleanWildcardPath(p, c.Path()) { // unescaping can create dot or empty segments
 				return ErrNotFound
 			}
 		}
@@ -1024,6 +1024,9 @@ func escapeControlChars(s string) string {
 // part between backslashes (e.g. `..\x`). A single leading and a single trailing slash are allowed.
 // Keep in sync with the copy in middleware/static.go.
 func hasDotOrEmptySegment(p string) bool {
+	if strings.HasPrefix(p, "//") {
+		return true
+	}
 	p = strings.TrimPrefix(p, "/")
 	p = strings.TrimSuffix(p, "/")
 	if p == "" {
@@ -1046,12 +1049,19 @@ func hasDotOrEmptySegment(p string) bool {
 	return false
 }
 
-// hasUncleanPath reports whether the request path, in the form the router matches by default (the escaped path when it
-// differs from the default encoding), has a ".", ".." or empty segment. Encoded dots such as `%2E%2E` are not
-// segments here; they only act as `..` when path unescaping for static files is enabled.
+// hasUncleanPath checks both request path representations for ".", ".." or empty segments.
+// Router configuration and parameter unescaping can select either representation. Validating only RawPath would
+// miss an empty segment in URL.Path, allowing filesystem cleanup to resolve a path the router never matched.
 func hasUncleanPath(req *http.Request) bool {
-	if req.URL.RawPath != "" {
-		return hasDotOrEmptySegment(req.URL.RawPath)
+	if hasDotOrEmptySegment(req.URL.Path) {
+		return true
 	}
-	return hasDotOrEmptySegment(req.URL.Path)
+	return req.URL.RawPath != "" && hasDotOrEmptySegment(req.URL.RawPath)
+}
+
+// hasUncleanWildcardPath accounts for the slash already consumed by a route ending in /*.
+// A leading slash in that wildcard is an empty segment, while a prefix such as /assets* may legitimately capture /file.
+// Keep in sync with the copy in middleware/static.go.
+func hasUncleanWildcardPath(p, routePath string) bool {
+	return (strings.HasSuffix(routePath, "/*") && strings.HasPrefix(p, "/")) || hasDotOrEmptySegment(p)
 }

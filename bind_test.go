@@ -1873,3 +1873,69 @@ func TestOpenAPIFormatTimeBindingEdgeCases(t *testing.T) {
 		})
 	}
 }
+
+func TestBindHeadersEmptyValues(t *testing.T) {
+	for _, values := range [][]string{nil, {}, {""}, {"value"}} {
+		t.Run(fmt.Sprintf("%#v", values), func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.Header["X-Value"] = values
+			c := New().NewContext(req, httptest.NewRecorder())
+			want := "original"
+			if len(values) > 0 {
+				want = values[0]
+			}
+			var dst = struct {
+				Value string `header:"X-Value"`
+			}{Value: "original"}
+			assert.NotPanics(t, func() { assert.NoError(t, BindHeaders(c, &dst)) })
+			assert.Equal(t, want, dst.Value)
+			m := map[string]string{"X-Value": "original"}
+			assert.NotPanics(t, func() { assert.NoError(t, BindHeaders(c, &m)) })
+			assert.Equal(t, want, m["X-Value"])
+			mi := map[string]any{"X-Value": "original"}
+			assert.NotPanics(t, func() { assert.NoError(t, BindHeaders(c, &mi)) })
+			assert.Equal(t, want, mi["X-Value"])
+			ms := map[string][]string{}
+			assert.NoError(t, BindHeaders(c, &ms))
+			assert.Equal(t, values, ms["X-Value"])
+			if len(values) == 0 {
+				var pointer struct {
+					Value *string `header:"X-Value"`
+				}
+				assert.NoError(t, BindHeaders(c, &pointer))
+				assert.Nil(t, pointer.Value)
+			}
+		})
+	}
+}
+
+type headerValuesUnmarshaler struct {
+	called bool
+	values []string
+}
+
+func (v *headerValuesUnmarshaler) UnmarshalParams(values []string) error {
+	v.called, v.values = true, values
+	return nil
+}
+
+func TestBindHeadersEmptyValuesCustomUnmarshaler(t *testing.T) {
+	for _, values := range [][]string{nil, {}} {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header["X-Value"] = values
+		var dst struct {
+			Value headerValuesUnmarshaler `header:"X-Value"`
+		}
+		assert.NoError(t, BindHeaders(New().NewContext(req, httptest.NewRecorder()), &dst))
+		assert.True(t, dst.Value.called)
+		assert.Equal(t, values, dst.Value.values)
+		var pointer struct {
+			Value *headerValuesUnmarshaler `header:"X-Value"`
+		}
+		assert.NoError(t, BindHeaders(New().NewContext(req, httptest.NewRecorder()), &pointer))
+		if assert.NotNil(t, pointer.Value) {
+			assert.True(t, pointer.Value.called)
+			assert.Equal(t, values, pointer.Value.values)
+		}
+	}
+}

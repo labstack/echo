@@ -1,36 +1,65 @@
-[![Latest release](https://img.shields.io/github/v/release/labstack/echo?style=flat-square&label=release&color=00afd1)](https://github.com/labstack/echo/releases)
-[![Last commit](https://img.shields.io/github/last-commit/labstack/echo/master?style=flat-square)](https://github.com/labstack/echo/commits/master)
-[![Go Reference](https://pkg.go.dev/badge/github.com/labstack/echo/v5.svg)](https://pkg.go.dev/github.com/labstack/echo/v5)
-[![CI](https://img.shields.io/github/actions/workflow/status/labstack/echo/ci.yml?style=flat-square&label=ci)](https://github.com/labstack/echo/actions/workflows/ci.yml)
-[![Codecov](https://img.shields.io/codecov/c/github/labstack/echo.svg?style=flat-square)](https://codecov.io/gh/labstack/echo)
-[![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/labstack/echo?style=flat-square&label=openssf%20scorecard)](https://scorecard.dev/viewer/?uri=github.com/labstack/echo)
-[![Sponsors](https://img.shields.io/github/sponsors/labstack?style=flat-square&color=db61a2)](https://github.com/sponsors/labstack)
-[![Discussions](https://img.shields.io/badge/community-discussions-00afd1.svg?style=flat-square)](https://github.com/labstack/echo/discussions)
-[![X](https://img.shields.io/badge/x-@labstack-000000.svg?style=flat-square)](https://x.com/labstack)
-[![License](https://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://github.com/labstack/echo/blob/master/LICENSE)
+<p align="center">
+  <a href="https://echo.labstack.com">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/labstack/echo/master/.github/assets/echo-logo-dark.svg">
+      <img alt="Echo" src="https://raw.githubusercontent.com/labstack/echo/master/.github/assets/echo-logo-light.svg" height="72">
+    </picture>
+  </a>
+</p>
 
-## Echo
+<p align="center"><strong>High performance, extensible, minimalist Go web framework.</strong></p>
 
-High performance, extensible, minimalist Go web framework.
+<p align="center">
+  <a href="https://github.com/labstack/echo/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/labstack/echo?style=flat-square&label=release&color=00afd1"></a>
+  <a href="https://github.com/labstack/echo/commits/master"><img alt="Last commit" src="https://img.shields.io/github/last-commit/labstack/echo/master?style=flat-square"></a>
+  <a href="https://pkg.go.dev/github.com/labstack/echo/v5"><img alt="Go Reference" src="https://pkg.go.dev/badge/github.com/labstack/echo/v5.svg"></a>
+  <a href="https://github.com/labstack/echo/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/labstack/echo/ci.yml?style=flat-square&label=ci"></a>
+  <a href="https://codecov.io/gh/labstack/echo"><img alt="Codecov" src="https://img.shields.io/codecov/c/github/labstack/echo.svg?style=flat-square"></a>
+  <a href="https://scorecard.dev/viewer/?uri=github.com/labstack/echo"><img alt="OpenSSF Scorecard" src="https://img.shields.io/ossf-scorecard/github.com/labstack/echo?style=flat-square&label=openssf%20scorecard"></a>
+  <a href="https://github.com/sponsors/labstack"><img alt="Sponsors" src="https://img.shields.io/github/sponsors/labstack?style=flat-square&color=db61a2"></a>
+  <a href="https://github.com/labstack/echo/discussions"><img alt="Discussions" src="https://img.shields.io/badge/community-discussions-00afd1.svg?style=flat-square"></a>
+  <a href="https://x.com/labstack"><img alt="X" src="https://img.shields.io/badge/x-@labstack-000000.svg?style=flat-square"></a>
+  <a href="https://github.com/labstack/echo/blob/master/LICENSE"><img alt="License" src="https://img.shields.io/badge/license-mit-blue.svg?style=flat-square"></a>
+</p>
 
-Echo is built on Go's standard `net/http` and interoperates with it through `echo.WrapHandler` and `echo.WrapMiddleware`. It adds the parts the standard library leaves to you: a fast radix-tree router, request binding with pluggable validation, a deep middleware ecosystem, and centralized error handling. Echo is actively maintained, and `v5` is the current release line.
+<p align="center">
+  <a href="https://echo.labstack.com">Website</a> ·
+  <a href="https://echo.labstack.com/guide/quickstart/">Quick start</a> ·
+  <a href="https://echo.labstack.com/middleware/">Middleware</a> ·
+  <a href="https://pkg.go.dev/github.com/labstack/echo/v5">API reference</a> ·
+  <a href="https://github.com/labstack/echo/discussions">Discussions</a> ·
+  <a href="https://echo.labstack.com/pro">Echo Pro</a> ·
+  <a href="https://echo.labstack.com/pro#support">Commercial support</a>
+</p>
 
-- [Website](https://echo.labstack.com)
-- [Quick start](https://echo.labstack.com/guide/quickstart/)
-- [Middleware](https://echo.labstack.com/middleware/)
-- [API reference](https://pkg.go.dev/github.com/labstack/echo/v5)
-- Help and questions: [GitHub Discussions](https://github.com/labstack/echo/discussions)
+## About
+
+Echo is built on Go's standard `net/http` and interoperates with it through `echo.WrapHandler` and `echo.WrapMiddleware`. It adds the parts the standard library leaves to you: a fast radix-tree router, request binding with pluggable validation, official and third-party middleware, and centralized error handling. Echo is actively maintained, and `v5` is the current release line.
+
+### How a request flows
+
+1. **Pre middleware** (`e.Pre`) runs before routing, so it can rewrite the path or method.
+2. The **router** matches the route.
+3. **Middleware** registered with `e.Use`, a group or a route runs.
+4. The **handler** writes the response.
+5. Any error returned by middleware or the handler goes to one `HTTPErrorHandler`.
 
 ### Features
 
-- Fast radix-tree [router](https://echo.labstack.com/guide/routing/) that prioritizes routes smartly
+- Radix-tree [router](https://echo.labstack.com/guide/routing/) with static, parameter and wildcard routes; static routes match first
 - Route groups, with middleware at the root, group or route level
 - [Data binding](https://echo.labstack.com/guide/binding/) for JSON, XML, form, query and path parameters, with pluggable validation
 - Helpers for JSON, XML, HTML, file, stream and other responses
 - Centralized [error handling](https://echo.labstack.com/guide/error-handling/)
 - Structured request logging with `log/slog`
 - [Template rendering](https://echo.labstack.com/guide/templates/) with any template engine
-- TLS, [HTTP/2](https://echo.labstack.com/cookbook/http2/), [automatic TLS](https://echo.labstack.com/cookbook/auto-tls/) with Let's Encrypt, and [graceful shutdown](https://echo.labstack.com/cookbook/graceful-shutdown/)
+- TLS, [HTTP/2](https://echo.labstack.com/cookbook/http2/), [Let's Encrypt certificates](https://echo.labstack.com/cookbook/auto-tls/) through `autocert`, and [graceful shutdown](https://echo.labstack.com/cookbook/graceful-shutdown/)
+
+## Echo Pro and support
+
+[Echo Pro](https://echo.labstack.com/pro) is a separate commercial library from LabStack for Echo v5: API key and JWT authentication, tenant isolation, quotas with usage metering, audit records, signed webhooks and an admin console. Echo itself stays MIT, and Pro subscriptions fund its maintenance.
+
+[Echo Support](https://echo.labstack.com/pro#support) is a paid annual plan for v4 and v5 applications, with a named contact and email support.
 
 ## Used by
 
@@ -63,14 +92,14 @@ See [ADOPTERS.md](./ADOPTERS.md) for the full list. Using Echo in an open source
 
 Echo is independent and community funded. If your company depends on Echo, please consider [sponsoring it](https://github.com/sponsors/labstack).
 
-Building multi-tenant APIs? [Echo Pro](https://echo.labstack.com/pro) is a separate commercial library (API keys, tenant isolation, quotas, signed webhooks) whose subscriptions fund Echo's maintenance. Echo itself stays MIT.
-
 ## Getting started
 
 ### Supported versions
 
 - `v5` is the current major version, released on 2026-01-18. See [API_CHANGES_V5.md](./API_CHANGES_V5.md) for the API changes from `v4` and upgrade notes.
-- `v4` receives security updates and bug fixes until 2026-12-31.
+- `v4` receives bug fixes until 2026-12-31 and security fixes until 2027-12-31, on its latest release. See [SECURITY.md](./SECURITY.md).
+
+> **Note:** Echo v4 is in maintenance and gets no new features. Start new projects on v5, and plan v4 upgrades with [API_CHANGES_V5.md](./API_CHANGES_V5.md).
 
 See [ROADMAP.md](./ROADMAP.md) for where Echo is heading and the version support policy.
 
@@ -80,7 +109,7 @@ See [ROADMAP.md](./ROADMAP.md) for where Echo is heading and the version support
 go get github.com/labstack/echo/v5
 ```
 
-Echo supports the three most recent Go [releases](https://go.dev/doc/devel/release) and may work with older ones.
+Echo v5 supports the three most recent Go [releases](https://go.dev/doc/devel/release) and may work with older ones. Echo v4 requires Go 1.26 or later.
 
 ### Example
 
@@ -96,27 +125,32 @@ import (
 )
 
 func main() {
-	// Echo instance
 	e := echo.New()
 
-	// Middleware
 	e.Use(middleware.RequestLogger()) // log requests with log/slog
 	e.Use(middleware.Recover())       // recover from panics and return an error
 
-	// Routes
 	e.GET("/", hello)
 
-	// Start server
 	if err := e.Start(":8080"); err != nil {
 		slog.Error("failed to start server", "error", err)
 	}
 }
 
-// Handler
 func hello(c *echo.Context) error {
 	return c.String(http.StatusOK, "Hello, World!")
 }
 ```
+
+Run it and send a request:
+
+```console
+$ go run .
+$ curl http://localhost:8080/
+Hello, World!
+```
+
+`e.Start` shuts the server down gracefully on <kbd>Ctrl</kbd>+<kbd>C</kbd>.
 
 More in the [guide](https://echo.labstack.com/guide/quickstart/) and the [cookbook](https://echo.labstack.com/cookbook/hello-world/).
 
@@ -135,6 +169,9 @@ Maintained by the Echo team.
 
 ### Third-party
 
+<details>
+<summary>Third-party middleware list</summary>
+
 These projects are maintained by their authors, not the Echo team. Review them before use, and check which Echo version (`v4` or `v5`) each supports.
 
 | Repository | Description |
@@ -149,21 +186,19 @@ These projects are maintained by their authors, not the Echo team. Review them b
 | [go-woo/protoc-gen-echo](https://github.com/go-woo/protoc-gen-echo) | Generates Echo server code from Protocol Buffers |
 | [Guard-Core/echo-guard](https://github.com/Guard-Core/echo-guard) | API security middleware (Echo v4): IP filtering, rate limiting with automatic bans, attack pattern detection and security headers |
 
+</details>
+
 To add your library, send a pull request.
 
 ## Contributing
-
-Use issues for everything.
 
 - For a small change, send a pull request.
 - For a bigger change, open an issue to discuss it first.
 - A pull request should include tests, documentation and, where it helps, an example.
 
-You can also contribute by reporting issues, suggesting features and improving the documentation.
-
 ## Security
 
-Report vulnerabilities privately through [GitHub Security Advisories](https://github.com/labstack/echo/security/advisories/new), not in public issues. See [SECURITY.md](./SECURITY.md) for supported versions.
+> **Important:** Report vulnerabilities privately through [GitHub Security Advisories](https://github.com/labstack/echo/security/advisories/new), not in public issues. See [SECURITY.md](./SECURITY.md) for supported versions.
 
 ## Credits
 
