@@ -80,7 +80,7 @@ func BindBody(c *Context, target any) (err error) {
 
 	// mediatype is found like `mime.ParseMediaType()` does it
 	base, _, _ := strings.Cut(req.Header.Get(HeaderContentType), ";")
-	mediatype := strings.TrimSpace(base)
+	mediatype := strings.ToLower(strings.TrimSpace(base))
 
 	switch mediatype {
 	case MIMEApplicationJSON:
