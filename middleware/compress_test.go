@@ -68,6 +68,154 @@ func TestGzip_AcceptEncodingHeader(t *testing.T) {
 	assert.Equal(t, "test", buf.String())
 }
 
+func TestGzip_AcceptEncodingQuality(t *testing.T) {
+	tests := []struct {
+		name           string
+		acceptEncoding []string
+		expectGzip     bool
+	}{
+		{
+			name:           "gzip only",
+			acceptEncoding: []string{"gzip"},
+			expectGzip:     true,
+		},
+		{
+			name:           "gzip with q=1",
+			acceptEncoding: []string{"gzip;q=1"},
+			expectGzip:     true,
+		},
+		{
+			name:           "gzip with q=0.5",
+			acceptEncoding: []string{"gzip;q=0.5"},
+			expectGzip:     true,
+		},
+		{
+			name:           "gzip with q=0 disallows",
+			acceptEncoding: []string{"gzip;q=0"},
+			expectGzip:     false,
+		},
+		{
+			name:           "gzip with q=0.0 disallows",
+			acceptEncoding: []string{"gzip;q=0.0"},
+			expectGzip:     false,
+		},
+		{
+			name:           "gzip with q=0.000 disallows",
+			acceptEncoding: []string{"gzip;q=0.000"},
+			expectGzip:     false,
+		},
+		{
+			name:           "br and gzip with q=0",
+			acceptEncoding: []string{"br, gzip;q=0"},
+			expectGzip:     false,
+		},
+		{
+			name:           "case insensitive GZIP",
+			acceptEncoding: []string{"GZIP"},
+			expectGzip:     true,
+		},
+		{
+			name:           "custom-gzip is not gzip",
+			acceptEncoding: []string{"custom-gzip"},
+			expectGzip:     false,
+		},
+		{
+			name:           "wildcard with q=1 but gzip with q=0",
+			acceptEncoding: []string{"*;q=1, gzip;q=0"},
+			expectGzip:     false,
+		},
+		{
+			name:           "wildcard with q=0 but gzip with q=1",
+			acceptEncoding: []string{"*;q=0, gzip;q=1"},
+			expectGzip:     true,
+		},
+		{
+			name:           "wildcard only with q=1",
+			acceptEncoding: []string{"*"},
+			expectGzip:     true,
+		},
+		{
+			name:           "wildcard only with q=0",
+			acceptEncoding: []string{"*;q=0"},
+			expectGzip:     false,
+		},
+		{
+			name:           "identity only",
+			acceptEncoding: []string{"identity"},
+			expectGzip:     false,
+		},
+		{
+			name:           "multiple headers with gzip allowed",
+			acceptEncoding: []string{"deflate;q=1.0", "gzip;q=0.5"},
+			expectGzip:     true,
+		},
+		{
+			name:           "multiple headers with gzip disallowed",
+			acceptEncoding: []string{"gzip;q=0", "deflate"},
+			expectGzip:     false,
+		},
+		{
+			name:           "multiple headers with wildcard and explicit gzip disallowed",
+			acceptEncoding: []string{"*", "gzip;q=0"},
+			expectGzip:     false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			h := Gzip()(func(c *echo.Context) error {
+				c.Response().Write([]byte("test response body for gzip verification"))
+				return nil
+			})
+
+			e := echo.New()
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			for _, enc := range tc.acceptEncoding {
+				req.Header.Add(echo.HeaderAcceptEncoding, enc)
+			}
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			err := h(c)
+			assert.NoError(t, err)
+
+			// Vary: Accept-Encoding header should always be present (RFC 9110)
+			assert.Equal(t, echo.HeaderAcceptEncoding, rec.Header().Get(echo.HeaderVary))
+
+			if tc.expectGzip {
+				assert.Equal(t, gzipScheme, rec.Header().Get(echo.HeaderContentEncoding))
+				r, err := gzip.NewReader(rec.Body)
+				assert.NoError(t, err)
+				defer r.Close()
+				buf := new(bytes.Buffer)
+				_, err = buf.ReadFrom(r)
+				assert.NoError(t, err)
+				assert.Equal(t, "test response body for gzip verification", buf.String())
+			} else {
+				assert.Empty(t, rec.Header().Get(echo.HeaderContentEncoding))
+				assert.Equal(t, "test response body for gzip verification", rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestAcceptsGzip_EdgeCases(t *testing.T) {
+	assert.False(t, acceptsGzip(nil))
+	assert.False(t, acceptsGzip(&http.Request{}))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set(echo.HeaderAcceptEncoding, "")
+	assert.False(t, acceptsGzip(req))
+
+	req = httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set(echo.HeaderAcceptEncoding, "gzip;q=\"0.8\"")
+	assert.True(t, acceptsGzip(req))
+
+	req = httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set(echo.HeaderAcceptEncoding, "gzip; q = 0")
+	assert.False(t, acceptsGzip(req))
+}
+
 func TestGzip_chunked(t *testing.T) {
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
