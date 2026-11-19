@@ -11,6 +11,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -91,7 +92,7 @@ func (config GzipConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 
 			res := c.Response()
 			res.Header().Add(echo.HeaderVary, echo.HeaderAcceptEncoding)
-			if strings.Contains(c.Request().Header.Get(echo.HeaderAcceptEncoding), gzipScheme) {
+			if acceptsGzip(c.Request()) {
 				i := pool.Get()
 				w, ok := i.(*gzip.Writer)
 				if !ok {
@@ -142,6 +143,46 @@ func (config GzipConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			return next(c)
 		}
 	}, nil
+}
+
+// acceptsGzip reports whether the request accepts gzip compression, following
+// the Accept-Encoding semantics of RFC 9110 Section 12.5.3.
+//
+// Each comma-separated field is parsed as a coding token with optional
+// parameters. Coding names are matched case-insensitively as whole tokens, so
+// partial names such as "xgzip" or "custom-gzip" do not match. An explicit
+// "gzip" entry takes precedence over "*"; a quality value of 0 excludes the
+// coding. All Accept-Encoding header fields are considered.
+func acceptsGzip(r *http.Request) bool {
+	var gzipQ, starQ *float64
+	for _, value := range r.Header.Values(echo.HeaderAcceptEncoding) {
+		for _, field := range strings.Split(value, ",") {
+			parts := strings.Split(field, ";")
+			name := strings.ToLower(strings.TrimSpace(parts[0]))
+			q := 1.0
+			for _, param := range parts[1:] {
+				kv := strings.SplitN(strings.TrimSpace(param), "=", 2)
+				if len(kv) == 2 && strings.TrimSpace(kv[0]) == "q" {
+					if v, err := strconv.ParseFloat(strings.TrimSpace(kv[1]), 64); err == nil {
+						q = v
+					}
+				}
+			}
+			switch name {
+			case gzipScheme:
+				gzipQ = &q
+			case "*":
+				starQ = &q
+			}
+		}
+	}
+	if gzipQ != nil {
+		return *gzipQ > 0
+	}
+	if starQ != nil {
+		return *starQ > 0
+	}
+	return false
 }
 
 func (w *gzipResponseWriter) WriteHeader(code int) {
