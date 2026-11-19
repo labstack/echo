@@ -35,6 +35,68 @@ func TestGzip_NoAcceptEncodingHeader(t *testing.T) {
 	assert.Equal(t, "test", rec.Body.String())
 }
 
+func TestGzip_AcceptEncodingQualityValues(t *testing.T) {
+	// Issue #3232: the Gzip middleware must parse Accept-Encoding as a list
+	// of tokens with quality values (RFC 9110 Section 12.5.3) instead of a
+	// substring match on "gzip".
+	tests := []struct {
+		name string
+		// one entry per Accept-Encoding header field
+		acceptEncoding []string
+		wantGzip       bool
+	}{
+		{"gzip", []string{"gzip"}, true},
+		{"gzip;q=1", []string{"gzip;q=1"}, true},
+		{"gzip;q=0.5", []string{"gzip;q=0.5"}, true},
+		{"gzip;q=0", []string{"gzip;q=0"}, false},
+		{"br, gzip;q=0", []string{"br, gzip;q=0"}, false},
+		{"GZIP", []string{"GZIP"}, true},
+		{"custom-gzip", []string{"custom-gzip"}, false},
+		{"*;q=1, gzip;q=0", []string{"*;q=1, gzip;q=0"}, false},
+		{"identity", []string{"identity"}, false},
+		{"xgzip", []string{"xgzip"}, false},
+		{"gzipx", []string{"gzipx"}, false},
+		{"wildcard", []string{"*"}, true},
+		{"wildcard;q=0", []string{"*;q=0"}, false},
+		{"gzip;q=0, wildcard;q=1", []string{"gzip;q=0, *;q=1"}, false},
+		{"gzip;q=0.0", []string{"gzip;q=0.0"}, false},
+		{"gzip;q=0.00", []string{"gzip;q=0.00"}, false},
+		{"gzip with spaces", []string{"gzip ; q=0"}, false},
+		{"gzip with spaces accepted", []string{"gzip ; q=0.5"}, true},
+		{"no header", nil, false},
+		{"multiple header fields", []string{"br", "gzip;q=0"}, false},
+		{"multiple header fields accepted", []string{"br", "gzip"}, true},
+		{"br only", []string{"br"}, false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+			h := Gzip()(func(c *echo.Context) error {
+				c.Response().Write([]byte("test")) // For Content-Type sniffing
+				return nil
+			})
+
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			for _, v := range tc.acceptEncoding {
+				req.Header.Add(echo.HeaderAcceptEncoding, v)
+			}
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			assert.NoError(t, h(c))
+			// Vary: Accept-Encoding must be present whether or not gzip is selected.
+			assert.Contains(t, rec.Header().Get(echo.HeaderVary), echo.HeaderAcceptEncoding)
+			if tc.wantGzip {
+				assert.Equal(t, gzipScheme, rec.Header().Get(echo.HeaderContentEncoding))
+			} else {
+				assert.Empty(t, rec.Header().Get(echo.HeaderContentEncoding))
+				assert.Equal(t, "test", rec.Body.String())
+			}
+		})
+	}
+}
+
 func TestMustGzipWithConfig_panics(t *testing.T) {
 	assert.Panics(t, func() {
 		GzipWithConfig(GzipConfig{Level: 999})
