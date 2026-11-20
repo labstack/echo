@@ -452,21 +452,15 @@ func (e *Echo) Router() Router {
 	return e.router
 }
 
-// clearRepresentationHeaders removes headers that described the response the
-// handler meant to send, so they are not applied to the error body that replaces it.
-// A middleware that encodes the error body sets its own Content-Encoding.
-// Content-Range is kept because a 416 error response carries it.
+// clearRepresentationHeaders removes headers that described the body the handler
+// meant to send and are wrong for the error body that replaces it. A middleware
+// that encodes the error body sets its own Content-Encoding. Content-Type and
+// validators such as ETag are kept because they can be meant for the error
+// response, for example a vendor media type or a 304.
 func clearRepresentationHeaders(h http.Header) {
-	for _, name := range []string{
-		HeaderContentEncoding,
-		HeaderContentLength,
-		HeaderContentType,
-		HeaderContentDisposition,
-		"ETag",
-		HeaderLastModified,
-	} {
-		h.Del(name)
-	}
+	h.Del(HeaderContentEncoding)
+	h.Del(HeaderContentLength)
+	h.Del(HeaderContentDisposition)
 }
 
 // DefaultHTTPErrorHandler creates new default HTTP error handler implementation. It sends a JSON response

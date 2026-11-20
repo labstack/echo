@@ -153,21 +153,23 @@ func isInformationalStatus(code int) bool {
 	return code >= 100 && code < 200 && code != http.StatusSwitchingProtocols
 }
 
-// supportsFlush reports whether flushing rw reaches a writer that can flush.
-// A wrapper that can unwrap is assumed to delegate flushing, so the check
-// continues to the writer it wraps.
+// supportsFlush reports whether http.ResponseController can flush rw. It uses
+// the same lookup, except that *Response is skipped because its Flush only
+// delegates to the writer it wraps.
 func supportsFlush(rw http.ResponseWriter) bool {
 	for {
-		u, canUnwrap := rw.(interface{ Unwrap() http.ResponseWriter })
-		if !canUnwrap {
-			switch rw.(type) {
-			case interface{ FlushError() error }, http.Flusher:
-				return true
-			default:
-				return false
-			}
+		if r, ok := rw.(*Response); ok {
+			rw = r.ResponseWriter
+			continue
 		}
-		rw = u.Unwrap()
+		switch t := rw.(type) {
+		case interface{ FlushError() error }, http.Flusher:
+			return true
+		case interface{ Unwrap() http.ResponseWriter }:
+			rw = t.Unwrap()
+		default:
+			return false
+		}
 	}
 }
 

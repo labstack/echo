@@ -560,3 +560,22 @@ func TestDelayedStatusWriter_Flush_PanicsBeforeCommit(t *testing.T) {
 	assert.False(t, w.committed)
 	assert.False(t, res.Committed)
 }
+
+type flushingWrapper struct {
+	http.ResponseWriter
+	flushed bool
+}
+
+func (w *flushingWrapper) Flush() { w.flushed = true }
+
+func (w *flushingWrapper) Unwrap() http.ResponseWriter { return w.ResponseWriter }
+
+func TestResponse_Flush_UsesWrapperFlush(t *testing.T) {
+	e := New()
+	w := &flushingWrapper{ResponseWriter: new(testResponseWriter)}
+	res := NewResponse(w, e.Logger)
+
+	assert.NotPanics(t, func() { res.Flush() })
+	assert.True(t, w.flushed)
+	assert.True(t, res.Committed)
+}
