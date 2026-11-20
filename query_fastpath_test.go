@@ -50,6 +50,9 @@ func TestGetRawQueryParamMatchesStdlib(t *testing.T) {
 		"q=%E4%B8%AD%E6%96%87", // unicode value
 		"empty=&x=1",
 		"a=1&&b=2", // empty segment
+
+		"na%6De=1&name=2",      // escaped key is longer than the name it matches
+		"names=1&nam=2&name=3", // keys that are longer or shorter than the name
 	}
 	names := []string{"a", "b", "c", "d", "e", "name", "age", "q", "empty", "x", "a=b", "missing", ""}
 

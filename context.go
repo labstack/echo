@@ -332,14 +332,23 @@ func (c *Context) QueryParam(name string) string {
 // unescape are skipped. It avoids allocating the full url.Values map for single-key lookups.
 func getRawQueryParam(query, name string) string {
 	for query != "" {
-		var seg string
-		seg, query, _ = strings.Cut(query, "&")
-		if seg == "" || strings.Contains(seg, ";") {
+		// strings.IndexByte instead of strings.Cut skips the call to strings.Index for each segment.
+		seg := query
+		if i := strings.IndexByte(query, '&'); i >= 0 {
+			seg, query = query[:i], query[i+1:]
+		} else {
+			query = ""
+		}
+		key, value := seg, ""
+		if i := strings.IndexByte(seg, '='); i >= 0 {
+			key, value = seg[:i], seg[i+1:]
+		}
+		// Unescaping never makes a key longer, so a shorter key cannot match.
+		if len(key) < len(name) {
 			continue
 		}
-		key, value, _ := strings.Cut(seg, "=")
 		k, err := url.QueryUnescape(key)
-		if err != nil || k != name {
+		if err != nil || k != name || seg == "" || strings.Contains(seg, ";") {
 			continue
 		}
 		v, err := url.QueryUnescape(value)
