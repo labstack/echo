@@ -83,7 +83,7 @@ func TestRewriteURL(t *testing.T) {
 		t.Run(tc.whenURL, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, tc.whenURL, nil)
 
-			err := rewriteURL(rules, req)
+			err := rewriteURL(rules, req, false)
 
 			if tc.expectErr != "" {
 				assert.EqualError(t, err, tc.expectErr)

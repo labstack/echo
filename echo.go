@@ -640,14 +640,12 @@ func (e *Echo) Match(methods []string, path string, handler HandlerFunc, middlew
 }
 
 // Static registers a new route with path prefix to serve static files from the provided root directory.
+//
+// A pathPrefix without a trailing slash, such as "/assets", serves "/assets" (redirected to "/assets/") and the paths
+// below "/assets/", but not sibling paths such as "/assetsadmin/file".
 func (e *Echo) Static(pathPrefix, fsRoot string, middleware ...MiddlewareFunc) RouteInfo {
 	subFs := MustSubFS(e.Filesystem, fsRoot)
-	return e.Add(
-		http.MethodGet,
-		pathPrefix+"*",
-		StaticDirectoryHandler(subFs, !e.enablePathUnescapingStaticFiles),
-		middleware...,
-	)
+	return e.StaticFS(pathPrefix, subFs, middleware...)
 }
 
 // StaticFS registers a new route with path prefix to serve static files from the provided file system.
@@ -656,12 +654,37 @@ func (e *Echo) Static(pathPrefix, fsRoot string, middleware ...MiddlewareFunc) R
 // prefix for directory path. This is necessary as `//go:embed assets/images` embeds files with paths
 // including `assets/images` as their prefix.
 func (e *Echo) StaticFS(pathPrefix string, filesystem fs.FS, middleware ...MiddlewareFunc) RouteInfo {
-	return e.Add(
-		http.MethodGet,
-		pathPrefix+"*",
-		StaticDirectoryHandler(filesystem, !e.enablePathUnescapingStaticFiles),
-		middleware...,
-	)
+	h := StaticDirectoryHandler(filesystem, !e.enablePathUnescapingStaticFiles)
+	for _, p := range staticRoutePaths(e.router, pathPrefix, pathPrefix) {
+		e.Add(http.MethodGet, p, h, middleware...)
+	}
+	return e.Add(http.MethodGet, staticWildcardPath(pathPrefix, pathPrefix), h, middleware...)
+}
+
+// staticWildcardPath returns the route, relative to pathPrefix, that serves the files of a static directory mounted
+// at fullPrefix (pathPrefix plus any group prefix). A mount point without a trailing slash gets prefix+"/*" rather than
+// prefix+"*", so the router never matches a sibling path such as "/assetsadmin/file" for "/assets" and serves it from
+// "<root>/admin/file", around a guard on "/assets/admin" (GHSA-76qj-xf66-r429).
+func staticWildcardPath(pathPrefix, fullPrefix string) string {
+	if fullPrefix == "" || strings.HasSuffix(fullPrefix, "/") {
+		return pathPrefix + "*"
+	}
+	return pathPrefix + "/*"
+}
+
+// staticRoutePaths returns the extra route for a mount point without a trailing slash: the prefix itself, which
+// redirects to prefix+"/". It is left out when a GET or Any route is already registered there.
+func staticRoutePaths(router Router, pathPrefix, fullPrefix string) []string {
+	if fullPrefix == "" || strings.HasSuffix(fullPrefix, "/") {
+		return nil
+	}
+	full := normalizePathSlash(fullPrefix)
+	for _, r := range router.Routes() {
+		if normalizePathSlash(r.Path) == full && (r.Method == http.MethodGet || r.Method == RouteAny) {
+			return nil
+		}
+	}
+	return []string{pathPrefix}
 }
 
 // StaticDirectoryHandler creates handler function to serve files from provided file system

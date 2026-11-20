@@ -284,7 +284,14 @@ func (config ProxyConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 
 			req := c.Request()
 			res := c.Response()
-			if err := rewriteURL(config.RegexRewrite, req); err != nil {
+			// After routing, a "." or ".." segment (also encoded, as %2e) would be resolved later, by a rewrite or by the
+			// upstream, into a path the router never matched, bypassing route and group middleware such as
+			// authentication (GHSA-w5j2-g3fc-pwr6). Before routing (Echo#Pre) there is nothing to bypass.
+			routed := isRouted(c)
+			if routed && hasDotSegment(req.URL.Path) {
+				return config.ErrorHandler(c, echo.ErrBadRequest)
+			}
+			if err := rewriteURL(config.RegexRewrite, req, routed); err != nil {
 				return config.ErrorHandler(c, err)
 			}
 

@@ -22,6 +22,7 @@ import (
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/websocket"
 )
 
@@ -1351,4 +1352,79 @@ func TestProxyWebSocketXForwardedFor(t *testing.T) {
 				"prior X-Forwarded-For entries must be preserved before the appended RealIP")
 		})
 	}
+}
+
+// Regression for GHSA-w5j2-g3fc-pwr6: after routing, a "." or ".." segment must not move a proxied request into a
+// path owned by a protected route or group.
+func TestProxy_DotSegmentsAfterRouting(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, "upstream "+r.URL.RequestURI())
+	}))
+	defer upstream.Close()
+	u, err := url.Parse(upstream.URL)
+	require.NoError(t, err)
+	balancer := NewRoundRobinBalancer([]*ProxyTarget{{URL: u}})
+	auth := func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c *echo.Context) error { return echo.ErrUnauthorized }
+	}
+	serve := func(e *echo.Echo, target string) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, target, nil))
+		return rec
+	}
+
+	for _, rewrite := range []map[string]string{nil, {"/api/*": "/$1"}} {
+		t.Run(fmt.Sprintf("rewrite=%v", rewrite != nil), func(t *testing.T) {
+			proxy := ProxyWithConfig(ProxyConfig{Balancer: balancer, Rewrite: rewrite})
+			e := echo.New()
+			e.Group("/api/admin", auth, proxy)
+			e.Group("/api", proxy)
+			for target, want := range map[string]int{
+				"/api/admin/users":          http.StatusUnauthorized,
+				"/api/x/../admin/users":     http.StatusBadRequest,
+				"/api/./admin/users":        http.StatusBadRequest,
+				"/api/x/%2e%2e/admin/users": http.StatusBadRequest,
+				"/api/users?q=1":            http.StatusOK,
+				"/api/a//b":                 http.StatusOK,
+				"/api/file..txt":            http.StatusOK,
+			} {
+				rec := serve(e, target)
+				assert.Equal(t, want, rec.Code, target)
+				assert.NotContains(t, rec.Body.String(), "admin", target)
+			}
+		})
+	}
+	t.Run("rewrite target with a host", func(t *testing.T) {
+		e := echo.New()
+		e.Group("/api/admin", auth)
+		e.Group("/api", ProxyWithConfig(ProxyConfig{Balancer: balancer, Rewrite: map[string]string{"/api/*": "/$1"}}))
+		assert.Equal(t, http.StatusBadRequest, serve(e, "/api//x/admin/users").Code)
+	})
+	t.Run("rewrite target is applied literally", func(t *testing.T) {
+		e := echo.New()
+		e.Group("/api", ProxyWithConfig(ProxyConfig{Balancer: balancer, Rewrite: map[string]string{"/api/*": "/v1/$1"}}))
+		rec := serve(e, "/api/users%20list?q=1")
+		assert.Equal(t, "upstream /v1/users%20list?q=1", rec.Body.String())
+	})
+	t.Run("Rewrite middleware on a group", func(t *testing.T) {
+		e := echo.New()
+		e.Group("/api/admin", auth, ProxyWithConfig(ProxyConfig{Balancer: balancer}))
+		e.Group("/api", Rewrite(map[string]string{"/api/*": "/api/$1"}), ProxyWithConfig(ProxyConfig{Balancer: balancer}))
+		assert.Equal(t, http.StatusBadRequest, serve(e, "/api/x/../admin/users").Code)
+	})
+	t.Run("Echo#Pre is not checked", func(t *testing.T) {
+		e := echo.New()
+		e.Pre(ProxyWithConfig(ProxyConfig{Balancer: balancer}))
+		assert.Equal(t, http.StatusOK, serve(e, "/img/plain/http://example.com/a.png").Code)
+	})
+	t.Run("custom ErrorHandler", func(t *testing.T) {
+		called := false
+		e := echo.New()
+		e.Group("/api", ProxyWithConfig(ProxyConfig{Balancer: balancer, ErrorHandler: func(c *echo.Context, err error) error {
+			called = true
+			return err
+		}}))
+		assert.Equal(t, http.StatusBadRequest, serve(e, "/api/a/../b").Code)
+		assert.True(t, called)
+	})
 }

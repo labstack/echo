@@ -497,8 +497,8 @@ func TestGroup_Static(t *testing.T) {
 	g := e.Group("/books")
 	ri := g.Static("/download", "_fixture")
 	assert.Equal(t, http.MethodGet, ri.Method)
-	assert.Equal(t, "/books/download*", ri.Path)
-	assert.Equal(t, "GET:/books/download*", ri.Name)
+	assert.Equal(t, "/books/download/*", ri.Path)
+	assert.Equal(t, "GET:/books/download/*", ri.Name)
 	assert.Equal(t, []string{"*"}, ri.Parameters)
 
 	req := httptest.NewRequest(http.MethodGet, "/books/download/index.html", nil)
@@ -533,9 +533,9 @@ func TestGroup_StaticMultiTest(t *testing.T) {
 			name:                 "ok, without prefix",
 			givenPrefix:          "",
 			givenRoot:            "_fixture/images",
-			whenURL:              "/testwalle.png", // `/test` + `*` creates route `/test*` witch matches `/testwalle.png`
-			expectStatus:         http.StatusOK,
-			expectBodyStartsWith: string([]byte{0x89, 0x50, 0x4e, 0x47}),
+			whenURL:              "/testwalle.png", // must not match the group's `/test/*` route (GHSA-76qj-xf66-r429)
+			expectStatus:         http.StatusNotFound,
+			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
 		},
 		{
 			name:                 "nok, without prefix does not serve dir index",

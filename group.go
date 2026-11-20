@@ -28,6 +28,10 @@ type Group struct {
 // Important! Group middlewares are executed in case there was no exact route match as by default Group registers
 // `/*` NotFound routes for itself. If this kind of behavior is not needed, then create an Echo instance with the ` noAutoRegisterRoutes `
 // flag set to true. Example `echo.NewWithConfig(echo.Config{NoGroupAutoRegister404Routes: true})`.
+//
+// Group middleware runs before the middleware of the route that matched, including routes of nested groups. A group
+// middleware that answers requests itself, such as middleware.Static, is therefore not protected by guards on those
+// routes. Use Group#Static to serve files behind such guards.
 func (g *Group) Use(middleware ...MiddlewareFunc) {
 	g.middleware = append(g.middleware, middleware...)
 	if len(g.middleware) == 0 {
@@ -154,12 +158,11 @@ func (g *Group) Static(pathPrefix, fsRoot string, middleware ...MiddlewareFunc) 
 // prefix for directory path. This is necessary as `//go:embed assets/images` embeds files with paths
 // including `assets/images` as their prefix.
 func (g *Group) StaticFS(pathPrefix string, filesystem fs.FS, middleware ...MiddlewareFunc) RouteInfo {
-	return g.Add(
-		http.MethodGet,
-		pathPrefix+"*",
-		StaticDirectoryHandler(filesystem, !g.echo.enablePathUnescapingStaticFiles),
-		middleware...,
-	)
+	h := StaticDirectoryHandler(filesystem, !g.echo.enablePathUnescapingStaticFiles)
+	for _, p := range staticRoutePaths(g.echo.router, pathPrefix, g.prefix+pathPrefix) {
+		g.Add(http.MethodGet, p, h, middleware...)
+	}
+	return g.Add(http.MethodGet, staticWildcardPath(pathPrefix, g.prefix+pathPrefix), h, middleware...)
 }
 
 // FileFS implements `Echo#FileFS()` for sub-routes within the Group.

@@ -70,7 +70,7 @@ func (config RewriteConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				return next(c)
 			}
 
-			if err := rewriteURL(config.RegexRules, c.Request()); err != nil {
+			if err := rewriteURL(config.RegexRules, c.Request(), isRouted(c)); err != nil {
 				return err
 			}
 			return next(c)

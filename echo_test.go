@@ -202,6 +202,14 @@ func TestEcho_StaticFS(t *testing.T) {
 			expectBodyStartsWith: "",
 		},
 		{
+			name:                 "Non-root prefix does not serve sibling path",
+			givenPrefix:          "/static",
+			givenFs:              os.DirFS("_fixture"),
+			whenURL:              "/staticimages/walle.png",
+			expectStatus:         http.StatusNotFound,
+			expectBodyStartsWith: "{\"message\":\"Not Found\"}\n",
+		},
+		{
 			name:                 "Prefixed directory 404 (request URL without slash)",
 			givenPrefix:          "/folder/", // trailing slash will intentionally not match "/folder"
 			givenFs:              os.DirFS("_fixture"),
@@ -596,8 +604,8 @@ func TestEchoStaticRedirectIndex(t *testing.T) {
 	// HandlerFunc
 	ri := e.Static("/static", "_fixture")
 	assert.Equal(t, http.MethodGet, ri.Method)
-	assert.Equal(t, "/static*", ri.Path)
-	assert.Equal(t, "GET:/static*", ri.Name)
+	assert.Equal(t, "/static/*", ri.Path)
+	assert.Equal(t, "GET:/static/*", ri.Name)
 	assert.Equal(t, []string{"*"}, ri.Parameters)
 
 	ctx, cancel := stdContext.WithTimeout(stdContext.Background(), 200*time.Millisecond)

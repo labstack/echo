@@ -1,5 +1,29 @@
 # Changelog
 
+## v5.4.7 - 2026-11-20
+
+**Security**
+
+* **Proxy middleware:** after routing, a `.` or `..` path segment (also encoded as `%2e`) was resolved by `Rewrite`/`RegexRewrite` or by the upstream into a path the router never matched. `GET /api/x/../admin/users` matched an unprotected `/api/*` proxy group but reached the upstream as `/admin/users`, skipping middleware such as authentication on `/api/admin`. After routing, Proxy now returns `400 Bad Request` for such paths, and rewrite targets in Proxy and the Rewrite middleware are applied literally instead of being resolved; a target with a dot segment or a leading `//` is rejected. Fixes [GHSA-w5j2-g3fc-pwr6](https://github.com/labstack/echo/security/advisories/GHSA-w5j2-g3fc-pwr6). Reported by AndyAnh174.
+* **Static files:** `Static`, `StaticFS`, `Group.Static` and `Group.StaticFS` with a prefix without a trailing slash registered `prefix*`, so `/assetsadmin/private.txt` was served from `<root>/admin/private.txt` for `e.Static("/assets", root)`, bypassing a guard on `/assets/admin`. They now register `prefix/*`, plus `prefix` for the redirect to `prefix/`. Fixes [GHSA-76qj-xf66-r429](https://github.com/labstack/echo/security/advisories/GHSA-76qj-xf66-r429). Reported by AndyAnh174.
+* **Static middleware on a group:** documented that `middleware.Static` attached with `Group#Use` is not protected by guards on routes inside the group or on nested groups, and that `Group#Static` should be used for files behind such guards. See [GHSA-5hp7-4fcm-57f9](https://github.com/labstack/echo/security/advisories/GHSA-5hp7-4fcm-57f9). Reported by AndyAnh174.
+
+**Fixes**
+
+* **Map binding:** binding path, query, header or form data into a map whose value type is not `string`, `[]string` or `any` returns an error instead of skipping the values, and named string types no longer panic. Fixes [#3235](https://github.com/labstack/echo/issues/3235) in [#3238](https://github.com/labstack/echo/pull/3238).
+* **Gzip middleware:** `Accept-Encoding` quality values are honored (`gzip;q=0` refuses gzip, `x-gzip` is accepted, substrings such as `notgzip` no longer match), and responses that already have a `Content-Encoding`, for example from a reverse proxy, are passed through instead of compressed twice. Also fixes `Write` reporting more bytes than given at the `MinLength` threshold, a truncated stream when a handler only flushes, and stale `Content-Length` and `Content-Encoding` headers. Fixes [#3232](https://github.com/labstack/echo/issues/3232) and [#2788](https://github.com/labstack/echo/issues/2788) in [#3239](https://github.com/labstack/echo/pull/3239).
+* **Response:** `Flush` commits an uncommitted response, `WriteHeader` passes 1xx informational codes (such as `103 Early Hints`) through without committing, and the built-in error handlers remove `Content-Encoding`, `Content-Length` and `Content-Disposition` before writing the error body. Fixes [#3240](https://github.com/labstack/echo/issues/3240), [#3241](https://github.com/labstack/echo/issues/3241) and [#3242](https://github.com/labstack/echo/issues/3242) in [#3243](https://github.com/labstack/echo/pull/3243).
+
+**Behavior changes**
+
+* After routing, Proxy rejects paths with `.`/`..` segments, and a Rewrite middleware attached after routing (on `Echo#Use`, a group or a route) applies its targets literally: relative targets and absolute URLs are rejected. `Echo#Pre` is unchanged.
+* `Static` and `StaticFS` return the `RouteInfo` of `prefix/*` instead of `prefix*`, and file names that only start with the prefix (for example `/img-logo.png` for `e.Static("/img-", dir)`) are no longer served.
+* Binding into an unsupported map type returns `400 Bad Request`.
+* A handler that sets `Content-Encoding` itself is assumed to have encoded the body; the Gzip middleware no longer compresses it.
+* Custom `HTTPErrorHandler`s still need to clear stale `Content-Encoding`, `Content-Length` and `Content-Disposition` themselves.
+
+No dependency or minimum Go-version changes.
+
 ## v5.4.6 - 2026-11-14
 
 **Security**
