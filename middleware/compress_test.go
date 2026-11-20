@@ -6,10 +6,13 @@ package middleware
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/http/httptrace"
+	"net/textproto"
 	"os"
 	"strconv"
 	"strings"
@@ -345,6 +348,43 @@ func TestGzip_PassthroughFlushCommitsResponse(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Empty(t, rec.Body.String())
+}
+
+func TestGzip_ForwardsInformationalStatus(t *testing.T) {
+	e := echo.New()
+	e.Use(Gzip())
+	e.GET("/", func(c *echo.Context) error {
+		c.Response().Header().Set("Link", "</style.css>; rel=preload; as=style")
+		c.Response().WriteHeader(http.StatusEarlyHints)
+		return c.String(http.StatusCreated, "ok")
+	})
+	srv := httptest.NewServer(e)
+	defer srv.Close()
+
+	var informational []int
+	trace := &httptrace.ClientTrace{
+		Got1xxResponse: func(code int, _ textproto.MIMEHeader) error {
+			informational = append(informational, code)
+			return nil
+		},
+	}
+	req, err := http.NewRequestWithContext(httptrace.WithClientTrace(context.Background(), trace), http.MethodGet, srv.URL, nil)
+	require.NoError(t, err)
+	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
+	tr := &http.Transport{DisableCompression: true}
+	defer tr.CloseIdleConnections()
+	res, err := tr.RoundTrip(req)
+	require.NoError(t, err)
+	defer res.Body.Close()
+
+	assert.Equal(t, []int{http.StatusEarlyHints}, informational)
+	assert.Equal(t, http.StatusCreated, res.StatusCode)
+	reader, err := gzip.NewReader(res.Body)
+	require.NoError(t, err)
+	defer reader.Close()
+	body, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	assert.Equal(t, "ok", string(body))
 }
 
 func TestGzip_FlushWithoutWriteProducesValidStream(t *testing.T) {

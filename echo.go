@@ -452,6 +452,17 @@ func (e *Echo) Router() Router {
 	return e.router
 }
 
+// clearRepresentationHeaders removes headers that described the body the handler
+// meant to send and are wrong for the error body that replaces it. A middleware
+// that encodes the error body sets its own Content-Encoding. Content-Type and
+// validators such as ETag are kept because they can be meant for the error
+// response, for example a vendor media type or a 304.
+func clearRepresentationHeaders(h http.Header) {
+	h.Del(HeaderContentEncoding)
+	h.Del(HeaderContentLength)
+	h.Del(HeaderContentDisposition)
+}
+
 // DefaultHTTPErrorHandler creates new default HTTP error handler implementation. It sends a JSON response
 // with status code. `exposeError` parameter decides if returned message will contain also error message or not
 //
@@ -497,6 +508,8 @@ func DefaultHTTPErrorHandler(exposeError bool) HTTPErrorHandler {
 			}
 			result = msg
 		}
+
+		clearRepresentationHeaders(c.Response().Header())
 
 		var cErr error
 		if c.Request().Method == http.MethodHead { // Issue #608

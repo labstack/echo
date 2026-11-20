@@ -1452,6 +1452,64 @@ func TestDefaultHTTPErrorHandler(t *testing.T) {
 	}
 }
 
+func TestHTTPErrorHandlers_ClearRepresentationHeaders(t *testing.T) {
+	handlers := map[string]struct {
+		handler     HTTPErrorHandler
+		contentType string
+	}{
+		"default":         {DefaultHTTPErrorHandler(false), MIMEApplicationJSON},
+		"problem details": {ProblemDetailsHTTPErrorHandler(false), MIMEApplicationProblemJSON},
+	}
+	for name, tt := range handlers {
+		t.Run(name, func(t *testing.T) {
+			e := New()
+			e.HTTPErrorHandler = tt.handler
+			e.GET("/", func(c *Context) error {
+				h := c.Response().Header()
+				h.Set(HeaderContentEncoding, "br")
+				h.Set(HeaderContentLength, "5000")
+				h.Set(HeaderContentDisposition, `attachment; filename="report.csv"`)
+				h.Set("ETag", `"v1"`)
+				return ErrNotFound
+			})
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusNotFound, rec.Code)
+			for _, name := range []string{HeaderContentEncoding, HeaderContentLength, HeaderContentDisposition} {
+				assert.Empty(t, rec.Header().Get(name), name)
+			}
+			assert.Equal(t, tt.contentType, rec.Header().Get(HeaderContentType))
+			assert.Equal(t, `"v1"`, rec.Header().Get("ETag"))
+		})
+	}
+}
+
+type encodingResponseWriter struct {
+	http.ResponseWriter
+}
+
+func (w *encodingResponseWriter) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
+}
+
+func TestDefaultHTTPErrorHandler_ClearsEncodingOfWrappedResponse(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetResponse(&encodingResponseWriter{ResponseWriter: c.Response()})
+	c.Response().Header().Set(HeaderContentEncoding, "gzip")
+	c.Response().Header().Set(HeaderContentLength, "5000")
+
+	DefaultHTTPErrorHandler(false)(c, ErrNotFound)
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Empty(t, rec.Header().Get(HeaderContentEncoding))
+	assert.Empty(t, rec.Header().Get(HeaderContentLength))
+}
+
 func TestDefaultHTTPErrorHandler_CommitedResponse(t *testing.T) {
 	e := New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)

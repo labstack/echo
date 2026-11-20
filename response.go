@@ -52,6 +52,11 @@ func (r *Response) WriteHeader(code int) {
 		r.logger.Error("echo: response already written to client")
 		return
 	}
+	if isInformationalStatus(code) {
+		// Informational responses precede the final status and do not commit the response.
+		r.ResponseWriter.WriteHeader(code)
+		return
+	}
 	r.Status = code
 	for _, fn := range r.beforeFuncs {
 		fn()
@@ -80,6 +85,16 @@ func (r *Response) Write(b []byte) (n int, err error) {
 // buffered data to the client.
 // See [http.Flusher](https://golang.org/pkg/net/http/#Flusher)
 func (r *Response) Flush() {
+	if !r.Committed {
+		if !supportsFlush(r.ResponseWriter) {
+			panic(fmt.Errorf("echo: response writer %T does not support flushing (http.Flusher interface)", r.ResponseWriter))
+		}
+		// Flushing sends the headers, so commit them the same way Write does.
+		if r.Status == 0 {
+			r.Status = http.StatusOK
+		}
+		r.WriteHeader(r.Status)
+	}
 	err := http.NewResponseController(r.ResponseWriter).Flush()
 	if err != nil && errors.Is(err, http.ErrNotSupported) {
 		panic(fmt.Errorf("echo: response writer %T does not support flushing (http.Flusher interface)", r.ResponseWriter))
@@ -132,6 +147,32 @@ func UnwrapResponse(rw http.ResponseWriter) (*Response, error) {
 	}
 }
 
+// isInformationalStatus reports whether code is a 1xx status that precedes the final one.
+// 101 Switching Protocols is final.
+func isInformationalStatus(code int) bool {
+	return code >= 100 && code < 200 && code != http.StatusSwitchingProtocols
+}
+
+// supportsFlush reports whether http.ResponseController can flush rw. It uses
+// the same lookup, except that *Response is skipped because its Flush only
+// delegates to the writer it wraps.
+func supportsFlush(rw http.ResponseWriter) bool {
+	for {
+		if r, ok := rw.(*Response); ok {
+			rw = r.ResponseWriter
+			continue
+		}
+		switch t := rw.(type) {
+		case interface{ FlushError() error }, http.Flusher:
+			return true
+		case interface{ Unwrap() http.ResponseWriter }:
+			rw = t.Unwrap()
+		default:
+			return false
+		}
+	}
+}
+
 // delayedStatusWriter is a wrapper around http.ResponseWriter that delays writing the status code until first Write is called.
 // This allows (global) error handler to decide correct status code to be sent to the client.
 type delayedStatusWriter struct {
@@ -141,6 +182,10 @@ type delayedStatusWriter struct {
 }
 
 func (w *delayedStatusWriter) WriteHeader(statusCode int) {
+	if isInformationalStatus(statusCode) {
+		w.ResponseWriter.WriteHeader(statusCode)
+		return
+	}
 	// in case something else writes status code explicitly before us we need mark response committed
 	w.committed = true
 	w.ResponseWriter.WriteHeader(statusCode)
@@ -158,6 +203,14 @@ func (w *delayedStatusWriter) Write(data []byte) (int, error) {
 }
 
 func (w *delayedStatusWriter) Flush() {
+	if !w.committed && supportsFlush(w.ResponseWriter) {
+		// Flushing sends the headers, so send the delayed status first.
+		w.committed = true
+		if w.status == 0 {
+			w.status = http.StatusOK
+		}
+		w.ResponseWriter.WriteHeader(w.status)
+	}
 	err := http.NewResponseController(w.ResponseWriter).Flush()
 	if err != nil && errors.Is(err, http.ErrNotSupported) {
 		panic(errors.New("response writer flushing is not supported"))
@@ -195,6 +248,10 @@ func (w *headResponseWriter) Header() http.Header {
 
 func (w *headResponseWriter) WriteHeader(code int) {
 	if w.wroteStatus {
+		return
+	}
+	if isInformationalStatus(code) {
+		w.rw.WriteHeader(code)
 		return
 	}
 	w.wroteStatus = true

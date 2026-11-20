@@ -156,6 +156,11 @@ func (config GzipConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 }
 
 func (w *gzipResponseWriter) WriteHeader(code int) {
+	if code >= 100 && code < 200 && code != http.StatusSwitchingProtocols {
+		// Informational responses precede the final status and are never compressed.
+		w.ResponseWriter.WriteHeader(code)
+		return
+	}
 	if w.passthrough {
 		w.ResponseWriter.WriteHeader(code)
 		return
@@ -202,14 +207,7 @@ func (w *gzipResponseWriter) Write(b []byte) (int, error) {
 
 func (w *gzipResponseWriter) Flush() {
 	if w.passThroughIfEncoded() {
-		if !w.wroteHeader {
-			// Commit through echo.Response so the error handler sees the response as written.
-			w.wroteHeader = true
-			w.code = http.StatusOK
-			if r, err := echo.UnwrapResponse(w.ResponseWriter); err == nil && !r.Committed {
-				r.WriteHeader(http.StatusOK)
-			}
-		}
+		// echo.Response.Flush commits the status if nothing was written yet.
 		_ = http.NewResponseController(w.ResponseWriter).Flush()
 		return
 	}
