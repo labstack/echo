@@ -249,6 +249,28 @@ func TestBindQueryParams(t *testing.T) {
 	}
 }
 
+func TestBindQueryParamsToNonPointer(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(http.MethodGet, "/?id=1", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	// Binding into a value instead of a pointer must return an error and must
+	// not panic.
+	var err error
+	assert.NotPanics(t, func() {
+		err = c.Bind(user{})
+	})
+	assert.ErrorContains(t, err, "binding destination must be a non-nil pointer")
+
+	// The error is reported as a bad request, the same way the JSON binder
+	// reports a destination that is not a pointer.
+	var httpErr *HTTPError
+	if assert.ErrorAs(t, err, &httpErr) {
+		assert.Equal(t, http.StatusBadRequest, httpErr.Code)
+	}
+}
+
 func TestBindQueryParamsCaseInsensitive(t *testing.T) {
 	e := New()
 	req := httptest.NewRequest(http.MethodGet, "/?ID=1&NAME=Jon+Snow", nil)
