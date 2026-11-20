@@ -517,27 +517,31 @@ func TestDefaultBinder_bindDataToMap(t *testing.T) {
 		)
 	})
 
-	t.Run("ok, bind to map[string]int skips", func(t *testing.T) {
+	t.Run("nok, bind to map[string]int", func(t *testing.T) {
 		dest := map[string]int{}
-		assert.NoError(t, bindData(&dest, exampleData, "param", nil))
+		err := bindData(&dest, exampleData, "param", nil)
+		assert.EqualError(t, err, "binding element must be a map with string, []string or any values")
 		assert.Equal(t, map[string]int{}, dest)
 	})
 
-	t.Run("ok, bind to map[string]int skips with nil map", func(t *testing.T) {
+	t.Run("nok, bind to map[string]int with nil map", func(t *testing.T) {
 		var dest map[string]int
-		assert.NoError(t, bindData(&dest, exampleData, "param", nil))
+		err := bindData(&dest, exampleData, "param", nil)
+		assert.EqualError(t, err, "binding element must be a map with string, []string or any values")
 		assert.Equal(t, map[string]int(nil), dest)
 	})
 
-	t.Run("ok, bind to map[string][]int skips", func(t *testing.T) {
+	t.Run("nok, bind to map[string][]int", func(t *testing.T) {
 		dest := map[string][]int{}
-		assert.NoError(t, bindData(&dest, exampleData, "param", nil))
+		err := bindData(&dest, exampleData, "param", nil)
+		assert.EqualError(t, err, "binding element must be a map with string, []string or any values")
 		assert.Equal(t, map[string][]int{}, dest)
 	})
 
-	t.Run("ok, bind to map[string][]int skips with nil map", func(t *testing.T) {
+	t.Run("nok, bind to map[string][]int with nil map", func(t *testing.T) {
 		var dest map[string][]int
-		assert.NoError(t, bindData(&dest, exampleData, "param", nil))
+		err := bindData(&dest, exampleData, "param", nil)
+		assert.EqualError(t, err, "binding element must be a map with string, []string or any values")
 		assert.Equal(t, map[string][]int(nil), dest)
 	})
 }

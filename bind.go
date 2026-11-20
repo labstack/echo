@@ -235,7 +235,7 @@ func bindData(destination any, data map[string][]string, tag string, dataFiles m
 		isElemString := k == reflect.String
 		isElemSliceOfStrings := k == reflect.Slice && typ.Elem().Elem().Kind() == reflect.String
 		if !isElemSliceOfStrings && !isElemString && !isElemInterface {
-			return nil
+			return errors.New("binding element must be a map with string, []string or any values")
 		}
 		if val.IsNil() {
 			val.Set(reflect.MakeMap(typ))
