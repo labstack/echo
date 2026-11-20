@@ -32,6 +32,8 @@ type Binder interface {
 // such as "2006-01-02T15:04" instead of "date-time-local".
 type DefaultBinder struct{}
 
+var errUnsupportedBindMapValue = errors.New("binding element must be a map with string, []string or any values")
+
 // BindUnmarshaler is the interface used to wrap the UnmarshalParam method.
 // Types that don't implement this, but do implement encoding.TextUnmarshaler
 // will use that interface instead.
@@ -78,11 +80,7 @@ func BindBody(c *Context, target any) (err error) {
 		return
 	}
 
-	// mediatype is found like `mime.ParseMediaType()` does it
-	base, _, _ := strings.Cut(req.Header.Get(HeaderContentType), ";")
-	mediatype := strings.TrimSpace(base)
-
-	switch mediatype {
+	switch bindBodyMediaType(req) {
 	case MIMEApplicationJSON:
 		if err = c.Echo().JSONSerializer.Deserialize(c, target); err != nil {
 			return wrapBindBodyError(err)
@@ -113,6 +111,11 @@ func BindBody(c *Context, target any) (err error) {
 	return nil
 }
 
+func bindBodyMediaType(req *http.Request) string {
+	base, _, _ := strings.Cut(req.Header.Get(HeaderContentType), ";")
+	return strings.TrimSpace(base)
+}
+
 func wrapBindBodyError(err error) error {
 	if StatusCode(err) != 0 {
 		return err
@@ -132,6 +135,22 @@ func BindHeaders(c *Context, target any) error {
 // Binding is done in following order: 1) path params; 2) query params; 3) request body. Each step COULD override previous
 // step bound values. For single source binding use their own methods BindBody, BindQueryParams, BindPathValues.
 func (b *DefaultBinder) Bind(c *Context, target any) error {
+	if err := bindPathAndQuery(c, target); err != nil {
+		req := c.Request()
+		if !errors.Is(err, errUnsupportedBindMapValue) || req.ContentLength == 0 {
+			return err
+		}
+		// Form bodies use the same map binding rules. Other bodies have their
+		// own decoders, and BindBody handles unsupported media types.
+		switch bindBodyMediaType(req) {
+		case MIMEApplicationForm, MIMEMultipartForm:
+			return err
+		}
+	}
+	return BindBody(c, target)
+}
+
+func bindPathAndQuery(c *Context, target any) error {
 	if err := BindPathValues(c, target); err != nil {
 		return err
 	}
@@ -140,11 +159,9 @@ func (b *DefaultBinder) Bind(c *Context, target any) error {
 	// The HTTP method check restores pre-v4.1.11 behavior to avoid these problems (see issue #1670)
 	method := c.Request().Method
 	if method == http.MethodGet || method == http.MethodDelete || method == http.MethodHead || method == QUERY {
-		if err := BindQueryParams(c, target); err != nil {
-			return err
-		}
+		return BindQueryParams(c, target)
 	}
-	return BindBody(c, target)
+	return nil
 }
 
 // bindFieldMeta is the cached, type-level reflection metadata for a single struct field. Reading struct
@@ -230,12 +247,11 @@ func bindData(destination any, data map[string][]string, tag string, dataFiles m
 	// You are better off binding to struct but there are user who want this map feature. Source of data for these cases are:
 	// params,query,header,form as these sources produce string values, most of the time slice of strings, actually.
 	if typ.Kind() == reflect.Map && typ.Key().Kind() == reflect.String {
-		k := typ.Elem().Kind()
-		isElemInterface := k == reflect.Interface
-		isElemString := k == reflect.String
-		isElemSliceOfStrings := k == reflect.Slice && typ.Elem().Elem().Kind() == reflect.String
-		if !isElemSliceOfStrings && !isElemString && !isElemInterface {
-			return nil
+		keyType, elemType := typ.Key(), typ.Elem()
+		stringType := reflect.TypeFor[string]()
+		bindsSlice := elemType.Kind() == reflect.Slice && reflect.TypeFor[[]string]().AssignableTo(elemType)
+		if !bindsSlice && !stringType.AssignableTo(elemType) {
+			return errUnsupportedBindMapValue
 		}
 		if val.IsNil() {
 			val.Set(reflect.MakeMap(typ))
@@ -243,17 +259,18 @@ func bindData(destination any, data map[string][]string, tag string, dataFiles m
 		for k, v := range data {
 			// A scalar destination needs a value. Slice destinations can retain
 			// empty slices, which is their existing binding behavior.
-			if len(v) == 0 && !isElemSliceOfStrings {
+			if len(v) == 0 && !bindsSlice {
 				continue
 			}
-			if isElemString {
-				val.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v[0]))
-			} else if isElemInterface {
-				// To maintain backward compatibility, we always bind to the first string value
-				// and not the slice of strings when dealing with map[string]any{}
-				val.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v[0]))
+			key := reflect.ValueOf(k)
+			if keyType != stringType {
+				key = key.Convert(keyType)
+			}
+			if bindsSlice {
+				val.SetMapIndex(key, reflect.ValueOf(v))
 			} else {
-				val.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v))
+				// map[string]any also receives only the first value.
+				val.SetMapIndex(key, reflect.ValueOf(v[0]))
 			}
 		}
 		return nil

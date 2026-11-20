@@ -445,6 +445,14 @@ func TestDefaultBinder_bindDataToMap(t *testing.T) {
 		"single":   {"3"},
 	}
 
+	t.Run("named string key and named string slice", func(t *testing.T) {
+		type key string
+		type values []string
+		var dest map[key]values
+		assert.NoError(t, bindData(&dest, exampleData, "param", nil))
+		assert.Equal(t, map[key]values{"multiple": {"1", "2"}, "single": {"3"}}, dest)
+	})
+
 	t.Run("ok, bind to map[string]string", func(t *testing.T) {
 		dest := map[string]string{}
 		assert.NoError(t, bindData(&dest, exampleData, "param", nil))
@@ -517,29 +525,112 @@ func TestDefaultBinder_bindDataToMap(t *testing.T) {
 		)
 	})
 
-	t.Run("ok, bind to map[string]int skips", func(t *testing.T) {
+	t.Run("unsupported map[string]int", func(t *testing.T) {
 		dest := map[string]int{}
-		assert.NoError(t, bindData(&dest, exampleData, "param", nil))
+		assert.ErrorContains(t, bindData(&dest, exampleData, "param", nil), "map with string, []string or any values")
 		assert.Equal(t, map[string]int{}, dest)
 	})
 
-	t.Run("ok, bind to map[string]int skips with nil map", func(t *testing.T) {
+	t.Run("unsupported nil map[string]int", func(t *testing.T) {
 		var dest map[string]int
-		assert.NoError(t, bindData(&dest, exampleData, "param", nil))
-		assert.Equal(t, map[string]int(nil), dest)
+		assert.ErrorContains(t, bindData(&dest, exampleData, "param", nil), "map with string, []string or any values")
+		assert.Nil(t, dest)
 	})
 
-	t.Run("ok, bind to map[string][]int skips", func(t *testing.T) {
+	t.Run("unsupported map[string][]int", func(t *testing.T) {
 		dest := map[string][]int{}
-		assert.NoError(t, bindData(&dest, exampleData, "param", nil))
+		assert.ErrorContains(t, bindData(&dest, exampleData, "param", nil), "map with string, []string or any values")
 		assert.Equal(t, map[string][]int{}, dest)
 	})
 
-	t.Run("ok, bind to map[string][]int skips with nil map", func(t *testing.T) {
+	t.Run("unsupported nil map[string][]int", func(t *testing.T) {
 		var dest map[string][]int
-		assert.NoError(t, bindData(&dest, exampleData, "param", nil))
-		assert.Equal(t, map[string][]int(nil), dest)
+		assert.ErrorContains(t, bindData(&dest, exampleData, "param", nil), "map with string, []string or any values")
+		assert.Nil(t, dest)
 	})
+
+	t.Run("unsupported map[string]error", func(t *testing.T) {
+		var dest map[string]error
+		assert.ErrorContains(t, bindData(&dest, exampleData, "param", nil), "map with string, []string or any values")
+		assert.Nil(t, dest)
+	})
+
+	t.Run("unsupported named string value", func(t *testing.T) {
+		type value string
+		var dest map[string]value
+		assert.ErrorContains(t, bindData(&dest, exampleData, "param", nil), "map with string, []string or any values")
+		assert.Nil(t, dest)
+	})
+}
+
+func TestBindUnsupportedMapValueTypes(t *testing.T) {
+	e := New()
+	tests := []struct {
+		name string
+		bind func(*Context, any) error
+	}{
+		{"path", BindPathValues},
+		{"query", BindQueryParams},
+		{"header", BindHeaders},
+		{"form", BindBody},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/?count=3", strings.NewReader("count=3"))
+			req.Header.Set(HeaderContentType, MIMEApplicationForm)
+			req.Header.Set("X-Count", "3")
+			c := e.NewContext(req, httptest.NewRecorder())
+			c.SetPathValues(PathValues{{Name: "count", Value: "3"}})
+			var dest map[string]int
+			err := tt.bind(c, &dest)
+			assert.ErrorContains(t, err, "map with string, []string or any values")
+			assert.Equal(t, http.StatusBadRequest, StatusCode(err))
+			assert.Nil(t, dest)
+		})
+	}
+}
+
+func TestDefaultBinder_BindTypedJSONMap(t *testing.T) {
+	e := New()
+	handler := func(c *Context) error {
+		var dest map[string]int
+		if err := c.Bind(&dest); err != nil {
+			return err
+		}
+		return c.JSON(http.StatusOK, dest)
+	}
+	e.POST("/items/:id", handler)
+	e.GET("/items", handler)
+	e.GET("/items/:id", handler)
+
+	tests := []struct {
+		name        string
+		method      string
+		path        string
+		body        string
+		contentType string
+		status      int
+	}{
+		{"path and JSON", http.MethodPost, "/items/7", `{"count":3}`, MIMEApplicationJSON, http.StatusOK},
+		{"query and JSON", http.MethodGet, "/items?page=2", `{"count":3}`, MIMEApplicationJSON, http.StatusOK},
+		{"path and invalid JSON", http.MethodPost, "/items/7", `{"count":"bad"}`, MIMEApplicationJSON, http.StatusBadRequest},
+		{"path without body", http.MethodGet, "/items/7", "", MIMEApplicationJSON, http.StatusBadRequest},
+		{"query without body", http.MethodGet, "/items?page=2", "", MIMEApplicationJSON, http.StatusBadRequest},
+		{"path and unsupported body type", http.MethodPost, "/items/7", "count=3", MIMETextPlain, http.StatusUnsupportedMediaType},
+		{"unsupported body type without parameters", http.MethodGet, "/items", "count=3", MIMETextPlain, http.StatusUnsupportedMediaType},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(tt.method, tt.path, strings.NewReader(tt.body))
+			req.Header.Set(HeaderContentType, tt.contentType+"; charset=utf-8")
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+			assert.Equal(t, tt.status, rec.Code)
+			if tt.status == http.StatusOK {
+				assert.JSONEq(t, tt.body, rec.Body.String())
+			}
+		})
+	}
 }
 
 func TestBindbindData(t *testing.T) {
