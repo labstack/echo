@@ -6,15 +6,20 @@ package middleware
 import (
 	"bytes"
 	"compress/gzip"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
+	"strings"
 	"testing"
+	"testing/iotest"
 	"time"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGzip_NoAcceptEncodingHeader(t *testing.T) {
@@ -66,6 +71,357 @@ func TestGzip_AcceptEncodingHeader(t *testing.T) {
 	defer r.Close()
 	buf.ReadFrom(r)
 	assert.Equal(t, "test", buf.String())
+}
+
+func TestGzip_AcceptEncodingQuality(t *testing.T) {
+	tests := []struct {
+		name    string
+		headers []string
+		gzip    bool
+	}{
+		{"explicit refusal", []string{"gzip;q=0"}, false},
+		{"zero fraction", []string{"gzip;q=0.000"}, false},
+		{"partial token", []string{"custom-gzip"}, false},
+		{"uppercase", []string{"GZIP; Q=1.000"}, true},
+		{"minimum positive weight", []string{"gzip;q=0.001"}, true},
+		{"multiple fields", []string{"br", "gzip;q=0.5"}, true},
+		{"wildcard", []string{"br, *;q=0.5"}, true},
+		{"wildcard refusal", []string{"*;q=0"}, false},
+		{"explicit refusal overrides wildcard", []string{"*", "gzip;q=0"}, false},
+		{"explicit allowance overrides wildcard", []string{"*;q=0, gzip"}, true},
+		{"empty", []string{""}, false},
+		{"identity", []string{"identity"}, false},
+		{"x-gzip", []string{"x-gzip"}, true},
+		{"x-gzip case-insensitive", []string{"X-GZIP"}, true},
+		{"x-gzip refusal", []string{"x-gzip;q=0"}, false},
+		{"invalid weight", []string{"gzip;q=bogus"}, false},
+		{"out-of-range weight", []string{"gzip;q=2"}, false},
+		{"too much precision", []string{"gzip;q=0.0001"}, false},
+		{"nonzero digit after one", []string{"gzip;q=1.1"}, false},
+		{"exponent", []string{"gzip;q=1e-1"}, false},
+		{"malformed explicit weight overrides wildcard", []string{"*, gzip;q="}, false},
+		{"duplicate weights", []string{"gzip;q=0;q=1"}, false},
+		{"duplicate refusal then allowance", []string{"gzip;q=0", "gzip;q=1"}, false},
+		{"duplicate allowance then refusal", []string{"gzip;q=1, gzip;q=0"}, false},
+		{"duplicate wildcard refusal", []string{"*;q=0, *"}, false},
+	}
+
+	e := echo.New()
+	e.Use(Gzip())
+	e.GET("/", func(c *echo.Context) error { return c.String(http.StatusOK, "test") })
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			for _, value := range tt.headers {
+				req.Header.Add(echo.HeaderAcceptEncoding, value)
+			}
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			require.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, echo.HeaderAcceptEncoding, rec.Header().Get(echo.HeaderVary))
+			if !tt.gzip {
+				assert.Empty(t, rec.Header().Get(echo.HeaderContentEncoding))
+				assert.Equal(t, "test", rec.Body.String())
+				return
+			}
+			require.Equal(t, gzipScheme, rec.Header().Get(echo.HeaderContentEncoding))
+			reader, err := gzip.NewReader(rec.Body)
+			require.NoError(t, err)
+			defer reader.Close()
+			body, err := io.ReadAll(reader)
+			require.NoError(t, err)
+			assert.Equal(t, "test", string(body))
+		})
+	}
+}
+
+func TestGzip_CompressesIdentityContentEncoding(t *testing.T) {
+	for _, value := range []string{"identity", "IDENTITY", "identity, identity"} {
+		t.Run(value, func(t *testing.T) {
+			e := echo.New()
+			e.Use(Gzip())
+			e.GET("/", func(c *echo.Context) error {
+				c.Response().Header().Set(echo.HeaderContentEncoding, value)
+				return c.String(http.StatusOK, "test")
+			})
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			require.Equal(t, http.StatusOK, rec.Code)
+			require.Equal(t, gzipScheme, rec.Header().Get(echo.HeaderContentEncoding))
+			reader, err := gzip.NewReader(rec.Body)
+			require.NoError(t, err)
+			defer reader.Close()
+			body, err := io.ReadAll(reader)
+			require.NoError(t, err)
+			assert.Equal(t, "test", string(body))
+		})
+	}
+}
+
+func TestGzip_DropsContentLengthOnImplicitHeader(t *testing.T) {
+	for _, flush := range []bool{false, true} {
+		t.Run(fmt.Sprintf("flush=%v", flush), func(t *testing.T) {
+			e := echo.New()
+			e.Use(Gzip())
+			e.GET("/", func(c *echo.Context) error {
+				w := c.Response()
+				w.Header().Set(echo.HeaderContentLength, "4")
+				if _, err := w.Write([]byte("test")); err != nil {
+					return err
+				}
+				if flush {
+					return http.NewResponseController(w).Flush()
+				}
+				return nil
+			})
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			require.Equal(t, gzipScheme, rec.Header().Get(echo.HeaderContentEncoding))
+			assert.Empty(t, rec.Header().Get(echo.HeaderContentLength))
+			reader, err := gzip.NewReader(rec.Body)
+			require.NoError(t, err)
+			defer reader.Close()
+			body, err := io.ReadAll(reader)
+			require.NoError(t, err)
+			assert.Equal(t, "test", string(body))
+		})
+	}
+}
+
+func TestGzip_PreservesContentLengthWhenNotCompressed(t *testing.T) {
+	encoded, err := gzipString("already encoded")
+	require.NoError(t, err)
+
+	tests := []struct {
+		name      string
+		minLength int
+		handler   echo.HandlerFunc
+		body      []byte
+	}{
+		{
+			name:      "below min length",
+			minLength: 100,
+			handler: func(c *echo.Context) error {
+				w := c.Response()
+				w.Header().Set(echo.HeaderContentLength, "4")
+				w.WriteHeader(http.StatusOK)
+				_, err := w.Write([]byte("test"))
+				return err
+			},
+			body: []byte("test"),
+		},
+		{
+			name: "encoding set after WriteHeader",
+			handler: func(c *echo.Context) error {
+				w := c.Response()
+				w.Header().Set(echo.HeaderContentLength, strconv.Itoa(len(encoded)))
+				w.WriteHeader(http.StatusOK)
+				w.Header().Set(echo.HeaderContentEncoding, gzipScheme)
+				_, err := w.Write(encoded)
+				return err
+			},
+			body: encoded,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := echo.New()
+			e.Use(GzipWithConfig(GzipConfig{MinLength: tt.minLength}))
+			e.GET("/", tt.handler)
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, strconv.Itoa(len(tt.body)), rec.Header().Get(echo.HeaderContentLength))
+			assert.Equal(t, tt.body, rec.Body.Bytes())
+		})
+	}
+}
+
+func TestGzip_ErrorClearsEncodingHeaders(t *testing.T) {
+	tests := []struct {
+		name        string
+		encoding    string
+		writeHeader bool
+		code        int
+	}{
+		{name: "gzip", encoding: gzipScheme, code: http.StatusBadRequest},
+		{name: "case-insensitive gzip", encoding: "GZIP", code: http.StatusBadRequest},
+		{name: "other coding", encoding: "br", code: http.StatusBadRequest},
+		{name: "after WriteHeader", writeHeader: true, code: http.StatusOK},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := echo.New()
+			e.Use(Gzip())
+			e.GET("/", func(c *echo.Context) error {
+				w := c.Response()
+				if tt.encoding != "" {
+					w.Header().Set(echo.HeaderContentEncoding, tt.encoding)
+				}
+				w.Header().Set(echo.HeaderContentLength, "50")
+				if tt.writeHeader {
+					w.WriteHeader(http.StatusOK)
+				}
+				return echo.ErrBadRequest
+			})
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, tt.code, rec.Code)
+			assert.Empty(t, rec.Header().Get(echo.HeaderContentEncoding))
+			assert.Empty(t, rec.Header().Get(echo.HeaderContentLength))
+		})
+	}
+}
+
+func TestGzip_WriteReportsCallerBytes(t *testing.T) {
+	e := echo.New()
+	e.Use(GzipWithConfig(GzipConfig{MinLength: 10}))
+	e.GET("/", func(c *echo.Context) error {
+		_, err := io.Copy(c.Response(), iotest.OneByteReader(strings.NewReader(strings.Repeat("a", 20))))
+		return err
+	})
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, gzipScheme, rec.Header().Get(echo.HeaderContentEncoding))
+	reader, err := gzip.NewReader(rec.Body)
+	require.NoError(t, err)
+	defer reader.Close()
+	body, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	assert.Equal(t, strings.Repeat("a", 20), string(body))
+}
+
+func TestGzip_KeepsContentLengthWithoutBody(t *testing.T) {
+	e := echo.New()
+	e.Use(Gzip())
+	e.HEAD("/", func(c *echo.Context) error {
+		c.Response().Header().Set(echo.HeaderContentLength, "1234")
+		return c.NoContent(http.StatusOK)
+	})
+	req := httptest.NewRequest(http.MethodHead, "/", nil)
+	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "1234", rec.Header().Get(echo.HeaderContentLength))
+	assert.Empty(t, rec.Header().Get(echo.HeaderContentEncoding))
+}
+
+func TestGzip_PassthroughFlushCommitsResponse(t *testing.T) {
+	e := echo.New()
+	e.Use(Gzip())
+	e.GET("/", func(c *echo.Context) error {
+		c.Response().Header().Set(echo.HeaderContentEncoding, gzipScheme)
+		if err := http.NewResponseController(c.Response()).Flush(); err != nil {
+			return err
+		}
+		r, err := echo.UnwrapResponse(c.Response())
+		require.NoError(t, err)
+		assert.True(t, r.Committed)
+		return echo.ErrBadRequest
+	})
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Empty(t, rec.Body.String())
+}
+
+func TestGzip_FlushWithoutWriteProducesValidStream(t *testing.T) {
+	e := echo.New()
+	e.Use(Gzip())
+	e.GET("/", func(c *echo.Context) error {
+		return http.NewResponseController(c.Response()).Flush()
+	})
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, gzipScheme, rec.Header().Get(echo.HeaderContentEncoding))
+	reader, err := gzip.NewReader(rec.Body)
+	require.NoError(t, err)
+	defer reader.Close()
+	body, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	assert.Empty(t, body)
+}
+
+func TestGzip_PreservesEncodedResponseOnWriteOrFlush(t *testing.T) {
+	encoded, err := gzipString("already encoded")
+	require.NoError(t, err)
+
+	for _, flush := range []bool{false, true} {
+		name := "implicit header"
+		if flush {
+			name = "flush before write"
+		}
+		t.Run(name, func(t *testing.T) {
+			e := echo.New()
+			e.Use(Gzip())
+			e.GET("/", func(c *echo.Context) error {
+				w := c.Response()
+				w.Header().Set(echo.HeaderContentEncoding, gzipScheme)
+				if flush {
+					if err := http.NewResponseController(w).Flush(); err != nil {
+						return err
+					}
+				}
+				_, err := w.Write(encoded)
+				return err
+			})
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, gzipScheme, rec.Result().Header.Get(echo.HeaderContentEncoding))
+			assert.Equal(t, flush, rec.Flushed)
+			assert.Equal(t, encoded, rec.Body.Bytes())
+		})
+	}
+}
+
+func TestGzip_PreservesImplicitHeadEncoding(t *testing.T) {
+	e := echo.New()
+	e.Use(Gzip())
+	e.HEAD("/", func(c *echo.Context) error {
+		c.Response().Header().Set(echo.HeaderContentEncoding, gzipScheme)
+		c.Response().Header().Set(echo.HeaderContentLength, "42")
+		return nil
+	})
+
+	req := httptest.NewRequest(http.MethodHead, "/", nil)
+	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, gzipScheme, rec.Result().Header.Get(echo.HeaderContentEncoding))
+	assert.Equal(t, int64(42), rec.Result().ContentLength)
+	assert.Empty(t, rec.Body.Bytes())
 }
 
 func TestGzip_chunked(t *testing.T) {

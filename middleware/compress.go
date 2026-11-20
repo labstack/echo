@@ -51,6 +51,7 @@ type gzipResponseWriter struct {
 	wroteBody         bool
 	minLength         int
 	minLengthExceeded bool
+	passthrough       bool
 	buffer            *bytes.Buffer
 	code              int
 }
@@ -91,7 +92,8 @@ func (config GzipConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 
 			res := c.Response()
 			res.Header().Add(echo.HeaderVary, echo.HeaderAcceptEncoding)
-			if strings.Contains(c.Request().Header.Get(echo.HeaderAcceptEncoding), gzipScheme) {
+			var succeeded bool
+			if acceptsGzip(c.Request().Header.Values(echo.HeaderAcceptEncoding)) {
 				i := pool.Get()
 				w, ok := i.(*gzip.Writer)
 				if !ok {
@@ -113,9 +115,16 @@ func (config GzipConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 					// There are different reasons for cases when we have not yet written response to the client and now need to do so.
 					// a) handler response had only response code and no response body (ala 404 or redirects etc). Response code need to be written now.
 					// b) body is shorter than our minimum length threshold and being buffered currently and needs to be written
-					if !grw.wroteBody {
-						if res.Header().Get(echo.HeaderContentEncoding) == gzipScheme {
-							res.Header().Del(echo.HeaderContentEncoding)
+					// Responses already encoded by the handler pass through unchanged.
+					if grw.passthrough || (succeeded && grw.passThroughIfEncoded()) {
+						c.SetResponse(rw)
+						w.Reset(io.Discard)
+					} else if !grw.wroteBody && !grw.minLengthExceeded {
+						// Nothing was compressed, so no coding applies to the body that follows.
+						res.Header().Del(echo.HeaderContentEncoding)
+						if !succeeded {
+							// The error handler writes its own body.
+							res.Header().Del(echo.HeaderContentLength)
 						}
 						if grw.wroteHeader {
 							rw.WriteHeader(grw.code)
@@ -139,21 +148,31 @@ func (config GzipConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 					pool.Put(w)
 				}()
 			}
-			return next(c)
+			err := next(c)
+			succeeded = err == nil
+			return err
 		}
 	}, nil
 }
 
 func (w *gzipResponseWriter) WriteHeader(code int) {
-	w.Header().Del(echo.HeaderContentLength) // Issue #444
+	if w.passthrough {
+		w.ResponseWriter.WriteHeader(code)
+		return
+	}
 
 	w.wroteHeader = true
 
 	// Delay writing of the header until we know if we'll actually compress the response
 	w.code = code
+	w.passThroughIfEncoded()
 }
 
 func (w *gzipResponseWriter) Write(b []byte) (int, error) {
+	if w.passThroughIfEncoded() {
+		return w.ResponseWriter.Write(b)
+	}
+
 	if w.Header().Get(echo.HeaderContentType) == "" {
 		w.Header().Set(echo.HeaderContentType, http.DetectContentType(b))
 	}
@@ -166,12 +185,13 @@ func (w *gzipResponseWriter) Write(b []byte) (int, error) {
 			w.minLengthExceeded = true
 
 			// The minimum length is exceeded, add Content-Encoding header and write the header
-			w.Header().Set(echo.HeaderContentEncoding, gzipScheme) // Issue #806
-			if w.wroteHeader {
-				w.ResponseWriter.WriteHeader(w.code)
-			}
+			w.startCompression()
 
-			return w.Writer.Write(w.buffer.Bytes())
+			if _, err := w.Writer.Write(w.buffer.Bytes()); err != nil {
+				return 0, err
+			}
+			// Report only the caller's bytes; the buffer also holds earlier writes.
+			return len(b), nil
 		}
 
 		return n, err
@@ -181,13 +201,23 @@ func (w *gzipResponseWriter) Write(b []byte) (int, error) {
 }
 
 func (w *gzipResponseWriter) Flush() {
+	if w.passThroughIfEncoded() {
+		if !w.wroteHeader {
+			// Commit through echo.Response so the error handler sees the response as written.
+			w.wroteHeader = true
+			w.code = http.StatusOK
+			if r, err := echo.UnwrapResponse(w.ResponseWriter); err == nil && !r.Committed {
+				r.WriteHeader(http.StatusOK)
+			}
+		}
+		_ = http.NewResponseController(w.ResponseWriter).Flush()
+		return
+	}
+
 	if !w.minLengthExceeded {
 		// Enforce compression because we will not know how much more data will come
 		w.minLengthExceeded = true
-		w.Header().Set(echo.HeaderContentEncoding, gzipScheme) // Issue #806
-		if w.wroteHeader {
-			w.ResponseWriter.WriteHeader(w.code)
-		}
+		w.startCompression()
 
 		_, _ = w.Writer.Write(w.buffer.Bytes())
 	}
@@ -196,6 +226,46 @@ func (w *gzipResponseWriter) Flush() {
 		gw.Flush()
 	}
 	_ = http.NewResponseController(w.ResponseWriter).Flush()
+}
+
+// startCompression commits gzip headers once the response is known to be compressed.
+func (w *gzipResponseWriter) startCompression() {
+	w.Header().Set(echo.HeaderContentEncoding, gzipScheme) // Issue #806
+	w.Header().Del(echo.HeaderContentLength)               // Issue #444
+	if w.wroteHeader {
+		w.ResponseWriter.WriteHeader(w.code)
+	}
+}
+
+// passThroughIfEncoded switches to the underlying writer before gzip handles the body.
+func (w *gzipResponseWriter) passThroughIfEncoded() bool {
+	if w.passthrough {
+		return true
+	}
+	if w.wroteBody || w.minLengthExceeded {
+		return false
+	}
+	if !hasContentCoding(w.Header().Values(echo.HeaderContentEncoding)) {
+		return false
+	}
+	w.passthrough = true
+	if w.wroteHeader {
+		w.ResponseWriter.WriteHeader(w.code)
+	}
+	return true
+}
+
+// hasContentCoding reports whether Content-Encoding lists any coding other than identity.
+func hasContentCoding(headers []string) bool {
+	for _, header := range headers {
+		for coding := range strings.SplitSeq(header, ",") {
+			coding = strings.TrimSpace(coding)
+			if coding != "" && !strings.EqualFold(coding, "identity") {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (w *gzipResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
@@ -232,4 +302,52 @@ func bufferPool() sync.Pool {
 			return b
 		},
 	}
+}
+
+func acceptsGzip(headers []string) bool {
+	var gzipAllowed, wildcardAllowed, wildcardRefused bool
+	for _, header := range headers {
+		for entry := range strings.SplitSeq(header, ",") {
+			coding, weight, hasWeight := strings.Cut(entry, ";")
+			coding = strings.TrimSpace(coding)
+			switch {
+			case strings.EqualFold(coding, gzipScheme), strings.EqualFold(coding, "x-gzip"):
+				// RFC 9110, section 8.4.1.3: x-gzip is equivalent to gzip.
+				// An explicit refusal or invalid weight takes precedence over
+				// wildcards and over any duplicate entry allowing gzip.
+				if hasWeight && !positiveQualityValue(weight) {
+					return false
+				}
+				gzipAllowed = true
+			case coding == "*":
+				if hasWeight && !positiveQualityValue(weight) {
+					wildcardRefused = true
+				} else {
+					wildcardAllowed = true
+				}
+			}
+		}
+	}
+	return gzipAllowed || (wildcardAllowed && !wildcardRefused)
+}
+
+// positiveQualityValue matches the qvalue grammar in RFC 9110, section 12.4.2.
+func positiveQualityValue(weight string) bool {
+	name, value, ok := strings.Cut(strings.TrimSpace(weight), "=")
+	if !ok || !strings.EqualFold(name, "q") {
+		return false
+	}
+	whole, fraction, _ := strings.Cut(value, ".")
+	if (whole != "0" && whole != "1") || len(fraction) > 3 {
+		return false
+	}
+	positive := whole == "1"
+	for i := range len(fraction) {
+		digit := fraction[i]
+		if digit < '0' || digit > '9' || (whole == "1" && digit != '0') {
+			return false
+		}
+		positive = positive || digit != '0'
+	}
+	return positive
 }
