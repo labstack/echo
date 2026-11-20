@@ -118,6 +118,7 @@ func ProblemDetailsHTTPErrorHandler(exposeError bool) HTTPErrorHandler {
 			problem.Title = http.StatusText(problem.Status)
 		}
 
+		clearRepresentationHeaders(c.Response().Header())
 		c.Response().Header().Set(HeaderContentType, MIMEApplicationProblemJSON)
 
 		var cErr error

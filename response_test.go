@@ -469,12 +469,15 @@ func TestResponse_WriteHeader_Informational(t *testing.T) {
 	defer srv.Close()
 
 	var status int
+	var committedAfter1xx bool
 	e.GET("/", func(c *Context) error {
 		c.Response().Header().Set("Link", "</style.css>; rel=preload; as=style")
 		c.Response().WriteHeader(http.StatusEarlyHints)
 		r, err := UnwrapResponse(c.Response())
-		require.NoError(t, err)
-		assert.False(t, r.Committed)
+		if err != nil {
+			return err
+		}
+		committedAfter1xx = r.Committed
 		err = c.String(http.StatusCreated, "ok")
 		status = r.Status
 		return err
@@ -496,7 +499,54 @@ func TestResponse_WriteHeader_Informational(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, []int{http.StatusEarlyHints}, informational)
+	assert.False(t, committedAfter1xx)
 	assert.Equal(t, http.StatusCreated, res.StatusCode)
 	assert.Equal(t, "ok", string(body))
 	assert.Equal(t, http.StatusCreated, status)
+}
+
+func TestResponse_Flush_PanicsBeforeCommit(t *testing.T) {
+	e := New()
+	res := NewResponse(new(testResponseWriter), e.Logger)
+	beforeCalled := false
+	res.Before(func() { beforeCalled = true })
+
+	assert.Panics(t, func() { res.Flush() })
+	assert.False(t, res.Committed)
+	assert.False(t, beforeCalled)
+}
+
+func TestHeadResponseWriter_WriteHeader_Informational(t *testing.T) {
+	e := New()
+	rec := httptest.NewRecorder()
+	res := NewResponse(rec, e.Logger)
+	w := &headResponseWriter{rw: res}
+
+	w.WriteHeader(http.StatusEarlyHints)
+	assert.False(t, w.wroteStatus)
+	assert.False(t, res.Committed)
+
+	w.WriteHeader(http.StatusCreated)
+	_, _ = w.Write([]byte("ok"))
+	w.commit()
+
+	assert.Equal(t, http.StatusCreated, res.Status)
+	assert.Equal(t, "2", rec.Header().Get(HeaderContentLength))
+}
+
+func TestDelayedStatusWriter_Flush_SendsDelayedStatus(t *testing.T) {
+	e := New()
+	rec := httptest.NewRecorder()
+	res := NewResponse(rec, e.Logger)
+	w := &delayedStatusWriter{ResponseWriter: res, status: http.StatusCreated}
+
+	w.WriteHeader(http.StatusEarlyHints)
+	assert.False(t, w.committed)
+	w.Flush()
+	_, _ = w.Write([]byte("ok"))
+
+	// httptest.ResponseRecorder keeps the first status it sees, including 1xx, so check Response.
+	assert.Equal(t, http.StatusCreated, res.Status)
+	assert.True(t, res.Committed)
+	assert.True(t, rec.Flushed)
 }

@@ -460,6 +460,23 @@ func (e *Echo) Router() Router {
 // When handler has already sent response (ala c.JSON()) and there is error in middleware that is returning from
 // handler. Then the error that global error handler received will be ignored because we have already "committed" the
 // response and status code header has been sent to the client.
+// clearRepresentationHeaders removes headers that described the response the
+// handler meant to send, so they are not applied to the error body that replaces it.
+// A middleware that encodes the error body sets its own Content-Encoding.
+func clearRepresentationHeaders(h http.Header) {
+	for _, name := range []string{
+		HeaderContentEncoding,
+		HeaderContentLength,
+		HeaderContentType,
+		HeaderContentDisposition,
+		"Content-Range",
+		"ETag",
+		HeaderLastModified,
+	} {
+		h.Del(name)
+	}
+}
+
 func DefaultHTTPErrorHandler(exposeError bool) HTTPErrorHandler {
 	return func(c *Context, err error) {
 		if r, _ := UnwrapResponse(c.response); r != nil && r.Committed {
@@ -498,13 +515,7 @@ func DefaultHTTPErrorHandler(exposeError bool) HTTPErrorHandler {
 			result = msg
 		}
 
-		// Headers set for the failed response do not describe the error body.
-		h := c.Response().Header()
-		h.Del(HeaderContentLength)
-		if _, ok := c.response.(*Response); ok {
-			// A wrapping middleware may encode the error body itself, so only clear the coding without one.
-			h.Del(HeaderContentEncoding)
-		}
+		clearRepresentationHeaders(c.Response().Header())
 
 		var cErr error
 		if c.Request().Method == http.MethodHead { // Issue #608
