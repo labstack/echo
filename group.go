@@ -6,6 +6,7 @@ package echo
 import (
 	"io/fs"
 	"net/http"
+	"strings"
 )
 
 // Group is a set of sub-routes for a specified route. It can be used for inner
@@ -220,4 +221,11 @@ func (g *Group) AddRoute(route Route) (RouteInfo, error) {
 	// middleware from earlier calls.
 	groupRoute := route.WithPrefix(g.prefix, append([]MiddlewareFunc{}, g.middleware...))
 	return g.echo.add(groupRoute)
+}
+
+func normalizeGroupPrefix(prefix string) string {
+	if prefix != "" && !strings.HasPrefix(prefix, "/") {
+		return "/" + prefix
+	}
+	return prefix
 }
