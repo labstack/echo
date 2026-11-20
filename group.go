@@ -19,6 +19,10 @@ type Group struct {
 }
 
 // Use implements `Echo#Use()` for sub-routes within the Group.
+//
+// Group middleware runs before the middleware of the route that matched, including routes of nested groups. A group
+// middleware that answers requests itself, such as middleware.Static, is therefore not protected by guards on those
+// routes. Use Group#Static to serve files behind such guards.
 func (g *Group) Use(middleware ...MiddlewareFunc) {
 	g.middleware = append(g.middleware, middleware...)
 	if len(g.middleware) == 0 {

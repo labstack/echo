@@ -1,5 +1,20 @@
 # Changelog
 
+## v4.16.6 - 2026-11-20
+
+**Security**
+
+* **Proxy middleware:** after routing, a `.` or `..` path segment (also encoded as `%2e`) was resolved by `Rewrite`/`RegexRewrite` or by the upstream into a path the router never matched, bypassing route and group middleware such as authentication. After routing, Proxy now returns `400 Bad Request` for such paths, and rewrite targets in Proxy and the Rewrite middleware are applied literally instead of being resolved; a target with a dot segment or a leading `//` is rejected. Fixes [GHSA-w5j2-g3fc-pwr6](https://github.com/labstack/echo/security/advisories/GHSA-w5j2-g3fc-pwr6). Reported by AndyAnh174.
+* **Static files:** `Static`, `StaticFS`, `Group.Static` and `Group.StaticFS` with a prefix without a trailing slash registered `prefix*`, so `/assetsadmin/private.txt` was served from `<root>/admin/private.txt` for `e.Static("/assets", root)`, bypassing a guard on `/assets/admin`. They now register `prefix/*`, plus `prefix` for the redirect to `prefix/`. Fixes [GHSA-76qj-xf66-r429](https://github.com/labstack/echo/security/advisories/GHSA-76qj-xf66-r429). Reported by AndyAnh174.
+* **Static middleware on a group:** documented that `middleware.Static` attached with `Group#Use` is not protected by guards on routes inside the group or on nested groups, and that `Group#Static` should be used for files behind such guards. See [GHSA-5hp7-4fcm-57f9](https://github.com/labstack/echo/security/advisories/GHSA-5hp7-4fcm-57f9). Reported by AndyAnh174.
+
+**Behavior changes**
+
+* After routing, Proxy rejects paths with `.`/`..` segments, and a Rewrite middleware attached after routing applies its targets literally: relative targets and absolute URLs are rejected. `Echo#Pre` is unchanged.
+* `Static` and `StaticFS` return the route for `prefix/*` instead of `prefix*`, and file names that only start with the prefix are no longer served.
+
+No public API, dependency or minimum Go-version changes; Go 1.26 or later remains required.
+
 ## v4.16.5 - 2026-11-14
 
 **Security**

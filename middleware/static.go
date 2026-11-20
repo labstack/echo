@@ -153,9 +153,15 @@ var DefaultStaticConfig = StaticConfig{
 // Static returns a Static middleware to serves static content from the provided
 // root directory.
 //
-// Security: when registered with Echo#Use, the middleware runs before route and group middleware, so guards on routes
-// or groups (for example authentication on an `/admin` group) do not protect the files it serves. Keep files that
-// need protection outside the root directory, or serve them with Echo#Static / Group#Static behind the guard.
+// Security: the middleware runs before the middleware and handler of the route that matched, so route and group guards
+// do not protect the files it serves:
+//   - with Echo#Use, guards on any route or group, for example authentication on an `/admin` group;
+//   - with Group#Use, guards on routes inside the group and on nested groups. The file is resolved from the wildcard of
+//     whichever route matched, so `/assets/admin/admin/private.txt` under a guarded `/assets/admin` group or route
+//     serves `<root>/admin/private.txt` (GHSA-5hp7-4fcm-57f9).
+//
+// Keep files that need protection outside the root directory, or serve them with Echo#Static / Group#Static, which
+// register routes that the guards apply to.
 func Static(root string) echo.MiddlewareFunc {
 	c := DefaultStaticConfig
 	c.Root = root

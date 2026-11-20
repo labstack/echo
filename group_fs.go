@@ -20,11 +20,11 @@ func (g *Group) Static(pathPrefix, fsRoot string) {
 // prefix for directory path. This is necessary as `//go:embed assets/images` embeds files with paths
 // including `assets/images` as their prefix.
 func (g *Group) StaticFS(pathPrefix string, filesystem fs.FS) {
-	g.Add(
-		http.MethodGet,
-		pathPrefix+"*",
-		StaticDirectoryHandler(filesystem, !g.echo.EnablePathUnescapingStaticFiles),
-	)
+	h := StaticDirectoryHandler(filesystem, !g.echo.EnablePathUnescapingStaticFiles)
+	if hasStaticPrefixRoute(g.echo.findRouter(g.host).Routes(), g.prefix+pathPrefix) { // the host router for Host groups
+		g.Add(http.MethodGet, pathPrefix, h)
+	}
+	g.Add(http.MethodGet, staticWildcardPath(pathPrefix, g.prefix+pathPrefix), h)
 }
 
 // FileFS implements `Echo#FileFS()` for sub-routes within the Group.

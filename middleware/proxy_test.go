@@ -1122,3 +1122,62 @@ func TestProxyWithConfigWebSocketTLS2NonTLS(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, sendMsg, recvMsg)
 }
+
+// Regression for GHSA-w5j2-g3fc-pwr6: after routing, a "." or ".." segment must not move a proxied request into a
+// path owned by a protected route or group.
+func TestProxy_DotSegmentsAfterRouting(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, "upstream "+r.URL.RequestURI())
+	}))
+	defer upstream.Close()
+	u, err := url.Parse(upstream.URL)
+	assert.NoError(t, err)
+	balancer := NewRoundRobinBalancer([]*ProxyTarget{{URL: u}})
+	auth := func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error { return echo.ErrUnauthorized }
+	}
+	serve := func(e *echo.Echo, target string) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, target, nil))
+		return rec
+	}
+	notFound := func(c echo.Context) error { return echo.ErrNotFound }
+
+	for _, rewrite := range []map[string]string{nil, {"/api/*": "/$1"}} {
+		t.Run(fmt.Sprintf("rewrite=%v", rewrite != nil), func(t *testing.T) {
+			proxy := ProxyWithConfig(ProxyConfig{Balancer: balancer, Rewrite: rewrite})
+			e := echo.New()
+			e.Group("/api/admin", auth, proxy).Any("/*", notFound)
+			e.Group("/api", proxy).Any("/*", notFound)
+			for target, want := range map[string]int{
+				"/api/admin/users":          http.StatusUnauthorized,
+				"/api/x/../admin/users":     http.StatusBadRequest,
+				"/api/./admin/users":        http.StatusBadRequest,
+				"/api/x/%2e%2e/admin/users": http.StatusBadRequest,
+				"/api/users?q=1":            http.StatusOK,
+				"/api/a//b":                 http.StatusOK,
+				"/api/file..txt":            http.StatusOK,
+			} {
+				rec := serve(e, target)
+				assert.Equal(t, want, rec.Code, target)
+				assert.NotContains(t, rec.Body.String(), "admin", target)
+			}
+		})
+	}
+	t.Run("rewrite target with a host", func(t *testing.T) {
+		e := echo.New()
+		e.Group("/api", ProxyWithConfig(ProxyConfig{Balancer: balancer, Rewrite: map[string]string{"/api/*": "/$1"}})).Any("/*", notFound)
+		assert.Equal(t, http.StatusBadRequest, serve(e, "/api//x/admin/users").Code)
+	})
+	t.Run("Rewrite middleware on a group", func(t *testing.T) {
+		e := echo.New()
+		e.Group("/api/admin", auth, ProxyWithConfig(ProxyConfig{Balancer: balancer})).Any("/*", notFound)
+		e.Group("/api", Rewrite(map[string]string{"/api/*": "/api/$1"}), ProxyWithConfig(ProxyConfig{Balancer: balancer})).Any("/*", notFound)
+		assert.Equal(t, http.StatusBadRequest, serve(e, "/api/x/../admin/users").Code)
+	})
+	t.Run("Echo#Pre is not checked", func(t *testing.T) {
+		e := echo.New()
+		e.Pre(ProxyWithConfig(ProxyConfig{Balancer: balancer}))
+		assert.Equal(t, http.StatusOK, serve(e, "/img/plain/http://example.com/a.png").Code)
+	})
+}

@@ -71,7 +71,7 @@ func RewriteWithConfig(config RewriteConfig) echo.MiddlewareFunc {
 				return next(c)
 			}
 
-			if err := rewriteURL(config.RegexRules, c.Request()); err != nil {
+			if err := rewriteURL(config.RegexRules, c.Request(), c.Path() != ""); err != nil {
 				return err
 			}
 			return next(c)

@@ -446,3 +446,64 @@ func TestHasDotOrEmptySegment(t *testing.T) {
 		})
 	}
 }
+
+// Regression for GHSA-76qj-xf66-r429: a Static prefix without a trailing slash must not serve a sibling path.
+func TestStatic_PrefixDoesNotMatchSiblingPath(t *testing.T) {
+	fsys := fstest.MapFS{
+		"public/text.txt":          {Data: []byte("PUBLIC")},
+		"public/admin/private.txt": {Data: []byte("PRIVATE_MARKER")},
+	}
+	for _, mode := range []string{"Static", "StaticFS", "Group.Static", "Group.Static empty"} {
+		t.Run(mode, func(t *testing.T) {
+			e := New()
+			e.Filesystem = fsys
+			prefix := "/assets"
+			switch mode {
+			case "Static":
+				e.Static(prefix, "public")
+			case "StaticFS":
+				e.StaticFS(prefix, MustSubFS(fsys, "public"))
+			case "Group.Static":
+				prefix = "/files/assets"
+				e.Group("/files").Static("/assets", "public")
+			case "Group.Static empty":
+				e.Group(prefix).Static("", "public")
+			}
+			e.GET(prefix+"/admin/*", func(c Context) error { return ErrForbidden })
+			for target, want := range map[string]int{
+				prefix:                        http.StatusMovedPermanently,
+				prefix + "/text.txt":          http.StatusOK,
+				prefix + "/admin/private.txt": http.StatusForbidden,
+				prefix + "admin/private.txt":  http.StatusNotFound,
+			} {
+				rec := httptest.NewRecorder()
+				e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, target, nil))
+				assert.Equal(t, want, rec.Code, target)
+				assert.NotContains(t, rec.Body.String(), "PRIVATE_MARKER", target)
+			}
+		})
+	}
+}
+
+func TestStatic_KeepsExistingPrefixRoute(t *testing.T) {
+	e := New()
+	e.Filesystem = fstest.MapFS{"public/text.txt": {Data: []byte("PUBLIC")}}
+	e.Any("/assets", func(c Context) error { return c.String(http.StatusOK, "MINE") })
+	e.Static("/assets", "public")
+	for target, body := range map[string]string{"/assets": "MINE", "/assets/text.txt": "PUBLIC"} {
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, target, nil))
+		assert.Equal(t, body, rec.Body.String(), target)
+	}
+}
+
+func TestStatic_KeepsExistingPrefixRouteOnHostGroup(t *testing.T) {
+	e := New()
+	e.Filesystem = fstest.MapFS{"public/text.txt": {Data: []byte("PUBLIC")}}
+	h := e.Host("h.example")
+	h.GET("/assets", func(c Context) error { return c.String(http.StatusOK, "MINE") })
+	h.Static("/assets", "public")
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "http://h.example/assets", nil))
+	assert.Equal(t, "MINE", rec.Body.String())
+}
