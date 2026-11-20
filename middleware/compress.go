@@ -51,6 +51,7 @@ type gzipResponseWriter struct {
 	wroteBody         bool
 	minLength         int
 	minLengthExceeded bool
+	skipCompression   bool
 	buffer            *bytes.Buffer
 	code              int
 }
@@ -113,7 +114,10 @@ func (config GzipConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 					// There are different reasons for cases when we have not yet written response to the client and now need to do so.
 					// a) handler response had only response code and no response body (ala 404 or redirects etc). Response code need to be written now.
 					// b) body is shorter than our minimum length threshold and being buffered currently and needs to be written
-					if !grw.wroteBody {
+					if grw.skipCompression {
+						c.SetResponse(rw)
+						w.Reset(io.Discard)
+					} else if !grw.wroteBody {
 						if res.Header().Get(echo.HeaderContentEncoding) == gzipScheme {
 							res.Header().Del(echo.HeaderContentEncoding)
 						}
@@ -145,15 +149,26 @@ func (config GzipConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 }
 
 func (w *gzipResponseWriter) WriteHeader(code int) {
-	w.Header().Del(echo.HeaderContentLength) // Issue #444
+	if w.skipCompression {
+		w.ResponseWriter.WriteHeader(code)
+		return
+	}
 
 	w.wroteHeader = true
 
 	// Delay writing of the header until we know if we'll actually compress the response
 	w.code = code
+	if !w.skipEncodedResponse() {
+		w.Header().Del(echo.HeaderContentLength) // Issue #444
+	}
 }
 
 func (w *gzipResponseWriter) Write(b []byte) (int, error) {
+	if w.skipEncodedResponse() {
+		w.wroteBody = true
+		return w.ResponseWriter.Write(b)
+	}
+
 	if w.Header().Get(echo.HeaderContentType) == "" {
 		w.Header().Set(echo.HeaderContentType, http.DetectContentType(b))
 	}
@@ -181,6 +196,11 @@ func (w *gzipResponseWriter) Write(b []byte) (int, error) {
 }
 
 func (w *gzipResponseWriter) Flush() {
+	if w.skipEncodedResponse() {
+		_ = http.NewResponseController(w.ResponseWriter).Flush()
+		return
+	}
+
 	if !w.minLengthExceeded {
 		// Enforce compression because we will not know how much more data will come
 		w.minLengthExceeded = true
@@ -196,6 +216,16 @@ func (w *gzipResponseWriter) Flush() {
 		gw.Flush()
 	}
 	_ = http.NewResponseController(w.ResponseWriter).Flush()
+}
+
+func (w *gzipResponseWriter) skipEncodedResponse() bool {
+	if !w.skipCompression && !w.wroteBody && !w.minLengthExceeded && w.Header().Get(echo.HeaderContentEncoding) != "" {
+		w.skipCompression = true
+		if w.wroteHeader {
+			w.ResponseWriter.WriteHeader(w.code)
+		}
+	}
+	return w.skipCompression
 }
 
 func (w *gzipResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
