@@ -371,7 +371,9 @@ func TestGzip_ForwardsInformationalStatus(t *testing.T) {
 	req, err := http.NewRequestWithContext(httptrace.WithClientTrace(context.Background(), trace), http.MethodGet, srv.URL, nil)
 	require.NoError(t, err)
 	req.Header.Set(echo.HeaderAcceptEncoding, gzipScheme)
-	res, err := (&http.Transport{DisableCompression: true}).RoundTrip(req)
+	tr := &http.Transport{DisableCompression: true}
+	defer tr.CloseIdleConnections()
+	res, err := tr.RoundTrip(req)
 	require.NoError(t, err)
 	defer res.Body.Close()
 

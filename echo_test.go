@@ -1470,7 +1470,6 @@ func TestHTTPErrorHandlers_ClearRepresentationHeaders(t *testing.T) {
 				h.Set(HeaderContentLength, "5000")
 				h.Set(HeaderContentType, "text/csv")
 				h.Set(HeaderContentDisposition, `attachment; filename="report.csv"`)
-				h.Set("Content-Range", "bytes 0-99/5000")
 				h.Set("ETag", `"v1"`)
 				h.Set(HeaderLastModified, "Wed, 21 Oct 2015 07:28:00 GMT")
 				h.Set("X-Request-Id", "keep")
@@ -1481,7 +1480,7 @@ func TestHTTPErrorHandlers_ClearRepresentationHeaders(t *testing.T) {
 			e.ServeHTTP(rec, req)
 
 			assert.Equal(t, http.StatusNotFound, rec.Code)
-			for _, name := range []string{HeaderContentEncoding, HeaderContentLength, HeaderContentDisposition, "Content-Range", "ETag", HeaderLastModified} {
+			for _, name := range []string{HeaderContentEncoding, HeaderContentLength, HeaderContentDisposition, "ETag", HeaderLastModified} {
 				assert.Empty(t, rec.Header().Get(name), name)
 			}
 			assert.Equal(t, tt.contentType, rec.Header().Get(HeaderContentType))

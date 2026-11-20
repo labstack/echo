@@ -550,3 +550,13 @@ func TestDelayedStatusWriter_Flush_SendsDelayedStatus(t *testing.T) {
 	assert.True(t, res.Committed)
 	assert.True(t, rec.Flushed)
 }
+
+func TestDelayedStatusWriter_Flush_PanicsBeforeCommit(t *testing.T) {
+	e := New()
+	res := NewResponse(new(testResponseWriter), e.Logger)
+	w := &delayedStatusWriter{ResponseWriter: res, status: http.StatusCreated}
+
+	assert.Panics(t, func() { w.Flush() })
+	assert.False(t, w.committed)
+	assert.False(t, res.Committed)
+}

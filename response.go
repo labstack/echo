@@ -85,10 +85,10 @@ func (r *Response) Write(b []byte) (n int, err error) {
 // buffered data to the client.
 // See [http.Flusher](https://golang.org/pkg/net/http/#Flusher)
 func (r *Response) Flush() {
-	if !supportsFlush(r.ResponseWriter) {
-		panic(fmt.Errorf("echo: response writer %T does not support flushing (http.Flusher interface)", r.ResponseWriter))
-	}
 	if !r.Committed {
+		if !supportsFlush(r.ResponseWriter) {
+			panic(fmt.Errorf("echo: response writer %T does not support flushing (http.Flusher interface)", r.ResponseWriter))
+		}
 		// Flushing sends the headers, so commit them the same way Write does.
 		if r.Status == 0 {
 			r.Status = http.StatusOK
@@ -153,18 +153,21 @@ func isInformationalStatus(code int) bool {
 	return code >= 100 && code < 200 && code != http.StatusSwitchingProtocols
 }
 
-// supportsFlush reports whether rw, or a writer it unwraps to, can flush.
-// It follows the same lookup as http.ResponseController.
+// supportsFlush reports whether flushing rw reaches a writer that can flush.
+// A wrapper that can unwrap is assumed to delegate flushing, so the check
+// continues to the writer it wraps.
 func supportsFlush(rw http.ResponseWriter) bool {
 	for {
-		switch t := rw.(type) {
-		case interface{ FlushError() error }, http.Flusher:
-			return true
-		case interface{ Unwrap() http.ResponseWriter }:
-			rw = t.Unwrap()
-		default:
-			return false
+		u, canUnwrap := rw.(interface{ Unwrap() http.ResponseWriter })
+		if !canUnwrap {
+			switch rw.(type) {
+			case interface{ FlushError() error }, http.Flusher:
+				return true
+			default:
+				return false
+			}
 		}
+		rw = u.Unwrap()
 	}
 }
 

@@ -452,6 +452,23 @@ func (e *Echo) Router() Router {
 	return e.router
 }
 
+// clearRepresentationHeaders removes headers that described the response the
+// handler meant to send, so they are not applied to the error body that replaces it.
+// A middleware that encodes the error body sets its own Content-Encoding.
+// Content-Range is kept because a 416 error response carries it.
+func clearRepresentationHeaders(h http.Header) {
+	for _, name := range []string{
+		HeaderContentEncoding,
+		HeaderContentLength,
+		HeaderContentType,
+		HeaderContentDisposition,
+		"ETag",
+		HeaderLastModified,
+	} {
+		h.Del(name)
+	}
+}
+
 // DefaultHTTPErrorHandler creates new default HTTP error handler implementation. It sends a JSON response
 // with status code. `exposeError` parameter decides if returned message will contain also error message or not
 //
@@ -460,23 +477,6 @@ func (e *Echo) Router() Router {
 // When handler has already sent response (ala c.JSON()) and there is error in middleware that is returning from
 // handler. Then the error that global error handler received will be ignored because we have already "committed" the
 // response and status code header has been sent to the client.
-// clearRepresentationHeaders removes headers that described the response the
-// handler meant to send, so they are not applied to the error body that replaces it.
-// A middleware that encodes the error body sets its own Content-Encoding.
-func clearRepresentationHeaders(h http.Header) {
-	for _, name := range []string{
-		HeaderContentEncoding,
-		HeaderContentLength,
-		HeaderContentType,
-		HeaderContentDisposition,
-		"Content-Range",
-		"ETag",
-		HeaderLastModified,
-	} {
-		h.Del(name)
-	}
-}
-
 func DefaultHTTPErrorHandler(exposeError bool) HTTPErrorHandler {
 	return func(c *Context, err error) {
 		if r, _ := UnwrapResponse(c.response); r != nil && r.Committed {
