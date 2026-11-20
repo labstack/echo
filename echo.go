@@ -498,6 +498,14 @@ func DefaultHTTPErrorHandler(exposeError bool) HTTPErrorHandler {
 			result = msg
 		}
 
+		// Headers set for the failed response do not describe the error body.
+		h := c.Response().Header()
+		h.Del(HeaderContentLength)
+		if _, ok := c.response.(*Response); ok {
+			// A wrapping middleware may encode the error body itself, so only clear the coding without one.
+			h.Del(HeaderContentEncoding)
+		}
+
 		var cErr error
 		if c.Request().Method == http.MethodHead { // Issue #608
 			cErr = c.NoContent(code)

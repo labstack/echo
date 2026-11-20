@@ -4,12 +4,17 @@
 package echo
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/http/httptrace"
+	"net/textproto"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestResponse(t *testing.T) {
@@ -420,4 +425,78 @@ func TestWrapHeadHandler_RouteLevelMiddlewareSeesTrueCommitted(t *testing.T) {
 
 	assert.NoError(t, wrapped(c))
 	assert.True(t, committedAfterHandler)
+}
+
+func TestResponse_Flush_CommitsResponse(t *testing.T) {
+	e := New()
+	rec := httptest.NewRecorder()
+	res := NewResponse(rec, e.Logger)
+	beforeCalled := false
+	res.Before(func() {
+		beforeCalled = true
+		res.Header().Set("X-Before", "1")
+	})
+
+	res.Flush()
+
+	assert.True(t, res.Committed)
+	assert.True(t, beforeCalled)
+	assert.Equal(t, http.StatusOK, res.Status)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "1", rec.Header().Get("X-Before"))
+	assert.True(t, rec.Flushed)
+}
+
+func TestResponse_Flush_ErrorHandlerSkipsCommittedResponse(t *testing.T) {
+	e := New()
+	e.GET("/", func(c *Context) error {
+		if err := http.NewResponseController(c.Response()).Flush(); err != nil {
+			return err
+		}
+		return ErrBadRequest
+	})
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Empty(t, rec.Body.String())
+}
+
+func TestResponse_WriteHeader_Informational(t *testing.T) {
+	e := New()
+	srv := httptest.NewServer(e)
+	defer srv.Close()
+
+	var status int
+	e.GET("/", func(c *Context) error {
+		c.Response().Header().Set("Link", "</style.css>; rel=preload; as=style")
+		c.Response().WriteHeader(http.StatusEarlyHints)
+		r, err := UnwrapResponse(c.Response())
+		require.NoError(t, err)
+		assert.False(t, r.Committed)
+		err = c.String(http.StatusCreated, "ok")
+		status = r.Status
+		return err
+	})
+
+	var informational []int
+	trace := &httptrace.ClientTrace{
+		Got1xxResponse: func(code int, _ textproto.MIMEHeader) error {
+			informational = append(informational, code)
+			return nil
+		},
+	}
+	req, err := http.NewRequestWithContext(httptrace.WithClientTrace(context.Background(), trace), http.MethodGet, srv.URL, nil)
+	require.NoError(t, err)
+	res, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer res.Body.Close()
+	body, err := io.ReadAll(res.Body)
+	require.NoError(t, err)
+
+	assert.Equal(t, []int{http.StatusEarlyHints}, informational)
+	assert.Equal(t, http.StatusCreated, res.StatusCode)
+	assert.Equal(t, "ok", string(body))
+	assert.Equal(t, http.StatusCreated, status)
 }

@@ -52,6 +52,11 @@ func (r *Response) WriteHeader(code int) {
 		r.logger.Error("echo: response already written to client")
 		return
 	}
+	if code >= 100 && code < 200 && code != http.StatusSwitchingProtocols {
+		// Informational responses precede the final status and do not commit the response.
+		r.ResponseWriter.WriteHeader(code)
+		return
+	}
 	r.Status = code
 	for _, fn := range r.beforeFuncs {
 		fn()
@@ -80,6 +85,13 @@ func (r *Response) Write(b []byte) (n int, err error) {
 // buffered data to the client.
 // See [http.Flusher](https://golang.org/pkg/net/http/#Flusher)
 func (r *Response) Flush() {
+	if !r.Committed {
+		// Flushing sends the headers, so commit them the same way Write does.
+		if r.Status == 0 {
+			r.Status = http.StatusOK
+		}
+		r.WriteHeader(r.Status)
+	}
 	err := http.NewResponseController(r.ResponseWriter).Flush()
 	if err != nil && errors.Is(err, http.ErrNotSupported) {
 		panic(fmt.Errorf("echo: response writer %T does not support flushing (http.Flusher interface)", r.ResponseWriter))

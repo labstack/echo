@@ -1452,6 +1452,47 @@ func TestDefaultHTTPErrorHandler(t *testing.T) {
 	}
 }
 
+func TestDefaultHTTPErrorHandler_ClearsBodyHeaders(t *testing.T) {
+	e := New()
+	e.GET("/", func(c *Context) error {
+		c.Response().Header().Set(HeaderContentEncoding, "br")
+		c.Response().Header().Set(HeaderContentLength, "5000")
+		return ErrNotFound
+	})
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Empty(t, rec.Header().Get(HeaderContentEncoding))
+	assert.Empty(t, rec.Header().Get(HeaderContentLength))
+	assert.JSONEq(t, `{"message":"Not Found"}`, rec.Body.String())
+}
+
+type encodingResponseWriter struct {
+	http.ResponseWriter
+}
+
+func (w *encodingResponseWriter) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
+}
+
+func TestDefaultHTTPErrorHandler_KeepsEncodingOfWrappedResponse(t *testing.T) {
+	e := New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetResponse(&encodingResponseWriter{ResponseWriter: c.Response()})
+	c.Response().Header().Set(HeaderContentEncoding, "gzip")
+	c.Response().Header().Set(HeaderContentLength, "5000")
+
+	DefaultHTTPErrorHandler(false)(c, ErrNotFound)
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Equal(t, "gzip", rec.Header().Get(HeaderContentEncoding))
+	assert.Empty(t, rec.Header().Get(HeaderContentLength))
+}
+
 func TestDefaultHTTPErrorHandler_CommitedResponse(t *testing.T) {
 	e := New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
