@@ -70,7 +70,7 @@ func BindQueryParams(c *Context, target any) error {
 }
 
 // BindBody binds request body contents to bindable object
-// NB: then binding forms take note that this implementation uses standard library form parsing
+// NB: when binding forms take note that this implementation uses standard library form parsing
 // which parses form data from BOTH URL and BODY if content type is not MIMEMultipartForm
 // See non-MIMEMultipartForm: https://golang.org/pkg/net/http/#Request.ParseForm
 // See MIMEMultipartForm: https://golang.org/pkg/net/http/#Request.ParseMultipartForm
