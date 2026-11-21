@@ -118,15 +118,10 @@ func (config BodyDumpConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			resBuf.Reset()
 			defer bodyDumpBufferPool.Put(resBuf)
 
-			var respWriter io.Writer
-			if config.MaxResponseBytes > 0 {
-				respWriter = &limitedWriter{
-					response: c.Response(),
-					dumpBuf:  resBuf,
-					limit:    config.MaxResponseBytes,
-				}
-			} else {
-				respWriter = io.MultiWriter(c.Response(), resBuf)
+			respWriter := &limitedWriter{
+				response: c.Response(),
+				dumpBuf:  resBuf,
+				limit:    config.MaxResponseBytes,
 			}
 			origResponse := c.Response()
 			writer := &bodyDumpResponseWriter{
@@ -185,17 +180,18 @@ type limitedWriter struct {
 func (w *limitedWriter) Write(b []byte) (n int, err error) {
 	// Always write full data to actual response (don't truncate client response)
 	n, err = w.response.Write(b)
-	if err != nil {
-		return n, err
-	}
-
 	// Write to dump buffer only up to limit
-	if w.dumped < w.limit {
-		remaining := w.limit - w.dumped
-		toDump := min(int64(n), remaining)
+	if w.limit < 0 || w.dumped < w.limit {
+		toDump := int64(n)
+		if w.limit >= 0 {
+			toDump = min(toDump, w.limit-w.dumped)
+		}
 		w.dumpBuf.Write(b[:toDump])
 		w.dumped += toDump
 	}
 
-	return n, nil
+	if err == nil && n < len(b) {
+		err = io.ErrShortWrite
+	}
+	return n, err
 }

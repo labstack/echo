@@ -677,3 +677,53 @@ func TestBodyDump_ErrorHandlerRace(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+type partialDumpWriter struct {
+	*httptest.ResponseRecorder
+	err error
+}
+
+func (w *partialDumpWriter) Write(b []byte) (int, error) {
+	n, _ := w.ResponseRecorder.Write(b[:3])
+	return n, w.err
+}
+
+func TestBodyDump_PartialWrite(t *testing.T) {
+	failure := errors.New("write failed")
+	for _, tc := range []struct {
+		limit    int64
+		writeErr error
+	}{
+		{2, failure}, {5, failure}, {-1, failure},
+		{2, nil}, {5, nil}, {-1, nil},
+	} {
+		t.Run(fmt.Sprint(tc.limit, tc.writeErr), func(t *testing.T) {
+			writeErr := tc.writeErr
+			if writeErr == nil {
+				writeErr = io.ErrShortWrite
+			}
+			rec := &partialDumpWriter{ResponseRecorder: httptest.NewRecorder(), err: tc.writeErr}
+			e := echo.New()
+			c := e.NewContext(httptest.NewRequest(http.MethodGet, "/", nil), rec)
+			var dumped string
+			h := BodyDumpWithConfig(BodyDumpConfig{
+				MaxResponseBytes: tc.limit,
+				Handler: func(_ *echo.Context, _, response []byte, err error) {
+					dumped = string(response)
+					assert.ErrorIs(t, err, writeErr)
+				},
+			})(func(c *echo.Context) error {
+				n, err := c.Response().Write([]byte("abcdef"))
+				assert.Equal(t, 3, n)
+				return err
+			})
+			assert.ErrorIs(t, h(c), writeErr)
+			want := "abc"
+			if tc.limit == 2 {
+				want = "ab"
+			}
+			assert.Equal(t, want, dumped)
+			assert.Equal(t, "abc", rec.Body.String())
+		})
+	}
+}
