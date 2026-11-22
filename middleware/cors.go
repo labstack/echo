@@ -305,7 +305,7 @@ func (config CORSConfig) starAllowOriginFunc(c *echo.Context, origin string) (st
 func (config CORSConfig) defaultAllowOriginFunc(c *echo.Context, origin string) (string, bool, error) {
 	for _, allowedOrigin := range config.AllowOrigins {
 		if strings.EqualFold(allowedOrigin, origin) {
-			return allowedOrigin, true, nil
+			return origin, true, nil
 		}
 	}
 	return "", false, nil
