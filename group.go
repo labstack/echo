@@ -23,6 +23,12 @@ type Group struct {
 	noAutoRegisterRoutes bool
 }
 
+// Prefix returns the group's path prefix, including any parent group prefixes.
+// The prefix is returned as stored, without path normalization.
+func (g *Group) Prefix() string {
+	return g.prefix
+}
+
 // Use implements `Echo#Use()` for sub-routes within the Group.
 //
 // Important! Group middlewares are executed in case there was no exact route match as by default Group registers
