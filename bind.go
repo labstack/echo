@@ -290,7 +290,7 @@ func bindData(destination any, data map[string][]string, tag string, dataFiles m
 		fm := &meta.fields[fi]
 		structField := val.Field(fm.index)
 		if fm.anonymous {
-			if structField.Kind() == reflect.Pointer {
+			if structField.Kind() == reflect.Pointer && structField.Type().Elem().Kind() == reflect.Struct {
 				structField = structField.Elem()
 			}
 		}
