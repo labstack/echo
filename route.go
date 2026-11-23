@@ -44,9 +44,25 @@ func (r Route) ToRouteInfo(params []string) RouteInfo {
 	}
 }
 
+// joinPathPrefix concatenates a group prefix and a route path.
+// A missing slash between "/v1" and "posts" used to produce "/v1posts".
+// Wildcard suffixes (`*` / `/*`) stay concatenated so Group.Static("") keeps `/prefix*`.
+func joinPathPrefix(prefix, path string) string {
+	if prefix == "" {
+		return path
+	}
+	if path == "" {
+		return prefix
+	}
+	if prefix[len(prefix)-1] != '/' && path[0] != '/' && path[0] != '*' {
+		return prefix + "/" + path
+	}
+	return prefix + path
+}
+
 // WithPrefix recreates Route with added group prefix and group middlewares it is grouped to.
 func (r Route) WithPrefix(pathPrefix string, middlewares []MiddlewareFunc) Route {
-	r.Path = pathPrefix + r.Path
+	r.Path = joinPathPrefix(pathPrefix, r.Path)
 
 	if len(middlewares) > 0 {
 		m := make([]MiddlewareFunc, 0, len(middlewares)+len(r.Middlewares))
