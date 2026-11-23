@@ -73,6 +73,13 @@ func TestVirtualHostHandler(t *testing.T) {
 			expectStatus: http.StatusOK,
 		},
 		{
+			name:         "OK Host Root, host in different case",
+			whenHost:     "OK.Com",
+			whenPath:     "/",
+			expectBody:   http.StatusText(http.StatusOK),
+			expectStatus: http.StatusOK,
+		},
+		{
 			name:         "Teapot Host Root",
 			whenHost:     "teapot.com",
 			whenPath:     "/",
