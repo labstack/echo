@@ -158,6 +158,60 @@ func TestDecompressErrorReturned(t *testing.T) {
 	assert.Empty(t, rec.Header().Get(echo.HeaderContentEncoding))
 }
 
+func TestDecompressInvalidGzipBody(t *testing.T) {
+	gz, err := gzipString(`{"name":"echo"}`)
+	assert.NoError(t, err)
+
+	var testCases = []struct {
+		name     string
+		whenBody []byte
+	}{
+		{
+			name:     "body is not gzip",
+			whenBody: []byte(`{"name":"echo"}`),
+		},
+		{
+			name:     "gzip header is truncated",
+			whenBody: gz[:4],
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+			e.Use(Decompress())
+			e.POST("/", func(c *echo.Context) error {
+				return c.NoContent(http.StatusOK)
+			})
+			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(tc.whenBody))
+			req.Header.Set(echo.HeaderContentEncoding, GZIPEncoding)
+			rec := httptest.NewRecorder()
+
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusBadRequest, rec.Code)
+		})
+	}
+}
+
+func TestDecompressKeepsBodyLimitError(t *testing.T) {
+	gz, err := gzipString(`{"name":"echo"}`)
+	assert.NoError(t, err)
+
+	e := echo.New()
+	e.Use(BodyLimit(4), Decompress())
+	e.POST("/", func(c *echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	})
+	req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(gz))
+	req.Header.Set(echo.HeaderContentEncoding, GZIPEncoding)
+	req.ContentLength = -1
+	rec := httptest.NewRecorder()
+
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusRequestEntityTooLarge, rec.Code)
+}
+
 func TestDecompressSkipper(t *testing.T) {
 	e := echo.New()
 	e.Use(DecompressWithConfig(DecompressConfig{
