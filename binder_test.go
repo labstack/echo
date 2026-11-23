@@ -671,6 +671,38 @@ func TestValueBinder_Int_errorMessage(t *testing.T) {
 	assert.EqualError(t, errs[1], `code=400, message=failed to bind field value to uint, err=strconv.ParseUint: parsing "nope": invalid syntax, field=param`)
 }
 
+func TestValueBinder_FailFastFalseBindsValidSlicesAfterError(t *testing.T) {
+	c := createTestContext("/?bad=nope&ints=1&ints=2&uints=3&uints=4&bools=true&bools=false&floats=1.5&floats=2.5&times=2024-01-02&times=2024-01-03&durations=1s&durations=2s", nil, nil)
+
+	var bad int
+	ints := []int{99}
+	uints := []uint{99}
+	bools := []bool{false}
+	floats := []float64{99}
+	times := []time.Time{{}}
+	durations := []time.Duration{99}
+	errs := QueryParamsBinder(c).FailFast(false).
+		Int("bad", &bad).
+		Ints("ints", &ints).
+		Uints("uints", &uints).
+		Bools("bools", &bools).
+		Float64s("floats", &floats).
+		Times("times", &times, time.DateOnly).
+		Durations("durations", &durations).
+		BindErrors()
+
+	assert.Len(t, errs, 1)
+	assert.Equal(t, []int{1, 2}, ints)
+	assert.Equal(t, []uint{3, 4}, uints)
+	assert.Equal(t, []bool{true, false}, bools)
+	assert.Equal(t, []float64{1.5, 2.5}, floats)
+	assert.Equal(t, []time.Time{
+		time.Date(2024, time.January, 2, 0, 0, 0, 0, time.UTC),
+		time.Date(2024, time.January, 3, 0, 0, 0, 0, time.UTC),
+	}, times)
+	assert.Equal(t, []time.Duration{time.Second, 2 * time.Second}, durations)
+}
+
 func TestValueBinder_Uint64_uintValue(t *testing.T) {
 	var testCases = []struct {
 		name            string
