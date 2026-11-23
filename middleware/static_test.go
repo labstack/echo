@@ -4,6 +4,7 @@
 package middleware
 
 import (
+	"html"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
@@ -104,6 +105,54 @@ func TestStaticHTML5PreservesMatchedHandlerNotFound(t *testing.T) {
 			if tc.expectContains != "" {
 				assert.Contains(t, rec.Body.String(), tc.expectContains)
 			}
+		})
+	}
+}
+
+func TestStaticBrowseEscapesNames(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		dir  bool
+	}{
+		{name: "plain.txt"},
+		{name: "hash#file.txt"},
+		{name: "query?.txt"},
+		{name: "percent%.txt"},
+		{name: "with space.txt"},
+		{name: "colon:name.txt"},
+		{name: "amp&file.txt"},
+		{name: "hash#dir", dir: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fileName := tc.name
+			if tc.dir {
+				fileName += "/index.html"
+			}
+			e := echo.New()
+			e.Use(StaticWithConfig(StaticConfig{
+				Filesystem: fstest.MapFS{fileName: {Data: []byte("file contents")}},
+				Browse:     true,
+			}))
+
+			req := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+			require.Equal(t, http.StatusOK, rec.Code)
+
+			_, rest, found := strings.Cut(rec.Body.String(), `href="`)
+			require.True(t, found)
+			href, _, found := strings.Cut(rest, `"`)
+			require.True(t, found)
+			target, err := req.URL.Parse(html.UnescapeString(href))
+			require.NoError(t, err)
+			// Browsers do not send URL fragments to the server.
+			target.Fragment = ""
+			target.RawFragment = ""
+
+			rec = httptest.NewRecorder()
+			e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, target.String(), nil))
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, "file contents", rec.Body.String())
 		})
 	}
 }
