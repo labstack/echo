@@ -257,6 +257,7 @@ func (w *headResponseWriter) WriteHeader(code int) {
 	w.wroteStatus = true
 	w.status = code
 	if r, err := UnwrapResponse(w.rw); err == nil {
+		r.Status = code
 		r.Committed = true
 	}
 }
