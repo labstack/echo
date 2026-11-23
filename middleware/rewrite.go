@@ -59,10 +59,8 @@ func (config RewriteConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 		return nil, errors.New("echo rewrite middleware requires url path rewrite rules or regex rules")
 	}
 
-	if config.RegexRules == nil {
-		config.RegexRules = make(map[*regexp.Regexp]string)
-	}
-	maps.Copy(config.RegexRules, rewriteRulesRegex(config.Rules))
+	rules := rewriteRulesRegex(config.Rules)
+	maps.Copy(rules, config.RegexRules)
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c *echo.Context) (err error) {
@@ -70,7 +68,7 @@ func (config RewriteConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 				return next(c)
 			}
 
-			if err := rewriteURL(config.RegexRules, c.Request(), isRouted(c)); err != nil {
+			if err := rewriteURL(rules, c.Request(), isRouted(c)); err != nil {
 				return err
 			}
 			return next(c)
