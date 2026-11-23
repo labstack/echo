@@ -93,6 +93,39 @@ func TestRewriteAfterRouting(t *testing.T) {
 	}
 }
 
+func TestRewriteWithConfigKeepsSharedRegexRulesIsolated(t *testing.T) {
+	shared := map[*regexp.Regexp]string{
+		regexp.MustCompile("^/common$"): "/new",
+	}
+	e := echo.New()
+	e.Pre(RewriteWithConfig(RewriteConfig{
+		Rules:      map[string]string{"/one": "/new"},
+		RegexRules: shared,
+	}))
+	e.GET("/new", func(c *echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	})
+
+	_ = RewriteWithConfig(RewriteConfig{
+		Rules:      map[string]string{"/two": "/new"},
+		RegexRules: shared,
+	})
+
+	for _, test := range []struct {
+		path string
+		code int
+	}{
+		{"/common", http.StatusOK},
+		{"/one", http.StatusOK},
+		{"/two", http.StatusNotFound},
+	} {
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, test.path, nil))
+		assert.Equal(t, test.code, rec.Code, test.path)
+	}
+	assert.Len(t, shared, 1)
+}
+
 func TestMustRewriteWithConfig_emptyRulesPanics(t *testing.T) {
 	assert.Panics(t, func() {
 		RewriteWithConfig(RewriteConfig{})
