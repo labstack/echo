@@ -1830,6 +1830,10 @@ func TestContextResetClearsPathValuesBackingArray(t *testing.T) {
 		{Name: "id", Value: "12345"},
 		{Name: "token", Value: "secret-value"},
 	})
+	// Shortening the slice leaves the previous second element in spare capacity.
+	c.SetPathValues(PathValues{
+		{Name: "id", Value: "67890"},
+	})
 
 	origCap := cap(*c.pathValues)
 	c.Reset(nil, nil)
