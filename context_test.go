@@ -1822,3 +1822,21 @@ func TestRouteInfo(t *testing.T) {
 	orgRI.Name = "changed"
 	assert.NotEqual(t, expect, c.RouteInfo())
 }
+
+func TestContextResetClearsPathValuesBackingArray(t *testing.T) {
+	e := New()
+	c := e.NewContext(nil, nil)
+	c.SetPathValues(PathValues{
+		{Name: "id", Value: "12345"},
+		{Name: "token", Value: "secret-value"},
+	})
+
+	origCap := cap(*c.pathValues)
+	c.Reset(nil, nil)
+
+	assert.Empty(t, *c.pathValues)
+	assert.Equal(t, origCap, cap(*c.pathValues))
+	for i, pv := range (*c.pathValues)[:cap(*c.pathValues)] {
+		assert.Equal(t, PathValue{}, pv, "pathValues backing array element %d should be zeroed", i)
+	}
+}

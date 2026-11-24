@@ -153,6 +153,7 @@ func (c *Context) Reset(r *http.Request, w http.ResponseWriter) {
 	c.dsw = delayedStatusWriter{}
 	c.path = ""
 	// NOTE: empty by setting length to 0. PathValues has to have capacity of c.echo.contextPathParamAllocSize at all times
+	clear(*c.pathValues)
 	*c.pathValues = (*c.pathValues)[:0]
 }
 
