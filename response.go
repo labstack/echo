@@ -240,6 +240,7 @@ type headResponseWriter struct {
 	status      int
 	wroteStatus bool
 	bodyBytes   int64
+	sniffBuf    []byte
 }
 
 func (w *headResponseWriter) Header() http.Header {
@@ -266,6 +267,12 @@ func (w *headResponseWriter) Write(b []byte) (int, error) {
 		w.WriteHeader(http.StatusOK)
 	}
 	w.bodyBytes += int64(len(b))
+	// net/http normally infers the type from the first 512 body bytes.
+	// Retain only that prefix because HEAD discards writes before they
+	// reach the transport.
+	if remaining := 512 - len(w.sniffBuf); remaining > 0 {
+		w.sniffBuf = append(w.sniffBuf, b[:min(len(b), remaining)]...)
+	}
 	return len(b), nil
 }
 
@@ -284,6 +291,12 @@ func (w *headResponseWriter) Unwrap() http.ResponseWriter {
 
 func (w *headResponseWriter) commit() {
 	dst := w.rw.Header()
+	_, hasContentType := dst[HeaderContentType]
+	if !hasContentType && len(w.sniffBuf) > 0 &&
+		dst.Get(HeaderContentEncoding) == "" && dst.Get("Transfer-Encoding") == "" &&
+		!statusMustNotHaveBody(w.status) {
+		dst.Set(HeaderContentType, http.DetectContentType(w.sniffBuf))
+	}
 	if w.wroteStatus &&
 		dst.Get(HeaderContentLength) == "" &&
 		dst.Get("Transfer-Encoding") == "" &&
