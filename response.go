@@ -289,14 +289,18 @@ func (w *headResponseWriter) Unwrap() http.ResponseWriter {
 	return w.rw
 }
 
-func (w *headResponseWriter) commit() {
+func (w *headResponseWriter) sniffContentType(status int) {
 	dst := w.rw.Header()
 	_, hasContentType := dst[HeaderContentType]
 	if !hasContentType && len(w.sniffBuf) > 0 &&
 		dst.Get(HeaderContentEncoding) == "" && dst.Get("Transfer-Encoding") == "" &&
-		!statusMustNotHaveBody(w.status) {
+		!statusMustNotHaveBody(status) {
 		dst.Set(HeaderContentType, http.DetectContentType(w.sniffBuf))
 	}
+}
+
+func (w *headResponseWriter) commit() {
+	dst := w.rw.Header()
 	if w.wroteStatus &&
 		dst.Get(HeaderContentLength) == "" &&
 		dst.Get("Transfer-Encoding") == "" &&
@@ -310,6 +314,11 @@ func (w *headResponseWriter) commit() {
 		// Reset it here so *Response.WriteHeader can fire beforeFuncs and reach the transport.
 		if r, err := UnwrapResponse(w.rw); err == nil {
 			r.Committed = false
+			// Sniff after application Before hooks, just as net/http does for GET.
+			// The hook also observes any final status chosen by those callbacks.
+			r.Before(func() { w.sniffContentType(r.Status) })
+		} else {
+			w.sniffContentType(w.status)
 		}
 		w.rw.WriteHeader(w.status)
 		// Fire After hooks on the underlying *Response so that middleware such as
