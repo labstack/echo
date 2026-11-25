@@ -236,3 +236,33 @@ func TestNewWithConfig_SchemeExtractor(t *testing.T) {
 
 	assert.Equal(t, "http", c.Scheme())
 }
+
+func TestSchemeFromForwardedHeader(t *testing.T) {
+	var testCases = []struct {
+		name     string
+		header   string
+		expected string
+	}{
+		{"simple proto", `proto=https`, "https"},
+		{"case insensitive", `Proto=HTTPS`, "https"},
+		{"quoted proto", `for=192.0.2.1;proto="https"`, "https"},
+		{"last element wins", `proto=https, proto=http`, "http"},
+		{"invalid proto rejected", `proto=javascript`, "http"},
+		{"no proto falls through", `for=192.0.2.1`, "http"},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.RemoteAddr = "127.0.0.1:1234"
+			req.Header.Set(HeaderForwarded, tc.header)
+			assert.Equal(t, tc.expected, ExtractSchemeFromHeaders()(req))
+		})
+	}
+}
+
+func TestForwardedHeaderIgnoredFromUntrustedPeer(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "203.0.113.10:1234"
+	req.Header.Set(HeaderForwarded, "proto=https")
+	assert.Equal(t, "http", ExtractSchemeFromHeaders()(req))
+}

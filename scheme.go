@@ -98,6 +98,33 @@ func isTrustedPeer(remoteAddr string, checker *ipChecker) bool {
 }
 
 func schemeFromHeaders(req *http.Request) string {
+	// RFC 9110 §7.6.1 defines a structured Forwarded header whose proto
+	// parameter carries the scheme used on the incoming connection. Like
+	// X-Forwarded-Proto, the last element is the one added by the nearest proxy.
+	if values := req.Header.Values(HeaderForwarded); len(values) > 0 {
+		proto := ""
+		for _, value := range values {
+			for _, element := range strings.Split(value, ",") {
+				for _, parameter := range strings.Split(element, ";") {
+					key, val, ok := strings.Cut(strings.TrimSpace(parameter), "=")
+					if !ok || !strings.EqualFold(strings.TrimSpace(key), "proto") {
+						continue
+					}
+					val = strings.TrimSpace(val)
+					if len(val) >= 2 && val[0] == '"' && val[len(val)-1] == '"' {
+						val = val[1 : len(val)-1]
+					}
+					proto = val
+				}
+			}
+		}
+		if proto != "" {
+			if scheme, ok := canonicalProto(proto); ok {
+				return scheme
+			}
+			return "http"
+		}
+	}
 	// When X-Forwarded-Proto is present it is the only header used: a trusted proxy sets it, and the other headers
 	// might be client-supplied values that the proxy did not remove. With several values (repeated header lines or a
 	// comma-separated list) the last one was added by the nearest proxy.
