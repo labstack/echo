@@ -240,6 +240,7 @@ type headResponseWriter struct {
 	status      int
 	wroteStatus bool
 	bodyBytes   int64
+	sniffBuf    []byte
 }
 
 func (w *headResponseWriter) Header() http.Header {
@@ -266,6 +267,12 @@ func (w *headResponseWriter) Write(b []byte) (int, error) {
 		w.WriteHeader(http.StatusOK)
 	}
 	w.bodyBytes += int64(len(b))
+	// net/http normally infers the type from the first 512 body bytes.
+	// Retain only that prefix because HEAD discards writes before they
+	// reach the transport.
+	if remaining := 512 - len(w.sniffBuf); remaining > 0 {
+		w.sniffBuf = append(w.sniffBuf, b[:min(len(b), remaining)]...)
+	}
 	return len(b), nil
 }
 
@@ -280,6 +287,16 @@ func (w *headResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 
 func (w *headResponseWriter) Unwrap() http.ResponseWriter {
 	return w.rw
+}
+
+func (w *headResponseWriter) sniffContentType(status int) {
+	dst := w.rw.Header()
+	_, hasContentType := dst[HeaderContentType]
+	if !hasContentType && len(w.sniffBuf) > 0 &&
+		dst.Get(HeaderContentEncoding) == "" && dst.Get("Transfer-Encoding") == "" &&
+		!statusMustNotHaveBody(status) {
+		dst.Set(HeaderContentType, http.DetectContentType(w.sniffBuf))
+	}
 }
 
 func (w *headResponseWriter) commit() {
@@ -297,6 +314,11 @@ func (w *headResponseWriter) commit() {
 		// Reset it here so *Response.WriteHeader can fire beforeFuncs and reach the transport.
 		if r, err := UnwrapResponse(w.rw); err == nil {
 			r.Committed = false
+			// Sniff after application Before hooks, just as net/http does for GET.
+			// The hook also observes any final status chosen by those callbacks.
+			r.Before(func() { w.sniffContentType(r.Status) })
+		} else {
+			w.sniffContentType(w.status)
 		}
 		w.rw.WriteHeader(w.status)
 		// Fire After hooks on the underlying *Response so that middleware such as
