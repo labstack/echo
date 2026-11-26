@@ -171,6 +171,7 @@ func (c *Context) Request() *http.Request {
 // SetRequest sets `*http.Request`.
 func (c *Context) SetRequest(r *http.Request) {
 	c.request = r
+	c.query = nil
 }
 
 // Response returns `*Response`.
