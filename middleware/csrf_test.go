@@ -521,25 +521,66 @@ func TestCSRFConfig_skipper(t *testing.T) {
 }
 
 func TestCSRFErrorHandling(t *testing.T) {
-	cfg := CSRFConfig{
-		ErrorHandler: func(c *echo.Context, err error) error {
-			return echo.NewHTTPError(http.StatusTeapot, "error_handler_executed")
+	testCases := []struct {
+		name           string
+		whenHeaders    map[string]string
+		allowSecFetch  func(c *echo.Context) (bool, error)
+		expectInputErr string
+	}{
+		{
+			name:           "missing token",
+			expectInputErr: "code=400, message=Bad Request, err=missing value in request header",
+		},
+		{
+			name:           "Sec-Fetch-Site cross-site",
+			whenHeaders:    map[string]string{echo.HeaderSecFetchSite: "cross-site"},
+			expectInputErr: "code=403, message=cross-site request blocked by CSRF",
+		},
+		{
+			name:           "Sec-Fetch-Site same-site",
+			whenHeaders:    map[string]string{echo.HeaderSecFetchSite: "same-site"},
+			expectInputErr: "code=403, message=same-site request blocked by CSRF",
+		},
+		{
+			name:        "AllowSecFetchSiteFunc custom error",
+			whenHeaders: map[string]string{echo.HeaderSecFetchSite: "cross-site"},
+			allowSecFetch: func(c *echo.Context) (bool, error) {
+				return false, echo.NewHTTPError(http.StatusForbidden, "blocked by custom func")
+			},
+			expectInputErr: "code=403, message=blocked by custom func",
 		},
 	}
 
-	e := echo.New()
-	e.POST("/", func(c *echo.Context) error {
-		return c.String(http.StatusNotImplemented, "should not end up here")
-	})
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var receivedErr error
+			cfg := CSRFConfig{
+				AllowSecFetchSiteFunc: tc.allowSecFetch,
+				ErrorHandler: func(c *echo.Context, err error) error {
+					receivedErr = err
+					return echo.NewHTTPError(http.StatusTeapot, "error_handler_executed")
+				},
+			}
 
-	e.Use(CSRFWithConfig(cfg))
+			e := echo.New()
+			e.POST("/", func(c *echo.Context) error {
+				return c.String(http.StatusNotImplemented, "should not end up here")
+			})
 
-	req := httptest.NewRequest(http.MethodPost, "/", nil)
-	res := httptest.NewRecorder()
-	e.ServeHTTP(res, req)
+			e.Use(CSRFWithConfig(cfg))
 
-	assert.Equal(t, http.StatusTeapot, res.Code)
-	assert.Equal(t, "{\"message\":\"error_handler_executed\"}\n", res.Body.String())
+			req := httptest.NewRequest(http.MethodPost, "/", nil)
+			for k, v := range tc.whenHeaders {
+				req.Header.Set(k, v)
+			}
+			res := httptest.NewRecorder()
+			e.ServeHTTP(res, req)
+
+			assert.EqualError(t, receivedErr, tc.expectInputErr)
+			assert.Equal(t, http.StatusTeapot, res.Code)
+			assert.Equal(t, "{\"message\":\"error_handler_executed\"}\n", res.Body.String())
+		})
+	}
 }
 
 func TestCSRFConfig_checkSecFetchSiteRequest(t *testing.T) {
