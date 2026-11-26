@@ -876,6 +876,44 @@ func TestContextFormValue(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestContext_SetRequestQueryParams(t *testing.T) {
+	for _, replaceRequest := range []bool{false, true} {
+		t.Run(fmt.Sprintf("replaceRequest=%v", replaceRequest), func(t *testing.T) {
+			e := New()
+			e.Use(func(next HandlerFunc) HandlerFunc {
+				return func(c *Context) error {
+					assert.Equal(t, "1", c.QueryParams().Get("page"))
+					req := c.Request()
+					if replaceRequest {
+						req = req.Clone(req.Context())
+					}
+					req.URL.RawQuery = "page=2&tag=new&tag=updated"
+					c.SetRequest(req)
+					return next(c)
+				}
+			})
+			e.GET("/", func(c *Context) error {
+				assert.Equal(t, "page=2&tag=new&tag=updated", c.QueryString())
+				assert.Equal(t, "2", c.QueryParam("page"))
+				assert.Equal(t, "missing", c.QueryParamOr("old", "missing"))
+				assert.Equal(t, url.Values{"page": {"2"}, "tag": {"new", "updated"}}, c.QueryParams())
+				var query struct {
+					Page int      `query:"page" json:"page"`
+					Tags []string `query:"tag" json:"tags"`
+				}
+				if err := BindQueryParams(c, &query); err != nil {
+					return err
+				}
+				return c.JSON(http.StatusOK, query)
+			})
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/?page=1&old=value", nil))
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.JSONEq(t, `{"page":2,"tags":["new","updated"]}`, rec.Body.String())
+		})
+	}
+}
+
 func TestContext_QueryParams(t *testing.T) {
 	var testCases = []struct {
 		expect   url.Values
