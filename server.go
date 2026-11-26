@@ -91,6 +91,8 @@ func (sc StartConfig) StartTLS(ctx stdContext.Context, h http.Handler, certFile,
 			NextProtos: []string{"h2"},
 			//NextProtos: []string{"http/1.1"}, // Disallow "h2", allow http
 		}
+	} else {
+		sc.TLSConfig = sc.TLSConfig.Clone()
 	}
 	sc.TLSConfig.Certificates = []tls.Certificate{cer}
 	return sc.start(ctx, h)
