@@ -660,17 +660,67 @@ func (c *Context) JSONPBlob(code int, callback string, b []byte) (err error) {
 	return
 }
 
-func (c *Context) xml(code int, i any, indent string) (err error) {
-	c.writeContentType(MIMEApplicationXMLCharsetUTF8)
-	c.response.WriteHeader(code)
-	enc := xml.NewEncoder(c.response)
+func (c *Context) xml(code int, i any, indent string) error {
+	// encoding/xml can fail before it writes. Hold the status until the first
+	// byte, and write the declaration with that byte, so the error handler can
+	// still respond. A flush that already wrote keeps that response.
+	resp := c.Response()
+	if _, nested := resp.(*delayedStatusWriter); nested {
+		c.SetResponse(&delayedStatusWriter{ResponseWriter: resp, status: code})
+	} else {
+		c.dsw = delayedStatusWriter{ResponseWriter: resp, status: code}
+		c.SetResponse(&c.dsw)
+	}
+	defer c.SetResponse(resp)
+
+	out := &xmlDeclarationWriter{w: c.response}
+	enc := xml.NewEncoder(out)
 	if indent != "" {
 		enc.Indent("", indent)
 	}
-	if _, err = c.response.Write([]byte(xml.Header)); err != nil {
-		return
+	if err := enc.Encode(i); err != nil {
+		return err
 	}
-	return enc.Encode(i)
+	if !out.wrote {
+		// Encode succeeded and wrote nothing, which is what a nil value does.
+		// Keep the previous success output: the requested status and the declaration.
+		return out.writeDeclaration()
+	}
+	return nil
+}
+
+// xmlDeclarationWriter writes the XML declaration before the first byte from the encoder.
+type xmlDeclarationWriter struct {
+	w     http.ResponseWriter
+	wrote bool
+}
+
+func (x *xmlDeclarationWriter) Write(p []byte) (int, error) {
+	if len(p) == 0 {
+		return 0, nil
+	}
+	if err := x.writeDeclaration(); err != nil {
+		return 0, err
+	}
+	return x.w.Write(p)
+}
+
+func (x *xmlDeclarationWriter) writeDeclaration() error {
+	if x.wrote {
+		return nil
+	}
+	if x.w.Header().Get(HeaderContentType) == "" {
+		x.w.Header().Set(HeaderContentType, MIMEApplicationXMLCharsetUTF8)
+	}
+	n, err := x.w.Write([]byte(xml.Header))
+	if err != nil {
+		return err
+	}
+	if n < len(xml.Header) {
+		return io.ErrShortWrite
+	}
+	x.wrote = true
+	return nil
 }
 
 // XML sends an XML response with status code.
