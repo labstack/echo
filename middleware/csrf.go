@@ -174,6 +174,9 @@ func (config CSRFConfig) ToMiddleware() (echo.MiddlewareFunc, error) {
 			// use the `Sec-Fetch-Site` header as part of a modern approach to CSRF protection
 			allow, err := config.checkSecFetchSiteRequest(c)
 			if err != nil {
+				if config.ErrorHandler != nil {
+					return config.ErrorHandler(c, err)
+				}
 				return err
 			}
 			if allow {
