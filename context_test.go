@@ -447,6 +447,131 @@ func TestContextXMLBlob(t *testing.T) {
 	}
 }
 
+func TestContextXMLErrorsOut(t *testing.T) {
+	e := New()
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	c := e.NewContext(req, rec)
+
+	err := c.XML(http.StatusAccepted, map[string]string{"title": "example"})
+	assert.Error(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code) // status code must not be sent to the client
+	assert.Empty(t, rec.Body.String())
+	assert.Empty(t, rec.Header().Get(HeaderContentType))
+}
+
+func TestContextXMLNilWritesDeclaration(t *testing.T) {
+	e := New()
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	c := e.NewContext(req, rec)
+
+	err := c.XML(http.StatusAccepted, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusAccepted, rec.Code)
+	assert.Equal(t, MIMEApplicationXMLCharsetUTF8, rec.Header().Get(HeaderContentType))
+	assert.Equal(t, xml.Header, rec.Body.String())
+}
+
+func TestContextXMLEncodeErrorReachesErrorHandler(t *testing.T) {
+	e := New()
+	e.GET("/", func(c *Context) error {
+		return c.XML(http.StatusAccepted, map[string]string{"title": "example"})
+	})
+
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Equal(t, MIMEApplicationJSON, rec.Header().Get(HeaderContentType))
+	assert.JSONEq(t, `{"message":"Internal Server Error"}`, rec.Body.String())
+}
+
+func TestContextXMLPrettyEncodeErrorReachesErrorHandler(t *testing.T) {
+	e := New()
+	e.GET("/", func(c *Context) error {
+		return c.XMLPretty(http.StatusAccepted, map[string]string{"title": "example"}, "  ")
+	})
+
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Equal(t, MIMEApplicationJSON, rec.Header().Get(HeaderContentType))
+	assert.JSONEq(t, `{"message":"Internal Server Error"}`, rec.Body.String())
+}
+
+type xmlFlushThenFail struct{}
+
+func (xmlFlushThenFail) MarshalXML(enc *xml.Encoder, start xml.StartElement) error {
+	if err := enc.EncodeToken(start); err != nil {
+		return err
+	}
+	if err := enc.EncodeToken(xml.CharData("partial")); err != nil {
+		return err
+	}
+	if err := enc.EncodeToken(xml.EndElement{Name: start.Name}); err != nil {
+		return err
+	}
+	if err := enc.Flush(); err != nil {
+		return err
+	}
+	return errors.New("after flush")
+}
+
+func TestContextXMLErrorAfterFlushKeepsWrittenResponse(t *testing.T) {
+	e := New()
+	e.GET("/", func(c *Context) error {
+		return c.XML(http.StatusAccepted, xmlFlushThenFail{})
+	})
+
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	assert.Equal(t, http.StatusAccepted, rec.Code)
+	assert.Equal(t, MIMEApplicationXMLCharsetUTF8, rec.Header().Get(HeaderContentType))
+	assert.Contains(t, rec.Body.String(), xml.Header)
+	assert.Contains(t, rec.Body.String(), "<xmlFlushThenFail>partial</xmlFlushThenFail>")
+	assert.NotContains(t, rec.Body.String(), "Internal Server Error")
+}
+
+// xmlHTTPFlushThenElement flushes the HTTP response before the encoder writes an element.
+// That is a different boundary from enc.Flush, which already wrote the declaration.
+type xmlHTTPFlushThenElement struct {
+	c *Context
+}
+
+func (x xmlHTTPFlushThenElement) MarshalXML(enc *xml.Encoder, start xml.StartElement) error {
+	http.NewResponseController(x.c.Response()).Flush()
+	if err := enc.EncodeToken(start); err != nil {
+		return err
+	}
+	if err := enc.EncodeToken(xml.CharData("ok")); err != nil {
+		return err
+	}
+	if err := enc.EncodeToken(xml.EndElement{Name: start.Name}); err != nil {
+		return err
+	}
+	return enc.Flush()
+}
+
+func TestContextXMLHTTPFlushPinsContentType(t *testing.T) {
+	e := New()
+	e.GET("/", func(c *Context) error {
+		return c.XML(http.StatusAccepted, xmlHTTPFlushThenElement{c: c})
+	})
+
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+
+	res := rec.Result()
+	defer res.Body.Close()
+	assert.Equal(t, http.StatusAccepted, res.StatusCode)
+	assert.Equal(t, MIMEApplicationXMLCharsetUTF8, res.Header.Get(HeaderContentType))
+	body, err := io.ReadAll(res.Body)
+	assert.NoError(t, err)
+	assert.Contains(t, string(body), xml.Header)
+	assert.Contains(t, string(body), "<xmlHTTPFlushThenElement>ok</xmlHTTPFlushThenElement>")
+	assert.NotContains(t, string(body), "Internal Server Error")
+}
+
 func TestContextXMLWithEmptyIntent(t *testing.T) {
 	e := New()
 	rec := httptest.NewRecorder()

@@ -175,10 +175,20 @@ func supportsFlush(rw http.ResponseWriter) bool {
 
 // delayedStatusWriter is a wrapper around http.ResponseWriter that delays writing the status code until first Write is called.
 // This allows (global) error handler to decide correct status code to be sent to the client.
+// contentType, when set, is applied at that same commit, including an explicit Flush before any Write.
+// Leave it empty when the caller already set the header, as JSON does.
 type delayedStatusWriter struct {
 	http.ResponseWriter
-	committed bool
-	status    int
+	committed   bool
+	status      int
+	contentType string
+}
+
+func (w *delayedStatusWriter) ensureContentType() {
+	if w.contentType == "" || w.Header().Get(HeaderContentType) != "" {
+		return
+	}
+	w.Header().Set(HeaderContentType, w.contentType)
 }
 
 func (w *delayedStatusWriter) WriteHeader(statusCode int) {
@@ -187,12 +197,16 @@ func (w *delayedStatusWriter) WriteHeader(statusCode int) {
 		return
 	}
 	// in case something else writes status code explicitly before us we need mark response committed
+	if !w.committed {
+		w.ensureContentType()
+	}
 	w.committed = true
 	w.ResponseWriter.WriteHeader(statusCode)
 }
 
 func (w *delayedStatusWriter) Write(data []byte) (int, error) {
 	if !w.committed {
+		w.ensureContentType()
 		w.committed = true
 		if w.status == 0 {
 			w.status = http.StatusOK
@@ -204,7 +218,8 @@ func (w *delayedStatusWriter) Write(data []byte) (int, error) {
 
 func (w *delayedStatusWriter) Flush() {
 	if !w.committed && supportsFlush(w.ResponseWriter) {
-		// Flushing sends the headers, so send the delayed status first.
+		// Flushing sends the headers, so send the delayed status and content type first.
+		w.ensureContentType()
 		w.committed = true
 		if w.status == 0 {
 			w.status = http.StatusOK
