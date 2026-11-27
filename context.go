@@ -662,13 +662,14 @@ func (c *Context) JSONPBlob(code int, callback string, b []byte) (err error) {
 
 func (c *Context) xml(code int, i any, indent string) error {
 	// encoding/xml can fail before it writes. Hold the status until the first
-	// byte, and write the declaration with that byte, so the error handler can
-	// still respond. A flush that already wrote keeps that response.
+	// byte or an HTTP flush, and write the declaration with that byte, so the
+	// error handler can still respond. A flush commits the XML content type
+	// with the status. A flush that already wrote keeps that response.
 	resp := c.Response()
 	if _, nested := resp.(*delayedStatusWriter); nested {
-		c.SetResponse(&delayedStatusWriter{ResponseWriter: resp, status: code})
+		c.SetResponse(&delayedStatusWriter{ResponseWriter: resp, status: code, contentType: MIMEApplicationXMLCharsetUTF8})
 	} else {
-		c.dsw = delayedStatusWriter{ResponseWriter: resp, status: code}
+		c.dsw = delayedStatusWriter{ResponseWriter: resp, status: code, contentType: MIMEApplicationXMLCharsetUTF8}
 		c.SetResponse(&c.dsw)
 	}
 	defer c.SetResponse(resp)
