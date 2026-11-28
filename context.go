@@ -81,7 +81,8 @@ type Context struct {
 	// It lives on the pooled Context; &c.dsw is a stable, allocation-free pointer. Only json() may point
 	// the response at &c.dsw, and only via the nested-call guard there — aliasing it to itself (wrapping
 	// &c.dsw around &c.dsw) would make the response writer reference itself.
-	dsw delayedStatusWriter
+	dsw      delayedStatusWriter
+	dswInUse bool
 
 	store  map[string]any
 	echo   *Echo
@@ -151,6 +152,7 @@ func (c *Context) Reset(r *http.Request, w http.ResponseWriter) {
 	c.route = nil
 	c.handler = nil
 	c.dsw = delayedStatusWriter{}
+	c.dswInUse = false
 	c.path = ""
 	// NOTE: empty by setting length to 0. PathValues has to have capacity of c.echo.contextPathParamAllocSize at all times
 	*c.pathValues = (*c.pathValues)[:0]
@@ -562,34 +564,111 @@ func isValidJSONPCallback(callback string) bool {
 }
 
 // writeJSONPHeader validates the callback and writes the JSONP response headers.
-func (c *Context) writeJSONPHeader(code int, callback string) error {
+func writeJSONPHeader(w http.ResponseWriter, code int, callback string) error {
 	if !isValidJSONPCallback(callback) {
 		return ErrBadRequest.Wrap(ErrInvalidJSONPCallback)
 	}
-	c.writeContentType(MIMEApplicationJavaScriptCharsetUTF8)
-	c.response.Header().Set(HeaderXContentTypeOptions, "nosniff")
-	c.response.WriteHeader(code)
+	if w.Header().Get(HeaderContentType) == "" {
+		w.Header().Set(HeaderContentType, MIMEApplicationJavaScriptCharsetUTF8)
+	}
+	w.Header().Set(HeaderXContentTypeOptions, "nosniff")
+	w.WriteHeader(code)
 	return nil
 }
 
 func (c *Context) jsonPBlob(code int, callback string, i any) (err error) {
-	if err = c.writeJSONPHeader(code, callback); err != nil {
-		return
+	if !isValidJSONPCallback(callback) {
+		return ErrBadRequest.Wrap(ErrInvalidJSONPCallback)
 	}
-	if _, err = c.response.Write(stringToBytes(callback)); err != nil {
-		return
+	resp := c.Response()
+	header := resp.Header()
+	contentType := header.Get(HeaderContentType)
+	c.writeContentType(MIMEApplicationJavaScriptCharsetUTF8)
+	w := &jsonpResponseWriter{
+		ResponseWriter: resp, code: code, callback: callback,
+		contentType: header.Get(HeaderContentType),
 	}
-	if _, err = c.response.Write(jsonpOpen); err != nil {
-		return
-	}
+	c.SetResponse(w)
+	defer func() {
+		c.SetResponse(resp)
+		if !w.started {
+			if contentType == "" {
+				header.Del(HeaderContentType)
+			} else {
+				header.Set(HeaderContentType, contentType)
+			}
+		}
+	}()
 	if err = c.echo.JSONSerializer.Serialize(c, i, ""); err != nil {
 		return
 	}
-	if _, err = c.response.Write(jsonpClose); err != nil {
+	if err = w.start(); err != nil {
 		return
 	}
+	_, err = resp.Write(jsonpClose)
 	return
 }
+
+// jsonpResponseWriter writes the callback prefix when serialization first writes
+// or flushes, leaving an unwritten response available to the error handler.
+type jsonpResponseWriter struct {
+	http.ResponseWriter
+	code        int
+	callback    string
+	contentType string
+	started     bool
+	err         error
+}
+
+func (w *jsonpResponseWriter) start() error {
+	if w.started {
+		return w.err
+	}
+	w.started = true
+	w.ResponseWriter.Header().Set(HeaderContentType, w.contentType)
+	if w.err = writeJSONPHeader(w.ResponseWriter, w.code, w.callback); w.err != nil {
+		return w.err
+	}
+	for _, part := range [][]byte{stringToBytes(w.callback), jsonpOpen} {
+		var n int
+		n, w.err = w.ResponseWriter.Write(part)
+		if w.err != nil {
+			return w.err
+		}
+		if n != len(part) {
+			w.err = io.ErrShortWrite
+			return w.err
+		}
+	}
+	return nil
+}
+
+func (w *jsonpResponseWriter) Write(p []byte) (int, error) {
+	if err := w.start(); err != nil {
+		return 0, err
+	}
+	return w.ResponseWriter.Write(p)
+}
+
+func (w *jsonpResponseWriter) WriteHeader(int) {
+	_ = w.start()
+}
+
+func (w *jsonpResponseWriter) Flush() {
+	_ = w.FlushError()
+}
+
+func (w *jsonpResponseWriter) FlushError() error {
+	if !supportsFlush(w.ResponseWriter) {
+		return http.ErrNotSupported
+	}
+	if err := w.start(); err != nil {
+		return err
+	}
+	return http.NewResponseController(w.ResponseWriter).Flush()
+}
+
+func (w *jsonpResponseWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
 
 func (c *Context) json(code int, i any, indent string) error {
 	c.writeContentType(MIMEApplicationJSON)
@@ -599,12 +678,13 @@ func (c *Context) json(code int, i any, indent string) error {
 	// For that we need to use writer that can store the proposed status code until the first Write is called.
 	resp := c.Response()
 	// Reuse the Context-owned delayedStatusWriter to avoid heap-allocating one per JSON response.
-	// If we are already nested inside a delayed write (rare: a serializer or handler calling c.JSON
-	// re-entrantly), allocate a fresh writer so the outer call's writer (which is &c.dsw) is not
-	// clobbered — reusing c.dsw here would make it reference itself.
-	if _, nested := resp.(*delayedStatusWriter); nested {
+	// Track use independently of the current writer: a re-entrant serializer can wrap
+	// the active writer with JSONP before calling JSON again.
+	if c.dswInUse {
 		c.SetResponse(&delayedStatusWriter{ResponseWriter: resp, status: code})
 	} else {
+		c.dswInUse = true
+		defer func() { c.dswInUse = false }()
 		c.dsw = delayedStatusWriter{ResponseWriter: resp, status: code}
 		c.SetResponse(&c.dsw)
 	}
@@ -644,7 +724,7 @@ func (c *Context) JSONP(code int, callback string, i any) (err error) {
 // JSONPBlob sends a JSONP blob response with status code. It uses `callback`
 // to construct the JSONP payload. The callback is validated like in Context.JSONP.
 func (c *Context) JSONPBlob(code int, callback string, b []byte) (err error) {
-	if err = c.writeJSONPHeader(code, callback); err != nil {
+	if err = writeJSONPHeader(c.response, code, callback); err != nil {
 		return
 	}
 	if _, err = c.response.Write(stringToBytes(callback)); err != nil {
