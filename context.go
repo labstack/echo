@@ -562,34 +562,93 @@ func isValidJSONPCallback(callback string) bool {
 }
 
 // writeJSONPHeader validates the callback and writes the JSONP response headers.
-func (c *Context) writeJSONPHeader(code int, callback string) error {
+func writeJSONPHeader(w http.ResponseWriter, code int, callback string) error {
 	if !isValidJSONPCallback(callback) {
 		return ErrBadRequest.Wrap(ErrInvalidJSONPCallback)
 	}
-	c.writeContentType(MIMEApplicationJavaScriptCharsetUTF8)
-	c.response.Header().Set(HeaderXContentTypeOptions, "nosniff")
-	c.response.WriteHeader(code)
+	if w.Header().Get(HeaderContentType) == "" {
+		w.Header().Set(HeaderContentType, MIMEApplicationJavaScriptCharsetUTF8)
+	}
+	w.Header().Set(HeaderXContentTypeOptions, "nosniff")
+	w.WriteHeader(code)
 	return nil
 }
 
 func (c *Context) jsonPBlob(code int, callback string, i any) (err error) {
-	if err = c.writeJSONPHeader(code, callback); err != nil {
-		return
+	if !isValidJSONPCallback(callback) {
+		return ErrBadRequest.Wrap(ErrInvalidJSONPCallback)
 	}
-	if _, err = c.response.Write(stringToBytes(callback)); err != nil {
-		return
-	}
-	if _, err = c.response.Write(jsonpOpen); err != nil {
-		return
-	}
+	resp := c.Response()
+	w := &jsonpResponseWriter{ResponseWriter: resp, code: code, callback: callback}
+	c.SetResponse(w)
+	defer c.SetResponse(resp)
 	if err = c.echo.JSONSerializer.Serialize(c, i, ""); err != nil {
 		return
 	}
-	if _, err = c.response.Write(jsonpClose); err != nil {
+	if err = w.start(); err != nil {
 		return
 	}
+	_, err = resp.Write(jsonpClose)
 	return
 }
+
+// jsonpResponseWriter writes the callback prefix when serialization first writes
+// or flushes, leaving an unwritten response available to the error handler.
+type jsonpResponseWriter struct {
+	http.ResponseWriter
+	code     int
+	callback string
+	started  bool
+	err      error
+}
+
+func (w *jsonpResponseWriter) start() error {
+	if w.started {
+		return w.err
+	}
+	w.started = true
+	if w.err = writeJSONPHeader(w.ResponseWriter, w.code, w.callback); w.err != nil {
+		return w.err
+	}
+	for _, part := range [][]byte{stringToBytes(w.callback), jsonpOpen} {
+		var n int
+		n, w.err = w.ResponseWriter.Write(part)
+		if w.err != nil {
+			return w.err
+		}
+		if n != len(part) {
+			w.err = io.ErrShortWrite
+			return w.err
+		}
+	}
+	return nil
+}
+
+func (w *jsonpResponseWriter) Write(p []byte) (int, error) {
+	if err := w.start(); err != nil {
+		return 0, err
+	}
+	return w.ResponseWriter.Write(p)
+}
+
+func (w *jsonpResponseWriter) WriteHeader(code int) {
+	if code >= 100 && code < 200 {
+		w.ResponseWriter.WriteHeader(code)
+		return
+	}
+	if !w.started {
+		w.code = code
+		_ = w.start()
+	}
+}
+
+func (w *jsonpResponseWriter) Flush() {
+	if supportsFlush(w.ResponseWriter) && w.start() == nil {
+		_ = http.NewResponseController(w.ResponseWriter).Flush()
+	}
+}
+
+func (w *jsonpResponseWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
 
 func (c *Context) json(code int, i any, indent string) error {
 	c.writeContentType(MIMEApplicationJSON)
@@ -644,7 +703,7 @@ func (c *Context) JSONP(code int, callback string, i any) (err error) {
 // JSONPBlob sends a JSONP blob response with status code. It uses `callback`
 // to construct the JSONP payload. The callback is validated like in Context.JSONP.
 func (c *Context) JSONPBlob(code int, callback string, b []byte) (err error) {
-	if err = c.writeJSONPHeader(code, callback); err != nil {
+	if err = writeJSONPHeader(c.response, code, callback); err != nil {
 		return
 	}
 	if _, err = c.response.Write(stringToBytes(callback)); err != nil {
