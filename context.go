@@ -81,7 +81,8 @@ type Context struct {
 	// It lives on the pooled Context; &c.dsw is a stable, allocation-free pointer. Only json() may point
 	// the response at &c.dsw, and only via the nested-call guard there — aliasing it to itself (wrapping
 	// &c.dsw around &c.dsw) would make the response writer reference itself.
-	dsw delayedStatusWriter
+	dsw      delayedStatusWriter
+	dswInUse bool
 
 	store  map[string]any
 	echo   *Echo
@@ -151,6 +152,7 @@ func (c *Context) Reset(r *http.Request, w http.ResponseWriter) {
 	c.route = nil
 	c.handler = nil
 	c.dsw = delayedStatusWriter{}
+	c.dswInUse = false
 	c.path = ""
 	// NOTE: empty by setting length to 0. PathValues has to have capacity of c.echo.contextPathParamAllocSize at all times
 	*c.pathValues = (*c.pathValues)[:0]
@@ -579,9 +581,24 @@ func (c *Context) jsonPBlob(code int, callback string, i any) (err error) {
 		return ErrBadRequest.Wrap(ErrInvalidJSONPCallback)
 	}
 	resp := c.Response()
-	w := &jsonpResponseWriter{ResponseWriter: resp, code: code, callback: callback}
+	header := resp.Header()
+	contentType := header.Get(HeaderContentType)
+	c.writeContentType(MIMEApplicationJavaScriptCharsetUTF8)
+	w := &jsonpResponseWriter{
+		ResponseWriter: resp, code: code, callback: callback,
+		contentType: header.Get(HeaderContentType),
+	}
 	c.SetResponse(w)
-	defer c.SetResponse(resp)
+	defer func() {
+		c.SetResponse(resp)
+		if !w.started {
+			if contentType == "" {
+				header.Del(HeaderContentType)
+			} else {
+				header.Set(HeaderContentType, contentType)
+			}
+		}
+	}()
 	if err = c.echo.JSONSerializer.Serialize(c, i, ""); err != nil {
 		return
 	}
@@ -596,10 +613,11 @@ func (c *Context) jsonPBlob(code int, callback string, i any) (err error) {
 // or flushes, leaving an unwritten response available to the error handler.
 type jsonpResponseWriter struct {
 	http.ResponseWriter
-	code     int
-	callback string
-	started  bool
-	err      error
+	code        int
+	callback    string
+	contentType string
+	started     bool
+	err         error
 }
 
 func (w *jsonpResponseWriter) start() error {
@@ -607,6 +625,7 @@ func (w *jsonpResponseWriter) start() error {
 		return w.err
 	}
 	w.started = true
+	w.ResponseWriter.Header().Set(HeaderContentType, w.contentType)
 	if w.err = writeJSONPHeader(w.ResponseWriter, w.code, w.callback); w.err != nil {
 		return w.err
 	}
@@ -631,21 +650,22 @@ func (w *jsonpResponseWriter) Write(p []byte) (int, error) {
 	return w.ResponseWriter.Write(p)
 }
 
-func (w *jsonpResponseWriter) WriteHeader(code int) {
-	if code >= 100 && code < 200 {
-		w.ResponseWriter.WriteHeader(code)
-		return
-	}
-	if !w.started {
-		w.code = code
-		_ = w.start()
-	}
+func (w *jsonpResponseWriter) WriteHeader(int) {
+	_ = w.start()
 }
 
 func (w *jsonpResponseWriter) Flush() {
-	if supportsFlush(w.ResponseWriter) && w.start() == nil {
-		_ = http.NewResponseController(w.ResponseWriter).Flush()
+	_ = w.FlushError()
+}
+
+func (w *jsonpResponseWriter) FlushError() error {
+	if !supportsFlush(w.ResponseWriter) {
+		return http.ErrNotSupported
 	}
+	if err := w.start(); err != nil {
+		return err
+	}
+	return http.NewResponseController(w.ResponseWriter).Flush()
 }
 
 func (w *jsonpResponseWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
@@ -658,12 +678,13 @@ func (c *Context) json(code int, i any, indent string) error {
 	// For that we need to use writer that can store the proposed status code until the first Write is called.
 	resp := c.Response()
 	// Reuse the Context-owned delayedStatusWriter to avoid heap-allocating one per JSON response.
-	// If we are already nested inside a delayed write (rare: a serializer or handler calling c.JSON
-	// re-entrantly), allocate a fresh writer so the outer call's writer (which is &c.dsw) is not
-	// clobbered — reusing c.dsw here would make it reference itself.
-	if _, nested := resp.(*delayedStatusWriter); nested {
+	// Track use independently of the current writer: a re-entrant serializer can wrap
+	// the active writer with JSONP before calling JSON again.
+	if c.dswInUse {
 		c.SetResponse(&delayedStatusWriter{ResponseWriter: resp, status: code})
 	} else {
+		c.dswInUse = true
+		defer func() { c.dswInUse = false }()
 		c.dsw = delayedStatusWriter{ResponseWriter: resp, status: code}
 		c.SetResponse(&c.dsw)
 	}
